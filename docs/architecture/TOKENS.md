@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 557 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Skin (everything else) | skin.css base block | 558 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
 
 ## Theme roles
 
@@ -808,6 +808,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--split-pill-fs` | `var(--action-text-fs)` | — |  |
 | `--split-pill-weight` | `var(--action-text-weight)` | — |  |
 | `--split-pill-dim` | `0.6` | — | = .panel__action[disabled] |
+| `--set-locked-dim` | `var(--split-pill-dim)` | — | a Settings toggle that cannot change now (Settings › Cards' last three) |
 
 ### spacing scale
 

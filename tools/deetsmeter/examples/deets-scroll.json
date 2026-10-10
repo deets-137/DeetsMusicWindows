@@ -1,0 +1,15 @@
+{
+  "app": { "attach": "%LOCALAPPDATA%\\DeetsMusic\\DeetsMusic.exe" },
+  "probes": { "library": [380, 175, 470, 320] },
+  "steps": [
+    { "do": "attach" },
+    { "do": "wait_window", "timeout_ms": 2000 },
+    { "do": "place" },
+    { "do": "wait", "ms": 600 },
+    { "do": "wheel", "at": [620, 330], "delta": -120, "count": 5, "every_ms": 30, "keep": 16, "tag": "down", "probe": "library" },
+    { "do": "settle", "quiet_ms": 500, "probe": "library" },
+    { "do": "wheel", "at": [620, 330], "delta": 120, "count": 5, "every_ms": 30, "keep": 16, "tag": "up", "probe": "library" },
+    { "do": "settle", "quiet_ms": 500, "probe": "library" },
+    { "do": "park" }
+  ]
+}

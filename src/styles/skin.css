@@ -842,6 +842,7 @@
   --split-pill-fs:      var(--action-text-fs);
   --split-pill-weight:  var(--action-text-weight);
   --split-pill-dim:     0.6;   /* = .panel__action[disabled] */
+  --set-locked-dim:     var(--split-pill-dim); /* a Settings toggle that cannot change now (Settings › Cards' last three) */
 
   /* -- spacing scale ----------------------------------------- */
   --space-half: 2px;   /* the half step: a chip's vertical padding, a tight gap between column buttons */

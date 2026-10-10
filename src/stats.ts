@@ -42,7 +42,7 @@ let startCount: number | null = null;
 function maybeUnlockRewind(): void {
   if (startCount === null || startCount < REWIND_UNLOCK_STARTS || setting("rewindAutoShown")) return;
   setSetting("rewindAutoShown", true);
-  setSetting("rewindCard", true);
+  setSetting("hiddenCards", setting("hiddenCards").filter((c) => c !== "rewind")); // Settings › Cards (HIDE-CARDS.md §4)
   diag.log("stats:rewind-unlock", { starts: startCount });
   toast({ kind: "info", text: "Rewind unlocked: your listening, ranked. Pick it from any slot's title." });
 }

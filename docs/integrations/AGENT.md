@@ -393,6 +393,11 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   volume of" (App + Windows | App only),
   `soundCrossfeed` (Auto | Always | Off), `soundCrossfeedLevel` (Light | Medium | Strong),
   `soundReviewDays` (7 | 14 | 3 days | Never). The bands themselves are not an agent value.
+- **Cards** (2026-10-10, [HIDE-CARDS.md](../features/HIDE-CARDS.md)): one toggle per card over
+  the `hiddenCards` list, keys `hiddenCards.home`, `.library`, `.playlists`, `.search`,
+  `.history`, `.rewind`, `.radio`, `.diary`, `.rulez`, labels "Home in the card picker" and so
+  on. On = offered in the slot pickers. A hide that would leave fewer than three everyday cards
+  is refused, and the reply says so. Replaced `rewindCard`.
 - `streamQuality` (Auto | High | Low, 2026-09-16): the stream bitrate. A set takes effect from the
   next song; the song that plays does not reload.
 - A time takes `HH:MM` on the hour or the half hour, inside the card's menu range

@@ -36,6 +36,10 @@ src-tauri/.tauri.dev.gen.json
 src-tauri/.tauri.beta.gen.json
 cli/target/
 cli/target-beta/
+# deetsmeter (docs/ideas/music-app-comp.md §17): its build and its default run folder
+tools/deetsmeter/target/
+deetsmeter-runs/
+scripts/compare/results/
 
 # Local archive of shipped NSIS installers (scripts/archive-installer.mjs), kept the
 # way DeetsAirplay keeps its installers/ — handy to re-install an older build, too big

@@ -13,7 +13,7 @@
 // open levels and scroll place across, so the card comes back where it was.
 
 import { registry, type CardDef, type CardId, type CardInstance, type MountOpts } from "./cards";
-import { setting, onSettingsChange } from "./settings-store";
+import { setting, setSetting, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
 import { onCardRequest, requestCard, setCardHostLookup, setDrillSwapCheck, type RequestHow } from "./layout-bus";
@@ -25,7 +25,9 @@ import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type Surfa
 import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card-swap";
 import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
 
-import { storedAssignment } from "./layout-rules";
+import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE_LOCK_HINT } from "./layout-rules";
+import { openContextMenu } from "./context-menu";
+import { toast } from "./toast";
 import { cancelled, emit, registerAction, registerEvent } from "./rules";
 
 type Assignment = Partial<Record<Slot, CardId>>;
@@ -66,24 +68,49 @@ const MAX: Composition = {
 /** mini shares midi's map — its composition only hides the right slot (CSS). */
 const compositionFor = (s: SurfaceName): Composition => (s === "max" ? MAX : MIDI);
 
-/** Cards selectable in a content slot under a composition — everything not anchored,
- *  minus Rewind while its setting is off (the 50-start gate, SETTINGS.md). */
-const poolFor = (comp: Composition): CardDef[] =>
-  (Object.values(registry).filter(Boolean) as CardDef[]).filter(
-    (c) => !comp.anchored.includes(c.id) && (c.id !== "rewind" || setting("rewindCard")) && (!c.maxOnly || comp === MAX),
-  );
+/** Cards a content slot can hold under a composition: everything not anchored, Max-only
+ *  cards in Max only. Hidden cards included — a summon still brings one in. */
+const allowedFor = (comp: Composition): CardDef[] =>
+  (Object.values(registry).filter(Boolean) as CardDef[]).filter((c) => !comp.anchored.includes(c.id) && (!c.maxOnly || comp === MAX));
+
+/** Cards the picker offers under a composition: the allowed ones minus Settings › Cards'
+ *  hidden list (HIDE-CARDS.md; Rewind is on it until 50 play starts). */
+const poolFor = (comp: Composition): CardDef[] => {
+  const hidden = setting("hiddenCards");
+  return allowedFor(comp).filter((c) => !hidden.includes(c.id));
+};
+
+/** One slot's picker list: the pool, plus the card in the slot when it is hidden (a menu
+ *  shows what is on screen, HIDE-CARDS.md §3), in the registry order. */
+const pickerList = (comp: Composition, current: CardId): CardDef[] => {
+  const hidden = setting("hiddenCards");
+  return allowedFor(comp).filter((c) => c.id === current || !hidden.includes(c.id));
+};
+
+/** The first offered card no slot holds — the fallback when a slot's card leaves. */
+const freeCard = (comp: Composition, layout: Assignment): CardId | undefined => {
+  const used = new Set(comp.slots.map((s) => layout[s]));
+  return poolFor(comp).find((c) => !used.has(c.id) && !c.maxOnly)?.id;
+};
 
 function loadLayout(comp: Composition): Assignment {
-  // Every slot filled with a distinct, still-registered, non-anchored card — else default.
-  // The rule is layout-rules.ts, under test.
+  // Each slot keeps its stored card while the card is allowed; a slot whose card left takes
+  // its default or a free card, and the others stay (HIDE-CARDS.md §3). A hidden card opened
+  // by hand stays across a restart. The rule is layout-rules.ts, under test.
   let raw: string | null = null;
   try {
     raw = localStorage.getItem(comp.key);
   } catch {
     /* storage disabled → default */
   }
-  const ids = new Set<string>(poolFor(comp).map((c) => c.id));
-  return storedAssignment<Slot, CardId>(comp.slots, raw, ids) ?? { ...comp.defaults };
+  const pool = poolFor(comp);
+  const ids = new Set<string>(pool.map((c) => c.id));
+  const keep = new Set<string>(allowedFor(comp).map((c) => c.id).filter((id) => !ids.has(id)));
+  const order = pool.filter((c) => !c.maxOnly).map((c) => c.id);
+  return (
+    repairAssignment<Slot, CardId>(comp.slots, raw, ids, comp.defaults, order, keep) ??
+    fillSlots<Slot, CardId>(comp.slots, {}, ids, comp.defaults, order) ?? { ...comp.defaults }
+  );
 }
 
 function saveLayout(comp: Composition, l: Assignment): void {
@@ -104,8 +131,9 @@ function makePicker(
   host: HTMLElement,
   currentId: CardId,
   inst: CardInstance,
-  pool: CardDef[],
+  pool: () => CardDef[],
   onPick: (slot: Slot, id: CardId) => void,
+  onHide: (slot: Slot, id: CardId) => void,
 ): SlotPicker {
   const head = host.querySelector<HTMLElement>(".panel__head");
   const title = host.querySelector<HTMLElement>(".panel__title");
@@ -116,14 +144,19 @@ function makePicker(
   menu.dataset.frames = "title-menu"; // the arrival's [perf] frames line (frames.ts, through makeDropdown)
   menu.setAttribute("role", "menu");
   menu.hidden = true;
-  menu.innerHTML = pool
-    .map(
-      (c) =>
-        `<button class="flyout__item" type="button" role="menuitemradio" data-card-id="${c.id}" aria-checked="${
-          c.id === currentId
-        }">${c.title}</button>`,
-    )
-    .join("");
+  // The list is read at each open, so a card shown or hidden in Settings › Cards
+  // (HIDE-CARDS.md) is right the next time without a remount.
+  const fill = () => {
+    menu.innerHTML = pool()
+      .map(
+        (c) =>
+          `<button class="flyout__item" type="button" role="menuitemradio" data-card-id="${c.id}" aria-checked="${
+            c.id === currentId
+          }">${c.title}</button>`,
+      )
+      .join("");
+  };
+  fill();
   head.appendChild(menu);
 
   // The title is the trigger — plain text, no caret (like the DeetsMusic settings title).
@@ -160,11 +193,17 @@ function makePicker(
     if (over > 0) menu.style.left = `${-over}px`;
   };
   const onOpen = () => {
+    fill();
     fit();
     enterRows(menu.children, menu.children.length); // every card row, one after another
   };
 
-  const dd = makeDropdown({ root: head, trigger: title, panel: menu, disabled: () => !atRoot, onOpen });
+  // The right-click menu on a card name is portaled to <body>: a press in it counts as
+  // inside, so the picker stays open until its row runs (the quick panel's rule).
+  const dd = makeDropdown({
+    root: head, trigger: title, panel: menu, disabled: () => !atRoot, onOpen,
+    alsoInside: () => [...document.querySelectorAll<HTMLElement>(".ctx-menu")],
+  });
 
   // Drilling cards report root/title state; off-root the picker goes inert and the title
   // reverts to the drilled context title (with the back chevron). Non-drilling cards never
@@ -189,7 +228,30 @@ function makePicker(
       dd.isOpen ? dd.close() : dd.open();
     }
   };
+  // Right-click a card name: Hide from picker (HIDE-CARDS.md §5). Not on Settings, which is
+  // always offered; greyed out when the hide would leave fewer than three cards.
+  const onMenuContext = (e: MouseEvent) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-card-id]");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = btn.dataset.cardId as CardId;
+    if (!(HIDEABLE_CARDS as readonly string[]).includes(id)) return;
+    const ok = canHide(setting("hiddenCards"), id);
+    openContextMenu(e.clientX, e.clientY, [
+      {
+        label: "Hide from picker",
+        disabled: !ok,
+        note: ok ? undefined : HIDE_LOCK_HINT,
+        run: () => {
+          dd.close();
+          onHide(slot, id);
+        },
+      },
+    ]);
+  };
   menu.addEventListener("click", onMenuClick);
+  menu.addEventListener("contextmenu", onMenuContext);
   title.addEventListener("keydown", onKey);
 
   return {
@@ -305,7 +367,7 @@ export function initLayout(): void {
     host.dataset.mounted = id; // which card the host shows (the rules engine's `card`)
     const onClose = def.maxOnly ? () => closeCard(slot) : undefined;
     const inst = def.mount(host, { memory: cardMemory(id), onClose, ...mountOpts });
-    const picker = makePicker(slot, host, id, inst, poolFor(comp), setSlot);
+    const picker = makePicker(slot, host, id, inst, () => pickerList(comp, id), setSlot, hideFromPicker);
     const grow = attachGrowButton(slot, host);
     mounted[slot] = { inst, picker, grow };
   };
@@ -350,6 +412,29 @@ export function initLayout(): void {
     const go = () => setSlot(slot, back);
     if (grownState()) void collapseGrow("close").then(go);
     else go();
+  }
+
+  /** Hide from picker (HIDE-CARDS.md §5): the card joins the hidden list (the settings
+   *  handler below moves it out of its slot), and a toast offers Undo, which shows it again
+   *  and puts it back in the slot it left. */
+  function hideFromPicker(_from: Slot, id: CardId): void {
+    const before = setting("hiddenCards");
+    if (before.includes(id) || !canHide(before, id)) return;
+    const where = comp.slots.find((s) => layout[s] === id);
+    setSetting("hiddenCards", [...before, id]);
+    const name = registry[id]?.title ?? id;
+    toast({
+      kind: "info",
+      text: `${name} is hidden from the picker. Show it again in Settings › Cards.`,
+      actions: [{
+        label: "Undo",
+        run: () => {
+          setSetting("hiddenCards", setting("hiddenCards").filter((c) => c !== id));
+          if (where) setSlot(where, id);
+          diag.log("card:hide-undo", { card: id, slot: where ?? "" });
+        },
+      }],
+    });
   }
 
   function setSlot(slot: Slot, id: CardId): void {
@@ -667,22 +752,39 @@ export function initLayout(): void {
       .filter((e): e is [CardId, unknown] => !!e[0] && e[1] != null),
   );
 
-  // The Rewind gate flipped: pickers re-read the pool, and a slot that was showing
-  // Rewind while it went off falls back to an unplaced card (or the slot's default).
+  // Settings › Cards changed (HIDE-CARDS.md §3). Pickers read the list at each open, so only
+  // the cards this change hid move: each one on screen gives its slot to a free card, with
+  // the usual swap motion. A hidden card opened by hand earlier stays where it is. The other
+  // surface's saved layout drops them too, so a surface flip does not bring one back.
+  let lastHidden = [...setting("hiddenCards")];
   onSettingsChange((k) => {
-    if (k !== "rewindCard") return;
-    flushSwapOut();
-    void collapseGrow("recompose", false);
-    if (!setting("rewindCard")) {
-      const slot = comp.slots.find((s) => layout[s] === "rewind");
-      if (slot) {
-        const used = new Set(comp.slots.map((s) => layout[s]));
-        const fallback = poolFor(comp).find((c) => !used.has(c.id))?.id ?? comp.defaults[slot];
-        if (fallback) layout = { ...layout, [slot]: fallback };
-        saveLayout(comp, layout);
-      }
+    if (k !== "hiddenCards") return;
+    const now = setting("hiddenCards");
+    const gone = newlyHidden(lastHidden, now) as CardId[];
+    lastHidden = [...now];
+    if (!gone.length) return;
+    for (const other of [MIDI, MAX]) if (other !== comp) dropFromSaved(other, gone);
+    for (const id of gone) {
+      const slot = comp.slots.find((s) => layout[s] === id);
+      if (!slot) continue;
+      const fallback = freeCard(comp, layout);
+      diag.log("card:hide", { card: id, slot, fallback: fallback ?? "" });
+      if (fallback) setSlot(slot, fallback);
     }
-    decompose();
-    compose();
   });
+}
+
+/** Take hidden cards out of a composition's saved layout; loadLayout fills the open slots. */
+function dropFromSaved(comp: Composition, gone: readonly CardId[]): void {
+  try {
+    const raw = localStorage.getItem(comp.key);
+    if (!raw) return;
+    const s = JSON.parse(raw) as Assignment;
+    if (!s || typeof s !== "object") return;
+    let changed = false;
+    for (const slot of comp.slots) if (s[slot] && gone.includes(s[slot]!)) { delete s[slot]; changed = true; }
+    if (changed) localStorage.setItem(comp.key, JSON.stringify(s));
+  } catch {
+    /* storage off or not JSON: loadLayout repairs it on the flip */
+  }
 }

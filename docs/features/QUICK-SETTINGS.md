@@ -53,7 +53,7 @@ takes a row request (`requestSetting`): the card takes it. Ctrl+F is not registe
 |---|---|
 | Apple Music | the Account row (§4), then `Apple Music` (all 3 rows), then `AirPlay` |
 | Discord | `Discord` (the SOTD webhook, Post as, Listen Along invite, the post log), then `Sharing` › `shareDiscord` only |
-| Window | `Window` (all of it; its own first sub-heading "Window" is dropped, it would repeat) |
+| Window | `Window` (all of it; its own first sub-heading "Window" is dropped, it would repeat), then `Cards` (one toggle per card, HIDE-CARDS.md, 2026-10-10) |
 | Look (the brush) | `Look schedule`, `Skin settings` (left out when this skin has no rows), `Motion` |
 | Updates and bugs (the beetle) | `Updates`, then `Bugs` (the report form, My reports, the app log) |
 | Help (the helipad) | `Menus, hints and notices`, then `Playback` |
@@ -201,7 +201,7 @@ The middle group is sorted once, by the rows each icon shows, counted from the c
 | Fun things (net) | 4–10 | Song of the Day's rows show only while it is on |
 | Look (brush) | 5–14 | the schedule's rows follow its mode; Skin settings follow the skin |
 | Help (helipad) | 14–16 | two Menus rows are gated |
-| Window | 19 | — |
+| Window | 28 | — (19 Window rows + 9 Cards toggles since 2026-10-10; the place in the order did not change) |
 
 ## 10. The N beside a new setting (Review 5)
 

@@ -1,12 +1,12 @@
 ---
 status: idea
 desk_test: none
-sources: [scripts/bench.mjs, scripts/heaviness-sample.ps1, scripts/boot-log.mjs, scripts/perf-report.mjs, scripts/archive-installer.mjs, scripts/webview-profile.mjs, scripts/shots.mjs, src/perf.ts, src/frames.ts, src/launch-perf.ts, src/telemetry-on.ts]
+sources: [tools/deetsmeter/src/main.rs, tools/deetsmeter/src/screen.rs, tools/deetsmeter/src/run.rs, tools/deetsmeter/src/calibrate.rs, scripts/bench.mjs, scripts/heaviness-sample.ps1, scripts/boot-log.mjs, scripts/perf-report.mjs, scripts/archive-installer.mjs, scripts/webview-profile.mjs, scripts/shots.mjs, src/perf.ts, src/frames.ts, src/launch-perf.ts, src/telemetry-on.ts]
 updated: 2026-10-10
 ---
 # DeetsMusic against the Apple Music app for Windows — metrics and methods
 
-> **An idea, opened 2026-10-06. Nothing here has been run.** The owner asked for a theory:
+> **An idea, opened 2026-10-06. Since 2026-10-10 the sensor (M1, §17.9) is built; no comparison has been run.** The owner asked for a theory:
 > which numbers say one music player is lighter or quicker than another, and how to take
 > each number so the same method hits both apps. Every fork in §9 is his. Numbers quoted
 > from our own telemetry are the ones already in [DEBUGGING.md](../ops/DEBUGGING.md); none
@@ -593,7 +593,7 @@ Each phase is handed over alone (one load-bearing thing in flight).
 
 | phase | builds | done when | rough size |
 |---|---|---|---|
-| **M1** sensor core | clock, launch, window, input, screen, kept frames, `calibrate` | `calibrate` prints a floor; one click on our app gives input → first change, with a strip | ~600 lines Rust |
+| **M1** sensor core (BUILT 2026-10-10, §17.9) | clock, launch, window, input, screen, kept frames, `calibrate` | `calibrate` prints a floor; one click on our app gives input → first change, with a strip | ~600 lines Rust |
 | **M2** sound | process loopback, `sound-on` / `sound-off` | input → sound on both apps for one play | ~200 lines Rust |
 | **M3** judge | `run.mjs`, `metrics.mjs` + its test, the two profiles (`apple.json`, `deets.json`: launch, rectangle, coordinates, probes, splash hash), scenes 1–2 and 4–11 of §4, passes, noise gate, CSV, marks; then the §17.4 cross-check | one pass of every timing and frames row on both apps | ~500 lines Node |
 | **M4** rest | `heaviness-sample.ps1` profile list (`AppleMusic.exe` tree), GPU engine counters | scenes 3 and 5 on both apps | ~80 lines PowerShell |
@@ -606,3 +606,94 @@ Recommend `tools/deetsmeter/`, its own Cargo project like `cli/`: not in the app
 never bundled, never shipped, its `target/` gitignored. The release check does not see it.
 The judge and the profiles go in `scripts/compare/`, the results under
 `scripts/compare/results/` (gitignored) and `release-history.csv` (committed).
+
+### 17.9 M1 as built (2026-10-10, branch `ten-out-of-ten`)
+
+> **Part:** built · 2026-10-10 — M1 only; M2–M4 not started. Where this disagrees with
+> §17.1–§17.7, this is the code.
+
+**Build and use.** `cargo build --release --offline` in `tools/deetsmeter/` (the `windows`
+0.61, `serde_json` and `png` 0.17 crates are already in the local registry). Three commands:
+
+```
+deetsmeter calibrate [--rounds 30] [--out <dir>]
+deetsmeter run <steps.json> [--out <dir>]      (default out: deetsmeter-runs/<unix secs>)
+deetsmeter find <exe name | full path>
+```
+
+A run file has `app` (`exe` + `args`, `aumid`, or `attach`), an optional `region` and
+`probes` (relative to the visible frame), and `steps`: `launch`, `attach`, `wait_window`,
+`place` (with or without a `rect`), `focus`, `wait`, `mark`, `move`, `click`, `wheel`,
+`drag`, `key`, `text`, `settle` (default 500 ms, F15), `park`, `close`. An input step takes
+`keep: N` and `tag`: the next N changed frames are written as PNGs plus a strip.
+`tools/deetsmeter/examples/deets-scroll.json` is the reference. Output: `events.jsonl` (every
+event, time-ordered, `t` in µs) and `frames/`.
+
+**Changes from the design:**
+- *Window found by polling* `EnumWindows` every 1 ms, not by `SetWinEventHook`: the same
+  1 ms precision, and no message loop on the main thread.
+- *The cover guard* (not in the design; added after the first live run). `place` refuses a
+  region another window covers (the centre and 8 px inside each corner, by
+  `WindowFromPoint`), and names that app. Every pointer step checks its own point, and
+  `key` / `text` check the foreground window. A refused step sends nothing. Why: the first
+  run on the live app, 2026-10-10, found DeetsMusic under the League of Legends client; the
+  sensor measured the client's animated lobby and the scroll went into the client.
+- *The baseline.* A new region re-opens the duplication, so its first frame (the whole
+  screen) is a baseline, never a change.
+- *Calibrate judges the sensor on missed compositions*, not on changes per second. The test
+  window (GDI + `DwmFlush`) sometimes lands two flips in one composition, which reads as no
+  change; that is the test window, not the sensor. The sensor's fault is a composition it
+  did not see (`AccumulatedFrames − 1`), and the verdict is "keeps up" at ≤ 1 %. The pointer
+  is put back on the window before every click.
+
+**First numbers on this PC** (3440 × 1440 at 240 Hz, 2026-10-10):
+
+| run | result |
+|---|---|
+| calibrate, 30 rounds | floor median 9.1 ms · p90 17.7 · min 4.1 · max 23.9 (27 rounds; 3 clicks lost, see below) |
+| calibrate, cadence | 216 compositions/s seen at 240 Hz; 1 composition missed by the sensor (0.31 %) |
+| sensor cost | 3.6–6.7 % of one core: over the 3 % budget of §17.4 at a 1402 × 1002 region. To look at in M3 (sample fewer rows, or hash the probes only). |
+
+The 3 lost clicks: no flip and no lost frame (the colour sequence is unbroken), so the click
+itself did not land, most likely a pointer move between the tool's move and its press. They
+are reported as `missed` and left out of the floor.
+
+**Learned for M3:**
+- *A window that animates on its own* (a skin's backdrop, the turning record, a game client)
+  changes the region on every composition. Whole-window "first change" is then 0.7 ms after
+  any input: a false number. The judge must time a change in the step's PROBE (the area the
+  input should change), never the whole region. Each profile needs probes per scene.
+- `settle` on a region that never stops moving runs to its timeout; scope it to a probe too.
+
+**Probes, as built (same day, after the first uncovered run).** The owner's run of the scroll
+on the installed app (Glass, Cover Wallpaper on, a song playing) gave "first change +0.0 ms",
+970 changed frames and two settle timeouts: the backdrop and the song clock change the region
+on every composition. So the "learned for M3" item was built into the sensor now:
+- A probe is read as a brightness grid (up to 32 × 32 cells, mean luma per cell). A probe
+  CHANGES when one cell moves by at least `probe_threshold` (run-file key, default 16 of
+  255). Each frame event carries, per probe, `d` (the largest cell change), `m` (the mean)
+  and `c` (changed).
+- An input step and `settle` take `"probe": "<name>"`: the summary times the first change in
+  that probe, `settle` waits for that probe to go quiet, and `keep` keeps frames that change
+  in it. The summary also prints the probe's largest cell change in the 500 ms before the
+  input (the noise) and after it, so the threshold can be checked on every run.
+- `exe` and `attach` expand `%NAME%` (the example attaches by
+  `%LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe`: a bare name matched the dev app too, and a full
+  path would put a user's own name in a public repo).
+
+**M1's done test: passed (2026-10-10).** `examples/deets-scroll.json` on the installed 0.25.4
+(window 1402 × 1002 at 240 Hz, Glass): a 5-notch wheel down and back up over a list.
+
+| input | first change in the probe | settled (500 ms quiet) | probe noise before → after |
+|---|---|---|---|
+| wheel down | +26.9 ms | +748 ms | 27 → 89 |
+| wheel up | +25.0 ms | +327 ms | 36 → 105 |
+
+The probe is quiet before the input (cell changes of 0–1). The one spike in each "before"
+(27, 36, about 120 ms before the wheel) is the row HOVER: the pointer moves onto the list
+150 ms before the press. So 16 sits above the backdrop seen through the frost and below the
+input's own change. The window was in a different layout from the one the example was
+drawn on (the Rulez card filled the middle), so the probe named `library` covered the Rulez
+list; the scroll was still a scroll in our app. A profile must name its layout (M3).
+
+Sensor cost on this short run: 13.8 % of one core (start-up included); the M3 item stands.

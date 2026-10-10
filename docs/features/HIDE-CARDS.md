@@ -1,13 +1,14 @@
 ---
-status: designed
-desk_test: none
+status: built
+desk_test: open
 sources: [src/layout.ts, src/layout-rules.ts, src/cards.ts, src/compass.ts, src/settings-card.ts, src/settings-store.ts, src/agent-settings.ts, src/quick-panel.ts, src/stats.ts, src/toast.ts, src/context-menu.ts, vite.demo.config.ts]
 updated: 2026-10-10
 ---
 # Hide cards — choose the cards the picker offers
 
-> **Designed 2026-10-10. Nothing here is built.** The owner closed every fork on 2026-10-10
-> (§2, §6). §7 is the build scope. Do not tell a user that the app can do this.
+> **Built 2026-10-10, not released; the desk test (§9) is open.** The owner closed every fork on
+> 2026-10-10 (§2, §6). §7 was the build scope; §8 is the as-built record, and where it
+> disagrees with §7, §8 is the code.
 
 ## 1. What it is
 
@@ -108,10 +109,15 @@ hides Rewind (§6).
 | After *Hide from picker* | **An Undo toast.** |
 | Hide the card in the slot now | **Yes.** The *Hide from picker* row works on the current card. The slot changes at once (§3). |
 
-### 6.1 Still to bring him at build time
+### 6.1 At build time (his calls, 2026-10-10)
 
-- The hint sentence for each toggle, and the toast's words.
-- The Cards section's place in the Settings card's section order.
+- **The section's place:** right after Window.
+- **The toast:** *Diary is hidden from the picker. Show it again in Settings › Cards.* + Undo.
+- **The hints:** Home *Your shelves of recent and new music* · Library *Your songs, albums and
+  artists* · Playlists *Your playlists and Apple's* · Search *Find anything in Apple Music* ·
+  History *What you played, day by day* · Rewind *Your listening, ranked* (before 50 plays:
+  *Shows after 50 plays*) · Radio *Apple's stations* · Diary *Your album journal* · Rulez
+  *Your own rules (Max only)*. A locked toggle: *Keep three cards in the picker*.
 ### 6.2 The Rulez gate: one mechanism (the owner, 2026-10-10)
 
 HOP-IN.md §2 and RULEZ.md §16.1 designed a second gate: a test on `startPick` in `poolFor`
@@ -247,10 +253,81 @@ About ten source files, a handful of lines in most. The new code is the three pu
 functions, the Cards rows, the picker's right-click and Undo, and the per-card handler.
 It is one load-bearing feature, because it changes the layout's load rule.
 
-## 8. Desk test (when built)
+## 8. As built (2026-10-10)
 
-To be written with the build. It covers, at least: hide each kind of card from Settings and
-from the picker; hide the card in the slot now (Midi and Max); Undo; the lock at three
-cards; a restart with a hidden card in the saved layout (the layout stays); a hidden card
-opened from Compass and Ctrl+letter; Rewind before and after 50 plays (`__toast.sim.rewind()`);
-an agent `settings` set on `hiddenCards.diary`; the web demo's first visit.
+Where this differs from §7, this is the code.
+
+- **`layout-rules.ts`:** `HIDEABLE_CARDS`, `MIN_SHOWN`, `HIDE_LOCK_HINT`, `canHide`,
+  `newlyHidden`, `repairAssignment` and `fillSlots`. `storedAssignment` is gone: its tests
+  moved to `repairAssignment`, plus eight dated cases (`tests/layout-rules.test.ts`).
+  `fillSlots` fills in three passes: a slot's own good card, then the open slots whose
+  default is good, then the first unused card. So one hidden default never moves another
+  slot off its own default.
+- **A hidden card on screen survives a restart.** `repairAssignment` takes a `keep` set (the
+  allowed but hidden cards): a card you opened from Compass stays in its slot after a
+  restart. A card that is not allowed (not registered, or Rulez outside Max) still leaves.
+- **The picker reads the list at each open** (`pool` is a function, the menu fills in
+  `onOpen`). So a change in Settings › Cards needs **no remount**: the old Rewind handler's
+  `decompose()` / `compose()` is gone. Only a slot whose card was just hidden changes, through
+  `setSlot`, so it plays the skin's swap motion and saves the layout.
+- **The other surface's saved layout** drops a newly hidden card (`dropFromSaved`), so a flip
+  from Max to Midi does not bring it back. The open slot is filled by `loadLayout` at the flip.
+- **`allowedFor` / `poolFor` / `pickerList` / `freeCard`** in layout.ts: the cards a slot can
+  hold, the cards the picker offers, one slot's list (the pool plus its own hidden card) and
+  the fallback.
+- **The right-click** (`onMenuContext` in `makePicker`): `openContextMenu` with one row.
+  `makeDropdown` gets `alsoInside: .ctx-menu`, the quick panel's rule, so the picker stays
+  open until the row runs. The row runs `hideFromPicker`, which writes the list and raises the
+  toast; the settings handler moves the slot.
+- **A sub-heading over the toggles** (his ask, 2026-10-10, after the first look): *Enable /
+  Disable these Cards:* (`headRow`). It shows in the quick panel too, because only a
+  sub-heading that repeats the section's name is dropped there.
+- **Locked toggles:** a new optional `locked` on `ToggleRow` (settings-card.ts) renders
+  `aria-disabled="true"` (not `disabled`, so the hint still shows on hover) and the click
+  handler skips it. The style is `--set-locked-dim` (skin.css, an alias of
+  `--split-pill-dim`) in settings.css.
+- **Reset › Cards:** restores `[]` once the Rewind unlock has fired, else `["rewind"]`
+  (`defaultOf`, settings-card.ts). Its hint: *Every card back in the picker. Rewind stays out
+  until 50 plays*.
+- **The agent specs:** labels are "Home in the card picker" and so on. The refusal at the
+  minimum is the reply's note, *It stays: keep three cards in the picker.*
+- **Log lines:** `card:hide` (card, slot, fallback) when a hide moves a slot;
+  `card:hide-undo` (card, slot).
+- **Compass:** the nine toggles reach the bar as Settings rows that open Settings › Cards.
+  They have no inline switch in the bar: an inline switch needs a boolean store key.
+
+### 8.1 Decided inside his choices (for his review)
+
+- A hidden card on screen stays across a restart (above).
+- The Reset row and its hint, and the Reset value after the Rewind unlock.
+- The agent labels and the refusal note.
+- The right-click row is not on the Settings card's name, and Now Playing and Queue are
+  never in a picker, so they have no row.
+- When you search "home" in Ctrl+Space, you see the Home card and the *Home* toggle of Cards.
+  The toggle sits under *Cards*.
+
+## 9. Desk test (open)
+
+On the dev app (`npm run dev:app`), Midi then Max.
+
+1. Settings › Cards sits right after Window. It has nine toggles. Rewind reads Off with
+   *Shows after 50 plays* on a fresh install, or On after 50 plays. Each hint matches §6.1.
+2. Turn Diary off while Diary is in a slot: the slot plays the swap and shows a card that is
+   not on screen. Open the slot's title menu: Diary is not in it. Ctrl+Space › Diary still
+   opens it. Its own slot's title menu now lists Diary (checked).
+3. Right-click Library in a title menu › Hide from picker: the picker closes, the toast reads
+   *Library is hidden from the picker. Show it again in Settings › Cards.* Press Undo:
+   Library is back in the menu and back in the slot it left.
+4. Hide cards until three everyday cards are on: their toggles dim and their hint reads
+   *Keep three cards in the picker*; a click does nothing. Right-click one of them in a
+   picker: the row is greyed out with the same line.
+5. With Diary hidden and opened from Ctrl+Space, restart the app: the layout is the same, and
+   Diary is still in its slot. (Before 2026-10-10 a hidden card reset the whole layout.)
+6. In Max, hide a card that is in the Midi layout. Switch to Midi: that slot shows another
+   card, and the other slot is unchanged.
+7. DevTools: `__toast.sim.rewind()` with Rewind hidden and the unlock not fired: Rewind turns
+   On in Cards, the unlock toast shows. Reset › Cards after that: every card On, Rewind too.
+8. `deetsmusic settings set hiddenCards.diary off` (Agent changes settings = Allow): Diary
+   leaves the picker. At the minimum the reply ends *It stays: keep three cards in the picker.*
+9. **His look:** the locked toggles' dim in each skin; the Cards part under the Window icon in
+   the quick panel; the New badge on the Cards section.

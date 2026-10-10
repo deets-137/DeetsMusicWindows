@@ -12,6 +12,48 @@ updated: 2026-10-04
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-10 — Hide cards (built, committed, desk test open)
+
+Talked through and built in one sitting. **What:** Settings › Cards, one toggle per card, takes
+any card but Settings, Now Playing and Queue out of the slot pickers; a right-click on a name in
+a picker › Hide from picker, with an Undo toast. One key, `hiddenCards`, replaced `rewindCard`
+(migrated). **His calls:** HIDE-CARDS.md §2, §6, §6.1, §6.2 (the picker only; the feature keeps
+working; Compass shows Rewind before 50 plays; one mechanism for Hop in's Rulez gate).
+**Found on the way:** one card out of the pool reset the whole saved layout; `repairAssignment`
+now replaces only that slot. **Decided inside his choices:** HIDE-CARDS.md §8.1. **Checks:**
+tsc, `npm test` (170 pass, 8 new layout-rules cases), vite build, docs:check, `npm run tokens`
+(the new `--set-locked-dim` alias). **Open:** the desk test, HIDE-CARDS.md §9 (DESK-TESTS.md A7).
+Committed with its docs at his ask, after his look at the build. Also: vite.config.ts ignores every cargo `target/` (the deetsmeter build crashed the watcher, EBUSY).
+
+## 2026-10-10 — deetsmeter M1: the sensor core (built, committed, branch `ten-out-of-ten`)
+
+Built `tools/deetsmeter/` (Rust, standalone like `cli/`): launch / attach, the window
+(polling, DWM frame bounds, place), `SendInput`, Desktop Duplication of the region with a
+sparse hash and probes, kept frames as PNG + strip, `calibrate`, `find`. As built and the
+first numbers: [ideas/music-app-comp.md §17.9](ideas/music-app-comp.md).
+
+- **Desktop Duplication and `SendInput` work from this Claude session** (the MSIX question in
+  §17.5 is closed).
+- **Calibrate on this PC (240 Hz):** floor median 9.1 ms, p90 17.7; the sensor missed 1
+  composition of ~324 (0.31 %). Its first run showed a "low cadence" that was the test
+  window, not the sensor; the verdict now counts missed compositions (`AccumulatedFrames`).
+- **The first live run measured the wrong app.** DeetsMusic sat under the League of Legends
+  client; the sensor timed the client's lobby animation and a 5-notch scroll down and back up
+  went into the client. Added the cover guard: `place` refuses a covered region and names
+  the app on top; every pointer step checks its own point; keys check the foreground window.
+  Re-run: refused at step 2, nothing sent.
+- **For M3:** time a change in the step's probe, never the whole region (a self-animating
+  window gives a 0.7 ms "first change"); the sensor cost is 3.6–6.7 % of a core, over the 3 %
+  budget.
+
+Later the same sitting: the owner ran the scroll with DeetsMusic in front. It measured the
+Glass backdrop and the song clock (first change +0.0 ms, settle timeouts), so probes became a
+brightness grid with a threshold (16 of 255), and input steps and `settle` take a `probe`.
+Re-run on the installed app: **first change +27 / +25 ms, settled +748 / +327 ms**; probe
+noise 0–1 before the input, the only spike being the row hover. M1's done test passed
+(§17.9). `exe` / `attach` expand `%NAME%`. Open for M3: sensor cost, profiles that name their
+layout.
+
 ## 2026-10-10 — Apple Music comparison: the upgrade half (designed, not built)
 
 Owner asked to flesh out [ideas/music-app-comp.md](ideas/music-app-comp.md) and how to measure

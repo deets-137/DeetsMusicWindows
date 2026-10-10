@@ -14,6 +14,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { setting, setSetting, ownSetting, effective, notifyOwnedSettingChange, adaptiveUnhidden, type Settings } from "./settings-store";
 import { toast } from "./toast";
+import { HIDEABLE_CARDS, HIDE_LOCK_HINT, canHide } from "./layout-rules";
 import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
 import { type ThemeName } from "./theme";
 import { currentSkin, type SkinName } from "./skin";
@@ -362,7 +363,18 @@ const SPECS: Spec[] = [
   storeToggle("Playlists", "webSkipSeed", "Skip the song you just heard"),
   storeRange("Playlists", "webSkipSeedAt", "Skip the song you just heard past", { min: 1, max: 100 }),
   // ── Rewind ──
-  storeToggle("Rewind", "rewindCard", "Rewind card"),
+  // ── Cards (HIDE-CARDS.md §7.8): one toggle per card over the `hiddenCards` list; on = offered ──
+  ...HIDEABLE_CARDS.map((id): Spec => ({
+    key: `hiddenCards.${id}`, label: `${id[0].toUpperCase()}${id.slice(1)} in the card picker`, section: "Cards", kind: "toggle", options: ON_OFF,
+    get: () => (setting("hiddenCards").includes(id) ? "off" : "on"),
+    set: (v) => {
+      const hidden = setting("hiddenCards").filter((c) => c !== id);
+      if (v === "on") setSetting("hiddenCards", hidden);
+      else if (canHide(setting("hiddenCards"), id)) setSetting("hiddenCards", [...hidden, id]);
+    },
+    // Read before the set: a hide that the three-card minimum refuses says so.
+    note: (v) => (v === "off" && !canHide(setting("hiddenCards"), id) ? `It stays: ${HIDE_LOCK_HINT.toLowerCase()}.` : undefined),
+  })),
   storeChoice("Rewind", "fullPlayRule", "Count a play at", [{ value: "fraction", label: "90%" }, { value: "end", label: "End" }, { value: "scrobble", label: "Half or 4 min" }]),
   storeToggle("Rewind", "replayAuto", "Weekly Replay"),
   storeChoice("Rewind", "replayDay", "Weekly Replay day", [

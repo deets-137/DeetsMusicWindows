@@ -194,6 +194,17 @@ which restarts the first-run walk.
 | Bring a card already open | The drilled card is already on screen: bring it to you, or leave it where it sits | on / **off** |
 | Keep card places on restart | Each card comes back where you left it, also after a restart | on / **off** |
 
+### Cards
+
+Added 2026-10-10 ([HIDE-CARDS.md](../features/HIDE-CARDS.md)). One toggle per card: on = the
+card's name is in every slot's picker. A hidden card still opens from Ctrl+Space, its Ctrl
+shortcut, a rule or a link. The quick panel shows this section under the Window icon.
+
+| Control | What it does | Choices |
+|---|---|---|
+| Home · Library · Playlists · Search · History · Radio · Diary · Rulez | Offer this card in the card picker. The last three everyday cards lock (*Keep three cards in the picker*). Rulez is offered in Max only | **on** / off |
+| Rewind | The same. Your listening, ranked; it turns itself on once, at 50 plays | on / **off** (until 50 plays) |
+
 ### Look schedule
 
 | Control | What it does | Choices |
@@ -368,7 +379,6 @@ behind both. The dial and the three live ends are only in the panel.
 
 | Control | What it does | Choices |
 |---|---|---|
-| Rewind card | Your listening, ranked. It offers itself once you have 50 plays | on / **off** |
 | Count a play at | When a play counts as listened through | **90%** / End / Half or 4 min |
 | Weekly Replay | A playlist of the past week's most-played songs, made on this weekday | **on**, **Mon** |
 | Keep every Replay | Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly | on / **off** |
@@ -601,7 +611,8 @@ Words in *italics* have their own entry.
 | Build a playlist from an artist's circle | Playlists card › the web button |
 | Change how a new playlist's cover looks | Settings › Playlists › New cover |
 | Get a weekly playlist of what I played | Settings › Rewind › Weekly Replay |
-| See my listening ranked | Settings › Rewind › Rewind card |
+| See my listening ranked | Settings › Cards › Rewind |
+| Take a card out of the card picker | Settings › Cards, or right-click its name in the picker › Hide from picker |
 | Let an AI app control the player | Settings › Connections › Agent control |
 | Control when updates arrive | Settings › Updates › Get updates |
 | Go back to an older version | Settings › Updates › Roll back |

@@ -387,9 +387,12 @@ export interface Settings {
    *  feature's other five rows live in Rust (settings.rs), which is what enforces them. */
   sotdSuggest: boolean;
   // ── cards ──
-  /** Offer the Rewind card in the slot pickers. Auto-enabled once at 50 play starts. */
-  rewindCard: boolean;
-  /** The one-shot auto-enable already fired (so a later "off" sticks). */
+  /** The cards the slot pickers do not offer (Settings › Cards, docs/features/HIDE-CARDS.md).
+   *  Card ids from `HIDEABLE_CARDS` (layout-rules.ts). Hidden from the picker only: Compass,
+   *  shortcuts, rules and drills still open them. Rewind leaves the list once, at 50 play
+   *  starts (stats.ts). Replaced `rewindCard` on 2026-10-10. */
+  hiddenCards: string[];
+  /** The Rewind one-shot already fired (so a later hide sticks). */
   rewindAutoShown: boolean;
   /** Diary (docs/features/DIARY.md §5): when an entry's scale changes and it already holds
    *  scores — "ask" (a toast: Rescale / Keep numbers), "always" (move them in proportion,
@@ -568,7 +571,7 @@ export const DEFAULTS: Settings = {
   webSkipSeed: true, // user's call 2026-09-28: the song you just heard does not start over
   webSkipSeedAt: 75, // user's call 2026-09-28: most of the song heard; below that it plays again from the top
   sotdSuggest: false, // user's call 2026-09-17: a suggestion row is off until you ask for it
-  rewindCard: false,
+  hiddenCards: ["rewind"], // Rewind has nothing to show until 50 plays; every other card is offered (his call 2026-10-10)
   rewindAutoShown: false,
   diaryRescale: "ask", // user's call 2026-09-24 (7B): never change a number the user typed without telling them
   diaryGrow: "new", // user's call 2026-09-24: a new entry opens with room for its songs and the note panel
@@ -624,6 +627,13 @@ function migrate(into: Partial<Settings>): void {
   // Auto preamp (on/off, a few hours on 2026-09-16) became a four-way choice; its old default
   // is dropped so the new one (Limiter only) applies.
   delete (into as Record<string, unknown>).soundEqAutoPreamp;
+  // The Rewind toggle became one card of the Cards list (2026-10-10, HIDE-CARDS.md §4). A stored
+  // "on" means nothing is hidden; "off" keeps Rewind out, as before.
+  const rewind = (into as Record<string, unknown>).rewindCard;
+  if (typeof rewind === "boolean") {
+    if (into.hiddenCards === undefined) into.hiddenCards = rewind ? [] : ["rewind"];
+    delete (into as Record<string, unknown>).rewindCard;
+  }
   // The Retro-Future skin became Cyber (2026-09-17); migrateLook maps the look keys the same way.
   for (const k of ["daySkin", "nightSkin"] as const) if ((into[k] as string | undefined) === "retro-future") into[k] = "cyber";
 }

@@ -134,6 +134,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Friends | Put my room code on my box (While you host a room, your friends' boxes carry its code so they can join it. The code is the only gate on a room, so this is its own switch) | `friendsRoomInvite` | on / **off** | `friends.ts` — the code rides the presence only while this is on · a **rule key** ([RULES.md §18a](RULES.md)) |
 | Window | Move sections by holding (Hold a section header for a moment, then drag it where you want it. A click still opens and closes the section. New sections appear at the end) (2026-09-20, [MOVABLE-ROWS.md](../features/MOVABLE-ROWS.md) §13.1); under *Growing and drilling* | `moveSections` | **on** / off | `row-order.ts` `sectionsMovable()`, read by the four cards' drag wiring. Off leaves a pinned tile's grip bar working — that is a control, not a hold |
 | Window | Keep card places on restart (Opens each card where you left it, also after you restart DeetsMusic) (2026-09-17, [CARD-MEMORY.md](../cards/CARD-MEMORY.md) §7); last row of Window | `cardMemoryDisk` | on / **off** | `card-memory.ts` (the map is in memory either way; on = it is also written to `deets.cardMemory`) |
+| Cards | One toggle per card: Home, Library, Playlists, Search, History, Rewind, Radio, Diary, Rulez (a one-sentence hint each; Rewind's reads *Shows after 50 plays* until the unlock). On = the slot pickers offer the card. The last three everyday cards lock (*Keep three cards in the picker*) (2026-10-10, [HIDE-CARDS.md](../features/HIDE-CARDS.md)) | `hiddenCards` (+ `rewindAutoShown`) | a list of card ids · **["rewind"]** | `layout.ts` `poolFor` / `pickerList`, the hide handler; `layout-rules.ts` `canHide` (§4 below). Replaced `rewindCard` |
 | Look schedule | Change look at (Changes between a day look and a night look. Sun times come from your time zone, not your location) — menu *Sunrise and sunset* / *Set times* / *Windows mode* / *Off* (2026-09-15) | `lookSchedule` | **off** / sun / clock / windows | `look-schedule.ts` ([LOOK-SCHEDULE.md](../features/LOOK-SCHEDULE.md)); the rows below show only while it is on |
 | Look schedule | Day look · Night look — split: theme menu \| skin menu | `dayTheme` `daySkin` · `nightTheme` `nightSkin` | **lilac press** · **black-red cyber** | `look-schedule.ts` (the schedule's rules set `theme` / `skin` through `pickLook` in look.ts) |
 | Look schedule | Day runs (set times only) — split: start menu \| end menu, half-hour steps | `dayStart` · `nightStart` | **07:00** · **19:00** | `look-schedule.ts` `planClock` |
@@ -214,7 +215,6 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Playlists | Play a web from the song playing (A web you start from the song you hear plays at once) — toggle (2026-09-28). A rule key | `webPlayNew` | **on** / off | `web.ts` `playIfSeedPlaying` — [PLAYLIST-WEB.md §11](../features/PLAYLIST-WEB.md) |
 | Playlists | Skip the song you just heard (the web starts at its second song past the skip point) — toggle, shown while the row above is on (2026-09-28). A rule key | `webSkipSeed` | **on** / off | `web.ts` `playIfSeedPlaying` — [PLAYLIST-WEB.md §11](../features/PLAYLIST-WEB.md) |
 | Playlists | New cover (How a new playlist's cover starts. Letters and Note keep the theme you made it in) — *Letters* / *Mosaic* / *Note* (2026-09-15) | `newPlaylistCover` | **letters** / mosaic / note | `playlists.ts` `playlistCreate` → `cover-art.ts` — [PLAYLISTS.md §11](../features/PLAYLISTS.md) |
-| Rewind | Rewind card (Shows after 50 plays → Your listening, ranked) | `rewindCard` (+ `rewindAutoShown`) | off / on | `layout.ts` pool (§4 below) |
 | Rewind | Count a play at (§7) — *90%* / *End* / *Half or 4 min* | `fullPlayRule` | fraction / end (99%) / scrobble | `stats.ts` `listenedThrough` |
 | Rewind | Weekly Replay — day menu (*Mon … Sun*) + on/off (A playlist of the past week's most-played songs, made on this day) | `replayDay` + `replayAuto` | mon / … · on / off | `replay.ts` `lastDue` / `runWeeklyReplay` (boot) |
 | Rewind | Keep every Replay (Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly) | `replayKeep` | off / on | `replay.ts` `runWeeklyReplay` |
@@ -407,17 +407,19 @@ Never deferred: a card that card memory reopens scrolled down, a search, a row r
 
 ## 4. The Rewind gate
 
-The Rewind card is **hidden until it has something to show**: `rewindCard` defaults off,
-and `stats.ts` flips it on **once**, at **50 play starts** (seeded from the durable
-`play_event_count` at boot, then counted per `recordStart`). `rewindAutoShown` records
-that the one-shot fired, so a later manual "off" sticks. The flip raises an `info` toast
-under the *Everything* tier ([TOASTS.md](TOASTS.md)); the card appears in the pickers
-either way, and the row's hint changes from "Appears by itself after 50 plays" to a
-description.
+The Rewind card is **hidden from the pickers until it has something to show**:
+`hiddenCards` defaults to `["rewind"]`, and `stats.ts` takes Rewind out of the list
+**once**, at **50 play starts** (seeded from the durable `play_event_count` at boot, then
+counted per `recordStart`). `rewindAutoShown` records that the one-shot fired, so a later
+hide sticks, and Reset › Cards then restores `[]`, not the default. The unlock raises an
+`info` toast under the *Everything* tier ([TOASTS.md](TOASTS.md)), and the Settings ›
+Cards › Rewind hint changes from "Shows after 50 plays" to a description.
 
-`layout.ts` filters Rewind out of the picker pool while the setting is off. If the
-setting goes off while a slot shows Rewind, that slot falls back to an unplaced card (or
-its composition default) and the slots remount so every picker re-reads the pool.
+Since 2026-10-10 the gate is one entry of Settings › Cards
+([HIDE-CARDS.md](../features/HIDE-CARDS.md)); it was the `rewindCard` toggle, migrated in
+`settings-store.ts`. A hidden card leaves the **picker only**: Compass offers Rewind from
+the first day. When a card is hidden while a slot shows it, that slot takes a free card
+with the swap motion; the other surface's saved layout drops it too.
 
 ## 5. Adding a setting
 

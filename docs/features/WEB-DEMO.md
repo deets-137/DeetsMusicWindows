@@ -256,6 +256,7 @@ showed "Rewind unlocked: your listening, ranked…" over the page (found by the 
 SHOTS.md). His call: fix it. `vite.demo.config.ts` now writes `rewindAutoShown: true` and
 `rewindCard: true` while the visitor has no value of their own: the result of the unlock
 (stats.ts), without its notice. The same "only while unset" rule as Album light (§11).
+Since 2026-10-10 the second key is `hiddenCards: []` (Settings › Cards, HIDE-CARDS.md).
 
 It reaches deets.solutions with the next `release:publish` (§9.8), or `npm run demo:publish
 -- --push`.

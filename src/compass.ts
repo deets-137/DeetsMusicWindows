@@ -318,7 +318,6 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   };
   for (const def of Object.values(registry)) {
     if (!def || def.id === "now-playing") continue;
-    if (def.id === "rewind" && !setting("rewindCard")) continue;
     const ALIAS: Partial<Record<CardId, string[]>> = { settings: ["preferences", "options"], queue: ["up next"], history: ["recent", "plays"], radio: ["stations"], library: ["songs", "music"], search: ["find", "apple music"] };
     rows.push({
       group: "Places", title: def.title, sub: subOf(), side: KEY[def.id], aliases: ALIAS[def.id],

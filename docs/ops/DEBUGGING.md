@@ -1470,7 +1470,7 @@ setting is Settings › Menus, hints and notices › **Show notices**, default *
     | Call | Does | Side effect |
     |---|---|---|
     | `__toast.sim.replay()` | `runWeeklyReplay(true)`: skips the `replayAuto` setting and the due-day check → "Replay updated: N songs from this week." | **Real run.** It rewrites the rolling "Replay" playlist (or adds a dated one with `replayKeep`) and stamps `deets.replay.lastRun`. Fewer than 5 songs played in the past 7 days: no toast, and `__diag.dump()` has `weekly skipped`. |
-    | `__toast.sim.rewind()` | clears `rewindAutoShown`, lifts the in-memory start count to 50, runs the unlock → "Rewind unlocked…" | Sets `rewindCard` on and `rewindAutoShown` back to true, as the real unlock does. The play count on disk does not change. |
+    | `__toast.sim.rewind()` | clears `rewindAutoShown`, lifts the in-memory start count to 50, runs the unlock → "Rewind unlocked…" | Takes `"rewind"` out of `hiddenCards` and sets `rewindAutoShown` back to true, as the real unlock does (HIDE-CARDS.md). The play count on disk does not change. |
     | `__toast.sim.noSub()` | marks a fresh sign-in, then feeds `onPlaybackError` a synthetic non-"unavailable" error → "Playback failed after sign-in…" (8 s) | A `player:playbackError` line with `msg: "sim: …"` in diag. **Play a song from a list first**: the handler ignores errors outside queue mode, and the hook warns in the console in that case. |
     | `__toast.sim.armNoSub()` | marks a fresh sign-in only | The next real playback error that is not a dead song raises the hint. Use it to test the real MusicKit error text. |
 

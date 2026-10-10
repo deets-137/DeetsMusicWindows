@@ -94,6 +94,9 @@
 .set__row--toggle { cursor: pointer; }
 .set__row--toggle:hover { background: var(--surface-hover); }
 .set__row--toggle:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* Locked (HIDE-CARDS.md §3): aria-disabled, not disabled, so the hint still shows on hover. */
+.set__row--toggle[aria-disabled="true"] { opacity: var(--set-locked-dim); cursor: default; }
+.set__row--toggle[aria-disabled="true"]:hover { background: none; }
 /* An image file held over Glass › Picture: the row takes the drop (the hero cover's dashed ring). */
 .set__row.is-drop { outline: var(--focus-ring-w) dashed var(--title); outline-offset: var(--focus-ring-off); background: var(--surface-hover); }
 /* A choice row keeps its pills on the label's line, right-aligned; they wrap under the

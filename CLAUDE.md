@@ -112,10 +112,10 @@ old installs' Guide button opens.
 - `GRAPHICS-FALLBACK.md` — DESIGNED, not built (2026-09-29): when the GPU process falls back to
   WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers a
   restart; the *If graphics fail* row; the `graphics` fact. Row words and toast text are open.
-- `HIDE-CARDS.md` — DESIGNED, not built (2026-10-10): the Cards section hides any card but
-  Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaces
-  `rewindCard`); the picker only, the feature keeps working. §7 is the build scope. It is
-  also Hop in's Rulez gate (§6.2, one mechanism, his call).
+- `HIDE-CARDS.md` — BUILT 2026-10-10, desk test open (§9): Settings › Cards hides any card but
+  Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaced
+  `rewindCard`); the picker only, the feature keeps working; right-click a name in the picker
+  › Hide from picker. §8 is the as-built record. It is also Hop in's Rulez gate (§6.2).
 - `USAGE-COUNTS.md` — DESIGNED, not built (2026-09-29): anonymous active-install counts, a
   weekly settings row and weekly health counts (log errors, Apple calls) to DeetsSupport. No ID,
   no IP, an allow-list, groups under 5 hidden. §2 is the privacy rules; §9 the open forks.

@@ -129,6 +129,7 @@ Order: the uncommitted work first (a fail there stops a commit), then the releas
 | A4 | Two Settings scrollers on the app's bar | §4 below | one | agent | |
 | A5 | The hover-hint rows reach the agent | §4 below | one | agent | Needs the CLI against the dev app (§1) |
 | A6 | The Diary's Done copies the Export | [DIARY.md §8](../features/DIARY.md) step 11f | one | agent | Committed 2026-09-24, never run |
+| A7 | Hide cards: Settings › Cards, the picker's right-click, Undo, the lock, a restart | [HIDE-CARDS.md §9](../features/HIDE-CARDS.md) | one | agent + owner | Built 2026-10-10. Steps 1–8 an agent can run on the dev app; step 9 (the look of the locked rows) is his |
 | B1 | Go to Album grows, and the grow replaces the slide | [RULES.md §18](../architecture/RULES.md), *the grow replaces the slide* | one | agent | Also `deetsmusic diag --flush` (LOGGING.md § Reading it from outside) |
 | B2 | The rules engine: the tray panel follows a look change | [RULES.md §18](../architecture/RULES.md), the owner's list | one | agent | The tray panel is `tray.html`, a second webview; read its `data-theme` after a rule changes the look |
 | B3 | The rules engine: a real `dev:fresh` first run | RULES.md §18 · [ONBOARDING.md §5](../features/ONBOARDING.md) | one | agent | `npm run dev:fresh`; the walk should start; every `NEW_MARKS` key starts seen |

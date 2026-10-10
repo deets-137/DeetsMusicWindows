@@ -1091,16 +1091,16 @@ export const rulezCard: CardDef = {
       },
     });
 
-    /** + : a new rule, open, with its When blank's menu open (RULEZ.md §6.3). */
+    /** + : a new rule, open, with its When blank focused (RULEZ.md §6.3). The menu stays shut
+     *  until the user presses the blank (his call, 2026-10-10: a menu that opens by itself
+     *  startles). */
     const onAdd = () => {
       const r = { id: newId(), kind: "moment", source: { user: true }, on: false, draft: true, when: "" as EventId, card: "*", do: {} } as unknown as MomentRule;
       mine.unshift(r);
       fresh = r.id;
       save("add");
-      // It glides open, then its When menu opens under a blank that has its place.
       openRow(r.id, () => {
-        const blankEl = body.querySelector<HTMLElement>(`[data-id="${CSS.escape(r.id)}"] [data-act="when"]`);
-        if (blankEl) openContextMenuUnder(blankEl, whenMenu(r));
+        body.querySelector<HTMLElement>(`[data-id="${CSS.escape(r.id)}"] [data-act="when"]`)?.focus({ preventScroll: true });
       });
     };
 

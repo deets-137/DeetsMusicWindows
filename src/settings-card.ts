@@ -17,6 +17,7 @@ import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
+import { HIDEABLE_CARDS, HIDE_LOCK_HINT, canHide } from "./layout-rules";
 import { setting, setSetting, ownSetting, effective, onOwnChange, onSettingsChange, RULE_KEYS, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type RuleKey, type Settings } from "./settings-store";
 import { currentSkin, onSkinChange, defaultSkin, type SkinName } from "./skin";
 import { pickLook } from "./look";
@@ -84,6 +85,8 @@ interface ToggleRow {
   set: (on: boolean) => void;
   /** The store key, when the store holds the value: the Compass renders such a row inline (COMPASS.md §3). */
   key?: BoolKey;
+  /** True while the row cannot change (a Cards toggle that would leave too few cards). */
+  locked?: () => boolean;
 }
 interface ChoiceRow {
   kind: "choice";
@@ -183,6 +186,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playlists", row: "webskipseed" },
   { section: "Playback", row: "listendweb" }, // Play a web when a list ends, built 2026-09-29
   { section: "Apple Music", row: "getnewsongs" }, // Get songs from Apple copy, built 2026-09-29
+  { section: "Cards" }, // Settings › Cards, which cards the pickers offer, built 2026-10-10 (HIDE-CARDS.md)
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -246,6 +250,36 @@ const loadFolds = (): Record<string, boolean> => {
   }
 };
 
+/** Settings › Cards (HIDE-CARDS.md §5): the label and the hint of each card's toggle. The
+ *  names repeat the cards' titles (cards.ts imports this module, so it cannot import them). */
+const CARD_ROWS: Record<(typeof HIDEABLE_CARDS)[number], { label: string; hint: () => string }> = {
+  home: { label: "Home", hint: () => "Your shelves of recent and new music" },
+  library: { label: "Library", hint: () => "Your songs, albums and artists" },
+  playlists: { label: "Playlists", hint: () => "Your playlists and Apple's" },
+  search: { label: "Search", hint: () => "Find anything in Apple Music" },
+  history: { label: "History", hint: () => "What you played, day by day" },
+  rewind: { label: "Rewind", hint: () => (setting("rewindAutoShown") ? "Your listening, ranked" : "Shows after 50 plays") },
+  radio: { label: "Radio", hint: () => "Apple's stations" },
+  diary: { label: "Diary", hint: () => "Your album journal" },
+  rulez: { label: "Rulez", hint: () => "Your own rules (Max only)" },
+};
+const cardRow = (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
+  const shown = () => !setting("hiddenCards").includes(id);
+  const locked = () => shown() && !canHide(setting("hiddenCards"), id);
+  return {
+    kind: "toggle",
+    id: `card-${id}`,
+    label: CARD_ROWS[id].label,
+    hint: () => (locked() ? HIDE_LOCK_HINT : CARD_ROWS[id].hint()),
+    get: shown,
+    set: (on) => {
+      const hidden = setting("hiddenCards").filter((c) => c !== id);
+      if (!on && !canHide(setting("hiddenCards"), id)) return;
+      setSetting("hiddenCards", on ? hidden : [...hidden, id]);
+    },
+    locked,
+  };
+};
 const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => string | undefined): ToggleRow => ({
   key,
   kind: "toggle",
@@ -350,7 +384,8 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
   { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "homeHideLasts", "homeHidden"] },
-  { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["rewindCard", "fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
+  { id: "cards", label: "Cards", hint: "Every card back in the picker. Rewind stays out until 50 plays", keys: ["hiddenCards"] },
+  { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
   { id: "diary", label: "Diary", hint: "Rescale scores and Grow on open. Not your entries — those are your writing, not a setting", keys: ["diaryRescale", "diaryGrow"] },
 ];
 /** The groups the Look and feel row resets; LOOK_PARTS get their own indented rows (menus does not). */
@@ -367,9 +402,13 @@ const snapshotOf = (groups: ResetGroup[]): ResetSnapshot => ({
     : undefined,
 });
 const defaultsOf = (groups: ResetGroup[]): ResetSnapshot => ({
-  values: Object.fromEntries(groups.flatMap((g) => g.keys).map((k) => [k, DEFAULTS[k]])) as Partial<Settings>,
+  values: Object.fromEntries(groups.flatMap((g) => g.keys).map((k) => [k, defaultOf(k)])) as Partial<Settings>,
   look: groups.some((g) => g.look) ? { theme: defaultTheme(), skin: defaultSkin() } : undefined,
 });
+/** A key's reset value. The Cards list hides Rewind only until its 50-play unlock has fired,
+ *  so a reset never hides it again (HIDE-CARDS.md §4). */
+const defaultOf = (k: keyof Settings): unknown =>
+  k === "hiddenCards" && setting("rewindAutoShown") ? [] : DEFAULTS[k];
 const sameSnapshot = (a: ResetSnapshot, b: ResetSnapshot): boolean =>
   JSON.stringify(a.values) === JSON.stringify(b.values) && a.look?.theme === b.look?.theme && a.look?.skin === b.look?.skin;
 /** Write a snapshot: the store keys first (the schedule settles), then the theme and skin as a hand pick. */
@@ -1038,6 +1077,13 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
         // card-shape gestures, and not under Playback: it changes how a card is arranged.
         storeToggle("movesections", "Move sections by holding", "moveSections", () => "Hold a section header for a moment, then drag it where you want it. A click still opens and closes the section. New sections appear at the end"),
       ],
+    },
+    {
+      // The cards each slot's picker offers (HIDE-CARDS.md, his calls 2026-10-10): one toggle
+      // per card, on = offered. Hidden from the picker only; Compass and shortcuts still open it.
+      title: "Cards",
+      // The sub-heading says what the toggles mean (his words, 2026-10-10).
+      rows: [headRow("g-cards", "Enable / Disable these Cards:"), ...HIDEABLE_CARDS.map(cardRow)],
     },
     // Look and feel became four sections on 2026-09-18 (fork 1C). RESET_GROUPS had split it
     // this way for months; only the card disagreed. The names match the Reset rows exactly.
@@ -1725,12 +1771,10 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       ],
     },
     {
-      // What you played: the Rewind card, what counts as a play, and the weekly Replay (1B).
+      // What counts as a play, and the weekly Replay (1B). The Rewind card's own toggle moved to
+      // Settings › Cards on 2026-10-10 (HIDE-CARDS.md).
       title: "Rewind",
       rows: [
-        storeToggle("rewind", "Rewind card", "rewindCard", () =>
-          setting("rewindAutoShown") ? "Your listening, ranked" : "Shows after 50 plays",
-        ),
         {
           kind: "choice", id: "fullplay", label: "Count a play at", key: "fullPlayRule",
           hint: "When a song counts as played through, for Rewind",
@@ -2183,7 +2227,8 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       );
     }
     if (r.kind === "toggle") {
-      return `<button class="set__row set__row--toggle${fx.cls}" type="button" role="switch" data-row="${r.id}"${mark} aria-checked="${r.get()}"${tip}>${label}<span class="set__dot" aria-hidden="true"></span></button>`;
+      const lock = r.locked?.() ? ` aria-disabled="true"` : "";
+      return `<button class="set__row set__row--toggle${fx.cls}" type="button" role="switch" data-row="${r.id}"${mark} aria-checked="${r.get()}"${lock}${tip}>${label}<span class="set__dot" aria-hidden="true"></span></button>`;
     }
     const halves = halvesOf(r);
     if (halves) {
@@ -2546,7 +2591,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     const toggle = t.closest<HTMLElement>(".set__row--toggle");
     if (toggle?.dataset.row) {
       const r = byId(toggle.dataset.row);
-      if (r?.kind === "toggle") r.set(!r.get());
+      if (r?.kind === "toggle" && !r.locked?.()) r.set(!r.get());
     }
   });
 

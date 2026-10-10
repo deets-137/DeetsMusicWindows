@@ -41,7 +41,7 @@ const SEED_LOOK = `<script>
       // (stats.ts), without the notice. The same "only while unset" rule as Album light.
       if (s.rewindAutoShown === undefined) {
         s.rewindAutoShown = true;
-        s.rewindCard = true;
+        if (s.hiddenCards === undefined) s.hiddenCards = []; // the unlock takes Rewind out of the hidden list (HIDE-CARDS.md)
         changed = true;
       }
       if (changed) localStorage.setItem("deets.settings", JSON.stringify(s));

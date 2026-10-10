@@ -27,12 +27,12 @@ type Part = "apple" | "discord" | "window" | "look" | "help" | "agents" | "fun" 
 
 /** What each icon shows (QUICK-SETTINGS.md §3). Apple Music: its section and AirPlay, under
  *  the sign-in row. Discord: its own section, then the one Discord row of Sharing. Window:
- *  the Window section. The brush: the look schedule, the skin's own rows (a part with no
+ *  the Window section, then Cards. The brush: the look schedule, the skin's own rows (a part with no
  *  row under this skin is left out) and Motion. */
 const PARTS: Record<Part, SettingsPart[]> = {
   apple: [{ title: "Apple Music" }, { title: "AirPlay" }],
   discord: [{ title: "Discord" }, { title: "Sharing", rows: ["shareDiscord"] }],
-  window: [{ title: "Window" }],
+  window: [{ title: "Window" }, { title: "Cards" }], // Cards: HIDE-CARDS.md §5
   look: [{ title: "Look schedule" }, { title: "Skin settings" }, { title: "Motion" }],
   help: [{ title: "Menus, hints and notices" }, { title: "Playback" }],
   agents: [{ title: "Connections" }],

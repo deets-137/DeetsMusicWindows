@@ -151,6 +151,8 @@ nothing about authoring changed when the box did.
 | Card headers | Back, on a level a grown card's drill opened | Goes back to *<card>* | collection-card.ts `setHeader`, search-card.ts `pushPane` (CARD-GROW.md §14.4) |
 | Settings › Window | Keep view when grown | A card that grows keeps the view you are in; the tile size still follows the card's size | settings-card.ts |
 | Settings › Window | Grow on album or artist | An album or artist opens with more room: taller in Max, wider in Midi. Back returns it | settings-card.ts |
+| Settings › Cards (2026-10-10) | one toggle per card | Home: Your shelves of recent and new music · Library: Your songs, albums and artists · Playlists: Your playlists and Apple's · Search: Find anything in Apple Music · History: What you played, day by day · Rewind: Shows after 50 plays → Your listening, ranked · Radio: Apple's stations · Diary: Your album journal · Rulez: Your own rules (Max only). A locked toggle: Keep three cards in the picker | settings-card.ts `CARD_ROWS` (HIDE-CARDS.md §5) |
+| Settings › Reset | Cards | Every card back in the picker. Rewind stays out until 50 plays | settings-card.ts `RESET_GROUPS` |
 | Settings › Window | Card on drill | A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot | settings-card.ts |
 | Settings › Window | Bring a card already open | A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits | settings-card.ts |
 | Settings › Window | Keep card places on restart | Opens each card where you left it, also after you restart DeetsMusic | settings-card.ts |
@@ -297,6 +299,7 @@ same in every card** (2026-09-23): the rows, their order and each card's own row
 | Playlists | song in a playlist | the song menu; last: Remove from Playlist (hand-made) |
 | Playlists | folder header | Rename (field) · Delete Folder |
 | Playlists | hero cover | Rename · Keep Playlist (temporary) · the cover items · Apple Music ▸ |
+| Any card | a card name in the **card picker** (the title's menu, 2026-10-10) | Hide from picker (not on Settings; greyed out with *Keep three cards in the picker* at the minimum). An Undo toast follows. `layout.ts` `makePicker`, HIDE-CARDS.md §5 |
 | Playlist web panel | the days button of Temp \| N days (2026-09-17) | no menu: a right-click steps the days back (30 → 7 → 5 → 3 → 1 → 30); a press steps forward |
 | Queue | upcoming row | the song menu; group 1 is Play Now (jumps to the row); own rows: Move to Top · Move to Bottom; last: Remove |
 | Queue | picked rows | Add to Playlist ▸ · Remove *N songs* |

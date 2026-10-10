@@ -112,6 +112,9 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+- **Hide cards (2026-10-10): built and committed, desk test open** — Settings › Cards and the
+  picker's Hide from picker. [HIDE-CARDS.md](features/HIDE-CARDS.md) §9 (DESK-TESTS.md A7).
+
 **Pick up here (2026-09-28, next session).** In order:
 0. ~~Desk test: Play a web from the song playing~~ — Claude's run 2026-10-01 passed steps 1–8
    (DESK-TESTS.md §5, the 10-01 run). **Left from that run** (investigated the same day):
