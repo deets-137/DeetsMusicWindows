@@ -112,6 +112,7 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+- **Quick panel folds (2026-10-10): built and committed, desk test open** — QUICK-SETTINGS.md §12.4.
 - **Hide cards (2026-10-10): built and committed, desk test open** — Settings › Cards and the
   picker's Hide from picker. [HIDE-CARDS.md](features/HIDE-CARDS.md) §9 (DESK-TESTS.md A7).
 

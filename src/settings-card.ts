@@ -241,6 +241,52 @@ interface Section {
 
 // Section folds (the Playlists card's fold idiom). Only a user's own fold persists, as
 // title → open; a section with no entry takes its `defaultOpen`.
+// ── The quick panel's folds (QUICK-SETTINGS.md §12, his calls 2026-10-10): every group starts
+// folded, each opens on its own, and the state is kept across restarts in a store of its own,
+// apart from the Settings card's folds. ──
+const QUICK_FOLDS_KEY = "deets.quick.folds";
+let quickFolds: Record<string, boolean> | null = null;
+const quickFoldsNow = (): Record<string, boolean> => {
+  if (quickFolds) return quickFolds;
+  try {
+    quickFolds = JSON.parse(localStorage.getItem(QUICK_FOLDS_KEY) ?? "{}") as Record<string, boolean>;
+  } catch {
+    quickFolds = {};
+  }
+  return quickFolds;
+};
+const quickFoldOpen = (key: string): boolean => quickFoldsNow()[key] === true;
+const toggleQuickFold = (key: string): boolean => {
+  const folds = quickFoldsNow();
+  const open = !folds[key];
+  if (open) folds[key] = true;
+  else delete folds[key];
+  try {
+    localStorage.setItem(QUICK_FOLDS_KEY, JSON.stringify(folds));
+  } catch {
+    /* storage unavailable — the fold still works for the session */
+  }
+  return open;
+};
+/** The N on a folded group: the badge's look only. It is not a mark of its own, so a hover
+ *  on the header never marks the rows inside as seen. */
+const FOLD_NEW_BADGE = `<span class="new-badge" role="img" aria-label="New"></span>`;
+interface QuickGroup { key: string; label: string; rows: Row[] }
+/** Cut a part's rows into groups at each sub-heading. The part's own heading starts the
+ *  first; a heading with no rows before the next one merges into it, and the later heading
+ *  names the group (Cards: "Enable / Disable these Cards:"). Keyed by section + heading id. */
+function quickGroups(title: string, rows: Row[]): QuickGroup[] {
+  const out: QuickGroup[] = [];
+  let g: QuickGroup = { key: `${title}::`, label: title, rows: [] };
+  for (const r of rows) {
+    if (r.kind === "head") {
+      if (g.rows.length) out.push(g);
+      g = { key: `${title}::${r.id}`, label: r.label, rows: [] };
+    } else g.rows.push(r);
+  }
+  out.push(g);
+  return out;
+}
 const FOLDS_KEY = "deets.settings.folds";
 const loadFolds = (): Record<string, boolean> => {
   try {
@@ -486,11 +532,19 @@ export interface SettingsPart {
 /** The quick panel's rows (QUICK-SETTINGS.md §3): the Settings card's own sections, drawn by
  *  the same code into `host`, so a row there and a row here can never disagree. No header,
  *  no search, no folds, no section move, and it never answers a row request (the card does). */
-export function mountSettingsParts(host: HTMLElement, parts: SettingsPart[]): CardInstance {
-  return mountSettings(host, false, undefined, parts);
+/** `aroundFold` wraps a group's fold (QUICK-SETTINGS.md §12): the panel reads its height
+ *  before the change and animates to the new one after it. */
+export function mountSettingsParts(host: HTMLElement, parts: SettingsPart[], aroundFold?: (change: () => void) => void): CardInstance {
+  return mountSettings(host, false, undefined, parts, aroundFold);
 }
 
-function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, parts?: SettingsPart[]): CardInstance & { sections: Section[] } {
+function mountSettings(
+  host: HTMLElement,
+  inert = false,
+  mountOpts?: MountOpts,
+  parts?: SettingsPart[],
+  aroundFold: (change: () => void) => void = (change) => change(),
+): CardInstance & { sections: Section[] } {
   // The search pill (MOVABLE-ROWS.md §10, fork S1 = 1A): the header idiom every other
   // card has, and the same slide-down field under it. It reads `settingsRows()` — the
   // Compass's own index — so there is one list of settings, not two.
@@ -1083,7 +1137,7 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
       // per card, on = offered. Hidden from the picker only; Compass and shortcuts still open it.
       title: "Cards",
       // The sub-heading says what the toggles mean (his words, 2026-10-10).
-      rows: [headRow("g-cards", "Enable / Disable these Cards:"), ...HIDEABLE_CARDS.map(cardRow)],
+      rows: [headRow("g-cardlist", "Enable / Disable these Cards:"), ...HIDEABLE_CARDS.map(cardRow)],
     },
     // Look and feel became four sections on 2026-09-18 (fork 1C). RESET_GROUPS had split it
     // this way for months; only the card disagreed. The names match the Reset rows exactly.
@@ -2424,8 +2478,9 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
     const rangeFocus = active && body.contains(active) ? active.dataset.range : undefined; // a key step keeps focus
     const tailOf = (s: Section) => (typeof s.tail === "function" ? s.tail() : s.tail ?? "");
     if (parts) {
-      // The quick panel: each part under a plain sub-heading, always open, in the order
-      // the panel asked for. A part with nothing to show is left out, heading and all.
+      // The quick panel: each part in the order the panel asked for, cut into groups that
+      // fold (QUICK-SETTINGS.md §12): the part's own heading and every sub-heading inside it
+      // start a group. A part with nothing to show is left out, heading and all.
       body.innerHTML = parts
         .map((p) => {
           const s = sections.find((x) => x.title === p.title);
@@ -2434,10 +2489,29 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
           const rows = shown(s.rows).filter(
             (r) => (!p.rows || p.rows.includes(r.id)) && !(r.kind === "head" && r.label === s.title),
           );
-          const inside = rows.map(rowHTML).join("") + (p.rows ? "" : tailOf(s));
-          if (!inside) return "";
-          const fresh = !p.rows && newSection(s.title) ? newBadge(`sec:${s.title}`) : "";
-          return `<section class="set__section" data-sec="${esc(s.title)}"><h4 class="set__sub-head">${esc(s.title)}${fresh}</h4>${inside}</section>`;
+          const tail = p.rows ? "" : tailOf(s);
+          if (!rows.length && !tail) return "";
+          return quickGroups(s.title, rows)
+            .map((g, i, all) => {
+              const open = quickFoldOpen(g.key);
+              const last = i === all.length - 1;
+              const inside = open ? g.rows.map(rowHTML).join("") + (last ? tail : "") : "";
+              // The section's own N rides its first group; a group shows the N while a row in
+              // it is new (QUICK-SETTINGS.md §10), so a folded group still points at it.
+              const fresh =
+                i === 0 && !p.rows && newSection(s.title)
+                  ? newBadge(`sec:${s.title}`)
+                  : !open && g.rows.some((r) => newRow(r.id)) ? FOLD_NEW_BADGE : "";
+              const count = settingRows(g.rows).length;
+              return (
+                `<section class="set__section" data-qgroup="${esc(g.key)}">` +
+                `<h3 class="set__head${open ? "" : " is-collapsed"}"><button class="set__fold" type="button" data-qfold="${esc(g.key)}" aria-expanded="${open}" title="Click to open or close">` +
+                `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
+                `<span>${esc(g.label)}</span>${fresh}` +
+                `${count ? `<span class="lib-shelf__count">${count}</span>` : ""}</button></h3>${inside}</section>`
+              );
+            })
+            .join("");
         })
         .join("");
     } else {
@@ -2533,6 +2607,17 @@ function mountSettings(host: HTMLElement, inert = false, mountOpts?: MountOpts, 
 
   body.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
+    // A quick panel group (QUICK-SETTINGS.md §12): an open plays its rows in, a fold is instant.
+    const qfold = t.closest<HTMLElement>("[data-qfold]")?.dataset.qfold;
+    if (qfold !== undefined) {
+      aroundFold(() => {
+        const open = toggleQuickFold(qfold);
+        frames.during("fold", 250, open ? "open" : "close");
+        render();
+        if (open) enterRows([...(body.querySelector(`[data-qgroup="${CSS.escape(qfold)}"]`)?.children ?? [])].slice(1));
+      });
+      return;
+    }
     const fold = t.closest<HTMLElement>("[data-fold]")?.dataset.fold;
     if (fold !== undefined) {
       // The click that trails a section drag is not a fold (MOVABLE-ROWS.md §4.2).

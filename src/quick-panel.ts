@@ -173,7 +173,12 @@ export function initQuickPanel(): void {
     body.hidden = !part;
     acct.hidden = part !== "apple";
     if (part) {
-      rows = mountSettingsParts(rowsHost, PARTS[part]);
+      // A group's fold (QUICK-SETTINGS.md §12) grows or shrinks the panel the same way.
+      rows = mountSettingsParts(rowsHost, PARTS[part], (change) => {
+        const from = panel.offsetHeight;
+        change();
+        animateHeight(from);
+      });
       const parts = [...(part === "apple" ? [acct] : []), ...rowsHost.querySelectorAll(".set__section > *")];
       enterRows(parts);
       diag.log("quick:part", { part });

@@ -44,6 +44,7 @@ nothing about authoring changed when the box did.
 | Settings › Discord | Let my profile invite people to my room | While you host a listening room, your Discord card carries a Listen Along button. The button holds the room code, so anyone who sees your profile can join | settings-card.ts |
 | Any section header (Settings, Radio, Playlists) | the header itself | Click to open or close. Hold to move this section. New sections appear at the end | settings-card.ts, radio-card.ts, playlists-card.ts — **absent while Settings › Window › Move sections by holding is off** (MOVABLE-ROWS.md §13.1) |
 | A Pinned tile | the grip bar on its cover | Drag to move this pinned item | pins.ts `PIN_GRIP` |
+| Quick panel (2026-10-10) | a group's header (Window, Window sizes, …) | Click to open or close | settings-card.ts, the parts render (QUICK-SETTINGS.md §12). No hold-to-move: the panel has no section move |
 | Settings header | the search button | Finds a setting by name | settings-card.ts (MOVABLE-ROWS.md §13.6) |
 | Title bar | DeetsMusic (the title) | Opens the menu: theme, skin, window size, account, and Settings | index.html |
 | Title menu | each Theme | Light/Dark + its two colors: Light. Purple and mint · Light. Green and fern · Light. Parchment and terracotta · Dark. Slate and moon white · Dark. Yellow on black · Dark. Red on black | index.html |

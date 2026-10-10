@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-09-24
 sources: [src/quick-panel.ts]
-updated: 2026-09-25
+updated: 2026-10-10
 ---
 # Quick settings — the cog's panel
 
@@ -313,3 +313,86 @@ The onboarding walk does not change.
 2. An existing profile: the cog shows an N once. With Friends still unseen, it stays after the press; hover the Friends rows and it goes.
 3. Press the cog several times: the gear turns, and the N (while on) does not turn.
 4. Settings › Tips › Show the tour again: the cog's N comes back.
+
+## 12. Fold the groups in a panel
+> **Part:** built · 2026-10-10
+
+His ask (2026-10-10, with a picture of the Window icon): each group in a quick panel icon
+folds up by its heading. **The quick panel only:** the Settings card does not change, and its
+folds (`deets.settings.folds`) stay separate.
+
+**A group** is a heading and its rows, down to the next heading. Two kinds of heading start
+one: a part's own heading (*Window*, *Cards*, from `PARTS`) and a sub-heading row inside a
+section (`headRow`: *Window sizes*, *Growing and drilling*, *Equalizer*).
+
+### 12.1 His calls (2026-10-10)
+
+| Fork | Decision |
+|---|---|
+| First open of an icon | **Every group folded.** The panel shows only the headings. |
+| Memory | **Kept across restarts**, per group: a group you open stays open until you fold it. |
+| More than one open | **Yes.** Each group opens and folds on its own; no accordion. |
+| The header's look | **The Settings card's section header family:** its fold button, chevron, hover and collapsed state (`.set__head` / `.set__fold`), so the app has one fold look. |
+
+### 12.2 Rules that follow (not forks)
+
+- **Motion:** an open plays the rows in with `enterRows` and the panel grows to the new height
+  over `--pop-grow` (§5's shape). A fold closes at once, as in the Settings card. Reduced
+  motion: nothing moves. The open sets a `[perf] frames` window (`frames.during("fold", …)`).
+- **The N:** a folded group shows the New badge on its header while a row inside is unseen
+  (§10). The icon square's own N is unchanged.
+- **A heading with no rows before the next one** does not make an empty group: the two merge,
+  and the later heading names the group. Cards is the case: its part heading is followed at
+  once by *Enable / Disable these Cards:*, so in the panel the group is *Enable / Disable these
+  Cards:* with the nine toggles under it.
+- **Keys:** the memory is one store of its own (for example `deets.quick.folds`), keyed by the
+  section title plus the heading's row id. The ids must be unique: the Cards sub-heading
+  reused `g-cards` (Window's *Growing and drilling*), a bug found 2026-10-10 that the build
+  fixes first.
+- **Search and requests:** the quick panel has no search and takes no row request (§3), so
+  nothing has to open a fold for you.
+- **Keyboard:** the header is a button: Enter or Space folds it, as in the card.
+- **Hints:** the header's hover hint is the card's (*Click to open or close*) without the
+  hold-to-move part, since the panel has no section move (ONBOARDING.md §1).
+
+### 12.3 Where the code goes
+
+`settings-card.ts`, the parts branch of `render` (the quick panel's `mountSettingsParts`):
+split each part's rows into groups at every head row, draw each group's header with the
+card's fold markup, read and write the panel's own fold store, and handle the fold click in
+the existing click handler. `quick-panel.ts` needs no change: it already grows to new
+content. The styles reuse `.set__head` / `.set__fold`; check their spacing inside the
+narrower panel (`--quick-panel-w`) against the panel's rows.
+
+### 12.3a As built (2026-10-10)
+
+- **The groups:** `quickGroups(title, rows)` in settings-card.ts cuts a part's rows at each
+  head row. Each group is its own `.set__section[data-qgroup]` with the card's fold header
+  (`.set__head` / `.set__fold`, chevron, count), but the button carries `data-qfold`, not
+  `data-fold`: the card's hold-to-move drag looks for `data-fold`, so it never starts here.
+  A section's tail markup rides its last group.
+- **The store:** `deets.quick.folds` (localStorage), the open groups only, keyed
+  `<section title>::<heading id>` (the part's own heading has an empty id). A key not in it
+  is folded.
+- **The height:** `mountSettingsParts` takes `aroundFold`; quick-panel.ts passes one that
+  reads the panel's height, runs the fold, and calls its `animateHeight`, the same as an
+  icon press.
+- **The N:** the section's own mark (`sec:<title>`) rides the first group's header and clears
+  on hover as before. A folded group with an unseen row shows the badge's look only
+  (`FOLD_NEW_BADGE`, no `data-new-mark`), so a hover on the header never marks the rows seen.
+- **The id fix:** the Cards sub-heading is `g-cardlist` (it reused `g-cards`).
+- **Log:** `[perf] frames` through `frames.during("fold", …)`, as the card's fold.
+
+### 12.4 Desk test (open)
+
+1. A fresh profile: open the Window icon. Only the headings show: Window, Window sizes,
+   Growing and drilling, Enable / Disable these Cards:.
+2. Open Window sizes: its rows come in one after another and the panel grows. Open Growing
+   and drilling too: both stay open. Fold Window sizes: it closes at once.
+3. Close the panel and open it again, then restart the app: the same groups are open.
+4. Open the Look icon and the Help icon: the same behavior on their groups.
+5. The Settings card's folds are unchanged by any of this.
+6. With a new row unseen inside a folded group, its header shows the N.
+7. Keyboard: Tab to a header, press Enter: it opens.
+8. Reduced motion: an open shows the rows at once.
+
