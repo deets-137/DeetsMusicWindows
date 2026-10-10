@@ -142,7 +142,7 @@ Order: the uncommitted work first (a fail there stops a commit), then the releas
 | B11 | A rule's theme change crossfades; Live Theming once per song | [UX-COVERUPS.md §6c](../architecture/UX-COVERUPS.md) | one | agent | The crossfade is a `[perf] frames` line and a transition on `html`; the look must not flash the boot cover |
 | B12 | The Diary's playing-album box | [DIARY.md §4c](../features/DIARY.md) step 1 | one | agent | Steps 2–7 passed 2026-09-26; step 1 and his look are open |
 | B13 | New badges on pills, skin-only marks | [QUICK-SETTINGS.md §10a.1](../features/QUICK-SETTINGS.md) steps 1–5 | one | agent | Clear `quickSeen` in the store first, or use `dev:fresh` |
-| B14 | The Apple call counter's hourly line | [APPLE-CALLS.md §5](../ops/APPLE-CALLS.md) step 1 | one | agent | An hour of normal use, then `[apple] calls 1h` and the `quit` line in the log |
+| B14 | The Apple call counter's hourly line | [APPLE-CALLS.md §5](APPLE-CALLS.md) step 1 | one | agent | An hour of normal use, then `[apple] calls 1h` and the `quit` line in the log |
 | B15 | Ocean perf check: the album light at 0 and at 100 | [OCEAN.md §6](../features/OCEAN.md) | one | agent | On `npm run dev:built`, with music, with and without the GPU (`--gpu=off`); read `[perf] frames`, never the trace alone (DEBUGGING.md) |
 | B16 | Diary 11e: the CLI / MCP path | DIARY.md §8 11e | installed | owner | Needs the installed build with the Diary CLI |
 | B17 | Add a room member as a friend: the stress test on live | [FRIENDS.md §18.8](../integrations/FRIENDS.md) | live | owner | |

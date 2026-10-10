@@ -12,6 +12,54 @@ updated: 2026-10-04
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-10 — Apple Music comparison: the upgrade half (designed, not built)
+
+Owner asked to flesh out [ideas/music-app-comp.md](ideas/music-app-comp.md) and how to measure
+our own performance upgrades. Added §11–§16: the three loops (inner / release / field), the
+rule for when a number counts as a change (non-overlapping ranges + a floor per tool), the
+release ladder over the 41 archived installers (an old rung never touches the live data
+folder: migrations are forward-only), a release-check step with proposed budgets, field
+numbers through USAGE-COUNTS.md (recommended not now), and each row's lever in our code.
+Checked on this PC: Apple Music 1.1540.23042.0 installed, ffmpeg 9.0.2 on PATH, PresentMon
+absent. **His call, same sitting: no old versions.** The history starts at 0.25.4 and goes
+forward one release at a time; the old-installer ladder and its second-account fork are gone
+(F8 / F10 closed). Since the old release cannot be re-run, Apple's app runs in the same
+sitting as the control: if both apps' numbers move, it is drift, not our code (§13). Open:
+F1–F7, F9, F11, F12. No code.
+
+**Later, same sitting: our own measuring tool, not PresentMon (his call).** PresentMon reads
+each app's presents; ours come from `msedgewebview2.exe` and a XAML app runs much of its
+motion inside DWM, so it may not see Apple's app fairly. Scoped `deetsmeter` (§17): a Rust
+sensor (launch, window, `SendInput`, Desktop Duplication, process loopback, all on QPC) and a
+Node judge (`scripts/compare/run.mjs`), phases M1–M4, a `calibrate` mode and one cross-check
+against our own `[perf]` lines. Forks F13–F16 decided the same sitting, the recommendation
+in each: `tools/deetsmeter/`, process loopback, 500 ms settle, the network row by hand. No code.
+
+## 2026-10-08 — Threads outlet designed (not built)
+
+Researched the Threads API for posting Songs of the Day and Diary reviews. Owner's calls: only
+him as a Threads tester (no App Review for now), a long review posts as a thread chain, no
+image (the Apple Music link card only). Written up as
+[integrations/THREADS.md](integrations/THREADS.md); five forks open there (§8). No code.
+
+## 2026-10-08 — Discord card: one retry after a failed send (built, uncommitted, NOT desk-tested)
+
+**The complaint.** The Discord card stopped following the song; a skip fixed it. The live log:
+`discord refused the frame — Unknown Error (code 1000)` five times at 00:07:33, read together in
+one 100 ms drain, while Discord had started a new renderer (00:06:59). On 2026-10-07 the pipe was
+dropped three times (`discord stopped part way through a reply`). The app re-sends only on a song
+change and counted a refused frame as sent, so the card stayed wrong until the next song.
+
+**Built (his pick, the retry-once option).** FRIENDS.md §8.10 "One retry after a failed card":
+`presence.rs` waits for the answer to its own frame by `nonce` (`REPLY_MS` 1 s) and reports
+`sent` / `absent` / `failed`; `presence.ts` re-sends a `failed` card once after 5 s.
+
+**Also found, not built (his fork).** The progress bar sometimes reads "done" at the start of a
+song: the card is built from the previous song's playback position. See the hand-off of this
+sitting.
+
+**Checked.** tsc, cargo check, docs:check. The desk test is in FRIENDS.md §8.10.
+
 ## 2026-10-06 — The Rulez review and its fixes (built, uncommitted, his hand test open)
 
 **The review.** His ask: look at Rulez as a motion and UX designer, as each kind of user. Three

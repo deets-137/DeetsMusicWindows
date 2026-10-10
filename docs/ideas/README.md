@@ -30,6 +30,11 @@ the app can do any of these things.
   Security Policy for the webview, and DPAPI for the Apple token and the Last.fm session.
 - [fullscreen-player.md](fullscreen-player.md) — an idea (2026-10-01): grow the Now Playing
   card so the cover is as large as the window allows, in Midi and Max; the layouts and forks.
+- [music-app-comp.md](music-app-comp.md) — an idea (2026-10-06): metrics and methods to
+  measure DeetsMusic against the Apple Music app for Windows; symmetric OS-level tools only
+  (our own `deetsmeter`: input, screen and sound on one clock; PDH counters), the scenes, the asymmetries, the forks. Since
+  2026-10-10 also our own upgrades: each release against the last, from 0.25.4, with Apple's
+  app as the control; the change rule, the release-check step (§11–§16).
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).

@@ -144,6 +144,20 @@ When an item closes, delete it here and write the day in WORKLOG.md.
    spelling), one row per Settings row in a shut fold, recipes at full strength with a
    Duplicate chip, the row glide. RULEZ.md §17 has the desk test. The Esc change reaches every
    grown card (CARD-GROW.md, Esc) and the field focus every menu (context-menu.ts).
+0e. **Look at next (2026-10-07, his ask, nothing built, no fork decided): redo the round-result
+   page for DeetsMahjong.** The page after a win ("Deets wins — 3 faan"): the winning hand, the
+   fan line ("Mixed One Suit  3"), the faan total and its +32, one "<name> pays N" line per
+   loser, and the "Next hand" button. He wants it redone. The code is not in this repo: the
+   client is `../DeetsSolutions/mahjong/` (`mahjong.js`, `strings.js`, `engine.js`) and the
+   design notes are `../DeetsSolutions/docs/mahjong.md`. Start by asking him what is wrong with
+   the page today (layout, the hand shown, the pay lines, the flower tile set apart on its own
+   row), then bring him the forks.
+0f. **Look at next (2026-10-07, his ask, nothing built, no fork decided): Song of the Day in the
+   sidebar.** He wants the Song of the Day reachable from a sidebar. Open question: which
+   sidebar. The app has no sidebar today, so first find out whether he means a new strip beside
+   the cards, the tray panel, the Max stage column, or the DeetsSolutions site. The feature
+   itself is `integrations/DeetsOTD.md` (shipped 0.11.0). Bring him the forks before any build
+   (his rule: he decides every fork).
 0a. **The music stopped at a song change + the catalog heal** (built + committed 2026-09-28,
    Claude ran part of it on the dev app): QUEUE.md §The music stopped at a song change and §A
    library song Apple sends with no play id. Not reached yet: a healed id in use, "in your

@@ -1039,9 +1039,10 @@ turns on a recipe only in the Rulez card, and that card is in Max only, behind a
 
 1. **No mode, one gate.** The app is the same app for every user, with one exception: **the
    Rulez card is offered only when the Settings row says Pro** (second round, 2026-09-28).
-   Everything else is the same for Cruisin and Pro. The gate has a precedent: `rewindCard`
-   already takes the Rewind card out of the card picker (`poolFor`, layout.ts). Rulez adds the
-   same test on the new key, beside its `maxOnly` test.
+   Everything else is the same for Cruisin and Pro. **Since 2026-10-10 the gate is the
+   `hiddenCards` list** ([HIDE-CARDS.md](HIDE-CARDS.md) §6.2, his call: one mechanism).
+   Cruisin puts `"rulez"` in the list; Pro takes it out. `poolFor` has no Pro test, and a
+   Cruisin user can show the card again from Settings › Cards.
 2. **Recipes in Settings.** A Recipes section in Settings: one switch per recipe, and the
    recipe's `desc` as its one-sentence line. A user turns on an effect without reading a rule.
 3. **The Recipes section sits right after Tips** (fourth round, 2026-09-28): it is the Cruisin

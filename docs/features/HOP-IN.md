@@ -20,7 +20,9 @@ it. The names are his.
 1. **No mode.** The pick is a starting point. After it, every setting is an ordinary setting.
    The one thing the pick keeps on is a gate: the Rulez card is offered in the card picker only
    under Pro (RULEZ.md §16.1). Under Cruisin your own rules keep running, and Ctrl + Space still
-   opens the Rulez card.
+   opens the Rulez card. **Since 2026-10-10 the gate is the `hiddenCards` list**
+   ([HIDE-CARDS.md](HIDE-CARDS.md) §6.2, his call): Cruisin puts `"rulez"` in it, and the user
+   can show the card again from Settings › Cards.
 2. **A welcome screen before sign-in.** One screen, not several. It is the one exception to
    ONBOARDING.md §4.6.
 3. **The Deets and Happy sprites stand on it** (ONBOARDING.md §4.1), so the walk starts from the
@@ -53,8 +55,9 @@ it. The names are his.
   was ever used, and sets `onboardingStep`. Hop in is a new step 0 in front of the walk's step 1
   (sign-in). An upgrade never sees it.
 - **The pick** is one new key, `startPick: "cruisin" | "pro"`, default `"cruisin"`. It gets a
-  spec in agent-settings.ts and a line in AGENT.md. The Rulez gate reads it in `poolFor`
-  (layout.ts), beside the `rewindCard` test that already takes the Rewind card out.
+  spec in agent-settings.ts and a line in AGENT.md. `poolFor` does not read it (2026-10-10,
+  HIDE-CARDS.md §6.2): the preset writes `hiddenCards`, and a change of the Cruisin / Pro row
+  adds `"rulez"` to that list or removes it.
 - **A preset** is a list of keys and values in one pure file (tested like `layout-rules.ts`),
   applied once with `setSetting`. Cruisin's list is empty.
 - **The walk** (walk.ts) gets the screen as its first stop and a branch after sign-in. The
@@ -88,7 +91,7 @@ missed.
 | `oceanLight` | 0 | 100 | costly with no graphics card (OCEAN.md §6) |
 | `pressVinyl` / `pressVinylPlate` | off / on | spin / off | |
 | `drillGrow` | vertical | full | |
-| `rewindCard` | off | on | |
+| `hiddenCards` | `["rewind", "rulez"]` | `[]` | was `rewindCard` off / on (HIDE-CARDS.md §6.2) |
 | `newPlaylistCover` | letters | mosaic | |
 | `shuffleMode` / `shuffleStays` | off / on | on / off | |
 | `soundEq` / `soundEqPreset` | off / flat | on / Late night | |

@@ -112,6 +112,10 @@ old installs' Guide button opens.
 - `GRAPHICS-FALLBACK.md` — DESIGNED, not built (2026-09-29): when the GPU process falls back to
   WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers a
   restart; the *If graphics fail* row; the `graphics` fact. Row words and toast text are open.
+- `HIDE-CARDS.md` — DESIGNED, not built (2026-10-10): the Cards section hides any card but
+  Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaces
+  `rewindCard`); the picker only, the feature keeps working. §7 is the build scope. It is
+  also Hop in's Rulez gate (§6.2, one mechanism, his call).
 - `USAGE-COUNTS.md` — DESIGNED, not built (2026-09-29): anonymous active-install counts, a
   weekly settings row and weekly health counts (log errors, Apple calls) to DeetsSupport. No ID,
   no IP, an allow-list, groups under 5 hidden. §2 is the privacy rules; §9 the open forks.
@@ -132,6 +136,8 @@ old installs' Guide button opens.
   and your Diary, a local web of picks with no algorithm. Today a friend sees only presence;
   the Diary is private. Do not tell a user it exists.
 - `DeetsOTD.md` — Song of the Day and its outlets.
+- `THREADS.md` — DESIGNED, not built (2026-10-08): a Threads outlet for Song of the Day picks
+  and Diary reviews (a thread chain), the owner only as a tester; §8 the open forks.
 - `PROVIDERS.md` — Apple Music and Spotify in one library.
 - `LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users.
 
@@ -158,6 +164,10 @@ designed 2026-09-29: a CSP for the webview; DPAPI for the Apple token and Last.f
 `fullscreen-player.md` — every fork decided 2026-10-02, not built: grow Now Playing so the
 cover is as large as the window allows (Midi, Max, Mini's player view); §6–§7 the decisions,
 §9 the motion (decided), §10 the edge zones, §11 the rest of the design pass.
+`music-app-comp.md` — an idea (2026-10-06): metrics and methods to measure DeetsMusic against
+the Apple Music app for Windows with symmetric OS-level tools, and (2026-10-10) each release
+against the last from 0.25.4 with Apple's app as the control; §17 scopes `deetsmeter`, our own
+input + screen + sound tool (F13–F16 decided, not built); §9 the rest of the forks.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
