@@ -271,25 +271,39 @@ pub fn sync_menu(app: &AppHandle) {
     }
 }
 
-/// A remembered position, checked against the monitors plugged in now. A position on no
-/// monitor (one since unplugged) is `None`, so Windows places the window as it normally
-/// would. A position on a monitor is pulled in so the whole window stays on it (a lower
-/// resolution would otherwise leave most of the window off the edge). 2026-09-29: this
-/// ran only at launch, so a tray-started app still opened on an undocked monitor.
+/// A remembered position, checked against the monitors plugged in now. A window that
+/// overlaps no monitor (one since unplugged) is `None`, so Windows places the window as it
+/// normally would. Otherwise the window goes to the monitor it overlaps most and is pulled
+/// in so it stays on it (a lower resolution would otherwise leave most of the window off
+/// the edge). 2026-09-29: this ran only at launch, so a tray-started app still opened on an
+/// undocked monitor.
+///
+/// 2026-10-10: the monitor was found by the top-left corner alone. Windows 11 counts the
+/// invisible resize border in the outer position, so a window snapped to a monitor's edge
+/// has its corner ~8 px OFF that monitor (`-1088,-255` on a monitor at `-1080,-247`). No
+/// monitor matched, the restore was skipped, and Open left the full app at the tray
+/// anchor. Overlap finds the monitor; the clamp leaves the invisible border its slack.
 fn fit_on_monitor(
     app: &AppHandle,
     w: &tauri::WebviewWindow,
     p: PhysicalPosition<i32>,
 ) -> Option<PhysicalPosition<i32>> {
     let mons = app.available_monitors().ok()?;
-    let m = mons.iter().find(|m| {
-        let (mp, sz) = (m.position(), m.size());
-        p.x >= mp.x && p.y >= mp.y && p.x < mp.x + sz.width as i32 && p.y < mp.y + sz.height as i32
-    })?;
-    let (mp, ms) = (m.position(), m.size());
     let size = w.outer_size().unwrap_or_default();
-    let x = p.x.min(mp.x + ms.width as i32 - size.width as i32).max(mp.x);
-    let y = p.y.min(mp.y + ms.height as i32 - size.height as i32).max(mp.y);
+    let (ww, wh) = (size.width as i64, size.height as i64);
+    let overlap = |m: &tauri::Monitor| {
+        let (mp, ms) = (m.position(), m.size());
+        let (mx, my) = (mp.x as i64, mp.y as i64);
+        let ox = ((p.x as i64 + ww).min(mx + ms.width as i64) - (p.x as i64).max(mx)).max(0);
+        let oy = ((p.y as i64 + wh).min(my + ms.height as i64) - (p.y as i64).max(my)).max(0);
+        ox * oy
+    };
+    let m = mons.iter().filter(|m| overlap(m) > 0).max_by_key(|m| overlap(m))?;
+    let (mp, ms) = (m.position(), m.size());
+    // The DWM invisible border: ~8 px at 100 %, scaled with the monitor.
+    let slack = (8.0 * m.scale_factor()).round() as i32;
+    let x = p.x.min(mp.x + ms.width as i32 - size.width as i32 + slack).max(mp.x - slack);
+    let y = p.y.min(mp.y + ms.height as i32 - size.height as i32 + slack).max(mp.y - slack);
     Some(PhysicalPosition::new(x, y))
 }
 

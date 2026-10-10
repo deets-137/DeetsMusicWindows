@@ -44,6 +44,10 @@ updated: 2026-09-29
 - **The position is remembered across × and across restarts** — `remember_pos` writes it to
   both `Inner.restore_pos` and `settings.json` (`windowPos`), and `restore_window_pos` reads
   it back at startup, discarding a position that no longer lands on any connected monitor.
+  The monitor is the one the window overlaps most, not the one under its top-left corner
+  (2026-10-10): Windows 11 counts the invisible resize border, so a window snapped to the
+  edge of the left monitor had its corner 8 px off it, the restore was skipped, and Open
+  left the full app at the tray.
   It is captured on a pop *and* in `hide_main`, but **never while popped**: a popped window
   sits at the tray anchor, and recording that as the real position is what used to strand
   the full window in the bottom-right corner after × → tray-click → Open.
