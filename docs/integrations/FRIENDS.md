@@ -699,9 +699,31 @@ rows **moved** into it (§8.5.2), and Song of the Day gained a *Where picks go* 
 moved Connect row. Three keys, all **Off / 0** by default, with agent specs, an AGENT.md line and a
 `Settings › Reset › Sharing` group.
 
-**The log** (CLAUDE.md checklist item 6): `presence:set {why, song, sent}` — `sent: false` is Discord
-not running, which is not an error and gets no toast and no retry loop — plus `presence:clear`,
-`presence:off`, and the `presence:pause-arm` / `presence:pause-cancel` pair.
+**The log** (CLAUDE.md checklist item 6): `presence:set {why, song, sent}` — `sent: "absent"` is
+Discord not running, which is not an error and gets no toast and no retry — plus `presence:clear`,
+`presence:off`, `presence:retry-arm`, and the `presence:pause-arm` / `presence:pause-cancel` pair.
+
+> **Part:** built · 2026-10-08
+
+**One retry after a failed card (2026-10-08, his pick).** On live, Discord refused frames with
+`Unknown Error (code 1000)` while it started a new renderer, and on 2026-10-07 it stalled mid-reply
+three times and the pipe was dropped. Each time the card stayed wrong until the next song, because
+the app re-sends only on a song change and counted a refused frame as sent. Now:
+- `presence.rs` waits up to 1 s (`REPLY_MS`) for Discord's answer to THIS frame, matched by its
+  `nonce`. The old 100 ms drain read late answers in a pile (five at once), so no one could tell
+  which frame they answered. No answer in 1 s still counts as sent.
+- `presence_set` answers `"sent"`, `"absent"` or `"failed"` (refused, or the pipe dropped).
+- `presence.ts` sends a `failed` card once more after 5 s (`RETRY_MS`), only if sharing is on, the
+  song still plays and it is the same song. One retry, never a loop; a new song cancels it.
+- A `failed` card counts as showing, so a pause can still clear what Discord shows.
+
+The retry follows a failed SEND only. A Discord that restarts between two songs is not seen until
+the next send; a timed re-send (the option not taken) would cover that.
+
+Desk test: play with sharing on. Quit Discord from its tray icon and start it again, then press
+Next once. The first frame meets the dead pipe: expect `presence:set {sent:"failed"}`,
+`presence:retry-arm`, then 5 s later `presence:set {why:"song+retry", sent:"sent"}` and the card on
+the profile with no second skip.
 
 **`scripts/discord-probe.mjs` is kept.** It is how §8.4a was measured, and it is how the same
 questions get re-asked after a Discord update, without touching the app.

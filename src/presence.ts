@@ -27,6 +27,14 @@ const MIN_GAP_MS = 4000;
 /** How long a pause may last before the card comes down (B1, D15). A doorbell should not
  *  blank your profile and bring it back; a walk away is no longer true. */
 const PAUSE_CLEAR_MS = 60_000;
+/** A card Discord refused, or lost when it stalled, is sent once more after this long — or
+ *  the profile stays wrong until the next song (2026-10-08). Above MIN_GAP_MS, so the retry
+ *  keeps inside the rate limit. */
+const RETRY_MS = 5000;
+
+/** What the pipe made of one card (presence.rs `Sent`). `failed` = Discord is there but the
+ *  card did not land; `absent` = no Discord, which is never retried (§8.9). */
+type Sent = "sent" | "absent" | "failed";
 
 /** Discord's own caps. A longer string is refused, so it is cut here instead. */
 const CAP = 128;
@@ -45,6 +53,7 @@ let lastKey = ""; // the song identity last SENT, so a re-render never re-sends
 let showing = false; // a card is up (or Discord is absent and we think one is)
 let trailing: number | undefined; // the coalescer's trailing-edge timer
 let pauseTimer: number | undefined; // the clear-after-a-pause timer
+let retryTimer: number | undefined; // the one retry after a failed card
 
 /** Off, or paused for an hour: the two ways to be silent (§8.5.1). The pause is a rule since
  *  2026-09-26 (RULES.md §13): while it runs, the effective switch reads off. */
@@ -109,24 +118,43 @@ function activity(): Record<string, unknown> | null {
 }
 
 function sendNow(reason: string): void {
+  window.clearTimeout(retryTimer);
+  retryTimer = undefined;
   const act = activity();
   if (!act) return;
   lastSentAt = Date.now();
-  lastKey = keyOf(state);
-  void invoke<boolean>("presence_set", { activity: act })
+  const key = (lastKey = keyOf(state));
+  void invoke<Sent>("presence_set", { activity: act })
     .then((sent) => {
-      showing = sent;
-      // `sent: false` is Discord not running — the ordinary state of most PCs, and not an
-      // error (§8.9). It is logged once per change, never retried in a loop.
+      // A refused card may leave the LAST song's card up, so `failed` counts as showing:
+      // a pause must still be able to clear it.
+      showing = sent !== "absent";
+      // `absent` is Discord not running — the ordinary state of most PCs, and not an
+      // error (§8.9). It is logged once per change, never retried.
       diag.log("presence:set", { why: reason, song: act.details, sent });
+      if (sent === "failed" && !reason.endsWith("+retry")) armRetry(reason, key);
     })
     .catch((e) => console.error("[presence] set", e));
+}
+
+/** One more try at a card that did not land, if the same song still plays by then. One
+ *  only: a Discord that refuses twice is left alone until the next song (§8.9). */
+function armRetry(reason: string, key: string): void {
+  window.clearTimeout(retryTimer);
+  diag.log("presence:retry-arm", { ms: RETRY_MS });
+  retryTimer = window.setTimeout(() => {
+    retryTimer = undefined;
+    if (!sharing() || !state.playing || keyOf(state) !== key) return;
+    sendNow(`${reason}+retry`);
+  }, RETRY_MS);
 }
 
 /** Send, or schedule the trailing edge when Discord's rate limit is close. */
 function push(reason: string): void {
   if (!sharing()) return;
   window.clearTimeout(trailing);
+  window.clearTimeout(retryTimer); // a new card replaces the one waiting to retry
+  retryTimer = undefined;
   const wait = MIN_GAP_MS - (Date.now() - lastSentAt);
   if (wait <= 0) return sendNow(reason);
   trailing = window.setTimeout(() => sendNow(`${reason}+coalesced`), wait);
@@ -134,6 +162,8 @@ function push(reason: string): void {
 
 function clearCard(why: string): void {
   window.clearTimeout(trailing);
+  window.clearTimeout(retryTimer);
+  retryTimer = undefined;
   window.clearTimeout(pauseTimer);
   pauseTimer = undefined;
   lastKey = "";
@@ -147,6 +177,8 @@ function clearCard(why: string): void {
  *  privacy switch that takes a minute to take effect is not a privacy switch (§8.9). */
 function stop(why: string): void {
   window.clearTimeout(trailing);
+  window.clearTimeout(retryTimer);
+  retryTimer = undefined;
   window.clearTimeout(pauseTimer);
   pauseTimer = undefined;
   lastKey = "";

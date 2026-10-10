@@ -38,7 +38,7 @@
 
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
 use windows::core::PCWSTR;
@@ -68,6 +68,10 @@ const IO_TIMEOUT_MS: u32 = 2_000;
 /// How long a drain waits for a reply that may not be there. One frame gets one reply, so
 /// the first timeout means the buffer is empty and the drain is done.
 const DRAIN_MS: u32 = 100;
+/// How long a SET_ACTIVITY waits for its own answer. Discord's answers have come back later
+/// than 100 ms (2026-10-08), so the frame's fate is waited for, not guessed from a drain.
+/// Inside `ANSWER_TIMEOUT` with room for the write.
+const REPLY_MS: u32 = 1_000;
 /// How long a command waits for the pipe thread. Longer than `IO_TIMEOUT_MS`, so a single
 /// slow frame answers honestly instead of being reported as "no Discord".
 const ANSWER_TIMEOUT: Duration = Duration::from_secs(5);
@@ -160,42 +164,75 @@ impl Pipe {
         Ok(Some(()))
     }
 
-    /// Read every reply that is waiting. Discord answers every frame, and an unread reply is
-    /// what fills the buffer and blocks the NEXT write — so this is not tidying up, it is
-    /// what keeps the pipe writable.
-    ///
-    /// **A refusal is READ, not dropped.** Discord answers a frame it dislikes with
-    /// `evt: "ERROR"` and carries on, so a card that never appears looks exactly like a card
-    /// that was sent — which is what made "Discord doesn't seem to be picking up my activity"
-    /// take a probe to answer. Opcode 2 is Discord closing us, and it says why.
+    /// Read one reply. `Ok(None)` = nothing arrived within `first_ms`. Opcode 2 is Discord
+    /// closing us, and it says why. A body that is not JSON comes back as `Value::Null`.
+    fn next_reply(&self, first_ms: u32) -> Result<Option<Value>, String> {
+        let mut head = [0u8; 8];
+        if self.fill(&mut head, first_ms)?.is_none() {
+            return Ok(None);
+        }
+        let op = i32::from_le_bytes([head[0], head[1], head[2], head[3]]);
+        let len = i32::from_le_bytes([head[4], head[5], head[6], head[7]]).max(0) as usize;
+        let mut body = vec![0u8; len];
+        if len > 0 && self.fill(&mut body, IO_TIMEOUT_MS)?.is_none() {
+            return Err("discord stopped part way through a reply".into());
+        }
+        let text = String::from_utf8_lossy(&body);
+        if op == OP_CLOSE {
+            return Err(format!("discord closed us: {}", text.trim()));
+        }
+        Ok(Some(serde_json::from_str::<Value>(&text).unwrap_or(Value::Null)))
+    }
+
+    /// Read every reply that is waiting (the handshake's READY). Discord answers every frame,
+    /// and an unread reply is what fills the buffer and blocks the NEXT write — so this is not
+    /// tidying up, it is what keeps the pipe writable.
     fn drain(&self) -> Result<(), String> {
+        while let Some(v) = self.next_reply(DRAIN_MS)? {
+            refused(&v);
+        }
+        Ok(())
+    }
+
+    /// Wait for Discord's answer to the frame carrying `nonce`. `true` = accepted, or no
+    /// answer came in `REPLY_MS` (unknown, so it counts as sent); `false` = Discord refused it.
+    ///
+    /// Older replies read on the way are the answers to earlier frames that came back late —
+    /// their refusals are logged, but only THIS frame's answer decides, because this frame is
+    /// what the card should show now. On 2026-10-08 five late refusals came back together
+    /// inside one 100 ms drain, so no one could tell which frames they answered.
+    fn answer(&self, nonce: &str) -> Result<bool, String> {
+        let until = Instant::now() + Duration::from_millis(REPLY_MS as u64);
         loop {
-            let mut head = [0u8; 8];
-            if self.fill(&mut head, DRAIN_MS)?.is_none() {
-                return Ok(());
-            }
-            let op = i32::from_le_bytes([head[0], head[1], head[2], head[3]]);
-            let len = i32::from_le_bytes([head[4], head[5], head[6], head[7]]).max(0) as usize;
-            let mut body = vec![0u8; len];
-            if len > 0 && self.fill(&mut body, IO_TIMEOUT_MS)?.is_none() {
-                return Err("discord stopped part way through a reply".into());
-            }
-            let text = String::from_utf8_lossy(&body);
-            if op == OP_CLOSE {
-                return Err(format!("discord closed us: {}", text.trim()));
-            }
-            if let Ok(v) = serde_json::from_str::<Value>(&text) {
-                if v.get("evt").and_then(Value::as_str) == Some("ERROR") {
-                    let d = &v["data"];
-                    crate::log::warn(&format!(
-                        "presence: discord refused the frame — {} (code {})",
-                        d["message"].as_str().unwrap_or("no message"),
-                        d["code"]
-                    ));
-                }
+            let left = until.saturating_duration_since(Instant::now()).as_millis() as u32;
+            let reply = if left == 0 { None } else { self.next_reply(left)? };
+            let Some(v) = reply else {
+                crate::log::info(&format!("presence: no answer to the frame in {REPLY_MS} ms"));
+                return Ok(true);
+            };
+            let no = refused(&v);
+            if v.get("nonce").and_then(Value::as_str) == Some(nonce) {
+                return Ok(!no);
             }
         }
     }
+}
+
+/// **A refusal is READ, not dropped.** Discord answers a frame it dislikes with
+/// `evt: "ERROR"` and carries on, so a card that never appears looks exactly like a card
+/// that was sent — which is what made "Discord doesn't seem to be picking up my activity"
+/// take a probe to answer.
+fn refused(v: &Value) -> bool {
+    if v.get("evt").and_then(Value::as_str) != Some("ERROR") {
+        return false;
+    }
+    let d = &v["data"];
+    crate::log::warn(&format!(
+        "presence: discord refused the frame — {} (code {})",
+        d["message"].as_str().unwrap_or("no message"),
+        d["code"]
+    ));
+    true
 }
 
 /// Open the pipe and shake hands. Discord takes the first free number, so a second client
@@ -254,13 +291,36 @@ enum Job {
     Close,
 }
 
+/// What became of one SET_ACTIVITY. The front end retries `Failed` once and never retries
+/// `Absent` (FRIENDS.md §8.9).
+#[derive(Clone, Copy, PartialEq)]
+enum Sent {
+    /// Discord took it (or did not answer in `REPLY_MS`, which is read as taken).
+    Shown,
+    /// No Discord to talk to: the ordinary state of a PC with Discord closed.
+    Absent,
+    /// Discord is there but the card did not land: it refused the frame, or stalled and
+    /// the pipe was dropped.
+    Failed,
+}
+
+impl Sent {
+    fn word(self) -> &'static str {
+        match self {
+            Sent::Shown => "sent",
+            Sent::Absent => "absent",
+            Sent::Failed => "failed",
+        }
+    }
+}
+
 /// The only shared state left. It is locked to clone the sender and for nothing else, so
 /// no lock is ever held across I/O (§8.11 fault 3). Poison is stepped over the way
 /// `Db::lock` steps over it (docs/ops/DB-HEALTH.md): a panic elsewhere must not take the card
 /// down with it.
-static TX: Mutex<Option<SyncSender<(Job, SyncSender<bool>)>>> = Mutex::new(None);
+static TX: Mutex<Option<SyncSender<(Job, SyncSender<Sent>)>>> = Mutex::new(None);
 
-fn owner(rx: Receiver<(Job, SyncSender<bool>)>) {
+fn owner(rx: Receiver<(Job, SyncSender<Sent>)>) {
     let mut pipe: Option<Pipe> = None;
     while let Ok((job, reply)) = rx.recv() {
         let done = match job {
@@ -270,7 +330,7 @@ fn owner(rx: Receiver<(Job, SyncSender<bool>)>) {
                     pipe = None;
                     crate::log::info("presence: closed");
                 }
-                false
+                Sent::Absent
             }
             Job::Set(activity) => set_activity(&mut pipe, activity),
         };
@@ -279,16 +339,16 @@ fn owner(rx: Receiver<(Job, SyncSender<bool>)>) {
     }
 }
 
-/// Write one SET_ACTIVITY, opening the pipe if it is not open. `false` = Discord is not
-/// there, which is not an error: it is the ordinary state of a PC with Discord closed
-/// (§8.9), and it gets no toast and no retry loop.
-fn set_activity(pipe: &mut Option<Pipe>, activity: Option<Value>) -> bool {
+/// Write one SET_ACTIVITY, opening the pipe if it is not open, and wait for Discord's
+/// answer to it. `Absent` is not an error: it is the ordinary state of a PC with Discord
+/// closed (§8.9), and it gets no toast and no retry.
+fn set_activity(pipe: &mut Option<Pipe>, activity: Option<Value>) -> Sent {
     if pipe.is_none() {
         match connect() {
             Ok(p) => *pipe = Some(p),
             Err(e) => {
                 crate::log::info(&format!("presence: no Discord ({e})"));
-                return false;
+                return Sent::Absent;
             }
         }
     }
@@ -302,14 +362,16 @@ fn set_activity(pipe: &mut Option<Pipe>, activity: Option<Value>) -> bool {
         .unwrap_or_else(|_| "0".into());
     let bytes = frame(OP_FRAME, &json!({ "cmd": "SET_ACTIVITY", "args": args, "nonce": nonce }));
     let p = pipe.as_ref().expect("just connected");
-    match p.write(&bytes).and_then(|()| p.drain()) {
-        Ok(()) => true,
+    match p.write(&bytes).and_then(|()| p.answer(&nonce)) {
+        Ok(true) => Sent::Shown,
+        // Refused, but the pipe is sound: keep it, so the retry needs no reconnect.
+        Ok(false) => Sent::Failed,
         Err(e) => {
             // Discord went away, or stopped answering. Drop the handle — that both clears
             // the card and makes the next call reconnect.
             *pipe = None;
             crate::log::info(&format!("presence: dropped the pipe ({e})"));
-            false
+            Sent::Failed
         }
     }
 }
@@ -320,45 +382,49 @@ fn set_activity(pipe: &mut Option<Pipe>, activity: Option<Value>) -> bool {
 /// Both waits have a deadline. A full queue means the thread is wedged on something Windows
 /// would not cancel; the answer is then "no Discord", which is a stale card — never a
 /// frozen app.
-fn request(job: Job) -> bool {
+fn request(job: Job) -> Sent {
     let tx = {
         let mut guard = TX.lock().unwrap_or_else(|e| e.into_inner());
         if guard.is_none() {
-            let (tx, rx) = sync_channel::<(Job, SyncSender<bool>)>(8);
+            let (tx, rx) = sync_channel::<(Job, SyncSender<Sent>)>(8);
             match std::thread::Builder::new().name("presence".into()).spawn(move || owner(rx)) {
                 Ok(_) => *guard = Some(tx),
                 Err(e) => {
                     crate::log::info(&format!("presence: no thread ({e})"));
-                    return false;
+                    return Sent::Absent;
                 }
             }
         }
         guard.as_ref().cloned()
     };
     // The lock is released ABOVE, before a single byte moves.
-    let Some(tx) = tx else { return false };
-    let (done, answer) = sync_channel::<bool>(1);
+    let Some(tx) = tx else { return Sent::Absent };
+    let (done, answer) = sync_channel::<Sent>(1);
     if tx.try_send((job, done)).is_err() {
         crate::log::info("presence: the pipe thread is busy, skipped this one");
-        return false;
+        return Sent::Absent;
     }
-    answer.recv_timeout(ANSWER_TIMEOUT).unwrap_or(false)
+    answer.recv_timeout(ANSWER_TIMEOUT).unwrap_or(Sent::Absent)
 }
 
 // ── commands (all of them blocking pipe work → spawn_blocking) ────────────────
 
 /// Show this activity. The front end builds it whole (§8.7.1) — this never edits it, so a
-/// field Discord adds later needs no change here.
+/// field Discord adds later needs no change here. Answers `"sent"`, `"absent"` or
+/// `"failed"` (see `Sent`).
 #[tauri::command]
-pub async fn presence_set(activity: Value) -> Result<bool, String> {
-    Ok(tauri::async_runtime::spawn_blocking(move || request(Job::Set(Some(activity)))).await.unwrap_or(false))
+pub async fn presence_set(activity: Value) -> Result<&'static str, String> {
+    let sent = tauri::async_runtime::spawn_blocking(move || request(Job::Set(Some(activity))))
+        .await
+        .unwrap_or(Sent::Absent);
+    Ok(sent.word())
 }
 
 /// Take the card down now. An activity-less SET_ACTIVITY is Discord's own way to clear,
 /// and it keeps the connection — the next song sets it again with no reconnect.
 #[tauri::command]
 pub async fn presence_clear() -> Result<bool, String> {
-    Ok(tauri::async_runtime::spawn_blocking(|| request(Job::Set(None))).await.unwrap_or(false))
+    Ok(tauri::async_runtime::spawn_blocking(|| request(Job::Set(None)) == Sent::Shown).await.unwrap_or(false))
 }
 
 /// Close the pipe outright (the app is quitting, or sharing was switched off). Dropping the

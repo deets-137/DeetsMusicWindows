@@ -579,7 +579,7 @@ const H: Record<string, Handler> = {
     throw new Error("Friends is in the desktop app");
   },
   friend_list: () => [],
-  presence_set: () => false,
+  presence_set: () => "absent",
   outlet_status: () => [],
   picks_list: () => [],
   picks_missed: () => [],
