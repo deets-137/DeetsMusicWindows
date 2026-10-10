@@ -383,7 +383,7 @@ narrower panel (`--quick-panel-w`) against the panel's rows.
 - **The id fix:** the Cards sub-heading is `g-cardlist` (it reused `g-cards`).
 - **Log:** `[perf] frames` through `frames.during("fold", …)`, as the card's fold.
 
-### 12.4 Desk test (open)
+### 12.4 Desk test — **PASSED 2026-10-10** (his run)
 
 1. A fresh profile: open the Window icon. Only the headings show: Window, Window sizes,
    Growing and drilling, Enable / Disable these Cards:.

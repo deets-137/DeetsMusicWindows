@@ -12,6 +12,14 @@ updated: 2026-10-04
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-10 — Quick panel folds; both desk tests passed
+
+His ask, with a picture of the Window icon: each group in a quick panel icon folds by its
+heading; the Settings card unchanged. **His calls:** QUICK-SETTINGS.md §12.1 (all folded at
+first, kept across restarts, each on its own, the card's fold header). **Also fixed:** the
+Cards sub-heading reused the `g-cards` id. **Desk test:** QUICK-SETTINGS.md §12.4, his run,
+passed the same day. **Hide cards** (HIDE-CARDS.md §9, DESK-TESTS.md A7) passed in the same run of his.
+
 ## 2026-10-10 — Hide cards (built, committed, desk test open)
 
 Talked through and built in one sitting. **What:** Settings › Cards, one toggle per card, takes

@@ -1,12 +1,12 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-10
 sources: [src/layout.ts, src/layout-rules.ts, src/cards.ts, src/compass.ts, src/settings-card.ts, src/settings-store.ts, src/agent-settings.ts, src/quick-panel.ts, src/stats.ts, src/toast.ts, src/context-menu.ts, vite.demo.config.ts]
 updated: 2026-10-10
 ---
 # Hide cards — choose the cards the picker offers
 
-> **Built 2026-10-10, not released; the desk test (§9) is open.** The owner closed every fork on
+> **Built 2026-10-10, not released; the desk test (§9) PASSED 2026-10-10 (his run).** The owner closed every fork on
 > 2026-10-10 (§2, §6). §7 was the build scope; §8 is the as-built record, and where it
 > disagrees with §7, §8 is the code.
 
@@ -306,7 +306,7 @@ Where this differs from §7, this is the code.
 - When you search "home" in Ctrl+Space, you see the Home card and the *Home* toggle of Cards.
   The toggle sits under *Cards*.
 
-## 9. Desk test (open)
+## 9. Desk test — **PASSED 2026-10-10** (his run)
 
 On the dev app (`npm run dev:app`), Midi then Max.
 

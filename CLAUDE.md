@@ -112,7 +112,7 @@ old installs' Guide button opens.
 - `GRAPHICS-FALLBACK.md` — DESIGNED, not built (2026-09-29): when the GPU process falls back to
   WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers a
   restart; the *If graphics fail* row; the `graphics` fact. Row words and toast text are open.
-- `HIDE-CARDS.md` — BUILT 2026-10-10, desk test open (§9): Settings › Cards hides any card but
+- `HIDE-CARDS.md` — BUILT 2026-10-10, desk test passed 2026-10-10 (§9): Settings › Cards hides any card but
   Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaced
   `rewindCard`); the picker only, the feature keeps working; right-click a name in the picker
   › Hide from picker. §8 is the as-built record. It is also Hop in's Rulez gate (§6.2).
