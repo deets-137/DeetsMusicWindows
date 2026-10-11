@@ -126,8 +126,9 @@ const emit = () => {
 };
 
 // The full player (full-player.ts, ideas/fullscreen-player.md §10, §12.3) sets these: while it
-// is full no card grows and every strip hides; while Now Playing's right strip is live (Max, at
-// rest) the Fill strips beside it take only their half of the gap (§10.3, split at the middle).
+// is full no card grows and every strip hides; while Now Playing's strips are live (Max, at
+// rest) the Fill strips beside it take only their half of the gap (§10.3, split at the middle),
+// and so does the Queue's top strip under it (its bottom strip, 2026-10-11).
 // Hooks, not an import: the full player imports this module for its motion parts.
 let playerFull: () => boolean = () => false;
 let npRightLive: () => boolean = () => false;
@@ -759,9 +760,10 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
     if (slot !== "queue" || side !== "up" || currentSurface() !== "max") return null;
     if (state?.slot === "queue") return { dir: "up", act: "collapse", reach: "full" };
     if (state) return null; // another card is grown: its own zones are the only live ones
-    // The WHOLE gap, not half of it: Now Playing has no zones, so nothing else claims the
-    // other half and a 6 px target would be needlessly hard to hit.
-    return { dir: "up", act: "grow", reach: "full" };
+    // The WHOLE gap when nothing else claims it (a 6 px target would be needlessly hard to
+    // hit); half of it while Now Playing's own bottom strip (the full player) takes the other
+    // half (2026-10-11).
+    return { dir: "up", act: "grow", reach: npRightLive() ? "half" : "full" };
   }
   const b = beyond(slot, side);
   if (!b) return null;

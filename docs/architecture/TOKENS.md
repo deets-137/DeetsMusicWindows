@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 44 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 571 tokens · overrides: vanilla 4, press 69, ocean 44, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 573 tokens · overrides: vanilla 4, press 69, ocean 44, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -686,6 +686,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--player-art-wait` | `0.25s` | — |  |
 | `--full-wide-w` | `356px` | — |  |
 | `--full-history-w` | `var(--max-stage-w)` | — | The History column right of the cover (Max, his call 2026-10-11): it shows when this width (plus the panel gap) fits beside the cover without making it smaller, and slides in from the right edge in --player-dur. The Queue column's width (his ask, the same day: two columns of different widths made the centered cover feel off center; it was 300px). |
+| `--full-stack-room` | `220px` | — | Stacked (his calls, 2026-10-11): a window taller than wide puts the player across the top and the cards under it, when the band under a full-width cover holds --full-stack-room (about a card title and three rows). --full-stack-band: once stacked, the window must be this much wider than tall before it goes back, so a drag near square does not flicker. |
+| `--full-stack-band` | `24px` | — |  |
 | `--np-band-pad` | `var(--space-4)` | — |  |
 | `--np-band-strength` | `78%` | — |  |
 | `--np-band-sub-strength` | `72%` | — | the subtext on the band: its ink, a little clear |

@@ -730,6 +730,12 @@
      the right edge in --player-dur. The Queue column's width (his ask, the same day: two
      columns of different widths made the centered cover feel off center; it was 300px). */
   --full-history-w:      var(--max-stage-w);
+  /* Stacked (his calls, 2026-10-11): a window taller than wide puts the player across the top
+     and the cards under it, when the band under a full-width cover holds --full-stack-room
+     (about a card title and three rows). --full-stack-band: once stacked, the window must be
+     this much wider than tall before it goes back, so a drag near square does not flicker. */
+  --full-stack-room:     220px;
+  --full-stack-band:     24px;
   --np-band-pad:         var(--space-4);
   --np-band-strength:    78%;
   --np-band-sub-strength: 72%;                /* the subtext on the band: its ink, a little clear */

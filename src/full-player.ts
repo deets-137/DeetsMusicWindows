@@ -101,25 +101,66 @@ const artOf = (panel: HTMLElement) => panel.querySelector<HTMLElement>(".np__art
 const npOf = (panel: HTMLElement) => panel.querySelector<HTMLElement>(".np");
 /** The cards the player covers: every content slot of the composition. */
 const coveredHosts = (): HTMLElement[] =>
-  (opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h);
-
-/** Where the rows go in the card's full box (§7.3). Called with the full layout on and no paint
- *  between: the controls are measured as they sit on the band (stacked, at the cover's width),
- *  and they go under the cover when the space there holds them (rowsPlace, 2026-10-11). The
- *  height is kept as --fp-controls-h, so the halo can center on the cover above them. */
-function placeNow(panel: HTMLElement): RowsPlace {
-  return layoutNow(panel).place;
-}
+  stack && surfaceNow() === "midi" ? [] : (opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h);
 
 /** The room the History column takes from Now Playing now: its width and the panel gap. */
-const historyRoom = (): number => (root.dataset.fpHistory === "on" ? pxToken("--full-history-w") + pxToken("--panel-gap") : 0);
+const historyRoom = (): number => (root.dataset.fpHistory === "on" && !stack ? pxToken("--full-history-w") + pxToken("--panel-gap") : 0);
 
-/** The rows' place, and whether the History column shows (his calls, 2026-10-11: Max only,
- *  when a --full-history-w column fits beside the cover without making it smaller). Both are
- *  read from the card's width WITHOUT the column, so showing it never turns it off again. */
-function layoutNow(panel: HTMLElement): { place: RowsPlace; history: boolean } {
+/** The full player's layout now. */
+interface Layout {
+  place: RowsPlace;
+  /** The side column shows (Max only, his calls 2026-10-11: when a --full-history-w column
+   *  fits beside the cover without making it smaller, or always when stacked). */
+  history: boolean;
+  /** Stacked: the player across the top, the cards in the band under it. */
+  stack: boolean;
+  /** The player's height when stacked (--fp-stack-h). */
+  stackH: number;
+}
+
+// ── stacked (a window taller than wide; his calls, 2026-10-11) ──────────────────
+let stack = false;
+/** Stacked fits now: the window is taller than wide (with --full-stack-band of dead-band once
+ *  on, so a drag near square does not flip it back and forth), and the band left under a
+ *  full-width cover and its controls holds --full-stack-room. Also the player's height then:
+ *  the cover (the full width, less the card's own padding and border), the gap, the controls. */
+function stackNow(panel: HTMLElement, controlsH: number, gap: number): { on: boolean; h: number } {
+  const bento = opts?.bento;
+  if (!bento || !surfaceNow() || !Number.isFinite(controlsH)) return { on: false, h: 0 };
+  const b = rect(bento);
+  const cs = getComputedStyle(panel);
+  const px = (v: string) => parseFloat(v) || 0;
+  const boxW = px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth);
+  const boxH = px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
+  const h = Math.ceil(b.width - boxW + gap + controlsH + boxH);
+  const band = pxToken("--full-stack-band");
+  const tall = stack ? window.innerHeight > window.innerWidth - band : window.innerHeight > window.innerWidth + band;
+  return { on: tall && b.height - h - pxToken("--panel-gap") >= pxToken("--full-stack-room"), h };
+}
+
+/** Put the stacked layout on or off. Midi's two content cards are the cards under the player,
+ *  so they are uncovered while stacked (and covered again after). */
+function setStack(on: boolean, h: number): void {
+  if (h > 0) opts?.bento.style.setProperty("--fp-stack-h", `${h}px`);
+  if (on === stack) return;
+  stack = on;
+  root.toggleAttribute("data-fp-stack", on);
+  diag.log("player:stack", { on, h });
+  if (surfaceNow() === "midi") midiCards().forEach((c) => (on ? uncover(c) : cover(c)));
+  paintZones(); // stacked, the strip over the cards closes the player
+}
+const midiCards = (): HTMLElement[] =>
+  (opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h);
+
+/** Where everything goes in the card's full box. Called with the full layout on and no paint
+ *  between: the controls are measured as they sit on the band (stacked, at the cover's width);
+ *  then stacked (a tall window), or the rows' place (§7.3, rowsPlace) and whether the side
+ *  column fits. The controls' height is kept as --fp-controls-h, so the halo can center on the
+ *  cover above them. The side column is read from the card's width WITHOUT it, so showing it
+ *  never turns it off again. */
+function layoutNow(panel: HTMLElement): Layout {
   const np = npOf(panel);
-  if (!np) return { place: "over", history: false };
+  if (!np) return { place: "over", history: false, stack: false, stackH: 0 };
   const r = rect(np);
   const w = r.width + historyRoom();
   const was = panel.dataset.npRows;
@@ -131,10 +172,14 @@ function layoutNow(panel: HTMLElement): { place: RowsPlace; history: boolean } {
   else delete panel.dataset.npRows;
   if (Number.isFinite(h)) panel.style.setProperty("--fp-controls-h", `${h}px`);
   const gap = parseFloat(getComputedStyle(np).rowGap) || 0;
+  // Stacked: the controls are under the cover by construction, and Max shows its side column
+  // in the band beside the Queue whatever the width.
+  const st = stackNow(panel, h, gap);
+  if (st.on) return { place: "below", history: surfaceNow() === "max" && !!opts?.mountSide, stack: true, stackH: st.h };
   const place = rowsPlace(w, r.height, pxToken("--full-wide-w"), h, gap);
   const side = place === "below" ? Math.min(w, r.height - h - gap) : Math.min(w, r.height);
   const history = surfaceNow() === "max" && !!opts?.mountSide && w - pxToken("--full-history-w") - pxToken("--panel-gap") >= side;
-  return { place, history };
+  return { place, history, stack: false, stackH: st.h };
 }
 
 // ── the side column (Max, a wide card) ──────────────────────────────────────────
@@ -285,12 +330,19 @@ function warmHistory(): void {
  *  2026-10-11): each part slides from its old place to its new one (FLIP: measure, change,
  *  measure, animate the difference away), and the cover moves and scales to its new box.
  *  --player-dur and --player-ease; reduced motion snaps. */
-function slideRows(panel: HTMLElement, place: RowsPlace, history: boolean): void {
+function slideRows(panel: HTMLElement, next: Layout): void {
+  const { place, history } = next;
   const from = panel.dataset.npRows;
   const parts = [...panel.querySelectorAll<HTMLElement>(".np__art, .np__meta, .np__scrub, .np__times, .np__bottom, .np__vol")];
   parts.forEach((p) => p.getAnimations().forEach((a) => a.id === "rows-slide" && a.cancel()));
   const m = motion();
   const before = m ? parts.map(rect) : [];
+  // Stacked on or off moves the Queue and the side column between the side columns and the
+  // band under the player: they slide from their old place too (their size changes at once).
+  const restack = next.stack !== stack;
+  const columns = restack ? [queuePanel(), historyHost()].filter((p): p is HTMLElement => !!p && !!p.offsetParent) : [];
+  const colsBefore = m ? columns.map(rect) : [];
+  setStack(next.stack, next.stackH);
   if (place !== from) {
     panel.dataset.npRows = place;
     diag.log("player:rows", { from: from ?? "", to: place, motion: !!m });
@@ -299,6 +351,14 @@ function slideRows(panel: HTMLElement, place: RowsPlace, history: boolean): void
   const column = history !== (root.dataset.fpHistory === "on") ? setHistory(history, m) : null;
   if (!m) return;
   column?.();
+  columns.forEach((c, i) => {
+    const a = colsBefore[i];
+    const b = rect(c);
+    const dx = a.left - b.left;
+    const dy = a.top - b.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    c.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: m.dur, easing: m.ease }).id = "rows-slide";
+  });
   // The band hides while the parts move, and fades in once they land (styles.css). A newer
   // slide (a drag back across the line) owns the class: `my` keeps an old one from ending it.
   panel.classList.add("is-rows-sliding");
@@ -331,9 +391,11 @@ function apply(on: boolean, place?: RowsPlace, row1?: number): void {
   if (on) {
     if (row1 !== undefined) opts?.bento.style.setProperty("--player-row1", `${row1}px`);
     root.dataset.player = "full";
+    root.toggleAttribute("data-fp-stack", stack);
     if (panel && place) panel.dataset.npRows = place;
   } else {
     delete root.dataset.player;
+    root.removeAttribute("data-fp-stack");
     if (panel) delete panel.dataset.npRows;
     opts?.bento.style.removeProperty("--player-row1");
   }
@@ -429,7 +491,12 @@ export async function openFullPlayer(cause: string): Promise<void> {
     const row1 = surface === "midi" ? from.height : undefined;
     // Measure the full layout once, with no paint between: the rows' place, then the cover box.
     apply(true, undefined, row1);
-    const place = placeNow(panel);
+    // Stacked or not is decided here too (a tall window), before the cover box is measured.
+    const first = layoutNow(panel);
+    stack = first.stack;
+    root.toggleAttribute("data-fp-stack", stack);
+    if (first.stackH > 0) opts?.bento.style.setProperty("--fp-stack-h", `${first.stackH}px`);
+    const place = first.place;
     panel.dataset.npRows = place;
     const box = rect(art).width;
     apply(false);
@@ -530,6 +597,8 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   const end = () => {
     full = false;
     apply(false);
+    stack = false; // the next open decides again
+    opts?.bento.style.removeProperty("--fp-stack-h");
     covered.forEach(uncover);
     watch?.disconnect();
     watch = null;
@@ -623,12 +692,15 @@ function watchSize(panel: HTMLElement): void {
 function refit(panel: HTMLElement): void {
   if (!full) return;
   const art = artOf(panel);
-  const { place, history } = layoutNow(panel);
+  const next = layoutNow(panel);
   const histNow = root.dataset.fpHistory === "on";
   if (busy) {
-    if (panel.dataset.npRows !== place) panel.dataset.npRows = place;
-  } else if (panel.dataset.npRows !== place || history !== histNow) {
-    slideRows(panel, place, history);
+    setStack(next.stack, next.stackH);
+    if (panel.dataset.npRows !== next.place) panel.dataset.npRows = next.place;
+  } else if (panel.dataset.npRows !== next.place || next.history !== histNow || next.stack !== stack) {
+    slideRows(panel, next);
+  } else {
+    setStack(stack, next.stackH); // the same layout: only the player's height follows the window
   }
   if (art) askArt(rect(art).width);
 }
@@ -646,6 +718,8 @@ const zonesOn = (): boolean => fullPlayerAvailable() && setting("cardGrow") && !
 
 function reachOf(side: Side): "half" | "full" | "edge" | null {
   const s = surfaceNow();
+  // Stacked: the gap over the cards closes the player (the card's sides are the window's edges).
+  if (full && stack) return side === "down" ? "full" : null;
   if (s === "midi") {
     if (side === "up") return "full";
     if (side === "down") return full ? "edge" : "full";
@@ -656,6 +730,10 @@ function reachOf(side: Side): "half" | "full" | "edge" | null {
     // Half the gap beside the stage when a Fill strip takes the other half (four-card Max); the
     // whole gap when no Fill strip is there (Layout for Max: 2 or 1 cards, MAX-CARDS.md §4.4).
     if (side === "right") return full ? "edge" : canFill() ? "half" : "full";
+    // The top and the bottom of the resting card open it too (his ask, 2026-10-11). The bottom
+    // gap is the Queue's as well (its grow up over Now Playing): each takes half of it.
+    if (side === "up") return full ? null : "full";
+    if (side === "down") return full ? null : "half";
   }
   return null;
 }

@@ -622,6 +622,24 @@ window too narrow for it puts the Queue back left (it slides there); the flip re
 window is wide again. Shots: `shots/scratch/sidepick.json`. A toast in the top-right corner
 can sit over the column's title in Max (toasts were there before; seen in the shots).
 
+**Stacked, for a tall window (his calls, 2026-10-11).** When the window is taller than wide
+(once on, it must be `--full-stack-band`, 24 px, wider than tall to go back) AND the band left
+under a full-width cover and its controls holds `--full-stack-room` (220 px), the player takes
+the whole width at the top, as tall as the cover and its controls need (`--fp-stack-h`, set by
+`stackNow` in `full-player.ts`), and the cards share the band under it: in Max the Queue and
+the side column (the flip swaps them; the content cards wait covered under the player), in
+Midi its two content cards, uncovered. The second test is his Midi condition ("if there is space
+after a full-width cover") and stops a window that is only a little taller than wide from
+leaving the cards no room. A resize across the line slides the rows and the two columns
+(their size changes at once). Stacked, the strip over the cards closes the player.
+`data-fp-stack` on `<html>`; the grid is in styles.css after the side column's rules. Shots:
+`shots/scratch/stack.json` (Max 1090 × 1880 ↔ 1800 × 1000, Midi 495 × 1300).
+
+**The top and bottom strips at rest (his ask, the same day).** In Max the resting Now Playing
+card also has strips on its top (the whole gap to the title bar) and bottom edges that open
+the full player. The bottom gap is the Queue's too (its grow up over Now Playing): each takes
+half of it (`reachOf` here; `zoneAction` in card-grow.ts).
+
 **The Compass and the toasts while full (his report, 2026-10-11).** Both dodge Now Playing
 (Compass: `keepClearOfNp` in `compass.ts`; toasts: `toast.ts`). While full, Now Playing is the
 view, so in Max the Compass was pushed into the strip right of it (over History, or into a

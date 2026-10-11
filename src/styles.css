@@ -4258,8 +4258,9 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
    Now Playing grows so the cover is as large as the window allows. Nothing here applies at
    rest: every rule hangs on data-player="full" on <html> (or the close square, hidden). The
    card wears data-np-rows: "over" puts the rows on a dark band over the bottom of the cover,
-   "beside" puts them in a column right of it (Max, when the card is --full-rows-w wider than
-   tall, §7.3). The covered cards reuse the grow's classes (is-covering / is-covered). */
+   "below" puts the controls under it (2026-10-11; never beside it). <html> also wears
+   data-fp-history (the side column), data-fp-flip and data-fp-stack (a tall window). The
+   covered cards reuse the grow's classes (is-covering / is-covered). */
 .np__close { display: none; }
 
 /* Midi: the card takes both rows. Row 1 keeps the strip's height (full-player.ts sets
@@ -4309,6 +4310,37 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 :root[data-player="full"][data-surface="max"][data-fp-history="on"] .stage > .panel[data-slot="np"] {
   margin-right: calc(var(--full-history-w) + var(--panel-gap));
 }
+/* Stacked (his calls, 2026-10-11): a window taller than wide, with room under a full-width
+   cover for the cards. The player takes the whole width at the top, as tall as its cover and
+   controls need (--fp-stack-h, set by full-player.ts); the cards share the band under it. Max:
+   the Queue and the side column (a flip swaps them; the covered content cards wait under the
+   player). Midi: its two content cards, uncovered. Written after the rules above and as
+   specific as each, so they win in every Layout for Max and flip state. */
+:root[data-player="full"][data-fp-stack] .bento {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: var(--fp-stack-h, auto) minmax(0, 1fr);
+  grid-template-areas: none;
+}
+:root[data-player="full"][data-surface="midi"][data-fp-stack] .panel[data-slot="np"] { grid-area: 1 / 1 / 2 / 3; }
+:root[data-player="full"][data-surface="max"][data-fp-stack] .stage > .panel[data-slot="np"] {
+  grid-area: 1 / 1 / 2 / 3;
+  margin-right: 0;
+}
+:root[data-player="full"][data-surface="max"][data-fp-stack] .panel:is([data-slot="left"], [data-slot="right"], [data-slot="c"], [data-slot="d"]) {
+  grid-area: 1 / 1 / 2 / 3;
+}
+:root[data-player="full"][data-surface="max"][data-fp-stack]:not([data-fp-flip]) .stage > .panel[data-slot="queue"] { grid-area: 2 / 1 / 3 / 2; }
+:root[data-player="full"][data-surface="max"][data-fp-stack][data-fp-flip] .stage > .panel[data-slot="queue"] {
+  grid-area: 2 / 2 / 3 / 3;
+  justify-self: stretch;
+  width: auto;
+}
+:root[data-player="full"][data-surface="max"][data-fp-stack] .panel.fp-history {
+  grid-area: 2 / 2 / 3 / 3;
+  justify-self: stretch;
+  width: auto;
+}
+:root[data-player="full"][data-surface="max"][data-fp-stack][data-fp-flip] .panel.fp-history { grid-area: 2 / 1 / 3 / 2; }
 
 /* The card's inside. The PANEL is the size container: the card reads its own box as
    100cqw × 100cqh, and --fp-side is the cover's side (the largest square that fits). */
