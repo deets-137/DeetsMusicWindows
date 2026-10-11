@@ -1,0 +1,6 @@
+{
+  "name": "deetsmusic-mcpb",
+  "private": true,
+  "description": "The Claude Desktop extension's shim (docs/integrations/MCP-INSTALL.md). CommonJS: the repo root is an ES module package.",
+  "type": "commonjs"
+}

@@ -1,12 +1,12 @@
 ---
-status: designed
-desk_test: none
-sources: []
+status: built
+desk_test: open
+sources: [crates/mcp-install/src/lib.rs, src-tauri/src/mcp_install.rs, src/mcp-panel.ts, cli/src/main.rs, mcpb/server/index.js, mcpb/manifest.json, scripts/mcpb-pack.mjs, src-tauri/nsis/hooks.nsh]
 updated: 2026-10-11
 ---
 # DeetsMusic — connect AI apps (`mcp_install`)
 
-> **Designed 2026-09-16. Not built. All forks decided 2026-10-11 (§8a–§8c).** The user asked for a Rust module that
+> **Designed 2026-09-16. All forks decided 2026-10-11 (§8a–§8c). BUILT 2026-10-11; §8d is the as-built record, §9 the desk test (open).** The user asked for a Rust module that
 > does the MCP setup for the user, a `deetsmusic mcp install` command that lets the user pick
 > the AI app, and detection of the popular apps. A note from a Claude chat added a Settings screen
 > that calls the same module, restart help, status and removal, a fallback for apps we do not detect,
@@ -301,7 +301,7 @@ Tauri commands: `mcp_detect`, `mcp_connect(client, replaceManual)`, `mcp_disconn
   (or drags it in, or Settings › Extensions › Advanced settings › Install Extension…), and
   Claude Desktop shows its own install screen. A `node` bundle needs no runtime: Node ships
   with Claude Desktop. The directory no longer takes new `.mcpb` listings; a bundle is handed
-  to the user. Source: claude.com/docs/connectors/building/mcpb, the MCPB `MANIFEST.md`.
+  to the user. Source: claude.com/docs/connectors/building/mcpb, the MCPB manifest spec (github.com/modelcontextprotocol/mcpb).
 - **The drift problem of §4.1 has a fix.** The bundle holds no server of ours. It holds a
   shim of about 30 lines of Node that starts `%LOCALAPPDATA%\DeetsMusic\cli\deetsmusic.exe mcp`
   and pipes stdin and stdout. The tools come from the installed exe, so the bundle never goes
@@ -414,13 +414,68 @@ The four apps and how each one connects:
   "DeetsMusic is not installed on this PC", and the user removes it in Claude. **B** leave
   every entry; AGENT-SETUP.md §5 tells the user.
 
-## 9. Desk test (to fill in at build)
+## 8d. As built (2026-10-11)
+> **Part:** built · 2026-10-11 · desk test §9 open
 
-1. From a normal terminal: `deetsmusic mcp status` lists Claude Desktop, Claude Code, VS Code, Codex.
-2. `deetsmusic mcp install claude-desktop`. Open the `LocalCache` file: the entry is there, the other
-   servers are unchanged, the backup exists. Restart Claude Desktop: the DeetsMusic tools show.
-3. Run it again: "already connected", no write.
-4. Change the entry's command to a missing path: status says **Needs repair**. Install repairs it.
-5. `deetsmusic mcp uninstall --all`: every entry is gone, the other servers are unchanged.
-6. The panel: the same steps with the buttons, plus **Restart Claude Desktop**.
-7. A dev build connects as `deetsmusic-dev` and leaves `deetsmusic` alone.
+Where it differs from the design above, this section is the code.
+
+- **`crates/mcp-install/`**: `detect`, `status`, `connect`, `disconnect`, `setup_text`,
+  `client_for_agent`, and the pure edits (`json_set` / `json_remove` / `json_state`,
+  `toml_set` / `toml_remove` / `toml_state`) with 10 unit tests. `npm run check` runs them.
+  `ClientId` has three values: Claude Desktop, Claude Code, and Codex, labelled *Codex and
+  ChatGPT* (fork 9A). `State` has a sixth value, `Extension`: Claude Desktop with no entry in
+  its file (we cannot read Claude's extension list).
+- **Differences from §5:** the crate runs the apps' own commands itself (`run`, with
+  `CREATE_NO_WINDOW`), so the CLI and the app share one runner. `connect` returns
+  `Done`, `OpenBundle`, `AskReplace` or `Failed`, and reads the file again after the command.
+  `cli_path` stays in `settings.rs` (it needs the app's resource folder); `setup_text` moved.
+- **`serde_json` `preserve_order` is now on for the whole app** (the feature unifies across
+  the build). JSON maps keep insertion order instead of sorting. `npm run check` passed with it.
+- **Claude Desktop with an old hand-made entry:** a `Stale` entry of ours is removed from its
+  file before the `.mcpb` opens; a `Manual` one is left alone.
+- **The CLI:** `deetsmusic mcp install`, `status` (also `--json`) and `uninstall`. The entry is
+  `deetsmusic-dev` from a debug build and `deetsmusic-beta` from the beta. A Claude Desktop
+  install from the CLI opens `<install>\mcpb\deetsmusic.mcpb` with Explorer.
+- **Last used:** `serve_mcp` keeps `clientInfo.name` (printable, 64 characters) and sends it as
+  `X-Deets-Client`; `bridge.rs` passes it to `mcp_install::note_agent` on a paired request only.
+- **The `.mcpb`:** `mcpb/manifest.json` (manifest 0.3, `node`, Windows only) and
+  `mcpb/server/index.js`. The shim finds `%LOCALAPPDATA%\DeetsMusic\cli\deetsmusic.exe`, else
+  `where deetsmusic.exe`; it pipes stdio, and answers the not-installed sentence when neither
+  exists. `mcpb/package.json` makes the folder CommonJS (the repo root is an ES module
+  package). `mcpb/icon.png` is the app's 256 px icon. `npm run mcpb:pack` writes
+  `mcpb/dist/deetsmusic.mcpb` with Windows' own tar. `cli:build` and the beta release step run
+  it, because a missing resource fails even `tauri dev`.
+- **The panel:** the `mcpsetup` split row (label, hint, a **Refresh** half), then the `mcpapps`
+  html row (`src/mcp-panel.ts`), then **Copy setup info** (was *Copy setup for*). It looks again
+  on mount, on Refresh, after each press, and on window focus. A New mark on `mcpsetup`.
+- **Uninstall:** `PREUNINSTALL` runs `mcp uninstall --all --quiet` before `DeetsStopCli`, not on
+  `/UPDATE`.
+- **Words chosen inside his forks (for his review):** the state tags *Not connected ·
+  Connected · Needs repair · Set up by hand · Cannot read · Extension*; the tag *Used just now /
+  N min ago / N h ago*; the buttons *Connect · Disconnect · Repair · Replace · Sure? · Install ·
+  Refresh*; the notes in the crate's `next_step` and `disconnect`; the shim's not-installed
+  sentence; the manifest's description and author *Deets*; the row label *Copy setup info*.
+
+## 9. Desk test (open, 2026-10-11)
+
+Run it from the installed app or a normal terminal, **not from a Claude session** (§4.1: the
+Claude MSIX package hides `%APPDATA%` writes). An installer needs `npm run release`, so steps
+1–5 use the debug CLI (entry `deetsmusic-dev`) or the dev app; steps 6–8 need an installed build.
+
+1. `cargo build --manifest-path cli/Cargo.toml`, then `cli\target\debug\deetsmusic.exe mcp status`:
+   Claude Desktop, Claude Code, and Codex and ChatGPT are listed.
+2. `… mcp install claude-code`: `claude mcp list` shows `deetsmusic-dev`. A new Claude Code
+   session in ANY folder has its tools. Run it again: "already connected".
+3. `… mcp install codex`: `~\.codex\config.toml` has `[mcp_servers.deetsmusic-dev]`, the other
+   tables and comments are unchanged, and `config.toml.deetsmusic-backup` exists. Open the
+   ChatGPT desktop app and the Codex app: do both list DeetsMusic's tools? Does ChatGPT need a
+   restart? That decides fork 3's message.
+4. Use DeetsMusic from Claude Code, then open the dev app › Settings › Connections: Claude
+   Code's line says *Used just now*.
+5. `… mcp uninstall claude-code codex`: both entries are gone; nothing else changed.
+6. Installed build: Settings › Connections › **Install** on Claude Desktop. Claude shows its
+   install screen. After Install, a new chat has DeetsMusic's tools, and after one call the line
+   says *Used … ago*.
+7. The panel's **Connect** and **Disconnect** on Claude Code and Codex, with the same checks.
+8. Uninstall DeetsMusic: the Claude Code and Codex entries are gone; Claude Desktop's extension
+   answers "DeetsMusic is not installed on this PC".

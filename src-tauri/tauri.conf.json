@@ -64,6 +64,7 @@
     ],
     "resources": {
       "../cli/dist/deetsmusic.exe": "cli/deetsmusic.exe",
+      "../mcpb/dist/deetsmusic.mcpb": "mcpb/deetsmusic.mcpb",
       "../extension/manifest.json": "extension/manifest.json",
       "../extension/install.html": "extension/install.html",
       "../extension/README.md": "extension/README.md",

@@ -217,10 +217,14 @@ enum Cmd {
         /// The place. Several words are fine: `go sleep timer`.
         target: Vec<String>,
     },
-    /// Serve the operations as MCP tools over stdio (every tool; `--small` for small models).
+    /// Serve the operations as MCP tools over stdio (every tool; `--small` for small models),
+    /// or set DeetsMusic up in the AI apps on this PC: `install`, `status`, `uninstall`.
+    #[command(args_conflicts_with_subcommands = true)]
     Mcp {
         #[arg(long)]
         small: bool,
+        #[command(subcommand)]
+        act: Option<McpAct>,
     },
     /// Replace this beta's library, sign-in and settings with a fresh copy of the full
     /// DeetsMusic's. The beta restarts to take it.
@@ -295,12 +299,38 @@ enum SettingsCmd {
     },
 }
 
+/// `deetsmusic mcp install | status | uninstall` (docs/integrations/MCP-INSTALL.md §1).
+#[derive(Subcommand)]
+enum McpAct {
+    /// Connect DeetsMusic to AI apps: claude-desktop, claude-code, codex. No names: asks.
+    Install {
+        clients: Vec<String>,
+        /// Change an entry named deetsmusic that starts another program.
+        #[arg(long)]
+        replace: bool,
+    },
+    /// One line per AI app found on this PC.
+    Status,
+    /// Remove DeetsMusic from AI apps (names, or `--all`).
+    Uninstall {
+        clients: Vec<String>,
+        #[arg(long)]
+        all: bool,
+        /// No output, and exit 0 (the uninstaller runs it).
+        #[arg(long)]
+        quiet: bool,
+    },
+}
+
 // ── bridge client ─────────────────────────────────────────────────────────────
 
 #[derive(Clone)]
 struct Client {
     base: String,
     token: String,
+    /// The MCP client's own name (`clientInfo.name`), sent so the app can say which AI app
+    /// last used it (MCP-INSTALL.md fork 8B). None from the shell.
+    agent: Option<String>,
 }
 
 #[derive(Debug)]
@@ -356,7 +386,7 @@ fn connect(port: Option<u16>, token: Option<String>) -> Result<Client, Failure> 
                 .and_then(|v| v.get("paired").and_then(Value::as_bool))
                 .unwrap_or(false);
             if ok {
-                return Ok(Client { base, token: t.clone() });
+                return Ok(Client { base, token: t.clone(), agent: None });
             }
         }
     }
@@ -375,7 +405,10 @@ impl Client {
         let url = format!("{}{}", self.base, path);
         // Past the bridge's longest watchdog (90 s: an export), so its 504 arrives first.
         let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(100)).build();
-        let req = agent.request(method, &url).set("Authorization", &format!("Bearer {}", self.token));
+        let mut req = agent.request(method, &url).set("Authorization", &format!("Bearer {}", self.token));
+        if let Some(name) = &self.agent {
+            req = req.set("X-Deets-Client", name);
+        }
         let res = match body {
             Some(b) => req.set("Content-Type", "application/json").send_string(&b.to_string()),
             None => req.call(),
@@ -1220,6 +1253,8 @@ fn serve_mcp(port: Option<u16>, token: Option<String>, small: bool) {
     let stdin = std::io::stdin();
     let mut out = std::io::stdout();
     let mut client: Option<Client> = None;
+    // The AI app's own name from `initialize`: every bridge call carries it (fork 8B).
+    let mut agent: Option<String> = None;
     let reply = |out: &mut std::io::Stdout, id: Value, body: Value| {
         let msg = json!({ "jsonrpc": "2.0", "id": id, "result": body });
         let _ = writeln!(out, "{msg}");
@@ -1234,6 +1269,13 @@ fn serve_mcp(port: Option<u16>, token: Option<String>, small: bool) {
         let id = req.get("id").cloned().unwrap_or(Value::Null);
         let method = s(&req, "method").to_string();
         let params = req.get("params").cloned().unwrap_or(json!({}));
+        if method == "initialize" {
+            agent = params
+                .pointer("/clientInfo/name")
+                .and_then(Value::as_str)
+                .map(|n| n.chars().filter(|c| c.is_ascii_graphic() || *c == ' ').take(64).collect::<String>())
+                .filter(|n| !n.is_empty());
+        }
         match method.as_str() {
             "initialize" => reply(
                 &mut out,
@@ -1253,7 +1295,8 @@ fn serve_mcp(port: Option<u16>, token: Option<String>, small: bool) {
                 let result = match &client {
                     Some(c) => call_tool(c, &name, &args, small),
                     None => match connect(port, token.clone()) {
-                        Ok(c) => {
+                        Ok(mut c) => {
+                            c.agent = agent.clone();
                             let r = call_tool(&c, &name, &args, small);
                             client = Some(c);
                             r
@@ -1276,6 +1319,173 @@ fn serve_mcp(port: Option<u16>, token: Option<String>, small: bool) {
                 let msg = json!({ "jsonrpc": "2.0", "id": id, "error": { "code": -32601, "message": format!("method not found: {other}") } });
                 let _ = writeln!(out, "{msg}");
                 let _ = out.flush();
+            }
+        }
+    }
+}
+
+// ── mcp install | status | uninstall (MCP-INSTALL.md) ────────────────────────
+
+/// Our entry's name: a debug build is `deetsmusic-dev`, so it never replaces the installed
+/// app's entry (fork 4A); the beta CLI is `deetsmusic-beta` (BETA.md §6).
+const ENTRY: &str = if cfg!(feature = "beta") {
+    "deetsmusic-beta"
+} else if cfg!(debug_assertions) {
+    "deetsmusic-dev"
+} else {
+    "deetsmusic"
+};
+
+fn mcp_server() -> mcp_install::Server {
+    let exe = std::env::current_exe().unwrap_or_default();
+    let exe = std::path::PathBuf::from(exe.to_string_lossy().trim_start_matches(r"\\?\"));
+    mcp_install::Server { name: ENTRY.into(), exe }
+}
+
+/// `<install>\mcpb\deetsmusic.mcpb`, beside `<install>\cli\`. Only the installed full app ships
+/// it: its shim starts `%LOCALAPPDATA%\DeetsMusic\cli\deetsmusic.exe` (fork 7A).
+fn mcp_bundle(s: &mcp_install::Server) -> Option<std::path::PathBuf> {
+    if ENTRY != "deetsmusic" {
+        return None;
+    }
+    let p = s.exe.parent()?.parent()?.join("mcpb").join("deetsmusic.mcpb");
+    p.is_file().then_some(p)
+}
+
+fn state_words(st: &mcp_install::State) -> String {
+    use mcp_install::State::*;
+    match st {
+        NotConnected => "not connected".into(),
+        Connected => "connected".into(),
+        Stale { command } => format!("needs repair (points at {command})"),
+        Manual { command } => format!("set up by hand ({command})"),
+        Unreadable(e) => format!("cannot read its settings: {e}"),
+        Extension => "set up through its extension, if installed (Settings › Extensions)".into(),
+    }
+}
+
+fn mcp_setup(act: McpAct, as_json: bool) -> i32 {
+    use mcp_install::{ClientId, Outcome};
+    let s = mcp_server();
+    let found = mcp_install::detect(&s);
+    let parse = |names: &[String]| -> Result<Vec<ClientId>, String> {
+        names.iter().map(|n| ClientId::from_key(n).ok_or_else(|| format!("unknown app: {n} (claude-desktop, claude-code, codex)"))).collect()
+    };
+    match act {
+        McpAct::Status => {
+            if as_json {
+                let rows: Vec<Value> = found
+                    .iter()
+                    .map(|f| json!({ "client": f.id.key(), "label": f.id.label(), "state": f.state.key(), "config": f.config.as_ref().map(|p| p.display().to_string()) }))
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&json!({ "entry": ENTRY, "apps": rows })).unwrap_or_default());
+            } else if found.is_empty() {
+                println!("No AI app found on this PC (Claude Desktop, Claude Code, Codex or ChatGPT).");
+            } else {
+                for f in &found {
+                    println!("{:<20} {}", f.id.label(), state_words(&f.state));
+                }
+            }
+            0
+        }
+        McpAct::Install { clients, replace } => {
+            let ids = if clients.is_empty() {
+                use std::io::IsTerminal;
+                if !std::io::stdin().is_terminal() {
+                    eprintln!("Name the apps: {BIN} mcp install claude-desktop claude-code codex");
+                    return 3;
+                }
+                if found.is_empty() {
+                    println!("No AI app found on this PC (Claude Desktop, Claude Code, Codex or ChatGPT).");
+                    return 0;
+                }
+                println!("{APP} found these AI apps on this PC:");
+                for (i, f) in found.iter().enumerate() {
+                    println!("  {}  {:<20} {}", i + 1, f.id.label(), state_words(&f.state));
+                }
+                print!("Connect which? [all]: ");
+                let _ = std::io::stdout().flush();
+                let mut line = String::new();
+                let _ = std::io::stdin().read_line(&mut line);
+                let picks: Vec<usize> = line.split(|c: char| c == ' ' || c == ',').filter_map(|w| w.trim().parse().ok()).collect();
+                if picks.is_empty() {
+                    found.iter().map(|f| f.id).collect()
+                } else {
+                    picks.into_iter().filter_map(|n| found.get(n.wrapping_sub(1)).map(|f| f.id)).collect()
+                }
+            } else {
+                match parse(&clients) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        eprintln!("{e}");
+                        return 3;
+                    }
+                }
+            };
+            let mut code = 0;
+            for id in ids {
+                match mcp_install::connect(id, &s, replace) {
+                    Outcome::Done(note) => println!("✓ {note}"),
+                    Outcome::OpenBundle(note) => match mcp_bundle(&s) {
+                        Some(p) => match std::process::Command::new("explorer.exe").arg(&p).spawn() {
+                            Ok(_) => println!("→ {note}"),
+                            Err(e) => {
+                                println!("✗ Could not open {}: {e}", p.display());
+                                code = 1;
+                            }
+                        },
+                        None => {
+                            println!("✗ Claude Desktop connects through the installed {APP}'s extension. Use Settings › Connections › Set up the DeetsMusic MCP › Copy setup info.");
+                            code = 1;
+                        }
+                    },
+                    Outcome::AskReplace(q) => {
+                        println!("? {q} Run again with --replace.");
+                        code = 1;
+                    }
+                    Outcome::Failed(e) => {
+                        println!("✗ {}: {e}", id.label());
+                        code = 1;
+                    }
+                }
+            }
+            code
+        }
+        McpAct::Uninstall { clients, all, quiet } => {
+            let ids = if all || clients.is_empty() && quiet {
+                found.iter().map(|f| f.id).collect()
+            } else {
+                match parse(&clients) {
+                    Ok(v) if !v.is_empty() => v,
+                    Ok(_) => {
+                        eprintln!("Name the apps, or pass --all.");
+                        return 3;
+                    }
+                    Err(e) => {
+                        eprintln!("{e}");
+                        return 3;
+                    }
+                }
+            };
+            let mut code = 0;
+            for id in ids {
+                let out = mcp_install::disconnect(id, &s);
+                if quiet {
+                    continue;
+                }
+                match out {
+                    Outcome::Done(note) => println!("✓ {note}"),
+                    Outcome::Failed(e) => {
+                        println!("✗ {}: {e}", id.label());
+                        code = 1;
+                    }
+                    Outcome::OpenBundle(n) | Outcome::AskReplace(n) => println!("{n}"),
+                }
+            }
+            if quiet {
+                0
+            } else {
+                code
             }
         }
     }
@@ -1498,8 +1708,11 @@ fn pull_while_closed() {
 
 fn main() {
     let cli = Cli::parse();
-    if let Cmd::Mcp { small } = cli.cmd {
-        serve_mcp(cli.port, cli.token, small);
+    if let Cmd::Mcp { small, act } = cli.cmd {
+        match act {
+            None => serve_mcp(cli.port, cli.token, small),
+            Some(act) => std::process::exit(mcp_setup(act, cli.json)),
+        }
         return;
     }
     let c = match connect(cli.port, cli.token) {

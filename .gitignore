@@ -36,6 +36,9 @@ src-tauri/.tauri.dev.gen.json
 src-tauri/.tauri.beta.gen.json
 cli/target/
 cli/target-beta/
+# the MCP install crate's own test build (MCP-INSTALL.md §8b), and the packed .mcpb
+crates/mcp-install/target/
+mcpb/dist/
 # deetsmeter (docs/ideas/music-app-comp.md §17): its build and its default run folder
 tools/deetsmeter/target/
 deetsmeter-runs/

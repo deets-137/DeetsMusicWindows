@@ -122,7 +122,26 @@
   !insertmacro DeetsStopCli
 !macroend
 
+; PREUNINSTALL also removes our MCP entry from Claude Code and Codex (MCP-INSTALL.md fork 6A,
+; 2026-10-11), BEFORE the CLI is stopped and deleted: an entry left behind points at a deleted
+; exe, and the AI app then says "server failed to start". Not on /UPDATE: the path stays the
+; same. The CLI removes only an entry of ours (never a hand-made one), and `--quiet` always
+; exits 0, so a failure here never stops the uninstall. Claude Desktop's extension cannot be
+; removed from here; its shim says DeetsMusic is gone.
 !macro NSIS_HOOK_PREUNINSTALL
+  ${If} $UpdateMode <> 1
+    Push $0
+    ${If} ${FileExists} "$INSTDIR\cli\deetsmusic.exe"
+      DetailPrint "Removing ${PRODUCTNAME} from AI apps..."
+      nsExec::Exec '"$INSTDIR\cli\deetsmusic.exe" mcp uninstall --all --quiet'
+      Pop $0
+    ${ElseIf} ${FileExists} "$INSTDIR\cli\deetsmusic-beta.exe"
+      DetailPrint "Removing ${PRODUCTNAME} from AI apps..."
+      nsExec::Exec '"$INSTDIR\cli\deetsmusic-beta.exe" mcp uninstall --all --quiet'
+      Pop $0
+    ${EndIf}
+    Pop $0
+  ${EndIf}
   !insertmacro DeetsStopCli
 !macroend
 

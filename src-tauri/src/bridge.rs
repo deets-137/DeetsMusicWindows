@@ -689,6 +689,12 @@ async fn handle(app: AppHandle, mut req: Request) {
         }
     }
     let token_ok = auth.strip_prefix("Bearer ").map(|t| t.trim() == token).unwrap_or(false);
+    // The MCP CLI names the AI app that drives it; Settings shows when each last did (MCP-INSTALL.md fork 8B).
+    if token_ok {
+        if let Some(agent) = find_header(&req, "X-Deets-Client") {
+            crate::mcp_install::note_agent(&agent);
+        }
+    }
     // An extension Origin pairs only the routes the extension calls (every version, checked
     // 2026-09-29). Any local process or other extension can send that Origin, so it must not
     // open the agent routes: playback, settings, history, rollback (security review).

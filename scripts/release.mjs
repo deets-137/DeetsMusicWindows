@@ -86,7 +86,7 @@ const buildEnv = BETA ? { ...signEnv, DEETSMUSIC_FLAVOR: "beta" } : signEnv;
 console.log(`[release] ${BETA ? "DeetsMusic Beta" : "DeetsMusic"} ${version} · update channel: ${BETA ? "deetsmusic-test" : process.env.DEETSMUSIC_UPDATE_CHANNEL || "deetsmusic"}`);
 const cliExe = BETA ? "deetsmusic-beta.exe" : "deetsmusic.exe";
 if (BETA) {
-  step("cli:build (beta)", "cargo build --release --features beta --manifest-path cli/Cargo.toml --target-dir cli/target-beta && node scripts/cli-dist.mjs --beta");
+  step("cli:build (beta)", "cargo build --release --features beta --manifest-path cli/Cargo.toml --target-dir cli/target-beta && node scripts/cli-dist.mjs --beta && node scripts/mcpb-pack.mjs");
 } else {
   step("cli:build", "npm run cli:build");
 }

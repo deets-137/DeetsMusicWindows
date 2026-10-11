@@ -48,6 +48,7 @@ import { copyLink } from "./copy-link";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import * as frames from "./frames";
 import { enterRows } from "./pop";
+import { mcpPanel, type McpPanel } from "./mcp-panel";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import { rowDrag } from "./row-drag";
 import { registerFinder } from "./find-key";
@@ -187,6 +188,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playback", row: "listendweb" }, // Play a web when a list ends, built 2026-09-29
   { section: "Apple Music", row: "getnewsongs" }, // Get songs from Apple copy, built 2026-09-29
   { section: "Cards" }, // Settings › Cards, which cards the pickers offer, built 2026-10-10 (HIDE-CARDS.md)
+  { section: "Connections", row: "mcpsetup" }, // Set up the DeetsMusic MCP, built 2026-10-11 (MCP-INSTALL.md)
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -757,7 +759,10 @@ function mountSettings(
     return c.on ? `Discord: posts through ${place}` : `Discord: set up, but turned off`;
   };
 
-  let setupClient = "claude-code"; // the app "Copy setup for" copies for
+  let setupClient = "claude-code"; // the app "Copy setup info" copies for
+  // Set up the DeetsMusic MCP (MCP-INSTALL.md §8b): made after the inert return below, so the
+  // Compass's index mount never reads other apps' files.
+  let mcp: McpPanel | null = null;
   let older: OlderVersion[] = []; // Roll back's menu (updater.ts, one request per session)
   let rollTarget = "";
   let alive = true; // the versions request can answer after the card is gone
@@ -1945,7 +1950,7 @@ function mountSettings(
       // Outside programs that drive DeetsMusic: agents (AGENT-SETUP.md), then the browser
       // extension's bridge status and install page (EXTENSION.md).
       title: "Connections",
-      count: 5,
+      count: 6,
       tail: `<div class="set__status" id="set-agent-status">…</div>
         <div class="set__status" id="set-ext-status">Extension bridge off</div>
         <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Extension install guide</span></button>`,
@@ -2001,10 +2006,19 @@ function mountSettings(
             render();
           },
         },
-        // AGENT-SETUP.md: pick the app, then copy its exact setup text.
+        // MCP-INSTALL.md §8b: the AI apps on this PC, each with its own button (src/mcp-panel.ts).
         {
-          kind: "split", id: "setup", label: "Copy setup for",
-          hint: () => "Copies the exact text for that app",
+          kind: "split", id: "mcpsetup", label: "Set up the DeetsMusic MCP",
+          hint: () => "Pick your AI app below and press Connect, then ask it to play something in a new chat",
+          halves: [
+            { type: "action", label: "Refresh", hint: "Looks again for AI apps on this PC", run: () => mcp?.refresh() },
+          ],
+        },
+        { kind: "html", id: "mcpapps", html: () => mcp?.html() ?? "" },
+        // AGENT-SETUP.md: an app the list above does not connect; pick it, then copy its exact text.
+        {
+          kind: "split", id: "setup", label: "Copy setup info",
+          hint: () => "Copies the exact setup text for an AI app the list above does not connect",
           halves: [
             { type: "menu", options: SETUP_CLIENTS, get: () => setupClient, set: (v) => { setupClient = v; render(); } },
             { type: "action", label: "Copy", run: (el) => copyFrom(el, invoke<string>("agent_setup_text", { client: setupClient })) },
@@ -2223,6 +2237,7 @@ function mountSettings(
   ];
 
   if (inert) return { destroy() {}, sections };
+  mcp = mcpPanel(() => render(), () => body);
 
   const byId = (id: string): Row | undefined => sections.flatMap((s) => s.rows).find((r) => r.id === id);
 
@@ -2607,6 +2622,7 @@ function mountSettings(
 
   body.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
+    if (mcp?.click(t)) return; // Set up the DeetsMusic MCP: Connect, Disconnect, Repair, Install
     // A quick panel group (QUICK-SETTINGS.md §12): an open plays its rows in, a fold is instant.
     const qfold = t.closest<HTMLElement>("[data-qfold]")?.dataset.qfold;
     if (qfold !== undefined) {
@@ -3025,6 +3041,7 @@ function mountSettings(
     snapshot: () => scrollSnapshot(body),
     destroy() {
       alive = false;
+      mcp?.dispose();
       unsubStore();
       unsubOwn();
       chips.forEach((c) => c.destroy());

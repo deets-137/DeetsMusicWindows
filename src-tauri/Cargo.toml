@@ -49,6 +49,8 @@ httpdate = "1"
 # gitignored src-tauri/.cargo/config.toml `[patch]` to ../../DeetsAirplay/crates/airplay
 # works, but it churns Cargo.lock — prefer push + bump.)
 deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "6fe2922c83d99658106c78ff68a16e04b53db5c1" }
+# Set up DeetsMusic in the AI apps on this PC; the CLI uses the same crate (MCP-INSTALL.md fork 1A).
+mcp-install = { path = "../crates/mcp-install" }
 tauri-plugin-deep-link = "2"
 url = "2"
 # Decodes a playlist cover's data URL for the cover:// link (PLAYLISTS.md §10.6).

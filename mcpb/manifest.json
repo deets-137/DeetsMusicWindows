@@ -1,0 +1,25 @@
+{
+  "manifest_version": "0.3",
+  "name": "deetsmusic",
+  "display_name": "DeetsMusic",
+  "version": "1.0.0",
+  "description": "Control DeetsMusic, the Apple Music player for Windows: play, queue, search, stations and what is playing.",
+  "long_description": "This extension starts the DeetsMusic command that the DeetsMusic installer put on this PC, so its tools always match your installed DeetsMusic. DeetsMusic must be running (the tray is fine). Nothing leaves your PC: the connection is local only.",
+  "author": { "name": "Deets", "url": "https://deets.solutions/deetsmusic/" },
+  "homepage": "https://deets.solutions/deetsmusic/",
+  "repository": { "type": "git", "url": "https://github.com/deets-137/DeetsMusicWindows" },
+  "license": "MIT",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"]
+    }
+  },
+  "compatibility": {
+    "platforms": ["win32"],
+    "runtimes": { "node": ">=16.0.0" }
+  }
+}

@@ -1,0 +1,14 @@
+[package]
+name = "mcp-install"
+version = "0.1.0"
+edition = "2021"
+description = "Connect DeetsMusic's MCP server to the AI apps on this PC (docs/integrations/MCP-INSTALL.md)."
+
+# A path crate, not a workspace member: cli/ and src-tauri/ each list it by path and keep
+# their own target dirs (MCP-INSTALL.md fork 1A).
+
+[dependencies]
+# preserve_order: a write to another app's file keeps that file's key order (§6.1).
+serde_json = { version = "1", features = ["preserve_order"] }
+# Keeps Codex's comments and layout on a write.
+toml_edit = "0.25"

@@ -2,7 +2,7 @@
 status: guide
 desk_test: none
 sources: []
-updated: 2026-09-18
+updated: 2026-10-11
 ---
 # Control DeetsMusic from an AI app or the command line
 
@@ -19,25 +19,33 @@ switch off and every AI app and the command line get one reply: "Agent control i
 
 ## 2. Connect your AI app
 
-Under **Agent control**, the **Copy setup for** row has one button per app. Click yours. The
-exact text you need is now on the clipboard, with the right file path filled in.
+Open DeetsMusic › the title menu › **Settings…** › **Connections**. Under **Set up the
+DeetsMusic MCP**, DeetsMusic lists the AI apps it found on this PC, one line each, with a
+button.
 
-**Claude Desktop.** Click **Claude Desktop**. Open the file
-`%APPDATA%\Claude\claude_desktop_config.json` (create it if it is missing), paste, save,
-and restart Claude Desktop. Look for the tools icon in a new chat.
+**Claude Desktop.** Press **Install**. Claude Desktop opens and shows its own install screen
+for the DeetsMusic extension. Press **Install** there. Look for DeetsMusic in a new chat's
+tools.
 
-**Claude Code.** Click **Claude Code**. Paste the copied line into a terminal and press
-Enter. Start a new Claude Code session.
+**Claude Code.** Press **Connect**. Start a new Claude Code session.
 
-**Cursor.** Click **Cursor**. Open Cursor › Settings › MCP › Add, or paste into
-`.cursor/mcp.json` in your project, then reload.
+**Codex and ChatGPT.** Press **Connect**. The ChatGPT desktop app reads the same settings as
+Codex, so one entry reaches both. Start a new chat.
 
-**Other apps.** Any app that can run a local MCP server over standard input and output
+Each line shows **Connected** when the entry is in place, and **Used … ago** after the app has
+called DeetsMusic. **Disconnect** removes the entry. **Needs repair** means the entry points at
+a DeetsMusic that is not there any more: press **Repair**. **Set up by hand** means an entry
+named `deetsmusic` starts another program: **Replace** asks before it changes it.
+
+The same works from a terminal: `deetsmusic mcp install` lists the apps and asks which to
+connect; `deetsmusic mcp status` and `deetsmusic mcp uninstall` do the rest.
+
+**Other apps.** For an app the list does not show, use **Copy setup info**: pick the app, press
+**Copy**, and paste the text where that app keeps its MCP servers. **Cursor**: Cursor ›
+Settings › MCP › Add. Any app that can run a local MCP server over standard input and output
 takes the same values: the command is the path to `deetsmusic.exe`, and the argument is `mcp`.
 Choose **Other (Full)** for a large model; it gets every tool. Choose **Other (Small)** for a small
 local model (LM Studio, Ollama); it gets ten simpler tools, with the arguments `mcp --small`.
-
-ChatGPT's desktop app does not run local MCP servers, so it cannot control DeetsMusic.
 
 ## 3. What to say
 
@@ -92,5 +100,6 @@ deetsmusic queue
 | "Only you can turn on …" | Turn that setting on yourself, at the place the message names. |
 | "no bridge running" or a connection error | Start DeetsMusic. It must be running, in the tray is fine. |
 | "not connected to Apple Music" | Sign in from the title menu › Account. |
-| The AI app says the server failed to start | The path in its config points at a file that is not there. Reinstall DeetsMusic, or click **Copy setup for** again and paste the fresh text. |
+| The AI app says the server failed to start | The path in its config points at a file that is not there. Press **Repair** on its line in **Set up the DeetsMusic MCP**, or reinstall DeetsMusic. |
+| Claude Desktop says “DeetsMusic is not installed on this PC” | DeetsMusic was uninstalled. Install it again, or remove the extension in Claude Desktop › Settings › Extensions. |
 | Install or uninstall says a file is in use | Quit the AI app first. It keeps `deetsmusic.exe` open while it runs. |

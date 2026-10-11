@@ -361,7 +361,7 @@ pub async fn autostart_set(on: bool) -> Result<bool, String> {
 /// per-user install path (what a config written on another build should point at).
 /// Tauri's `resource_dir` can carry the `\\?\` extended-length prefix; some MCP clients
 /// fail to launch a command written that way, so the copied text drops it.
-fn cli_path(app: &tauri::AppHandle) -> String {
+pub(crate) fn cli_path(app: &tauri::AppHandle) -> String {
     use tauri::Manager;
     let exe = format!("{}.exe", cli_name());
     if let Ok(dir) = app.path().resource_dir() {
@@ -376,7 +376,7 @@ fn cli_path(app: &tauri::AppHandle) -> String {
 
 /// The CLI's name, which is also the MCP entry's name: DeetsMusic Beta ships its own
 /// `deetsmusic-beta`, which reaches only the beta, so an AI app can hold both (BETA.md §6).
-fn cli_name() -> &'static str {
+pub(crate) fn cli_name() -> &'static str {
     if crate::beta::is_beta() {
         "deetsmusic-beta"
     } else {
@@ -389,22 +389,8 @@ fn cli_name() -> &'static str {
 /// --small` the ten a small local model handles well).
 #[tauri::command]
 pub fn agent_setup_text(client: String, app: tauri::AppHandle) -> String {
-    let path = cli_path(&app);
-    let small = client == "other-small";
-    let json = format!(
-        "{{\n  \"mcpServers\": {{\n    \"{}\": {{\n      \"command\": \"{}\",\n      \"args\": [{}]\n    }}\n  }}\n}}",
-        cli_name(),
-        path.replace('\\', "\\\\"),
-        if small { "\"mcp\", \"--small\"" } else { "\"mcp\"" }
-    );
-    match client.as_str() {
-        // `-s user`: with no scope, Claude Code adds the server to the current folder only
-        // (MCP-INSTALL.md §8a, 2026-10-11).
-        "claude-code" => format!("claude mcp add -s user {} -- \"{path}\" mcp", cli_name()),
-        "claude-desktop" | "cursor" => json,
-        _ if small => format!("Command: {path}\nArguments: mcp --small\n\nAs JSON for an MCP config file:\n{json}"),
-        _ => format!("Command: {path}\nArgument: mcp\n\nAs JSON for an MCP config file:\n{json}"),
-    }
+    // The text lives with the install logic now (crates/mcp-install, MCP-INSTALL.md §8b).
+    mcp_install::setup_text(&client, &mcp_install::Server { name: cli_name().into(), exe: cli_path(&app).into() })
 }
 
 /// The plain-words guide, in the browser.

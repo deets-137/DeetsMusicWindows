@@ -11,8 +11,9 @@ updated: 2026-09-27
 > (§5: library, playlists, folders, queue edits, updates) built 2026-09-14, desk-tested and shipped.**
 > User-facing setup: [AGENT-SETUP.md](AGENT-SETUP.md). **Settings › Connections › Agent control**
 > (default on, `agentControl` in `settings.json`) gates every agent route with a `403` and a
-> plain sentence; the extension's routes are never gated. The card's **Copy setup for** row
-> copies a ready config per client (`agent_setup_text`), with the installed exe path.
+> plain sentence; the extension's routes are never gated. **Set up the DeetsMusic MCP** connects
+> Claude Desktop, Claude Code and Codex / ChatGPT from the card ([MCP-INSTALL.md](MCP-INSTALL.md));
+> **Copy setup info** copies a ready config for any other client (`agent_setup_text`).
 > Code: `src-tauri/src/bridge.rs` (routes + the `ask()` request/reply), `src/np-bus.ts`
 > (`runAgent`, the main-window half), `src/agent-writes.ts` (the writes), `cli/` (the
 > `deetsmusic` binary: CLI + MCP server).
@@ -197,8 +198,16 @@ subset a tool server needs, no SDK. Tools:
 | `diag` | `limit?` (1–300, default 100), `since?`, `tag?`, `flush?` (also write to the log file) | full | the window's live diag ring, oldest first (`GET /diag`, §3); what the app just did, with no flush or restart. CLI: `deetsmusic diag` |
 
 Register in Claude Code: `claude mcp add -s user deetsmusic -- <path>\deetsmusic.exe mcp`. The
-**Copy setup for** menu: Claude Desktop, Claude Code, Cursor, **Other (Full)** → `mcp`;
+**Copy setup info** menu: Claude Desktop, Claude Code, Cursor, **Other (Full)** → `mcp`;
 **Other (Small)** → `mcp --small`.
+
+**Setup verbs (2026-10-11, [MCP-INSTALL.md](MCP-INSTALL.md)).** `deetsmusic mcp install
+[claude-desktop|claude-code|codex…] [--replace]` (no names in a terminal: it lists the apps it
+found and asks), `deetsmusic mcp status` (`--json` too), `deetsmusic mcp uninstall [names…|--all]
+[--quiet]`. `deetsmusic mcp` and `mcp --small` still serve the tools. A debug CLI's entry is
+`deetsmusic-dev`. While it serves, the CLI sends the MCP client's `clientInfo.name` as
+`X-Deets-Client` on each bridge call; the bridge keeps the time per name in memory for the
+panel's *last used* tag.
 
 ### Build + ship
 

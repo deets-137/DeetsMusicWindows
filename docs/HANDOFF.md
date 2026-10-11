@@ -112,6 +112,13 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**Set up the DeetsMusic MCP (2026-10-11, built, committed on `ten-out-of-ten`, his desk test
+open).** Settings › Connections connects Claude Desktop (the `.mcpb`), Claude Code, and Codex and
+ChatGPT; `deetsmusic mcp install|status|uninstall`; *last used*; the uninstall hook.
+MCP-INSTALL.md §8d is the as-built record, §9 the desk test (not from a Claude session). The
+words chosen inside his forks are listed in §8d for his review. AGENT-SETUP.md §2 now describes
+the panel, so it must not reach `main` before the release that ships it.
+
 **Workers pass (2026-10-10, built, committed on `ten-out-of-ten`, two desk tests open).**
 The `db: slow` line with its once-a-minute limit (DB-HEALTH.md §2a): restart the runner, use
 the app a few days with one library sync, then read the lines; they decide the read

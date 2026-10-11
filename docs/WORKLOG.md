@@ -12,6 +12,28 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-11 — The user guide's shape; Set up the DeetsMusic MCP, designed and built (branch `ten-out-of-ten`)
+
+- **The guide (DOCS-ORG.md §13.11, his calls):** static pages committed into DeetsSolutions by
+  the publish (the Song of the Day pattern); search in the page from a generated `search.json`;
+  the Compass gets a Guide group from a bundled copy; `llms.txt` at `/deetsmusic/guide/`; guide
+  pictures copied with the pages (U10). Walkthroughs replay the live web demo in a frame: a
+  still with Play, then *Try it yourself*; a `point` step rings a button with no click; the tray
+  gets a still. Nothing built.
+- **MCP setup, read against the code:** the Claude Code text lacked `-s user` (it connected one
+  folder only): fixed and shipped in `9cde212`. Research (MCP-INSTALL.md §8a): the `.mcpb` is
+  Claude Desktop's one-click path; a Node shim that starts the installed CLI never goes out of
+  date; the ChatGPT desktop app reads Codex's `config.toml`.
+- **His forks:** 7A the `.mcpb`, 8B *last used*, 9A four apps first; 1A 2A 3B 4A 6A (5 moot);
+  inline panel; the row *Set up the DeetsMusic MCP* and its hint.
+- **Built:** `crates/mcp-install/` (10 tests, in `npm run check`), the CLI verbs, `mcp_install.rs`,
+  `src/mcp-panel.ts`, `mcpb/` + `mcpb:pack`, the uninstall hook, the docs. As built:
+  MCP-INSTALL.md §8d. Desk test: §9, for him.
+- **A slip, for the record:** a `python -c "…"` doc edit carried backticks in a double-quoted
+  bash string, and bash ran them as commands (`npm run check`, a CLI build, `explorer.exe`).
+  Nothing was written; the task was stopped. The CLAUDE.md rule (Write and Edit for content,
+  never the shell) covers it: it holds for `python -c` too.
+
 ## 2026-10-11 — deetsmeter: ours profiled on Press, three scenes on both apps (uncommitted, branch `ten-out-of-ten`)
 
 - **His ask:** continue the deetsmeter desk test; "full control" over the CLI and MCP while

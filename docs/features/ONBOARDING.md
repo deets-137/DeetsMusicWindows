@@ -68,6 +68,11 @@ nothing about authoring changed when the box did.
 | Song Credits | the *credited* mark on a writer with no track held | Credited, but DeetsMusic holds no track for it yet | credits.ts `FLAT_MARK` |
 | Compass | a Tab-walked pill (a kind chip, a two-answer row) · the Open / alt halves | Tab moves between these · Enter · Ctrl+Enter | compass.ts |
 | Settings › Connections | Install the browser extension (the action row) | Opens the install page in your browser | settings-card.ts `ext-install` |
+| Settings › Connections (2026-10-11) | Set up the DeetsMusic MCP | Pick your AI app below and press Connect, then ask it to play something in a new chat | settings-card.ts (MCP-INSTALL.md §8b) |
+| Settings › Connections (2026-10-11) | Set up the DeetsMusic MCP › Refresh | Looks again for AI apps on this PC | settings-card.ts |
+| Settings › Connections (2026-10-11) | an app line (Claude Desktop, Claude Code, Codex and ChatGPT) | The entry's command or why its file cannot be read, then “Called DeetsMusic since it started” or “Not used since DeetsMusic started” | mcp-panel.ts |
+| Settings › Connections (2026-10-11) | Connect / Disconnect / Repair / Replace / Sure? / Install | Adds DeetsMusic to the app · Removes DeetsMusic from the app · Points the entry at this DeetsMusic again · This entry starts another program. DeetsMusic asks before it changes it · Replaces the hand-made entry with DeetsMusic’s · Opens the DeetsMusic extension in Claude Desktop, which asks you to install it | mcp-panel.ts |
+| Settings › Connections (2026-10-11) | Copy setup info (was Copy setup for) | Copies the exact setup text for an AI app the list above does not connect | settings-card.ts |
 | Settings › Bugs › My reports | the Refresh button · the Close row · the *New reply* mark | Asks support.deets.solutions for each report's status · Closes the post on the support page · New reply | settings-card.ts |
 | Friends | a friend's box | Listen along — they host a room and you hear what they hear → "They have not added your code yet…" / "They are not online right now" / "They are online but not playing anything" | friends-panel.ts |
 | Friends | Your code | Your friend code. A friend types it to add you — and you must add theirs before either of you sees anything | friends-panel.ts |

@@ -398,7 +398,8 @@ behind both. The dial and the three live ends are only in the panel.
 | Agent changes settings | An agent changing these settings. Agents can never change this row itself | Allow / **Ask** / Off |
 | Agents read play history | Lets a connected agent see what you played, when, and what you skipped | on / off |
 | Agents use the Diary | Lets a connected agent read your Diary and write notes, scores and dates in it. Only you can turn it on | on / **off** |
-| Copy setup for | Copies the exact setup text for that app | Claude Desktop / Claude Code / Cursor / Other (Full) / **Other (Small)** |
+| Set up the DeetsMusic MCP (2026-10-11) | One line per AI app found on this PC with its state and *last used*; its button connects, disconnects, repairs, replaces a hand-made entry, or (Claude Desktop) opens the extension. **Refresh** looks again. No setting: the state is in each app's own file (MCP-INSTALL.md) | Connect / Disconnect / Repair / Replace / Install |
+| Copy setup info | Copies the exact setup text for an AI app the list above does not connect | Claude Desktop / **Claude Code** / Cursor / Other (Full) / Other (Small) |
 | The extension block | Whether the browser bridge and the agent are running | — |
 
 ### Updates

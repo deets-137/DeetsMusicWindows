@@ -19,6 +19,7 @@ mod lock;
 use lock::LockExt;
 mod log;
 mod loudness;
+mod mcp_install;
 mod model;
 mod media;
 mod playlists;
@@ -538,6 +539,9 @@ pub fn run() {
             settings::autostart_set,
             settings::agent_setup_text,
             settings::agent_open_guide,
+            mcp_install::mcp_detect,
+            mcp_install::mcp_connect,
+            mcp_install::mcp_disconnect,
             audio_out::audio_output,
             loudness::loudness_all,
             loudness::loudness_save,

@@ -21,6 +21,8 @@ clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ureq = { version = "2", features = ["json"] }
+# Connect the AI apps on this PC (MCP-INSTALL.md fork 1A: the app calls the same crate).
+mcp-install = { path = "../crates/mcp-install" }
 
 [profile.release]
 opt-level = "s"
