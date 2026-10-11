@@ -5,7 +5,9 @@
 
 import type { Action, Cond, EventId, FactId, Leaf, Rule, RuleTarget, StateRule, Value } from "./rules-eval";
 
-export const SECTIONS = ["Playback", "Time", "Sound", "Look", "Window", "Library", "Sharing", "Sleep"] as const;
+// "The song" holds the facts about the song playing (2026-10-10: the Playback fact list was one
+// column of 18, five labels wrapped); Playback keeps the player's own state.
+export const SECTIONS = ["The song", "Playback", "Time", "Sound", "Look", "Window", "Library", "Sharing", "Sleep"] as const;
 export type Section = (typeof SECTIONS)[number];
 
 export interface Choice {
@@ -109,13 +111,13 @@ const SURFACES: Choice[] = [
 const REPEATS: Choice[] = [{ value: "off", label: "Off" }, { value: "all", label: "All" }, { value: "one", label: "One" }];
 
 export const FACTS: FactWord[] = [
-  { id: "genre", section: "Playback", label: "Genre", kind: "text", suggest: "genre" },
-  { id: "artist", section: "Playback", label: "Artist", kind: "text", suggest: "artist" },
-  { id: "album", section: "Playback", label: "Album", kind: "text", suggest: "album" },
-  { id: "year", section: "Playback", label: "Year", kind: "number" },
+  { id: "genre", section: "The song", label: "Genre", kind: "text", suggest: "genre" },
+  { id: "artist", section: "The song", label: "Artist", kind: "text", suggest: "artist" },
+  { id: "album", section: "The song", label: "Album", kind: "text", suggest: "album" },
+  { id: "year", section: "The song", label: "Year", kind: "number" },
   // RULEZ.md §11: the cover's most colorful color as a word, and its main field light or dark.
   {
-    id: "albumColor", section: "Playback", label: "Album color", kind: "choice",
+    id: "albumColor", section: "The song", label: "Album color", kind: "choice",
     choices: [
       { value: "red", label: "Red" }, { value: "orange", label: "Orange" }, { value: "brown", label: "Brown" },
       { value: "yellow", label: "Yellow" }, { value: "green", label: "Green" }, { value: "teal", label: "Teal" },
@@ -123,8 +125,8 @@ export const FACTS: FactWord[] = [
       { value: "grey", label: "Grey" },
     ],
   },
-  { id: "albumLight", section: "Playback", label: "Album cover light", kind: "bool", yes: "The cover is light", no: "The cover is dark" },
-  { id: "explicit", section: "Playback", label: "Explicit", kind: "bool", yes: "The song is explicit", no: "The song is clean" },
+  { id: "albumLight", section: "The song", label: "Album cover light", kind: "bool", yes: "The cover is light", no: "The cover is dark" },
+  { id: "explicit", section: "The song", label: "Explicit", kind: "bool", yes: "The song is explicit", no: "The song is clean" },
   { id: "playing", section: "Playback", label: "The music is playing", kind: "bool", yes: "The music is playing", no: "The music is paused" },
   { id: "shuffle", section: "Playback", label: "Shuffle", kind: "bool", yes: "Shuffle is on", no: "Shuffle is off" },
   { id: "repeat", section: "Playback", label: "Repeat", kind: "choice", choices: REPEATS },
@@ -136,9 +138,9 @@ export const FACTS: FactWord[] = [
       { value: "artist", label: "An artist" }, { value: "station", label: "A station" },
     ],
   },
-  { id: "loved", section: "Playback", label: "Loved", kind: "bool", yes: "The song is loved", no: "The song is not loved" },
-  { id: "diaryScore", section: "Playback", label: "Diary score", kind: "number" },
-  { id: "plays", section: "Playback", label: "Times played", kind: "number" },
+  { id: "loved", section: "The song", label: "Loved", kind: "bool", yes: "The song is loved", no: "The song is not loved" },
+  { id: "diaryScore", section: "The song", label: "Diary score", kind: "number" },
+  { id: "plays", section: "The song", label: "Times played", kind: "number" },
   { id: "queueLength", section: "Playback", label: "Songs up next", kind: "number" },
   { id: "loaded", section: "Playback", label: "A song is loaded", kind: "bool", yes: "A song is loaded", no: "No song is loaded" },
   { id: "time", section: "Time", label: "Time", kind: "time" },
@@ -543,22 +545,24 @@ export function doWordOf(r: Rule): { word: DoWord; value: Value } | null {
 export const SAYS: Record<string, { act?: string; keep?: string }> = {
   play: { act: "plays" }, pause: { act: "pauses" }, next: { act: "skips ahead" }, prev: { act: "goes back" },
   shuffle: { act: "turns shuffle" }, repeat: { act: "sets repeat to" }, volume: { act: "sets the volume to", keep: "keeps the volume at" },
-  playPlaylist: { act: "plays the playlist" }, playStation: { act: "plays the station" },
+  playPlaylist: { act: "plays the playlist" }, playStation: { act: "plays" }, // the value names the station ("the station X", "your Discovery station")
   preset: { act: "uses EQ preset", keep: "keeps EQ preset" }, bass: { keep: "keeps the bass at" }, mids: { keep: "keeps the mids at" },
   treble: { keep: "keeps the treble at" }, preamp: { keep: "keeps the preamp at" },
   theme: { act: "uses theme", keep: "keeps theme" }, skin: { act: "uses skin", keep: "keeps skin" },
   grow: { act: "grows this card" }, summon: { act: "opens" }, onTop: { keep: "keeps the window on top" },
-  keep: { act: "keeps it from happening" }, growOutside: { keep: "keeps Collapse on outside click" },
+  keep: { act: "keeps it from happening" }, growOutside: { keep: "keeps the outside-press collapse" },
   sharePause: { act: "pauses sharing for an hour", keep: "keeps sharing paused" }, sleepIn: { act: "starts the sleep timer for" },
   note: { act: "shows the note" }, picture: { act: "uses the picture", keep: "keeps the picture" }, playSound: { act: "plays the sound" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
   love: { act: "loves the song" }, diary: { act: "opens the Diary for this album" }, scrobble: { act: "turns scrobbling" },
   shuffleLibrary: { act: "plays the library shuffled" }, openIn: { act: "opens it in" },
-  backgroundMotion: { keep: "keeps Animate backgrounds" }, appearanceMotion: { keep: "keeps Animate look changes" },
-  cardSwapMotion: { keep: "keeps Animate card swaps" }, fancyScrubber: { keep: "keeps Fancy scrubber" },
-  glassFancy: { keep: "keeps Fancy Glass" }, friendsListenAlong: { keep: "keeps Let friends listen along" },
-  friendsRoomInvite: { keep: "keeps Put my room code on my box" }, toasts: { keep: "keeps Show notices at" },
-  webPlayNew: { keep: "keeps Play a web from the song playing" }, webPlayMode: { keep: "keeps a web from the song playing at" },
-  webSkipSeed: { keep: "keeps Skip the song you just heard" }, webSkipSeedAt: { keep: "skips the song you just heard past" },
+  // A rule key reads as a thing DeetsMusic keeps at a value, never as its Settings label
+  // (2026-10-10: "keeps Collapse on outside click off" was the Party recipe's sentence).
+  backgroundMotion: { keep: "keeps background motion" }, appearanceMotion: { keep: "keeps look-change motion" },
+  cardSwapMotion: { keep: "keeps card-swap motion" }, fancyScrubber: { keep: "keeps the fancy scrubber" },
+  glassFancy: { keep: "keeps Fancy Glass" }, friendsListenAlong: { keep: "keeps listen-along for friends" },
+  friendsRoomInvite: { keep: "keeps the room-code invite on my box" }, toasts: { keep: "shows notices for" },
+  webPlayNew: { keep: "keeps a web from the song playing" }, webPlayMode: { keep: "keeps a web from the song playing at" },
+  webSkipSeed: { keep: "keeps skipping the song you just heard" }, webSkipSeedAt: { keep: "skips the song you just heard past" },
 };
 /** Every Do word has its own SAYS phrase (tests/rulez-words.test.ts checks it); the label is only
  *  a fallback, and it goes through `lowerFirst` so a name in it keeps its case. */
@@ -574,8 +578,8 @@ export function doValueText(w: DoWord, v: unknown, lists: Lists): string {
   }
   if (w.id === "playStation") {
     const st = v as { name?: string; id?: string; special?: string } | string;
-    if (typeof st === "string") return labelOf(lists.stations, st);
-    return st?.special === "discovery" ? "your Discovery station" : st?.name ?? st?.id ?? "a station";
+    if (typeof st === "string") return `the station ${labelOf(lists.stations, st)}`;
+    return st?.special === "discovery" ? "your Discovery station" : `the station ${st?.name ?? st?.id ?? "…"}`;
   }
   if (w.id === "openIn") return v === "library" ? "the Library" : "Search";
   const label = labelOf(choicesOf(w, lists), v);

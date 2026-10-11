@@ -2730,7 +2730,9 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   top: calc(-1 * var(--space-1));
   left: 100%; /* touches the menu edge — no hover gap */
   z-index: 1;
+  width: max-content; /* its longest row, not its longest word: an absolute box at left: 100% has no room of its own */
   min-width: var(--menu-min-w);
+  max-width: var(--menu-fly-max-w);
   max-height: calc(100vh - 12px); /* raw: 2× the viewport clamp pad, which is context-menu.ts PAD (6); one number with two homes until PAD reads a token */
   overflow-y: auto;
   padding: var(--space-1);
@@ -4322,6 +4324,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .rulez__part-said { margin: 0; font-size: var(--fs-subtext); color: var(--text); }
 .rulez__name { font-size: var(--fs-text); font-weight: var(--fw-title); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: var(--rulez-name-max-w); }
 .rulez__summary { min-width: 0; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: var(--space-1); }
+.rulez__summary.is-name { color: var(--text); } /* a rule with no name: its sentence is its name (his call, 2026-10-10) */
 /* The sentence's own box: a flex item cannot end in "…" itself, and hint.ts reads this box to
    know it is cut off (the hover box then shows the whole sentence). */
 .rulez__said { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -4366,7 +4369,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   cursor: pointer;
 }
 .rulez__blank:hover { filter: brightness(0.97); }
-.rulez__blank.is-missing { border-style: dashed; color: var(--subtext); background: transparent; }
+.rulez__blank.is-missing, .rulez__blank.is-empty { border-style: dashed; color: var(--subtext); background: transparent; } /* is-empty: an optional prompt in the same clothes (the While line) */
 .rulez__block { display: flex; flex-direction: column; gap: var(--rulez-gap); margin-left: var(--space-2); padding-left: var(--space-3); border-left: var(--rulez-block-line) solid var(--border); }
 .rulez__mark { width: 1em; text-align: center; font-size: var(--fs-subtext); color: var(--subtext); }
 .rulez__mark.is-yes { color: var(--title); }

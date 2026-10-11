@@ -112,6 +112,13 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**Rulez usability fixes (2026-10-10, built, committed on `ten-out-of-ten`, his desk test open).** The While
+row, The song section, flyout widths, the rule-key words, Clean and Party, the recipe copy:
+RULEZ.md §18. His desk test is §18.3; step 6 (Headphones on a real headset) is the open question.
+**Then the three-line row** (When · If / While · Do, the kind from what is filled; Clear rows;
+Delete with Undo; sentence copy; the sentence as the name; a search field in the word menus):
+RULEZ.md §19, his desk test §19.4.
+
 **Pick up here (2026-09-28, next session).** In order:
 0. ~~Desk test: Play a web from the song playing~~ — Claude's run 2026-10-01 passed steps 1–8
    (DESK-TESTS.md §5, the 10-01 run). **Left from that run** (investigated the same day):

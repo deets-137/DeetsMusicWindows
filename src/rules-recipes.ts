@@ -1,5 +1,6 @@
 // Recipes (docs/features/RULEZ.md §4, route 3): rule sets DeetsMusic ships, one switch each.
-// His call, 2026-09-27: all four ship, off, so a user who finds them has a starting point.
+// His call, 2026-09-27: all four ship, off, so a user who finds them has a starting point. The
+// descriptions are user copy, one sentence each in the Tips voice (2026-10-10).
 // Rulez shows a recipe's rules locked under a Recipes divider; Duplicate copies them into your
 // own list to change. Pure: rules.ts adds the rules of the recipes you turned on.
 
@@ -18,7 +19,7 @@ export const RECIPES: Recipe[] = [
   {
     id: "night",
     name: "Night listening",
-    desc: "From 10 PM to 6 AM: the Late night preset and a quieter volume.",
+    desc: "From 10 PM to 6 AM: a softer sound and a quieter volume.",
     rules: [
       {
         id: "recipe:night:0", kind: "state", source: src("night"), on: true, name: "Night listening",
@@ -31,7 +32,7 @@ export const RECIPES: Recipe[] = [
   {
     id: "focus",
     name: "Focus",
-    desc: "While it is on: sharing and listen-along pause, only failures show a notice, and an explicit song is skipped.",
+    desc: "Pauses sharing and shows only failure notices while it is on.",
     rules: [
       {
         // The two Friends switches ride with the sharing ones (his call, 2026-09-27); the hour's
@@ -47,8 +48,17 @@ export const RECIPES: Recipe[] = [
         id: "recipe:focus:2", kind: "state", source: src("focus"), on: true, name: "Focus: failures only",
         while: ALWAYS, set: [{ target: { key: "toasts" }, value: "failures" }], onHand: "next",
       },
+    ],
+  },
+  {
+    // Its own recipe since 2026-10-10: a user who wants a quiet work session does not want songs
+    // skipped (it sat in Focus before).
+    id: "clean",
+    name: "Clean",
+    desc: "Skips explicit songs as they come up.",
+    rules: [
       {
-        id: "recipe:focus:1", kind: "moment", source: src("focus"), on: true, name: "Focus: skip explicit songs",
+        id: "recipe:clean:0", kind: "moment", source: src("clean"), on: true, name: "Clean",
         when: "song.play", card: "*", if: { fact: "explicit", is: true }, do: { next: true },
       },
     ],
@@ -56,7 +66,7 @@ export const RECIPES: Recipe[] = [
   {
     id: "headphones",
     name: "Headphones",
-    desc: "On headphones: the Warm preset. Speakers keep your own pick.",
+    desc: "A warmer sound on headphones; speakers keep your own pick.",
     rules: [
       {
         id: "recipe:headphones:0", kind: "state", source: src("headphones"), on: true, name: "Headphones",
@@ -68,15 +78,13 @@ export const RECIPES: Recipe[] = [
   {
     id: "party",
     name: "Party",
-    desc: "The music never stops: when the queue runs out, your Discovery station plays. A grown card stays open.",
+    // One rule since 2026-10-10: "grown cards stay open" was a window preference with no link to
+    // a party (it had a home here for the cancel event's sake).
+    desc: "When the queue runs out, your Discovery station keeps the music going.",
     rules: [
       {
-        id: "recipe:party:0", kind: "moment", source: src("party"), on: true, name: "Party: keep playing",
+        id: "recipe:party:0", kind: "moment", source: src("party"), on: true, name: "Party",
         when: "queue.end", card: "*", do: { playStation: { special: "discovery" } as never },
-      },
-      {
-        id: "recipe:party:1", kind: "state", source: src("party"), on: true, name: "Party: grown cards stay",
-        while: ALWAYS, set: [{ target: { key: "cardGrowOutside" }, value: false }], onHand: "next",
       },
     ],
   },
@@ -87,7 +95,7 @@ export const RECIPES: Recipe[] = [
     // rule never holds there; a WebView with no battery API has no fact, so it never holds either.
     id: "battery",
     name: "Battery saver",
-    desc: "While the PC is not charging: Fancy Glass off, backgrounds Reduced, no card swap or look change motion.",
+    desc: "Lighter drawing while the PC runs on its battery.",
     rules: [
       {
         id: "recipe:battery:0", kind: "state", source: src("battery"), on: true, name: "Battery saver",
@@ -108,7 +116,7 @@ export const RECIPES: Recipe[] = [
     // station. A start in the tray never plays (rules-app.ts `emitAppOpen`).
     id: "launch",
     name: "Play on launch",
-    desc: "When DeetsMusic opens, the song you left off plays. Not when it starts in the tray.",
+    desc: "Plays where you left off when DeetsMusic opens, not when it starts in the tray.",
     rules: [
       {
         id: "recipe:launch:0", kind: "moment", source: src("launch"), on: true, name: "Play on launch",
@@ -136,7 +144,7 @@ const LIVE_THEMES: [theme: string, light: boolean, words: string[], says: string
 RECIPES.push({
   id: "live",
   name: "Live Theming",
-  desc: "The theme follows the album cover: a light cover picks a light theme, a dark cover a dark one, and its color the nearest of those. With no song playing, your own theme shows. It works best with a GPU: the colors fade on every song.",
+  desc: "The theme follows the album cover: light or dark, warm or cool.",
   rules: LIVE_THEMES.map(([theme, light, words, says], i): Rule => ({
     id: `recipe:live:${i}`, kind: "state", source: src("live"), on: true, name: `Live Theming: ${says}`,
     while: { all: [{ fact: "albumLight", is: light }, { fact: "albumColor", is: words }] },

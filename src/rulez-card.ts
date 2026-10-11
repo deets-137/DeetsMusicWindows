@@ -29,6 +29,7 @@ import { logsHTML, isRuleLine } from "./rulez-logs";
 import { splitPillHTML, splitPick } from "./split-pill";
 import { MENU_CHOSEN, MENU_DIVIDER, openContextMenu, openContextMenuUnder, type ActionItem, type MenuItem } from "./context-menu";
 import { enterRows } from "./pop";
+import { hideHint } from "./hint";
 import { wireListKeys } from "./list-keys";
 import { isDragging, onDragEnd, rowDrag } from "./row-drag";
 import { holdMs } from "./row-order";
@@ -193,7 +194,7 @@ export const rulezCard: CardDef = {
     const nameOf = (id: string): string => {
       const r = mine.find((x) => x.id === id) ?? allRules().find((x) => x.id === id) ?? RECIPES.flatMap((x) => x.rules).find((x) => x.id === id);
       if (!r) return "A rule";
-      if ("user" in r.source) return `"${r.name || "Untitled rule"}"`;
+      if ("user" in r.source) return `"${r.name || sentenceText(r, lists())}"`; // no name: the sentence is the name (his call, 2026-10-10)
       const rec = recipeOf(r);
       if (rec) return `the recipe "${r.name ?? rec.name}"`; // with its part: the Logs view names the rule that ran
       return `Settings › ${builtinOf(r)?.name ?? "a row"}`;
@@ -214,8 +215,52 @@ export const rulezCard: CardDef = {
         .map(({ s, ws }) => ({ label: s, sub: () => ws.map(row) }));
     const k = () => known();
     const chosen = (on: boolean) => (on ? MENU_CHOSEN : undefined);
+    /** A typing field at the top of a word menu (his call, 2026-10-10, RULEZ.md §19): a few
+     *  letters show the rows of every section that hold them, with the section as the note;
+     *  Enter picks the first. A word with a value opens its value rows under the same blank.
+     *  Only the section flyouts are searched (a Clear row or a group stays where it is). */
+    const withSearch = (el: HTMLElement, items: MenuItem[], placeholder: string): MenuItem[] => {
+      type Row = { label: string; note: string; item: MenuItem };
+      const rows: Row[] = [];
+      for (const it of items) {
+        if (!("sub" in it) || !(SECTIONS as readonly string[]).includes(it.label)) continue;
+        const sub = it.sub();
+        if (!Array.isArray(sub)) continue;
+        for (const s of sub) if ("label" in s && !("input" in s) && !("disabled" in s && s.disabled)) rows.push({ label: s.label, note: it.label, item: s });
+      }
+      const find = (q: string): Row[] => {
+        const t = q.toLowerCase();
+        const hits = rows.filter((r) => r.label.toLowerCase().includes(t));
+        return hits.sort((a, b) => Number(!a.label.toLowerCase().startsWith(t)) - Number(!b.label.toLowerCase().startsWith(t)));
+      };
+      const pick = (r: Row) => {
+        if ("run" in r.item) r.item.run();
+        else if ("sub" in r.item) openContextMenuUnder(el, r.item.sub() as MenuItem[]);
+      };
+      return [
+        { input: {
+          placeholder,
+          onSubmit: (v) => { const r = find(v)[0]; if (r) pick(r); },
+          onInput: (v, show) => { const hits = find(v).slice(0, 8); show(hits.length ? hits.map((r): ActionItem => ({ label: r.label, note: r.note, run: () => pick(r) })) : "Nothing here holds that."); },
+        } },
+        ...items,
+      ];
+    };
 
-    /** The When blank: an event by section, or While. */
+    /** A moment rule with no moment: a While rule if it has a condition, else a draft that asks
+     *  for its When again (RULEZ.md §19). */
+    const clearWhen = (r: Rule) =>
+      edit(r.id, "when:clear", (x): Rule => {
+        if (x.kind !== "moment") return x;
+        const base = { id: x.id, source: x.source, on: x.on, name: x.name, desc: x.desc, draft: x.draft };
+        if (rootBlock(x).members.length) {
+          const d = doWordOf(x);
+          const set = d?.word.state ? d.word.state(d.value) : [];
+          return { ...base, kind: "state", while: x.if ?? { all: [] }, set, onHand: "next" } as StateRule;
+        }
+        return { ...x, when: "" as EventId, card: "*" };
+      });
+    /** The When blank: an event by section; a filled one can be cleared. */
     const whenMenu = (r: Rule): MenuItem[] => {
       const reg = k();
       const pick = (when: EventId, at?: number) => {
@@ -226,8 +271,13 @@ export const rulezCard: CardDef = {
         edit(r.id, "when", (x) => {
           const base = { id: x.id, source: x.source, on: x.on, name: x.name, desc: x.desc, draft: x.draft };
           const cond = x.kind === "state" ? x.while : x.if;
-          const keepDo = x.kind === "moment" && !!doWordOf(x) && dosFor({ ...x, when } as MomentRule).some((d) => d.id === doWordOf(x)!.word.id);
-          const m: MomentRule = { ...base, kind: "moment", when, card: x.kind === "moment" ? x.card : "*", if: cond, do: keepDo ? (x as MomentRule).do : ({} as never) };
+          const allowed = (id: string) => dosFor({ ...x, kind: "moment", when } as MomentRule).some((d) => d.id === id);
+          const keepDo = x.kind === "moment" && !!doWordOf(x) && allowed(doWordOf(x)!.word.id);
+          // A While rule's first part comes along as the moment's Do when the word has a When form
+          // ("keeps EQ preset Warm" → "uses EQ preset Warm"; RULEZ.md §19).
+          const part = x.kind === "state" ? stateParts(x.set)[0] : undefined;
+          const carried = part?.word?.moment && allowed(part.word.id) ? part.word.moment(part.value as Value) : undefined;
+          const m: MomentRule = { ...base, kind: "moment", when, card: x.kind === "moment" ? x.card : "*", if: cond, do: keepDo ? (x as MomentRule).do : carried ?? ({} as never) };
           if (when === "clock") m.at = at;
           return m;
         });
@@ -243,18 +293,7 @@ export const rulezCard: CardDef = {
         const off = !reg.events.has(e.id);
         return { label: e.label, disabled: off, badge: chosen(r.kind === "moment" && r.when === e.id), run: () => pick(e.id) };
       });
-      items.push(MENU_DIVIDER, {
-        label: "While a condition holds",
-        badge: chosen(r.kind === "state"),
-        run: () => {
-          edit(r.id, "while", (x): StateRule => ({
-            id: x.id, source: x.source, on: x.on, name: x.name, desc: x.desc, draft: x.draft, kind: "state",
-            while: (x.kind === "state" ? x.while : x.if) ?? { all: [] },
-            set: x.kind === "state" ? x.set : [], onHand: x.kind === "state" ? x.onHand : "next",
-          }));
-          advance(r.id);
-        },
-      });
+      if (r.kind === "moment" && r.when) items.push(MENU_DIVIDER, { label: "Clear the moment", run: () => clearWhen(r) });
       return items;
     };
 
@@ -357,7 +396,7 @@ export const rulezCard: CardDef = {
       });
     const parentPath = (p: number[]) => p.slice(0, -1);
     const lastOf = (p: number[]) => p[p.length - 1];
-    const setLeaf = (r: Rule, path: number[], l: Leaf | null) =>
+    const setLeaf = (r: Rule, path: number[], l: Leaf | null) => {
       editRoot(r, l ? "if:change" : "if:remove", (root) =>
         withBlock(root, parentPath(path), (b) => {
           const members = [...b.members];
@@ -366,9 +405,33 @@ export const rulezCard: CardDef = {
           return { ...b, members };
         }),
       );
+      // The last condition taken off a While draft: it asks for its When again.
+      const now = mine.find((x) => x.id === r.id);
+      if (!l && now && !rootBlock(now).members.length) clearCond(now);
+    };
     const addTo = (r: Rule, path: number[], node: Leaf | ReturnType<typeof fromBlock>) => {
       editRoot(r, "if:add", (root) => withBlock(root, path, (b) => ({ ...b, members: [...b.members, node] })));
-      advance(r.id); // a While draft's condition, then what it keeps
+      // A condition on a rule with no When makes it a While rule (RULEZ.md §19).
+      edit(r.id, "if:add", (x): Rule => (x.kind === "moment" && !x.when ? toState(x) : x));
+      advance(r.id); // then what it does or keeps
+    };
+    /** A moment rule as a While rule: the If becomes the While; a Do with a keep form stays. */
+    const toState = (x: MomentRule): StateRule => {
+      const d = doWordOf(x);
+      return {
+        id: x.id, source: x.source, on: x.on, name: x.name, desc: x.desc, draft: x.draft, kind: "state",
+        while: x.if ?? { all: [] }, set: d?.word.state ? d.word.state(d.value) : [], onHand: "next",
+      };
+    };
+    /** No condition left on a While rule that keeps nothing yet: back to a draft that asks for
+     *  its When (a finished one holds "while it is on"). */
+    const clearCond = (r: Rule) => {
+      editRoot(r, "if:clear", () => ({ kind: "all", members: [] }));
+      edit(r.id, "if:clear", (x): Rule =>
+        x.kind === "state" && !x.set.length
+          ? ({ id: x.id, source: x.source, on: x.on, name: x.name, desc: x.desc, draft: x.draft, kind: "moment", when: "" as EventId, card: "*", do: {} as never } as MomentRule)
+          : x,
+      );
     };
 
     const leafMenu = (r: Rule, path: number[]): MenuItem[] => [
@@ -380,6 +443,7 @@ export const rulezCard: CardDef = {
       ...factMenu((l) => addTo(r, path, l)),
       MENU_DIVIDER,
       { label: "A group inside this one", sub: () => factMenu((l) => addTo(r, path, { all: [l] })) },
+      ...(!path.length && rootBlock(r).members.length ? [MENU_DIVIDER, { label: "Clear every condition", run: () => clearCond(r) } as MenuItem] : []),
     ];
     const KIND_WORDS: Record<BlockKind, string> = { all: "all of these", any: "any of these", none: "none of these" };
     const blockMenu = (r: Rule, path: number[], kind: BlockKind): MenuItem[] => {
@@ -472,9 +536,18 @@ export const rulezCard: CardDef = {
     };
 
     // ── row menus ──
+    /** A draft's live line says which blank it waits for (RULEZ.md §19). */
+    const draftText = (r: Rule): string => {
+      if (r.kind === "state") return "Pick what DeetsMusic keeps while that is true.";
+      if (!r.when && !rootBlock(r).members.length) return "Pick a When, or a While to hold something while it is true.";
+      if (!r.when) return "Pick a When.";
+      return "Pick what DeetsMusic does.";
+    };
     /** Try (route 1), for the locked rows: an open row of yours shows the same answer live. */
     const tryText = (r: Rule): string => {
       const t = tryRule(r.id);
+      // A When row with no condition runs every time: "Would run now" said nothing (2026-10-10).
+      if (t.runs && r.kind === "moment" && !rootBlock(r).members.length) return `Runs every time ${lowerFirst(whenText(r, lists()))}.`;
       if (t.runs) return r.kind === "state" ? "Holds now." : ruleReadsSong(r) ? "Would run for the song playing now." : "Would run now.";
       if (t.leaf) return `Would not run now: "${leafText(t.leaf, lists())}" is not true.`;
       if (t.lostTo) return `Would not run now: ${nameOf(t.lostTo.id)} comes first.`;
@@ -486,8 +559,14 @@ export const rulezCard: CardDef = {
     };
     const copyText = (rules: Rule[]) =>
       void navigator.clipboard.writeText(JSON.stringify(rules.length === 1 ? rules[0] : rules, null, 2)).then(
-        () => toast({ kind: "success", text: rules.length === 1 ? "Rule copied." : `${rules.length} rules copied.` }),
+        () => toast({ kind: "success", text: rules.length === 1 ? "Rule copied. Paste it in another Rulez card." : `${rules.length} rules copied. Paste them in another Rulez card.` }),
         () => toast({ kind: "warn", text: "Couldn't copy the rules." }),
+      );
+    /** The row's copy is words, for a person (his call, 2026-10-10); the header's is JSON, for Paste. */
+    const copySentences = (rules: Rule[]) =>
+      void navigator.clipboard.writeText(rules.map((r) => sentenceText(r, lists())).join("\n")).then(
+        () => toast({ kind: "success", text: rules.length === 1 ? "Sentence copied." : `${rules.length} sentences copied.` }),
+        () => toast({ kind: "warn", text: "Couldn't copy the sentence." }),
       );
     /** Put copies of `rules` at the top of your list (a recipe's Duplicate, Paste, Import). */
     const addCopies = (rules: Rule[], why: string) => {
@@ -505,7 +584,7 @@ export const rulezCard: CardDef = {
           { label: on ? "Turn off" : "Turn on", run: () => setRecipe(rec.id, !on) },
           { label: "Try", disabled: !on, run: () => toast({ kind: "info", text: `${rec.name}: ${rec.rules.map(tryText).join(" ")}` }) },
           { label: "Duplicate into your rules", run: () => addCopies(rec.rules, "recipe:duplicate") },
-          { label: "Copy as text", run: () => copyText(rec.rules) },
+          { label: "Copy the sentences", run: () => copySentences(rec.rules) },
         ];
       }
       if (!("user" in r.source)) {
@@ -537,14 +616,26 @@ export const rulezCard: CardDef = {
         },
         { label: "Move up", disabled: i <= 0, run: move(i - 1) },
         { label: "Move down", disabled: i >= mine.length - 1, run: move(i + 1) },
-        { label: "Copy as text", run: () => copyText([r]) },
+        { label: "Copy the sentence", run: () => copySentences([r]) },
         MENU_DIVIDER,
         {
           label: "Delete",
           run: () => {
+            // The destructive-action rule (his call, 2026-09-25): an action that can be undone
+            // runs at once and offers Undo (TOASTS.md §5).
+            const what = r.name ? `"${r.name}"` : r.draft ? "the draft" : `"${sentenceText(r, lists())}"`;
             mine.splice(i, 1);
             if (openId === r.id) openId = null;
             save("delete");
+            toast({
+              kind: "info",
+              text: `Deleted ${what}.`,
+              actions: [{ label: "Undo", run: () => {
+                mine.splice(Math.min(i, mine.length), 0, r);
+                fresh = r.id;
+                save("delete:undo");
+              } }],
+            });
           },
         },
       );
@@ -603,7 +694,7 @@ export const rulezCard: CardDef = {
       { label: "Import from a file…", run: importFile },
       MENU_DIVIDER,
       { label: "Export your rules to a file", disabled: !mine.length, run: exportFile },
-      { label: "Copy your rules as text", disabled: !mine.length, run: () => copyText(mine) },
+      { label: "Copy your rules for pasting", disabled: !mine.length, run: () => copyText(mine) },
     ];
 
     /** A rule whose picture or sound was deleted from your files (RULEZ.md §5.1). */
@@ -625,7 +716,7 @@ export const rulezCard: CardDef = {
       const open = openId === r.id;
       const idle = ruleIdle(r) ?? (usesGoneFile(r) ? "The file this rule uses is gone." : null);
       // A rule an agent made through the bridge (RULEZ.md §7) says so; you change it like your own.
-      const summary = (r.by === "agent" ? "Made by an AI app. " : "") + (r.draft ? "Finish the sentence to use this rule." : sentenceText(r, L));
+      const summary = (r.by === "agent" ? "Made by an AI app. " : "") + (r.draft ? draftText(r) : sentenceText(r, L));
       const warn = idle && !r.draft && r.on ? `<span class="rulez__warn" aria-hidden="true">${ICON_WARN}</span>` : "";
       const w = wins.get(r.id);
       const winsLine = w && r.on && !r.draft ? `${winsHTML(w.id)}` : "";
@@ -634,8 +725,8 @@ export const rulezCard: CardDef = {
       const note = r.desc ? ` data-hint-note="${esc(r.desc)}"` : "";
       const bar = `<div class="rulez__bar" data-act="open"${note} title="${esc(open ? "Closes this rule" : r.desc ? r.desc : "Opens this rule to change it. Hold, then move, to move it")}">
         <span class="rulez__lead" aria-hidden="true"></span>
-        <span class="rulez__name">${esc(r.name || "Untitled rule")}</span>
-        <span class="rulez__summary">${warn}<span class="rulez__said">${esc(idle && !r.draft && r.on ? idle : summary)}</span></span>
+        ${r.name ? `<span class="rulez__name">${esc(r.name)}</span>` : ""}
+        <span class="rulez__summary${r.name ? "" : " is-name"}">${warn}<span class="rulez__said">${esc(idle && !r.draft && r.on ? idle : summary)}</span></span>
         ${onOffHTML(r.on, r.draft ? "Finish the rule first" : null)}
         ${moreHTML("Turns the rule on or off, copies, moves or deletes it")}
       </div>`;
@@ -706,21 +797,29 @@ export const rulezCard: CardDef = {
     };
 
     // ── drawing: the open row, the sentence ──
-    const blank = (text: string, act: string, hint: string, extra = "", missing = false) =>
-      `<button class="rulez__blank${missing ? " is-missing" : ""}" type="button" data-act="${act}"${extra} title="${esc(hint)}">${esc(text)}</button>`;
+    /** `missing`: a dashed blank the rule needs (`advance` opens it); "empty": the same look for
+     *  an optional prompt (the While line; his call, 2026-10-10: one look for every prompt). */
+    const blank = (text: string, act: string, hint: string, extra = "", missing: boolean | "empty" = false) =>
+      `<button class="rulez__blank${missing === "empty" ? " is-empty" : missing ? " is-missing" : ""}" type="button" data-act="${act}"${extra} title="${esc(hint)}">${esc(text)}</button>`;
 
     const openHTML = (r: Rule, L: Lists): string => {
       const facts = ruleStats().facts;
       const fields = `<div class="rulez__fields">
-        ${blank(r.name || "Untitled rule", "name", "Renames this rule")}
+        ${blank(r.name || "Name this rule", "name", r.name ? "Renames this rule" : "Gives this rule a name")}
         ${blank(r.desc || "Add a description", "desc", "Says what this rule is for, in your words")}
       </div>`;
-      // Line 1: When / While.
+      // Every row has the same three lines (his call, 2026-10-10, RULEZ.md §19): When · While ·
+      // Do. The kind comes from what is filled: a When makes a moment rule (its While is a
+      // condition on the moment, optional); no When makes a While rule (the While is the rule).
+      // Nothing to find and nothing to switch: clearing a line is the way back.
+      // Line 1: When. Dashed only while the rule has neither a moment nor a condition.
+      const root = rootBlock(r);
+      const hasCond = root.members.length > 0;
       let when: string;
-      if (r.kind === "state") when = `<span class="rulez__word">While</span>${blank("…", "when", "Picks what starts this rule, or keeps While")}`;
+      if (r.kind === "state") when = `<span class="rulez__word">When</span>${blank("what happens?", "when", "Picks a moment for this rule to run at; with none, it holds while the condition is true", "", false)}`;
       else {
         const w = r.when ? whenText(r, L) : "";
-        when = `<span class="rulez__word">When</span>${blank(w ? lowerFirst(w) : "what happens?", "when", "Picks what starts this rule, or While for a rule that holds while its condition is true", "", !r.when)}`;
+        when = `<span class="rulez__word">When</span>${blank(w ? lowerFirst(w) : "what happens?", "when", "Picks what starts this rule; with none, it holds while the If is true", "", !r.when && !hasCond)}`;
         const cardEvent = r.when && ["card.open", "album.open", "artist.open", "grow.outside", "grow.back", "queue.summon", "goto.artist", "goto.album"].includes(r.when);
         if (cardEvent || r.card !== "*") when += `<span class="rulez__word">in</span>${blank(r.card === "*" ? "any card" : L.cards.find((c) => c.value === r.card)?.label ?? r.card, "in", "Picks the card the event must happen in")}`;
       }
@@ -739,19 +838,23 @@ export const rulezCard: CardDef = {
         );
         does = `<span class="rulez__word">DeetsMusic</span>${shown.join("") || blank("keeps what?", "addPart", "Picks what DeetsMusic keeps while the condition holds", "", true)}${parts.length ? `<button class="rulez__add" type="button" data-act="addPart" aria-label="Keep something more" title="Adds another value this rule keeps">${ICON_PLUS}</button>` : ""}`;
       }
-      // Line 3: the conditions (a While rule's condition is its "While" part).
-      const root = rootBlock(r);
-      const complete = r.kind === "state" || (!!r.when && isComplete(r));
-      let cond = "";
-      if (root.members.length) cond = blockHTML(r, root, [], facts, L, r.kind === "state" ? "While" : "only if");
-      else if (r.kind === "state") cond = `<div class="rulez__line">${blank("add the condition…", "addCond", "Picks what must be true while this rule holds", ' data-path=""', true)}</div>`;
-      else if (complete) cond = `<div class="rulez__line">${blank("only if…", "addCond", "Adds a condition that must be true too", ' data-path=""')}</div>`;
-      const live = r.draft ? "Finish the sentence to use this rule." : !r.on ? "This rule is off." : tryText(r);
+      // Line 2: While, in both kinds (his call, 2026-10-10: one word). Its empty prompt wears the
+      // same look as the other prompts but is never "missing": a When rule needs none, and a
+      // rule with no When became a While rule the moment its first condition was picked.
+      const lead = "While";
+      let cond: string;
+      if (hasCond) cond = blockHTML(r, root, [], facts, L, lead);
+      else {
+        // A finished While rule with none holds "while it is on", as its sentence reads.
+        const ask = r.kind === "state" && !r.draft ? "it is on" : "what is true?";
+        const hint = r.kind === "state" ? "Picks what must be true while this rule holds" : "Picks what must be true for the moment to count; with no When, the rule holds while it is true";
+        cond = `<div class="rulez__line"><span class="rulez__word">${lead}</span>${blank(ask, "addCond", hint, ' data-path=""', ask === "it is on" ? false : "empty")}</div>`;
+      }
+      const live = r.draft ? draftText(r) : !r.on ? "This rule is off." : tryText(r);
       return `<div class="rulez__open">${fields}
-        <div class="rulez__line">${r.kind === "state" ? "" : when}</div>
-        ${r.kind === "state" ? `<div class="rulez__line">${when}</div>` : ""}
-        <div class="rulez__line">${does}</div>
+        <div class="rulez__line">${when}</div>
         ${cond}
+        <div class="rulez__line">${does}</div>
         <p class="rulez__live">${esc(live)}</p>
       </div>`;
     };
@@ -917,6 +1020,7 @@ export const rulezCard: CardDef = {
         if (!next) return;
         next.focus({ preventScroll: true });
         next.click();
+        hideHint(); // the focus armed the blank's hint, and the menu now sits where it would show
       });
 
     // ── input ──
@@ -988,20 +1092,20 @@ export const rulezCard: CardDef = {
             ...(r.desc ? [{ label: "Clear", run: () => edit(r.id, "desc", (x) => void delete x.desc) } as MenuItem] : []),
           ]);
         case "when":
-          return openContextMenuUnder(el, whenMenu(r));
+          return openContextMenuUnder(el, withSearch(el, whenMenu(r), "Find a moment"));
         case "in":
           return r.kind === "moment" ? openContextMenuUnder(el, inMenu(r)) : undefined;
         case "do":
-          return r.kind === "moment" ? openContextMenuUnder(el, momentDoMenu(r)) : undefined;
+          return r.kind === "moment" ? openContextMenuUnder(el, withSearch(el, momentDoMenu(r), "Find what to do")) : undefined;
         case "doValue": {
           const d = r.kind === "moment" ? doWordOf(r) : null;
           const items = d ? doValueItems(d.word, (v) => setMoment(r, d.word, v), true) : null;
           return items ? openContextMenuUnder(el, items) : undefined;
         }
         case "addPart":
-          return r.kind === "state" ? openContextMenuUnder(el, stateDoMenu(r, null)) : undefined;
+          return r.kind === "state" ? openContextMenuUnder(el, withSearch(el, stateDoMenu(r, null), "Find what to keep")) : undefined;
         case "part":
-          return r.kind === "state" ? openContextMenuUnder(el, stateDoMenu(r, Number(el.dataset.i))) : undefined;
+          return r.kind === "state" ? openContextMenuUnder(el, withSearch(el, stateDoMenu(r, Number(el.dataset.i)), "Find what to keep")) : undefined;
         case "partValue": {
           if (r.kind !== "state") return;
           const i = Number(el.dataset.i);
@@ -1010,9 +1114,9 @@ export const rulezCard: CardDef = {
           return items ? openContextMenuUnder(el, items) : undefined;
         }
         case "leaf":
-          return openContextMenuUnder(el, leafMenu(r, pathOf(el)));
+          return openContextMenuUnder(el, withSearch(el, leafMenu(r, pathOf(el)), "Find a fact"));
         case "addCond":
-          return openContextMenuUnder(el, addCondMenu(r, pathOf(el)));
+          return openContextMenuUnder(el, withSearch(el, addCondMenu(r, pathOf(el)), "Find a fact"));
         case "block":
           return openContextMenuUnder(el, blockMenu(r, pathOf(el), el.dataset.kind as BlockKind));
       }

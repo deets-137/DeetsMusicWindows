@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-04
+updated: 2026-10-10
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,25 @@ updated: 2026-10-04
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-10 — Rulez usability review, and its fixes (built, committed, branch `ten-out-of-ten`)
+
+His ask: a usability review of Rulez (pro power, beginner friendly) and a read of the recipes.
+One shots walk (`shots/scratch/rulez-ux4.json`). **Findings and his call ("go on all"):**
+RULEZ.md §18. **Built:** the While row is While · Do (the condition first, the way back to When
+in its menu); a new fact section The song; every flyout as wide as its longest row
+(`--menu-fly-max-w`); the rule-key Do words say what they keep, not their Settings label; the
+station sentence; "Runs every time …"; the hint under an auto-opened menu; "Name this rule";
+Clean split out of Focus; Party down to one rule; eight one-sentence recipe descriptions.
+**Desk test:** RULEZ.md §18.3, his. Open from it: Headphones on a headset that reports *Not known*.
+
+**Same sitting, later:** he did not like §18's While row ("not clear how to find or how to
+revert"). His direction: While always present as a line, optional when a When is picked, and the
+other way round. **His calls** (RULEZ.md §19.1): "While" on line 2 in both kinds (he dropped "If" on seeing it); the empty
+line keeps its muted prompt; a Clear row in each blank's menu; When first. Plus the open
+findings: Delete with Undo (1A), the row copies the sentence and the header copies the JSON (2),
+no name = the sentence is the name (3A), a typing field at the top of the When / If / Do menus
+(4A). **Built,** shots check `shots/scratch/rulez-ux5.json` passed. **Desk test:** RULEZ.md §19.4, his.
 
 ## 2026-10-10 — Quick panel folds; both desk tests passed
 

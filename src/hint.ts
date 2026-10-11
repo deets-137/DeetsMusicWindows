@@ -222,6 +222,12 @@ function show(el: HTMLElement, px: number): void {
   showing = true;
 }
 
+/** Takes the hint down now. For code that opens a menu over a control it just focused
+ *  (Rulez's `advance`): the focus armed the hint, and the menu would sit on it. */
+export function hideHint(): void {
+  hide();
+}
+
 function hide(): void {
   if (!anchor && !showing && !timer) return; // nothing is up — a scroll must cost nothing
   clearTimeout(timer);

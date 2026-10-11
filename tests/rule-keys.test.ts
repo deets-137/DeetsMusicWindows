@@ -55,7 +55,7 @@ test("the new keys read back in their Settings rows' words (2026-09-27)", () => 
     doText(battery, NO_LISTS),
     "Fancy Glass: Off, Animate backgrounds: Reduced, Animate card swaps: Off, Animate look changes: Off",
   );
-  assert.match(sentenceText(battery, NO_LISTS), /DeetsMusic keeps Fancy Glass off and keeps Animate backgrounds reduced/);
+  assert.match(sentenceText(battery, NO_LISTS), /DeetsMusic keeps Fancy Glass off and keeps background motion reduced/);
   const quiet = recipe("focus").rules.find((r) => r.id === "recipe:focus:2")!;
   assert.equal(doWordOf(quiet)?.word.id, "toasts");
   assert.equal(doText(quiet, NO_LISTS), "Show notices: Failures");

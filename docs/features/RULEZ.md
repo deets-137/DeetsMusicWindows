@@ -15,8 +15,9 @@ as built (§8), snapshots (§9), FUTURE-SETTINGS as rules (§10), the album colo
 Theming (§11), moving a rule and its hover box (§12), cases (§13) and one row per recipe (§14).
 **Next: a full pass on custom rules (§15)** before any more building on recipes or cases.
 Recipes in Settings and the Cruisin / Pro start pick are designed in §16 (forks open). The
-motion and UX review of 2026-10-06 and its fixes are §17 (where §1–§14 and §17 differ, §17 is
-the code).
+motion and UX review of 2026-10-06 and its fixes are §17; the usability review of 2026-10-10 is
+§18 and the three-line row (When · If / While · Do) that followed it is §19 (where an earlier
+section differs from §19, §19 is the code).
 Designed and built 2026-09-27 on branch `rules-rulez`; §1–§2 were RULES.md §20–§21 until the
 split the same day.
 
@@ -1141,4 +1142,188 @@ Max, Rulez open (Fill).
    artist" once). Open that row: four rules, each with its live line, and **Open in Settings**.
 8. Close Rulez and open it again: the fold is as you left it.
 9. Reduced motion (Windows › Accessibility › Animation effects off): rows open and close at once.
+
+## 18. The usability review, and its fixes (2026-10-10)
+
+> **Part:** built · 2026-10-10 · Claude's shots check passed; his hand test open (§18.3)
+
+His ask: a usability review of Rulez as a whole — ultra powerful for a pro, friendly to a
+beginner — and a read of the recipes for how realistic and logical they are. One walk with the
+shots runner on the web demo (`shots/scratch/rulez-ux4.json`: the first screen, a first rule end
+to end, the If menu, a While rule, three recipes open, both row menus; two looks).
+
+### 18.1 What the review found
+
+- **Works.** The first screen (one line, the recipes, a shut fold); the sentence; the hand-off
+  from one blank to the next; the draft that turns itself On; the live line; who wins.
+- **The While row was two editors for one thing.** Line 1 read "While *[…]*", the Do came
+  second, and a third dashed chip "*add the condition…*" sat below. The "…" blank reopened the
+  When menu.
+- **The Playback fact list was a wall:** 18 facts in one column, five labels wrapped to two or
+  three lines (a 2026-10-06 finding, still open). The cause: an absolute flyout at `left: 100%`
+  has no room of its own, so it shrank to its longest word.
+- **Settings row names as Do words:** "keeps Collapse on outside click off", "keeps Show
+  notices at failures", "keeps Put my room code on my box off".
+- **"Would run now."** on a When row with no condition said nothing.
+- **The hover hint under an auto-opened menu:** `advance` focused the next blank (which arms
+  the keyboard hint) and clicked it, so the menu sat on the hint.
+- **A new rule's name chip read "Untitled rule"** twice (the bar and the chip), never as a prompt.
+- **The recipes.** Focus bundled *Skip explicit songs*, which a quiet work session does not
+  want. Party bundled *Grown cards stay open*, a window preference with no link to a party (it
+  had a home there for the cancel event's sake). Party's sentence read "plays the station your
+  Discovery station" (two nouns: `saysOf` + `doValueText`). Four descriptions were design notes
+  that named settings by label ("Fancy Glass", "Late night preset"); four were cut off on the
+  row. Headphones depends on the output kind reporting headphones or headset (the demo says
+  *Not known*); a USB or Bluetooth headset that reports *unknown* never fires it — open, §18.3.
+- **Left as findings, not built:** no undo on Delete; "Copy as text" gives JSON; a rule is never
+  asked for a name at +; no search over facts in the menus; no grouping of your own rules
+  (§15); no *otherwise* (§13).
+
+### 18.2 His call: all of it, as built
+
+> The While row of this table lasted one sitting: he did not like it (nothing to find, no clear
+> way back), and §19 replaced it the same day. The rest stands.
+
+| Fix | As built |
+|---|---|
+| The While row | **While · Do.** Line 1 is the condition: "While *[what is true?]*" on a draft (dashed, the first blank `advance` opens), "While *[it is on]*" on a finished rule with no condition (its sentence's words; the blank still takes one). The "…" blank and the third chip are gone. The way back to When is the condition menu's last row, **Run at a moment instead ›** (the events by section), the mirror of the When menu's last row *While a condition holds* (`whenMenu(r, true)`). |
+| The fact menus | A new section **The song** (Genre, Artist, Album, Year, Album color, Album cover light, Explicit, Loved, Diary score, Times played) before Playback, which keeps the player's state (The music is playing, Shuffle, Repeat, Volume, Source, Songs up next, A song is loaded). `SECTIONS` in rulez-words.ts; the Do and event lists have no words in it, so their menus do not change. **Every flyout** is now `width: max-content` up to `--menu-fly-max-w` (2.6 × `--menu-min-w`, skin.css): no label wraps. |
+| The rule-key Do words | `SAYS.keep` for each: *keeps the outside-press collapse* off · *shows notices for* failures · *keeps background motion* reduced · *keeps look-change motion* off · *keeps card-swap motion* off · *keeps the fancy scrubber* on · *keeps listen-along for friends* off · *keeps the room-code invite on my box* off · *keeps skipping the song you just heard* on. The menu rows keep their Settings labels, so a user finds them by the row's name. `playStation` says *plays* and its value names the station: *your Discovery station*, *the station Chill*. |
+| The live line | A When row with no condition: "Runs every time the next song plays." |
+| The hint | `advance` calls `hideHint()` (a new export of hint.ts) after it opens the menu. |
+| The name chip | "Name this rule" until named (the bar still says "Untitled rule"); the hint "Gives this rule a name". |
+| The recipes | **Clean** is its own recipe (*Skips explicit songs as they come up.*; `recipe:clean:0`). Focus keeps its two While rules. Party is one rule. The eight descriptions are one sentence each in the Tips voice (rules-recipes.ts). RULES.md §18 still names `recipe:focus:0` and `:2`; `recipe:focus:1` and `recipe:party:1` no longer exist (a store that lists `focus` or `party` as on keeps working: the ids are the recipes'). |
+
+**Decided inside his call (for his review).**
+- The While row's first line is the condition, and `advance` opens it first, then the Do. Before,
+  the Do came first.
+- The way back to When lives in the condition's menu, not on the "While" word (a chip there would
+  make "While" read pressable and "When" not).
+- "Clean" as the name of the explicit-songs recipe; the Party row is just "Party" (its one rule
+  needs no part name).
+- Live Theming's row line is its first sentence only: the GPU note ("the colors fade on every song") and the no-song case went (the open row shows each rule; the fade is the
+  look-change motion, which Battery saver already turns off).
+- The flyout cap (2.6 × the menu minimum, about 317 px) was picked so the longest Do label
+  ("Skip the song you just heard past") fits on one line.
+
+### 18.3 Desk test
+
+Max, Rulez open (Fill).
+1. Press **+**, press the When blank, pick **While a condition holds**. The row reads "While
+   *[what is true?]*" over "DeetsMusic *[keeps what?]*"; the fact menu opens by itself with no
+   hint box under it. Pick The song › Genre › Is › a genre. The Do menu opens by itself. Pick
+   Sound › Use EQ preset › Warm. The rule turns On and reads "While genre is Jazz, DeetsMusic
+   keeps EQ preset Warm."
+2. Press the + at the end of the While line: the last row is **Run at a moment instead ›**. Pick
+   Playback › The next song plays: the row is a When row, the condition kept as its *only if*.
+3. *only if…* › the first flyout says **The song** then Playback; no label in any flyout wraps.
+4. A When rule with no condition reads "Runs every time the next song plays."
+5. Recipes: eight rows, one sentence each, none cut off at 1100 px wide. Open Party: "When the
+   queue runs out, DeetsMusic plays your Discovery station." Open Focus: two rules. Clean: one.
+6. (his, with a USB or Bluetooth headset) Logs › Facts now › Output kind. If it says *Not
+   known*, the Headphones recipe can never hold on that headset: bring it back here.
+
+## 19. The three-line row, and the rest of the review (his calls, 2026-10-10)
+
+> **Part:** built · 2026-10-10 · Claude's shots check passed (`shots/scratch/rulez-ux5.json`); his hand test open (§19.4)
+
+His read of §18's While row: "it doesn't feel clear on how to find or how to revert". His
+direction: **While is always present as a line, optional when a When is picked, and the other
+way round.** The row is three lines for every rule, and the rule's kind comes from what is
+filled. Nothing to find, nothing to switch; clearing a line is the way back.
+
+### 19.1 His calls
+
+| Fork | Choice |
+|---|---|
+| Line 2's word | First pick: "If" under a filled When, "While" when When is empty. **His change, on seeing it: "While" always,** one word. The summary line still says "only if" for a When rule. |
+| The empty optional line, once the rule is complete | **The prompt stays:** "When *what happens?*" / "While *what is true?*". First pick: muted, not dashed. **His change, on seeing it:** the While prompt wears the same dashed look as the other prompts, so it does not stand out (`is-empty`, the `is-missing` clothes; `advance` still opens only a missing blank). |
+| How you clear a line | **A Clear row at the bottom of the blank's menu.** *Clear the moment* under When (a filled one); *Clear every condition* under the + of a filled If / While. One idiom for every blank, keyboard reachable. |
+| Which line a new rule opens on | **When first,** as before; the If line sits under it from the start. |
+| Delete | **1A: the Playlists idiom.** Runs at once; a toast offers Undo; the rule comes back in its place. |
+| Copy | **The row copies the sentence** ("Copy the sentence"; a recipe: "Copy the sentences"). **The header's ⋯ copies the JSON** ("Copy your rules for pasting") beside *Paste a rule* and *Import from a file…*, which already took it. Parsing a sentence back into a rule is not built: a grammar over about 30 events, 45 facts and 45 Do words, for a path the JSON paste and the agent's verb already cover. |
+| A rule with no name | **3A: the sentence is the name.** The bar shows only the sentence (in the text color), no "Untitled rule" anywhere; the Logs and the who-wins line quote the sentence. The open row's name chip still says "Name this rule". |
+| Finding a word | **4A: a typing field at the top of the When, If and Do menus.** A few letters show the rows of every section that hold them, the section as the note; Enter picks the first; a word with a value opens its value rows under the same blank. |
+
+### 19.2 The row, as built
+
+```
+Name this rule   Add a description
+When    [the next song plays]          ← dashed only while the rule has neither a When nor a condition
+While   [Genre] [is Jazz] +            ← one word in both kinds; its empty prompt looks dashed but is optional
+DeetsMusic [uses EQ preset] [Warm]     ← "keeps EQ preset" in a While rule; dashed until picked
+Runs every time the next song plays.
+```
+
+| Filled | The rule (the engine's kind) | Line 2 | The Do |
+|---|---|---|---|
+| When only | a moment rule, every time | the prompt | does |
+| When + While | a moment rule with `if` | a condition on the moment | does |
+| While only | a state rule (`while`) | the rule itself | keeps |
+
+- **The kind follows the lines** (`rulez-card.ts`): a condition picked on a rule with no When
+  makes it a state rule (`toState`: the If becomes the While, a Do with a keep form comes
+  along). *Clear the moment* on a rule with a condition does the same; with none, the rule
+  goes back to a draft that asks for its When. An event picked on a state rule makes it a
+  moment rule (`pickWhen`): the While becomes the If, and the first kept part comes along as
+  the Do when its word has a When form ("keeps EQ preset Warm" → "uses EQ preset Warm").
+  *Clear every condition* (or removing the last one) on a state rule that keeps nothing yet
+  goes back to the draft; one that keeps something reads "While *it is on*", as its sentence.
+- **The draft's live line names the blank it waits for** (`draftText`): "Pick a When, or a While
+  to hold something while it is true." · "Pick what DeetsMusic does." · "Pick what DeetsMusic
+  keeps while that is true." The bar says the same while the rule is a draft.
+- **`advance`** goes to the next dashed blank as before: When, then the Do (a condition picked
+  first: then the Do).
+- **The search field** (`withSearch`): an `InputItem` with `onInput` at the top of the menu,
+  the sections under it. Only the section flyouts are searched (a Clear row or *A group inside
+  this one* stays where it is); disabled words (an event this app does not emit) are left out;
+  a word that starts with the text sorts first; "Nothing here holds that." with no hit. The
+  field takes focus when the menu opens (context-menu.ts does that for a top-level field), so
+  typing starts at once. Placeholders: *Find a moment* · *Find a fact* · *Find what to do* ·
+  *Find what to keep*.
+- **Delete** (`rowMenu`): the rule leaves the list and is saved gone; the toast's Undo splices it
+  back at its index (or the end) and saves again. The toast names the rule, or its sentence,
+  or "the draft" (TOASTS.md §5).
+
+**Decided inside his calls (for his review).**
+- A finished While rule with no condition still exists ("While it is on", the Focus shape): you
+  reach it by adding a condition, picking what to keep, then clearing the condition. A draft
+  cannot hold that shape, so the first screen never offers an "always" rule by accident.
+- The header's copy row reads *Copy your rules for pasting*; its toast says where to paste.
+- The nameless bar's sentence wears the text color, not the subtext color, so it reads as the
+  row's title.
+- The search field widens the menu to `--menu-search-w` (the searching-menu rule), so the When
+  menu is wider than before even before you type.
+
+### 19.3 What §18 said that no longer holds
+
+§18.2's While row (While · Do, the way back in the condition menu) is gone; §18.3's steps 1–2 are
+replaced by §19.4. The rest of §18 (The song, the flyout widths, the rule-key words, the live
+line, the hint, the recipes) stands.
+
+### 19.4 Desk test
+
+Max, Rulez open (Fill).
+1. Press **+**. The row reads "When *[what happens?]*" · "While *[what is true?]*" ·
+   "DeetsMusic *[does what?]*", all three in the same dashed clothes; the live line says "Pick
+   a When, or a While to hold something while it is true." Press the When blank: the menu opens with the cursor in a field. Type
+   `next`, Enter: the When reads *the next song plays*; the Do menu opens with its own field.
+   Type `preset`, Enter, pick Warm. The rule turns On: "Runs every time the next song plays."
+2. Close the row. The bar shows the sentence only, in the text color, with no "Untitled rule".
+3. **+** again. Press the If blank (not When): type `genre`, Enter, Is, type a genre, Enter. The
+   row now reads "When *[what happens?]*" · "While *Genre* *is Jazz*" · "DeetsMusic
+   *[keeps what?]*". Pick Sound › Use EQ preset › Warm. The rule turns On and reads "While genre
+   is Jazz, DeetsMusic keeps EQ preset Warm."
+4. Press its When blank, pick Playback › The next song plays: the Do reads
+   "uses EQ preset Warm", the sentence "When the next song plays, DeetsMusic uses EQ preset
+   Warm, only if genre is Jazz." Press the When blank again: the last row is **Clear the
+   moment**. Pick it: back to the While rule, Do and all.
+5. Press the + after the condition: the last row is **Clear every condition**. On the While rule
+   it leaves "While *it is on*" (the rule keeps something). On a draft it goes back to step 1's
+   row.
+6. ⋯ › **Delete**: the rule leaves; the toast reads *Deleted "While genre is Jazz, DeetsMusic
+   keeps EQ preset Warm."* with **Undo**. Press Undo: the rule is back where it was, On.
+7. ⋯ › **Copy the sentence**: the clipboard holds the sentence. Header ⋯ › **Copy your rules for
+   pasting**, then **Paste a rule**, Ctrl+V, Enter: the rules are added again.
+8. Reduced motion and Esc behave as §17.3 steps 4 and 9.
 
