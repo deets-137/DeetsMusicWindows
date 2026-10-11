@@ -6,6 +6,23 @@
   "place": { "on": "left", "rect": [20, 40, 1040, 1150] },
   "layout": "Max with the default cards (Home, Library, Playlists, Search)",
   "expectCards": ["Home", "Library", "Playlists", "Search"],
+  "skin": "Press",
   "buttons": { "play": ["Play"], "pause": ["Pause"], "next": ["Next"] },
+  "scroll": { "at": [860, 400], "probe": [720, 190, 280, 380], "notches": 5, "every_ms": 30 },
+  "start": {
+    "launch": { "exe": "%LOCALAPPDATA%\\DeetsMusic\\DeetsMusic.exe" },
+    "content": [720, 190, 280, 380],
+    "closeToTray": true
+  },
+  "search": {
+    "open": [{ "do": "click", "at": [850, 672] }],
+    "results": [712, 695, 312, 440],
+    "after": [
+      { "do": "key", "key": "ctrl+a" },
+      { "do": "key", "key": "backspace" },
+      { "do": "wait", "ms": 800 },
+      { "do": "snap", "tag": "after" }
+    ]
+  },
   "version": "(Get-Item \"$env:LOCALAPPDATA\\DeetsMusic\\DeetsMusic.exe\").VersionInfo.ProductVersion"
 }

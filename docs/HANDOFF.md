@@ -129,12 +129,23 @@ RULEZ.md §18. His desk test is §18.3; step 6 (Headphones on a real headset) is
 Delete with Undo; sentence copy; the sentence as the name; a search field in the word menus):
 RULEZ.md §19, his desk test §19.4.
 
-**deetsmeter: the judge (M3), 2026-10-10, built, UNCOMMITTED on `ten-out-of-ten`, his desk test
-open.** `scripts/compare/` (the judge, its rules, two profiles; scenes play, scroll, search,
-start warm and cold), the sensor changes in `tools/deetsmeter/`, `tests/compare-metrics.test.ts`.
-Run on Apple's app only so far; ours needs Max with the default cards, then Claude fills its
-probe positions. The desk test is music-app-comp.md §17.15 (DESK-TESTS.md B21); the as-built
-record §17.12–§17.14. Open fork: how the tool seeks (scene 4).
+**deetsmeter: the judge (M3), committed 2026-10-10 (7be3d55) on `ten-out-of-ten`; desk test
+partly run.** `scripts/compare/` (the judge, its rules, two profiles; scenes play, scroll, search,
+start warm and cold), the sensor in `tools/deetsmeter/`, `tests/compare-metrics.test.ts`.
+2026-10-11: ours is on Max with the default cards and the Press skin (his F6 call); its profile
+blocks are filled (uncommitted), and play, scroll, search and warm start ran on both apps
+(music-app-comp.md §17.16). Left: step 6 (cold, a reboot), his. Found: our Play / Pause button
+changes after our sound starts (§17.16), a fix is his call;
+the desk test is §17.15 (DESK-TESTS.md B21). Open fork: how the tool seeks (scene 4). The
+installed app is on Press now; switch it back to Ocean by hand when the runs are done.
+**Next steps (his plan: restart 2026-10-11 or 12):** (1) Start with Windows is OFF for the
+installed app since 2026-10-11 (set over the MCP), so the reboot leaves it cold. (2) After
+the reboot, sign in, open neither app, and within 15 min run
+`node scripts/compare/run.mjs --scene start --cold` (one pass per app; repeat on later boots
+for n ≥ 3). (3) Turn Start with Windows back On afterwards (`deetsmusic settings set
+startWithWindows on`; it asks in the app). (4) Switch the skin back to Ocean. (5) Then his
+calls: the seek fork (scene 4); the Play / Pause button lag; the 300 ms search delay; a "first
+play after start" row; scroll again on a quiet machine with both monitors on.
 
 **Pick up here (2026-09-28, next session).** In order:
 0. ~~Desk test: Play a web from the song playing~~ — Claude's run 2026-10-01 passed steps 1–8

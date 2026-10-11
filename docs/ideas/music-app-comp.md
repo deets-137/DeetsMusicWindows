@@ -2,7 +2,7 @@
 status: idea
 desk_test: open
 sources: [scripts/compare/run.mjs, scripts/compare/metrics.mjs, tools/deetsmeter/src/audio.rs, tools/deetsmeter/src/main.rs, tools/deetsmeter/src/screen.rs, tools/deetsmeter/src/run.rs, tools/deetsmeter/src/calibrate.rs, scripts/bench.mjs, scripts/heaviness-sample.ps1, scripts/boot-log.mjs, scripts/perf-report.mjs, scripts/archive-installer.mjs, scripts/webview-profile.mjs, scripts/shots.mjs, src/perf.ts, src/frames.ts, src/launch-perf.ts, src/telemetry-on.ts]
-updated: 2026-10-10
+updated: 2026-10-11
 ---
 # DeetsMusic against the Apple Music app for Windows — metrics and methods
 
@@ -281,7 +281,9 @@ doc's §8 by hand, with the date.
   (`docs/guide/marketing.md` is the home). Alternative: never publish; use it to steer our
   own work (the rows where we lose become NEXT-VERSION items).
 - **F6 — Which skin is the default column.** Recommend: the shipped default, with Press as
-  the second column. Alternative: the lightest skin only.
+  the second column. Alternative: the lightest skin only. **DECIDED 2026-10-11:** Press (the
+  shipped default) is the scored column; the profile names it and the judge refuses another
+  skin (§17.16). Ocean as a second column is not run.
 - **F7 — The 60 Hz run.** Recommend: do it; most readers are on 60 Hz laptops. Alternative:
   244 Hz only, with a note.
 - **F8 / F10 — Old versions (§13). DECIDED 2026-10-10:** no old versions. Start at 0.25.4
@@ -1091,10 +1093,78 @@ screen floor on the left monitor) and `deetsmeter calibrate-sound` (the sound fl
 
 | # | Date | Result | Seen |
 |---|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
-| 6 | | | |
+| 1 | 2026-10-11 | done by Claude (his ask: "full control", he was away) | `deetsmusic go` summons a card into the least recently touched slot; filler cards put Home \| Library over Playlists \| Search, the `MAX.defaults` order. The skin was Ocean: switched to Press (F6), Allow pressed over UI Automation. Profile blocks read from one picture (§17.16) |
+| 2 | 2026-10-11 | passed, Claude (his "proceed") | 3 + 5 passes, no FAILED pass, no "busy"; every row NOISY; the numbers are in §17.16 |
+| 3 | 2026-10-11 | passed, Claude | no FAILED pass; the numbers are in §17.16 |
+| 4 | 2026-10-11 | passed, Claude | Apple back on Songs; ours: the field cleared, "Alina Baraz" added to Search › Recent each run |
+| 5 | 2026-10-11 | passed, Claude | both Allows pressed by Claude; "closeToTray is back to on", Settings reads On. Ours came back on Press with the four cards, paused, at 0:00 (was 1:59) |
+| 6 | | not run | needs a reboot; Start with Windows set Off for it 2026-10-11 (turn it back On after) |
+| 7 | 2026-10-11 | passed | 182 pass |
 
+
+### 17.16 The first runs on both apps (2026-10-11)
+
+> **Part:** built · 2026-10-11 — Claude ran steps 1–5 and 7 of §17.15 with the owner
+> away. Uncommitted on `ten-out-of-ten`.
+
+**Ours, read from one picture on Press** (`profiles/deets.json`, the picture is 1040 × 1150, so
+a position is a pixel in it): `scroll` at the Library song list (wheel at 860, 400; probe
+720, 190, 280 × 380); `search` clicks the Search card field (850, 672), the probe is the card
+below it (712, 695, 312 × 440), and `after` clears the field; `start` launches the exe, its
+`content` probe is the Library list, `closeToTray: true`. Ours has no `enter` row (no full
+page). The profile names its `skin`, and the judge refuses a run on another skin: the look
+schedule can switch it back between runs.
+
+**One monitor only.** The main monitor was off; DISPLAY2 (59 Hz) was the only display, so
+every fps here caps at 60. The 140 fps of §17.14 were taken with both monitors on: never
+compare across the two. "busy" passes read 6–11 %.
+
+| scene (3 passes each, same run) | DeetsMusic 0.25.4 | Apple Music 1.1540 |
+|---|---|---|
+| scroll down → settled | 356 ms | 386 ms |
+| scroll down fps · dropped | 60 · 0 % | 60 · 0 % |
+| scroll up → settled | 284 ms (NOISY) | 383 ms |
+| scroll up dropped · p99 | 7.1 % (NOISY) · 30 ms | 0 % · 17 ms |
+| search → screen (from the last key) | 328 ms | 276 ms (NOISY) |
+| search → settled | 348 ms (NOISY) | 508 ms |
+| close → gone | 142 ms | 1,267 ms (NOISY) |
+| warm start → window | 822 ms (NOISY) | 721 ms |
+| warm start → content | 1,034 ms | 5,941 ms |
+| warm start → settled | 1,247 ms | 6,208 ms |
+
+**What the numbers say.**
+- **Search: ours waits 300 ms on purpose.** `DEBOUNCE_MS = 300` in `src/search-card.ts`; the
+  results are up about 28 ms after it fires. Apple shows its suggestions about 50 ms sooner.
+  The delay is a product choice (SEARCH-FIELDS.md names the delay as one of its parts), not
+  a fault; a change is his call.
+- **Scroll up: ours drops frames, Apple does not.** One pass in three (`up` dropped 7 %, p99
+  30 ms); the first run of the sitting, on ours alone right after the skin switch, read
+  30 fps both ways. Run it again on a quiet machine before reading anything into it.
+- **Start: ours shows its songs about 4.9 s before Apple does;** Apple's window is plain
+  black until then. Apple's window itself comes about 100 ms sooner.
+- The first search of a pass sometimes reads no change on both apps (the first Apple call
+  of the run).
+
+**Results:** `scripts/compare/results/2026-10-11T07-06-52.csv` (scroll),
+`…T07-07-30.csv` (search), `…T07-09-22.csv` (start); ours alone: `…T07-02-28`, `…T07-03-20`,
+`…T07-04-39`.
+
+**The play scene, same sitting** (his "proceed"; music played aloud with him away; ours at
+2 % volume, which the session meter still hears). Two runs: 3 passes, then 5 passes. The table
+is the 5-pass run (`…T07-41-19.csv`); every row is NOISY at this n.
+
+| play scene (5 passes, same run) | DeetsMusic 0.25.4 | Apple Music 1.1540 |
+|---|---|---|
+| play → sound | 84 ms | 166 ms |
+| play → screen (the button) | 132 ms | 107 ms |
+| next → sound (n 15) | 487 ms | 791 ms |
+| pause → screen (the button) | 99 ms | 64 ms |
+
+- **Sound: ours is quicker,** Play by about 80 ms and Next by about 300 ms.
+- **Our Play / Pause button changes AFTER our sound starts.** Play: sound at 84 ms, the button
+  at 132 ms. Pause: 99 ms against Apple's 64. The button seems to wait for MusicKit's state
+  event, not for the press. Not traced yet; a fix (show the press at once) is his call.
+- **The first Play after the start scene's restarts took 2.1 s** (the 3-pass run, pass 1;
+  `…T07-39-32.csv`): ours had restarted three times and sat at 0:00. Apple's first was 399 ms.
+  The later passes read 82–100 ms. A first play after a start is its own row to add (a cold
+  MusicKit), not part of this one.

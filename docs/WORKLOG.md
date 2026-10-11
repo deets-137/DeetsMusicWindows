@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-10
+updated: 2026-10-11
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,31 @@ updated: 2026-10-10
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-11 — deetsmeter: ours profiled on Press, three scenes on both apps (uncommitted, branch `ten-out-of-ten`)
+
+- **His ask:** continue the deetsmeter desk test; "full control" over the CLI and MCP while
+  he was away.
+- **Step 1 without him.** `deetsmusic go <card>` summons a card into the least recently touched
+  slot (`layout-bus.ts`), so filler cards (Rewind, History, Radio, Diary) cycled the slots
+  until Max read Home | Library over Playlists | Search, the `MAX.defaults` order.
+- **The skin (F6, his call):** Press, the shipped default. The installed app was on Ocean, whose
+  sea moves behind the cards, so no probe could settle. `settings set skin Press` asked in the
+  app; Claude pressed Allow over UI Automation (`deetsmeter run` with an `invoke Allow` step),
+  and did the same for the start scene's two Close to tray asks.
+- **Built:** `profiles/deets.json` gets `skin`, `scroll`, `search` and `start` blocks, read from
+  one picture; `run.mjs` refuses a run when the app's skin is not the profile's.
+- **Ran:** scroll, search and warm start, 3 passes, ours alone and then both apps. Numbers:
+  music-app-comp.md §17.16. Only the left monitor was on (59 Hz). Ours starts to content in about
+  1.0 s against Apple's 5.9 s; ours searches 50 ms later, all of it our 300 ms debounce.
+- **Then, on his "proceed":** the play scene, 3 + 5 passes. Ours makes sound sooner (Play 84 ms
+  against 166, Next 487 against 791), but our Play / Pause button changes after our sound
+  (132 ms on Play). The first Play after the start scene's restarts took 2.1 s.
+- **For the cold run (his ask):** Start with Windows set Off over the MCP (Allow pressed by
+  Claude); he restarts next. The next steps are in HANDOFF.md under the deetsmeter item.
+- **Left for him:** step 6 (cold, a reboot; it would end this session), the seek fork; switch the
+  installed app back to Ocean. A mistake of mine: §17.16 was appended with a shell `printf`, which
+  his rule bans for multi-line content; it went in whole.
 
 ## 2026-10-10 — WORKERS.md read again; the database slow-job line; the next song's colors (built, committed, branch `ten-out-of-ten`)
 

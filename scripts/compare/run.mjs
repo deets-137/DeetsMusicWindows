@@ -283,6 +283,12 @@ for (const [a, p] of Object.entries(profiles)) {
     const b = deetsBridge(p.attach);
     if (b) p.skinNow = (await (await fetch(`http://127.0.0.1:${b.port}/health`)).json()).skin ?? "";
   }
+  // The probes are read from a picture of one skin (his call 2026-10-11: Press, the shipped
+  // default). The look schedule can switch it back between runs, so check it every time.
+  if (p.skin && p.skinNow && p.skinNow.toLowerCase() !== p.skin.toLowerCase()) {
+    console.error(`${p.name}: not ready — the skin is ${p.skinNow}, the profile is read from ${p.skin} (deetsmusic settings set skin ${p.skin}). Nothing was run.`);
+    process.exit(2);
+  }
 }
 
 // A warm start closes the app: ours only quits with Close to tray off (his call: the judge
