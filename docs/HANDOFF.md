@@ -140,19 +140,32 @@ RULEZ.md §19, his desk test §19.4.
 partly run.** `scripts/compare/` (the judge, its rules, two profiles; scenes play, scroll, search,
 start warm and cold), the sensor in `tools/deetsmeter/`, `tests/compare-metrics.test.ts`.
 2026-10-11: ours is on Max with the default cards and the Press skin (his F6 call); its profile
-blocks are filled (uncommitted), and play, scroll, search and warm start ran on both apps
-(music-app-comp.md §17.16). Left: step 6 (cold, a reboot), his. Found: our Play / Pause button
-changes after our sound starts (§17.16), a fix is his call;
-the desk test is §17.15 (DESK-TESTS.md B21). Open fork: how the tool seeks (scene 4). The
-installed app is on Press now; switch it back to Ocean by hand when the runs are done.
-**Next steps (his plan: restart 2026-10-11 or 12):** (1) Start with Windows is OFF for the
-installed app since 2026-10-11 (set over the MCP), so the reboot leaves it cold. (2) After
-the reboot, sign in, open neither app, and within 15 min run
-`node scripts/compare/run.mjs --scene start --cold` (one pass per app; repeat on later boots
-for n ≥ 3). (3) Turn Start with Windows back On afterwards (`deetsmusic settings set
-startWithWindows on`; it asks in the app). (4) Switch the skin back to Ocean. (5) Then his
-calls: the seek fork (scene 4); the Play / Pause button lag; the 300 ms search delay; a "first
-play after start" row; scroll again on a quiet machine with both monitors on.
+blocks are filled (committed 80cedb6), and play, scroll, search and warm start ran on both apps
+(music-app-comp.md §17.16). Found: our Play / Pause button changes after our sound starts
+(§17.16), a fix is his call; the desk test is §17.15 (DESK-TESTS.md B21). Open fork: how the
+tool seeks (scene 4). The installed app is on Press now, with the look schedule Off (see the
+next steps for the undo).
+**Cold, first boot (2026-10-11 evening):** Apple's pass is in (`results/cold-apple.jsonl`:
+window 1,013 ms, content 6,378 ms). **Ours was lost:** Windows started it at sign-in. The
+warm start scene had relaunched ours from Claude's shell, so that copy ran inside the Claude
+app's MSIX package, and its Start with Windows Off went to a private hive; the real Run key
+kept `DeetsMusic --tray`. Claude deleted the real entry through a WMI-started `reg delete`
+(the copy running now was started by Explorer, so it is real).
+**The trap, for every start scene:** after `--scene start` (warm), ours runs inside the
+Claude package. Quit it and start it from the Start menu before changing a setting that
+writes the registry (Start with Windows, the deep link).
+**Cold, boot 2:** Apple's second pass is in. Ours came up on Glass (the look schedule's day
+look applies at start), so its pass is kept as a Glass row, out of the Press rows; the judge
+now records the skin of each cold pass (music-app-comp.md §17.16). His call: *Change look at*
+is Off, with skin Press and theme Black & Red, until the cold runs are done.
+**Next steps:** (1) Next boot: sign in, open neither app, and within 15 min run
+`node scripts/compare/run.mjs --scene start --cold` (ours needs 3 Press passes, Apple 1 more).
+(2) When the cold runs are done, from a copy of ours started by Explorer: turn Start with
+Windows back On (`deetsmusic settings set startWithWindows on`) and *Change look at* back to
+Sunrise and sunset (`settings set lookSchedule "Sunrise and sunset"`); each asks in the app.
+The schedule then puts back his Glass / Ocean looks. (3) Then his calls: the seek fork
+(scene 4); the Play / Pause button lag; the 300 ms search delay; a "first play after start"
+row; scroll again on a quiet machine with both monitors on.
 
 **Pick up here (2026-09-28, next session).** In order:
 0. ~~Desk test: Play a web from the song playing~~ — Claude's run 2026-10-01 passed steps 1–8

@@ -1098,7 +1098,8 @@ screen floor on the left monitor) and `deetsmeter calibrate-sound` (the sound fl
 | 3 | 2026-10-11 | passed, Claude | no FAILED pass; the numbers are in §17.16 |
 | 4 | 2026-10-11 | passed, Claude | Apple back on Songs; ours: the field cleared, "Alina Baraz" added to Search › Recent each run |
 | 5 | 2026-10-11 | passed, Claude | both Allows pressed by Claude; "closeToTray is back to on", Settings reads On. Ours came back on Press with the four cards, paused, at 0:00 (was 1:59) |
-| 6 | | not run | needs a reboot; Start with Windows set Off for it 2026-10-11 (turn it back On after) |
+| 6 | 2026-10-11 (boot 1) | Apple 1 of 3; ours lost | Apple: window 1,013 ms, content 6,378 ms, settled 6,608 ms. Ours was started by Windows at sign-in: the setting Off had gone to the Claude package's private hive, since the warm start scene relaunched ours from Claude's shell (§17.16). The real Run entry is now deleted. Next boot: both apps |
+| 6 | 2026-10-11 (boot 2) | Apple 2 of 3; ours on the wrong skin | Apple: window 1,028 ms, content 6,516 ms. Ours: window 1,377 ms, content 1,846 ms (busy 12.9 %), but on **Glass**: the look schedule applies the day look at start (§17.16). Kept as a Glass row, out of the Press rows. Look schedule now Off (his call) |
 | 7 | 2026-10-11 | passed | 182 pass |
 
 
@@ -1168,3 +1169,28 @@ is the 5-pass run (`…T07-41-19.csv`); every row is NOISY at this n.
   `…T07-39-32.csv`): ours had restarted three times and sat at 0:00. Apple's first was 399 ms.
   The later passes read 82–100 ms. A first play after a start is its own row to add (a cold
   MusicKit), not part of this one.
+
+**The cold start, boot 1 (2026-10-11 evening).** Apple's pass: window 1,013 ms, content
+6,378 ms, settled 6,608 ms (`…T19-06-32.csv`, `cold-apple.jsonl`). Ours was already running:
+Explorer started it with `--tray` at sign-in. Cause: the warm start scene starts ours again
+FROM the judge, so on this machine the new copy runs inside the Claude app's MSIX package
+(CLAUDE.md › Registry writes from this session are not real). That copy took the Start with
+Windows Off, and its Run-key delete went to the package's private hive. The real entry was
+then deleted through a WMI-started `reg delete`.
+**Rule from it:** after a warm start scene, quit ours and start it from the Start menu before
+any setting that writes the registry. The judge could do this itself (start ours through
+Explorer, not as its own child); that is a fork for him.
+
+**The cold start, boot 2 (same evening).** Both apps were closed, uptime under 1 min. Apple:
+window 1,028 ms, content 6,516 ms, settled 6,741 ms (n 2 now: medians 1,021 / 6,447 /
+6,674 ms). Ours: window 1,377 ms, content 1,846 ms, settled 1,846 ms, busy 12.9 %
+(`…T19-10-49.csv`). **But ours came up on Glass with Lilac:** with the look schedule on, the
+app applies the day look (`daySkin` Glass) at start, whatever the menu pick was; the stored
+`skin` still read Press, `/health` read glass. Glass is the heaviest skin, so this pass is not
+a Press number.
+- **The judge, fixed:** a cold pass of ours reads the skin from `/health` after the start and
+  writes it into its `cold-<app>.jsonl` row; the cold rows count only the passes on the
+  profile's skin, and a pass on another skin prints a line saying so. The boot-2 row was
+  marked `"skin":"glass"` by hand.
+- **His call:** *Change look at* set to Off (and skin Press, theme Black & Red, as in the
+  warm runs) until the cold runs are done; Claude pressed the three Allows.

@@ -12,6 +12,20 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-11 (evening) — deetsmeter cold start, boot 1: Apple in, ours lost to the MSIX hive
+
+- **His ask:** "fresh restart of windows, go ahead with the test." Uptime 2 min.
+- **Apple's cold pass ran:** window 1,013 ms, content 6,378 ms (music-app-comp.md §17.16).
+- **Ours was already running** (Explorer, `--tray`). The warm start scene had relaunched ours
+  from Claude's shell, so that copy lived in the Claude package and its Start with Windows Off
+  went to a private hive. Claude deleted the real Run entry with a WMI-started `reg delete`.
+  The rule and the next steps are in HANDOFF.md under the deetsmeter item.
+- **Boot 2, same evening:** both apps closed. Apple's second pass ran (content 6,516 ms). Ours ran
+  (content 1,846 ms) but on Glass: the look schedule applies the day look at start. The judge now
+  reads each cold pass's skin from `/health` and counts only passes on the profile's skin
+  (`run.mjs`). His call: *Change look at* Off, skin Press, theme Black & Red, until the cold runs
+  are done (three Allows pressed by Claude).
+
 ## 2026-10-11 — The user guide's shape; Set up the DeetsMusic MCP, designed and built (branch `ten-out-of-ten`)
 
 - **The guide (DOCS-ORG.md §13.11, his calls):** static pages committed into DeetsSolutions by

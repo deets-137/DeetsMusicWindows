@@ -363,7 +363,20 @@ for (let n = 0; n < passes; n++) {
     if (scene === "start") {
       const f = (v) => (v == null ? "—" : `${v.toFixed(0)} ms`);
       console.log(`  pass ${n + 1} ${p.name}${busy > IDLE_MAX ? ` (busy ${(busy * 100).toFixed(1)} %)` : ""}: ${cold ? "" : `close → gone ${f(timings.quitMs)} · `}window ${f(timings.windowMs)} · content ${f(timings.contentMs)} · settled ${f(timings.settledMs)}`);
-      if (cold) writeFileSync(coldFile(a), JSON.stringify({ when: new Date().toISOString(), version: p.versionNow, uptime_s: Math.round(os.uptime()), ...timings }) + "\n", { flag: "a" });
+      if (cold) {
+        // A cold start cannot check the skin first (the app is not running). Read the look it
+        // came up in: the look schedule picks the day or night skin at start, whatever the
+        // menu pick was (2026-10-11: ours came up on Glass with the profile on Press).
+        let skin = "";
+        const b = p.bridge ? deetsBridge(p.attach) : null;
+        try {
+          if (b) skin = (await (await fetch(`http://127.0.0.1:${b.port}/health`)).json()).skin ?? "";
+        } catch {}
+        if (p.skin && skin && skin.toLowerCase() !== p.skin.toLowerCase()) {
+          console.log(`  ${p.name} came up on ${skin}, not ${p.skin}: the pass is kept but left out of the ${p.skin} rows`);
+        }
+        writeFileSync(coldFile(a), JSON.stringify({ when: new Date().toISOString(), version: p.versionNow, uptime_s: Math.round(os.uptime()), ...(skin ? { skin } : {}), ...timings }) + "\n", { flag: "a" });
+      }
       continue;
     }
     const line = timings
@@ -398,7 +411,7 @@ for (const a of apps) {
   const rows =
     scene === "start"
       ? cold
-        ? startRows(coldHistory(a), "cold start")
+        ? startRows(coldHistory(a).filter((r) => !profiles[a].skin || r.skin?.toLowerCase() === profiles[a].skin.toLowerCase()), "cold start")
         : startRows(res.passes, "warm start")
       : sceneRows(res.passes, { motion: scene === "scroll" ? ["down", "up"] : [] });
   for (const row of rows) {
