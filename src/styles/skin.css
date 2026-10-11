@@ -345,7 +345,7 @@
   --panel:        var(--canvas);
   --shadow-card:  none;             /* skins add a real card shadow */
   --panel-backdrop: none;           /* frosted-glass blur behind the panel; a skin opts in */
-  --scroller-layer: auto;           /* will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell) */
+  --scroller-layer: auto;           /* will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell). Press and Vanilla opted in too on 2026-10-11, so every skin has the layer: without it a list scrolls on the main thread and drops frames */
   --panel-isolation: auto;          /* isolate: the card is its own stacking context (Glass's painted frost keeps the live frost's stacking) */
 
   /* -- canvas pattern (Press halftone / Cyber grid) --- */
@@ -887,6 +887,7 @@
   --title-underline:        underline;
   --title-underline-w:      1px;
   --title-underline-offset: 5px;
+  --scroller-layer:         scroll-position; /* the lists get their own layer, as every skin now does (his call, 2026-10-11; WORKLOG): without it a list scrolls on the main thread and drops frames */
 }
 
 /* ============================================================
@@ -906,6 +907,7 @@
   --sound-fill-strength: 10%;
   --sound-grid-dash:     2 3;
   --lib-row-h:          49px;       /* taller type stack than the base (measured) */
+  --scroller-layer:     scroll-position; /* the lists get their own layer although the card is opaque (his call, 2026-10-11): without it a list scrolled on the main thread and dropped 24–56 % of frames at 240 Hz, with it 0.2–0.4 % (WORKLOG 2026-10-11); the price is grey text smoothing in the lists at 100 % scaling */
   /* type — a condensed poster grotesque over a spec-sheet mono. Anton
      ships one weight and it is heavy, so --fw-title drops to 400. Plex
      Mono runs wide: the body sizes DOWN a step so a density line still

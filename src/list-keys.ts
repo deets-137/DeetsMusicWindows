@@ -77,10 +77,11 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
     return list[Math.max(0, Math.min(list.length - 1, next))] ?? null;
   };
 
-  const onKey = (e: KeyboardEvent): void => {
+  const onKey = (e: KeyboardEvent): void => handleKey(e, e.target as HTMLElement);
+  /** A key as if it came from `t` (the event's target, or the parked row a stray key revives). */
+  const handleKey = (e: KeyboardEvent, t: HTMLElement): void => {
     if (!KEYS.has(e.key) || e.altKey || e.metaKey || e.ctrlKey) return;
     if (e.key === "F10" && !e.shiftKey) return;
-    const t = e.target as HTMLElement;
     if (t.closest("input, textarea, select, [contenteditable]")) return;
     const row = t.closest<HTMLElement>(o.rows);
     if (row && !scope().contains(row)) return;
@@ -164,14 +165,22 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
   // 2026-09-27 night). A MutationObserver on the page sees every redraw, the card's own and a
   // context menu's that closes; it lives only while armed.
   let last: RowMark | null = null; // the row the keys were on
+  let lastBox: HTMLElement | null = null; // the element that held that row (a windowed list's view)
   let from: RowMark | null = null; // the row a key drilled away from (a Diary tile → its entry)
   let watch: MutationObserver | null = null;
   let checkRaf = 0;
+  // A windowed list removed the focused row because the WHEEL scrolled it away, not because a
+  // redraw took it (2026-10-11): the song is still in the list. Nothing takes the ring then; the
+  // row gets it back when it is rendered again, and a navigation key continues from it. Before,
+  // the ring went to the row at the same position among the rendered ones (a different song,
+  // in the buffer above the view) and its scrollIntoView threw the list back ~1,000 px.
+  let parked = false;
   const disarm = (): void => {
     watch?.disconnect();
     watch = null;
     cancelAnimationFrame(checkRaf);
     checkRaf = 0;
+    parked = false;
   };
   const check = (): void => {
     checkRaf = 0;
@@ -179,6 +188,27 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
     if (document.activeElement !== document.body) return; // the focus is somewhere real (a menu, a row)
     if (last.el.isConnected && scope().contains(last.el)) return focusRow(last.el); // a menu closed over it
     const list = rows();
+    if (o.count && last.key === "idx") {
+      const back = list.findIndex((r) => r.dataset.idx === last?.value);
+      const verdict = windowedRefocus({
+        index: Number(last.value),
+        count: o.count(),
+        rendered: back >= 0,
+        sameBox: !!lastBox?.isConnected && scope().contains(lastBox),
+        parked,
+      });
+      if (verdict === "park") {
+        parked = true;
+        return;
+      }
+      if (verdict === "return") {
+        parked = false;
+        list[back].tabIndex = -1;
+        list[back].focus({ preventScroll: true }); // the scroll brought it back: the list stays put
+        return;
+      }
+    }
+    parked = false;
     const at = pickRefocus(last, from, list.map((r) => r.dataset));
     if (at < 0) return;
     if (!list.some((r) => last && last.key && r.dataset[last.key] === last.value)) from = last; // it drilled
@@ -193,12 +223,31 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
   };
   const onAnyKey = (e: KeyboardEvent): void => {
     const row = (e.target as HTMLElement).closest<HTMLElement>(o.rows);
-    if (row) last = markRow(row, rows().indexOf(row));
+    if (row) mark(row);
     arm();
   };
   const onRowFocus = (e: FocusEvent): void => {
     const row = (e.target as HTMLElement).closest<HTMLElement>(o.rows);
-    if (row) last = markRow(row, rows().indexOf(row));
+    if (row) mark(row);
+  };
+  const mark = (row: HTMLElement): void => {
+    last = markRow(row, rows().indexOf(row));
+    lastBox = row.parentElement;
+    parked = false;
+  };
+  // A key while the ring is parked lands on <body>, outside the list: an arrow, Home, End or a
+  // page key brings the song back into view and moves on from it, as in a native list. Enter,
+  // Space and the Menu key do nothing then: a key never plays a song the user cannot see.
+  const NAV = new Set(["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End", "PageDown", "PageUp"]);
+  const onParkedKey = (e: KeyboardEvent): void => {
+    if (!parked || !last || document.activeElement !== document.body || !o.revealIndex) return;
+    if (!NAV.has(e.key) || e.altKey || e.metaKey || e.ctrlKey) return;
+    parked = false;
+    const el = o.revealIndex(Number(last.value));
+    if (!el) return;
+    el.tabIndex = -1;
+    el.focus({ preventScroll: true });
+    handleKey(e, el);
   };
   // The focus or the keys went somewhere else (another list, a field): stop watching, or this
   // list would take the ring back when THAT list redraws. A context menu the keys opened keeps
@@ -208,6 +257,7 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
   const onElsewhere = (e: Event): void => {
     const t = e.target as HTMLElement;
     if (!watch || container.contains(t) || t.closest?.(".ctx-menu")) return;
+    if (parked && e.type === "keydown" && document.activeElement === document.body) return; // onParkedKey's
     disarm();
   };
   container.addEventListener("keydown", onKey);
@@ -218,6 +268,7 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
   window.addEventListener("pointerdown", disarm, true);
   document.addEventListener("focusin", onElsewhere, true);
   document.addEventListener("keydown", onElsewhere, true);
+  document.addEventListener("keydown", onParkedKey, true);
   return () => {
     disarm();
     container.removeEventListener("keydown", onKey);
@@ -228,6 +279,7 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
     window.removeEventListener("pointerdown", disarm, true);
     document.removeEventListener("focusin", onElsewhere, true);
     document.removeEventListener("keydown", onElsewhere, true);
+    document.removeEventListener("keydown", onParkedKey, true);
     delete container.dataset.listKeys;
   };
 }
@@ -244,6 +296,22 @@ export interface RowMark {
 function markRow(el: HTMLElement, index: number): RowMark {
   const key = KEYS_OF_ROW.find((k) => el.dataset[k] !== undefined) ?? null;
   return { el, key, value: key ? el.dataset[key] : undefined, index };
+}
+
+/**
+ * A windowed list (a pure rule, tested in tests/list-keys.test.ts; 2026-10-11). The focused row
+ * left the page and the focus is on <body>:
+ * - "park": the row's own box is still on the page and its index is still in the list, but no
+ *   row with that index is rendered: the wheel scrolled it out of the window. Nothing takes the
+ *   ring.
+ * - "return": it was parked and is rendered again (the user scrolled back): it takes the ring
+ *   without a scroll.
+ * - "pick": anything else (a redraw, a drill, a shorter list): `pickRefocus` decides.
+ */
+export function windowedRefocus(s: { index: number; count: number; rendered: boolean; sameBox: boolean; parked: boolean }): "park" | "return" | "pick" {
+  if (!s.sameBox || !Number.isFinite(s.index) || s.index >= s.count) return "pick";
+  if (!s.rendered) return "park";
+  return s.parked ? "return" : "pick";
 }
 
 /**

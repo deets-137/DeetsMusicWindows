@@ -487,7 +487,8 @@ Reading it:
 
 **Built, committed b59e575, shipped in 0.8.0:** styles.css `:is(.panel__body, .lib-view, .qcard__list, .spane__scroll,
 .search__scroller) { will-change: var(--scroller-layer); }`. Skin token `--scroller-layer`: base
-`auto`; Ocean, Glass and Cyber set `scroll-position`. Menus (`.set__menu`,
+`auto`; Ocean, Glass and Cyber set `scroll-position`, and Press and Vanilla too since 2026-10-11 (his call,
+after its Library list measured 24–56 % dropped on the main thread; WORKLOG 2026-10-11). Menus (`.set__menu`,
 `.ctx-menu__fly`, `.slot-picker__menu`) and `.set__preview` are left out on purpose.
 
 **Checked so far** (dev:built, RX 6700 XT, Max, Black & Red theme). The checks forced the rule

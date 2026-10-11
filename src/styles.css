@@ -2097,9 +2097,11 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
    list scrolls on its own compositor layer, so a scroll step MOVES the rows instead of
    repainting the card under them. Without it Ocean's sand mask repainted on every step
    (157 fps, 52% dropped); with it every skin holds the display rate and the GPU process does
-   about a fifth of the work. Skin token --scroller-layer: only the see-through skins opt in,
-   because on an opaque card (Press) the layer would switch the list text from colour to grey
-   smoothing. On those skins: no visible change (screenshots 0.03 / 255). Not a stacking
+   about a fifth of the work. Skin token --scroller-layer: the see-through skins opted in first,
+   because on an opaque card (Press) the layer switches the list text from colour to grey
+   smoothing. On those skins: no visible change (screenshots 0.03 / 255). Press and Vanilla
+   opted in on 2026-10-11 (his call): without the layer Press's lists scrolled on the main
+   thread and dropped 24–56 % of frames at 240 Hz (WORKLOG 2026-10-11). Not a stacking
    context, unlike will-change: transform, so z-index inside the list is unchanged. Menus
    (.set__menu, .ctx-menu__fly, .slot-picker__menu) are left out: short-lived, and already
    their own layers under their backdrop-filter. */

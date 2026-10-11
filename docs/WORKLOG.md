@@ -12,6 +12,57 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-11 (late night, later) — Press list layer on; the list-keys focus bug fixed (branch `ten-out-of-ten`)
+
+- **His calls:** turn the list layer on for Press; fix the focus bug; measure every skin.
+- **Press:** `--scroller-layer: scroll-position` in its skin block (skin.css; TOKENS.md
+  regenerated). The comments in skin.css base and styles.css, DEBUGGING.md and HANDOFF.md say
+  so. `vanilla` (the base, not in the skin picker) still has no layer.
+- **Focus fix (`list-keys.ts`):** a new pure rule `windowedRefocus` (5 tests). When the
+  windower removes the focused row and its box is still on the page with its index still in
+  the list, the ring PARKS: nothing takes it. The row takes it back without a scroll when it
+  is rendered again. While parked, an arrow, Home, End or a page key reveals the song and
+  moves on from it; Enter, Space and the Menu key do nothing, so a key never plays a song that
+  is off screen. Decided inside his "fix it": the parked key behaviour and the Enter rule.
+- **Checked in the dev app (CDP keys and wheel):** Arrow Down → row 6; 3,000 px wheel down → no
+  step back, ring parked; wheel back to 0 → row 6 has the ring, no jump; wheel away, Arrow Down →
+  the list comes back, row 7.
+- **Every skin, Chromium's smooth scroll gesture, 3 passes (dev app, 240 Hz, DevTools open):**
+  dropped down / up — Press 0.2–0.4 % / 0.2 %; Ocean 0.8–1 % / 0.6 %; Glass 0.6–0.8 % /
+  0.4–1.3 %; Cyber 0 % / 0.2–0.6 %. All four scroll on the compositor thread; no blank rows.
+  CDP wheel steps (a jump per notch, few frames): 3–8 %, a noisier measure.
+- **Not run:** the deetsmeter scroll scene (a real wheel on the installed app); it needs a
+  release with the Press change.
+- **Vanilla too (his ask, the same sitting):** the base skin, not in the picker, sets the layer
+  in its own block, so every skin has it; the base value stays `auto`.
+- **Desk test: passed 2026-10-11 (his word):** the Press text with the layer, and the Library
+  keys after a wheel scroll.
+
+## 2026-10-11 (late night) — Library scroll measured; a list-keys focus bug confirmed (no code change)
+
+- **His question:** Apple's app scrolls the library with no dropped frames (deetsmeter,
+  music-app-comp.md §17.15). Can we do the same, perhaps with a row pool? Evaluated against
+  `collection-window.ts`; measured on the running dev app (Max, Library, 3,898 rows, 240 Hz,
+  DevTools open, so the A/B within one run is the number, not the absolute).
+- **The cause on Press is the missing list layer, not the windower.** CDP LayerTree: the
+  Library list has no layer of its own on Press (`--scroller-layer: auto`, skin.css), and the
+  trace's `PipelineReporter` names every scroll frame `SCROLL_MAIN_THREAD`. With
+  `will-change: scroll-position` on `.lib-view` it is 2 layers and `SCROLL_COMPOSITOR_THREAD`.
+  Chromium's smooth scroll gesture, 2,400 px each way, 3 passes: Press as shipped dropped
+  24–56 %; Press with the layer 0.2–0.4 %; Ocean (has the layer) 0.6–2.2 %. The windower's own
+  work is small: HTML parse about 10 ms in total per pass, the longest main task 5–14 ms. A row
+  pool would save little. The open fork is his: the layer turns Press's colour text smoothing
+  grey (the reason Press opted out on 2026-09-16); a CDP screenshot does not show the
+  difference, so he judges it on his own screen.
+- **Bug confirmed (`list-keys.ts`):** after one Arrow Down in the Library, a 3,000 px wheel
+  scroll jumps back 956 px and the focus lands on another song (row 41). With no key press, the
+  same wheel does not move back. The cause: a wheel is not a pointer press, so the redraw watch
+  stays armed; the windower removes the focused row; `pickRefocus` case 4 uses the row's
+  position among the RENDERED rows (`last.index`), not its `data-idx`; `focusRow` then calls
+  `scrollIntoView`. Not fixed.
+- **The dev app was put back:** Home in the slot, Ocean, the test style removed. The look hold
+  was already there at start (`rule:init` holds 2); the skin clicks may have renewed it.
+
 ## 2026-10-11 (night) — Full player test version, built (branch `ten-out-of-ten`)
 
 - **His three answers (fullscreen-player.md §12.9):** a DevTools flag; a press on the Queue

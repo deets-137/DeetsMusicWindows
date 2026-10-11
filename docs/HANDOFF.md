@@ -730,7 +730,7 @@ b59e575, shipped in 0.8.0; the checks below are still open:
   still aurora and locked sliders 65 / 85 / 40 / 10, or the live blur and the sliders. Shipped
   in 0.8.0; no desk-test result is on record. SETTINGS.md row; numbers in DEBUGGING.md §Fancy
   Glass and the Ocean swell.
-- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Cyber only): shipped in
+- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Cyber; Press and Vanilla since 2026-10-11, not shipped yet): shipped in
   0.8.0, half checked. What is done and what is left: DEBUGGING.md §The composited-scroller pass.
 - ⬜ **Swell:** measure Animate backgrounds › Reduced under `--gpu=off`, then maybe a hint line.
 - ⬜ Found on the way, older than these changes: a very fast wheel spin (≈ 15,000 px/s) shows

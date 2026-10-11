@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 44 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 570 tokens · overrides: vanilla 3, press 68, ocean 44, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 570 tokens · overrides: vanilla 4, press 69, ocean 44, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -363,7 +363,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--panel` | `var(--canvas)` | press, ocean, glass, cyber | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
 | `--shadow-card` | `none` | press, ocean, cyber | skins add a real card shadow |
 | `--panel-backdrop` | `none` | press, glass | frosted-glass blur behind the panel; a skin opts in |
-| `--scroller-layer` | `auto` | ocean, glass, cyber | will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell) |
+| `--scroller-layer` | `auto` | vanilla, press, ocean, glass, cyber | will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell). Press and Vanilla opted in too on 2026-10-11, so every skin has the layer: without it a list scrolls on the main thread and drops frames |
 | `--panel-isolation` | `auto` | glass | isolate: the card is its own stacking context (Glass's painted frost keeps the live frost's stacking) |
 
 ### canvas pattern (Press halftone / Cyber grid)
