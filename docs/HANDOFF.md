@@ -164,8 +164,10 @@ is Off, with skin Press and theme Black & Red, until the cold runs are done.
 Windows back On (`deetsmusic settings set startWithWindows on`) and *Change look at* back to
 Sunrise and sunset (`settings set lookSchedule "Sunrise and sunset"`); each asks in the app.
 The schedule then puts back his Glass / Ocean looks. (3) Then his calls: the seek fork
-(scene 4); the Play / Pause button lag; the 300 ms search delay; a "first play after start"
-row; scroll again on a quiet machine with both monitors on.
+(scene 4); the Play / Pause button lag; the 300 ms search delay; the "first play after a
+start" row (designed 2026-10-11 on his ask, music-app-comp.md §17.17: three forks, then
+build; the play scene's 84 ms is a resume, not a first play); scroll again on a quiet machine
+with both monitors on.
 
 **Pick up here (2026-09-28, next session).** In order:
 0. ~~Desk test: Play a web from the song playing~~ — Claude's run 2026-10-01 passed steps 1–8

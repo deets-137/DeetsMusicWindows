@@ -25,6 +25,11 @@ updated: 2026-10-11
   reads each cold pass's skin from `/health` and counts only passes on the profile's skin
   (`run.mjs`). His call: *Change look at* Off, skin Press, theme Black & Red, until the cold runs
   are done (three Allows pressed by Claude).
+- **His question:** does `play → sound` count a cold start? No: the play scene presses Play on a
+  paused, loaded song, so it is a resume. The first play of a session pays Apple's account
+  check, connections and license (1.7–1.9 s, UX-COVERUPS.md §4; the preload cover-up was
+  rejected 2026-09-12). On his ask, the "first play after a start" row is designed in
+  music-app-comp.md §17.17, with three forks for him; not built.
 
 ## 2026-10-11 — The user guide's shape; Set up the DeetsMusic MCP, designed and built (branch `ten-out-of-ten`)
 

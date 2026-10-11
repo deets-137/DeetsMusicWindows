@@ -1194,3 +1194,39 @@ a Press number.
   marked `"skin":"glass"` by hand.
 - **His call:** *Change look at* set to Off (and skin Press, theme Black & Red, as in the
   warm runs) until the cold runs are done; Claude pressed the three Allows.
+
+### 17.17 Next row: the first play after a start
+
+> **Part:** designed · 2026-10-11 — his ask: add the row. Not built; the forks below are his.
+
+**Why.** The play scene's `play → sound` (ours 84 ms, Apple 166 ms, §17.16) is a RESUME: both
+apps are open and the song is paused and loaded. The first play of a session is a different
+cost. For ours it is Apple's: an account check, three new TLS connections (api, play, audio
+hosts), the Widevine certificate and the license, measured 1.7–1.9 s click → audible
+(UX-COVERUPS.md §4). Our own part is about 10 ms; `warmPlayer()` already configures MusicKit
+and the DRM module when the window shows. The one cover-up left (a silent play-then-pause of
+the restored song at launch) was probed and not built on 2026-09-12: it reports a play to Apple
+and flickers the transport. One accidental reading (§17.16): ours 2.1 s, Apple 399 ms, but
+Apple's was a resume, so the pair was not like for like.
+
+**The row.** `first play → sound` (and `→ screen`, the button), scored, one value per start:
+start the app (warm: close and reopen, as in the start scene; cold: the cold pass), wait for
+content, then one press that loads a song that is not loaded yet, timed to the first sound in
+the app's audio session.
+
+**What it will show.** Whether Apple's app is quicker on a first play because it is native,
+because its background agent (AMPLibraryAgent.exe) keeps a connection open, or because it
+loads the last song at launch. If Apple's first play is fast only because it preloads, the
+row names the cover-up we rejected, and that decision can be taken again with a number beside it.
+
+**His forks (open):**
+1. **Which press.** (a) The transport's Play on the restored song (ours restores its queue
+   paused at 0:00; Apple's restart cleared its now-playing on 2026-10-10, so Apple may have
+   nothing to play); (b) play the first row of each app's song list (ours: Library; Apple:
+   Library › Songs, sorted by Plays), the same song when the sort allows. Recommend (b): both
+   apps load a song for certain, and the song can be the same.
+2. **Warm, cold, or both.** Recommend both: the warm row rides each warm start pass (n grows
+   fast); the cold row rides each cold pass (one per boot).
+3. **Where it lives.** A step at the end of the start scene (the app is fresh there anyway), or
+   its own scene. Recommend the start scene: no extra restart, and the cold pass already pays
+   for the boot.
