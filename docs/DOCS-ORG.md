@@ -1058,8 +1058,8 @@ video file is made or stored. The demo is already on the site at the released ve
   job is to show where the button is.
   - **Two exceptions** (read 2026-10-11, WEB-DEMO.md §9.4). (1) Some clicks show a failure
     toast in the demo: Start a room, Friends, Export to Apple, Import, the playlist web. (2)
-    The tray icon is a Windows control and is not in the page. **Open, his call;
-    recommendation:** a `point` step: the cursor goes to the button and rings it, with no
+    The tray icon is a Windows control and is not in the page. **Decided (the owner,
+    2026-10-11):** a `point` step: the cursor goes to the button and rings it, with no
     click, so no failure toast shows. The tray gets a still picture from the dev-app source.
 
 **Build order (replaces §13.8 steps 4–5):**
