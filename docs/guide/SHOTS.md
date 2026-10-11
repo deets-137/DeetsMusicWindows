@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: [scripts/shots.mjs, src/marks.ts, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts]
-updated: 2026-10-01
+updated: 2026-10-11
 ---
 # DeetsMusic — Shots: pictures and clips of each feature
 
@@ -468,7 +468,7 @@ cares, which shot shows it. The owner writes the words. Where the page lives is 
 
 | # | fork | options | recommendation |
 |---|---|---|---|
-| **U10** | Where shots go for the site | R2 upload on each publish · GitHub `main` · other | open: the owner is checking cost |
+| **U10** | Where shots go for the site | R2 upload on each publish · GitHub `main` · copy into the site repo | **decided 2026-10-11: pictures copied into the site repo with the guide pages** (DOCS-ORG.md §13.11); clips open |
 
 F1–F4 closed 2026-09-26; the answers are in §1.
 

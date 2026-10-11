@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: [scripts/publish-update.mjs, src/toast.ts, src-tauri/src/playlists.rs, src/settings-card.ts, scripts/webview-eval.mjs]
-updated: 2026-09-21
+updated: 2026-10-11
 ---
 # DeetsMusic — Docs organization
 
@@ -762,7 +762,7 @@ Every guide page has front matter, like every other doc (§5), with two more fie
 ---
 state: outline | written
 covers: [features/PINS.md, features/HOME.md]   # the internal docs this page explains
-updated: 2026-09-21
+updated: 2026-10-11
 ---
 ```
 
@@ -799,6 +799,9 @@ The sweep never closes the gap in his words.
   `settings.json`. That check is a **fact** and fails the build.
 
 ### 13.6 The pipe (U1, U2)
+
+> **Superseded 2026-10-11 by §13.11** (the owner): publish commits static pages into the
+> DeetsSolutions repo. No `guide.json`, no Worker route. Kept for the record.
 
 1. `npm run guide:build` turns each `state: written` page into a simple HTML fragment:
    headings, paragraphs, lists, links, `kbd`, images, and a `> **Tip:**` quote — exactly
@@ -869,7 +872,7 @@ build treats `##` headings inside a page as its sub-entries in the guide's page 
 page that becomes a subsection keeps its `covers` list (it moves with the text), so the
 staleness check still finds it.
 
-**U10 — OPEN (2026-09-21): how guide images reach the site.** **A** `publish-update.mjs`
+**U10 — DECIDED 2026-10-11 (§13.11): copied into the site repo with the pages. The record of the first two choices: how guide images reach the site.** **A** `publish-update.mjs`
 uploads each image a written page uses to R2 beside `guide.json`, and the build rewrites the
 path — version-locked like the text. **B** the page links the image on GitHub `main` — no
 upload, but a picture can show a newer app than the Download button. Recommendation: **A**.
@@ -959,6 +962,87 @@ also files a suggestion) and its hint.
 4. **Later:** sort the old posts with Cactus Needle 3, then the guide pages link their area.
 
 What the code has today is above (the 6 areas, the area never leaving the PC).
+
+### 13.11 Searchable: static pages pushed to the site (the owner, 2026-10-11)
+> **Part:** designed · 2026-10-11
+
+**The problem with §13.6.** The site page built itself from `guide.json` in the browser. A
+search engine sees an empty page, so a search such as "DeetsMusic pin an album" finds
+nothing. And no reader could search across the pages.
+
+**His calls (2026-10-11):**
+
+| # | fork | decided |
+|---|---|---|
+| **U11** | How the pages reach the site | **Static HTML, committed into the DeetsSolutions repo by the publish**, the way the Song of the Day nightly job pushes `sotd/songs.json` (DeetsOTD.md §1b). The source of truth stays in this repo and on GitHub. The site copy is generated and never edited by hand |
+| **U12** | Search inside the guide | **Yes, in the browser**: a generated index, searched by the page itself |
+| **U13** | The Compass searches the guide | **Yes** |
+| **U14** | An `llms.txt` of the guide for AI assistants | **Yes** (parked since the 2026-09-14 audit, now taken) |
+
+**The pipe, as decided (replaces §13.6 steps 2–4):**
+1. `npm run guide:build` turns each `state: written` page into a **whole HTML page**: the
+   site's header and nav, the guide's page list, the page in `.prose`, and its own `<title>`
+   and description. One address per page, for example `/deetsmusic/guide/play/queue/`. The
+   outline block is stripped (§13.4). The Settings reference is one more page, built from
+   `settings.json`.
+2. The same build writes **`search.json`**: per page, the title, the `##` headings with
+   their anchors, the plain text, and every `Settings › …` path. The Settings reference adds
+   one entry per row (label, hint, section). Expected size: about 100 KB.
+3. The same build writes **`llms.txt`** (the page list with one line each) and
+   **`llms-full.txt`** (every written page as plain Markdown, the outline stripped).
+4. `release:publish` runs the build, then writes the output into the sibling
+   `../DeetsSolutions/deetsmusic/guide/`, commits **only those paths**, and pushes
+   **fast-forward only**. Cloudflare Pages redeploys. So the guide and the Download button
+   still change in the same publish (U2 holds).
+5. `--guide-only` does steps 1–4 with no installer: fix a typo, push the guide.
+
+**Rules for the push (from the Song of the Day job, and the shared-index lesson):**
+- Commit with a path list (`git commit -- deetsmusic/guide`) so the work of another session
+  in the DeetsSolutions tree is never swept in.
+- A push that is not fast-forward stops the publish step with a message. It never forces and
+  never merges. The installer publish is already done at that point; the guide is retried
+  with `--guide-only`.
+- The commit message names the app version: `Guide: DeetsMusic 0.x.y`.
+- Every generated file carries a first-line comment: generated from DeetsMusic `docs/guide/`,
+  do not edit.
+
+**Search in the page (U12).** The site has no dependencies, so the search is a small script
+of our own, not a library: it fetches `search.json` once, on the first key press in the
+search field, then matches each word against titles first, then headings, then text. A result
+opens the page at its heading anchor. The field joins Ctrl+F like the app's search fields.
+
+**The Compass (U13).** The Compass gets a *Guide* group: a match on a guide heading opens
+that page in the browser. **Decided (the owner, 2026-10-11): `search.json` is bundled into
+the app at build time**, so the Compass needs no network call and always matches the
+installed version. (Rejected: a fetch from the site, which can show a newer guide than the
+installed app.)
+
+**`llms.txt` (U14).** **Decided (the owner, 2026-10-11):** it is served at
+`/deetsmusic/guide/llms.txt`, and the repo's README links it, so an agent pointed at GitHub
+finds it. A site-wide `/llms.txt` at the root is a DeetsSolutions decision.
+
+**What this changes elsewhere:**
+- §13.6 steps 2–4 (`guide.json`, the Worker route, the fetch page) are not built.
+- **U10, images — decided (the owner, 2026-10-11):** the build copies each image a written
+  page uses into `deetsmusic/guide/img/` with the pages. It is version-locked like the text,
+  and needs no R2. The cost is git size: a picture is 0.2–1.7 MB (SHOTS.md §8), and only the
+  pictures a written page uses are copied, in one look. Clips stay out of git. How a
+  walkthrough moves on the page is open (the owner raised a live replay of the web demo in
+  place of a video, 2026-10-11).
+- **The nav (U7):** the site already has the DeetsMusic dropdown (read 2026-10-11:
+  `DeetsSolutions/deetsmusic/index.html`, items *App* and *Demo*). Guide is a third item.
+
+**Build order (replaces §13.8 steps 4–5):**
+1. `__settings.dump()` + `guide:settings` → `settings.json` (as §13.5).
+2. The outline in every folder page (§13.10). He writes from here.
+3. `guide:build`: pages, `search.json`, `llms.txt`, with the lorem `_template.md` as the test
+   page. The page shell comes from a DeetsSolutions file (the header and nav of
+   `deetsmusic/index.html`), read at build time, so the nav is never copied by hand.
+4. The DeetsSolutions side: the guide's CSS (`.prose`, the page list, the search field) and
+   the search script, as plain site files. The *Guide* item in the dropdown in every nav and
+   the phone menu.
+5. The push in `release:publish` and `--guide-only`.
+6. The Compass *Guide* group.
 
 ---
 
