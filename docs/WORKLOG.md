@@ -40,6 +40,22 @@ updated: 2026-10-10
   cover load misses the cache; the palette still lands early.
 - **The bundle split (WORKERS.md §5.4): tabled, his call.** The gain is tens of ms at a
   cold start; the cost is a change to `cards.ts` and a load on each first open.
+
+## 2026-10-10 — Classic skins idea; the full player's last forks and its code shape (docs only)
+
+- **ideas/ClassicSkins.md (new).** He asked about Winamp skins (skins.webamp.org) for the
+  Mini player. A classic skin is sprites for Winamp's fixed 275 × 116 layout, so it needs its
+  own window in that layout, not a restyled Mini. A theme from a skin's `pledit.txt` colors
+  is the cheap first step. Not built; §8 the forks.
+- **ideas/fullscreen-player.md: the last forks, his calls.** The Max right edge: split the
+  gap at its middle line (§10.3). The name: "Full player" for the Compass verb, the rule fact
+  and the action. The artwork: fit the box (×DPR, up to 200 px steps, at most 2000). The
+  next-song prefetch loads the full size while full.
+- **§12, the code shape of a first test version** ("not sold on it yet"), for a build on
+  2026-10-11. Found in the code: in Max, Now Playing lives inside `.stage`, so while full the
+  stage takes `display: contents`; the full player is its own module (`full-player.ts`)
+  borrowing the grow's parts; the cover size must change in `player.ts`. Three questions to
+  ask before the build: §12.9.
 - **Desk test.** Restart the dev runner (new Rust). Use the app for a few days, including
   one library sync. Then `grep "db: slow"` on the log file. If `waited` never prints, the
   read connection of §5.1 is not needed.

@@ -118,6 +118,10 @@ the app a few days with one library sync, then read the lines; they decide the r
 connection (ideas/WORKERS.md §5.1). The next song's colors one ahead: ALBUM-COLOR.md data
 path item 4 has the desk test.
 
+**Full player: a test version to build on 2026-10-11 (designed, not built).** Every fork is
+decided (ideas/fullscreen-player.md §6, §7, §9.4, §10.3, §11). §12 is the code shape. Ask
+him the three questions in §12.9 first (the gate, a click on the Queue, Press in the flight).
+
 **Rulez usability fixes (2026-10-10, built, committed on `ten-out-of-ten`, his desk test open).** The While
 row, The song section, flyout widths, the rule-key words, Clean and Party, the recipe copy:
 RULEZ.md §18. His desk test is §18.3; step 6 (Headphones on a real headset) is the open question.

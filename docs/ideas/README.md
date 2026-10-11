@@ -35,6 +35,10 @@ the app can do any of these things.
   (our own `deetsmeter`: input, screen and sound on one clock; PDH counters), the scenes, the asymmetries, the forks. Since
   2026-10-10 also our own upgrades: each release against the last, from 0.25.4, with Apple's
   app as the control; the change rule, the release-check step (§11–§16).
+- [ClassicSkins.md](ClassicSkins.md) — an idea (2026-10-10): Winamp classic skins (`.wsz`)
+  for a small player. A skin is sprites for Winamp's fixed layout, so it needs its own window
+  in that layout, not a restyled Mini; what maps, what does not, a theme-from-a-skin first
+  step, the rights, the forks.
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).

@@ -1,14 +1,19 @@
 ---
 status: idea
 desk_test: none
-sources: [src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-02
+sources: [src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
+updated: 2026-10-10
 ---
 # Full player — grow the Now Playing card
 
-> **An idea, opened 2026-10-01; every fork decided 2026-10-02 (§6, §7). Not built.** The owner asked for a discussion
-> doc: the visual idea first, the technology after. Every fork in §5 is his. The numbers in
-> §3 come from the tokens in the code today.
+> **An idea, opened 2026-10-01; every fork decided 2026-10-02 (§6, §7) and 2026-10-10 (§10.3,
+> §11). Not built.** The owner asked for a discussion doc: the visual idea first, the
+> technology after. Every fork in §5 is his. The numbers in §3 come from the tokens in the
+> code today.
+>
+> **2026-10-10: build a first test version (§12).** His words: "not sold on it yet but can
+> mess around with it after it's built". §12 is the code shape, for a build on 2026-10-11.
+> Three questions in §12.9 come first.
 
 ## 0. Terms
 
@@ -258,7 +263,7 @@ The motion mockup in the session of 2026-10-02 played these choices.
 
 ## 10. The edge zones (design pass, 2026-10-02)
 
-> **Part:** idea · 2026-10-02 · fork 10.3 open
+> **Part:** idea · 2026-10-02 · fork 10.3 decided 2026-10-10 (split the gap)
 
 ### 10.1 What exists (`src/card-grow.ts`, §the edge zones)
 
@@ -302,12 +307,156 @@ Fill strip of the Library (`left`) and the bottom-left card (`c`), at its full 1
   strip keeps the rest. The gap then acts two ways along its length.
 - Now Playing has only its left (window-edge) strip in Max; the gap stays the Fill strip.
 
+**Decided 2026-10-10: split the gap at its middle line.** The 6 px beside Now Playing opens
+the full player; the 6 px beside the cards keeps Fill for `left` and `c`. Their Fill strip on
+that side goes from `full` reach to `half` while Now Playing's strip is live (at rest, and no
+other card grown). One rule for every shared gap.
+
 ## 11. Next step
+
+> **Part:** idea · decided 2026-10-10. The name: **Full player**, the one word for the
+> Compass verb, the rule fact and the rule action. The artwork: **fit the box** (§12.5).
+> The next-song prefetch (built 2026-10-10, ALBUM-COLOR.md data path item 4): it loads the
+> full player's size while the player is full. The build checklist is §12.8.
+
 
 A design pass on what is still undrawn, before any code:
 
 - ~~The motion~~ — decided 2026-10-02 (§9.4).
-- The edge zones — designed 2026-10-02 (§10), one fork open.
-- The rule fact and action, and the Compass verb: their words (RULES.md §19, COMPASS.md §9).
-- The larger artwork file (§4): the pixel size to ask Apple's template for.
-- The build checklist in CLAUDE.md › Working style, item by item.
+- ~~The edge zones~~ — decided 2026-10-10 (§10.3).
+- ~~The rule fact and action, and the Compass verb~~ — "Full player", 2026-10-10 (§12.6).
+- ~~The larger artwork file (§4)~~ — fit the box, 2026-10-10 (§12.5).
+- ~~The build checklist~~ — §12.8.
+
+## 12. The code shape — first test version (scoped 2026-10-10, for 2026-10-11)
+
+> **Part:** designed · 2026-10-10 · not built. Read against the code on 2026-10-10:
+> `card-grow.ts`, `now-playing-card.ts`, `styles.css` (§max, §mini, §Card grow),
+> `album-color.ts`, `player.ts`, `queue-rows.ts`, `rulez-words.ts`, `compass.ts`.
+
+### 12.1 Three facts in the code that shape the build
+
+1. **In Max, Now Playing is not a cell of the bento.** It is a child of `.stage`, a grid item
+   with its own two rows (`styles.css`, "The stage column"). It cannot span columns 2–3 from
+   there. **The fix:** while the player is full, `.stage` takes `display: contents` (its
+   default outside Max), so Now Playing and the Queue become bento items placed by hand: Now
+   Playing at `1 / 2 / 3 / 4`, the Queue at `1 / 1 / 3 / 2`. The stage's `container-type:
+   size` goes away for that time; nothing reads it while the player is full.
+2. **Now Playing has no zones and no grow.** `card-grow.ts` makes the edge strips in
+   `attachGrowButton`, which needs a `.panel__head`; Now Playing has none, and `MAX_NEIGHBOR.np`
+   is empty on purpose. The full player is not a grow (it changes the column and the card's
+   inner layout), so it gets **its own module** and borrows the grow's parts.
+3. **The card prefers MusicKit's artwork URL** (`s.artworkUrl ?? artURL(…)` in
+   `now-playing-card.ts`), and `player.ts` builds that URL at `stageArtPx()`. The size must
+   change at the source, `player.ts`, or the full player shows a stretched 480 / 640 file.
+
+### 12.2 New files
+
+- **`src/full-player.ts`** (≈350 lines) — the feature:
+  - The state: `isFullPlayer()`, `onFullPlayerChange(cb)`, `openFullPlayer(cause)`,
+    `closeFullPlayer(cause)`, `toggleFullPlayer(cause)`. Sets `data-player="full"` on `<html>`
+    (one attribute, every CSS rule hangs on it) and `data-np-rows="beside|over"` on the card.
+  - The open: close any grow first (`collapseGrow("player", false)`); load the large cover
+    and wait for its decode (§12.5); set the layout once; then the motion (§12.4).
+  - The close: the reverse; the rows and the band go first (§9.4.2).
+  - Ways out: the close button, the zones, Escape (the grow's rule: not while a menu, a
+    popover or a field takes it), a card request (Show queue, Show search, a Compass place),
+    a surface change (no motion, as a grow).
+  - The rules: `registerFact("player", …)` (`full` / `rest`, seam = `onFullPlayerChange`) and
+    `registerAction("player", { cost: "free", run })` (`open` / `close`), RULES.md §19.
+  - `diag.log("player", {on, cause, surface})` for each open and close; `frames.begin("player", …)`
+    around each motion; on the TELEMETRY gate, `window.__player` = open / close / state (as
+    `__grow`).
+- **`src/full-player-layout.ts`** (pure, with `tests/full-player-layout.test.ts`):
+  - `rowsPlace(cardW, cardH, rowsW): "beside" | "over"`: beside when the card is at least
+    `rowsW` wider than tall (§7.3; `rowsW` is read from a token, ~356 px).
+  - `fullArtPx(boxCssPx, dpr): number`: the box × the scale, rounded up to 200, at least
+    `stageArtPx()`, at most 2000 (§12.5).
+  - `fullClipFrom(rest, full)`: the rect the open starts from. Midi: the strip (it is inside
+    the full box). Max: a zero-width rect on the full box's left edge (the rest box is outside
+    it, §9.2.2).
+
+### 12.3 Changes to existing files
+
+| File | Change |
+|---|---|
+| `card-grow.ts` | Export the parts the player reuses: `motion()`, `clipBetween`, `clipOpen`, `clipPad`, `cover` / `uncover`, `enterAll`, `settled`. **The zones:** `makeZones` for `np` with no button (called from the card's mount); `zoneAction` gets the Now Playing branch: Max `left` (edge reach) and `right` (half reach), Midi `up` and `down`, act `player` at rest, `close` while full. The Fill strips on the left side of `left` and `c` drop from `full` to `half` reach while that strip is live (§10.3). While the player is full, every other strip hides; while a card is grown, Now Playing's strips hide. `growCard` does nothing while the player is full. |
+| `now-playing-card.ts` | The close button (top right over the cover; an icon square, the `ICON_SHRINK` glyph, its hint in ONBOARDING.md §1). A `ResizeObserver` on the card while full: `rowsPlace` → `data-np-rows`; `fullArtPx` → a new cover URL only when the 200 px bucket changes. `dataset.frames = "grow"` on the panel during the motion. |
+| `queue-rows.ts` | `coverArtPx()`: `stageArtPx()` at rest, the full player's `fullArtPx` while full. The one source of the cover size. |
+| `player.ts` | `artworkUrlOf(item, coverArtPx())` in place of `stageArtPx()`. |
+| `album-color.ts` | The prefetch loads `coverArtPx()` (his call: the full size while full). `applyText`: while `data-np-rows="over"`, the backdrop the guard checks is the band role, not the aurora mix. |
+| `layout.ts` | A card request while full closes the player first (no motion), then runs. Mini's player view (`data-mini="player"`) wears the full player's rows-over layout (§7.5), behind the gate (§12.9 Q1). |
+| `styles.css` | `[data-player="full"]` blocks: Midi (Now Playing at `1 / 1 / 3 / 3`, the content cards `is-covered`), Max (§12.1.1), the band (`.np__center` over the cover's bottom), the rows-beside layout, the close button, the Now Playing zones. Reduced motion: snap. |
+| `skin.css` | `--player-dur / -ease / -rows-at / -collapse-dur` in the base AND in each of the four skin blocks, with the grow's values (§9.4.4); the band's geometry (`--np-band-pad`, its min height); `--full-rows-w` (~356 px). Then `npm run tokens`. |
+| `themes.css` | `--np-band`: one new role in each theme (§7.6). Then `npm run tokens`. |
+| `compass.ts` | One verb row: "Full player", sub "Grows Now Playing so the cover is as large as the window allows" (or "Back to the cards" while full). `SYNONYMS`: full screen, fullscreen, big cover. COMPASS-TERMS.md. |
+| `rulez-words.ts` | Section Window: a fact "Full player" (choice On / Off) and an action "Full player" (choice Open / Close). RULEZ.md §14 if a recipe uses it. |
+
+### 12.4 The motion (§9.4, in code)
+
+1. Read the rest rects: the card and the cover (`.np__art`).
+2. Set the layout once (`data-player="full"`), read the full rects.
+3. **The cover flight:** a fixed-position copy of the cover picture at the rest rect, at the
+   new (large) URL, already decoded; `transform` translate + scale to the full rect over
+   `--player-dur`; the real cover is `visibility: hidden` until the flight lands.
+4. **The card:** `clip-path` from `fullClipFrom(rest, full)` to open, as `growCard` does.
+5. **Max:** the Queue grows up over the old Now Playing place in the same duration (the
+   clip of the Queue's own tall grow, `card-grow.ts`).
+6. The rows and the band enter through `enterAll` at `--player-rows-at`.
+7. The close: the rows and the band leave, the clip closes, the cover flies back.
+
+### 12.5 The artwork size
+
+`fullArtPx(box, dpr) = min(2000, max(stageArtPx(), ceil(box × dpr / 200) × 200))`. Examples:
+a 700 px box at 125 % → 1000 px; 992 px at 150 % → 1600 px; 992 px at 200 % → 2000 px. A
+resize asks again only when the bucket changes. Apple's image server takes any `{w}×{h}`; it
+is not an API call (APPLE-CALLS.md). The open waits for the decode of the large file, at most
+`--player-art-wait` (a token, ~250 ms), then flies with what it has.
+
+### 12.6 The words
+
+- Compass: **Full player** (the verb). Rulez: the fact **Full player** (On / Off) and the
+  action **Full player** (Open / Close). Hints: "Opens the full player" on the zones, "Back
+  to the cards" on the close zones and the close button.
+
+### 12.7 Not in the test version
+
+No memory (§6.6). No OS full screen and no album-colored band (§8). No agent route (an
+`/player` route on the bridge can come with `/grow`'s pattern later). No setting row (§12.9).
+
+### 12.8 The build checklist (CLAUDE.md › Working style)
+
+0 not a card. 1 motion: the rows `enterRows`, reduced motion snaps. 2 tokens: §12.3
+`skin.css` / `themes.css`, then `npm run tokens`. 2a family: the close button is an icon
+square. 3 hints: the close button and the zones go in ONBOARDING.md §1. 4 no toast. 5 no
+settings key (unless §12.9 Q1 picks a row). 5a no New badge. 6 `diag.log("player")`. 6a no
+new scroller. 7 `dataset.frames`. 8 `tsc`, `vite build`, `npm test`. 9 Compass verb. 10 the
+rule fact and action. 11 no new right-click. 12 Escape. 13 no popover. 14 no memory.
+
+### 12.9 Ask him before the build (2026-10-11)
+
+1. **The gate for a test version.** A DevTools flag, like Adaptive sound (SOUND.md §11a):
+   off for everyone, he turns it on (recommended: nobody else meets it, and Mini's player
+   view stays as it is until he says) · a Settings › Window row, default Off · no gate.
+2. **A click on the Queue while the player is full (Max).** The Queue is part of the full
+   layout, so a press there keeps the player open (recommended) · it closes the player, as a
+   press outside a grown card does.
+3. **Press (the turning record) in the flight.** The record keeps turning through the
+   flight (§9.3, a "not fork") but the flight flies a COPY of the picture. Read VINYL.md
+   first; if a copy cannot turn in step, the copy is a still of the disc for 0.34 s
+   (recommended for the test version) · the real disc flies and no copy is made.
+
+### 12.10 Desk test (written now; run after the build)
+
+1. Midi: click the top or bottom edge of the Now Playing strip. The cover flies to full
+   size; the band and the rows come in over its bottom; the Library and Queue cards fade
+   under. Escape, the close button and an edge each close it.
+2. Max at 1100 × 820: click the left 6 px of the gap right of Now Playing → the full player
+   opens over the four cards and the Queue takes the whole left column. The right 6 px of the
+   same gap still fills the Library. Narrow the window: the rows move from beside the cover
+   to over it.
+3. The cover is sharp at full size (DevTools › Network: the file is 1000 px or more).
+4. Compass: "full player" opens and closes it. A rule "When a song starts · Full player Open"
+   opens it.
+5. Each skin: the same motion; reduced motion snaps.
+6. `deetsmusic diag` shows one `player` line per open and close.

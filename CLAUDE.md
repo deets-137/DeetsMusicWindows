@@ -163,11 +163,16 @@ old installs' Guide button opens.
 designed 2026-09-29: a CSP for the webview; DPAPI for the Apple token and Last.fm session.
 `fullscreen-player.md` — every fork decided 2026-10-02, not built: grow Now Playing so the
 cover is as large as the window allows (Midi, Max, Mini's player view); §6–§7 the decisions,
-§9 the motion (decided), §10 the edge zones, §11 the rest of the design pass.
+§9 the motion (decided), §10 the edge zones (decided 2026-10-10). §12 is the code shape of a
+first TEST version, scoped 2026-10-10 for a build on 2026-10-11; §12.9 has three questions
+to ask him first.
 `music-app-comp.md` — an idea (2026-10-06): metrics and methods to measure DeetsMusic against
 the Apple Music app for Windows with symmetric OS-level tools, and (2026-10-10) each release
 against the last from 0.25.4 with Apple's app as the control; §17 scopes `deetsmeter`, our own
 input + screen + sound tool (F13–F16 decided, not built); §9 the rest of the forks.
+`ClassicSkins.md` — an idea (2026-10-10): Winamp `.wsz` skins for a small player in Winamp's
+fixed layout (not a restyled Mini); a theme from a skin's colors as the cheap first step; §8
+the forks.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
