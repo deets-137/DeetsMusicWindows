@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: []
-updated: 2026-09-16
+updated: 2026-10-11
 ---
 # DeetsMusic — connect AI apps (`mcp_install`)
 
@@ -50,7 +50,7 @@ deetsmusic mcp [--small]                                         # unchanged: se
 The question shows only when stdin is a terminal. With `--json`, or with no terminal, the command
 needs client names and asks nothing.
 
-**The app.** Settings › Connections › under **Agent control**, a new row **Connect AI apps** opens
+**The app.** Settings › Connections › under **Agent control**, a new row **Set up the DeetsMusic MCP** (named 2026-10-11, §8b) opens
 a panel:
 
 ```
@@ -292,6 +292,123 @@ Tauri commands: `mcp_detect`, `mcp_connect(client, replaceManual)`, `mcp_disconn
 4. The Settings panel (§7). Replace the **Copy setup for** row.
 5. The `PREUNINSTALL` hook (Fork 6), and the Restart button (Fork 3).
 6. AGENT-SETUP.md §2 rewritten around the panel and the command. AGENT.md §4 gets the new commands.
+
+## 8a. Research and build effort (2026-10-11)
+> **Part:** designed · 2026-10-11 · forks 7–9 decided (the owner, 2026-10-11) · forks 1–6 open
+
+**What changed outside since 2026-09-16** (read in the vendors' docs on 2026-10-11):
+- **Claude Desktop: the `.mcpb` bundle is the one-click path.** A user double-clicks the file
+  (or drags it in, or Settings › Extensions › Advanced settings › Install Extension…), and
+  Claude Desktop shows its own install screen. A `node` bundle needs no runtime: Node ships
+  with Claude Desktop. The directory no longer takes new `.mcpb` listings; a bundle is handed
+  to the user. Source: claude.com/docs/connectors/building/mcpb, the MCPB `MANIFEST.md`.
+- **The drift problem of §4.1 has a fix.** The bundle holds no server of ours. It holds a
+  shim of about 30 lines of Node that starts `%LOCALAPPDATA%\DeetsMusic\cli\deetsmusic.exe mcp`
+  and pipes stdin and stdout. The tools come from the installed exe, so the bundle never goes
+  out of date. If the exe is missing, the shim answers with one MCP error: "DeetsMusic is not
+  installed on this PC."
+- **The ChatGPT desktop app now runs local MCP servers.** OpenAI's docs: "The ChatGPT desktop
+  app, Codex CLI, and IDE extension share this configuration" (`~\.codex\config.toml`). So
+  one Codex entry also reaches ChatGPT desktop. AGENT-SETUP.md §2 ("ChatGPT … cannot control
+  DeetsMusic") is out of date. Which ChatGPT modes use it is not stated; the desk test checks.
+- **Claude Code:** `claude mcp add` defaults to the *local* scope (this folder only). The
+  entry needs `-s user`. Today's **Copy setup for** text omits it (settings.rs:401): a bug.
+- **Codex:** `codex mcp add deetsmusic -- "<exe>" mcp`. No install link.
+
+**New forks — decided (the owner, 2026-10-11): 7A the `.mcpb`, 8B *last used*, 9A the four
+apps first.** His reason for 9A: the four apps with the strongest documentation and the most
+likely users.
+
+| # | Fork | Options | Recommendation (now his call) |
+|---|---|---|---|
+| **7** | Claude Desktop | **A** the `.mcpb` shim: Connect opens the bundle and Claude shows its own install screen · **B** write `claude_desktop_config.json` (§4.1 path trap, restart needed) | **A.** Claude owns its own file, and the MSIX trap is gone. Cost: we cannot read Claude's extension list, so status comes from fork 8, and Disconnect sends the user to Claude › Settings › Extensions |
+| **8** | How the panel knows it works | **A** read each client's config only · **B** also a *last used* line: the CLI sends the MCP `clientInfo.name` to the bridge, the bridge keeps the time per client, and the panel says "Claude Desktop · used 2 min ago" | **B.** It proves the whole path (client → exe → bridge → app), not only a file. It is the only status we can get for the `.mcpb` |
+| **9** | The v1 client list | **A** Claude Desktop, Claude Code, Codex + ChatGPT desktop; the rest in v2 · **B** all eight of §4 at once | **A.** These are the apps a beginner has. Cursor, VS Code, LM Studio, Windsurf and Gemini keep **Copy setup info** until v2 |
+
+**Effort, with forks 1A–6A, 7A, 8B, 9A** (one load-bearing feature; it writes other apps'
+files):
+
+| Part | Size | Notes |
+|---|---|---|
+| `crates/mcp-install/`: detect, the Codex TOML edit, the Claude Code owner CLI, backup + atomic write, `setup_text` | ~500 lines Rust | Pure merge functions with unit tests (a file in → a file out) |
+| The `.mcpb`: the Node shim, `manifest.json`, icon; packed at `npm run release`, shipped in the installer's resources | ~60 lines + a release step | Built once; the shim never changes with the app |
+| `deetsmusic mcp install / status / uninstall` (the clap change, §5) | ~200 lines | `deetsmusic mcp` and `mcp --small` keep working |
+| *Last used* (fork 8): CLI header, bridge map, one command | ~60 lines | No schema change: memory only, lost at restart |
+| The Settings panel (§7 checklist, *Connect AI apps* replaces **Copy setup for**) | ~300 lines TS + CSS | Ledger, `NEW_MARKS`, the Compass, hints |
+| `PREUNINSTALL` hook (fork 6) | small | Cannot remove the `.mcpb`; the shim's error covers it |
+| Docs: AGENT-SETUP.md rewritten, AGENT.md, ONBOARDING.md, this doc's as-built | — | The guide page *Connect* (DOCS-ORG §13.10) covers it |
+
+**Sittings: about three.** (1) The crate, the CLI and the tests, with Claude Code and Codex.
+(2) The `.mcpb`, *last used* and the panel. (3) The uninstall hook, the docs and the desk test.
+The desk test must run from the installed app or a normal terminal, not from a Claude session
+(§4.1, MSIX), on Claude Desktop, Claude Code, Codex and ChatGPT desktop.
+
+**Shipped ahead of B (2026-10-11, uncommitted at writing):** the `-s user` fix to the Claude
+Code text in `agent_setup_text` (settings.rs) and in AGENT.md §4.
+
+## 8b. Where the code and the state live (2026-10-11)
+> **Part:** designed · 2026-10-11
+
+Each part goes to the place that already holds its kind. Read against the tree on 2026-10-11.
+
+| Part | Home | Why there |
+|---|---|---|
+| The install logic: detect, connect, disconnect, `setup_text`, the backup and the atomic write | **`crates/mcp-install/`**, a new path crate (fork 1A). `cli/Cargo.toml` and `src-tauri/Cargo.toml` each list it by path | The CLI is its own crate with no workspace (two target dirs, on purpose). A path crate is the one way both can call the same code with no hidden process. `crates/` is new; the AirPlay crate is a git dependency, so nothing sits there yet |
+| `agent_setup_text`, `cli_path`, `cli_name` | **Move** from `src-tauri/src/settings.rs` into the crate; settings.rs keeps a thin `#[tauri::command]` | They are install logic, not settings. The beta name (`deetsmusic-beta`, BETA.md §6) moves with them |
+| The app's commands: `mcp_detect`, `mcp_connect`, `mcp_disconnect`, `mcp_open_bundle`, `mcp_last_used` | **`src-tauri/src/mcp_install.rs`**, a new module, registered in `lib.rs` beside `agent_setup_text` | One module per outside thing, like `lastfm.rs` or `presence.rs`. Every command is `async` + `spawn_blocking`: it reads and writes other apps' files (CLAUDE.md › Conventions, check 9) |
+| `deetsmusic mcp install / status / uninstall` | **`cli/src/main.rs`**, the `Cmd::Mcp` change of §5 | Where every CLI verb lives |
+| The `.mcpb` source: the Node shim, `manifest.json`, `icon.png` | **`mcpb/`** at the repo root, beside `extension/` | The same kind of thing as the browser extension: a small outside package that ships inside the installer |
+| Packing the `.mcpb` | **`scripts/mcpb-pack.mjs`**, called from `scripts/release.mjs` after `cli:build` | A zip with a manifest needs no tool of its own; the release already has a step list |
+| Shipping it | **`tauri.conf.json` › `bundle.resources`**: `"../mcpb/dist/deetsmusic.mcpb": "mcpb/deetsmusic.mcpb"`, beside `cli/deetsmusic.exe` | The CLI and the extension ship this way. The *Connect* button opens `$INSTDIR\mcpb\deetsmusic.mcpb`, and Windows hands it to Claude Desktop |
+| *Last used* (fork 8) | **CLI:** `serve_mcp` (`cli/src/main.rs`, the `initialize` arm) keeps `clientInfo.name` and sends it as an `X-Deets-Client` header on each bridge call. **App:** `bridge.rs` `handle` notes the name and the time in a memory map; `mcp_last_used` reads it | No database, no settings key: it is lost at restart, and the panel says "not used since DeetsMusic started" |
+| The uninstall hook (fork 6) | **`src-tauri/nsis/hooks.nsh`**, the `PREUNINSTALL` macro, before `DeetsStopCli` | The file already stops the CLI and removes the autostart value there; the same "the path, never the name" rules apply |
+| The Settings UI | **Settings › Connections**, under *Agent control*. **Connect AI apps** replaces the **Copy setup for** row (`src/settings-card.ts`, the `setup` split row). *Copy setup info* stays inside the new part for the other apps | The row already sits there; a user who looks for it finds it in the same place |
+| The panel code | **`src/mcp-panel.ts`**, a new module, opened from the row | settings-card.ts is already large; a panel with its own state is its own file, like `room-panel.ts` |
+| Docs | AGENT-SETUP.md §2 rewritten around the panel; AGENT.md §4 the new verbs; ONBOARDING.md §1 the hints; `NEW_MARKS` one line; the guide page *Connect* (DOCS-ORG §13.10) | The build checklist (CLAUDE.md › Working style) |
+
+**Settings keys: none.** Whether an app is connected lives in that app's own file (or, for
+the `.mcpb`, in Claude Desktop), and *last used* lives in memory. Nothing goes into
+`settings.json`, so no agent spec and no AGENT.md settings line. An agent cannot reach any of
+it (§7.8: an agent must not connect itself to other apps).
+
+**Decided (the owner, 2026-10-11):**
+- **The panel is inline** in the Connections section, in the *My reports* idiom: a bordered
+  `set__group` with a heading and one line per app. No popover. (Rejected: a dropdown panel
+  on the row.) A line that appears after a press still goes through `enterRows` (§7.1).
+- **The row's label is *Set up the DeetsMusic MCP*.** It replaces *Connect AI apps* in §1 and
+  §7.3. The hint is still open: the §1 draft is "Sets up DeetsMusic in the AI apps on this PC".
+
+### 8c. Forks 1–6, read again after 7A and 9A (2026-10-11)
+
+7A (Claude Desktop through the `.mcpb`) and 9A (four apps first) change what forks 1–6 cover.
+The four apps and how each one connects:
+
+| App | How it connects in v1 | How it disconnects |
+|---|---|---|
+| Claude Desktop | Opens `deetsmusic.mcpb`; Claude shows its own install screen | The user removes it in Claude › Settings › Extensions |
+| Claude Code | `claude mcp add -s user …` (its own command) | `claude mcp remove -s user deetsmusic` |
+| Codex | `codex mcp add deetsmusic -- …` (its own command) | `codex mcp remove deetsmusic` |
+| ChatGPT desktop | The Codex entry: the same file, one line in the panel for both | The same |
+
+- **Fork 1 (where the code lives):** unchanged. Recommendation **A**, the path crate.
+- **Fork 2 (how each app gets the entry):** smaller now. Claude Desktop has one way (the
+  `.mcpb`). Claude Code and Codex: **A (recommended)** their own command, and when the command
+  is not on PATH, write the file (`~\.claude.json` only when Claude Code is closed, §6.6;
+  `config.toml` with `toml_edit`). **B** their own command only; no command, no Connect, and
+  the panel shows *Copy setup info*.
+- **Fork 3 (restart help):** the Restart button was for Claude Desktop, and a `.mcpb` install
+  needs no restart. Claude Code and Codex read the entry at a new session. **Recommendation
+  now B:** a message only, no button, in v1. Check at the desk test whether ChatGPT desktop
+  needs a restart.
+- **Fork 4 (the dev build):** **A (recommended)** a dev build connects Claude Code and Codex as
+  `deetsmusic-dev` and never offers the `.mcpb` (a second bundle would need its own id and
+  shim). **B** the panel and the command refuse in a dev build.
+- **Fork 5 (full or small tools):** none of the four apps is a small local model. **v1: every
+  entry is `mcp` (full).** The fork returns with LM Studio in v2.
+- **Fork 6 (uninstall):** **A (recommended)** the `PREUNINSTALL` hook removes the Claude Code
+  and Codex entries. It cannot remove the `.mcpb`; after an uninstall, the shim answers
+  "DeetsMusic is not installed on this PC", and the user removes it in Claude. **B** leave
+  every entry; AGENT-SETUP.md §5 tells the user.
 
 ## 9. Desk test (to fill in at build)
 

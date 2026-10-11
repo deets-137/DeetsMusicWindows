@@ -398,7 +398,9 @@ pub fn agent_setup_text(client: String, app: tauri::AppHandle) -> String {
         if small { "\"mcp\", \"--small\"" } else { "\"mcp\"" }
     );
     match client.as_str() {
-        "claude-code" => format!("claude mcp add {} -- \"{path}\" mcp", cli_name()),
+        // `-s user`: with no scope, Claude Code adds the server to the current folder only
+        // (MCP-INSTALL.md §8a, 2026-10-11).
+        "claude-code" => format!("claude mcp add -s user {} -- \"{path}\" mcp", cli_name()),
         "claude-desktop" | "cursor" => json,
         _ if small => format!("Command: {path}\nArguments: mcp --small\n\nAs JSON for an MCP config file:\n{json}"),
         _ => format!("Command: {path}\nArgument: mcp\n\nAs JSON for an MCP config file:\n{json}"),

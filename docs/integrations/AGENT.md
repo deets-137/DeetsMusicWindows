@@ -196,7 +196,7 @@ subset a tool server needs, no SDK. Tools:
 | `query` | `sql` | full | one read-only SELECT over songs · playlists · playlist_songs · plays · play_counts; the description lists every column; 2 s, 500 rows ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7) |
 | `diag` | `limit?` (1–300, default 100), `since?`, `tag?`, `flush?` (also write to the log file) | full | the window's live diag ring, oldest first (`GET /diag`, §3); what the app just did, with no flush or restart. CLI: `deetsmusic diag` |
 
-Register in Claude Code: `claude mcp add deetsmusic -- <path>\deetsmusic.exe mcp`. The
+Register in Claude Code: `claude mcp add -s user deetsmusic -- <path>\deetsmusic.exe mcp`. The
 **Copy setup for** menu: Claude Desktop, Claude Code, Cursor, **Other (Full)** → `mcp`;
 **Other (Small)** → `mcp --small`.
 
