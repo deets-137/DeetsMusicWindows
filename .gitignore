@@ -67,3 +67,4 @@ src-tauri/.cargo/
 shots/
 src-tauri/.tauri.dev2.gen.json
 src-tauri/target-second/
+crates/mcp-install/Cargo.lock
