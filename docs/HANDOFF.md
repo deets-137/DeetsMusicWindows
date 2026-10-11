@@ -119,6 +119,13 @@ RULEZ.md §18. His desk test is §18.3; step 6 (Headphones on a real headset) is
 Delete with Undo; sentence copy; the sentence as the name; a search field in the word menus):
 RULEZ.md §19, his desk test §19.4.
 
+**deetsmeter: the judge (M3), 2026-10-10, built, UNCOMMITTED on `ten-out-of-ten`, his desk test
+open.** `scripts/compare/` (the judge, its rules, two profiles; scenes play, scroll, search,
+start warm and cold), the sensor changes in `tools/deetsmeter/`, `tests/compare-metrics.test.ts`.
+Run on Apple's app only so far; ours needs Max with the default cards, then Claude fills its
+probe positions. The desk test is music-app-comp.md §17.15 (DESK-TESTS.md B21); the as-built
+record §17.12–§17.14. Open fork: how the tool seeks (scene 4).
+
 **Pick up here (2026-09-28, next session).** In order:
 0. ~~Desk test: Play a web from the song playing~~ — Claude's run 2026-10-01 passed steps 1–8
    (DESK-TESTS.md §5, the 10-01 run). **Left from that run** (investigated the same day):

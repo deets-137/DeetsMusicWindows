@@ -1,0 +1,18 @@
+{
+  "app": { "attach": "AppleMusic.exe", "aumid": "AppleInc.AppleMusicWin_nzyj5cx40ttqa!App" },
+  "probes": { "content": [90, 170, 260, 400] },
+  "steps": [
+    { "do": "attach" },
+    { "do": "wait_window", "timeout_ms": 2000 },
+    { "do": "place", "on": "left", "rect": [20, 40, 1040, 1150] },
+    { "do": "wait", "ms": 500 },
+    { "do": "close" },
+    { "do": "wait_gone", "timeout_ms": 15000 },
+    { "do": "wait", "ms": 2000 },
+    { "do": "launch" },
+    { "do": "wait_window", "timeout_ms": 20000 },
+    { "do": "place" },
+    { "do": "settle", "quiet_ms": 500, "timeout_ms": 15000, "probe": "content" },
+    { "do": "snap", "tag": "started" }
+  ]
+}

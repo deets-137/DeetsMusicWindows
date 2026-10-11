@@ -99,6 +99,9 @@ pub struct Watch {
     /// Each probe's last brightness grid, and the time (µs) of its last change.
     pub probe_prev: Mutex<HashMap<String, Vec<u8>>>,
     pub probe_last: Mutex<HashMap<String, i64>>,
+    /// Whether each probe read as one flat colour on its last frame (a settle with
+    /// `content` waits for it to be false: a blank window is quiet too).
+    pub probe_flat: Mutex<HashMap<String, bool>>,
     /// A probe CHANGES when one grid cell moves by at least this much (0–255 luma).
     pub probe_threshold: AtomicU32,
 }
@@ -125,6 +128,7 @@ impl Watch {
             change_tx: Mutex::new(None),
             probe_prev: Mutex::new(HashMap::new()),
             probe_last: Mutex::new(HashMap::new()),
+            probe_flat: Mutex::new(HashMap::new()),
             probe_threshold: AtomicU32::new(16),
         })
     }
@@ -517,6 +521,7 @@ fn bx(r: Rect) -> D3D11_BOX {
 /// whether it CHANGED (one cell moved by at least the threshold).
 fn judge_probe(w: &Watch, name: &str, g: Grid, baseline: bool) -> (Value, bool) {
     let mut body = json!({ "flat": g.flat });
+    w.probe_flat.lock().unwrap().insert(name.to_string(), g.flat);
     let mut changed = false;
     let mut prev = w.probe_prev.lock().unwrap();
     if let Some(old) = prev.get(name) {

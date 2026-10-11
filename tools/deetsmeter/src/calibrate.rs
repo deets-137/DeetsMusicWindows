@@ -38,6 +38,9 @@ pub struct Opts {
     pub rounds: u32,
     pub size: Option<(i32, i32)>,
     pub probes: bool,
+    /// A monitor (`left`, `right`, `primary`, `\\.\DISPLAYn`): the window opens 200 px inside
+    /// its work area. The floor and the cadence of a secondary monitor are their own numbers.
+    pub on: Option<String>,
 }
 
 unsafe fn fill(hwnd: HWND, hdc: HDC) {
@@ -140,10 +143,18 @@ fn pct(sorted: &[f64], p: f64) -> f64 {
 
 pub fn run(o: Opts, out: Option<&Path>) -> i32 {
     let rounds = o.rounds;
-    let win = match o.size {
+    let mut win = match o.size {
         Some((w, h)) => Rect { x: WIN.x, y: WIN.y, w, h },
         None => WIN,
     };
+    if let Some(on) = &o.on {
+        let Some(m) = crate::win::monitor(on) else {
+            eprintln!("[deetsmeter] no monitor {on} (deetsmeter monitors lists them)");
+            return 2;
+        };
+        win.x = m.work.x + WIN.x;
+        win.y = m.work.y + WIN.y;
+    }
     let events = std::sync::Arc::new(Events::new());
     let watch = Watch::new();
     let (tx, rx) = mpsc::channel();

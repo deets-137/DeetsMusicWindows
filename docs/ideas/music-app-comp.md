@@ -1,12 +1,12 @@
 ---
 status: idea
-desk_test: none
-sources: [tools/deetsmeter/src/main.rs, tools/deetsmeter/src/screen.rs, tools/deetsmeter/src/run.rs, tools/deetsmeter/src/calibrate.rs, scripts/bench.mjs, scripts/heaviness-sample.ps1, scripts/boot-log.mjs, scripts/perf-report.mjs, scripts/archive-installer.mjs, scripts/webview-profile.mjs, scripts/shots.mjs, src/perf.ts, src/frames.ts, src/launch-perf.ts, src/telemetry-on.ts]
+desk_test: open
+sources: [scripts/compare/run.mjs, scripts/compare/metrics.mjs, tools/deetsmeter/src/audio.rs, tools/deetsmeter/src/main.rs, tools/deetsmeter/src/screen.rs, tools/deetsmeter/src/run.rs, tools/deetsmeter/src/calibrate.rs, scripts/bench.mjs, scripts/heaviness-sample.ps1, scripts/boot-log.mjs, scripts/perf-report.mjs, scripts/archive-installer.mjs, scripts/webview-profile.mjs, scripts/shots.mjs, src/perf.ts, src/frames.ts, src/launch-perf.ts, src/telemetry-on.ts]
 updated: 2026-10-10
 ---
 # DeetsMusic against the Apple Music app for Windows — metrics and methods
 
-> **An idea, opened 2026-10-06. Since 2026-10-10 the sensor (M1, §17.9) is built; no comparison has been run.** The owner asked for a theory:
+> **An idea, opened 2026-10-06. Since 2026-10-10 the sensor (M1, M2, §17.9–§17.11) and the judge's first scene (§17.12) are built; single smoke passes only, no scored run.** The owner asked for a theory:
 > which numbers say one music player is lighter or quicker than another, and how to take
 > each number so the same method hits both apps. Every fork in §9 is his. Numbers quoted
 > from our own telemetry are the ones already in [DEBUGGING.md](../ops/DEBUGGING.md); none
@@ -903,3 +903,198 @@ Play, and §12's repeats and spread apply before any of these is quoted.
 to the left monitor ([−1060, −207, 1040, 1150]), the duplication followed it to `DISPLAY2`,
 and the window went back to [1271, 187, 1402, 1002]. With Notepad on the left monitor and the
 old `HWND_TOP`, the guard refused (correct) and the window still went back.
+
+### 17.12 Apple's app heard, Next timed, and the judge's first scene (M3 started, 2026-10-10)
+
+> **Part:** built · 2026-10-10 — the meter fixes and the `play` scene of the judge. Uncommitted
+> on `ten-out-of-ten`. The other scenes need his forks (§17.13).
+
+**Apple's app plays from a helper.** `AppleMusic.exe` (pid 24132) has no audio session at all.
+Its sound comes from `AMPLibraryAgent.exe`, which Windows starts (parent: a service host), not
+the app: it is outside the app's process tree, so the meter heard nothing of it. New: `listen`
+takes `"also": ["<exe>", …]`, and the meter hears those processes' trees too (meter method
+only; loopback refuses it). UI Automation reaches Apple's buttons at the first ask: Play,
+Pause, Skip Forward, Skip Back, Shuffle (toggle), Do Not Repeat.
+
+**A new session is heard at once.** Apple's agent opened a second session on the first Play,
+and **DeetsMusic opens its session at the press itself** (91 ms after the press; the sound
+was at 132 ms). The meter re-read the session list every 250 ms and the process tree every 2 s,
+so a sound in a new session could be heard up to 250 ms late. That is the most likely cause of
+the earlier 284–293 ms against 150 ms (§17.11): a tool fault, not MusicKit. Fixed: Windows'
+*session created* notice (`IAudioSessionNotification`) makes the meter re-read the tree and
+the sessions at its next poll (`session` event). The process tree is now rebuilt on its own
+thread: in the poll loop, a snapshot of every process stalled the poll 35–45 ms every 2 s. The
+`listen-end` event and the summary give the longest poll gap (5–8 ms since).
+
+**Next → sound needs a gap onset.** A song that plays on never goes silent for 250 ms, so a
+Next gave no `sound-on`. New: a sound that comes back after a gap of 30 ms or more is a new
+start (`sound-on` with `gap_ms`). A gap needs a quiet poll inside it: a stalled poll is not
+silence (the first build fired every 2 s on the tree rebuild).
+
+**First single runs** (left monitor, UI Automation presses, meter; one run each, so none is a
+number yet, §12):
+
+| | DeetsMusic 0.25.4 | Apple Music 1.1540.23042.0 |
+|---|---|---|
+| Play → sound | 132 · 118 ms | 154 · 150 · 196 · 153 · 163 ms (the first Play of the day: 1,317 ms) |
+| Next → sound | 502 · 455 · 477 · 466 · 1000 · 741 ms | 1,129 · 1,112 · 994 · 964 · 726 · 722 ms |
+| the old song stops after Next | gap 193–242 ms of silence | stops about 146 ms after the press, then about 1 s of silence |
+
+**The judge, first scene** (`scripts/compare/`):
+- `metrics.mjs`: the pure rules: events → per press: first change in its probe (null without a
+  probe, §17.9), first `sound-on`, first `sound-off`; repeats of a press pool (`next1..3` →
+  `next`); median, range, quartiles, spread = (max − min) ÷ median, NOISY over 8 % (§1.4); the
+  §12 mark (floors 8 ms screen, 10 ms sound); the idle gate from two `os.cpus()` readings.
+  Test: `tests/compare-metrics.test.ts`.
+- `profiles/deets.json`, `profiles/apple.json`: what to attach to, `also`, the placement on
+  the left monitor, the button names per press, and the version query.
+- `run.mjs [--scene play] [--passes 3] [--apps deets,apple] [--against <csv>] [--dry]`:
+  writes each pass's steps, waits up to 30 s for the machine to be under 5 % CPU (else the
+  pass runs and is counted in `busy_passes`), runs the sensor, alternates the order each
+  pass (§4), prints both apps side by side and writes `results/<stamp>.csv` (§14's columns
+  plus n, min, max, q1, q3, noisy, busy_passes). `--against` an older CSV adds the §12 marks.
+  `musickit`, `songs` and `skin` are empty for now.
+- Scene `play`: Play → sound, Next ×3 → sound, Pause; the app must be paused at the start.
+
+### 17.13 What the next scenes need (his forks)
+
+> **Part:** decided · 2026-10-10 — his calls: **scroll by a real wheel** (the pointer goes to
+> the left monitor for about 2 s and comes back); **search by typed keys** (the tool takes the
+> focus for about 1 s per search); **DeetsMusic on Max with the default cards**, Apple's
+> window the same size; **start scenes warm AND cold** (cold asks him to reboot between
+> passes). Seek is still open.
+
+Each remaining scene needs a way to press it without a pointer, or a choice to allow one:
+- **Library scroll (scene 6).** A real wheel needs the pointer over the window on the left
+  monitor for about 2 s. UI Automation's Scroll pattern needs no pointer, but it is not a
+  wheel: each app scrolls by its own step, and Chromium may jump instead of animating.
+- **Search (scene 7).** Typing needs the keyboard focus (it takes the owner's focus for about
+  a second). UI Automation's Value pattern sets the text with no focus, but no key events
+  are sent, so an app that searches on key-up may not start.
+- **Start (scenes 1–2).** The tool must quit and start each app; ours keeps the tray, Apple's
+  keeps its agent. Cold needs a reboot or an emptied standby list (admin).
+- **Seek (scene 4).** UI Automation's RangeValue on each app's progress bar.
+- **The DeetsMusic layout.** The profile must name one surface and one card layout (Max,
+  which cards); Apple's window is set to the same size.
+
+**More of his calls, the same sitting:** search scores **typed only** (last key → results:
+our results list, Apple's suggestion list), and Apple's Enter → full page is its own row,
+reported and not scored. To quit ours between warm starts, **the judge turns Close to tray
+off through the bridge and back on** at the end (Ctrl+C and a failure included).
+
+### 17.14 The scenes as built: scroll, search, start (2026-10-10)
+
+> **Part:** built · 2026-10-10 — on Apple's app, one pass each; ours waits for the Max
+> layout (the probe positions are read from it). Uncommitted on `ten-out-of-ten`.
+
+**Sensor changes.**
+- The pointer and the focus go back at the end of a run (`pointer-back`, `focus-back`
+  events), the way the window does: the first pointer step saves the pointer, the first
+  `focus` saves the foreground window.
+- `wait_gone`: a handle on every process of the app's tree at the `close`; `gone` at the last
+  exit. A window that only hid itself times out with "did it hide to the tray?".
+- `wait_window` takes `lift: true` (raise the window the moment it is found); `place`
+  without a rect lifts too. Why: Apple's restarted window opened under the Claude app on the
+  left monitor, and the cover guard stopped the run.
+- `settle` takes `content: true`: the quiet time counts only while the probe is not one flat
+  colour. Why: Apple's restarted window is plain black for about 5.6 s; a blank window is
+  quiet, so the plain settle ended at 1 s with a false "content".
+- Keys `backspace` and `delete`; `calibrate --on left`.
+
+**Judge rules** (`metrics.mjs`, 12 tests): the motion window gives fps, dropped (gaps over
+1.5 periods) and p99 for a scroll only; typed text is timed from its last key (`input-end`),
+and results already up by then read 0; the start rule counts frames only from the moment the
+new window is surely on top, and content is the first frame of the LAST not-flat stretch
+(Windows fades a new window in over what was under it for about 90 ms first); fps is better
+higher, its floor 3 % of the median; a start's floor 5 %; a step the sensor tagged itself
+(`s07-key`) is a helper press, never a row.
+
+**Runner** (`run.mjs`): `--scene play | scroll | search | start`, `--cold`. A profile names
+its layout; ours lists `expectCards` (Home, Library, Playlists, Search), read from the grow
+buttons' names over UI Automation, and the run refuses with what the window shows instead.
+The installed app's bridge is found by the port's OWNER (`netstat` → the installed exe's pid;
+a dev app answers with the same version on the next port). The skin column comes from
+`/health`. Cold: Windows up under 15 min and the app not running yet, else it refuses; one
+pass per boot, kept in `results/cold-<app>.jsonl`, the order alternating by boot.
+
+**First single passes on Apple's app** (busy machine: the League client held about 12 % of
+the CPU, so the idle gate failed every pass):
+
+| scene | result |
+|---|---|
+| scroll, 5 notches | first change +17 / +20 ms · settled +359 / +355 ms · 143 / 140 fps |
+| search, typed | first change after the last key 247–277 ms (the first round 493) · settled about 490 ms |
+| search, Enter → page | +253 ms |
+| close → gone | 1,551 · 1,501 ms (the first check 1,742) |
+| warm start | window 890–969 ms · black until 6.5 s · content 6,492 ms · settled 6,715 ms |
+
+**Not to trust yet: dropped frames on a busy machine.** Apple's scroll read 57 % dropped.
+`calibrate --on left` and on the main monitor, on this busy machine, both showed the test
+window flipping only 53–109 times a second (216 when the machine was quiet) and the sensor
+missing 1.4–1.5 % of compositions. The floor is the same on both monitors (about 8 ms), so the
+left monitor is not the cause. Run scroll rows on a quiet machine only.
+
+**What waits for the owner:** set ours to Max with the default cards; then the scroll,
+search and start blocks of `profiles/deets.json` are read from a picture of it. The `play`
+scene and every scene with sound are his to run.
+
+### 17.15 Desk test (his, open since 2026-10-10)
+
+> **Part:** desk test open · 2026-10-10 — nothing is committed; the tree on
+> `ten-out-of-ten` holds the sensor changes, `scripts/compare/` and the test file.
+
+**Terms.** *The judge* is `node scripts/compare/run.mjs`. *A pass* is one run of a scene on
+one app. *Left monitor* is the portrait `DISPLAY2`; every run moves the app there and puts it
+back at the end.
+
+**Before you start.**
+1. Close the League of Legends client (it holds about 12 % of the CPU; with it open every
+   pass fails the idle gate and reads "busy").
+2. Leave the left monitor clear for the runs: the cover guard stops a run if a window sits
+   on top of the app.
+3. Both apps open: ours (the installed 0.25.4) and Apple Music on Library › Songs, both
+   paused. Same output device, AirPlay off (§3).
+4. If the sensor is not built: `cargo build --release --offline` in `tools/deetsmeter/`.
+
+**The steps.** Each one prints a table and writes `scripts/compare/results/<stamp>.csv`; the
+per-pass files are in the folder of the same name.
+
+| # | Do | Expect | Who |
+|---|---|---|---|
+| 1 | Set ours to **Max with the default cards** (Home, Library, Playlists, Search) by hand | The judge checks these four names before every pass on ours and refuses otherwise. Then tell Claude: it takes one picture and fills the `scroll`, `search` and `start` blocks of `profiles/deets.json`. Until then, steps 3–5 run on Apple alone with `--apps apple`. | owner, then Claude |
+| 2 | `node scripts/compare/run.mjs --scene play --passes 3` (plays music aloud, about 2 min) | Each pass prints `play ♪… ▣…`, `next1..3 ♪…`, `pause ▣…`. No pass FAILED. Not "busy". | owner |
+| 3 | `node scripts/compare/run.mjs --scene scroll --passes 3` | The pointer goes to the left monitor for about 2 s per pass and comes back. Rows: first change, settled, fps, dropped, p99 for `down` and `up`. With a quiet machine, dropped should fall well under Apple's busy 57 %. | owner |
+| 4 | `node scripts/compare/run.mjs --scene search --passes 3` | The tool takes the keyboard focus for about 15 s per pass and gives it back. Rows: `search → screen` and `search → settled` (from the last key); Apple also `enter → …`. Afterwards Apple is on Songs again. | owner |
+| 5 | `node scripts/compare/run.mjs --scene start --passes 3` | DeetsMusic asks you to allow "closeToTray off": allow it. Each app closes and reopens per pass. Rows: close → gone, warm start → window / content / settled. At the end the line "closeToTray is back to on". Check Settings › Close to tray is On. | owner |
+| 6 | Cold: restart Windows, sign in, do NOT open either app (turn off Start with Windows for ours first if it is on), then within 15 min `node scripts/compare/run.mjs --scene start --cold` | One pass per app; the rows grow by one each reboot (`results/cold-<app>.jsonl`). Repeat on later boots for n ≥ 3. | owner |
+| 7 | `npm test` | 182 pass (12 in `tests/compare-metrics.test.ts`) | anyone |
+
+**What to look at, besides the numbers.**
+- Any line `FAILED (…)`: the reason is the sensor's own words (a covered region, a button not
+  found, "still running … after the close").
+- A `NOISY` row: spread over 8 %, not quoted (§1.4).
+- After step 5: Apple's now-playing panel is cleared by its restart (seen 2026-10-10);
+  ours resumes its queue paused.
+- If a run is stopped with Ctrl+C during step 5, the judge still sets Close to tray back; if
+  it says "could not put closeToTray back", set it by hand.
+
+**Re-runnable sensor scripts** (`tools/deetsmeter/examples/`, run with
+`tools/deetsmeter/target/release/deetsmeter.exe run <file>`): `apple-play-left.json` and
+`deets-play-left.json` (one Play → sound), `apple-next-left.json` and `deets-next-left.json`
+(Play + Next ×3), `apple-left-snap.json` (a picture of Apple's window), `apple-search-snap.json`
+(opens Apple's search and types), `apple-back-to-songs.json` (Back ×3 to Songs),
+`apple-restart.json` (close and restart Apple). Also `deetsmeter calibrate --on left` (the
+screen floor on the left monitor) and `deetsmeter calibrate-sound` (the sound floor; it plays
+10 quiet blips).
+
+**Results** (fill in):
+
+| # | Date | Result | Seen |
+|---|---|---|---|
+| 1 | | | |
+| 2 | | | |
+| 3 | | | |
+| 4 | | | |
+| 5 | | | |
+| 6 | | | |
+

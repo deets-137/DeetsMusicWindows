@@ -1,0 +1,19 @@
+{
+  "app": { "attach": "AppleMusic.exe" },
+  "steps": [
+    { "do": "attach" },
+    { "do": "wait_window", "timeout_ms": 2000 },
+    { "do": "place", "on": "left", "rect": [20, 40, 1040, 1150] },
+    { "do": "wait", "ms": 500 },
+    { "do": "focus" },
+    { "do": "click", "at": [24, 22], "tag": "back1" },
+    { "do": "wait", "ms": 1200 },
+    { "do": "snap", "tag": "b1" },
+    { "do": "click", "at": [24, 22], "tag": "back2" },
+    { "do": "wait", "ms": 1200 },
+    { "do": "snap", "tag": "b2" },
+    { "do": "click", "at": [24, 22], "tag": "back3" },
+    { "do": "wait", "ms": 1200 },
+    { "do": "snap", "tag": "b3" }
+  ]
+}

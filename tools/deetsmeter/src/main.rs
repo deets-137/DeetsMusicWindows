@@ -1,6 +1,6 @@
 //! deetsmeter — the outside-in measuring tool (docs/ideas/music-app-comp.md §17).
 //!
-//!   deetsmeter calibrate [--rounds 30] [--size WxH] [--probes] [--out <dir>]
+//!   deetsmeter calibrate [--rounds 30] [--size WxH] [--probes] [--on left] [--out <dir>]
 //!                                                      the floor and the cadence of the screen method
 //!   deetsmeter calibrate-sound [--rounds 10] [--method meter|loopback]
 //!                                                      the floor of the sound method (quiet blips)
@@ -58,7 +58,7 @@ fn default_out() -> PathBuf {
 
 fn usage() -> i32 {
     eprintln!(
-        "usage:\n  deetsmeter calibrate [--rounds 30] [--size WxH] [--probes] [--out <dir>]\n  deetsmeter calibrate-sound [--rounds 10] [--method meter|loopback] [--out <dir>]\n  deetsmeter run <steps.json> [--out <dir>]\n  deetsmeter find <exe name | full path>\n  deetsmeter sessions [<exe name | full path>]\n  deetsmeter uia <exe name | full path>\n  deetsmeter monitors"
+        "usage:\n  deetsmeter calibrate [--rounds 30] [--size WxH] [--probes] [--on left] [--out <dir>]\n  deetsmeter calibrate-sound [--rounds 10] [--method meter|loopback] [--out <dir>]\n  deetsmeter run <steps.json> [--out <dir>]\n  deetsmeter find <exe name | full path>\n  deetsmeter sessions [<exe name | full path>]\n  deetsmeter uia <exe name | full path>\n  deetsmeter monitors"
     );
     2
 }
@@ -80,7 +80,7 @@ fn main() {
                 let (w, h) = s.split_once(['x', 'X'])?;
                 Some((w.parse().ok()?, h.parse().ok()?))
             });
-            calibrate::run(calibrate::Opts { rounds, size, probes: args.iter().any(|a| a == "--probes") }, out.as_deref())
+            calibrate::run(calibrate::Opts { rounds, size, probes: args.iter().any(|a| a == "--probes"), on: opt("--on") }, out.as_deref())
         }
         Some("calibrate-sound") => {
             let rounds = opt("--rounds").and_then(|s| s.parse().ok()).unwrap_or(10);

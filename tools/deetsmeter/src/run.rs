@@ -46,7 +46,9 @@ pub struct RunFile {
 pub enum Step {
     Launch,
     Attach,
-    WaitWindow { timeout_ms: Option<u64> },
+    /// `lift`: raise the window the moment it is found (a start: it may open under another
+    /// window, and the frames from `shown` on must show the app).
+    WaitWindow { timeout_ms: Option<u64>, lift: Option<bool> },
     /// Place the window so its visible frame is `rect` (desktop pixels), or keep it where it
     /// is; either way the region and probes are set from the frame and a baseline is taken.
     /// `on` names a monitor (`left`, `right`, `primary` or `\.DISPLAY2`): then `rect` is
@@ -62,11 +64,16 @@ pub enum Step {
     Key { key: String, keep: Option<u32>, tag: Option<String>, probe: Option<String> },
     Text { text: String, every_ms: Option<u64>, keep: Option<u32>, tag: Option<String>, probe: Option<String> },
     /// Wait until the region has not changed for `quiet_ms` (F15: 500 ms).
-    Settle { quiet_ms: Option<u64>, timeout_ms: Option<u64>, probe: Option<String> },
+    /// `content: true` (with a probe): quiet counts only while the probe is NOT one flat
+    /// colour. A start's blank window is quiet too (Apple's stayed black for over 2 s after
+    /// it opened, and the plain settle ended there, 2026-10-10).
+    Settle { quiet_ms: Option<u64>, timeout_ms: Option<u64>, probe: Option<String>, content: Option<bool> },
     /// Move the pointer off the window (right of the frame), so a hover cannot paint.
     /// Start hearing the app's own sound (process loopback, F14): the window's process and its
     /// children. Nothing is recorded: only the times sound starts and stops (audio.rs).
-    Listen { threshold_db: Option<f64>, pid: Option<u32>, method: Option<String> },
+    /// `also` names more processes (exe names) whose trees the meter hears too: Apple's app
+    /// plays from `AMPLibraryAgent.exe`, which is not its child (2026-10-10).
+    Listen { threshold_db: Option<f64>, pid: Option<u32>, method: Option<String>, #[serde(default)] also: Vec<String> },
     /// Wait for sound to start after the last input.
     WaitSound { timeout_ms: Option<u64> },
     /// Press a button by its accessible name through UI Automation: no mouse, no focus
@@ -77,6 +84,9 @@ pub enum Step {
     Snap { tag: Option<String> },
     Park,
     Close,
+    /// Wait until every process of the app's tree at the `close` has exited (`gone`). A
+    /// window that only hid itself (DeetsMusic's Close to tray) times out.
+    WaitGone { timeout_ms: Option<u64> },
 }
 
 struct State {
@@ -88,6 +98,13 @@ struct State {
     listen: Option<crate::audio::Listen>,
     /// Where the window was before the first `place` moved it: put back at the end.
     restore: Option<windows::Win32::Foundation::RECT>,
+    /// Where the pointer was before the first pointer step, and which window had the focus
+    /// before the first `focus`: both put back at the end (his calls 2026-10-10: a real wheel
+    /// and typed keys borrow the pointer and the focus, then return them).
+    pointer_home: Option<(i32, i32)>,
+    focus_home: Option<HWND>,
+    /// The app's process tree at the `close`, for `wait_gone`.
+    close_tree: Vec<u32>,
 }
 
 fn abs(st: &State, at: [i32; 2]) -> Option<(i32, i32)> {
@@ -143,7 +160,7 @@ pub fn run(file: &Path, out: &Path) -> i32 {
         "qpc_freq": clock::freq(),
     }));
 
-    let mut st = State { pids: Vec::new(), hwnd: None, frame: None, last_input: None, win_pid: None, listen: None, restore: None };
+    let mut st = State { pids: Vec::new(), hwnd: None, frame: None, last_input: None, win_pid: None, listen: None, restore: None, pointer_home: None, focus_home: None, close_tree: Vec::new() };
     let mut failed: Option<String> = None;
     for (i, step) in rf.steps.iter().enumerate() {
         if let Err(e) = do_step(i, step, &rf, &mut st, &watch, &events) {
@@ -162,6 +179,14 @@ pub fn run(file: &Path, out: &Path) -> i32 {
     if let (Some(h), Some(r)) = (st.hwnd, st.restore) {
         win::put_back(h, r);
         events.push(clock::now(), "restored", json!({}));
+    }
+    if let Some((x, y)) = st.pointer_home {
+        input::move_to(x, y);
+        events.push(clock::now(), "pointer-back", json!({}));
+    }
+    if let Some(h) = st.focus_home {
+        let ok = unsafe { windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow(h).as_bool() };
+        events.push(clock::now(), "focus-back", json!({ "ok": ok }));
     }
     // The capture thread's own CPU over the run (the sensor's cost), and the whole process for reference.
     let run_ms = (clock::now() as f64 / 1000.0).max(1.0);
@@ -193,6 +218,15 @@ fn arm(watch: &Watch, i: usize, kind: &str, keep: Option<u32>, tag: &Option<Stri
 }
 
 fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, ev: &Arc<Events>) -> Result<(), String> {
+    if matches!(step, Step::Move { .. } | Step::Click { .. } | Step::Wheel { .. } | Step::Drag { .. } | Step::Park) && st.pointer_home.is_none() {
+        st.pointer_home = input::cursor();
+    }
+    if matches!(step, Step::Focus) && st.focus_home.is_none() {
+        let fg = unsafe { windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow() };
+        if !fg.is_invalid() {
+            st.focus_home = Some(fg);
+        }
+    }
     match step {
         Step::Launch => {
             let t = clock::now();
@@ -215,7 +249,7 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
             }
             ev.push(clock::now(), "attach", json!({ "pids": st.pids, "step": i }));
         }
-        Step::WaitWindow { timeout_ms } => {
+        Step::WaitWindow { timeout_ms, lift } => {
             let until = clock::now() + timeout_ms.unwrap_or(30_000) as i64 * 1000;
             // The launched pid's tree (a launcher may hand the window to a child). Rebuilt every
             // 100 ms, not every poll: it is a snapshot of every process on the PC (polling it
@@ -237,7 +271,11 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
                     ev.push(clock::now(), "unminimized", json!({ "step": i }));
                 }
                 if let Some(w) = win::windows_of(&pids).into_iter().next() {
-                    ev.push(clock::now(), "shown", json!({ "pid": w.pid, "title": w.title, "frame": w.frame.json(), "step": i }));
+                    let t = clock::now();
+                    if *lift == Some(true) {
+                        win::lift(w.hwnd);
+                    }
+                    ev.push(t, "shown", json!({ "pid": w.pid, "title": w.title, "frame": w.frame.json(), "lifted": *lift == Some(true), "step": i }));
                     st.hwnd = Some(w.hwnd);
                     st.win_pid = Some(w.pid);
                     st.frame = Some(w.frame);
@@ -265,7 +303,10 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
                     }
                     win::place(hwnd, Rect { x: ox + r[0], y: oy + r[1], w: r[2], h: r[3] }).ok_or("place failed")?
                 }
-                None => win::frame(hwnd).ok_or("no frame")?,
+                None => {
+                    win::lift(hwnd);
+                    win::frame(hwnd).ok_or("no frame")?
+                }
             };
             st.frame = Some(frame);
             let region = match rf.region {
@@ -378,9 +419,10 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
             // The LAST key is the one a result waits on (§2.3, Search → results).
             ev.push(clock::now(), "input-end", json!({ "kind": "text", "tag": tag, "probe": probe, "step": i }));
         }
-        Step::Settle { quiet_ms, timeout_ms, probe } => {
+        Step::Settle { quiet_ms, timeout_ms, probe, content } => {
             let quiet = quiet_ms.unwrap_or(500) as i64 * 1000;
-            let start = clock::now();
+            let mut start = clock::now();
+            let wants_content = *content == Some(true) && probe.is_some();
             // Changes count from the last input, not from this step: the input's own
             // changes land before the settle step begins.
             let since = st.last_input.unwrap_or(start);
@@ -392,6 +434,10 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
             };
             loop {
                 let now = clock::now();
+                if wants_content && watch.probe_flat.lock().unwrap().get(probe.as_deref().unwrap_or("")).copied().unwrap_or(true) {
+                    // Still blank: the quiet time starts again once something is drawn.
+                    start = now;
+                }
                 let lc = last_change();
                 if now - lc.max(start) >= quiet {
                     ev.push(now, "settled", json!({ "last_change": if lc > since { json!(lc) } else { Value::Null }, "quiet_ms": quiet / 1000, "probe": probe, "step": i }));
@@ -404,13 +450,17 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
                 std::thread::sleep(Duration::from_millis(2));
             }
         }
-        Step::Listen { threshold_db, pid, method } => {
+        Step::Listen { threshold_db, pid, method, also } => {
             let pid = pid.or(st.win_pid).ok_or("listen needs a pid or the app's window (wait_window first)")?;
             let m = match method.as_deref() {
                 None => crate::audio::Method::Meter,
                 Some(s) => crate::audio::Method::parse(s).ok_or_else(|| format!("listen: method is meter or loopback, not {s}"))?,
             };
-            let l = crate::audio::start(pid, threshold_db.unwrap_or(-60.0), m, ev.clone()).map_err(|e| format!("listen: {e}"))?;
+            if !also.is_empty() && m == crate::audio::Method::Loopback {
+                return Err("listen: also works with method meter only (loopback hears one process tree)".into());
+            }
+            let also: Vec<String> = also.iter().map(|a| crate::win::expand_env(a)).collect();
+            let l = crate::audio::start(pid, &also, threshold_db.unwrap_or(-60.0), m, ev.clone()).map_err(|e| format!("listen: {e}"))?;
             st.listen = Some(l);
         }
         Step::WaitSound { timeout_ms } => {
@@ -486,8 +536,25 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
         }
         Step::Close => {
             let hwnd = st.hwnd.ok_or("close needs a window")?;
-            ev.push(clock::now(), "input", json!({ "kind": "close", "step": i }));
+            let root = st.win_pid.or(st.pids.first().copied()).ok_or("close needs the app's process")?;
+            st.close_tree = win::tree(root);
+            let t = clock::now();
             win::close(hwnd);
+            ev.push(t, "input", json!({ "kind": "close", "tag": "close", "pids": st.close_tree.len(), "step": i }));
+            st.last_input = Some(t);
+        }
+        Step::WaitGone { timeout_ms } => {
+            let ms = timeout_ms.unwrap_or(10_000);
+            match win::wait_all_gone(&st.close_tree, ms) {
+                Some(t) => {
+                    ev.push(t, "gone", json!({ "pids": st.close_tree.len(), "step": i }));
+                    // The window is gone with it: a later `place` or the end-of-run put-back
+                    // must not touch a dead handle.
+                    st.hwnd = None;
+                    st.frame = None;
+                }
+                None => return Err(format!("the app was still running {ms} ms after the close (did it hide to the tray?)")),
+            }
         }
     }
     Ok(())
@@ -577,9 +644,10 @@ fn summary(all: &[Value]) {
             let loud = end["loud"].as_u64().unwrap_or(0);
             match end["polls"].as_u64() {
                 Some(polls) => println!(
-                    "  sound  meter: {polls} polls of {} session(s), {loud} over the threshold, loudest {} dBFS · meter thread {:.1} % of one core",
+                    "  sound  meter: {polls} polls of {} session(s), {loud} over the threshold, loudest {} dBFS · longest poll gap {:.1} ms · meter thread {:.1} % of one core",
                     end["sessions"],
                     end["max_peak_db"],
+                    end["longest_poll_ms"].as_f64().unwrap_or(f64::NAN),
                     end["cpu_pct"].as_f64().unwrap_or(f64::NAN)
                 ),
                 None => println!("  sound  loopback: {} packets, {loud} over the threshold, loudest {} dBFS", end["packets"], end["max_peak_db"]),

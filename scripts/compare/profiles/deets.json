@@ -1,0 +1,11 @@
+{
+  "name": "DeetsMusic",
+  "attach": "%LOCALAPPDATA%\\DeetsMusic\\DeetsMusic.exe",
+  "also": [],
+  "bridge": true,
+  "place": { "on": "left", "rect": [20, 40, 1040, 1150] },
+  "layout": "Max with the default cards (Home, Library, Playlists, Search)",
+  "expectCards": ["Home", "Library", "Playlists", "Search"],
+  "buttons": { "play": ["Play"], "pause": ["Pause"], "next": ["Next"] },
+  "version": "(Get-Item \"$env:LOCALAPPDATA\\DeetsMusic\\DeetsMusic.exe\").VersionInfo.ProductVersion"
+}

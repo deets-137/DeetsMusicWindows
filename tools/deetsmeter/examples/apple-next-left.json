@@ -1,0 +1,24 @@
+{
+  "app": { "attach": "AppleMusic.exe" },
+  "steps": [
+    { "do": "attach" },
+    { "do": "wait_window", "timeout_ms": 2000 },
+    { "do": "place", "on": "left", "rect": [20, 40, 1040, 1150] },
+    { "do": "listen", "also": ["AMPLibraryAgent.exe"] },
+    { "do": "wait", "ms": 800 },
+    { "do": "invoke", "names": ["Play"], "probe": "self", "tag": "play" },
+    { "do": "wait_sound", "timeout_ms": 8000 },
+    { "do": "wait", "ms": 2000 },
+    { "do": "invoke", "names": ["Skip Forward"], "tag": "next1" },
+    { "do": "wait_sound", "timeout_ms": 8000 },
+    { "do": "wait", "ms": 2000 },
+    { "do": "invoke", "names": ["Skip Forward"], "tag": "next2" },
+    { "do": "wait_sound", "timeout_ms": 8000 },
+    { "do": "wait", "ms": 2000 },
+    { "do": "invoke", "names": ["Skip Forward"], "tag": "next3" },
+    { "do": "wait_sound", "timeout_ms": 8000 },
+    { "do": "wait", "ms": 1500 },
+    { "do": "invoke", "names": ["Pause"], "probe": "self", "tag": "pause" },
+    { "do": "wait", "ms": 800 }
+  ]
+}

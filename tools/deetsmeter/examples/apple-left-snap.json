@@ -1,0 +1,10 @@
+{
+  "app": { "attach": "AppleMusic.exe" },
+  "steps": [
+    { "do": "attach" },
+    { "do": "wait_window", "timeout_ms": 2000 },
+    { "do": "place", "on": "left", "rect": [20, 40, 1040, 1150] },
+    { "do": "wait", "ms": 700 },
+    { "do": "snap", "tag": "left" }
+  ]
+}

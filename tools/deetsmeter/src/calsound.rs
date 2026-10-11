@@ -35,7 +35,7 @@ fn pct(sorted: &[f64], p: f64) -> f64 {
 
 pub fn run(rounds: u32, method: audio::Method, out: Option<&Path>) -> i32 {
     let events = Arc::new(Events::new());
-    let listen = match audio::start(std::process::id(), -60.0, method, events.clone()) {
+    let listen = match audio::start(std::process::id(), &[], -60.0, method, events.clone()) {
         Ok(l) => l,
         Err(e) => {
             eprintln!("[deetsmeter] cannot listen: {e}");

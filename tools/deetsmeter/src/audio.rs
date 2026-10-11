@@ -39,6 +39,10 @@ const RATE: u32 = 48_000;
 const CHANNELS: usize = 2;
 /// Silence this long after the last loud sample ends a sound.
 const OFF_AFTER_US: i64 = 250_000;
+/// Meter only: a sound that comes back after a gap this long, inside one sound, is a new start
+/// (`sound-on` with `gap_ms`). A Next leaves a short gap, far under OFF_AFTER_US; three engine
+/// periods keep the meter's own 10 ms steps out of it.
+const GAP_US: i64 = 30_000;
 
 /// A running listener. Dropping it stops the capture thread.
 pub struct Listen {
@@ -143,17 +147,18 @@ impl Method {
 }
 
 /// Start listening to `pid` and its children. Returns once the capture runs (or fails).
-pub fn start(pid: u32, threshold_db: f64, method: Method, ev: Arc<Events>) -> Result<Listen, String> {
+pub fn start(pid: u32, also: &[String], threshold_db: f64, method: Method, ev: Arc<Events>) -> Result<Listen, String> {
     let stop = Arc::new(AtomicBool::new(false));
     let last_on = Arc::new(AtomicI64::new(i64::MIN));
     let (init_tx, init_rx) = std::sync::mpsc::channel::<Result<(), String>>();
     let (st, lo) = (stop.clone(), last_on.clone());
+    let also = also.to_vec();
     let thread = std::thread::Builder::new()
         .name("sound".into())
         .spawn(move || {
             let r = match method {
                 Method::Loopback => run(pid, threshold_amp(threshold_db), &st, &lo, &ev, &init_tx),
-                Method::Meter => run_meter(pid, 10f64.powf(threshold_db / 20.0) as f32, &st, &lo, &ev, &init_tx),
+                Method::Meter => run_meter(pid, &also, 10f64.powf(threshold_db / 20.0) as f32, &st, &lo, &ev, &init_tx),
             };
             if let Err(e) = r {
                 let _ = init_tx.send(Err(e));
@@ -274,6 +279,36 @@ fn run(
     Ok(())
 }
 
+/// Windows' "a session was created" notice. It only raises a flag; the poll loop re-reads the
+/// process tree and the session list at its next poll (a player can open its session, or even
+/// start its audio process, at the press itself: Apple's agent opened a second session on the
+/// first Play, 2026-10-10, while the list was re-read only every 250 ms).
+#[implement(windows::Win32::Media::Audio::IAudioSessionNotification)]
+struct NewSession(Arc<AtomicBool>);
+
+impl windows::Win32::Media::Audio::IAudioSessionNotification_Impl for NewSession_Impl {
+    fn OnSessionCreated(&self, _s: Ref<'_, windows::Win32::Media::Audio::IAudioSessionControl>) -> windows::core::Result<()> {
+        self.0.store(true, Ordering::SeqCst);
+        Ok(())
+    }
+}
+
+/// The target's tree plus the trees of every process named in `also` (a player whose sound
+/// comes from a helper that is not its child).
+fn meter_tree(pid: u32, also: &[String]) -> Vec<u32> {
+    let mut t = crate::win::tree(pid);
+    for a in also {
+        for p in crate::win::find_pids(a) {
+            for q in crate::win::tree(p) {
+                if !t.contains(&q) {
+                    t.push(q);
+                }
+            }
+        }
+    }
+    t
+}
+
 /// The meter sessions of the default output that belong to `pid`'s process tree.
 unsafe fn tree_meters(
     mgr: &windows::Win32::Media::Audio::IAudioSessionManager2,
@@ -301,6 +336,7 @@ unsafe fn tree_meters(
 /// silence; it stops at the last loud poll before 250 ms under it.
 fn run_meter(
     pid: u32,
+    also: &[String],
     thr: f32,
     stop: &AtomicBool,
     last_on: &AtomicI64,
@@ -314,13 +350,21 @@ fn run_meter(
         let en: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| format!("device enumerator: {e}"))?;
         let dev = en.GetDefaultAudioEndpoint(eRender, eConsole).map_err(|e| format!("default output: {e}"))?;
         let mgr: IAudioSessionManager2 = dev.Activate(CLSCTX_ALL, None).map_err(|e| format!("session manager: {e}"))?;
-        // The process tree is a snapshot of every process on the PC: costly. Rebuilt every 2 s;
-        // the session list (cheap) every 250 ms.
-        let mut tree = crate::win::tree(pid);
-        let mut tree_at = clock::now();
-        let mut meters = tree_meters(&mgr, &tree).map_err(|e| format!("sessions: {e}"))?;
+        // The process tree is a snapshot of every process on the PC: costly (35–45 ms with an
+        // `also` list, 2026-10-10). It is rebuilt on its own thread, every 2 s and at once on a
+        // new session, so the 2 ms poll never waits for it. The session list (cheap) is
+        // re-read here: on the notice, on a new tree, and 4× a second.
+        let tree0 = meter_tree(pid, also);
+        let mut meters = tree_meters(&mgr, &tree0).map_err(|e| format!("sessions: {e}"))?;
+        let shared = std::sync::Mutex::new(tree0);
+        let (want_tree, tree_new) = (AtomicBool::new(false), AtomicBool::new(false));
+        // Registered after the first enumeration (Windows sends the notice only once a client
+        // has enumerated), unregistered at the end.
+        let created = Arc::new(AtomicBool::new(false));
+        let notice: windows::Win32::Media::Audio::IAudioSessionNotification = NewSession(created.clone()).into();
+        let noticed = mgr.RegisterSessionNotification(&notice).is_ok();
         ev.push(clock::now(), "listen", json!({
-            "pid": pid, "method": Method::Meter.name(), "threshold": thr, "sessions": meters.len(), "stores_audio": false,
+            "pid": pid, "also": also, "method": Method::Meter.name(), "threshold": thr, "sessions": meters.len(), "stores_audio": false,
         }));
         let _ = init.send(Ok(()));
 
@@ -328,47 +372,88 @@ fn run_meter(
         let mut max_peak = 0f32;
         let mut loud = false;
         let mut last_loud = i64::MIN;
+        let mut quiet_seen = false;
         let mut refreshed = clock::now();
+        // The longest time between two polls: the meter's own blind spot, printed per run.
+        let (mut prev_poll, mut longest_poll) = (clock::now(), 0i64);
         let (cpu0, t0) = (crate::screen::thread_cpu_us(), clock::now());
-        while !stop.load(Ordering::SeqCst) {
-            let now = clock::now();
-            // A player may open its session only when it starts playing: look again 4× a second.
-            if now - refreshed > 250_000 {
-                if now - tree_at > 2_000_000 {
-                    tree = crate::win::tree(pid);
-                    tree_at = now;
+        std::thread::scope(|sc| {
+            sc.spawn(|| {
+                let mut at = clock::now();
+                while !stop.load(Ordering::SeqCst) {
+                    if want_tree.swap(false, Ordering::SeqCst) || clock::now() - at > 2_000_000 {
+                        let t = meter_tree(pid, also);
+                        at = clock::now();
+                        let mut g = shared.lock().unwrap();
+                        if *g != t {
+                            *g = t;
+                            tree_new.store(true, Ordering::SeqCst);
+                        }
+                    }
+                    std::thread::sleep(Duration::from_millis(10));
                 }
-                if let Ok(m) = tree_meters(&mgr, &tree) {
-                    meters = m;
+            });
+            while !stop.load(Ordering::SeqCst) {
+                let now = clock::now();
+                longest_poll = longest_poll.max(now - prev_poll);
+                prev_poll = now;
+                // A player may open its session only when it starts playing (Apple's agent
+                // opened a second one on the first Play), or start a new process for it.
+                let fresh = created.swap(false, Ordering::SeqCst);
+                if fresh {
+                    want_tree.store(true, Ordering::SeqCst);
                 }
-                refreshed = now;
-            }
-            let mut peak = 0f32;
-            for (_, m) in &meters {
-                peak = peak.max(m.GetPeakValue().unwrap_or(0.0));
-            }
-            let t = clock::now();
-            polls += 1;
-            max_peak = max_peak.max(peak);
-            if peak >= thr {
-                over += 1;
-                if !loud {
-                    loud = true;
-                    last_on.store(t, Ordering::SeqCst);
-                    ev.push(t, "sound-on", json!({ "peak_db": (20.0 * (peak as f64).log10()).round(), "via": "meter" }));
+                let grown = tree_new.swap(false, Ordering::SeqCst);
+                if fresh || grown || now - refreshed > 250_000 {
+                    let tree = shared.lock().unwrap().clone();
+                    if let Ok(m) = tree_meters(&mgr, &tree) {
+                        if m.len() != meters.len() {
+                            ev.push(clock::now(), "session", json!({ "sessions": m.len() }));
+                        }
+                        meters = m;
+                    }
+                    refreshed = now;
                 }
-                last_loud = t;
-            } else if loud && t - last_loud > OFF_AFTER_US {
-                loud = false;
-                ev.push(last_loud, "sound-off", json!({ "via": "meter" }));
+                let mut peak = 0f32;
+                for (_, m) in &meters {
+                    peak = peak.max(m.GetPeakValue().unwrap_or(0.0));
+                }
+                let t = clock::now();
+                polls += 1;
+                max_peak = max_peak.max(peak);
+                if peak >= thr {
+                    over += 1;
+                    let db = (20.0 * (peak as f64).log10()).round();
+                    if !loud {
+                        loud = true;
+                        last_on.store(t, Ordering::SeqCst);
+                        ev.push(t, "sound-on", json!({ "peak_db": db, "via": "meter" }));
+                    } else if quiet_seen && t - last_loud >= GAP_US {
+                        last_on.store(t, Ordering::SeqCst);
+                        ev.push(t, "sound-on", json!({ "peak_db": db, "via": "meter", "gap_ms": (t - last_loud) / 1000 }));
+                    }
+                    last_loud = t;
+                    quiet_seen = false;
+                } else {
+                    // A gap needs a quiet poll inside it: a poll loop that stalled is not
+                    // silence (the tree rebuild once stalled it 35–45 ms every 2 s).
+                    quiet_seen = true;
+                    if loud && t - last_loud > OFF_AFTER_US {
+                        loud = false;
+                        ev.push(last_loud, "sound-off", json!({ "via": "meter" }));
+                    }
+                }
+                // 2 ms: the meter itself moves once per engine period (10 ms), so a faster poll
+                // only costs CPU (1 ms polling measured about 9 % of a core, 2026-10-10).
+                std::thread::sleep(Duration::from_millis(2));
             }
-            // 2 ms: the meter itself moves once per engine period (10 ms), so a faster poll
-            // only costs CPU (1 ms polling measured about 9 % of a core, 2026-10-10).
-            std::thread::sleep(Duration::from_millis(2));
-        }
+        });
         let max_db = if max_peak > 0.0 { json!((20.0 * (max_peak as f64).log10()).round()) } else { serde_json::Value::Null };
         let cpu_pct = (crate::screen::thread_cpu_us() - cpu0) as f64 / (clock::now() - t0).max(1) as f64 * 100.0;
-        ev.push(clock::now(), "listen-end", json!({ "polls": polls, "loud": over, "max_peak_db": max_db, "sessions": meters.len(), "cpu_pct": cpu_pct }));
+        if noticed {
+            let _ = mgr.UnregisterSessionNotification(&notice);
+        }
+        ev.push(clock::now(), "listen-end", json!({ "noticed": noticed, "longest_poll_ms": longest_poll as f64 / 1000.0, "polls": polls, "loud": over, "max_peak_db": max_db, "sessions": meters.len(), "cpu_pct": cpu_pct }));
     }
     Ok(())
 }

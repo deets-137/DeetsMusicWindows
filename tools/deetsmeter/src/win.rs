@@ -392,17 +392,24 @@ pub fn place(hwnd: HWND, want: Rect) -> Option<Rect> {
             SWP_SHOWWINDOW | SWP_NOACTIVATE,
         )
         .ok()?;
-        // On top of the other windows there (the run's monitor is the run's), but NOT
-        // activated: the keyboard focus stays where the owner is typing. HWND_TOP alone is
-        // refused for a window of a background process (2026-10-10, under Notepad); topmost
-        // and straight back is the usual way to raise it without activating it.
-        use windows::Win32::UI::WindowsAndMessaging::{HWND_NOTOPMOST, HWND_TOPMOST};
-        let keep = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+    }
+    lift(hwnd);
+    std::thread::sleep(std::time::Duration::from_millis(150));
+    frame(hwnd)
+}
+
+/// On top of the other windows there (the run's monitor is the run's), but NOT activated:
+/// the keyboard focus stays where the owner is typing. HWND_TOP alone is refused for a
+/// window of a background process (2026-10-10, under Notepad); topmost and straight back is
+/// the usual way to raise it without activating it. A window the app opens itself (a start)
+/// may open under another window, so `place` without a rect lifts too (2026-10-10).
+pub fn lift(hwnd: HWND) {
+    use windows::Win32::UI::WindowsAndMessaging::{HWND_NOTOPMOST, HWND_TOPMOST};
+    let keep = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+    unsafe {
         let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, keep);
         let _ = SetWindowPos(hwnd, Some(HWND_NOTOPMOST), 0, 0, 0, 0, keep);
     }
-    std::thread::sleep(std::time::Duration::from_millis(150));
-    frame(hwnd)
 }
 
 pub fn is_foreground(hwnd: HWND) -> bool {
@@ -410,6 +417,31 @@ pub fn is_foreground(hwnd: HWND) -> bool {
         let fg = windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow();
         GetAncestor(fg, GA_ROOT) == hwnd
     }
+}
+
+/// Wait until every process in `pids` has exited. Returns the clock time the last one was
+/// seen gone, or None on the timeout. A pid that cannot be opened has already exited.
+pub fn wait_all_gone(pids: &[u32], timeout_ms: u64) -> Option<i64> {
+    use windows::Win32::System::Threading::{WaitForSingleObject, PROCESS_SYNCHRONIZE};
+    let until = crate::clock::now() + timeout_ms as i64 * 1000;
+    let handles: Vec<_> = pids.iter().filter_map(|p| unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, *p).ok() }).collect();
+    // One after another: each wait wakes at that process's exit, or at once if it is gone
+    // already, so the time after the last wait is the time the last process left.
+    let mut ok = true;
+    for h in &handles {
+        let left = ((until - crate::clock::now()) / 1000).max(0) as u32;
+        if unsafe { WaitForSingleObject(*h, left) } != windows::Win32::Foundation::WAIT_OBJECT_0 {
+            ok = false;
+            break;
+        }
+    }
+    let at = crate::clock::now();
+    for h in &handles {
+        unsafe {
+            let _ = CloseHandle(*h);
+        }
+    }
+    ok.then_some(at)
 }
 
 pub fn close(hwnd: HWND) {

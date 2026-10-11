@@ -1,0 +1,26 @@
+{
+  "name": "Apple Music",
+  "attach": "AppleMusic.exe",
+  "also": ["AMPLibraryAgent.exe"],
+  "place": { "on": "left", "rect": [20, 40, 1040, 1150] },
+  "layout": "Library › Songs, sorted by Plays",
+  "buttons": { "play": ["Play"], "pause": ["Pause"], "next": ["Skip Forward"] },
+  "scroll": { "at": [500, 600], "probe": [90, 170, 260, 400], "notches": 5, "every_ms": 30 },
+  "start": {
+    "launch": { "aumid": "AppleInc.AppleMusicWin_nzyj5cx40ttqa!App" },
+    "content": [90, 170, 260, 400]
+  },
+  "search": {
+    "open": [{ "do": "click", "at": [24, 104] }],
+    "results": [12, 130, 256, 350],
+    "enter": { "page": [300, 130, 740, 440] },
+    "after": [
+      { "do": "click", "at": [24, 22] },
+      { "do": "wait", "ms": 1000 },
+      { "do": "click", "at": [24, 22] },
+      { "do": "wait", "ms": 1000 },
+      { "do": "snap", "tag": "after" }
+    ]
+  },
+  "version": "(Get-AppxPackage AppleInc.AppleMusicWin).Version"
+}

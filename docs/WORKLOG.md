@@ -12,6 +12,28 @@ updated: 2026-10-10
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-10 — deetsmeter: Apple's app heard, Next timed, the judge's play scene (built, uncommitted, branch `ten-out-of-ten`)
+
+His ask: test and keep building deetsmeter, with Apple's app open for reference. **Found:**
+Apple's sound comes from `AMPLibraryAgent.exe`, outside its process tree (new `listen.also`);
+DeetsMusic opens its audio session at the press, and the meter's 250 ms re-read could hear it
+up to 250 ms late (now Windows' session-created notice; the likely cause of the earlier
+284–293 ms); a Next leaves a gap under 250 ms, so a gap onset of ≥ 30 ms was added; the tree
+rebuild stalled the poll 35–45 ms (now its own thread). **Built:** `scripts/compare/`
+(`metrics.mjs` + `tests/compare-metrics.test.ts`, the two profiles, `run.mjs` with the `play`
+scene, the idle gate, alternation, the CSV, `--against` marks). One pass each: Play → sound
+118 ms ours, 163 ms Apple's; Next → sound NOISY on both. Record: music-app-comp.md §17.12.
+**Later, same sitting:** his calls on §17.13 (real wheel, typed keys, Max with the default
+cards, warm and cold starts; search scores typed only plus Apple's Enter row; the judge turns
+Close to tray off and back on). Built: the `scroll`, `search` and `start` scenes, pointer and
+focus put back, `wait_gone`, lift on open, the content-aware settle, the cold mode, the layout
+check by the grow buttons' names, the bridge found by its port's owner. Apple's app, one pass
+each: scroll first change 17–20 ms; search 247–277 ms after the last key; warm start window
+890 ms but black until 6.5 s. Record: music-app-comp.md §17.14. I closed and reopened his Apple
+app four times (one approved check plus the scene runs); its now-playing panel was cleared.
+**Open:** he sets ours to Max with the default cards, then the deets probes are read from a
+picture; seek is still a fork; every sound scene and the 3-pass runs are his.
+
 ## 2026-10-10 — Rulez usability review, and its fixes (built, committed, branch `ten-out-of-ten`)
 
 His ask: a usability review of Rulez (pro power, beginner friendly) and a read of the recipes.

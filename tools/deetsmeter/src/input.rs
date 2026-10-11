@@ -5,7 +5,7 @@
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
     KEYEVENTF_UNICODE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
-    MOUSEEVENTF_WHEEL, MOUSEINPUT, MOUSE_EVENT_FLAGS, VIRTUAL_KEY, VK_CONTROL, VK_DOWN, VK_END, VK_ESCAPE, VK_HOME,
+    MOUSEEVENTF_WHEEL, MOUSEINPUT, MOUSE_EVENT_FLAGS, VIRTUAL_KEY, VK_BACK, VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE, VK_HOME,
     VK_LEFT, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE, VK_MEDIA_PREV_TRACK, VK_MENU, VK_NEXT, VK_PRIOR, VK_RETURN,
     VK_RIGHT, VK_SHIFT, VK_SPACE, VK_TAB, VK_UP,
 };
@@ -27,6 +27,12 @@ fn key(vk: VIRTUAL_KEY, scan: u16, flags: KEYBD_EVENT_FLAGS) -> INPUT {
 
 fn send(list: &[INPUT]) -> bool {
     unsafe { SendInput(list, std::mem::size_of::<INPUT>() as i32) as usize == list.len() }
+}
+
+/// Where the pointer is now (to put it back when the run ends).
+pub fn cursor() -> Option<(i32, i32)> {
+    let mut p = windows::Win32::Foundation::POINT::default();
+    unsafe { windows::Win32::UI::WindowsAndMessaging::GetCursorPos(&mut p).ok().map(|_| (p.x, p.y)) }
 }
 
 pub fn move_to(x: i32, y: i32) -> bool {
@@ -66,6 +72,8 @@ pub fn parse_key(spec: &str) -> Option<(Vec<VIRTUAL_KEY>, VIRTUAL_KEY)> {
         "escape" | "esc" => VK_ESCAPE,
         "space" => VK_SPACE,
         "tab" => VK_TAB,
+        "backspace" => VK_BACK,
+        "delete" | "del" => VK_DELETE,
         "left" => VK_LEFT,
         "right" => VK_RIGHT,
         "up" => VK_UP,

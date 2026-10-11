@@ -149,6 +149,7 @@ Order: the uncommitted work first (a fail there stops a commit), then the releas
 | B17 | Add a room member as a friend: the stress test on live | [FRIENDS.md §18.8](../integrations/FRIENDS.md) | live | owner | |
 | B18 | Room sync + Listen Along: the stress test on live | [ROOMS.md §18.8](../integrations/ROOMS.md) · FRIENDS.md §16.2 | live | owner | |
 | B19 | Discord's two buttons are readable | [FRIENDS.md §8.4](../integrations/FRIENDS.md) item 3 | live | owner | A second Discord account |
+| B21 | deetsmeter: the judge's four scenes on both apps (play, scroll, search, warm and cold start) | [music-app-comp.md §17.15](../ideas/music-app-comp.md) | installed + Apple Music | owner | Built 2026-10-10, uncommitted. Plays music aloud, borrows the pointer and the focus, closes and reopens both apps; the League client closed first. Step 1 (ours on Max with the default cards) comes before the rest |
 | B20 | The dead-next heal's double play | [QUEUE.md](../features/QUEUE.md) § The healed song played twice | live | owner | Cannot be forced; watch the next `player:deadNext` |
 
 ## 4. The two small scripts that live here
