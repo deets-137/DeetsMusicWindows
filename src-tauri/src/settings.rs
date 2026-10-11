@@ -11,6 +11,7 @@ use crate::lock::LockExt;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use tauri::Manager;
 
 /// What the speaker receives (AIRPLAY.md §7).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -149,6 +150,22 @@ impl Default for SettingsData {
 pub struct Settings {
     pub data: Mutex<SettingsData>,
     path: PathBuf,
+    /// What the launch read could not keep, for the one toast (`settings_load_problems`).
+    problems: Mutex<Option<LoadProblems>>,
+    /// One save at a time: the setters run on the blocking pool, and two writes to the same
+    /// `.tmp` beside the file would collide. The snapshot is taken inside, so the last save
+    /// writes the newest data.
+    save_lock: Mutex<()>,
+}
+
+/// settings.json did not read whole at launch (safe_file.rs): the fields back to their default.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoadProblems {
+    /// The file was not JSON at all: every value is back to its default.
+    pub unreadable: bool,
+    /// The fields whose stored value this build could not read, by their JSON (camelCase) name.
+    pub fields: Vec<String>,
 }
 
 /// 24 random bytes → 32-char base32-ish pairing code. Grouped for humans by the UI.
@@ -160,30 +177,59 @@ fn random_token() -> String {
 }
 
 impl Settings {
+    /// Read settings.json, keeping every value this build can read (safe_file.rs). Before
+    /// 2026-10-11 one unreadable value — a cut-off write, or a choice from a newer build after
+    /// a Roll back — reset EVERY value here and the pairing token, with no log line. Now only
+    /// that field resets; the old file is kept as settings.json.bad, the log names the fields,
+    /// and the front-end shows one toast (main.ts). The repaired file is saved at once, so the
+    /// toast shows once, not on every launch.
     pub fn load(dir: PathBuf) -> Self {
         let path = dir.join("settings.json");
-        let mut data: SettingsData = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
-        let mut dirty = false;
+        let (mut data, problems) = match std::fs::read_to_string(&path) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (SettingsData::default(), None), // a first run
+            Err(e) => {
+                crate::log::warn(&format!("settings: settings.json could not be opened ({e}); every value is back to its default"));
+                (SettingsData::default(), Some(LoadProblems { unreadable: true, fields: Vec::new() }))
+            }
+            Ok(text) => {
+                let r = crate::safe_file::parse_lenient::<SettingsData>(&text);
+                if r.clean() {
+                    (r.value, None)
+                } else {
+                    let kept = crate::safe_file::keep_bad_copy(&path).is_some();
+                    let copy = if kept { "; the old file is settings.json.bad" } else { "" };
+                    if r.unreadable {
+                        crate::log::warn(&format!("settings: settings.json could not be read; every value is back to its default{copy}"));
+                    } else {
+                        crate::log::warn(&format!("settings: these values could not be read and are back to their defaults: {}{copy}", r.bad_fields.join(", ")));
+                    }
+                    (r.value, Some(LoadProblems { unreadable: r.unreadable, fields: r.bad_fields }))
+                }
+            }
+        };
+        let mut dirty = problems.is_some();
         if data.bridge_token.is_empty() {
             data.bridge_token = random_token();
             dirty = true;
         }
-        let s = Self { data: Mutex::new(data), path };
+        let s = Self { data: Mutex::new(data), path, problems: Mutex::new(problems), save_lock: Mutex::new(()) };
         if dirty {
-            s.save().ok();
+            if let Err(e) = s.save() {
+                crate::log::warn(&format!("settings: {e}"));
+            }
         }
         s
     }
 
     pub fn save(&self) -> Result<(), String> {
+        let _one = self.save_lock.lock_or_recover();
         let json = serde_json::to_string_pretty(&*self.data.lock_or_recover()).map_err(|e| e.to_string())?;
-        if let Some(parent) = self.path.parent() {
-            std::fs::create_dir_all(parent).ok();
-        }
-        std::fs::write(&self.path, json).map_err(|e| format!("settings.json: {e}"))
+        crate::safe_file::write_atomic(&self.path, json.as_bytes()).map_err(|e| format!("settings.json: {e}"))
+    }
+
+    /// The launch read's problems, once (the toast takes them; a reload does not repeat it).
+    pub fn take_problems(&self) -> Option<LoadProblems> {
+        self.problems.lock_or_recover().take()
     }
 
     pub fn get(&self) -> SettingsData {
@@ -208,79 +254,104 @@ pub fn settings_get(settings: tauri::State<'_, Settings>) -> SettingsData {
     settings.get()
 }
 
+/// What settings.json could not keep at launch, once (main.ts shows one toast). Memory only.
 #[tauri::command]
-pub fn settings_set_minimize_to_tray(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    settings.update(|d| d.minimize_to_tray = on)
+pub fn settings_load_problems(settings: tauri::State<'_, Settings>) -> Option<LoadProblems> {
+    settings.take_problems()
+}
+
+// Every setter below writes settings.json. A sync command runs on the UI thread (CLAUDE.md,
+// FRIENDS.md §8.11), and a file write can wait on the disk or on antivirus, so each setter is
+// `async` and does its write — and anything after it — on the blocking pool (2026-10-11).
+async fn off_ui<T: Send + 'static>(app: tauri::AppHandle, job: impl FnOnce(&tauri::AppHandle) -> Result<T, String> + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(move || job(&app)).await.map_err(|e| e.to_string())?
+}
+
+/// The common setter: change one value and save.
+async fn set(app: tauri::AppHandle, f: impl FnOnce(&mut SettingsData) + Send + 'static) -> Result<SettingsData, String> {
+    off_ui(app, move |app| app.state::<Settings>().update(f)).await
 }
 
 #[tauri::command]
-pub fn settings_set_read_windows_media(
-    on: bool,
-    app: tauri::AppHandle,
-    settings: tauri::State<'_, Settings>,
-) -> Result<SettingsData, String> {
-    let out = settings.update(|d| d.read_windows_media = on)?;
-    crate::tray::sync_menu(&app);
-    Ok(out)
+pub async fn settings_set_minimize_to_tray(on: bool, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    set(app, move |d| d.minimize_to_tray = on).await
 }
 
 #[tauri::command]
-pub fn settings_set_agent_control(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    settings.update(|d| d.agent_control = on)
+pub async fn settings_set_read_windows_media(on: bool, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    off_ui(app, move |app| {
+        let out = app.state::<Settings>().update(|d| d.read_windows_media = on)?;
+        // The tray menu is built on the main thread, as it was when this command ran there.
+        let a = app.clone();
+        let _ = app.run_on_main_thread(move || crate::tray::sync_menu(&a));
+        Ok(out)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn settings_set_agent_history(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    settings.update(|d| d.agent_history = on)
+pub async fn settings_set_agent_control(on: bool, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    set(app, move |d| d.agent_control = on).await
 }
 
 #[tauri::command]
-pub fn settings_set_agent_diary(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    settings.update(|d| d.agent_diary = on)
+pub async fn settings_set_agent_history(on: bool, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    set(app, move |d| d.agent_history = on).await
 }
 
 #[tauri::command]
-pub fn settings_set_lastfm_scrobble(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    settings.update(|d| d.lastfm_scrobble = on)
+pub async fn settings_set_agent_diary(on: bool, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    set(app, move |d| d.agent_diary = on).await
+}
+
+#[tauri::command]
+pub async fn settings_set_lastfm_scrobble(on: bool, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    set(app, move |d| d.lastfm_scrobble = on).await
 }
 
 // ── Song of the Day (docs/integrations/DeetsOTD.md §8.4) ───────────────────────────────────
 
 #[tauri::command]
-pub fn settings_set_sotd(on: bool, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    let out = settings.update(|d| d.sotd = on)?;
-    crate::sotd::switched(&app, on);
-    Ok(out)
+pub async fn settings_set_sotd(on: bool, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    off_ui(app, move |app| {
+        let out = app.state::<Settings>().update(|d| d.sotd = on)?;
+        crate::sotd::switched(app, on);
+        Ok(out)
+    })
+    .await
 }
 
 /// 0 (midnight) or 5 (5 AM). Anything else is refused: the two are the row's only choices,
 /// and a stray hour would move every later pick to a day nobody picked.
 #[tauri::command]
-pub fn settings_set_sotd_day_start(hour: u8, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+pub async fn settings_set_sotd_day_start(hour: u8, app: tauri::AppHandle) -> Result<SettingsData, String> {
     if hour != 0 && hour != 5 {
         return Err("day start must be 0 or 5".into());
     }
-    let out = settings.update(|d| d.sotd_day_start = hour)?;
-    // A waiting post's due time was read under the old rule.
-    crate::sotd::outbox::rearm(&app);
-    Ok(out)
+    off_ui(app, move |app| {
+        let out = app.state::<Settings>().update(|d| d.sotd_day_start = hour)?;
+        // A waiting post's due time was read under the old rule.
+        crate::sotd::outbox::rearm(app);
+        Ok(out)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn settings_set_sotd_picks_per_day(n: u8, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+pub async fn settings_set_sotd_picks_per_day(n: u8, app: tauri::AppHandle) -> Result<SettingsData, String> {
     if n > 2 {
         return Err("picks per day must be 0 (no limit), 1 or 2".into());
     }
-    settings.update(|d| d.sotd_picks_per_day = n)
+    set(app, move |d| d.sotd_picks_per_day = n).await
 }
 
 #[tauri::command]
-pub fn settings_set_sotd_post_mode(mode: PostMode, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    settings.update(|d| d.sotd_post_mode = mode)
+pub async fn settings_set_sotd_post_mode(mode: PostMode, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    set(app, move |d| d.sotd_post_mode = mode).await
 }
 
 #[tauri::command]
-pub fn settings_set_sotd_post_at(at: String, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+pub async fn settings_set_sotd_post_at(at: String, app: tauri::AppHandle) -> Result<SettingsData, String> {
     let ok = at.len() == 5
         && at.as_bytes()[2] == b':'
         && at[..2].parse::<u32>().map(|h| h < 24).unwrap_or(false)
@@ -288,20 +359,23 @@ pub fn settings_set_sotd_post_at(at: String, app: tauri::AppHandle, settings: ta
     if !ok {
         return Err("post at must be HH:MM".into());
     }
-    let out = settings.update(|d| d.sotd_post_at = at)?;
-    crate::sotd::outbox::rearm(&app);
-    Ok(out)
+    off_ui(app, move |app| {
+        let out = app.state::<Settings>().update(|d| d.sotd_post_at = at)?;
+        crate::sotd::outbox::rearm(app);
+        Ok(out)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn settings_set_sotd_post_as(name: String, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
+pub async fn settings_set_sotd_post_as(name: String, app: tauri::AppHandle) -> Result<SettingsData, String> {
     // Discord caps a webhook username at 80 characters.
-    settings.update(|d| d.sotd_post_as = name.chars().take(80).collect())
+    set(app, move |d| d.sotd_post_as = name.chars().take(80).collect()).await
 }
 
 #[tauri::command]
-pub fn settings_set_lastfm_now_playing(on: bool, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    settings.update(|d| d.lastfm_now_playing = on)
+pub async fn settings_set_lastfm_now_playing(on: bool, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    set(app, move |d| d.lastfm_now_playing = on).await
 }
 
 // ── start with Windows (HKCU Run key via reg.exe; DeetsAirplay / DeetsRGB pattern) ──
@@ -362,7 +436,6 @@ pub async fn autostart_set(on: bool) -> Result<bool, String> {
 /// Tauri's `resource_dir` can carry the `\\?\` extended-length prefix; some MCP clients
 /// fail to launch a command written that way, so the copied text drops it.
 pub(crate) fn cli_path(app: &tauri::AppHandle) -> String {
-    use tauri::Manager;
     let exe = format!("{}.exe", cli_name());
     if let Ok(dir) = app.path().resource_dir() {
         let p = dir.join("cli").join(&exe);
@@ -405,13 +478,78 @@ pub fn agent_open_guide(app: tauri::AppHandle) -> Result<(), String> {
 
 /// Regenerate the pairing token (the old one stops working immediately).
 #[tauri::command]
-pub fn settings_rotate_bridge_token(settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    settings.update(|d| d.bridge_token = random_token())
+pub async fn settings_rotate_bridge_token(app: tauri::AppHandle) -> Result<SettingsData, String> {
+    set(app, |d| d.bridge_token = random_token()).await
 }
 
 #[tauri::command]
-pub fn settings_set_airplay_capture(v: AirplayCapture, app: tauri::AppHandle, settings: tauri::State<'_, Settings>) -> Result<SettingsData, String> {
-    let out = settings.update(|d| d.airplay_capture = v)?;
-    crate::airplay::prefs_changed(&app);
-    Ok(out)
+pub async fn settings_set_airplay_capture(v: AirplayCapture, app: tauri::AppHandle) -> Result<SettingsData, String> {
+    off_ui(app, move |app| {
+        let out = app.state::<Settings>().update(|d| d.airplay_capture = v)?;
+        crate::airplay::prefs_changed(app);
+        Ok(out)
+    })
+    .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("deets-settings-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn one_unreadable_value_resets_only_that_value_2026_10_11() {
+        // A choice from a newer build (read after a Roll back) and a value of the wrong type.
+        let dir = temp_dir("field");
+        std::fs::write(
+            dir.join("settings.json"),
+            r#"{"minimizeToTray":false,"sotdPostMode":"weekly","lastfmScrobble":"yes","bridgeToken":"keepme","sotdPostAt":"21:15"}"#,
+        )
+        .unwrap();
+        let s = Settings::load(dir.clone());
+        let d = s.get();
+        assert!(!d.minimize_to_tray, "a readable value is kept");
+        assert_eq!(d.bridge_token, "keepme", "the pairing token is kept");
+        assert_eq!(d.sotd_post_at, "21:15");
+        assert_eq!(d.sotd_post_mode, PostMode::Ask, "back to its default");
+        assert!(d.lastfm_scrobble, "back to its default");
+        let mut p = s.take_problems().expect("problems reported");
+        p.fields.sort();
+        assert_eq!(p, LoadProblems { unreadable: false, fields: vec!["lastfmScrobble".into(), "sotdPostMode".into()] });
+        assert!(s.take_problems().is_none(), "the toast takes them once");
+        assert!(dir.join("settings.json.bad").exists(), "the old file is kept");
+        // The repaired file is saved at once: the next launch reads it clean.
+        let again = Settings::load(dir.clone());
+        assert!(again.take_problems().is_none());
+        assert!(!again.get().minimize_to_tray);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_cut_off_file_resets_everything_but_says_so() {
+        let dir = temp_dir("cut");
+        std::fs::write(dir.join("settings.json"), r#"{"minimizeToTray":false,"bridgeTo"#).unwrap();
+        let s = Settings::load(dir.clone());
+        assert_eq!(s.take_problems(), Some(LoadProblems { unreadable: true, fields: vec![] }));
+        assert!(s.get().minimize_to_tray);
+        assert!(!s.get().bridge_token.is_empty(), "a new pairing token");
+        assert!(dir.join("settings.json.bad").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_first_run_has_no_problems() {
+        let dir = temp_dir("first");
+        let s = Settings::load(dir.clone());
+        assert!(s.take_problems().is_none());
+        assert!(dir.join("settings.json").exists());
+        assert!(!dir.join("settings.json.bad").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

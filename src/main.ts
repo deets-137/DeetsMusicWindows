@@ -27,6 +27,7 @@ import { initLayout } from "./layout";
 import { initSkinSettings } from "./skin-settings";
 import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
 import { toast } from "./toast";
+import { repairText, type LoadProblems } from "./settings-repair";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus } from "./np-bus";
 import { invoke } from "@tauri-apps/api/core";
@@ -149,6 +150,23 @@ function runLater(): Promise<void> {
 // or after 15 s if the cover never ends. A part that fails later than that is logged only.
 window.addEventListener("deets:boot-done", () => window.setTimeout(tellBootFailed, 1500), { once: true });
 window.setTimeout(tellBootFailed, 15_000);
+
+// settings.json values Rust could not read at launch reset one by one (safe_file.rs); say which,
+// once, after the cover like the guard above. Rust hands them over once, so a reload is quiet.
+window.addEventListener(
+  "deets:boot-done",
+  () =>
+    window.setTimeout(() => {
+      invoke<LoadProblems | null>("settings_load_problems")
+        .then((p) => {
+          const text = repairText(p);
+          if (p) diag.warn("settings:repaired", { unreadable: p.unreadable, fields: p.fields, told: !!text });
+          if (text) toast({ kind: "warn", text, sticky: true });
+        })
+        .catch((e) => console.error("[boot] settings problems", e));
+    }, 1500),
+  { once: true },
+);
 
 window.addEventListener("DOMContentLoaded", () => {
   launchMark("handler:begin");

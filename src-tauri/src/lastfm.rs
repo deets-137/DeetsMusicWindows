@@ -314,7 +314,8 @@ fn finish_connect(app: &AppHandle, s: Session) {
     if let Some(p) = session_path() {
         match serde_json::to_string(&s) {
             Ok(json) => {
-                if let Err(e) = std::fs::write(&p, json) {
+                // Write beside, then rename over (safe_file.rs): never half a session.
+                if let Err(e) = crate::safe_file::write_atomic(&p, json.as_bytes()) {
                     crate::log::warn(&format!("lastfm: could not save the session: {e}"));
                 }
             }

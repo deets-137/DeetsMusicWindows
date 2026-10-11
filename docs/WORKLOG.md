@@ -57,6 +57,40 @@ updated: 2026-10-11
   `.rulez__summary.is-name` spans columns 2 to 4. Measured on the dev app: every switch at
   full width (31 On / 38 Off), right edges and ⋯ in one line with the recipes; at a 380 px list
   the sentences end in "…" and the switches stay whole. Desk test: look at Rulez in Max.
+- **Rust files we cannot lose half of (his calls: field only, logged and shown; start now).**
+  Found: `settings.json` loaded with `from_str(..).ok().unwrap_or_default()`, so one value this
+  build could not read (a cut-off write; a newer build's choice after a Roll back) reset EVERY
+  Rust setting and wrote a new pairing token over the file, with no log line. `friends.json`
+  could lose the only copy of the friend key the same way.
+  - New `safe_file.rs`: `write_atomic` (beside, flush, rename over) and `parse_lenient` (each
+    stored field tried on top of the kept ones; only a failing field resets). 6 tests.
+  - settings.rs: the load keeps every readable value, keeps `settings.json.bad`, logs the fields,
+    saves the repaired file at once (so the toast shows once) and hands the fields to
+    `settings_load_problems`. Saves are one at a time (`save_lock`). The 15 setters and
+    `settings_rotate_bridge_token` are `async` with the write on the blocking pool; the tray menu
+    rebuild goes back to the main thread. 3 tests.
+  - friends.rs and sotd/outlet.rs: the same field-by-field load with a `.bad` copy, and the safe
+    write. lastfm.rs session and apple.rs user token: the safe write. `apple_disconnect` is
+    async (its deletes on the blocking pool).
+  - Front-end: `settings-repair.ts` (pure, 3 tests) names the rows; main.ts shows one sticky warn
+    toast 1.5 s after the cover; diag `settings:repaired`. TOASTS.md §5 row; SETTINGS.md §2;
+    CLAUDE.md conventions.
+  - Release check 9: a file write or delete is a blocker, SOFT for now: twelve commands in
+    friends.rs (8), report.rs (2) and sotd/outlet.rs (2) still write on the UI thread, his call.
+    `log_event` and `diag_flush` are allowed with the reason (open handle; line order; unload).
+- **Checked on the dev app (rebuilt by the runner):** a setter round trip 7 ms, the file
+  rewritten with no `.tmp` left. A settings.json with `sotdPostMode: "weekly"` and
+  `lastfmScrobble: "yes"`, then a restart: the log named the two fields, `settings.json.bad`
+  appeared, the repaired file held both defaults and every other value, the toast read "Some
+  settings could not be read, so they are back to their defaults: Scrobble plays and Post my
+  picks.", a second `settings_load_problems` returned null, and the CLI still paired (token
+  kept). The dev profile's settings.json was left as before the test; the `.bad` file removed.
+  `npm run check` passes (206 tests, 71 + 10 Rust). Check 9 run alone: ok, 12 warnings; a setter
+  made sync again is named.
+- **Desk test (owner):** none needed for normal use (the setters behave as before). To see the
+  repair: quit the dev app, set `"sotdPostMode": "weekly"` in
+  `%APPDATA%\com.deetsmusic.dev\settings.json`, start it. Expect the toast, and the value back to
+  Ask. The toast's words are drafted, his to change.
 
 ## 2026-10-11 — Backup designed (docs only; branch `ten-out-of-ten`)
 

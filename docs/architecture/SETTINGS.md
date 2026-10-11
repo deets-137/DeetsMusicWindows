@@ -74,6 +74,15 @@ Tray** — Rust `settings.json` (`settings_get` / `settings_set_minimize_to_tray
 the close policy runs before any JS can answer. **AirPlay** — *Send to speaker* is Rust-owned too ([AIRPLAY.md](../integrations/AIRPLAY.md) §7). A
 `ChoiceRow` with `get`/`set` instead of `key` is how a Rust-owned choice renders.
 
+**Rust's `settings.json` reads field by field (2026-10-11).** `Settings::load` keeps every value
+this build can read (`safe_file::parse_lenient`): one value it cannot read — a cut-off write, or
+a newer build's choice after a Roll back — resets only that value, never the whole file and the
+pairing token. The old file stays as `settings.json.bad`, the log names the fields, and one
+sticky toast names the rows (`settings_load_problems`, words in `settings-repair.ts`, TOASTS.md
+§5). Every write goes beside the file and is renamed over it (`safe_file::write_atomic`), one at
+a time, and every setter is `async` with its write on the blocking pool. A new Rust-owned key
+gets a row label in `settings-repair.ts` `ROW`.
+
 ## 3. The rows of the Settings card
 
 Every row of the card, with the key behind it. The controls that are settings but live in a

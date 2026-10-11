@@ -97,7 +97,18 @@ fn load() -> Store {
             return Store::default();
         }
     };
-    serde_json::from_slice(&plain).unwrap_or_default()
+    // Field by field (safe_file.rs, 2026-10-11): one value this build cannot read resets that
+    // value only, and the old file is kept beside it.
+    let r = crate::safe_file::parse_lenient::<Store>(&String::from_utf8_lossy(&plain));
+    if !r.clean() {
+        let copy = if crate::safe_file::keep_bad_copy(p).is_some() { "; the old file is kept as .bad" } else { "" };
+        if r.unreadable {
+            crate::log::warn(&format!("sotd: the outlet file could not be read{copy}"));
+        } else {
+            crate::log::warn(&format!("sotd: these outlet values could not be read and are back to empty: {}{copy}", r.bad_fields.join(", ")));
+        }
+    }
+    r.value
 }
 
 fn save(store: &Store) {
@@ -105,10 +116,8 @@ fn save(store: &Store) {
     let Ok(json) = serde_json::to_vec(store) else { return };
     match protect(&json) {
         Ok(blob) => {
-            if let Some(parent) = p.parent() {
-                let _ = std::fs::create_dir_all(parent);
-            }
-            if let Err(e) = std::fs::write(p, blob) {
+            // Write beside, then rename over: a cut-off write must not lose the webhooks.
+            if let Err(e) = crate::safe_file::write_atomic(p, &blob) {
                 crate::log::warn(&format!("sotd: could not save the outlets ({e})"));
             }
         }

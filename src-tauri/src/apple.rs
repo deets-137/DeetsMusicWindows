@@ -698,7 +698,8 @@ async fn refetch_after_401(failed: &str) -> Option<String> {
 // ── User token persistence ───────────────────────────────────────────────────
 
 fn persist_user_token(tok: &str) -> std::io::Result<()> {
-    std::fs::write(user_token_path(), tok)
+    // Write beside, then rename over: a cut-off write must not leave half a token (safe_file.rs).
+    crate::safe_file::write_atomic(&user_token_path(), tok.as_bytes())
 }
 
 /// Read a previously captured MUT from disk (called on startup).
@@ -1221,15 +1222,21 @@ pub fn apple_user_token(state: tauri::State<'_, AppleState>) -> Option<String> {
     state.user_token.lock_or_recover().clone()
 }
 
+/// Async with the deletes on the blocking pool: a sync command runs on the UI thread, and a
+/// file delete can wait on the disk or on antivirus (2026-10-11, release check 9).
 #[tauri::command]
-pub fn apple_disconnect(state: tauri::State<'_, AppleState>) {
-    *state.user_token.lock_or_recover() = None;
-    let _ = std::fs::remove_file(user_token_path());
-    // Also clear the pre-app-data copy, or the next launch's fallback in
-    // load_persisted_user_token() would quietly sign you back in.
-    if let Some(dir) = repo_secrets_dir() {
-        let _ = std::fs::remove_file(dir.join("user-token.txt"));
-    }
+pub async fn apple_disconnect(app: tauri::AppHandle) {
+    use tauri::Manager;
+    let _ = tauri::async_runtime::spawn_blocking(move || {
+        *app.state::<AppleState>().user_token.lock_or_recover() = None;
+        let _ = std::fs::remove_file(user_token_path());
+        // Also clear the pre-app-data copy, or the next launch's fallback in
+        // load_persisted_user_token() would quietly sign you back in.
+        if let Some(dir) = repo_secrets_dir() {
+            let _ = std::fs::remove_file(dir.join("user-token.txt"));
+        }
+    })
+    .await;
 }
 
 // ── Phase 2: raw data dump (for designing the model) ─────────────────────────

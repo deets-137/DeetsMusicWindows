@@ -118,17 +118,27 @@ fn load() -> Store {
             return Store::default();
         }
     };
-    serde_json::from_slice(&plain).unwrap_or_default()
+    // Field by field (safe_file.rs, 2026-10-11): a friends list this build cannot read must
+    // never take the key with it. Before, any unreadable value gave an empty Store, and the
+    // next save wrote a NEW key over the only copy of the old one.
+    let r = crate::safe_file::parse_lenient::<Store>(&String::from_utf8_lossy(&plain));
+    if !r.clean() {
+        let copy = if crate::safe_file::keep_bad_copy(p).is_some() { "; the old file is friends.json.bad" } else { "" };
+        if r.unreadable {
+            crate::log::warn(&format!("friends: the key file could not be read{copy}"));
+        } else {
+            crate::log::warn(&format!("friends: these values could not be read and are back to empty: {}{copy}", r.bad_fields.join(", ")));
+        }
+    }
+    r.value
 }
 
 fn save(store: &Store) -> Result<(), String> {
     let p = PATH.get().ok_or("friends: no data dir yet")?;
     let json = serde_json::to_vec(store).map_err(|e| e.to_string())?;
     let blob = protect(&json)?;
-    if let Some(parent) = p.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    std::fs::write(p, blob).map_err(|e| e.to_string())
+    // Write beside, then rename over: a cut-off write must not lose the only copy of the key.
+    crate::safe_file::write_atomic(p, &blob).map_err(|e| e.to_string())
 }
 
 fn with_store<T>(f: impl FnOnce(&mut Store) -> T) -> T {

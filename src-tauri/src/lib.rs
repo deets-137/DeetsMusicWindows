@@ -30,6 +30,7 @@ mod report;
 mod settings;
 mod rooms;
 mod roworder;
+mod safe_file;
 mod smtc;
 mod sotd;
 mod tray;
@@ -497,6 +498,7 @@ pub fn run() {
             playlists::playlist_folder_delete,
             playlists::playlist_folder_assign,
             settings::settings_get,
+            settings::settings_load_problems,
             settings::settings_set_minimize_to_tray,
             settings::settings_set_read_windows_media,
             settings::settings_rotate_bridge_token,

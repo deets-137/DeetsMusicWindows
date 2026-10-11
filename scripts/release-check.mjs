@@ -234,10 +234,21 @@ if (signed.length) {
     // click that needs it waits for them (added 2026-09-25, the consistency read). The fix is
     // not `spawn_blocking` but `crate::db_thread::run`, which keeps the calls in order.
     [/\bdb\.lock\(\)/, "takes the database lock, which a sync can hold for seconds (use `crate::db_thread::run`)"],
+    // A file write or delete waits on the disk and on antivirus (added 2026-10-11: sixteen
+    // setters wrote settings.json on the UI thread, settings.rs). Soft for now: twelve commands
+    // in friends.rs, report.rs and sotd/outlet.rs still write on the UI thread, and their
+    // conversion is the owner's call (WORKLOG 2026-10-11). Make it hard once they are async.
+    [/\bfs::(write|remove_file|rename|copy)\b|\bwrite_atomic\b|\bFile::create\b/, "writes or deletes a file", { soft: true }],
   ];
   // Anything listed here is a sync command we have decided is safe. Give the reason: the next
   // reader has to be able to check it. An empty list is the healthy state.
-  const ALLOW = new Map();
+  const ALLOW = new Map([
+    // The log appends to a handle that is already open (a rename only once per rotation), and
+    // its lines must keep their order: an async command could land them out of order, and
+    // diag_flush runs on `beforeunload`, where an async call may never finish (2026-10-11).
+    ["log.rs:log_event", "appends to the open log file; order matters"],
+    ["log.rs:diag_flush", "appends to the open log file; runs on beforeunload"],
+  ]);
   const blocking = [];
   const soft = [];
   // Recursive: the commands in src/sotd/ went unread until 2026-09-29.
@@ -295,7 +306,7 @@ if (signed.length) {
     }
   }
   for (const b of blocking) failures.push(b);
-  if (soft.length) console.warn(`[release-check] WARNING: ${soft.length} sync commands take the database lock on the UI thread (check 9, soft):\n  ${soft.join("\n  ")}`);
+  if (soft.length) console.warn(`[release-check] WARNING: ${soft.length} sync commands wait on the UI thread — the database lock or a file write (check 9, soft):\n  ${soft.join("\n  ")}`);
 }
 
 // ── 10. The docs checker ───────────────────────────────────────────────────────────

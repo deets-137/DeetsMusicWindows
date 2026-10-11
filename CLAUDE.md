@@ -417,7 +417,13 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
   shapes — normalization lives in Rust.
 - **A synchronous `#[tauri::command]` runs on the UI thread.** Never let one reach blocking
   I/O: make it `async fn` + `tauri::async_runtime::spawn_blocking`. The release check (check 9)
-  fails a build that does it; 0.12.0 froze on live this way (FRIENDS.md §8.11).
+  fails a build that does it; 0.12.0 froze on live this way (FRIENDS.md §8.11). A file write
+  counts (check 9 warns since 2026-10-11; twelve friends / report / outlet commands are open).
+- **A file we cannot lose half of** (settings, keys, tokens, sessions) is written with
+  `safe_file::write_atomic` (beside, flush, rename over) and read with `safe_file::parse_lenient`
+  (one unreadable value resets that field, not the file). Never `serde_json::from_str(..).ok()
+  .unwrap_or_default()` on such a file: it reset every Rust setting and the pairing token
+  silently (fixed 2026-10-11, SETTINGS.md §2).
 - **The workers** (`../DeetsMusicRooms`, `../DeetsMusicFriends`, `../DeetsSupport`) are plain
   JS with no build step, deployed with `npx wrangler` **4** — wrangler 3 drops the rate limit
   without a word. A deploy is always the owner's call. A rooms or friends deploy drops every live
