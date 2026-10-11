@@ -13,8 +13,8 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
-| Theme (color roles) | themes.css | 41 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 559 tokens · overrides: vanilla 3, press 64, ocean 40, glass 69, cyber 64 |
+| Theme (color roles) | themes.css | 44 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 570 tokens · overrides: vanilla 3, press 68, ocean 44, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -48,6 +48,9 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--grow-zone-bar` | `var(--title)` | — | Card grow (CARD-GROW.md): the accent bar in the gap that shows which card will grow, and the letter rail's ink — the resting letter and the one lit for the rows on screen. Derived once here — no theme block names a grow color of its own. |
 | `--rail-ink` | `var(--subtext)` | — |  |
 | `--rail-ink-lit` | `var(--title)` | — |  |
+| `--np-band` | `color-mix(in srgb, light-dark(var(--title), var(--canvas)) var(--np-band-strength), transparent)` | — | The full player's band (ideas/fullscreen-player.md §7, item 6): a fixed DARK band over the bottom of the cover that holds the rows. Dark in every theme: a light theme's own dark ink (--title), a dark theme's canvas, at the strength the skin sets. The ink on it is the light one of the same pair, so the rows read on the band in every theme. Derived once here — no theme block names a band color of its own. |
+| `--np-band-ink` | `light-dark(var(--canvas), var(--title))` | — |  |
+| `--np-band-sub` | `color-mix(in srgb, var(--np-band-ink) var(--np-band-sub-strength), transparent)` | — |  |
 | `--glint` | `light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65))` | — | The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy scrubbers). Light is white in every theme, so this is the one role no theme remaps; a little dimmer on dark themes so it does not blaze. |
 | `--canvas` | — | every theme |  |
 | `--go` | — | every theme |  |
@@ -676,6 +679,17 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-col-num-digit` | `1ch` | — | an album's # column: one digit; the column is as many as its widest number |
 | `--grow-col-year` | `3.4em` | — |  |
 | `--grow-col-plays` | `3.6em` | — |  |
+| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | -- full player (full-player.ts, ideas/fullscreen-player.md §9.4, §12) -- Now Playing grows so the cover is as large as the window allows. The cover flies from its rest place to its full place while a clip opens the card; the rows and the band come in at --player-rows-at of the open. Each skin restates the four motion values in its own block (his call, 2026-10-02): the grow's values in the first version, so a skin can get its own shape later as a change of values. --player-art-wait: how long the open waits for the large cover file to decode before it flies with what it has. --full-rows-w: the rows sit BESIDE the cover when the card is at least this much wider than tall, else OVER it on the band. --np-band-strength: how opaque the band under the rows is. |
+| `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber |  |
+| `--player-rows-at` | `var(--grow-rows-at)` | press, ocean, glass, cyber |  |
+| `--player-collapse-dur` | `var(--grow-collapse-dur)` | press, ocean, glass, cyber |  |
+| `--player-art-wait` | `0.25s` | — |  |
+| `--full-rows-w` | `356px` | — |  |
+| `--np-band-pad` | `var(--space-4)` | — |  |
+| `--np-band-strength` | `78%` | — |  |
+| `--np-band-sub-strength` | `72%` | — | the subtext on the band: its ink, a little clear |
+| `--np-band-fade` | `48px` | — | the soft top edge of the band, over the cover |
+| `--np-close-inset` | `var(--space-2)` | — | the close square, off the cover's top-right corner |
 | `--fly-dur` | `0.42s` | press, ocean | -- chip flight (handoff.ts, ARTIST-VIEW.md §5) -- A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease. --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing. Keep --fly-dur a plain time (JS reads it for the landing safety timer). The base = a straight glide that shrinks into the card (Glass uses it). |
 | `--fly-ease` | `var(--nav-ease)` | press, ocean, cyber |  |
 | `--fly-mid` | `scale(1.04)` | press, ocean, cyber |  |

@@ -23,7 +23,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { onPlayerState } from "./player";
 import { getCurrent, onQueueChange, peekNext } from "./queue";
 import { trackById } from "./track-store";
-import { artURL, stageArtPx } from "./queue-rows";
+import { artURL, coverArtPx } from "./queue-rows";
 import { playlistCoverFor } from "./playlist-cover";
 import * as diag from "./diag";
 import { auroraSlots, fromOKLCH, lin, parseColor, toOKLCH, type AlbumPalette, type RGB } from "./album-slots";
@@ -37,6 +37,14 @@ const alphaOf = (s: string): number => {
   const m = /rgba?\([^)]*[,/]\s*([\d.]+)\s*\)$/i.exec(s.trim());
   return m ? Number(m[1]) : 1;
 };
+/** A computed color with its alpha: rgb()/rgba(), or the `color(srgb r g b / a)` that Chromium
+ *  gives for a color-mix() (the band is one). */
+function bandColor(s: string): { rgb: RGB; a: number } | null {
+  const m = /^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)$/i.exec(s.trim());
+  if (m) return { rgb: [Number(m[1]), Number(m[2]), Number(m[3])], a: m[4] === undefined ? 1 : Number(m[4]) };
+  const rgb = parseColor(s);
+  return rgb ? { rgb, a: alphaOf(s) } : null;
+}
 const luminance = ([r, g, b]: RGB) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 const contrast = (a: RGB, b: RGB) => {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
@@ -118,7 +126,7 @@ function prefetchNext(): void {
   if (!entry || !cover || cover === prefetchedCover || cover === currentCover().cover) return;
   prefetchedCover = cover;
   lookupPalette(cover, entry.catalogId ?? track?.catalogId ?? null).catch(() => {});
-  const px = stageArtPx();
+  const px = coverArtPx(); // the full player's size while it is open (his call, 2026-10-10)
   // "Show cover: Playlist" shows the playlist's own cover, already on screen: skip the album's.
   const url = playlistCoverFor(entry.context, px) ? null : artURL(track, px);
   if (url) {
@@ -167,6 +175,8 @@ export function watchAlbumColor(card: HTMLElement): () => void {
   const token = (name: string): string => getComputedStyle(card).getPropertyValue(name).trim();
 
   const clearText = () => TEXT_PROPS.forEach((p) => card.style.removeProperty(p));
+  /** The rows sit on the full player's band now. */
+  const band = () => card.closest<HTMLElement>(".panel")?.dataset.npRows === "over";
 
   /** Recompute the guarded text roles for the live palette (or clear them). */
   const applyText = () => {
@@ -181,7 +191,12 @@ export function watchAlbumColor(card: HTMLElement): () => void {
     const stops = ["var(--album-bg)", "var(--album-c1)", "var(--album-c2)"]
       .map((v) => parseColor(resolve(v)))
       .filter((c): c is RGB => !!c);
-    const backdrops = [base, ...stops.map((s) => mix(base, s, strength))];
+    // The full player's band (ideas/fullscreen-player.md §7.6): the rows sit on it, over the
+    // cover, so the band over the darkest and the lightest cover is what the text must beat.
+    const b = band() ? bandColor(resolve("var(--np-band)")) : null;
+    const backdrops = b
+      ? [mix([0, 0, 0], b.rgb, b.a), mix([1, 1, 1], b.rgb, b.a)]
+      : [base, ...stops.map((s) => mix(base, s, strength))];
 
     const title = parseColor(livePalette?.c1 ?? "") ?? parseColor(resolve("var(--title)"));
     const sub = parseColor(livePalette?.c2 ?? "") ?? parseColor(resolve("var(--subtext)"));
@@ -235,6 +250,9 @@ export function watchAlbumColor(card: HTMLElement): () => void {
   // re-guard the same palette. Deferred a frame so the new tokens have resolved.
   const mo = new MutationObserver(() => requestAnimationFrame(applyText));
   mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-skin"] });
+  // The full player moves the rows onto its band and off it: the backdrop changes.
+  const host = card.closest<HTMLElement>(".panel");
+  if (host) mo.observe(host, { attributes: true, attributeFilter: ["data-np-rows"] });
   applyText();
 
   return () => {

@@ -23,6 +23,7 @@ import * as frames from "./frames";
 import * as diag from "./diag";
 import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type SurfaceName } from "./surface";
 import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card-swap";
+import { initFullPlayer, isFullPlayer, closeFullPlayer } from "./full-player";
 import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
 
 import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE_LOCK_HINT } from "./layout-rules";
@@ -317,6 +318,9 @@ export function initLayout(): void {
         }) ?? null;
       },
     });
+  // The full player (ideas/fullscreen-player.md §12): after the grow, so its surface listener
+  // also runs before this module remounts the slots.
+  if (bento) initFullPlayer({ hosts, bento, slots: () => comp.slots });
   // A slot that shows its card: on screen and not under a grown card.
   const shown = (s: Slot): boolean => onScreen(hosts[s]) && !isCovered(s);
 
@@ -706,6 +710,9 @@ export function initLayout(): void {
   const queueKept = (id: CardId, replaces: string | undefined): boolean =>
     id === "queue" && !!replaces && cancelled("queue.summon", { card: replaces });
   onCardRequest((id, how: RequestHow) => {
+    // The full player covers every content card: a request closes it first, with no motion,
+    // then runs as it would at rest (ideas/fullscreen-player.md §12.3).
+    if (isFullPlayer()) void closeFullPlayer("request", false);
     if (comp.anchored.includes(id)) {
       // An anchored card is on screen by construction — unless a grow covers it. In max the
       // Queue can cover Now Playing (STAGE-COLUMN.md §7), so a request for it ends the grow.

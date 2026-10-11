@@ -18,6 +18,17 @@ export function resolveEntry(e: QueueEntry): Track | undefined {
  *  costs a bigger download on a dense screen and no extra API call. */
 export const stageArtPx = (): number => (window.devicePixelRatio > 1.5 ? 640 : 480);
 
+// The full player (ideas/fullscreen-player.md §12.5) asks for a larger file while it is open:
+// full-player.ts sets the size, 0 = the rest size. Kept here, not there, so the size has one
+// source and nothing that reads it imports the player's DOM module.
+let fullPx = 0;
+export const setFullArtPx = (px: number): void => {
+  fullPx = px;
+};
+/** The size the Now Playing cover asks for now: the full player's while it is open, else the
+ *  rest size. The card, player.ts and the next-song prefetch all read this one. */
+export const coverArtPx = (): number => fullPx || stageArtPx();
+
 export function artURL(t: Track | undefined, px: number): string | null {
   if (!t?.artwork?.urlTemplate) return null;
   const s = String(px);

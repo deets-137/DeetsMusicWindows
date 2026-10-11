@@ -4,6 +4,7 @@
 // in as `Lists`. tests/rulez-words.test.ts covers the reading-back and the time field.
 
 import type { Action, Cond, EventId, FactId, Leaf, Rule, RuleTarget, StateRule, Value } from "./rules-eval";
+import { fullPlayerUnhidden } from "./full-player-flag";
 
 // "The song" holds the facts about the song playing (2026-10-10: the Playback fact list was one
 // column of 18, five labels wrapped); Playback keeps the player's own state.
@@ -173,6 +174,8 @@ export const FACTS: FactWord[] = [
   { id: "dataSaver", section: "Window", label: "Data saver", kind: "bool", yes: "Data saver is on", no: "Data saver is off" },
   { id: "card", section: "Window", label: "Card", kind: "choice", choices: "cards" },
   { id: "grown", section: "Window", label: "Grown card", kind: "choice", choices: "cards" },
+  // The full player (ideas/fullscreen-player.md §12.6): only behind its DevTools flag (§12.9).
+  ...(fullPlayerUnhidden() ? [{ id: "player", section: "Window", label: "Full player", kind: "choice", choices: [{ value: "on", label: "On" }, { value: "off", label: "Off" }] } as FactWord] : []),
 ];
 /** Built-in only (a Settings row's rule reads them). */
 const HIDDEN_FACTS: Partial<Record<FactId, string>> = { "entry.new": "The entry is new", now: "Now", lookMode: "Look schedule", cause: "Cause", from: "From" };
@@ -253,6 +256,12 @@ export const DOS: DoWord[] = [
   },
   { id: "grow", section: "Window", label: "Grow this card", input: "choice", choices: AXES, moment: (v) => ({ grow: v as "full" }) },
   { id: "summon", section: "Window", label: "Open a card", input: "choice", choices: "cards", moment: (v) => ({ summon: String(v) }) },
+  ...(fullPlayerUnhidden()
+    ? [{
+        id: "player", section: "Window", label: "Full player", input: "choice", choices: [{ value: "open", label: "Open" }, { value: "close", label: "Close" }],
+        moment: (v) => ({ player: v === "close" ? "close" : "open" }),
+      } as DoWord]
+    : []),
   { id: "onTop", section: "Window", label: "Keep on top", input: "none", state: () => [{ target: { prop: "window.onTop" }, value: true }] },
   { id: "keep", section: "Window", label: "Keep it from happening", input: "none", cancel: true, moment: () => ({ keep: true }) },
   {
@@ -443,6 +452,7 @@ export function actionText(a: Action | undefined, lists: Lists): string {
   const [verb, arg] = Object.entries(a)[0] as [string, unknown];
   switch (verb) {
     case "grow": return `Grow this card ${labelOf(AXES, arg).toLowerCase()}`;
+    case "player": return arg === "close" ? "Close the full player" : "Open the full player";
     case "summon": return `Open ${labelOf(lists.cards, arg)}`;
     case "sleep": return (arg as { at: string }).at === "sun" ? "Sleep at sunset" : "Sleep at the set time";
     case "play": return "Play";
@@ -549,7 +559,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   preset: { act: "uses EQ preset", keep: "keeps EQ preset" }, bass: { keep: "keeps the bass at" }, mids: { keep: "keeps the mids at" },
   treble: { keep: "keeps the treble at" }, preamp: { keep: "keeps the preamp at" },
   theme: { act: "uses theme", keep: "keeps theme" }, skin: { act: "uses skin", keep: "keeps skin" },
-  grow: { act: "grows this card" }, summon: { act: "opens" }, onTop: { keep: "keeps the window on top" },
+  grow: { act: "grows this card" }, player: { act: "turns the full player" }, summon: { act: "opens" }, onTop: { keep: "keeps the window on top" },
   keep: { act: "keeps it from happening" }, growOutside: { keep: "keeps the outside-press collapse" },
   sharePause: { act: "pauses sharing for an hour", keep: "keeps sharing paused" }, sleepIn: { act: "starts the sleep timer for" },
   note: { act: "shows the note" }, picture: { act: "uses the picture", keep: "keeps the picture" }, playSound: { act: "plays the sound" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
@@ -584,7 +594,7 @@ export function doValueText(w: DoWord, v: unknown, lists: Lists): string {
   if (w.id === "openIn") return v === "library" ? "the Library" : "Search";
   const label = labelOf(choicesOf(w, lists), v);
   // Words that are not names read lower case in the sentence ("grows this card taller").
-  const plain = w.id === "grow" || w.id === "shuffle" || w.id === "scrobble" || w.id === "growOutside" || w.id === "repeat"
+  const plain = w.id === "grow" || w.id === "player" || w.id === "shuffle" || w.id === "scrobble" || w.id === "growOutside" || w.id === "repeat"
     || w.choices === ON_OFF || w.choices === MOTION || w.choices === NOTICES;
   return plain ? label.toLowerCase() : label;
 }

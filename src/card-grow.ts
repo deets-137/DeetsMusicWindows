@@ -114,7 +114,18 @@ const emit = () => {
   subs.forEach((cb) => cb(state));
 };
 
-const enabled = (): boolean => !!opts && setting("cardGrow") && currentSurface() !== "mini";
+// The full player (full-player.ts, ideas/fullscreen-player.md §10, §12.3) sets these: while it
+// is full no card grows and every strip hides; while Now Playing's right strip is live (Max, at
+// rest) the Fill strips beside it take only their half of the gap (§10.3, split at the middle).
+// Hooks, not an import: the full player imports this module for its motion parts.
+let playerFull: () => boolean = () => false;
+let npRightLive: () => boolean = () => false;
+export function setPlayerHooks(h: { full: () => boolean; npRightLive: () => boolean }): void {
+  playerFull = h.full;
+  npRightLive = h.npRightLive;
+}
+
+const enabled = (): boolean => !!opts && setting("cardGrow") && currentSurface() !== "mini" && !playerFull();
 /** Every slot that can BE grown now: the composition's content slots, plus the anchored Queue
  *  in max. Fill still reads opts.slots(), so it covers the bento only. */
 const growSlots = (): Slot[] => {
@@ -153,11 +164,12 @@ const collapseHint = (slot: Slot): string => `Collapse ${opts?.titleOf(slot) ?? 
 
 // ── the grow itself ───────────────────────────────────────────────────────────
 const rect = (el: Element) => el.getBoundingClientRect();
-const clipPad = (): number => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--grow-clip-pad")) || 0;
+type Edges = Pick<DOMRect, "left" | "top" | "right" | "bottom">;
+export const clipPad = (): number => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--grow-clip-pad")) || 0;
 /** `inset(…)` that shows the `from` box inside the `to` box, opened past it by `pad`. */
-const clipBetween = (from: DOMRect, to: DOMRect, pad: number, radius: string): string =>
+export const clipBetween = (from: Edges, to: Edges, pad: number, radius: string): string =>
   `inset(${from.top - to.top - pad}px ${to.right - from.right - pad}px ${to.bottom - from.bottom - pad}px ${from.left - to.left - pad}px round ${radius})`;
-const clipOpen = (pad: number, radius: string): string => `inset(${-pad}px round ${radius})`;
+export const clipOpen = (pad: number, radius: string): string => `inset(${-pad}px round ${radius})`;
 
 /** The rows the grown card's body shows now: the shapes the cards build, on screen. */
 function visibleRows(panel: HTMLElement): HTMLElement[] {
@@ -289,13 +301,13 @@ export function growCard(slot: Slot, dir: GrowDir, cause: string): void {
   };
 }
 
-const cover = (h: HTMLElement | null | undefined) => {
+export const cover = (h: HTMLElement | null | undefined) => {
   if (!h) return;
   h.classList.remove("is-covering", "is-uncovering");
   h.classList.add("is-covered");
   h.inert = true;
 };
-const uncover = (h: HTMLElement | null | undefined) => {
+export const uncover = (h: HTMLElement | null | undefined) => {
   if (!h) return;
   h.classList.remove("is-covered", "is-covering", "is-uncovering");
   h.inert = false;
@@ -538,7 +550,7 @@ export function growMenu(slot: Slot): MenuItem[] {
 
 // ── the Grow button (hover-only, out of flow) ─────────────────────────────────
 const ICON_GROW = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg>`;
-const ICON_SHRINK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10h-6V4M14 10l7-7M4 14h6v6M10 14l-7 7"/></svg>`;
+export const ICON_SHRINK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10h-6V4M14 10l7-7M4 14h6v6M10 14l-7 7"/></svg>`;
 import { ICON_PIN } from "./pins"; // one pin glyph for the app (PINS.md)
 
 export interface GrowButton {
@@ -746,7 +758,10 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
   // The outer sides: the one-click Fill zones (max only); on the grown card they collapse it.
   if (!canFill()) return null;
   if (state && !mine) return null; // while one card is grown, only its own outer zones act
-  return { dir: "full", act: mine ? "collapse" : "grow", reach: b === "edge" ? "edge" : "full" };
+  // The gap beside the stage is shared with Now Playing's full-player strip: split at its
+  // middle line, as a gap between two cards is (ideas/fullscreen-player.md §10.3).
+  const shared = side === "left" && !state && npRightLive();
+  return { dir: "full", act: mine ? "collapse" : "grow", reach: b === "edge" ? "edge" : shared ? "half" : "full" };
 }
 
 /** Give a host its four strips (called with the Grow button, after the card's markup lands). */
@@ -773,7 +788,8 @@ function makeZones(slot: Slot, host: HTMLElement): HTMLElement[] {
 
 /** Re-decide every strip: what it does, how far it reaches, what its hint says. */
 function paintZones(): void {
-  document.querySelectorAll<HTMLElement>(".grow-zone").forEach((el) => {
+  // [data-slot]: the full player's strips on Now Playing are .grow-zone too, painted by it.
+  document.querySelectorAll<HTMLElement>(".grow-zone[data-slot]").forEach((el) => {
     const slot = el.dataset.slot as Slot;
     const side = el.dataset.side as Side;
     const a = zoneAction(slot, side);

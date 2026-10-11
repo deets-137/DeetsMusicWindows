@@ -30,7 +30,9 @@ export type FactId =
   // Route 8 (RULEZ.md §10.1): a song is loaded; the window's size.
   | "loaded" | "windowWidth" | "windowHeight"
   // RULEZ.md §11: the cover's color as a word, and light or dark.
-  | "albumColor" | "albumLight";
+  | "albumColor" | "albumLight"
+  // The full player (ideas/fullscreen-player.md §12.6): "on" while it is open.
+  | "player";
 export type Value = string | number | boolean;
 /** A fact's value. A list (a song's genres) holds when any member does. */
 export type FactValue = Value | string[];
@@ -79,7 +81,9 @@ export type Action =
   // Route 8 (RULEZ.md §10.1): where Go to opens (the site reads it, as a cancel site reads Keep);
   // the idle shuffle press.
   | { openIn: "library" | "search" }
-  | { shuffleLibrary: true };
+  | { shuffleLibrary: true }
+  // The full player (ideas/fullscreen-player.md §12.6).
+  | { player: "open" | "close" };
 
 /** Name and Desc (Rulez), and `draft`: a row with a part still missing is saved and never runs. */
 interface Named {

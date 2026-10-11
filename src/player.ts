@@ -18,7 +18,7 @@ import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
 import { trackById, tracks, addTransientTracks, inLibrary, healedId, noCatalogCopy, refreshHeals } from "./track-store";
-import { stageArtPx } from "./queue-rows";
+import { coverArtPx } from "./queue-rows";
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
@@ -649,7 +649,7 @@ function emit(): void {
     title: item?.title ?? item?.attributes?.name,
     artist: item?.artistName ?? item?.attributes?.artistName,
     album: item?.albumName ?? item?.attributes?.albumName,
-    artworkUrl: artworkUrlOf(item, stageArtPx()),
+    artworkUrl: artworkUrlOf(item, coverArtPx()),
     loading: isLoading,
     station: mode === "radio" && radioStation ? stationInfo(radioStation) : undefined,
     resume: resumeStation ? stationInfo(resumeStation) : undefined,

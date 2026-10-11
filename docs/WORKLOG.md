@@ -12,6 +12,20 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-11 (night) — Full player test version, built (branch `ten-out-of-ten`)
+
+- **His three answers (fullscreen-player.md §12.9):** a DevTools flag; a press on the Queue
+  keeps the player open; Press flies a still copy of the disc. Later: a turning copy, or the
+  real disc (§8; open).
+- **Built:** `full-player.ts`, `full-player-layout.ts` (pure, 7 tests), `full-player-flag.ts`;
+  hooks in `card-grow.ts`; `coverArtPx()` in `queue-rows.ts`; the band roles in `themes.css`;
+  the `--player-*` set in every skin block; the Compass row; the Rulez fact and action; the
+  close square. The changes from §12 and the values chosen inside his forks are §13.
+- **Checks:** tsc, `npm test` (189 pass), docs:check, vite build. Not run in the app: his desk
+  test is §12.10, with steps 0 and 7–9 added.
+- **Another session** (Max cards, MAX-CARDS.md) waits for this commit before it touches
+  `layout.ts`, `card-grow.ts` and the Max grid.
+
 ## 2026-10-11 (evening) — deetsmeter cold start, boot 1: Apple in, ours lost to the MSIX hive
 
 - **His ask:** "fresh restart of windows, go ahead with the test." Uptime 2 min.

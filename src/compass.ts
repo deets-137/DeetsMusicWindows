@@ -17,6 +17,7 @@ import { diaryCachedList, diaryGet, copyDiaryExport, fmtScore } from "./diary";
 import { catalogRelated, collectionTracks } from "./search";
 import { orderedScopes } from "./row-order";
 import { growCard, growDirs, type Slot, type GrowDir } from "./card-grow";
+import { fullPlayerAvailable, isFullPlayer, toggleFullPlayer } from "./full-player";
 import { currentSurface, onSurfaceChange } from "./surface";
 import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
@@ -474,6 +475,16 @@ function actions(all: boolean): Row[] {
     { group: "Actions", title: "Sleep at end of Up Next", sub: "The sleep timer", run: () => sleepAtEnd("queue") },
   );
   if (sleepArmed()) rows.push({ group: "Actions", title: "Sleep timer off", run: () => sleepOff() });
+  // The full player (ideas/fullscreen-player.md §12.6), behind its DevTools flag: the words live
+  // in the row's aliases until it ships, so COMPASS-TERMS.md does not list them yet.
+  if (fullPlayerAvailable())
+    rows.push({
+      group: "Actions",
+      title: "Full player",
+      sub: isFullPlayer() ? "Back to the cards" : "Grows Now Playing so the cover is as large as the window allows",
+      aliases: ["full screen", "fullscreen", "big cover", "large cover"],
+      run: () => toggleFullPlayer("compass"),
+    });
   // The first-run walk again (ONBOARDING.md §4, COMPASS.md §9). Settings › Tips has the same
   // row; a stranger who wants it back is more likely to ask the bar than to read Settings.
   // Playlist refresh (PLAYLIST-REFRESH.md §8 item 9): the day-change check, on demand. It

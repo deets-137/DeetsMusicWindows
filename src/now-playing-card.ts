@@ -16,11 +16,13 @@ import { onTracksChange } from "./track-store";
 import { watchAlbumColor } from "./album-color";
 import { requestCard } from "./layout-bus";
 import * as queue from "./queue";
-import { resolveEntry, artURL, stageArtPx } from "./queue-rows";
+import { resolveEntry, artURL, coverArtPx } from "./queue-rows";
 import { openContextMenu } from "./context-menu";
 import { addTrackToLibrary, libraryAddOffered, libraryAddEnabled, onLibraryAddChange } from "./library-add";
 import { favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
 import { songMenu } from "./media-menu";
+import { ICON_SHRINK } from "./card-grow";
+import { closeFullPlayer } from "./full-player";
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
@@ -38,6 +40,7 @@ const TEMPLATE = `
   <div class="np np--idle">
     <div class="np__aurora" aria-hidden="true"></div>
     <div class="np__art" id="np-art" aria-hidden="true">${GLYPH_NOTE}</div>
+    <button class="panel__action np__close" type="button" aria-label="Back to the cards" title="Back to the cards">${ICON_SHRINK}</button>
     <div class="np__center">
       <div class="np__meta">
         <div class="np__line">
@@ -230,7 +233,7 @@ export const nowPlayingCard: CardDef = {
       const album = s.album ?? next?.albumName;
       // "Show cover: Playlist" (PLAYLISTS.md §11): a song from a playlist with a saved cover
       // shows that cover; everything else (and the tint) stays on the album.
-      const px = stageArtPx();
+      const px = coverArtPx();
       const artwork = (s.station ? undefined : playlistCoverFor(cur?.context, px)) ?? s.artworkUrl ?? artURL(next, px) ?? undefined;
       const text = title ?? "Not playing";
       const badge = next ? explicitBadge(next) : "";
@@ -428,6 +431,10 @@ export const nowPlayingCard: CardDef = {
       repeatBtn.classList.add("is-looping");
     });
     repeatBtn?.addEventListener("animationend", () => repeatBtn.classList.remove("is-looping"));
+
+    // The full player's close square (ideas/fullscreen-player.md §7.4): over the cover, top right.
+    // CSS shows it only while the player is full.
+    host.querySelector<HTMLElement>(".np__close")?.addEventListener("click", () => void closeFullPlayer("button"));
 
     // Queue summon — bring the Queue card into the least-recently-touched slot
     // (flips if it's already on-screen in the other slot; see layout.ts).

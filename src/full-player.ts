@@ -1,0 +1,500 @@
+// The full player (ideas/fullscreen-player.md): Now Playing grows so the cover is as large as
+// the window allows. Midi: over the Library and Queue cards, the rows over the cover on a dark
+// band. Max: over the four content cards, the Queue takes the whole stage column, the rows
+// beside the cover when there is room and over it when there is not. Mini: not in the test
+// version (§12.9: Mini's player view stays as it is until he says).
+//
+// It is not a grow: it changes the card's column (Max) and its inner layout, so it is its own
+// module and borrows the grow's parts (the clip, the covered-card classes, the zones' look).
+// One attribute carries the state: `data-player="full"` on <html>; every CSS rule hangs on it.
+// The card wears `data-np-rows="beside|over"`.
+//
+// Ways in: the edge strips on Now Playing (Midi top and bottom, Max left and right), Compass
+// ("Full player"), a rule (the `player` action). Ways out: the close square over the cover, the
+// same strips, Escape, a card request (Show queue, Show search, a Compass place), a surface
+// change (no motion). A press on the Queue in Max keeps it open (his call, 2026-10-11).
+//
+// The motion (§9.4): the cover flies (a copy over everything, from the rest box to the full
+// box; Press flies a still of the disc, §12.9 Q3), the card's clip opens, the Queue grows up
+// over the old place in Max, and the rows and the band come in at --player-rows-at. The close
+// is the reverse; the rows and the band go first. Reduced motion snaps.
+//
+// Behind a DevTools flag for the test version (full-player-flag.ts).
+
+import { currentSurface, onSurfaceChange } from "./surface";
+import { setting, onSettingsChange } from "./settings-store";
+import { enterRows } from "./pop";
+import { tokenMs } from "./boot-cover";
+import * as frames from "./frames";
+import * as diag from "./diag";
+import { TELEMETRY } from "./telemetry-on";
+import { registerAction, registerFact } from "./rules";
+import { refreshPlayerState } from "./player";
+import { setFullArtPx, stageArtPx } from "./queue-rows";
+import { fullPlayerUnhidden } from "./full-player-flag";
+import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, type Box } from "./full-player-layout";
+import {
+  clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, type Slot,
+} from "./card-grow";
+
+interface Opts {
+  hosts: Record<Slot, HTMLElement | null>;
+  /** The content slots of the live composition (the cards the player covers). */
+  slots: () => Slot[];
+  bento: HTMLElement;
+}
+
+let opts: Opts | null = null;
+let full = false;
+let busy = false; // a motion is on screen, or the open waits for the large cover
+let gen = 0; // bumps on every open and close: a wait that comes back late knows it is stale
+let artPx = 0; // the cover file size asked for while full (a 200 px bucket)
+let watch: ResizeObserver | null = null;
+const subs = new Set<(on: boolean) => void>();
+
+const root = document.documentElement;
+const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const rect = (el: Element) => el.getBoundingClientRect();
+const surfaceNow = (): "midi" | "max" | null => {
+  const s = currentSurface();
+  return s === "midi" || s === "max" ? s : null;
+};
+
+/** The full player is open. */
+export const isFullPlayer = (): boolean => full;
+/** Be told when it opens or closes. */
+export function onFullPlayerChange(cb: (on: boolean) => void): () => void {
+  subs.add(cb);
+  return () => subs.delete(cb);
+}
+/** It can open now: the flag is on and the window is Midi or Max. */
+export const fullPlayerAvailable = (): boolean => !!opts && fullPlayerUnhidden() && surfaceNow() !== null;
+
+// ── the motion values (skin.css --player-*, a set per skin, §9.4.4) ─────────────
+interface Motion {
+  dur: number;
+  ease: string;
+  rowsAt: number;
+  collapseDur: number;
+}
+function motion(): Motion | null {
+  if (reduced()) return null;
+  const dur = tokenMs("--player-dur");
+  if (dur <= 0) return null;
+  const cs = getComputedStyle(root);
+  const ease = cs.getPropertyValue("--player-ease").trim() || "ease";
+  const at = parseFloat(cs.getPropertyValue("--player-rows-at"));
+  const rowsAt = Number.isFinite(at) ? Math.min(1, Math.max(0, at)) * dur : dur;
+  return { dur, ease, rowsAt, collapseDur: tokenMs("--player-collapse-dur") || dur };
+}
+const pxToken = (name: string): number => parseFloat(getComputedStyle(root).getPropertyValue(name)) || 0;
+
+// ── the parts ───────────────────────────────────────────────────────────────────
+const npHost = (): HTMLElement | null => opts?.hosts.np ?? null;
+const queueHost = (): HTMLElement | null => (currentSurface() === "max" ? opts?.hosts.queue ?? null : null);
+const artOf = (panel: HTMLElement) => panel.querySelector<HTMLElement>(".np__art");
+const npOf = (panel: HTMLElement) => panel.querySelector<HTMLElement>(".np");
+/** The cards the player covers: every content slot of the composition. */
+const coveredHosts = (): HTMLElement[] =>
+  (opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h);
+
+/** Where the rows go in the card's full box (§7.3). */
+function placeNow(panel: HTMLElement): "beside" | "over" {
+  const np = npOf(panel);
+  if (!np) return "over";
+  const r = rect(np);
+  return rowsPlace(r.width, r.height, pxToken("--full-rows-w"));
+}
+
+/** Set the layout (or take it off). Midi holds the strip's row at its rest height, so the
+ *  covered cards stay where they are while they fade (the spanning card leaves row 1 empty). */
+function apply(on: boolean, place?: "beside" | "over", row1?: number): void {
+  const panel = npHost();
+  if (on) {
+    if (row1 !== undefined) opts?.bento.style.setProperty("--player-row1", `${row1}px`);
+    root.dataset.player = "full";
+    if (panel && place) panel.dataset.npRows = place;
+  } else {
+    delete root.dataset.player;
+    if (panel) delete panel.dataset.npRows;
+    opts?.bento.style.removeProperty("--player-row1");
+  }
+}
+
+/** The cover's URL at another size: Apple's image server takes any `{w}x{h}` in the path. A URL
+ *  that does not have that shape (a playlist's own cover) is used as it is. */
+function sizedUrl(src: string, px: number): string {
+  return src.replace(/\/(\d+)x(\d+)([a-z]*)\.(jpe?g|png|webp)(?=$|\?)/i, `/${px}x${px}$3.$4`);
+}
+/** Load a picture and wait for its decode, at most `ms`. */
+function preload(src: string, ms: number): Promise<void> {
+  const img = new Image();
+  img.decoding = "async";
+  img.src = src;
+  return Promise.race([img.decode().catch(() => {}), new Promise<void>((r) => window.setTimeout(r, ms))]);
+}
+
+/** Ask for the cover file the box needs now. The card swaps its picture once the new file is
+ *  decoded (vinyl.ts, same song), so a resize never blanks it. */
+function askArt(boxPx: number): void {
+  const px = fullArtPx(boxPx, window.devicePixelRatio, stageArtPx());
+  if (px === artPx) return;
+  artPx = px;
+  setFullArtPx(px);
+  refreshPlayerState();
+}
+
+/** The copy of the cover that flies (§12.4.3): the art box, cloned, laid out at `at`. A Press
+ *  record flies as a still of the disc at the angle it shows now (§12.9 Q3). */
+function makeFlight(art: HTMLElement, at: DOMRect, src: string | null): HTMLElement | null {
+  const real = art.querySelector<HTMLElement>(".vinyl:not(.vinyl--out)");
+  if (!real || real.classList.contains("vinyl--glyph")) return null; // the ♪ placeholder does not fly
+  const fly = art.cloneNode(false) as HTMLElement;
+  fly.removeAttribute("id");
+  fly.classList.add("np__fly");
+  const disc = real.cloneNode(true) as HTMLElement;
+  const spin = real.querySelector<HTMLElement>(".vinyl__spin");
+  const still = disc.querySelector<HTMLElement>(".vinyl__spin");
+  if (spin && still) still.style.transform = getComputedStyle(spin).transform; // the angle now, held
+  const img = disc.querySelector<HTMLImageElement>("img");
+  if (img && src) img.src = src;
+  fly.appendChild(disc);
+  // The place's record setting rides along: outside the card no rule gives the copy one.
+  fly.style.setProperty("--vinyl", getComputedStyle(art).getPropertyValue("--vinyl").trim() || "0");
+  fly.style.left = `${at.left}px`;
+  fly.style.top = `${at.top}px`;
+  fly.style.width = `${at.width}px`;
+  fly.style.height = `${at.height}px`;
+  document.body.appendChild(fly);
+  return fly;
+}
+const flyAnim = (fly: HTMLElement, from: Box, to: Box, dur: number, ease: string, reverse: boolean): Animation => {
+  const f = flightFrom(from, to);
+  const small = `translate(${f.dx}px, ${f.dy}px) scale(${f.scale})`;
+  const frames = reverse ? [{ transform: "none" }, { transform: small }] : [{ transform: small }, { transform: "none" }];
+  return fly.animate(frames, { duration: dur, easing: ease, fill: "both" });
+};
+
+/** The rows on the band (and the band itself) come in. */
+function enterBand(panel: HTMLElement): void {
+  const center = panel.querySelector<HTMLElement>(".np__center");
+  panel.classList.remove("is-player-rebuild");
+  if (!center) return;
+  panel.classList.add("is-player-rows");
+  const rows = [...center.children].filter((el) => (el as HTMLElement).offsetParent !== null);
+  enterRows(rows, rows.length);
+  window.setTimeout(() => panel.classList.remove("is-player-rows"), tokenMs("--pop-in") + rows.length * tokenMs("--pop-stagger") + 60);
+}
+
+function emit(): void {
+  subs.forEach((cb) => cb(full));
+  paintZones();
+  refreshGrowZones(); // the Fill strips beside Now Playing change reach; every strip hides while full
+}
+
+// ── open ────────────────────────────────────────────────────────────────────────
+export async function openFullPlayer(cause: string): Promise<void> {
+  if (full || busy || !fullPlayerAvailable()) return;
+  const surface = surfaceNow();
+  const panel = npHost();
+  const art = panel ? artOf(panel) : null;
+  if (!surface || !panel || !art) return;
+  busy = true;
+  const my = ++gen;
+  try {
+    if (grownState()) await collapseGrow("player", false); // no motion: one motion at a time
+    const m = motion();
+    const from = rect(panel);
+    const fromArt = rect(art);
+    const queue = queueHost();
+    const fromQueue = queue ? rect(queue) : null;
+    const row1 = surface === "midi" ? from.height : undefined;
+    // Measure the full layout once, with no paint between: the rows' place, then the cover box.
+    apply(true, undefined, row1);
+    const place = placeNow(panel);
+    panel.dataset.npRows = place;
+    const box = rect(art).width;
+    apply(false);
+    const px = fullArtPx(box, window.devicePixelRatio, stageArtPx());
+    const img = art.querySelector<HTMLImageElement>(".vinyl:not(.vinyl--out) img");
+    const big = img?.src ? sizedUrl(img.src, px) : null;
+    // The large file loads before the open, so the flight never shows a soft picture (§9.3).
+    if (big && m) await preload(big, tokenMs("--player-art-wait"));
+    if (my !== gen || !fullPlayerAvailable() || surfaceNow() !== surface) return;
+    artPx = 0;
+    askArt(box);
+
+    full = true;
+    apply(true, place, row1);
+    const covered = coveredHosts();
+    covered.forEach((h) => (m ? h.classList.add("is-covering") : cover(h)));
+    diag.log("player", { on: true, cause, surface, rows: place, px });
+    emit();
+    watchSize(panel);
+    if (!m) {
+      covered.forEach(cover);
+      return;
+    }
+
+    panel.classList.add("is-player-rebuild");
+    panel.dataset.frames = "grow";
+    const to = rect(panel); // the layout at its final size, once
+    const toArt = rect(art);
+    const pad = clipPad();
+    const radius = getComputedStyle(panel).borderRadius || "0px";
+    const endFrames = frames.begin("player", `${surface} open`);
+    const fly = makeFlight(art, toArt, big);
+    if (fly) art.style.visibility = "hidden";
+    const anims: Animation[] = [
+      panel.animate([{ clipPath: clipBetween(fullClipFrom(from, to, surface), to, pad, radius) }, { clipPath: clipOpen(pad, radius) }], {
+        duration: m.dur, easing: m.ease, fill: "both",
+      }),
+    ];
+    if (fly) anims.push(flyAnim(fly, fromArt, toArt, m.dur, m.ease, false));
+    if (queue && fromQueue) {
+      // Max: the Queue grows up over the place Now Playing left, in the same time (§9.4.3).
+      const toQueue = rect(queue);
+      const qr = getComputedStyle(queue).borderRadius || "0px";
+      anims.push(queue.animate([{ clipPath: clipBetween(fromQueue, toQueue, pad, qr) }, { clipPath: clipOpen(pad, qr) }], {
+        duration: m.dur, easing: m.ease, fill: "both",
+      }));
+    }
+    let rowsIn = false;
+    const rows = () => {
+      if (rowsIn) return;
+      rowsIn = true;
+      enterBand(panel);
+    };
+    const rowsTimer = window.setTimeout(rows, m.rowsAt);
+    await Promise.all(anims.map((a) => a.finished.catch(() => {})));
+    window.clearTimeout(rowsTimer);
+    anims.forEach((a) => a.cancel());
+    fly?.remove();
+    art.style.visibility = "";
+    endFrames();
+    delete panel.dataset.frames;
+    if (full && my === gen) {
+      covered.forEach(cover);
+      rows();
+    }
+  } finally {
+    if (my === gen) busy = false;
+  }
+}
+
+// ── close ───────────────────────────────────────────────────────────────────────
+/** Close it. `withMotion` false snaps (a surface change, a card request). */
+export async function closeFullPlayer(cause: string, withMotion = true): Promise<void> {
+  if (!full) return;
+  const panel = npHost();
+  const art = panel ? artOf(panel) : null;
+  const surface = surfaceNow();
+  const my = ++gen;
+  const m = withMotion && !busy ? motion() : null;
+  // A close during the open's motion: the open's animations end, then the snap.
+  panel?.getAnimations().forEach((a) => a.cancel());
+  opts?.hosts.queue?.getAnimations().forEach((a) => a.cancel());
+  document.querySelectorAll(".np__fly").forEach((f) => f.remove());
+  if (art) art.style.visibility = "";
+  busy = true;
+  const covered = coveredHosts();
+  const end = () => {
+    full = false;
+    apply(false);
+    covered.forEach(uncover);
+    watch?.disconnect();
+    watch = null;
+    artPx = 0;
+    setFullArtPx(0);
+    refreshPlayerState(); // the cover goes back to the rest file (already in the cache)
+    panel?.classList.remove("is-player-rebuild", "is-player-rows");
+    if (panel) delete panel.dataset.frames;
+    diag.log("player", { on: false, cause, surface: surface ?? currentSurface(), motion: !!m });
+    if (my === gen) busy = false;
+    emit();
+  };
+  if (!m || !panel || !art || !surface) {
+    end();
+    return;
+  }
+  const to = rect(panel);
+  const toArt = rect(art);
+  const queue = queueHost();
+  const toQueue = queue ? rect(queue) : null;
+  // The rest boxes: measured with the layout off for one layout, no paint.
+  const row1 = opts?.bento.style.getPropertyValue("--player-row1");
+  const place = panel.dataset.npRows as "beside" | "over" | undefined;
+  apply(false);
+  const rest = rect(panel);
+  const restArt = rect(art);
+  const restQueue = queue ? rect(queue) : null;
+  apply(true, place, row1 ? parseFloat(row1) : undefined);
+
+  // The rows and the band go first (§9.4.2).
+  panel.classList.add("is-player-rebuild");
+  panel.dataset.frames = "grow";
+  covered.forEach((h) => {
+    h.classList.remove("is-covered");
+    h.inert = false;
+    h.style.transition = "none"; // from 0 at once, then the fade in (card-grow.ts collapseGrow)
+    h.classList.add("is-covering");
+  });
+  void panel.offsetWidth;
+  covered.forEach((h) => {
+    h.style.transition = "";
+    h.classList.remove("is-covering");
+    h.classList.add("is-uncovering");
+  });
+  const pad = clipPad();
+  const radius = getComputedStyle(panel).borderRadius || "0px";
+  const endFrames = frames.begin("player", `${surface} close`);
+  const fly = makeFlight(art, toArt, null);
+  if (fly) art.style.visibility = "hidden";
+  const anims: Animation[] = [
+    panel.animate([{ clipPath: clipOpen(pad, radius) }, { clipPath: clipBetween(fullClipFrom(rest, to, surface), to, pad, radius) }], {
+      duration: m.collapseDur, easing: m.ease, fill: "both",
+    }),
+  ];
+  if (fly) anims.push(flyAnim(fly, restArt, toArt, m.collapseDur, m.ease, true));
+  if (queue && toQueue && restQueue) {
+    const qr = getComputedStyle(queue).borderRadius || "0px";
+    anims.push(queue.animate([{ clipPath: clipOpen(pad, qr) }, { clipPath: clipBetween(restQueue, toQueue, pad, qr) }], {
+      duration: m.collapseDur, easing: m.ease, fill: "both",
+    }));
+  }
+  await Promise.all(anims.map((a) => a.finished.catch(() => {})));
+  if (my !== gen) return; // something else ended it (a surface change) and cleaned up
+  end();
+  anims.forEach((a) => a.cancel());
+  fly?.remove();
+  art.style.visibility = "";
+  covered.forEach((h) => h.classList.remove("is-uncovering"));
+  endFrames();
+  enterBand(panel); // the rows come in at their rest place
+}
+
+export function toggleFullPlayer(cause: string): void {
+  if (full) void closeFullPlayer(cause);
+  else void openFullPlayer(cause);
+}
+
+/** While full: the rows' place and the cover file follow the card's size. */
+function watchSize(panel: HTMLElement): void {
+  watch?.disconnect();
+  const np = npOf(panel);
+  const art = artOf(panel);
+  if (!np || !art) return;
+  watch = new ResizeObserver(() => {
+    if (!full) return;
+    const place = placeNow(panel);
+    if (panel.dataset.npRows !== place) panel.dataset.npRows = place;
+    askArt(rect(art).width);
+  });
+  watch.observe(np);
+}
+
+// ── the edge strips on Now Playing (§10) ────────────────────────────────────────
+// The grow's strips (`.grow-zone`, its bar per skin), painted here: card-grow.ts paints only
+// strips with a data-slot. Midi: the top and bottom of the strip. Max: the left and right of
+// the card. Each opens the player at rest and closes it while full.
+type Side = "left" | "right" | "up" | "down";
+const BAR_SIDE: Record<Side, string> = { right: "left", left: "right", down: "top", up: "bottom" };
+let zones: HTMLElement[] = [];
+
+/** Strips act: the flag, Midi or Max, "Grow cards from edges" on, and no card grown. */
+const zonesOn = (): boolean => fullPlayerAvailable() && setting("cardGrow") && !grownState();
+
+function reachOf(side: Side): "half" | "full" | "edge" | null {
+  const s = surfaceNow();
+  if (s === "midi") {
+    if (side === "up") return "full";
+    if (side === "down") return full ? "edge" : "full";
+    return null;
+  }
+  if (s === "max") {
+    if (side === "left") return full ? "full" : "edge";
+    if (side === "right") return full ? "edge" : "half";
+  }
+  return null;
+}
+
+function paintZones(): void {
+  const on = zonesOn();
+  for (const el of zones) {
+    const side = el.dataset.playerSide as Side;
+    const reach = on ? reachOf(side) : null;
+    if (!reach) {
+      el.hidden = true;
+      continue;
+    }
+    el.hidden = false;
+    el.dataset.side = side;
+    el.dataset.reach = reach;
+    el.dataset.act = full ? "collapse" : "grow";
+    el.className = `grow-zone grow-zone--${BAR_SIDE[side]}`;
+    const hint = full ? "Back to the cards" : "Opens the full player";
+    el.title = hint;
+    el.setAttribute("aria-label", hint);
+  }
+}
+
+function makeZones(host: HTMLElement): void {
+  zones = (["left", "right", "up", "down"] as Side[]).map((side) => {
+    const el = document.createElement("div");
+    el.className = "grow-zone";
+    el.dataset.playerSide = side;
+    el.hidden = true;
+    el.setAttribute("role", "button");
+    el.innerHTML = `<span class="grow-zone__bar" aria-hidden="true"></span>`;
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (busy || !zonesOn()) return;
+      toggleFullPlayer("zone");
+    });
+    host.appendChild(el);
+    return el;
+  });
+}
+
+// ── init ────────────────────────────────────────────────────────────────────────
+export function initFullPlayer(o: Opts): void {
+  opts = o;
+  setPlayerHooks({
+    full: () => full,
+    npRightLive: () => !full && surfaceNow() === "max" && zonesOn(),
+  });
+  // The rules (RULES.md §19, §12.6): the fact "player" (on / off) and the action (open / close).
+  registerFact("player", () => (full ? "on" : "off"), { seam: (cb) => onFullPlayerChange(() => cb()) });
+  registerAction("player", {
+    cost: "free",
+    run: (arg) => (arg === "close" ? closeFullPlayer("rule") : openFullPlayer("rule")),
+  });
+  if (!fullPlayerUnhidden()) return; // the test version's gate: no strips, no keys
+  if (o.hosts.np) makeZones(o.hosts.np);
+  onGrowChange(() => paintZones());
+  onSettingsChange((k) => {
+    if (k === "cardGrow") emit();
+  });
+  // A surface change ends it with no motion, before the layout remounts the slots.
+  onSurfaceChange(() => {
+    if (full) void closeFullPlayer("surface", false);
+    paintZones();
+  });
+  // Escape closes it, unless a menu, a popover or a text field takes it first (the grow's rule).
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !full || busy || e.defaultPrevented) return;
+    const t = e.target;
+    if (t instanceof Element && t.closest("input, textarea, [contenteditable]")) return;
+    if (document.querySelector(".ctx-menu, .lib-pop:not([hidden]), .slot-picker__menu:not([hidden]), .pop:not([hidden])")) return;
+    void closeFullPlayer("esc");
+  });
+  paintZones();
+  // A measuring handle (DEBUGGING.md), on the TELEMETRY gate as `__grow` is.
+  if (TELEMETRY) {
+    (window as unknown as { __player: unknown }).__player = {
+      open: openFullPlayer,
+      close: closeFullPlayer,
+      state: () => ({ full, busy, rows: npHost()?.dataset.npRows ?? null, px: artPx }),
+    };
+  }
+}

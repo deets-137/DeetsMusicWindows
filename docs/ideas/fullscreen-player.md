@@ -1,8 +1,8 @@
 ---
 status: idea
-desk_test: none
-sources: [src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-10
+desk_test: open
+sources: [src/full-player.ts, src/full-player-layout.ts, src/full-player-flag.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
+updated: 2026-10-11
 ---
 # Full player — grow the Now Playing card
 
@@ -14,6 +14,9 @@ updated: 2026-10-10
 > **2026-10-10: build a first test version (§12).** His words: "not sold on it yet but can
 > mess around with it after it's built". §12 is the code shape, for a build on 2026-10-11.
 > Three questions in §12.9 come first.
+>
+> **2026-10-11: the test version is BUILT, behind a DevTools flag (§13, the as-built
+> record). His desk test is §12.10.** The doc stays in ideas/ until he decides to keep it.
 
 ## 0. Terms
 
@@ -201,6 +204,9 @@ All the forks in §7 are closed.
   color as a future addition".
 - **OS full screen.** The player also hides the title bar and the taskbar (§5 fork 5; the
   app window only for now).
+- **Press: a turning flight.** The test version flies a still copy of the disc (§12.9 Q3).
+  Later, a turning copy that starts at the disc's angle flies, or the real disc flies. His
+  call (2026-10-11): plan for it; which one is open.
 
 ## 9. The motion (design pass, 2026-10-02)
 
@@ -446,6 +452,10 @@ rule fact and action. 11 no new right-click. 12 Escape. 13 no popover. 14 no mem
    first; if a copy cannot turn in step, the copy is a still of the disc for 0.34 s
    (recommended for the test version) · the real disc flies and no copy is made.
 
+**Decided 2026-10-11 (the owner):** 1. a DevTools flag; Mini's player view stays as it is
+until he says. 2. A click on the Queue keeps the player open. 3. A still copy in the test
+version. Later: a turning copy that flies (or the real disc); that choice is open (§8).
+
 ### 12.10 Desk test (written now; run after the build)
 
 1. Midi: click the top or bottom edge of the Now Playing strip. The cover flies to full
@@ -460,3 +470,78 @@ rule fact and action. 11 no new right-click. 12 Escape. 13 no popover. 14 no mem
    opens it.
 5. Each skin: the same motion; reduced motion snaps.
 6. `deetsmusic diag` shows one `player` line per open and close.
+
+0. **Before step 1:** in DevTools, `localStorage["deets.dev.fullPlayer"] = "on"`, then a reload.
+7. Max: press a row in the Queue while the player is full. The player stays open.
+8. Press: the record flies as a still disc and turns again where it lands.
+9. Midi: press Show queue on the band. The player closes and the Queue comes in.
+
+## 13. As built (2026-10-11)
+
+> **Part:** built · 2026-10-11 · desk test open (§12.10). Where this section and §12
+> disagree, this section is the code.
+
+**The gate.** `src/full-player-flag.ts` reads `localStorage["deets.dev.fullPlayer"] === "on"`
+once, at load. With the flag off there are no strips on Now Playing, no Compass row and no
+Rulez words, and no key does anything. Mini is not in the test version: the player opens in
+Midi and Max only.
+
+**The files.**
+
+- `src/full-player.ts` — the state (`isFullPlayer`, `onFullPlayerChange`, `openFullPlayer`,
+  `closeFullPlayer`, `toggleFullPlayer`, `fullPlayerAvailable`), the motion, the strips, the
+  rule fact and action, Escape, `window.__player` on the TELEMETRY gate.
+- `src/full-player-layout.ts` — pure: `rowsPlace`, `fullArtPx`, `fullClipFrom`, `flightFrom`.
+  `tests/full-player-layout.test.ts` covers them (7 tests).
+- `src/full-player-flag.ts` — the gate. Its own file with no imports, so the pure Rulez words
+  can read it.
+
+**Changes from §12.**
+
+1. **The strips live in `full-player.ts`, not in `card-grow.ts`.** They are `.grow-zone`
+   elements on the Now Playing host, with the grow's look, but with no `data-slot`.
+   `card-grow.ts` paints only `.grow-zone[data-slot]`. `card-grow.ts` gets two hooks from the
+   player (`setPlayerHooks`): `full` (no grow and no strip while the player is full) and
+   `npRightLive` (the Fill strips on the left side of `left` and `c` take `half` reach while
+   Now Playing's right strip is live, §10.3). Reason: the player imports the grow's motion
+   parts, so the grow must not import the player.
+2. **The ResizeObserver is in `full-player.ts`, not in the card.** It watches `.np` while the
+   player is full: the rows' place and the cover file follow the size.
+3. **The cover URL.** `queue-rows.ts` has `coverArtPx()` and `setFullArtPx()`. The card,
+   `player.ts` and the next-song prefetch read `coverArtPx()`. A size change calls
+   `refreshPlayerState()`; `vinyl.ts` swaps the picture of the same song once it is decoded,
+   so the cover never blanks. The flight copy and the preload use the playing cover's URL with
+   its `{w}x{h}` part replaced (`sizedUrl`); a URL with no such part is used as it is.
+4. **The rule fact is `on` / `off`**, not `full` / `rest`. The Rulez fact reads "Full player:
+   On / Off"; the action reads "Full player: Open / Close"; the sentence says "turns the full
+   player open".
+5. **The Compass row is not in `SYNONYMS`.** Its words (full screen, fullscreen, big cover,
+   large cover) are the row's aliases, so COMPASS-TERMS.md does not list a hidden feature.
+   They move to `SYNONYMS` when the flag goes.
+6. **Midi row 1.** While full, the Now Playing card spans both rows, which leaves row 1 with
+   no item to size it. `full-player.ts` holds row 1 at the strip's height (`--player-row1` on
+   the bento), so the covered cards do not jump while they fade.
+7. **The band's ink.** One role set in `themes.css`, derived once in `:root`: `--np-band` (a
+   light theme's `--title` or a dark theme's `--canvas`, at `--np-band-strength`),
+   `--np-band-ink` (the other one of the pair) and `--np-band-sub`. On the band, `.np__center`
+   maps `--title`, `--text` and `--subtext` to the band ink, and the icon squares lose their
+   light fill. In Glass (album text on), `album-color.ts` guards the album text against the
+   band over black and over white.
+
+**Decided inside his choices (for his review).**
+
+- The band's strength: 78 % (`--np-band-strength`), with a 48 px soft top edge
+  (`--np-band-fade`) and 16 px padding (`--np-band-pad`).
+- The band's subtext: the band ink at 72 % (`--np-band-sub-strength`).
+- The close square sits 8 px in from the cover's corner (`--np-close-inset`).
+- The open waits at most 250 ms for the large file (`--player-art-wait`).
+- The rows beside the cover need 356 px (`--full-rows-w`); in Max at 1100 × 820 the rows are
+  over the cover (the card is 724 × 756).
+- In full, the card shows the stage's parts in every surface: the album line, the times, the
+  volume row and the larger title. Midi keeps its title bar volume pill too.
+- The strips obey Settings › Window › *Grow cards from edges*; Compass and rules do not.
+- The flight copy is at z-index 40: over the cards, under the menus.
+- On the close, the rows come in again at the rest place.
+
+**Not built.** Everything in §12.7, the Mini player view, an agent route.
+

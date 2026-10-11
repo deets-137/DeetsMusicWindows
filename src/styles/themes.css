@@ -89,6 +89,15 @@
   --rail-ink:      var(--subtext);
   --rail-ink-lit:  var(--title);
 
+  /* The full player's band (ideas/fullscreen-player.md §7, item 6): a fixed DARK band over the
+     bottom of the cover that holds the rows. Dark in every theme: a light theme's own dark
+     ink (--title), a dark theme's canvas, at the strength the skin sets. The ink on it is
+     the light one of the same pair, so the rows read on the band in every theme. Derived
+     once here — no theme block names a band color of its own. */
+  --np-band:     color-mix(in srgb, light-dark(var(--title), var(--canvas)) var(--np-band-strength), transparent);
+  --np-band-ink: light-dark(var(--canvas), var(--title));
+  --np-band-sub: color-mix(in srgb, var(--np-band-ink) var(--np-band-sub-strength), transparent);
+
   /* The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy
      scrubbers). Light is white in every theme, so this is the one role no theme remaps;
      a little dimmer on dark themes so it does not blaze. */

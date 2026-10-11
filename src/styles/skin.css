@@ -707,6 +707,27 @@
   --grow-col-year:   3.4em;
   --grow-col-plays:  3.6em;
 
+  /* -- full player (full-player.ts, ideas/fullscreen-player.md §9.4, §12) --
+     Now Playing grows so the cover is as large as the window allows. The cover flies from its
+     rest place to its full place while a clip opens the card; the rows and the band come in at
+     --player-rows-at of the open. Each skin restates the four motion values in its own block
+     (his call, 2026-10-02): the grow's values in the first version, so a skin can get its own
+     shape later as a change of values. --player-art-wait: how long the open waits for the
+     large cover file to decode before it flies with what it has. --full-rows-w: the rows sit
+     BESIDE the cover when the card is at least this much wider than tall, else OVER it on the
+     band. --np-band-strength: how opaque the band under the rows is. */
+  --player-dur:          var(--grow-dur);
+  --player-ease:         var(--grow-ease);
+  --player-rows-at:      var(--grow-rows-at);
+  --player-collapse-dur: var(--grow-collapse-dur);
+  --player-art-wait:     0.25s;
+  --full-rows-w:         356px;
+  --np-band-pad:         var(--space-4);
+  --np-band-strength:    78%;
+  --np-band-sub-strength: 72%;                /* the subtext on the band: its ink, a little clear */
+  --np-band-fade:        48px;                /* the soft top edge of the band, over the cover */
+  --np-close-inset:      var(--space-2);      /* the close square, off the cover's top-right corner */
+
   /* -- chip flight (handoff.ts, ARTIST-VIEW.md §5) --
      A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease.
      --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing.
@@ -917,6 +938,11 @@
   --panel-backdrop:     none;
   --shadow-card:        4px 4px 0 var(--ink-2);
   --grow-clip-pad:      6px;        /* the plate's offset stays inside the opening clip */
+  /* full player motion (ideas/fullscreen-player.md §9.4): the grow's values for now */
+  --player-dur:          0.34s;
+  --player-ease:         var(--pop-ease);
+  --player-rows-at:      0.4;
+  --player-collapse-dur: 0.24s;
   --grow-zone-bar-w:      4px;      /* a rule of ink, square ends */
   --grow-zone-bar-radius: 0;
 
@@ -1013,6 +1039,11 @@
   /* soft border = a diffuse ring in the theme hairline color + depth */
   --shadow-card: 0 0 8px 1px var(--border), 0 12px 32px rgba(0, 0, 0, 0.16);
   --grow-clip-pad: 44px;            /* the lift's reach, so the opening clip keeps the shadow */
+  /* full player motion (ideas/fullscreen-player.md §9.4): the grow's values for now */
+  --player-dur:          0.34s;
+  --player-ease:         var(--pop-ease);
+  --player-rows-at:      0.4;
+  --player-collapse-dur: 0.24s;
   --grow-zone-bar-gap:    1px;      /* a soft line just off the card, with a little water glow */
   --grow-zone-bar-radius: 3px;
   --grow-zone-bar-glow:   0 0 6px var(--grow-zone-bar);
@@ -1234,6 +1265,11 @@
     inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent),
     inset 0 0 0 100vmax var(--panel);
   --grow-clip-pad:      40px;       /* the halo and the drop shadow stay inside the opening clip */
+  /* full player motion (ideas/fullscreen-player.md §9.4): the grow's values for now */
+  --player-dur:          0.34s;
+  --player-ease:         var(--pop-ease);
+  --player-rows-at:      0.4;
+  --player-collapse-dur: 0.24s;
   --grow-zone-bar-w:      2px;      /* a thin lit edge, off the glass, with its glow */
   --grow-zone-bar-gap:    2px;
   --grow-zone-bar-radius: 2px;
@@ -1352,6 +1388,11 @@
    jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
 [data-skin="cyber"] {
+  /* full player motion (ideas/fullscreen-player.md §9.4): the grow's values for now */
+  --player-dur:          0.34s;
+  --player-ease:         var(--pop-ease);
+  --player-rows-at:      0.4;
+  --player-collapse-dur: 0.24s;
   /* sound panel: a scope trace — bright glow, dashed graticule, square dots' ring */
   --sound-curve-glow:        drop-shadow(0 0 3px var(--eq-curve)) drop-shadow(0 0 8px var(--eq-curve));
   --sound-curve-w:           1.5px;
