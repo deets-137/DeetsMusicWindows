@@ -1,0 +1,8 @@
+{
+  "app": { "attach": "%LOCALAPPDATA%\\DeetsMusic\\DeetsMusic.exe" },
+  "steps": [
+    { "do": "attach" },
+    { "do": "wait_window", "timeout_ms": 2000 },
+    { "do": "place" }
+  ]
+}

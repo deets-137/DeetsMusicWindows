@@ -1,0 +1,11 @@
+{
+  "app": { "attach": "%LOCALAPPDATA%\\DeetsMusic\\DeetsMusic.exe" },
+  "probes": { "list": [380, 175, 470, 320] },
+  "steps": [
+    { "do": "attach" },
+    { "do": "wait_window", "timeout_ms": 2000 },
+    { "do": "place" },
+    { "do": "mark", "name": "watch" },
+    { "do": "wait", "ms": 10000 }
+  ]
+}

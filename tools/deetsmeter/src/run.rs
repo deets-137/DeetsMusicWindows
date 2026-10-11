@@ -49,7 +49,9 @@ pub enum Step {
     WaitWindow { timeout_ms: Option<u64> },
     /// Place the window so its visible frame is `rect` (desktop pixels), or keep it where it
     /// is; either way the region and probes are set from the frame and a baseline is taken.
-    Place { rect: Option<[i32; 4]> },
+    /// `on` names a monitor (`left`, `right`, `primary` or `\.DISPLAY2`): then `rect` is
+    /// relative to that monitor's work area. The window is put back where it was when the run ends.
+    Place { rect: Option<[i32; 4]>, on: Option<String> },
     Focus,
     Wait { ms: u64 },
     Mark { name: String },
@@ -62,6 +64,17 @@ pub enum Step {
     /// Wait until the region has not changed for `quiet_ms` (F15: 500 ms).
     Settle { quiet_ms: Option<u64>, timeout_ms: Option<u64>, probe: Option<String> },
     /// Move the pointer off the window (right of the frame), so a hover cannot paint.
+    /// Start hearing the app's own sound (process loopback, F14): the window's process and its
+    /// children. Nothing is recorded: only the times sound starts and stops (audio.rs).
+    Listen { threshold_db: Option<f64>, pid: Option<u32>, method: Option<String> },
+    /// Wait for sound to start after the last input.
+    WaitSound { timeout_ms: Option<u64> },
+    /// Press a button by its accessible name through UI Automation: no mouse, no focus
+    /// (option A). `names` lists the names it may carry (a play button is "Play" or "Pause").
+    /// `probe: "self"` times the change in the button's own rectangle.
+    Invoke { names: Vec<String>, probe: Option<String>, keep: Option<u32>, tag: Option<String> },
+    /// Keep the next frame, whatever it shows: a picture of the region now.
+    Snap { tag: Option<String> },
     Park,
     Close,
 }
@@ -71,6 +84,10 @@ struct State {
     hwnd: Option<HWND>,
     frame: Option<Rect>,
     last_input: Option<i64>,
+    win_pid: Option<u32>,
+    listen: Option<crate::audio::Listen>,
+    /// Where the window was before the first `place` moved it: put back at the end.
+    restore: Option<windows::Win32::Foundation::RECT>,
 }
 
 fn abs(st: &State, at: [i32; 2]) -> Option<(i32, i32)> {
@@ -126,7 +143,7 @@ pub fn run(file: &Path, out: &Path) -> i32 {
         "qpc_freq": clock::freq(),
     }));
 
-    let mut st = State { pids: Vec::new(), hwnd: None, frame: None, last_input: None };
+    let mut st = State { pids: Vec::new(), hwnd: None, frame: None, last_input: None, win_pid: None, listen: None, restore: None };
     let mut failed: Option<String> = None;
     for (i, step) in rf.steps.iter().enumerate() {
         if let Err(e) = do_step(i, step, &rf, &mut st, &watch, &events) {
@@ -137,9 +154,19 @@ pub fn run(file: &Path, out: &Path) -> i32 {
     }
     // Let the last frames land before stopping.
     std::thread::sleep(Duration::from_millis(100));
+    st.listen = None; // stops the sound thread
+    // Stop the capture BEFORE the window goes back: once it leaves, the region shows whatever
+    // is behind it (a kept frame once showed the owner's terminal, 2026-10-10).
     watch.stop.store(true, Ordering::SeqCst);
     let _ = cap.join();
-    events.push(clock::now(), "self", json!({ "cpu_pct": crate::self_cpu_pct() }));
+    if let (Some(h), Some(r)) = (st.hwnd, st.restore) {
+        win::put_back(h, r);
+        events.push(clock::now(), "restored", json!({}));
+    }
+    // The capture thread's own CPU over the run (the sensor's cost), and the whole process for reference.
+    let run_ms = (clock::now() as f64 / 1000.0).max(1.0);
+    let capture_pct = watch.cpu_us.load(Ordering::SeqCst) as f64 / 1000.0 / run_ms * 100.0;
+    events.push(clock::now(), "self", json!({ "cpu_pct": crate::self_cpu_pct(), "capture_cpu_pct": capture_pct }));
 
     let _ = std::fs::create_dir_all(out);
     let n = events.write(&out.join("events.jsonl")).unwrap_or(0);
@@ -165,7 +192,7 @@ fn arm(watch: &Watch, i: usize, kind: &str, keep: Option<u32>, tag: &Option<Stri
     tag
 }
 
-fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, ev: &Events) -> Result<(), String> {
+fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, ev: &Arc<Events>) -> Result<(), String> {
     match step {
         Step::Launch => {
             let t = clock::now();
@@ -190,28 +217,54 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
         }
         Step::WaitWindow { timeout_ms } => {
             let until = clock::now() + timeout_ms.unwrap_or(30_000) as i64 * 1000;
+            // The launched pid's tree (a launcher may hand the window to a child). Rebuilt every
+            // 100 ms, not every poll: it is a snapshot of every process on the PC (polling it
+            // every 1 ms cost 85 % of a core, 2026-10-10).
+            let mut pids: Vec<u32> = Vec::new();
+            let mut tree_at: Option<i64> = None;
+            let mut restored = false;
             loop {
-                // The launched pid's tree: a launcher may hand the window to a child.
-                let mut pids = Vec::new();
-                for p in &st.pids {
-                    pids.extend(win::tree(*p));
+                if tree_at.is_none_or(|t| clock::now() - t > 100_000) {
+                    pids.clear();
+                    for p in &st.pids {
+                        pids.extend(win::tree(*p));
+                    }
+                    tree_at = Some(clock::now());
+                }
+                // A minimized window is brought back, once, without taking the focus.
+                if !restored && win::restore_minimized(&pids) {
+                    restored = true;
+                    ev.push(clock::now(), "unminimized", json!({ "step": i }));
                 }
                 if let Some(w) = win::windows_of(&pids).into_iter().next() {
                     ev.push(clock::now(), "shown", json!({ "pid": w.pid, "title": w.title, "frame": w.frame.json(), "step": i }));
                     st.hwnd = Some(w.hwnd);
+                    st.win_pid = Some(w.pid);
                     st.frame = Some(w.frame);
                     break;
                 }
                 if clock::now() > until {
                     return Err("no window in time".into());
                 }
-                std::thread::sleep(Duration::from_millis(1));
+                std::thread::sleep(Duration::from_millis(2));
             }
         }
-        Step::Place { rect } => {
+        Step::Place { rect, on } => {
             let hwnd = st.hwnd.ok_or("place needs a window (wait_window first)")?;
             let frame = match rect {
-                Some(r) => win::place(hwnd, Rect { x: r[0], y: r[1], w: r[2], h: r[3] }).ok_or("place failed")?,
+                Some(r) => {
+                    let (ox, oy) = match on {
+                        Some(m) => {
+                            let m = win::monitor(m).ok_or_else(|| format!("no monitor {m}"))?;
+                            (m.work.x, m.work.y)
+                        }
+                        None => (0, 0),
+                    };
+                    if st.restore.is_none() {
+                        st.restore = win::outer(hwnd);
+                    }
+                    win::place(hwnd, Rect { x: ox + r[0], y: oy + r[1], w: r[2], h: r[3] }).ok_or("place failed")?
+                }
                 None => win::frame(hwnd).ok_or("no frame")?,
             };
             st.frame = Some(frame);
@@ -253,6 +306,9 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
             input::move_to(x, y);
             // The hover paints first and settles before the press is timed.
             std::thread::sleep(Duration::from_millis(hover_ms.unwrap_or(150)));
+            // Again, right before the press: on 2026-10-10 a game client came to the front during
+            // this wait and took a click the first check had cleared.
+            target(st, *at)?;
             let tag = arm(watch, i, "click", *keep, tag, probe);
             let t = clock::now();
             input::click(right.unwrap_or(false));
@@ -263,6 +319,7 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
             let (x, y) = target(st, *at)?;
             input::move_to(x, y);
             std::thread::sleep(Duration::from_millis(150));
+            target(st, *at)?; // again, right before the press: a window can come up during the wait
             let tag = arm(watch, i, "wheel", *keep, tag, probe);
             let n = count.unwrap_or(1);
             let t = clock::now();
@@ -281,6 +338,7 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
             let (x1, y1) = target(st, *to)?;
             input::move_to(x0, y0);
             std::thread::sleep(Duration::from_millis(150));
+            target(st, *from)?; // again, right before the press: a window can come up during the wait
             let tag = arm(watch, i, "drag", *keep, tag, probe);
             let n = steps.unwrap_or(60).max(1);
             let t = clock::now();
@@ -342,6 +400,82 @@ fn do_step(i: usize, step: &Step, rf: &RunFile, st: &mut State, watch: &Watch, e
                 if now > until {
                     ev.push(now, "settle-timeout", json!({ "probe": probe, "step": i }));
                     break;
+                }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+        }
+        Step::Listen { threshold_db, pid, method } => {
+            let pid = pid.or(st.win_pid).ok_or("listen needs a pid or the app's window (wait_window first)")?;
+            let m = match method.as_deref() {
+                None => crate::audio::Method::Meter,
+                Some(s) => crate::audio::Method::parse(s).ok_or_else(|| format!("listen: method is meter or loopback, not {s}"))?,
+            };
+            let l = crate::audio::start(pid, threshold_db.unwrap_or(-60.0), m, ev.clone()).map_err(|e| format!("listen: {e}"))?;
+            st.listen = Some(l);
+        }
+        Step::WaitSound { timeout_ms } => {
+            let l = st.listen.as_ref().ok_or("wait_sound needs a listen step first")?;
+            let since = st.last_input.unwrap_or(i64::MIN);
+            let until = clock::now() + timeout_ms.unwrap_or(10_000) as i64 * 1000;
+            loop {
+                if l.last_on.load(Ordering::SeqCst) > since {
+                    break;
+                }
+                if clock::now() > until {
+                    ev.push(clock::now(), "sound-timeout", json!({ "step": i }));
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+        }
+        Step::Invoke { names, probe, keep, tag } => {
+            let hwnd = st.hwnd.ok_or("invoke needs a window (wait_window first)")?;
+            // The search is slow (a cross-process walk of the window's buttons): before the clock.
+            let b = crate::uia::find(hwnd, names)?;
+            // `probe: "self"` = the button's own rectangle, with a fresh "before" picture.
+            let probe_name = match probe.as_deref() {
+                Some("self") => {
+                    {
+                        let mut ps = watch.probes.lock().unwrap();
+                        ps.retain(|p| p.name != "self");
+                        ps.push(Probe { name: "self".into(), r: b.rect });
+                    }
+                    watch.probe_prev.lock().unwrap().remove("self");
+                    let t0 = clock::now();
+                    watch.rebase.store(true, Ordering::SeqCst);
+                    if !watch.wait_baseline(t0, 3000) {
+                        return Err("no baseline for the button's probe in 3 s".into());
+                    }
+                    Some("self".to_string())
+                }
+                other => other.map(str::to_string),
+            };
+            // No pointer is sent, but a covered window would still be measured wrong.
+            if let Some(reg) = *watch.region.lock().unwrap() {
+                if let Some((x, y, who)) = win::covered_in(hwnd, reg) {
+                    return Err(format!("the region is covered at ({x}, {y}) by {who}; nothing was pressed"));
+                }
+            }
+            let tag = arm(watch, i, "invoke", *keep, tag, &probe_name);
+            let t = clock::now();
+            let how = crate::uia::press(&b)?;
+            let back = clock::now();
+            ev.push(t, "input", json!({
+                "kind": "invoke", "name": b.name, "how": how, "call_us": back - t,
+                "tag": tag, "probe": probe_name, "step": i,
+            }));
+            st.last_input = Some(t);
+        }
+        Step::Snap { tag } => {
+            // Keep the next frame read, whatever it shows: a picture of the region now.
+            *watch.snap_tag.lock().unwrap() = tag.clone().unwrap_or_else(|| format!("s{i:02}-snap"));
+            watch.snap.store(true, Ordering::SeqCst);
+            watch.rebase.store(true, Ordering::SeqCst);
+            let until = clock::now() + 3_000_000;
+            while watch.snap.load(Ordering::SeqCst) {
+                if clock::now() > until {
+                    watch.snap.store(false, Ordering::SeqCst);
+                    return Err("snap: no frame in 3 s".into());
                 }
                 std::thread::sleep(Duration::from_millis(2));
             }
@@ -423,9 +557,51 @@ fn summary(all: &[Value]) {
             ),
             None => println!("  {:>9.1} ms  {:<6} {:<18} no change seen", ms(t), inp["kind"].as_str().unwrap_or(""), tag),
         }
+        // Input → sound: the first sound-on after the input, before the next one.
+        if let Some(s) = sorted.iter().find(|e| e["ev"] == "sound-on" && e["t"].as_i64().is_some_and(|st| st > t && st < next)) {
+            println!(
+                "  {:>9.1} ms  {:<6} {:<18} sound +{:.1} ms (peak {} dBFS)",
+                ms(t),
+                inp["kind"].as_str().unwrap_or(""),
+                tag,
+                ms(s["t"].as_i64().unwrap_or(0) - t),
+                s["peak_db"]
+            );
+        }
+    }
+    let ons = sorted.iter().filter(|e| e["ev"] == "sound-on").count();
+    let offs = sorted.iter().filter(|e| e["ev"] == "sound-off").count();
+    if sorted.iter().any(|e| e["ev"] == "listen") {
+        println!("  sound  {ons} start(s), {offs} stop(s) heard · no audio was stored");
+        if let Some(end) = sorted.iter().find(|e| e["ev"] == "listen-end") {
+            let loud = end["loud"].as_u64().unwrap_or(0);
+            match end["polls"].as_u64() {
+                Some(polls) => println!(
+                    "  sound  meter: {polls} polls of {} session(s), {loud} over the threshold, loudest {} dBFS · meter thread {:.1} % of one core",
+                    end["sessions"],
+                    end["max_peak_db"],
+                    end["cpu_pct"].as_f64().unwrap_or(f64::NAN)
+                ),
+                None => println!("  sound  loopback: {} packets, {loud} over the threshold, loudest {} dBFS", end["packets"], end["max_peak_db"]),
+            }
+            if ons == 0 {
+                // Say WHY nothing was heard, so a setup problem is not read as a slow app.
+                // Packets alone prove nothing: the loopback device sends silent packets on a
+                // timer even when the target plays nothing (the chime test, 2026-10-10). The
+                // loudest level is what tells "quiet" from "nothing".
+                match end["max_peak_db"].as_f64() {
+                    None => println!("  sound  nothing heard: the app was silent (paused?), or played elsewhere (AirPlay, another output) or outside its process tree. Measure with local output only (§3)."),
+                    Some(db) => println!("  sound  the app was heard, but only up to {db} dBFS: below the threshold. Protected audio (DeetsMusic's MusicKit stream) reaches the loopback as silence: use method meter. Otherwise lower threshold_db or check the app volume."),
+                }
+            }
+        }
     }
     if let Some(s) = sorted.iter().find(|e| e["ev"] == "self") {
-        println!("  sensor cost  {:.1} % of one core", s["cpu_pct"].as_f64().unwrap_or(f64::NAN));
+        println!(
+            "  sensor cost  capture thread {:.1} % of one core · whole process {:.1} %",
+            s["capture_cpu_pct"].as_f64().unwrap_or(f64::NAN),
+            s["cpu_pct"].as_f64().unwrap_or(f64::NAN)
+        );
     }
 }
 

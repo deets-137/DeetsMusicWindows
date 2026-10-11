@@ -1,0 +1,17 @@
+{
+  "app": { "attach": "%LOCALAPPDATA%\\DeetsMusic\\DeetsMusic.exe" },
+  "probes": { "play": [165, 523, 36, 36] },
+  "steps": [
+    { "do": "attach" },
+    { "do": "wait_window", "timeout_ms": 2000 },
+    { "do": "place" },
+    { "do": "listen" },
+    { "do": "wait", "ms": 500 },
+    { "do": "click", "at": [183, 541], "tag": "play", "probe": "play", "keep": 6 },
+    { "do": "wait_sound", "timeout_ms": 8000 },
+    { "do": "wait", "ms": 1500 },
+    { "do": "click", "at": [183, 541], "tag": "pause", "probe": "play" },
+    { "do": "wait", "ms": 800 },
+    { "do": "park" }
+  ]
+}

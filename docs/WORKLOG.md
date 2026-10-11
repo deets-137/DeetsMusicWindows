@@ -39,6 +39,79 @@ first, kept across restarts, each on its own, the card's fold header). **Also fi
 Cards sub-heading reused the `g-cards` id. **Desk test:** QUICK-SETTINGS.md §12.4, his run,
 passed the same day. **Hide cards** (HIDE-CARDS.md §9, DESK-TESTS.md A7) passed in the same run of his.
 
+## 2026-10-10 — deetsmeter M2: sound, the left monitor, an optimization pass (built, committed, branch `ten-out-of-ten`)
+
+**His rule: never record sound.** `tools/deetsmeter/src/audio.rs` scans each WASAPI buffer in
+place for the first sample over −60 dBFS and releases it; nothing is copied, kept or written.
+Output: `sound-on` / `sound-off` times only. Process loopback on the app window's process tree
+(the AirPlay crate's activation). New steps `listen` and `wait_sound`; the summary prints
+input → sound. New `deetsmeter calibrate-sound` (10 quiet blips the tool plays itself):
+**write → heard median 57.6 ms**, range 55.2–59.3, 10 of 10 heard: the floor of the method.
+`listen` on the installed app (paused) worked from this session and heard nothing.
+
+**Optimization** (his ask: "optimize as you go"): with probes, only the probes DWM redrew are
+copied back from the GPU; the whole region only without probes or while keeping frames.
+Capture-thread CPU at 1400 × 1000, flipping every composition: probes 11.7 % → 3.1–4.7 %;
+no probes 2.3 % → 3.1–5.3 % (same within the 15.6 ms timer noise). `calibrate` gained
+`--size` and `--probes`; costs are the capture thread's own (`GetThreadTimes`).
+
+**Also:** the cover guard names only the covering exe, never its window title (a browser tab
+title had reached the events file); the calibrate window flips two dark greys, not a
+black/white strobe.
+
+**The M1 commit.** `ca2ece4` lost a race: another session committed `2a791a0` ("Rulez: a new
+rule no longer opens the When menu by itself") with everything staged, M1's files included.
+M1 is in that commit; not pushed. A memory note now says: commit through a temporary index.
+
+**His play test heard no sound:** the installed app was playing to AirPlay through the in-page
+tap, so nothing reached the PC's output (§3 already says "no AirPlay"). The button change was
+timed (+86 ms Play, +39 ms Pause). The listener now counts packets (never audio) and the
+summary says why nothing was heard. A second `calibrate-sound`: 68.2 ms (the first 57.6): the
+floor moves about 10 ms between runs, so sound rows compare inside one sitting only.
+
+**With AirPlay off it still heard silence:** DeetsMusic's MusicKit stream is protected, so
+Windows gives the loopback a silenced copy (−90 dBFS) while the mixer meter reads −15.7 dBFS.
+Ruled out on the way: cross-process capture (a chime was heard), the package boundary, the
+device. New `deetsmeter sessions`; new default method **meter** (Windows' per-session peak
+meter, polled every 2 ms, one number per poll, no audio): floor 25–27 ms, loopback 59 ms.
+Meter thread 3.4 % of a core after caching the process tree.
+
+His play test on the meter heard the sound, but the music was already playing when the run
+began, and the first click went to the League of Legends client, which had come to the front
+during the hover wait (the kept frames show it). The guard now checks again right before
+every press.
+
+**Option A (his call): runs on the left monitor, presses through UI Automation.** Not headless
+like `shots`: Apple's app has no hidden mode, a hidden window draws differently, and Windows
+11 Home has no Hyper-V / Sandbox / RDP host. Built: `place` `"on": "left"` (raised there
+without taking focus, put back at the end), `invoke` by accessible name (`"probe": "self"`),
+`deetsmeter uia`, `deetsmeter monitors`. Chromium's accessibility tree wakes on the first ask
+(3 buttons, then 67). Dry run on the left monitor: placed, followed, put back. §17.11.
+
+His first left-monitor run: **press Play → sound +292.6 ms**, but the screen numbers were
+wrong: the portrait monitor's duplication image is sideways, so the probe sat on another
+window. Fixed (rotation-aware region, probes, dirty rectangles; pixels turned back); a new
+`snap` step checked it by picture. 270° verified; 90° / 180° unverified.
+
+His second left-monitor run: press → sound **+283.6 ms**; the probe saw the icon (145), but the
+first change was false again. Cause: every re-open baseline was the duplication's placeholder
+frame (no present time, not the screen). Fixed: baselines from real frames only, a GPU copy of
+the region for new "before" pictures, `keep` limited to 3 s, capture stopped before the window
+goes back, no whole-region rotate per frame, `wait_window` no longer snapshots processes every
+millisecond (85 % → under 10 %), a minimized window is restored. §17.11.
+
+His next run failed "no window in time": my new `wait_window` loop started its tree clock at
+`i64::MIN`, so `now - tree_at` overflowed and the process tree was never built (a release build
+wraps silently). Fixed with an `Option`; `find --all` added (every window of the app with its
+state). The silent baseline check then passed: baseline and rebase both see the Play button,
+zero false changes with no press, the snap picture upright.
+
+**His play test passed:** Play → button +88.4 ms, sound +150.5 ms; Pause → button +31.2 ms;
+probes quiet before each press; capture 2.8 % and meter 1.3 % of a core. Press → sound was
+284–293 ms in earlier runs: one run each, so no number yet (M3 repeats it).
+
+Open: commit M2 + option A (his call); M3, the judge; whether Apple's app plays in shared mode.
+
 ## 2026-10-10 — Hide cards (built, committed, desk test open)
 
 Talked through and built in one sitting. **What:** Settings › Cards, one toggle per card, takes

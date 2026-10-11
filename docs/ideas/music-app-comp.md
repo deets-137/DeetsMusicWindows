@@ -594,7 +594,7 @@ Each phase is handed over alone (one load-bearing thing in flight).
 | phase | builds | done when | rough size |
 |---|---|---|---|
 | **M1** sensor core (BUILT 2026-10-10, §17.9) | clock, launch, window, input, screen, kept frames, `calibrate` | `calibrate` prints a floor; one click on our app gives input → first change, with a strip | ~600 lines Rust |
-| **M2** sound | process loopback, `sound-on` / `sound-off` | input → sound on both apps for one play | ~200 lines Rust |
+| **M2** sound (BUILT 2026-10-10, §17.10; the play test is his) | process loopback, `sound-on` / `sound-off` | input → sound on both apps for one play | ~200 lines Rust |
 | **M3** judge | `run.mjs`, `metrics.mjs` + its test, the two profiles (`apple.json`, `deets.json`: launch, rectangle, coordinates, probes, splash hash), scenes 1–2 and 4–11 of §4, passes, noise gate, CSV, marks; then the §17.4 cross-check | one pass of every timing and frames row on both apps | ~500 lines Node |
 | **M4** rest | `heaviness-sample.ps1` profile list (`AppleMusic.exe` tree), GPU engine counters | scenes 3 and 5 on both apps | ~80 lines PowerShell |
 
@@ -697,3 +697,209 @@ drawn on (the Rulez card filled the middle), so the probe named `library` covere
 list; the scroll was still a scroll in our app. A profile must name its layout (M3).
 
 Sensor cost on this short run: 13.8 % of one core (start-up included); the M3 item stands.
+
+### 17.10 M2 as built: sound, and the first optimization pass (2026-10-10)
+
+> **Part:** built · 2026-10-10 — the sensor hears; the click → sound test on our app is the
+> owner's to run (it plays his music aloud). Uncommitted on `ten-out-of-ten`.
+
+**Nothing is recorded (his rule, 2026-10-10).** `audio.rs` keeps no audio. Each WASAPI buffer
+is scanned in place for the first sample at or above the threshold and released at once: no
+sample is copied, kept, sent or written. The only outputs are `sound-on` (the time of the
+first loud sample after silence, and that buffer's peak in whole dBFS) and `sound-off` (the
+last loud sample before 250 ms of silence). The `listen` event carries `"stores_audio": false`
+and the summary says "no audio was stored". A level trace, a waveform or a buffer copy must
+never be added.
+
+**How it hears.** Process loopback (F14) on the app window's own process and its children,
+48 kHz / 16-bit / stereo, event-driven, the activation of the shared AirPlay crate. Times come
+from WASAPI's QPC position of each packet (`clock::from_100ns`) plus the sample's offset in
+it, so a sound's start is placed to one sample, on the same clock as the click.
+
+**Steps.** `{"do": "listen", "threshold_db": -60}` (after `wait_window`), then after an input
+`{"do": "wait_sound", "timeout_ms": 10000}`. The summary prints `sound +N ms` for each input
+that has a `sound-on` before the next input. Reference: `examples/deets-play.json` (Play,
+time the sound, then Pause; the play button at its Max-layout place) and
+`examples/deets-listen.json` (listen only).
+
+**`deetsmeter calibrate-sound`.** The tool plays 10 blips itself (40 ms of 1 kHz at −36 dBFS)
+and hears its own process. On this PC: **write → heard median 57.6 ms** (p90 58.9, range
+55.2–59.3, 10 of 10 heard), engine period 10 ms. The narrow range says this is a fixed delay
+of the loopback path. It is the FLOOR of input → sound, as calibrate's 9 ms is for the screen;
+both apps pass through it, so the comparison stays fair. The number is the time the engine
+hands the sound to the loopback, not the time the speaker moves; the device's own output
+delay comes after and is the same for both apps.
+
+**Risk for M3.** An app that plays in WASAPI *exclusive* mode bypasses the shared engine, and
+process loopback would hear nothing. Check that Apple's app is heard at all before trusting
+an Apple row.
+
+**The owner's first play test heard nothing — AirPlay.** The click changed the Play button
+(+86 ms in the probe; Pause +39 ms) but `wait_sound` timed out. The installed app was playing
+to an AirPlay speaker through the in-page tap (its log: AirPlay stats every minute, about 7,530
+packets a minute, through the run), and the tap sends the sound to the speaker, not to the
+PC's output. Process loopback hears only this PC's audio engine. The rule was already in §3
+("no AirPlay"); the tool now says why it heard nothing. The listener counts packets (counts,
+never audio) and writes `listen-end {packets, below_threshold, loud}`; with no `sound-on`, the
+summary names the case: no packets at all (the app plays elsewhere) or packets all below the
+threshold (muted, zero volume, or a tap that silences the local output). A listen on the
+paused app with the tap on: 409 packets in 4 s, none loud. Re-run the play test with AirPlay
+off (Play on: this PC).
+
+**With AirPlay off, the loopback still heard silence — DeetsMusic's audio is protected.** His
+next two runs: the app played (its log: position 0:19 → 0:29, output "Speakers (Yeti
+Classic)", the Windows default) and he heard it, but the loopback's loudest sample was
+−90 dBFS: digital silence. The checks that ruled out the rest, the same day:
+- the tool hears ANOTHER process (a chime from a separate PowerShell: heard, −38 dBFS), from
+  inside the Claude app's package and from outside it (a WMI-started process): not the
+  package boundary;
+- the default output is the device the app plays on: not the device;
+- `deetsmeter sessions` (new: every audio session on the default output, its pid, exe, state
+  and Windows' own mixer meter) while his music played: ONE active session, WebView2's audio
+  service (pid 16740, inside the app's tree), at **−15.7 dBFS**.
+
+So Windows hands the loopback a silenced copy of a stream it plays aloud: the MusicKit stream
+is protected (DRM). Process loopback cannot time DeetsMusic's sound at all.
+
+**The meter method (now the default).** `listen` polls Windows' per-session peak meter
+(`IAudioMeterInformation`, the number the volume mixer shows) of every session in the app's
+tree, every 2 ms. It reads one number per session per poll; no audio is read at all. It sees
+the protected stream. Its resolution is about one engine period (10 ms). `"method":
+"loopback"` keeps the old path (exact to the sample, for unprotected audio).
+`calibrate-sound --method meter|loopback`:
+
+| method | write → heard, median | range |
+|---|---|---|
+| meter | 25.2 · 26.1 · 26.8 ms (3 runs) | 22.1–37.0 ms |
+| loopback | 59.1 ms | 55.6–60.4 ms |
+
+Cost: the meter thread 3.4 % of one core (polling every 1 ms was about 9 %; rebuilding the
+process tree four times a second, a snapshot of every process, was most of the rest; the tree
+is now rebuilt every 2 s).
+
+**The sound floor moves between runs.** A second `calibrate-sound`: median 68.2 ms (68.0–68.4),
+against 57.6 (55.2–59.3) the first time. Tight inside a run, about 10 ms apart between runs
+(where the stream lands against the engine period, most likely). So input → sound is only
+compared inside one sitting, with a `calibrate-sound` in the same sitting, as §13 already asks
+for every row.
+
+**The optimization pass.** Measured with `calibrate --size 1400x1000 [--probes]` (the tool's
+own window, kept on top, flipping between two dark greys every composition), and the CPU of
+the capture thread alone (`GetThreadTimes`; the calibrate window draws in the same process):
+
+| path | before | after |
+|---|---|---|
+| no probes (the whole region is the measure) | 2.3 % of a core, 1.2 % of compositions missed | 3.1–5.3 %, 0.4–1.1 % missed |
+| probes | 11.7 % | 3.1–4.7 % |
+
+What changed: with probes, only the probes that a dirty rectangle touched are copied back from
+the GPU, all copies are issued before the first wait, and the whole region is read only when
+there are no probes or frames are being kept; the region hash samples every 8th pixel, not
+every 4th. Two runs of the same path vary by about 2 points (Windows counts thread time in
+15.6 ms steps), so "3–5 %" is the honest reading: near the 3 % budget, not under it for sure.
+`run` now reports the capture thread's own cost too.
+
+Other changes in this pass: the cover guard names only the covering app's exe, never its
+window title (a browser tab's title had landed in the events file); the calibrate window
+flips between two dark greys, not black and white (a 1400 × 1000 strobe is hard on the eyes).
+
+### 17.11 Out of the owner's way: the left monitor and UI Automation (option A, 2026-10-10)
+
+> **Part:** built · 2026-10-10 — his call, after asking whether the runs can be headless like
+> `shots`. Uncommitted on `ten-out-of-ten`. The play test on the left monitor is his to run.
+
+**Why not headless.** `shots` runs the web demo in a hidden browser with a fake player. This
+contest needs the real installed apps. Apple's app has no hidden or scriptable mode; a hidden,
+minimized or fully covered window draws differently (Chromium and Windows' app framework
+throttle what cannot be seen), so it would time a different app; and this PC is Windows 11
+Home: no Hyper-V, no Windows Sandbox, no Remote Desktop host. The forks offered: A, the
+second monitor + UI Automation (chosen); B, a virtual display driver (admin install); C,
+unattended runs with the current tool.
+
+**What A is.**
+- `place` takes `"on": "left" | "right" | "primary" | "\\.\DISPLAYn"`, and `rect` is then
+  relative to that monitor's work area (here the portrait `DISPLAY2`, work area
+  [−1080, −247, 1080, 1872]). The window is raised above the other windows THERE without
+  being activated (topmost and straight back; `HWND_TOP` alone was refused for a background
+  process's window), so the owner's keyboard focus stays on the main monitor. The run puts
+  the window back where it was when it ends (a `restored` event), also after a failed step.
+- `invoke` presses a button by its accessible name through UI Automation: Invoke, or Toggle
+  for a toggle button. No pointer moves and no focus is needed. The search (a cross-process
+  walk of the window's buttons) runs before the clock; only the Invoke call is timed, and
+  its own length is in the event (`call_us`). `"probe": "self"` makes the button's own
+  rectangle the probe and takes a fresh baseline first. A covered region still refuses the
+  press.
+- `deetsmeter uia <app>` lists the window's on-screen buttons with name, pattern and
+  rectangle; `deetsmeter monitors` lists the monitors.
+- The press is not a real click: the app gets the button's action without the pointer events
+  before it. Both apps get the same kind of press, so the number is "press → …", fair between
+  them; `click` stays for a real "mouse click → …".
+
+**Found on the way.**
+- Chromium builds its accessibility tree only after a UI Automation client first asks: the
+  first search found the window caption alone (3 buttons), a second one 67 (Play, Next,
+  Previous, the queue rows, the Rulez rows…). `find` searches up to four times, 700 ms apart.
+- Once a client has asked, Chromium keeps that tree up to date, which costs DeetsMusic some
+  CPU while the run lasts. Apple's app framework always keeps one. A small asymmetry against
+  us; print it beside the table (§6).
+- The click guard checked the point before the 150 ms hover and clicked after it: a game
+  client that came to the front in that gap took a click (the owner's run, 2026-10-10, kept
+  frames 1–5 show the client). It checks again right before every press now.
+- A first `invoke` on `["Play"]` only: if the app is already playing, the button is named
+  "Pause", nothing is found and nothing is pressed (the earlier run started with the music
+  already playing and measured no start).
+
+**The first play test on the left monitor (his run, 2026-10-10): sound right, screen wrong.**
+Press Play → sound **+292.6 ms** (meter; the screen plays no part in it). But "first change
++1.8 ms / +4.8 ms", a probe change spread evenly over the whole probe (d 22, mean 21), and a
+"flat" probe over a button with an icon: the probe was not on the button. The kept frame
+showed why: the left monitor is in portrait, and **Desktop Duplication hands over a rotated
+output's image in the panel's own orientation** (sideways). The region was cut from it with
+the user's coordinates, so the run measured a sideways patch of another window. Fixed: the
+duplication's rotation (`DXGI_OUTDUPL_DESC.Rotation`, in the `output` event) maps the region,
+the probes and the dirty rectangles into the unrotated image, and the pixels are turned back
+before they are read (`tex_rect`, `derotate` in screen.rs). The new `snap` step keeps the next
+frame whatever it shows; it checked the fix by picture: upright, exactly the window. This
+monitor reports 270°; the 90° and 180° mappings are the mirror and are unverified (no such
+monitor here). Every earlier run was on the main monitor (no rotation) and stands.
+
+**The second left-monitor run: the probe saw the icon (change 145), but the first change was
+still false (+6.5 / +2.2 ms).** A silent test (no press) found it: the baseline came from the
+first frame of a freshly opened duplication, a PLACEHOLDER (AccumulatedFrames 0,
+LastPresentTime 0) whose image is not the screen, so the Play button read as flat, and the
+first real frame after any input "changed" by about 125 on average. Every baseline taken by
+re-opening (`place`, `invoke` `"probe": "self"`, `snap`) had this fault; the earlier "+1.8 /
++4.8 ms" had it too. Fixed:
+- a frame with no present time is never read and never a baseline; the baseline after
+  `place` is the first REAL frame (the window move makes one);
+- the tool keeps a GPU-side copy of the region from each real frame (`Dup::last`, a copy on
+  the graphics card, no read-back); a new "before" picture (`rebase`: `invoke` with a self
+  probe, `snap`) is read from it; nothing re-opens the duplication any more;
+- `keep` stops after 3 s (an armed keep that never fills kept the costly whole-region read on
+  for the whole run: the capture thread at 33.7 % of a core), and the capture stops before the
+  window is put back (a kept frame had shown the owner's terminal behind it);
+- on a rotated output the whole region is no longer turned upright on every frame: the hash
+  reads it as it is, and only probe boxes and kept frames are turned;
+- `wait_window` rebuilt the process tree every millisecond (85 % of a core while waiting);
+  now every 100 ms, windows every 2 ms; a minimized window is restored without taking the
+  focus (a window hidden to the tray is not shown: that is the app's own action).
+
+The two press → sound numbers so far, both on the meter: **+292.6 ms** and **+283.6 ms**.
+
+**The first clean run on the left monitor (his run, 2026-10-10, installed 0.25.4, Glass):**
+
+| press | button changes on screen | sound starts |
+|---|---|---|
+| Play (UI Automation) | +88.4 ms (cell change 80) | +150.5 ms (meter) |
+| Pause | +31.2 ms (cell change 38) | — |
+
+The probe was quiet before each press (0–3), and the sensor cost 2.8 % of a core (capture)
+and 1.3 % (meter): inside the 3 % budget for the first time on a real run. Press → sound moved
+from 284–293 ms (earlier runs) to 150 ms here: one run each is not a number yet. Most likely
+what MusicKit still holds after a short pause; the judge (M3) must state the pause before a
+Play, and §12's repeats and spread apply before any of these is quoted.
+
+**Dry run (no press), 2026-10-10.** `examples/deets-left-dry.json`: the installed app moved
+to the left monitor ([−1060, −207, 1040, 1150]), the duplication followed it to `DISPLAY2`,
+and the window went back to [1271, 187, 1402, 1002]. With Notepad on the left monitor and the
+old `HWND_TOP`, the guard refused (correct) and the window still went back.

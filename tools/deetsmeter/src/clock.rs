@@ -31,6 +31,12 @@ pub fn from_qpc(qpc: i64) -> i64 {
     ((qpc - b.t0) as i128 * 1_000_000 / b.freq as i128) as i64
 }
 
+/// A QPC value given in 100 ns units (WASAPI's `pu64QPCPosition`) as µs from the start.
+pub fn from_100ns(v: i64) -> i64 {
+    let b = BASE.get().expect("clock::start first");
+    from_qpc((v as i128 * b.freq as i128 / 10_000_000) as i64)
+}
+
 /// Now, in µs from the start of the run.
 pub fn now() -> i64 {
     from_qpc(raw())

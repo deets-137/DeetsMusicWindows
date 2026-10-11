@@ -18,12 +18,13 @@ use windows::Win32::UI::Shell::{ApplicationActivationManager, IApplicationActiva
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetAncestor, GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible, PostMessageW,
     SetForegroundWindow, SetWindowPos, WindowFromPoint, GA_ROOT, HWND_TOP, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
-    SWP_SHOWWINDOW, WM_CLOSE,
+    SWP_NOACTIVATE, SWP_SHOWWINDOW, WM_CLOSE,
 };
 
-/// Who is on top at a desktop point, if it is not the target window: "title (exe)".
+/// Who is on top at a desktop point, if it is not the target window: its exe name only.
 /// The guard for §17.5: on 2026-10-10 the first run on the live app measured, and scrolled,
-/// the game client that covered it.
+/// the game client that covered it. Never the window TITLE: another app's title is the
+/// user's own data (a browser tab, a document name) and would land in the events file.
 pub fn covered_at(target: HWND, x: i32, y: i32) -> Option<String> {
     unsafe {
         let h = WindowFromPoint(POINT { x, y });
@@ -33,11 +34,7 @@ pub fn covered_at(target: HWND, x: i32, y: i32) -> Option<String> {
         }
         let mut pid = 0u32;
         GetWindowThreadProcessId(root, Some(&mut pid));
-        let mut buf = [0u16; 256];
-        let n = GetWindowTextW(root, &mut buf);
-        let title = String::from_utf16_lossy(&buf[..n.max(0) as usize]);
-        let exe = image_path(pid).and_then(|p| p.rsplit('\\').next().map(str::to_string)).unwrap_or_else(|| format!("pid {pid}"));
-        Some(format!("\"{title}\" ({exe})"))
+        Some(image_path(pid).and_then(|p| p.rsplit('\\').next().map(str::to_string)).unwrap_or_else(|| format!("pid {pid}")))
     }
 }
 
@@ -79,6 +76,75 @@ pub fn expand_env(s: &str) -> String {
     }
     out.push_str(rest);
     out
+}
+
+pub struct Monitor {
+    pub name: String,
+    pub full: Rect,
+    /// The work area: the monitor less the taskbar.
+    pub work: Rect,
+    pub primary: bool,
+}
+
+unsafe extern "system" fn collect_mon(
+    h: windows::Win32::Graphics::Gdi::HMONITOR,
+    _dc: windows::Win32::Graphics::Gdi::HDC,
+    _r: *mut RECT,
+    lp: LPARAM,
+) -> BOOL {
+    use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITORINFOEXW};
+    let list = &mut *(lp.0 as *mut Vec<Monitor>);
+    let mut mi = MONITORINFOEXW::default();
+    mi.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
+    if GetMonitorInfoW(h, &mut mi.monitorInfo as *mut _).as_bool() {
+        let r = |r: RECT| Rect { x: r.left, y: r.top, w: r.right - r.left, h: r.bottom - r.top };
+        list.push(Monitor {
+            name: from_wide(&mi.szDevice),
+            full: r(mi.monitorInfo.rcMonitor),
+            work: r(mi.monitorInfo.rcWork),
+            primary: mi.monitorInfo.dwFlags & 1 != 0,
+        });
+    }
+    BOOL(1)
+}
+
+/// Every monitor, in physical pixels (the process is per-monitor DPI aware).
+pub fn monitors() -> Vec<Monitor> {
+    let mut list: Vec<Monitor> = Vec::new();
+    unsafe {
+        let _ = windows::Win32::Graphics::Gdi::EnumDisplayMonitors(None, None, Some(collect_mon), LPARAM(&mut list as *mut _ as isize));
+    }
+    list
+}
+
+/// A monitor by `left` / `right` / `primary` or by its device name (`\\.\DISPLAY2`).
+pub fn monitor(which: &str) -> Option<Monitor> {
+    let mut all = monitors();
+    match which.to_lowercase().as_str() {
+        "left" => {
+            all.sort_by_key(|m| m.full.x);
+            all.into_iter().next()
+        }
+        "right" => {
+            all.sort_by_key(|m| -(m.full.x + m.full.w));
+            all.into_iter().next()
+        }
+        "primary" => all.into_iter().find(|m| m.primary),
+        name => all.into_iter().find(|m| m.name.to_lowercase() == name),
+    }
+}
+
+/// The window's outer rectangle (for putting it back after a run).
+pub fn outer(hwnd: HWND) -> Option<RECT> {
+    let mut r = RECT::default();
+    unsafe { windows::Win32::UI::WindowsAndMessaging::GetWindowRect(hwnd, &mut r).ok()? };
+    Some(r)
+}
+
+pub fn put_back(hwnd: HWND, r: RECT) {
+    unsafe {
+        let _ = SetWindowPos(hwnd, None, r.left, r.top, r.right - r.left, r.bottom - r.top, SWP_NOZORDER);
+    }
 }
 
 pub fn wide(s: &str) -> Vec<u16> {
@@ -226,6 +292,38 @@ unsafe extern "system" fn collect(hwnd: HWND, lp: LPARAM) -> BOOL {
 }
 
 /// Visible, uncloaked top-level windows of the given pids, largest first.
+/// Every top-level window of the pids, whatever its state: for "why is my window not found".
+pub fn debug_windows(pids: &[u32]) -> Vec<String> {
+    use windows::Win32::UI::WindowsAndMessaging::IsIconic;
+    let mut all: Vec<HWND> = Vec::new();
+    unsafe {
+        let _ = EnumWindows(Some(collect), LPARAM(&mut all as *mut _ as isize));
+    }
+    all.into_iter()
+        .filter_map(|hwnd| unsafe {
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            if !pids.contains(&pid) {
+                return None;
+            }
+            let f = frame(hwnd).unwrap_or(Rect { x: 0, y: 0, w: 0, h: 0 });
+            let mut buf = [0u16; 256];
+            let n = GetWindowTextW(hwnd, &mut buf);
+            Some(format!(
+                "  pid {pid:>6}  visible {} cloaked {} minimized {}  frame [{}, {}, {}, {}]  {:?}",
+                IsWindowVisible(hwnd).as_bool(),
+                cloaked(hwnd),
+                IsIconic(hwnd).as_bool(),
+                f.x,
+                f.y,
+                f.w,
+                f.h,
+                String::from_utf16_lossy(&buf[..n.max(0) as usize])
+            ))
+        })
+        .collect()
+}
+
 pub fn windows_of(pids: &[u32]) -> Vec<Win> {
     let mut all: Vec<HWND> = Vec::new();
     unsafe {
@@ -257,6 +355,26 @@ pub fn windows_of(pids: &[u32]) -> Vec<Win> {
 
 /// Move and size the window so its VISIBLE frame is `want`. The outer rectangle includes
 /// the invisible border, so the border is measured first and added back.
+/// Restore the first minimized top-level window of the pids, without activating it.
+/// A window hidden to the tray is NOT shown: opening it is the app's own action.
+pub fn restore_minimized(pids: &[u32]) -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::{IsIconic, ShowWindow, SW_SHOWNOACTIVATE};
+    let mut all: Vec<HWND> = Vec::new();
+    unsafe {
+        let _ = EnumWindows(Some(collect), LPARAM(&mut all as *mut _ as isize));
+        for hwnd in all {
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            if pids.contains(&pid) && IsWindowVisible(hwnd).as_bool() && IsIconic(hwnd).as_bool() && GetAncestor(hwnd, GA_ROOT) == hwnd {
+                let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                return true;
+            }
+        }
+    }
+    false
+}
+
 pub fn place(hwnd: HWND, want: Rect) -> Option<Rect> {
     unsafe {
         let mut outer = RECT::default();
@@ -271,9 +389,17 @@ pub fn place(hwnd: HWND, want: Rect) -> Option<Rect> {
             want.y - bt,
             want.w + bl + br,
             want.h + bt + bb,
-            SWP_SHOWWINDOW | SWP_NOZORDER,
+            SWP_SHOWWINDOW | SWP_NOACTIVATE,
         )
         .ok()?;
+        // On top of the other windows there (the run's monitor is the run's), but NOT
+        // activated: the keyboard focus stays where the owner is typing. HWND_TOP alone is
+        // refused for a window of a background process (2026-10-10, under Notepad); topmost
+        // and straight back is the usual way to raise it without activating it.
+        use windows::Win32::UI::WindowsAndMessaging::{HWND_NOTOPMOST, HWND_TOPMOST};
+        let keep = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+        let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, keep);
+        let _ = SetWindowPos(hwnd, Some(HWND_NOTOPMOST), 0, 0, 0, 0, keep);
     }
     std::thread::sleep(std::time::Duration::from_millis(150));
     frame(hwnd)

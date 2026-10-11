@@ -1,6 +1,6 @@
 //! `deetsmeter calibrate` — the floor of the method (music-app-comp.md §17.4).
 //!
-//! The tool opens its own small window and clicks it. The window flips black / white on the
+//! The tool opens its own small window and clicks it. The window flips between two greys on the
 //! press, with no other work. Phase 1: click → first changed frame, N times, at a spacing
 //! that does not sit on the refresh, so the result spans the whole vsync phase. That is the
 //! FLOOR: any app's input → first change includes it. Phase 2: the window flips once per
@@ -32,10 +32,20 @@ use windows::Win32::UI::WindowsAndMessaging::{
 static WHITE: AtomicBool = AtomicBool::new(false);
 const WIN: Rect = Rect { x: 200, y: 200, w: 480, h: 320 };
 
+/// The options of a calibrate run. `size` and `probes` make it the sensor's own load test:
+/// a window that big, flipping every composition, with or without probes (§17.9).
+pub struct Opts {
+    pub rounds: u32,
+    pub size: Option<(i32, i32)>,
+    pub probes: bool,
+}
+
 unsafe fn fill(hwnd: HWND, hdc: HDC) {
     let mut r = RECT::default();
     let _ = GetClientRect(hwnd, &mut r);
-    let c = if WHITE.load(Ordering::SeqCst) { 0x00FF_FFFF } else { 0 };
+    // Two dark greys, not black and white: the spin flips every composition, and a large
+    // black/white strobe is hard on the eyes. 40 luma apart: well over the probe threshold.
+    let c = if WHITE.load(Ordering::SeqCst) { 0x0058_5858 } else { 0x0030_3030 };
     let b = CreateSolidBrush(COLORREF(c));
     FillRect(hdc, &r, b);
     let _ = DeleteObject(b.into());
@@ -82,7 +92,7 @@ unsafe extern "system" fn proc_(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) ->
     }
 }
 
-fn window_thread(tx: mpsc::Sender<isize>) {
+fn window_thread(tx: mpsc::Sender<isize>, win: Rect) {
     unsafe {
         let inst = GetModuleHandleW(None).unwrap_or_default();
         let wc = WNDCLASSW {
@@ -98,10 +108,10 @@ fn window_thread(tx: mpsc::Sender<isize>) {
             w!("deetsmeter-calibrate"),
             w!("deetsmeter calibrate"),
             WS_POPUP | WS_VISIBLE,
-            WIN.x,
-            WIN.y,
-            WIN.w,
-            WIN.h,
+            win.x,
+            win.y,
+            win.w,
+            win.h,
             None,
             None,
             Some(inst.into()),
@@ -128,11 +138,16 @@ fn pct(sorted: &[f64], p: f64) -> f64 {
     sorted[i]
 }
 
-pub fn run(rounds: u32, out: Option<&Path>) -> i32 {
+pub fn run(o: Opts, out: Option<&Path>) -> i32 {
+    let rounds = o.rounds;
+    let win = match o.size {
+        Some((w, h)) => Rect { x: WIN.x, y: WIN.y, w, h },
+        None => WIN,
+    };
     let events = std::sync::Arc::new(Events::new());
     let watch = Watch::new();
     let (tx, rx) = mpsc::channel();
-    let wt = std::thread::spawn(move || window_thread(tx));
+    let wt = std::thread::spawn(move || window_thread(tx, win));
     let raw = rx.recv().unwrap_or(0);
     if raw == 0 {
         eprintln!("[deetsmeter] could not open the calibrate window");
@@ -140,7 +155,14 @@ pub fn run(rounds: u32, out: Option<&Path>) -> i32 {
     }
     let hwnd = HWND(raw as *mut _);
     std::thread::sleep(Duration::from_millis(200));
-    let region = crate::win::frame(hwnd).unwrap_or(WIN);
+    let region = crate::win::frame(hwnd).unwrap_or(win);
+    if o.probes {
+        // Two probes, as a scene would have: a list-sized one and a button-sized one.
+        *watch.probes.lock().unwrap() = vec![
+            screen::Probe { name: "big".into(), r: Rect { x: region.x + region.w / 4, y: region.y + region.h / 4, w: region.w / 3, h: region.h / 3 } },
+            screen::Probe { name: "small".into(), r: Rect { x: region.x + 20, y: region.y + 20, w: 40, h: 40 } },
+        ];
+    }
     watch.set_region(region);
     let cap = screen::spawn(watch.clone(), events.clone());
 
@@ -202,9 +224,16 @@ pub fn run(rounds: u32, out: Option<&Path>) -> i32 {
         let _ = PostMessageW(Some(hwnd), WM_APP, WPARAM(0), LPARAM(spin_ms as isize));
     }
     let mut times = Vec::new();
+    let cpu0 = watch.cpu_us.load(Ordering::SeqCst);
+    let mut spin_cpu_pct = f64::NAN;
     while clock::now() < t0 + spin_ms * 1000 + 300_000 {
         if let Ok(t) = crx.recv_timeout(Duration::from_millis(50)) {
             times.push(t);
+        }
+        if spin_cpu_pct.is_nan() && clock::now() >= t0 + spin_ms * 1000 {
+            // The capture thread's own CPU over the spin: the sensor's cost under full load.
+            let cpu1 = watch.cpu_us.load(Ordering::SeqCst);
+            spin_cpu_pct = (cpu1.saturating_sub(cpu0)) as f64 / ((clock::now() - t0) as f64) * 100.0;
         }
     }
     // Judge the middle 1.5 s, away from the start and the end of the spin.
@@ -252,7 +281,7 @@ pub fn run(rounds: u32, out: Option<&Path>) -> i32 {
         "  cadence  {:.0} compositions/s seen of {} Hz · gaps over 1.5 refresh: {} · compositions missed by the sensor: {} ({:.2} %) · test window {:.0} changes/s",
         fps, hz, long, acc_lost, lost_pct, changes
     );
-    println!("  sensor cost  {cpu:.1} % of one core over the run");
+    println!("  sensor cost  capture thread {spin_cpu_pct:.1} % of one core while the window flips every composition · whole process {cpu:.1} % over the run");
     let floor_ok = pct(&lat, 0.5) <= period_ms * 2.0 + 2.0;
     let sensor_ok = lost_pct <= 1.0;
     println!(
@@ -266,6 +295,7 @@ pub fn run(rounds: u32, out: Option<&Path>) -> i32 {
         "floor_ms": { "median": pct(&lat, 0.5), "p90": pct(&lat, 0.9), "min": pct(&lat, 0.0), "max": pct(&lat, 1.0), "n": lat.len(), "missed": missed },
         "cadence": { "seen_per_s": fps, "long_gaps": long, "acc_lost": acc_lost, "lost_pct": lost_pct, "window_changes_per_s": changes },
         "self_cpu_pct": cpu,
+        "capture_cpu_pct_spin": spin_cpu_pct,
     }));
     if let Some(dir) = out {
         let _ = std::fs::create_dir_all(dir);
