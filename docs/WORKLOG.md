@@ -50,6 +50,13 @@ updated: 2026-10-11
   marks.ts losing a local alias, and the two fixes above. On the dev app after a reload, every
   handle answers (`__tray` in the tray webview too; all four sim members merged), a muted
   play / pause and a full player open / close ran with no errors. `npm run check` passes.
+- **Rulez: the cut-off switch, fixed (his ask).** Cause: the row grid has five columns (lead,
+  name, sentence, switch, ⋯), and a rule with no name has no name span, so every later part sat
+  one column early. The sentence took the max-content name column, the switch the 1fr column
+  that shrinks to 0 ("O…" on a long sentence), and the ⋯ sat 32 px left of the recipes'. Now
+  `.rulez__summary.is-name` spans columns 2 to 4. Measured on the dev app: every switch at
+  full width (31 On / 38 Off), right edges and ⋯ in one line with the recipes; at a 380 px list
+  the sentences end in "…" and the switches stay whole. Desk test: look at Rulez in Max.
 
 ## 2026-10-11 — Backup designed (docs only; branch `ten-out-of-ten`)
 

@@ -4558,6 +4558,10 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .rulez__name { font-size: var(--fs-text); font-weight: var(--fw-title); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: var(--rulez-name-max-w); }
 .rulez__summary { min-width: 0; font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: var(--space-1); }
 .rulez__summary.is-name { color: var(--text); } /* a rule with no name: its sentence is its name (his call, 2026-10-10) */
+/* With no name span, the sentence takes the name's column too. Without this every later part sat
+   one column early: the sentence in the max-content name column, the switch in the 1fr column
+   that shrinks to 0 (a long sentence cut it to "O…"), the ⋯ left of the recipes' (2026-10-11). */
+.rulez__summary.is-name { grid-column: 2 / 4; }
 /* The sentence's own box: a flex item cannot end in "…" itself, and hint.ts reads this box to
    know it is cut off (the hover box then shows the whole sentence). */
 .rulez__said { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
