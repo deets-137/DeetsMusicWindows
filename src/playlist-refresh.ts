@@ -324,7 +324,7 @@ export const checkPlaylistRefreshNow = (): Promise<void> => check(true);
 // Console handle, like __toast and __diag (DEBUGGING.md). Read-only but for `check()`,
 // which is the Compass verb "Refresh playlists now" by another name. It is what makes the
 // §10 desk test drivable from outside the window.
-(window as any).__refresh = {
+const refreshHandle = {
   /** Every playlist that is DUE right now, and why. */
   due: async (): Promise<{ key: string; name: string; mode: RefreshMode; at: number | null }[]> => {
     await loadRefreshRows();
@@ -351,6 +351,12 @@ export const checkPlaylistRefreshNow = (): Promise<void> => check(true);
   /** Run the day-change check now, whatever the date says. */
   check: (): Promise<void> => check(true),
 };
+declare global {
+  interface Window {
+    __refresh: typeof refreshHandle;
+  }
+}
+window.__refresh = refreshHandle;
 
 /** Start the checks (main.ts, once). */
 export function initPlaylistRefresh(): void {

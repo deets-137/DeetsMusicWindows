@@ -403,7 +403,7 @@ export function toast(opts: ToastOptions): ToastHandle {
 
 // Console handle (prod too, like __diag — it costs nothing and lets a bug report
 // say "run __toast.demo() and tell me what you see"). DEBUGGING.md §Toasts.
-(window as any).__toast = {
+const toastHandle = {
   push: toast,
   /** One of each kind, so every theme × skin × surface can be eyeballed in one call. */
   demo(): void {
@@ -438,3 +438,13 @@ export function toast(opts: ToastOptions): ToastHandle {
     }
   },
 };
+declare global {
+  /** The dev-only simulations (DEBUGGING.md §Toasts). Each module that adds one declares its
+   *  own member here, so the parts merge into one type. Optional: a module adds its part when
+   *  it loads, in dev only. */
+  interface DeetsToastSim {}
+  interface Window {
+    __toast: typeof toastHandle & { sim?: DeetsToastSim };
+  }
+}
+window.__toast = toastHandle;

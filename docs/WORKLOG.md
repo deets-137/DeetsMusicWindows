@@ -12,6 +12,45 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-11 (code review) — two TypeScript-blind bugs fixed (branch `code-review`)
+
+- **The review:** where TypeScript cannot see. Checked against Rust: `Track` and the six
+  `settings_get` shapes match today. Not bugs: the tests are not type-checked (the errors are a
+  missing `@types/node`), `noUncheckedIndexedAccess` (606 hits; every core-file hit is guarded),
+  the worklet (no DOM use). Risks left open, his to call: the hand-copied Rust shapes (194
+  `invoke<T>`), and the settings store trusting stored choice values (matters before Backup).
+- **Fixed, his call:** the full player's console handle is `window.__full`. It was `__player`,
+  which player.ts set over it once MusicKit configured, so `__player.open()` was gone in dev.
+- **Fixed:** a pasted Rulez rule with `"draft": true` skipped every check. `{"draft":true}` threw
+  in the card's save and left the bad row in the list, so each later edit threw too. Now
+  `validateDraft` (rules-eval.ts) checks a draft with its blanks allowed, and a draft with no
+  blank left is checked as a whole rule. A `{"rules": …}` file whose `rules` is not a list no
+  longer throws. Test: `a pasted draft … (2026-10-11)`.
+- **Desk test (owner):** Rulez › ⋯ › Paste a rule, three pastes. `{"draft":true}` → a warn toast
+  "Added no rules. Skipped a rule (unknown kind undefined)." A draft from *Copy* on one of your
+  own unfinished rows → added as a draft. Then edit any row: it saves. In DevTools,
+  `__full.state()` answers and `__player.queue()` still does.
+- **Run by Claude on the dev app (port 47826), after a page reload:** both handles live side by
+  side; `__full.open` / `close` worked (picture checked). Pasted through ⋯ › Paste a rule: five bad
+  inputs refused with a toast and no uncaught error; two of his real drafts and one whole rule
+  added (drafts stay off); a switch press saved. The engine logged no `rule:skip`. The CLI:
+  `rules` lists all; `rules add` refuses bad JSON, and a good one asked, was allowed, and stored.
+  A play (muted) ran his two song-start rules (both "no"), queue aligned, no errors. His rules
+  were then put back from a copy: no settings key differs from before.
+- **Typed window handles, his calls (next to each module; a docs:check rule; now):** every
+  `(window as any)` / `window as unknown as` in `src/` (28 casts, 17 files) became a
+  `declare global { interface Window }` member in the module that sets it; `?` on the gated
+  ones. `__toast.sim` is one global `DeetsToastSim` interface that toast.ts, player.ts,
+  replay.ts and stats.ts each extend. index.html still writes `__deetsMkAlert(s)` and
+  `__musicKitFailed` untyped; player.ts declares them. New docs:check 29 fails a window cast
+  (`// window-cast: why` exempts a line); DOCS-ORG.md §8 row; CLAUDE.md checklist 15.
+- **Proof:** a second `__player` declaration in a scratch file fails tsc with TS2717; a cast
+  planted in diag.ts fails check 29. Type-stripped, 12 of the 18 changed `src/` files are the
+  same code as HEAD; the rest are `__diag` / `__toast` / `__refresh` built in a named const,
+  marks.ts losing a local alias, and the two fixes above. On the dev app after a reload, every
+  handle answers (`__tray` in the tray webview too; all four sim members merged), a muted
+  play / pause and a full player open / close ran with no errors. `npm run check` passes.
+
 ## 2026-10-11 — Backup designed (docs only; branch `ten-out-of-ten`)
 
 - **His calls:** one backup file for everything, less the secrets and the caches; *Back up now*

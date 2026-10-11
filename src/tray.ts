@@ -90,6 +90,13 @@ const fmtTime = (s: number): string => {
   return `${m}:${String(sec).padStart(2, "0")}`;
 };
 
+declare global {
+  interface Window {
+    /** The tray panel's console handle (its own webview, tray.html). */
+    __tray?: { state: () => unknown; poll: () => Promise<void> };
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   const appWindow = getCurrentWindow();
   initHints(); // the panel wears the same hover box as the window (ONBOARDING.md §1)
@@ -469,7 +476,7 @@ window.addEventListener("DOMContentLoaded", () => {
     .catch(() => render());
   fit();
 
-  (window as any).__tray = {
+  window.__tray = {
     state: () => ({ source, deets, win, settings, visible, winCandidate }),
     poll: pollWindows,
   };

@@ -1046,7 +1046,17 @@ export function initSound(): void {
   watchWindowsOutput();
   // TELEMETRY, not DEV: the `airplay` bench scene reads `__sound.status().tap` and must
   // run on the release-shaped build too (telemetry-on.ts). Absent from the installed app.
-  if (TELEMETRY) (window as any).__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster, inspect: setInspecting, decodeClip, playClip, clipPlaying };
+  if (TELEMETRY) window.__sound = { set: setSound, get: getSound, status: soundStatus, compare: setCompare, offlineTest, setOutput, setWindowsMaster, inspect: setInspecting, decodeClip, playClip, clipPlaying };
+}
+
+declare global {
+  interface Window {
+    __sound?: {
+      set: typeof setSound; get: typeof getSound; status: typeof soundStatus; compare: typeof setCompare;
+      offlineTest: typeof offlineTest; setOutput: typeof setOutput; setWindowsMaster: typeof setWindowsMaster;
+      inspect: typeof setInspecting; decodeClip: typeof decodeClip; playClip: typeof playClip; clipPlaying: typeof clipPlaying;
+    };
+  }
 }
 
 /** A live preview of bands while a handle or fader is dragged; the release commits to settings. */

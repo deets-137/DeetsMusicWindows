@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  validate, evalCond, pickMoment, resolveState, handChange, factsChanged, resume, restart, keepHolds, holdVerdict, verdictOf,
+  validate, validateDraft, evalCond, pickMoment, resolveState, handChange, factsChanged, resume, restart, keepHolds, holdVerdict, verdictOf,
   builtinRules, nextEdge, timeFacts, nextClock, readsFact, noteFire, chainDepth, appleMayRun, failingLeaf, CHAIN_CAP, type Known, type Rule, type RowValues, type StateRule, type MomentRule, type Cond,
 } from "../src/rules-eval.ts";
 
@@ -68,6 +68,20 @@ test("groups at any depth, up to the hang guard (his call 2026-09-27)", () => {
   let deep: unknown = leaf;
   for (let i = 0; i < 20; i++) deep = { all: [deep] };
   assert.match(validate(moment({ if: deep }), known)!, /too deep/);
+});
+
+test("a pasted draft: blanks may be empty, filled parts must be known, junk is refused (2026-10-11)", () => {
+  // The drafts the Rulez card itself makes pass.
+  assert.equal(validateDraft(moment({ draft: true, on: false, when: "", do: {} }), known), null);
+  assert.equal(validateDraft(moment({ draft: true, on: false, do: {} }), known), null);
+  assert.equal(validateDraft({ id: "s", kind: "state", draft: true, while: { all: [] }, set: [], onHand: "next" }, known), null);
+  // The shapes that threw in the card's save.
+  assert.match(validateDraft({ id: "t", draft: true }, known)!, /unknown kind/);
+  assert.match(validateDraft({ id: "t", draft: true, kind: "state", while: { all: [] }, onHand: "next" }, known)!, /list to set/);
+  // A filled part this app does not know.
+  assert.match(validateDraft(moment({ draft: true, when: "song.end", do: {} }), known)!, /unknown event/);
+  assert.match(validateDraft(moment({ draft: true, do: { explode: true } }), known)!, /unknown action/);
+  assert.match(validateDraft(moment({ draft: true, do: {}, if: { fact: "weather", is: "rain" } }), known)!, /unknown fact/);
 });
 
 // ── moment pick ──

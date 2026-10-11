@@ -367,6 +367,11 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
      trigger is re-rendered).
   14. **Card memory:** a card returns `snapshot()` and takes `opts.memory` back
      (CARD-MEMORY.md), so it comes back where the user left it.
+  15. **Console handles (2026-10-11):** a `window.__name` handle is declared in
+     `declare global { interface Window { __name?: … } }` in the module that sets it, never set
+     through `(window as any)`. Grep the name first. A second module on the same name then
+     fails tsc (TS2717); under a cast, `__player` from full-player.ts silently replaced
+     player.ts's. `?` when the handle is gated (TELEMETRY, DEV). docs:check 29 fails a cast.
 - **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
   change since the last release is low risk to the app's integrity (no hang, music plays).
   Otherwise stop and ask him for a hand test. The lists are RELEASE.md §0b.

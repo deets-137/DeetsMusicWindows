@@ -202,6 +202,40 @@ export function validate(r: unknown, k: Known): string | null {
   return `unknown kind ${String(r.kind)}`;
 }
 
+/** A draft (a Rulez row with a blank, never run) as `validate` reads a rule: a blank may be
+ *  empty, but every part that is filled must be one this app knows, and the shape must be one
+ *  the card can draw. A pasted `{"draft": true}` skipped every check and threw in the card's
+ *  save (2026-10-11). A draft with no blank left is not a draft: check it with `validate`. */
+export function validateDraft(r: unknown, k: Known): string | null {
+  if (!isObj(r) || typeof r.id !== "string") return "a rule needs an id";
+  if (r.kind === "moment") {
+    if (typeof r.when !== "string" || (r.when !== "" && !k.events.has(r.when))) return `unknown event ${String(r.when)}`;
+    if (typeof r.card !== "string") return "a moment rule needs a card";
+    if (r.if !== undefined) {
+      const e = condError(r.if, k, COND_DEPTH);
+      if (e) return e;
+    }
+    if (!isObj(r.do)) return "a moment rule needs an action";
+    const verb = Object.keys(r.do)[0];
+    if (verb !== undefined && !k.actions.has(verb)) return `unknown action ${verb}`;
+    return null;
+  }
+  if (r.kind === "state") {
+    const e = condError(r.while, k, COND_DEPTH);
+    if (e) return e;
+    if (!Array.isArray(r.set)) return "a state rule needs a list to set";
+    for (const s of r.set) {
+      if (!isObj(s) || !isObj(s.target)) return "a set needs a target";
+      const id = targetId(s.target as RuleTarget);
+      if (!k.targets.has(id)) return `unknown target ${id}`;
+    }
+    const h = r.onHand;
+    if (!(h === "next" || h === "session" || h === "off" || h === "learn" || (isObj(h) && !condError(h.until, k, COND_DEPTH)))) return "bad onHand";
+    return null;
+  }
+  return `unknown kind ${String(r.kind)}`;
+}
+
 // ── conditions ───────────────────────────────────────────────────
 
 const TRUE: Cond = { all: [] };

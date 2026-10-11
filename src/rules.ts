@@ -741,6 +741,20 @@ export function onRulesChange(cb: () => void): () => void {
 
 // ── init ─────────────────────────────────────────────────────────
 
+declare global {
+  interface Window {
+    /** A measuring handle for the desk tests, on the TELEMETRY gate (DEBUGGING.md). */
+    __rules?: {
+      rules: () => Rule[];
+      live: () => Rule[];
+      holds: () => Hold[];
+      applied: () => Record<string, string>;
+      facts: () => Facts;
+      recheck: () => void;
+    };
+  }
+}
+
 /** main.ts, after the store and before the cards. */
 export function initRules(): void {
   if (started) return;
@@ -784,7 +798,7 @@ export function initRules(): void {
   // flag loads lazily: telemetry-on.ts needs Vite, and the unit tests load this module.
   void import("./telemetry-on").then(({ TELEMETRY }) => {
     if (!TELEMETRY) return;
-    (window as unknown as { __rules: unknown }).__rules = {
+    window.__rules = {
       rules: () => all,
       live: () => live,
       holds: () => holds,

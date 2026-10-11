@@ -407,6 +407,20 @@ export function check() {
     }
   }
 
+  // 29. A window handle is typed, never set through a cast (2026-10-11). Each module declares its
+  //     own handle in `declare global { interface Window { … } }` beside the code that sets it,
+  //     so two modules on one name fail tsc (TS2717). Under a cast nothing checks the name:
+  //     player.ts and full-player.ts both set `__player`, and the later one won. A cast that must
+  //     stay says why on its line: `// window-cast: why`.
+  for (const [f, t] of src) {
+    t.split("\n").forEach((line, i) => {
+      if (/\/\/\s*window-cast:/.test(line)) return;
+      const code = line.replace(/\/\/.*$/, "");
+      if (/\(\s*(window|globalThis|self)\s+as\s+(any\b|unknown\s+as\b)/.test(code))
+        fail(29, f, i + 1, "a cast on window — declare the handle in `declare global { interface Window { … } }` in this module (CLAUDE.md checklist 15), or `// window-cast: why` on the line");
+    });
+  }
+
   return { facts, docs: docs.length };
 }
 
@@ -415,7 +429,7 @@ export function report({ facts, docs }) {
   const names = {
     1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links",
     20: "settings keys", 21: "toast sites", 22: "hover hints", 23: "scrollers", 24: "right-click ledger", 25: "popover placers", 26: "list keys",
-    7: "doc names in code", 27: "sheet redeclares", 28: "raw values",
+    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles",
   };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);

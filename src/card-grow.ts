@@ -890,6 +890,19 @@ function cardIn(slot: Slot): string {
   return opts?.hosts[slot]?.dataset.mounted ?? slot;
 }
 
+declare global {
+  interface Window {
+    /** A measuring handle on the TELEMETRY gate (DEBUGGING.md). */
+    __grow?: {
+      grow: typeof growCard;
+      collapse: typeof collapseGrow;
+      state: typeof grownState;
+      zones: () => Record<string, string | undefined>[];
+      dirs: typeof growDirs;
+    };
+  }
+}
+
 export function initCardGrow(o: Opts): void {
   opts = o;
   // The rules engine (RULES.md §10): the grow action and the events that can grow a card.
@@ -963,7 +976,7 @@ export function initCardGrow(o: Opts): void {
   // (DEBUGGING.md). On the TELEMETRY gate, not DEV, so `npm run dev:built` — the honest
   // graphics build — still answers it. The installed bundle carries none of it.
   if (TELEMETRY) {
-    (window as unknown as { __grow: unknown }).__grow = {
+    window.__grow = {
       grow: growCard,
       collapse: collapseGrow,
       state: grownState,

@@ -171,7 +171,15 @@ export async function deleteFile(id: string): Promise<void> {
 
 // DevTools, telemetry builds only (like `__rules`, `__sound`): the desk tests add a file without
 // the native picker (a File made on the page), and read the list.
-if (TELEMETRY) (window as unknown as { __files: unknown }).__files = { list: () => userFiles(), addPicture, addSound, rename: renameFile, delete: deleteFile };
+declare global {
+  interface Window {
+    __files?: {
+      list: () => UserFile[]; addPicture: typeof addPicture; addSound: typeof addSound;
+      rename: typeof renameFile; delete: typeof deleteFile;
+    };
+  }
+}
+if (TELEMETRY) window.__files = { list: () => userFiles(), addPicture, addSound, rename: renameFile, delete: deleteFile };
 
 /** The picker: choose a file of one kind from the PC; resolves to the record, or null. */
 export function pickFile(kind: FileKind): Promise<UserFile | null> {

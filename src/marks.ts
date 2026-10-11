@@ -12,11 +12,15 @@ import { TELEMETRY } from "./telemetry-on";
 
 type Mark = { t: number; name: string; detail: string };
 const CAP = 4000; // the dev app runs for hours; keep the newest
+declare global {
+  interface Window {
+    __marks?: Mark[];
+  }
+}
 
 export function mark(name: string, detail = ""): void {
   if (!TELEMETRY) return;
-  const w = window as unknown as { __marks?: Mark[] };
-  const list = (w.__marks ??= []);
+  const list = (window.__marks ??= []);
   list.push({ t: performance.timeOrigin + performance.now(), name, detail });
   if (list.length > CAP) list.splice(0, list.length - CAP);
 }

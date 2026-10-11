@@ -27,7 +27,12 @@ type Name = (typeof ORDER)[number];
 const at: Partial<Record<Name, number>> = {};
 let written = false;
 
-if (TELEMETRY) (window as unknown as { __launch?: typeof at }).__launch = at;
+declare global {
+  interface Window {
+    __launch?: typeof at;
+  }
+}
+if (TELEMETRY) window.__launch = at;
 
 /** Note a launch moment (the first time only). */
 export function launchMark(name: Name): void {

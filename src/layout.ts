@@ -293,6 +293,13 @@ function makePicker<K>(
   };
 }
 
+declare global {
+  interface Window {
+    /** Dev handle: why a drill opened where it did (CARD-GROW.md §15.2). */
+    __drill?: { state: () => unknown; slotFor: (id: CardId) => Slot | null };
+  }
+}
+
 export function initLayout(): void {
   initCardMemory(); // the saved places, before the first card mounts (CARD-MEMORY.md §3)
   // The rules engine's summon action (RULES.md §13): a card comes into a slot, as a request.
@@ -570,7 +577,7 @@ export function initLayout(): void {
   onGrowChange((s) => { if (!s) (Object.keys(hosts) as Slot[]).forEach(wipeChain); });
   // Dev handle: why a drill opened where it did (DEBUGGING.md, CARD-GROW.md §15.2).
   if (import.meta.env.DEV) {
-    (window as unknown as { __drill: unknown }).__drill = {
+    window.__drill = {
       state: () => ({
         lastInput,
         grown: grownState(),

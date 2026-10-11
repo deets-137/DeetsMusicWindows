@@ -371,8 +371,8 @@ A design pass on what is still undrawn, before any code:
   - The rules: `registerFact("player", …)` (`full` / `rest`, seam = `onFullPlayerChange`) and
     `registerAction("player", { cost: "free", run })` (`open` / `close`), RULES.md §19.
   - `diag.log("player", {on, cause, surface})` for each open and close; `frames.begin("player", …)`
-    around each motion; on the TELEMETRY gate, `window.__player` = open / close / state (as
-    `__grow`).
+    around each motion; on the TELEMETRY gate, `window.__full` = open / close / state (as
+    `__grow`). It was `__player` until 2026-10-11, which player.ts's handle overwrote.
 - **`src/full-player-layout.ts`** (pure, with `tests/full-player-layout.test.ts`):
   - `rowsPlace(cardW, cardH, rowsW): "beside" | "over"`: beside when the card is at least
     `rowsW` wider than tall (§7.3; `rowsW` is read from a token, ~356 px).
@@ -490,7 +490,7 @@ Midi and Max only.
 
 - `src/full-player.ts` — the state (`isFullPlayer`, `onFullPlayerChange`, `openFullPlayer`,
   `closeFullPlayer`, `toggleFullPlayer`, `fullPlayerAvailable`), the motion, the strips, the
-  rule fact and action, Escape, `window.__player` on the TELEMETRY gate.
+  rule fact and action, Escape, `window.__full` on the TELEMETRY gate.
 - `src/full-player-layout.ts` — pure: `rowsPlace`, `fullArtPx`, `fullClipFrom`, `flightFrom`.
   `tests/full-player-layout.test.ts` covers them (7 tests).
 - `src/full-player-flag.ts` — the gate. Its own file with no imports, so the pure Rulez words

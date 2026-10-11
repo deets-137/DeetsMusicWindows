@@ -29,8 +29,13 @@ const telLine = (line: string): void => {
 };
 type Sampler = (ms: number) => Promise<unknown[]>;
 const samplers: Sampler[] = []; // newest last: the card in the main window, the disc in the tray panel
+declare global {
+  interface Window {
+    __vinyl?: { readonly discs: number; sample: (ms?: number, i?: number) => Promise<unknown[]> };
+  }
+}
 if (TEL) {
-  (window as unknown as { __vinyl: unknown }).__vinyl = {
+  window.__vinyl = {
     get discs() {
       return samplers.length;
     },
@@ -137,7 +142,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
     const turns = dur > 0 ? Math.round(dur / period) : 0;
     // How much of a turn one frame of this display carries: 3.3° at 33⅓ rpm on a 60 Hz panel,
     // 7.8° at 78 rpm. A 120 or 144 Hz panel draws the same turn in smaller steps.
-    const hz = (window as unknown as { __frames?: { hz: number } }).__frames?.hz ?? 60;
+    const hz = window.__frames?.hz ?? 60;
     const rpm = (60 / period).toFixed(1);
     const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
     telLine(

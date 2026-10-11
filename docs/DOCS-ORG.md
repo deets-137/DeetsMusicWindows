@@ -348,13 +348,14 @@ Deterministic, fast, free. No model runs. It joins the release check
 | 26 | every card with rows takes the keyboard (`wireListKeys` or the collection engine) | Rewind, Diary and Rulez with no arrow keys |
 | 27 | a feature sheet restyles a class `styles.css` declares only with a reason (`SHEET_REDECLARES`) | two files on one class riding Vite's import order; the risk a `styles.css` split would spread (UI-ARCHITECTURE.md §4c) |
 | 28 | no raw length, time or color in a component rule (`/* raw: why */` marks the SVG-unit lines) | the 68 values the pixel pass removed, the next time one lands; a color that is not a role |
+| 29 | no `(window as any)` or `window as unknown as` in `src/`: a handle is declared in `declare global { interface Window }` in the module that sets it (`// window-cast: why` marks a cast that must stay) | two modules on one handle name: `__player` from player.ts and full-player.ts, the later one winning (2026-10-11). Typed, the second declaration fails tsc (TS2717) |
 
 Checks 20–28 (2026-09-27) read the CODE against its ledgers: each one is a grep the
 consistency survey ran by hand that evening, five of whose seven findings were partly wrong
 for reading the wrong scope. The right scope lives in the script now, with the allowlists
 (`PLACERS`, `NO_LIST_CARDS`) that carry a reason per line.
 
-**Written and running (2026-09-27):** 1, 2, 3, 4, 5, 7, 11, 18, 19 and 20–28. All of them are
+**Written and running (2026-09-27):** 1, 2, 3, 4, 5, 7, 11, 18, 19 and 20–28; 29 from 2026-10-11. All of them are
 **facts**: they fail the build. Check 7 reads the code names SETTINGS.md and AGENT.md put in
 backticks (its first run found two renamed functions). **Planned, not written:** 6, 8, 9, 10
 and 17 — the rows stay in the table as the design, and this line says the script does not

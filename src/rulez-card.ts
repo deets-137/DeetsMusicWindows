@@ -18,7 +18,7 @@ import type { CardDef, CardInstance, CardId } from "./cards";
 import { registry } from "./cards";
 import { allRules, known, onRulesChange, recipesOn, ruleIdle, ruleStats, saveUserRules, setRecipe, tryRule, userRules } from "./rules";
 import { RECIPES } from "./rules-recipes";
-import { evalCond, factsOf, validate, type EventId, type Leaf, type MomentRule, type OnHand, type Rule, type StateRule, type Value } from "./rules-eval";
+import { evalCond, factsOf, validate, validateDraft, type EventId, type Leaf, type MomentRule, type OnHand, type Rule, type StateRule, type Value } from "./rules-eval";
 import {
   EVENTS, FACTS, SECTIONS, choicesOf, doValueText, doWordOf, dosFor, formatTime, isComplete,
   leafParts, leafText, lowerFirst, parseTime, saysOf, sentenceText, stateParts, whenText, whoWins,
@@ -653,13 +653,18 @@ export const rulezCard: CardDef = {
         toast({ kind: "warn", text: "That is not a rule. Copy a rule from Rulez, or a file it saved." });
         return;
       }
-      const list = (Array.isArray(data) ? data : data && typeof data === "object" && "rules" in data ? (data as { rules: unknown[] }).rules : [data]) as Rule[];
+      const inner = data && typeof data === "object" && "rules" in data ? (data as { rules: unknown }).rules : undefined;
+      const list = (Array.isArray(data) ? data : inner !== undefined ? (Array.isArray(inner) ? inner : [inner]) : [data]) as Rule[];
       const reg = k();
       const good: Rule[] = [];
       const bad: string[] = [];
       for (const r of list) {
         const probe = r && typeof r === "object" ? { ...r, id: "import" } : r;
-        const why2 = (probe as Rule)?.draft ? null : validate(probe, reg);
+        // A draft is checked with its blanks allowed; one with no blank left runs once saved
+        // (save() turns it on), so it is checked as a whole rule (2026-10-11).
+        const why2 = (probe as Rule)?.draft
+          ? validateDraft(probe, reg) ?? (isComplete(probe as Rule) ? validate(probe, reg) : null)
+          : validate(probe, reg);
         if (why2) bad.push(`${(r as Rule)?.name ? `"${(r as Rule).name}"` : "a rule"} (${why2})`);
         else good.push(r);
       }

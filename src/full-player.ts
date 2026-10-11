@@ -699,6 +699,17 @@ function makeZones(host: HTMLElement): void {
 }
 
 // ── init ────────────────────────────────────────────────────────────────────────
+declare global {
+  interface Window {
+    /** A measuring handle on the TELEMETRY gate. Not `__player`: player.ts owns that one. */
+    __full?: {
+      open: typeof openFullPlayer;
+      close: typeof closeFullPlayer;
+      state: () => { full: boolean; busy: boolean; rows: string | null; px: number };
+    };
+  }
+}
+
 export function initFullPlayer(o: Opts): void {
   opts = o;
   setPlayerHooks({
@@ -736,9 +747,10 @@ export function initFullPlayer(o: Opts): void {
     void closeFullPlayer("esc");
   });
   paintZones();
-  // A measuring handle (DEBUGGING.md), on the TELEMETRY gate as `__grow` is.
+  // A measuring handle (DEBUGGING.md), on the TELEMETRY gate as `__grow` is. Not `__player`:
+  // player.ts owns that name and set it over this one once MusicKit configured (2026-10-11).
   if (TELEMETRY) {
-    (window as unknown as { __player: unknown }).__player = {
+    window.__full = {
       open: openFullPlayer,
       close: closeFullPlayer,
       state: () => ({ full, busy, rows: npHost()?.dataset.npRows ?? null, px: artPx }),

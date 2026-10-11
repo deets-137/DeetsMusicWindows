@@ -55,9 +55,14 @@ void invoke<number>("play_event_count")
 
 // Dev-only: replay the one-shot unlock (DEBUGGING.md §Toasts). Clears the "already fired"
 // flag and lifts the in-memory start count to the gate; the real count on disk is untouched.
+declare global {
+  interface DeetsToastSim {
+    rewind?: () => void;
+  }
+}
 if (import.meta.env.DEV) {
-  (window as any).__toast.sim = {
-    ...(window as any).__toast.sim,
+  window.__toast.sim = {
+    ...window.__toast.sim,
     rewind: () => {
       setSetting("rewindAutoShown", false);
       startCount = Math.max(startCount ?? 0, REWIND_UNLOCK_STARTS);

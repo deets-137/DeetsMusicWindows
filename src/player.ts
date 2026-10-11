@@ -38,6 +38,19 @@ import { launchMark } from "./launch-perf";
 declare global {
   interface Window {
     MusicKit: any;
+    /** The configured MusicKit instance, for the console and bug reports (as opaque as MusicKit). */
+    __music?: any;
+    /** The console handle: player + model state, and the queue side by side (DEBUGGING.md). */
+    __player?: { snap: typeof snap; queue: typeof queueDump };
+    /** Shared with index.html's inline script: the MusicKit script failed to load. */
+    __musicKitFailed?: boolean;
+    /** Shared with index.html: it routes a MusicKit alert() here, and holds the early ones. */
+    __deetsMkAlert?: (msg: string) => void;
+    __deetsMkAlerts?: string[];
+  }
+  interface DeetsToastSim {
+    armNoSub?: () => void;
+    noSub?: () => void;
   }
 }
 
@@ -117,16 +130,16 @@ const MUSICKIT_RETRY_MS = 30_000;
 const NO_MUSICKIT = "MusicKit did not load";
 let musicKitRetries = 0;
 
-const musicKitMissing = (): boolean => !window.MusicKit && !!(window as any).__musicKitFailed;
+const musicKitMissing = (): boolean => !window.MusicKit && !!window.__musicKitFailed;
 
 function reloadMusicKit(why: string): void {
   if (!musicKitMissing()) return; // loaded, or the last try is still in flight
-  (window as any).__musicKitFailed = false;
+  window.__musicKitFailed = false;
   diag.warn("player:musicKitRetry", { why, n: ++musicKitRetries });
   const s = document.createElement("script");
   s.src = MUSICKIT_SRC;
   s.async = true;
-  s.onerror = () => ((window as any).__musicKitFailed = true);
+  s.onerror = () => (window.__musicKitFailed = true);
   document.head.append(s);
 }
 
@@ -229,8 +242,8 @@ export function initPlayer(): Promise<any> {
     wireEvents();
     applyVolumeToMusic(); // push the persisted level onto the fresh instance
     applyStreamQuality("configure"); // configure made a new bitrate pick (AUDIO-QUALITY.md §4.1)
-    (window as any).__music = music; // introspect the opaque instance (dev + bug reports)
-    (window as any).__player = { snap, queue: queueDump };
+    window.__music = music; // introspect the opaque instance (dev + bug reports)
+    window.__player = { snap, queue: queueDump };
     diag.log("player:configured", { authorized: !!music.isAuthorized });
     launchMark("configured");
     console.log("[player] configured — authorized:", music.isAuthorized);
@@ -3141,15 +3154,15 @@ health.onTrouble((t) => {
 });
 
 // index.html routes every non-benign MusicKit alert() here; drain what arrived first.
-(window as any).__deetsMkAlert = (msg: string) => onMusicKitTrouble(String(msg), "alert");
-for (const msg of ((window as any).__deetsMkAlerts ?? []).splice(0)) onMusicKitTrouble(String(msg), "alert");
+window.__deetsMkAlert = (msg: string) => onMusicKitTrouble(String(msg), "alert");
+for (const msg of (window.__deetsMkAlerts ?? []).splice(0)) onMusicKitTrouble(String(msg), "alert");
 
 // Dev-only: the no-subscription hint (DEBUGGING.md §Toasts). `armNoSub` marks a fresh
 // sign-in and waits for a real playback error; `noSub` also feeds onPlaybackError a
 // synthetic one. Both go through the real guards, so a song must be playing from a queue.
 if (import.meta.env.DEV) {
-  (window as any).__toast.sim = {
-    ...(window as any).__toast.sim,
+  window.__toast.sim = {
+    ...window.__toast.sim,
     armNoSub: noteSignedIn,
     noSub: () => {
       if (loadingContext || mode !== "queue" || !music) {

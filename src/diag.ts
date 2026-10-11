@@ -231,7 +231,7 @@ window.addEventListener("beforeunload", () => {
 });
 
 // Console handle (available in prod too, so bug reports can be gathered anywhere).
-(window as any).__diag = {
+const diagHandle = {
   events,
   report,
   copy: copyReport,
@@ -244,3 +244,9 @@ window.addEventListener("beforeunload", () => {
   },
   echo: setEcho,
 };
+declare global {
+  interface Window {
+    __diag: typeof diagHandle;
+  }
+}
+window.__diag = diagHandle;

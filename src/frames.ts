@@ -229,6 +229,18 @@ function logRenderer(): void {
   toLog(line);
 }
 
+declare global {
+  interface Window {
+    /** The console handle (DEBUGGING.md §Frame telemetry). Absent unless frames.ts is on. */
+    __frames?: {
+      readonly hz: number;
+      begin: typeof begin;
+      resample: typeof sampleHz;
+      sample: (ms?: number, name?: string) => Promise<string>;
+    };
+  }
+}
+
 /** Install the automatic windows and the observers (dev only; call once at launch). */
 export function init(): void {
   if (!ON) return;
@@ -237,7 +249,7 @@ export function init(): void {
   observeInputs();
   HZ_AT.forEach((t) => window.setTimeout(sampleHz, t)); // one busy sample can no longer pin the rate
   window.setTimeout(logRenderer, 2000); // after the first paints, before the first hz line
-  (window as any).__frames = {
+  window.__frames = {
     get hz() {
       return hz;
     },

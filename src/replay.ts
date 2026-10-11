@@ -151,9 +151,14 @@ export async function runWeeklyReplay(force = false): Promise<void> {
 
 // Dev-only: run the weekly make now, past the setting and the due-day gate (DEBUGGING.md
 // §Toasts). It is the real run — it rewrites the Replay playlist in the dev data dir.
+declare global {
+  interface DeetsToastSim {
+    replay?: () => Promise<unknown>;
+  }
+}
 if (import.meta.env.DEV) {
-  (window as any).__toast.sim = {
-    ...(window as any).__toast.sim,
+  window.__toast.sim = {
+    ...window.__toast.sim,
     replay: () => runWeeklyReplay(true),
   };
 }
