@@ -494,6 +494,8 @@ delete too: Ctrl+click or Shift+click a run of playlists, right-click one of the
   `v` changes when the cover changes, so the cache never shows a stale image. Zero Apple calls.
 
 ### 10.7 Backup: export/import file
+- **2026-10-11:** the whole-app backup in [BACKUP.md](BACKUP.md) replaces this idea. His call
+  was one file for everything, not a file for each feature.
 - Local playlists live only in this PC's SQLite (`app_data_dir`). A reinstall or a new PC loses
   them; Export to Apple Music is the only backup today.
 - **Idea (documented, not decided further):** Settings › Playlists › *Save playlists to a file* /

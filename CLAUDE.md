@@ -122,6 +122,12 @@ old installs' Guide button opens.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   The Album theme (colors from the cover, §12) is built with it; its forks are open.
+- `BACKUP.md` — DESIGNED, not built (2026-10-11): one backup file (no secrets, no caches),
+  *Back up now* plus a weekly copy to a folder, restore = replace all on a fresh install (his
+  calls, §1); a `.deetsbackup` file; the rows in Settings › Updates. §8 the open forks. §9 a
+  cloud copy on Cloudflare R2 through a worker: Sign in with Apple, the worker holds the key
+  for now (his calls, §9.3). R3 to R6 open. §9.4 Apple's CloudKit private database as an option
+  beside R2 (fork R0, open; an iCloud sign-in test in WebView2 decides it).
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.

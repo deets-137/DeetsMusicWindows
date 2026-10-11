@@ -12,6 +12,23 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-11 — Backup designed (docs only; branch `ten-out-of-ten`)
+
+- **His calls:** one backup file for everything, less the secrets and the caches; *Back up now*
+  plus a weekly copy to a folder the user picks; restore = replace all, on a fresh install.
+- **Written:** [features/BACKUP.md](features/BACKUP.md). Measured on his live library file: 21.7 MB
+  whole, 1.5 MB without the cache tables, 385 KB zipped. §8 holds eight open forks. §9 is a
+  cloud copy on Cloudflare R2 (his question), an idea with six forks. No code.
+- PLAYLISTS.md §10.7 (a playlists-only file) points to BACKUP.md now.
+- **Second round, his calls:** the `.deetsbackup` type; the rows in Settings › Updates; a cloud
+  copy on R2, with a worker that validates accounts and handles the encryption. Written into
+  BACKUP.md §1, §8 and §9. Then R1 = Sign in with Apple, R2 = the worker holds the key "for
+  now" (§9.3: the words must not promise end-to-end; a file header keeps a later user-held key
+  cheap).
+- **Third round:** CloudKit's private database added beside R2 (BACKUP.md §9.4, his call).
+  Fork R0, where the cloud copy lives, is open. The iCloud sign-in in WebView2 is unproven; the
+  test waits for his go.
+
 ## 2026-10-11 (late night, later) — Press list layer on; the list-keys focus bug fixed (branch `ten-out-of-ten`)
 
 - **His calls:** turn the list layer on for Press; fix the focus bug; measure every skin.
