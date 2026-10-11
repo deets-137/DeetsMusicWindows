@@ -155,14 +155,16 @@ interface SlotPicker {
 }
 
 /** Turn a mounted content card's title into a card-picker menu — live only at the card's root. */
-function makePicker(
-  slot: Slot,
+/** A card title's picker. `K` names the place it serves: a content slot, or the full player's
+ *  side column ("side", 2026-10-11); it only goes back to the two callbacks. */
+function makePicker<K>(
+  slot: K,
   host: HTMLElement,
   currentId: CardId,
   inst: CardInstance,
   pool: () => CardDef[],
-  onPick: (slot: Slot, id: CardId) => void,
-  onHide: (slot: Slot, id: CardId) => void,
+  onPick: (slot: K, id: CardId) => void,
+  onHide: (slot: K, id: CardId) => void,
 ): SlotPicker {
   const head = host.querySelector<HTMLElement>(".panel__head");
   const title = host.querySelector<HTMLElement>(".panel__title");
@@ -349,7 +351,26 @@ export function initLayout(): void {
     });
   // The full player (ideas/fullscreen-player.md §12): after the grow, so its surface listener
   // also runs before this module remounts the slots.
-  if (bento) initFullPlayer({ hosts, bento, slots: () => comp.slots, mountHistory: (h) => registry.history!.mount(h) });
+  // Its side column (his calls, 2026-10-11): any card but Now Playing and Rulez, with the
+  // slots' own title picker; Queue in that list flips the columns (full-player.ts).
+  const sidePool = (current: CardId): CardDef[] => {
+    const hidden = setting("hiddenCards");
+    return (Object.values(registry).filter(Boolean) as CardDef[]).filter(
+      (c) => c.id !== "now-playing" && c.id !== "rulez" && (c.id === current || !hidden.includes(c.id)),
+    );
+  };
+  const mountSide = (host: HTMLElement, id: string, onPick: (id: string) => void) => {
+    const def = (id !== "now-playing" && id !== "rulez" && id !== "queue" ? registry[id as CardId] : undefined) ?? registry.history!;
+    const inst = def.mount(host);
+    const picker = makePicker("side" as const, host, def.id, inst, () => sidePool(def.id), (_, pick) => onPick(pick), hideFromPicker);
+    return {
+      destroy() {
+        picker.destroy();
+        inst.destroy();
+      },
+    };
+  };
+  if (bento) initFullPlayer({ hosts, bento, slots: () => comp.slots, mountSide });
   // A slot that shows its card: on screen and not under a grown card.
   const shown = (s: Slot): boolean => onScreen(hosts[s]) && !isCovered(s);
 
@@ -450,7 +471,7 @@ export function initLayout(): void {
   /** Hide from picker (HIDE-CARDS.md §5): the card joins the hidden list (the settings
    *  handler below moves it out of its slot), and a toast offers Undo, which shows it again
    *  and puts it back in the slot it left. */
-  function hideFromPicker(_from: Slot, id: CardId): void {
+  function hideFromPicker(_from: unknown, id: CardId): void {
     const before = setting("hiddenCards");
     if (before.includes(id) || !canHide(before, id)) return;
     const where = comp.slots.find((s) => layout[s] === id);

@@ -610,6 +610,18 @@ from the right.**
   the same distance from the Queue and from History (124 / 124 px at 1650 wide, 249 / 249 at
   1900). During the 340 ms slide the two move by different amounts, so it is off center then.
 
+**The side column's picker and the flip (his calls, 2026-10-11).** The column (History by
+default) has the slots' own title picker (`makePicker` in `layout.ts`, now generic over its
+key): every card but Now Playing and Rulez. Two copies of a card are allowed (the slot's copy
+is covered). Picking a card mounts it in the column. Picking **Queue** flips the columns: the
+side card, with its picker, takes the stage column on the left and the Queue the right
+column; nothing remounts (`data-fp-flip` on `<html>`, CSS moves the two panels), and the two
+slide past each other over the cover (`flipSides`). The card and the flip are remembered
+(`deets.fullplayer.side`). Flipped, the column slides in and out at the LEFT edge, and a
+window too narrow for it puts the Queue back left (it slides there); the flip returns when the
+window is wide again. Shots: `shots/scratch/sidepick.json`. A toast in the top-right corner
+can sit over the column's title in Max (toasts were there before; seen in the shots).
+
 **The Compass and the toasts while full (his report, 2026-10-11).** Both dodge Now Playing
 (Compass: `keepClearOfNp` in `compass.ts`; toasts: `toast.ts`). While full, Now Playing is the
 view, so in Max the Compass was pushed into the strip right of it (over History, or into a

@@ -4292,6 +4292,20 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   z-index: 2;
 }
 :root[data-player="full"][data-surface="max"][data-fp-history] .panel.fp-history { visibility: visible; }
+/* Flipped (his call, 2026-10-11: Queue picked in the side column's picker): the side card
+   takes the stage column on the left, and the Queue the right column, while the column shows.
+   When the window is too narrow for it, only the Queue's own rule holds: it is back left. */
+:root[data-player="full"][data-surface="max"][data-fp-flip] .panel.fp-history {
+  grid-area: 1 / 1 / -1 / 2;
+  justify-self: stretch;
+  width: auto;
+}
+:root[data-player="full"][data-surface="max"][data-fp-flip][data-fp-history="on"] .stage > .panel[data-slot="queue"] {
+  grid-area: 1 / 2 / -1 / -1;
+  justify-self: end;
+  width: var(--full-history-w);
+  z-index: 2;
+}
 :root[data-player="full"][data-surface="max"][data-fp-history="on"] .stage > .panel[data-slot="np"] {
   margin-right: calc(var(--full-history-w) + var(--panel-gap));
 }

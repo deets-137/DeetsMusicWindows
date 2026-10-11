@@ -43,8 +43,9 @@ interface Opts {
   /** The content slots of the live composition (the cards the player covers). */
   slots: () => Slot[];
   bento: HTMLElement;
-  /** Mount a History card into the column's host (layout.ts holds the card registry). */
-  mountHistory?: (host: HTMLElement) => { destroy(): void };
+  /** Mount the side column's card (`id`, History by default) and its title picker into the
+   *  host; a pick calls `onPick` (layout.ts holds the registry and the picker). */
+  mountSide?: (host: HTMLElement, id: string, onPick: (id: string) => void) => { destroy(): void };
 }
 
 let opts: Opts | null = null;
@@ -132,37 +133,126 @@ function layoutNow(panel: HTMLElement): { place: RowsPlace; history: boolean } {
   const gap = parseFloat(getComputedStyle(np).rowGap) || 0;
   const place = rowsPlace(w, r.height, pxToken("--full-wide-w"), h, gap);
   const side = place === "below" ? Math.min(w, r.height - h - gap) : Math.min(w, r.height);
-  const history = surfaceNow() === "max" && !!opts?.mountHistory && w - pxToken("--full-history-w") - pxToken("--panel-gap") >= side;
+  const history = surfaceNow() === "max" && !!opts?.mountSide && w - pxToken("--full-history-w") - pxToken("--panel-gap") >= side;
   return { place, history };
 }
 
-// ── the History column (Max, a wide card) ───────────────────────────────────────
+// ── the side column (Max, a wide card) ──────────────────────────────────────────
+// History by default; its title is the slots' picker, any card but Now Playing and Rulez (his
+// calls, 2026-10-11). Queue in that list FLIPS the two columns: the side card (with its picker)
+// takes the Queue's place on the left and the Queue goes right. The card and the flip are
+// remembered (localStorage), and a window too narrow for the column puts the Queue back left.
+const SIDE_KEY = "deets.fullplayer.side";
+let side: { card: string; flip: boolean } = (() => {
+  try {
+    const s = JSON.parse(localStorage.getItem(SIDE_KEY) ?? "null");
+    if (s && typeof s.card === "string") return { card: s.card, flip: s.flip === true };
+  } catch {
+    /* storage off or not JSON: the defaults */
+  }
+  return { card: "history", flip: false };
+})();
+const saveSide = () => {
+  try {
+    localStorage.setItem(SIDE_KEY, JSON.stringify(side));
+  } catch {
+    /* storage off: kept for the session */
+  }
+};
+const markFlip = () => root.toggleAttribute("data-fp-flip", side.flip);
+
 let historyInst: { destroy(): void } | null = null;
 let historyGen = 0;
 const historyHost = (): HTMLElement | null => opts?.bento.querySelector<HTMLElement>(".panel.fp-history") ?? null;
+const queuePanel = (): HTMLElement | null => opts?.hosts.queue ?? null;
+/** The side column slides in and out at its own edge: the right, or the left when flipped. */
+const awayX = (): string => (side.flip ? `translateX(calc(-100% - ${pxToken("--panel-gap")}px))` : `translateX(calc(100% + ${pxToken("--panel-gap")}px))`);
+
+/** Mount the side card (and its picker) into the column's host. */
+function mountSide(host: HTMLElement): void {
+  if (historyInst || !opts?.mountSide) return;
+  historyInst = opts.mountSide(host, side.card, pickSide);
+}
+
+/** The column's picker: Queue flips the columns; any other card takes the column. */
+function pickSide(id: string): void {
+  if (id === "queue") return flipSides();
+  if (id === side.card) return;
+  side = { ...side, card: id };
+  saveSide();
+  diag.log("player:side", { card: id });
+  const host = historyHost();
+  historyInst?.destroy();
+  historyInst = null;
+  if (host) {
+    mountSide(host);
+    enterRows([...host.children], host.children.length);
+  }
+}
+
+/** Swap the two columns: the side card and the Queue change places, sliding past each other
+ *  over the cover (they rise above it while they move). Nothing remounts. */
+function flipSides(): void {
+  const host = historyHost();
+  const queue = queuePanel();
+  side = { ...side, flip: !side.flip };
+  saveSide();
+  diag.log("player:side", { flip: side.flip });
+  const m = root.dataset.fpHistory === "on" ? motion() : null;
+  const moving = [host, queue].filter((p): p is HTMLElement => !!p);
+  const before = moving.map(rect);
+  markFlip();
+  if (!m) return;
+  moving.forEach((p, i) => {
+    const dx = before[i].left - rect(p).left;
+    if (Math.abs(dx) < 1) return;
+    p.style.zIndex = "3";
+    const anim = p.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: m.dur, easing: m.ease });
+    void anim.finished.finally(() => p.style.removeProperty("z-index")).catch(() => {});
+  });
+  frames.during("player-side", m.dur, side.flip ? "flip" : "back");
+}
 
 /** Take the column off at once (the close, a surface change, reduced motion). */
 function dropHistory(): void {
   historyGen++;
   historyHost()?.getAnimations().forEach((a) => a.cancel());
+  queuePanel()?.getAnimations().forEach((a) => a.id === "side-queue" && a.cancel());
   delete root.dataset.fpHistory;
   historyInst?.destroy();
   historyInst = null;
 }
 
 /** Show or hide the column. Its part of the change: the attribute (Now Playing's margin goes
- *  with it) and the mount. Returns the motion to run after the layout has changed. */
+ *  with it) and the mount. Returns the motion to run after the layout has changed. Flipped,
+ *  the Queue moves too: to the right as the column comes in on the left, back to the left as
+ *  it goes. */
 function setHistory(on: boolean, m: Motion | null): (() => void) | null {
   const host = historyHost();
-  if (!host || !opts?.mountHistory) return null;
+  if (!host || !opts?.mountSide) return null;
   const my = ++historyGen;
   host.getAnimations().forEach((a) => a.cancel());
-  const away = `translateX(calc(100% + ${pxToken("--panel-gap")}px))`;
+  const queue = side.flip ? queuePanel() : null;
+  const qBefore = queue ? rect(queue) : null;
+  const away = awayX();
+  /** The Queue slides from where it was to where the new layout put it. */
+  const moveQueue = (mm: Motion) => {
+    if (!queue || !qBefore) return;
+    const dx = qBefore.left - rect(queue).left;
+    if (Math.abs(dx) < 1) return;
+    const a = queue.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: mm.dur, easing: mm.ease });
+    a.id = "side-queue";
+  };
   if (on) {
     root.dataset.fpHistory = "on";
-    if (!historyInst) historyInst = opts.mountHistory(host);
-    diag.log("player:history", { on: true });
-    return m ? () => void host.animate([{ transform: away }, { transform: "none" }], { duration: m.dur, easing: m.ease }) : null;
+    mountSide(host);
+    diag.log("player:history", { on: true, card: side.card, flip: side.flip });
+    return m
+      ? () => {
+          host.animate([{ transform: away }, { transform: "none" }], { duration: m.dur, easing: m.ease });
+          moveQueue(m);
+        }
+      : null;
   }
   diag.log("player:history", { on: false });
   if (!m) {
@@ -174,6 +264,7 @@ function setHistory(on: boolean, m: Motion | null): (() => void) | null {
   root.dataset.fpHistory = "leaving";
   return () => {
     const anim = host.animate([{ transform: "none" }, { transform: away }], { duration: m.dur, easing: m.ease, fill: "forwards" });
+    moveQueue(m);
     void anim.finished.then(() => {
       if (my !== historyGen) return;
       delete root.dataset.fpHistory;
@@ -186,7 +277,8 @@ function setHistory(on: boolean, m: Motion | null): (() => void) | null {
  *  2026-10-11): done once the open lands, so the slide's first frame does not carry it. */
 function warmHistory(): void {
   const host = historyHost();
-  if (!historyInst && host && opts?.mountHistory && surfaceNow() === "max") historyInst = opts.mountHistory(host);
+  markFlip();
+  if (host && surfaceNow() === "max") mountSide(host);
 }
 
 /** A resize moved the rows between the band and the space under the cover (his ask,
