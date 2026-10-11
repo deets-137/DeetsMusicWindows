@@ -44,6 +44,9 @@ export interface Settings {
    *  "flip" turns it into Midi, which is built for short windows; "floor" stops the drag at
    *  Max's own 750 px. Only "flip" needs `surfaceAutoFlip` on. */
   maxShortWindow: "flip" | "floor";
+  /** Layout for Max (MAX-CARDS.md): four content cards in a 2×2, two side by side ("2cols"),
+   *  two stacked ("2rows"), or one, beside the stage column. Midi and Mini do not change. */
+  maxCards: "4" | "2cols" | "2rows" | "1";
   cardGrowPick: "keep" | "collapse";
   /** A drill (Go to Album, a shelf tile, a playlist): the card it opens takes the place of the
    *  card you are reading and Back returns the chain (CARD-GROW.md §15), or it is summoned into
@@ -451,6 +454,7 @@ export const DEFAULTS: Settings = {
   compassCloseAway: true, // user's call 2026-09-17: the bar is a passing thing; a click elsewhere means "not now"
   maxShortWindow: "flip", // the width already behaves this way: a window that no longer fits a
                           // surface becomes the one that does, instead of refusing to move
+  maxCards: "4", // today's layout, so an update changes nothing on screen (MAX-CARDS.md §3)
   cardGrowPick: "keep", // decided 6A
   cardDrill: "inplace", // user's call 2026-09-17: a drill belongs to the card you are reading
   cardDrillBring: false, // user's call 2026-09-17: a card already on screen is not worth moving two cards for
@@ -724,7 +728,9 @@ export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDis
   "friendsListenAlong", "friendsRoomInvite", "toasts",
   // Play a web from the song playing (PLAYLIST-WEB.md §11, 2026-09-28): the mode and the skip
   // point have no Settings row; a rule is how a pro user changes them.
-  "webPlayNew", "webPlayMode", "webSkipSeed", "webSkipSeedAt"] as const;
+  "webPlayNew", "webPlayMode", "webSkipSeed", "webSkipSeedAt",
+  // Layout for Max (MAX-CARDS.md §4.9, his call 2026-10-11): e.g. two cards while on battery.
+  "maxCards"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 

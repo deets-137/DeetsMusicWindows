@@ -1,13 +1,14 @@
 // The full player (ideas/fullscreen-player.md): Now Playing grows so the cover is as large as
 // the window allows. Midi: over the Library and Queue cards, the rows over the cover on a dark
-// band. Max: over the four content cards, the Queue takes the whole stage column, the rows
-// beside the cover when there is room and over it when there is not. Mini: not in the test
-// version (§12.9: Mini's player view stays as it is until he says).
+// band. Max: over the four content cards, the Queue takes the whole stage column. In both, the
+// controls go under the cover when there is room or the card is wide, else over it on the band;
+// never beside it (2026-10-11). Mini: not in the test version (§12.9: Mini's player view stays
+// as it is until he says).
 //
 // It is not a grow: it changes the card's column (Max) and its inner layout, so it is its own
 // module and borrows the grow's parts (the clip, the covered-card classes, the zones' look).
 // One attribute carries the state: `data-player="full"` on <html>; every CSS rule hangs on it.
-// The card wears `data-np-rows="beside|over"`.
+// The card wears `data-np-rows="over|below"` (below: the controls under the cover, 2026-10-11).
 //
 // Ways in: the edge strips on Now Playing (Midi top and bottom, Max left and right), Compass
 // ("Full player"), a rule (the `player` action). Ways out: the close square over the cover, the
@@ -32,9 +33,9 @@ import { registerAction, registerFact } from "./rules";
 import { refreshPlayerState } from "./player";
 import { setFullArtPx, stageArtPx } from "./queue-rows";
 import { fullPlayerUnhidden } from "./full-player-flag";
-import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, type Box } from "./full-player-layout";
+import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, type Box, type RowsPlace } from "./full-player-layout";
 import {
-  clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, type Slot,
+  canFill, clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, type Slot,
 } from "./card-grow";
 
 interface Opts {
@@ -42,6 +43,8 @@ interface Opts {
   /** The content slots of the live composition (the cards the player covers). */
   slots: () => Slot[];
   bento: HTMLElement;
+  /** Mount a History card into the column's host (layout.ts holds the card registry). */
+  mountHistory?: (host: HTMLElement) => { destroy(): void };
 }
 
 let opts: Opts | null = null;
@@ -50,6 +53,7 @@ let busy = false; // a motion is on screen, or the open waits for the large cove
 let gen = 0; // bumps on every open and close: a wait that comes back late knows it is stale
 let artPx = 0; // the cover file size asked for while full (a 200 px bucket)
 let watch: ResizeObserver | null = null;
+let slideGen = 0; // bumps on every rows slide: only the newest one ends is-rows-sliding
 const subs = new Set<(on: boolean) => void>();
 
 const root = document.documentElement;
@@ -98,17 +102,139 @@ const npOf = (panel: HTMLElement) => panel.querySelector<HTMLElement>(".np");
 const coveredHosts = (): HTMLElement[] =>
   (opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h);
 
-/** Where the rows go in the card's full box (§7.3). */
-function placeNow(panel: HTMLElement): "beside" | "over" {
+/** Where the rows go in the card's full box (§7.3). Called with the full layout on and no paint
+ *  between: the controls are measured as they sit on the band (stacked, at the cover's width),
+ *  and they go under the cover when the space there holds them (rowsPlace, 2026-10-11). The
+ *  height is kept as --fp-controls-h, so the halo can center on the cover above them. */
+function placeNow(panel: HTMLElement): RowsPlace {
+  return layoutNow(panel).place;
+}
+
+/** The room the History column takes from Now Playing now: its width and the panel gap. */
+const historyRoom = (): number => (root.dataset.fpHistory === "on" ? pxToken("--full-history-w") + pxToken("--panel-gap") : 0);
+
+/** The rows' place, and whether the History column shows (his calls, 2026-10-11: Max only,
+ *  when a --full-history-w column fits beside the cover without making it smaller). Both are
+ *  read from the card's width WITHOUT the column, so showing it never turns it off again. */
+function layoutNow(panel: HTMLElement): { place: RowsPlace; history: boolean } {
   const np = npOf(panel);
-  if (!np) return "over";
+  if (!np) return { place: "over", history: false };
   const r = rect(np);
-  return rowsPlace(r.width, r.height, pxToken("--full-rows-w"));
+  const w = r.width + historyRoom();
+  const was = panel.dataset.npRows;
+  panel.dataset.npRows = "over";
+  const scrub = panel.querySelector<HTMLElement>(".np__scrub");
+  const vol = panel.querySelector<HTMLElement>(".np__vol");
+  const h = scrub && vol ? rect(vol).bottom - rect(scrub).top : Infinity;
+  if (was) panel.dataset.npRows = was;
+  else delete panel.dataset.npRows;
+  if (Number.isFinite(h)) panel.style.setProperty("--fp-controls-h", `${h}px`);
+  const gap = parseFloat(getComputedStyle(np).rowGap) || 0;
+  const place = rowsPlace(w, r.height, pxToken("--full-wide-w"), h, gap);
+  const side = place === "below" ? Math.min(w, r.height - h - gap) : Math.min(w, r.height);
+  const history = surfaceNow() === "max" && !!opts?.mountHistory && w - pxToken("--full-history-w") - pxToken("--panel-gap") >= side;
+  return { place, history };
+}
+
+// ── the History column (Max, a wide card) ───────────────────────────────────────
+let historyInst: { destroy(): void } | null = null;
+let historyGen = 0;
+const historyHost = (): HTMLElement | null => opts?.bento.querySelector<HTMLElement>(".panel.fp-history") ?? null;
+
+/** Take the column off at once (the close, a surface change, reduced motion). */
+function dropHistory(): void {
+  historyGen++;
+  historyHost()?.getAnimations().forEach((a) => a.cancel());
+  delete root.dataset.fpHistory;
+  historyInst?.destroy();
+  historyInst = null;
+}
+
+/** Show or hide the column. Its part of the change: the attribute (Now Playing's margin goes
+ *  with it) and the mount. Returns the motion to run after the layout has changed. */
+function setHistory(on: boolean, m: Motion | null): (() => void) | null {
+  const host = historyHost();
+  if (!host || !opts?.mountHistory) return null;
+  const my = ++historyGen;
+  host.getAnimations().forEach((a) => a.cancel());
+  const away = `translateX(calc(100% + ${pxToken("--panel-gap")}px))`;
+  if (on) {
+    root.dataset.fpHistory = "on";
+    if (!historyInst) historyInst = opts.mountHistory(host);
+    diag.log("player:history", { on: true });
+    return m ? () => void host.animate([{ transform: away }, { transform: "none" }], { duration: m.dur, easing: m.ease }) : null;
+  }
+  diag.log("player:history", { on: false });
+  if (!m) {
+    delete root.dataset.fpHistory;
+    return null;
+  }
+  // It stays on screen while it slides out; Now Playing has its room back at once. The card
+  // stays mounted (hidden) until the player closes, so a drag back costs no mount.
+  root.dataset.fpHistory = "leaving";
+  return () => {
+    const anim = host.animate([{ transform: "none" }, { transform: away }], { duration: m.dur, easing: m.ease, fill: "forwards" });
+    void anim.finished.then(() => {
+      if (my !== historyGen) return;
+      delete root.dataset.fpHistory;
+      anim.cancel();
+    }, () => {});
+  };
+}
+
+/** Mount the column's card while it is hidden (a History list is a ~95 ms task, measured
+ *  2026-10-11): done once the open lands, so the slide's first frame does not carry it. */
+function warmHistory(): void {
+  const host = historyHost();
+  if (!historyInst && host && opts?.mountHistory && surfaceNow() === "max") historyInst = opts.mountHistory(host);
+}
+
+/** A resize moved the rows between the band and the space under the cover (his ask,
+ *  2026-10-11): each part slides from its old place to its new one (FLIP: measure, change,
+ *  measure, animate the difference away), and the cover moves and scales to its new box.
+ *  --player-dur and --player-ease; reduced motion snaps. */
+function slideRows(panel: HTMLElement, place: RowsPlace, history: boolean): void {
+  const from = panel.dataset.npRows;
+  const parts = [...panel.querySelectorAll<HTMLElement>(".np__art, .np__meta, .np__scrub, .np__times, .np__bottom, .np__vol")];
+  parts.forEach((p) => p.getAnimations().forEach((a) => a.id === "rows-slide" && a.cancel()));
+  const m = motion();
+  const before = m ? parts.map(rect) : [];
+  if (place !== from) {
+    panel.dataset.npRows = place;
+    diag.log("player:rows", { from: from ?? "", to: place, motion: !!m });
+  }
+  // The History column comes or goes in the same pass: the cover block moves over for it.
+  const column = history !== (root.dataset.fpHistory === "on") ? setHistory(history, m) : null;
+  if (!m) return;
+  column?.();
+  // The band hides while the parts move, and fades in once they land (styles.css). A newer
+  // slide (a drag back across the line) owns the class: `my` keeps an old one from ending it.
+  panel.classList.add("is-rows-sliding");
+  const my = ++slideGen;
+  const anims: Animation[] = [];
+  parts.forEach((p, i) => {
+    const a = before[i];
+    const b = rect(p);
+    if (!a.width || !b.width) return;
+    const s = a.width / b.width;
+    const dx = a.left - b.left;
+    const dy = a.top - b.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(s - 1) < 0.01) return;
+    // The cover changes size (a wide card gives up the controls' height); the rows only move.
+    const start = p.classList.contains("np__art") ? `translate(${dx}px, ${dy}px) scale(${s})` : `translate(${dx}px, ${dy}px)`;
+    const anim = p.animate([{ transform: start, transformOrigin: "0 0" }, { transform: "none", transformOrigin: "0 0" }], { duration: m.dur, easing: m.ease });
+    anim.id = "rows-slide";
+    anims.push(anim);
+  });
+  frames.during("player-rows", m.dur, `${from ?? ""}→${place}`);
+  void Promise.allSettled(anims.map((a) => a.finished)).then(() => {
+    if (my === slideGen) panel.classList.remove("is-rows-sliding");
+  });
 }
 
 /** Set the layout (or take it off). Midi holds the strip's row at its rest height, so the
  *  covered cards stay where they are while they fade (the spanning card leaves row 1 empty). */
-function apply(on: boolean, place?: "beside" | "over", row1?: number): void {
+function apply(on: boolean, place?: RowsPlace, row1?: number): void {
   const panel = npHost();
   if (on) {
     if (row1 !== undefined) opts?.bento.style.setProperty("--player-row1", `${row1}px`);
@@ -280,6 +406,14 @@ export async function openFullPlayer(cause: string): Promise<void> {
   } finally {
     if (my === gen) busy = false;
   }
+  // The History column waits for the open to land: its card mounts hidden, and two frames
+  // later it slides in when the card is wide.
+  if (full && my === gen) {
+    warmHistory();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (full && my === gen) refit(panel);
+    }));
+  }
 }
 
 // ── close ───────────────────────────────────────────────────────────────────────
@@ -296,6 +430,9 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   opts?.hosts.queue?.getAnimations().forEach((a) => a.cancel());
   document.querySelectorAll(".np__fly").forEach((f) => f.remove());
   if (art) art.style.visibility = "";
+  // The History column and a rows slide end at once: the close measures the layout without them.
+  dropHistory();
+  panel?.getAnimations({ subtree: true }).forEach((a) => a.id === "rows-slide" && a.cancel());
   busy = true;
   const covered = coveredHosts();
   const end = () => {
@@ -307,7 +444,7 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
     artPx = 0;
     setFullArtPx(0);
     refreshPlayerState(); // the cover goes back to the rest file (already in the cache)
-    panel?.classList.remove("is-player-rebuild", "is-player-rows");
+    panel?.classList.remove("is-player-rebuild", "is-player-rows", "is-rows-sliding");
     if (panel) delete panel.dataset.frames;
     diag.log("player", { on: false, cause, surface: surface ?? currentSurface(), motion: !!m });
     if (my === gen) busy = false;
@@ -323,7 +460,7 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   const toQueue = queue ? rect(queue) : null;
   // The rest boxes: measured with the layout off for one layout, no paint.
   const row1 = opts?.bento.style.getPropertyValue("--player-row1");
-  const place = panel.dataset.npRows as "beside" | "over" | undefined;
+  const place = panel.dataset.npRows as RowsPlace | undefined;
   apply(false);
   const rest = rect(panel);
   const restArt = rect(art);
@@ -384,13 +521,24 @@ function watchSize(panel: HTMLElement): void {
   const np = npOf(panel);
   const art = artOf(panel);
   if (!np || !art) return;
-  watch = new ResizeObserver(() => {
-    if (!full) return;
-    const place = placeNow(panel);
-    if (panel.dataset.npRows !== place) panel.dataset.npRows = place;
-    askArt(rect(art).width);
-  });
+  watch = new ResizeObserver(() => refit(panel));
   watch.observe(np);
+}
+
+/** While full: put the rows and the History column where the card's size says. The open and
+ *  the close have their own motion: during one, the rows snap and the column waits for the
+ *  end of the open (refit runs again then). */
+function refit(panel: HTMLElement): void {
+  if (!full) return;
+  const art = artOf(panel);
+  const { place, history } = layoutNow(panel);
+  const histNow = root.dataset.fpHistory === "on";
+  if (busy) {
+    if (panel.dataset.npRows !== place) panel.dataset.npRows = place;
+  } else if (panel.dataset.npRows !== place || history !== histNow) {
+    slideRows(panel, place, history);
+  }
+  if (art) askArt(rect(art).width);
 }
 
 // ── the edge strips on Now Playing (§10) ────────────────────────────────────────
@@ -413,7 +561,9 @@ function reachOf(side: Side): "half" | "full" | "edge" | null {
   }
   if (s === "max") {
     if (side === "left") return full ? "full" : "edge";
-    if (side === "right") return full ? "edge" : "half";
+    // Half the gap beside the stage when a Fill strip takes the other half (four-card Max); the
+    // whole gap when no Fill strip is there (Layout for Max: 2 or 1 cards, MAX-CARDS.md §4.4).
+    if (side === "right") return full ? "edge" : canFill() ? "half" : "full";
   }
   return null;
 }
@@ -474,6 +624,11 @@ export function initFullPlayer(o: Opts): void {
   onGrowChange(() => paintZones());
   onSettingsChange((k) => {
     if (k === "cardGrow") emit();
+    // Layout for Max changed: close with no motion before the layout remounts (MAX-CARDS.md).
+    if (k === "maxCards") {
+      if (full) void closeFullPlayer("layout", false);
+      paintZones();
+    }
   });
   // A surface change ends it with no motion, before the layout remounts the slots.
   onSurfaceChange(() => {

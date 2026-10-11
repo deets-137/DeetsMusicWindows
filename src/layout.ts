@@ -13,7 +13,7 @@
 // open levels and scroll place across, so the card comes back where it was.
 
 import { registry, type CardDef, type CardId, type CardInstance, type MountOpts } from "./cards";
-import { setting, setSetting, onSettingsChange } from "./settings-store";
+import { setting, setSetting, effective, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
 import { onCardRequest, requestCard, setCardHostLookup, setDrillSwapCheck, type RequestHow } from "./layout-bus";
@@ -26,7 +26,7 @@ import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card
 import { initFullPlayer, isFullPlayer, closeFullPlayer } from "./full-player";
 import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
 
-import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE_LOCK_HINT } from "./layout-rules";
+import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE_LOCK_HINT, maxCardsOf, maxSlots, keepCard, type MaxCards } from "./layout-rules";
 import { openContextMenu } from "./context-menu";
 import { toast } from "./toast";
 import { cancelled, emit, registerAction, registerEvent } from "./rules";
@@ -43,6 +43,8 @@ interface Composition {
   defaults: Assignment;
   /** Mount the Queue card into the dedicated [data-slot="queue"] host (max). */
   queueSlot: boolean;
+  /** A Max composition: Max-only cards (Rulez) may enter its slots. */
+  max: boolean;
 }
 
 const MIDI: Composition = {
@@ -53,26 +55,52 @@ const MIDI: Composition = {
   // Queue for a while, and Home is the card that fills first — so the Queue is not a default.
   defaults: { left: "home", right: "library" },
   queueSlot: false,
+  max: false,
 };
 // max (2026-09-09, option A): stage + anchored queue on the left, a 2×2 bento on the right.
 const MAX: Composition = {
   key: "deets.layout.max",
-  slots: ["left", "right", "c", "d"],
+  slots: maxSlots("4"),
   anchored: ["now-playing", "queue"],
   // The same first row as midi, then Playlists | Search (owner's call 2026-09-18). Max's
   // Queue is anchored in its own column, so nothing is lost by dropping it from the bento;
   // History is the card that steps aside.
   defaults: { left: "home", right: "library", c: "playlists", d: "search" },
   queueSlot: true,
+  max: true,
 };
+// Layout for Max (MAX-CARDS.md): two cards or one beside the stage. Each count keeps its own
+// map, so four-card Max is as you left it when you come back to it. 2 columns and 2 rows share
+// one map: the shape is CSS only, so a shape change moves the same two cards.
+const MAX_2: Composition = {
+  key: "deets.layout.max2",
+  slots: maxSlots("2cols"),
+  anchored: ["now-playing", "queue"],
+  defaults: { left: "home", right: "library" }, // his call 2026-10-11: Midi's first row
+  queueSlot: true,
+  max: true,
+};
+const MAX_1: Composition = {
+  key: "deets.layout.max1",
+  slots: maxSlots("1"),
+  anchored: ["now-playing", "queue"],
+  defaults: { left: "home" }, // his call 2026-10-11: the card that fills first for a new user
+  queueSlot: true,
+  max: true,
+};
+const COMPOSITIONS = [MIDI, MAX, MAX_2, MAX_1];
+
+/** Max's layout now: a rule's value, or yours. */
+const maxCardsNow = (): MaxCards => maxCardsOf(effective("maxCards"));
+const maxComposition = (n: MaxCards): Composition => (n === "1" ? MAX_1 : n === "4" ? MAX : MAX_2);
 
 /** mini shares midi's map — its composition only hides the right slot (CSS). */
-const compositionFor = (s: SurfaceName): Composition => (s === "max" ? MAX : MIDI);
+const compositionFor = (s: SurfaceName): Composition => (s === "max" ? maxComposition(maxCardsNow()) : MIDI);
 
 /** Cards a content slot can hold under a composition: everything not anchored, Max-only
  *  cards in Max only. Hidden cards included — a summon still brings one in. */
 const allowedFor = (comp: Composition): CardDef[] =>
-  (Object.values(registry).filter(Boolean) as CardDef[]).filter((c) => !comp.anchored.includes(c.id) && (!c.maxOnly || comp === MAX));
+  (Object.values(registry).filter(Boolean) as CardDef[]).filter((c) => !comp.anchored.includes(c.id) && (!c.maxOnly || comp.max));
 
 /** Cards the picker offers under a composition: the allowed ones minus Settings › Cards'
  *  hidden list (HIDE-CARDS.md; Rewind is on it until 50 play starts). */
@@ -301,6 +329,7 @@ export function initLayout(): void {
       bento,
       body,
       slots: () => comp.slots,
+      maxCards: maxCardsNow,
       titleOf: (s) => {
         if (s === "np") return registry["now-playing"]?.title ?? "Now Playing";
         if (s === "queue") return registry.queue?.title ?? "Queue";
@@ -320,7 +349,7 @@ export function initLayout(): void {
     });
   // The full player (ideas/fullscreen-player.md §12): after the grow, so its surface listener
   // also runs before this module remounts the slots.
-  if (bento) initFullPlayer({ hosts, bento, slots: () => comp.slots });
+  if (bento) initFullPlayer({ hosts, bento, slots: () => comp.slots, mountHistory: (h) => registry.history!.mount(h) });
   // A slot that shows its card: on screen and not under a grown card.
   const shown = (s: Slot): boolean => onScreen(hosts[s]) && !isCovered(s);
 
@@ -654,7 +683,7 @@ export function initLayout(): void {
 
   const compose = () => {
     comp.slots.forEach((s) => mountSlot(s));
-    if (comp.queueSlot && queueHost && registry.queue) {
+    if (comp.queueSlot && queueHost && registry.queue && !queueInst) {
       queueInst = registry.queue.mount(queueHost);
       // The anchored Queue takes the Grow button and its edge strips too — one of them acts:
       // the top one, up over Now Playing (docs/cards/STAGE-COLUMN.md §7).
@@ -662,29 +691,71 @@ export function initLayout(): void {
     }
     refreshGrowZones(); // the zones' hints name the mounted cards
   };
-  const decompose = () => {
+  /** Tear the slots down; the anchored Queue stays when the next map has it too (a Layout
+   *  for Max change: the stage column does not move, so its Queue keeps its place). */
+  const decompose = (keepQueue = false) => {
     (Object.keys(hosts) as Slot[]).forEach(wipeChain); // a new composition has no way back
     (Object.keys(mounted) as Slot[]).forEach(unmountSlot);
+    if (keepQueue) return;
     queueGrow?.destroy();
     queueGrow = null;
     queueInst?.destroy();
     queueInst = null;
   };
 
+  // Layout for Max (MAX-CARDS.md §4.2): the CSS reads the attribute under [data-surface="max"].
+  // index.html's pre-paint sets it first, so the first frame already has the right grid.
+  // The title menu's Max item names the count (his call, 2026-10-11, MAX-CARDS.md §9.2).
+  const MAX_HINT: Record<MaxCards, string> = {
+    "4": "The wide window: the stage, the queue, and four cards",
+    "2cols": "The wide window: the stage, the queue, and two cards",
+    "2rows": "The wide window: the stage, the queue, and two cards",
+    "1": "The wide window: the stage, the queue, and one card",
+  };
+  const markMax = () => {
+    const n = maxCardsNow();
+    document.documentElement.dataset.maxCards = n;
+    const item = document.querySelector<HTMLElement>('[data-surface-choice="max"]');
+    if (item) item.title = MAX_HINT[n];
+  };
+  markMax();
   compose();
+
+  /** Swap in another composition: the content slots remount from its map. `keep` is a card
+   *  that stays on screen: when the new map does not hold it, it takes the last slot for now
+   *  (layout-rules.ts `keepCard`); the map in storage is not changed. */
+  const recompose = (next: Composition, cause: string, keep?: CardId) => {
+    if (next === comp) return;
+    flushSwapOut(); // a pick still in its out step lands in the old map before it is torn down
+    decompose(comp.queueSlot && next.queueSlot);
+    comp = next;
+    layout = loadLayout(comp);
+    if (keep) layout = keepCard(comp.slots, layout, keep);
+    compose();
+    // Back in Max, a Max-only card comes back where it was, at Fill as it opens (RULES.md §20.6).
+    for (const s of comp.slots) if (layout[s] && registry[layout[s]!]?.maxOnly) void fillCard(layout[s]!, cause);
+  };
 
   // A surface flip between compositions (midi/mini ↔ max) remounts the content slots
   // from the new map; mini ↔ midi share a map, so nothing remounts (CSS does the work).
-  onSurfaceChange((s) => {
-    const next = compositionFor(s);
-    if (next === comp) return;
-    flushSwapOut(); // a pick still in its out step lands in the old map before it is torn down
-    decompose();
-    comp = next;
-    layout = loadLayout(comp);
-    compose();
-    // Back in Max, a Max-only card comes back where it was, at Fill as it opens (RULES.md §20.6).
-    for (const s of comp.slots) if (layout[s] && registry[layout[s]!]?.maxOnly) void fillCard(layout[s]!, "surface");
+  onSurfaceChange((s) => recompose(compositionFor(s), "surface"));
+
+  // Layout for Max changed (your pick or a rule's, MAX-CARDS.md §4.1). Card grow and the full
+  // player hear the key first and end with no motion. 2 columns ↔ 2 rows share one map, so only
+  // the attribute changes and nothing remounts.
+  let lastMax = maxCardsNow();
+  onSettingsChange((k) => {
+    if (k !== "maxCards") return;
+    const now = maxCardsNow();
+    if (now === lastMax) return;
+    // The Settings card you made the pick in stays on screen (his call, 2026-10-11,
+    // MAX-CARDS.md §9.3). Read before the attribute moves the grid: a slot the new layout
+    // hides is off screen after it.
+    const keepSettings = comp.slots.some((s) => layout[s] === "settings" && onScreen(hosts[s]));
+    diag.log("layout:max-cards", { from: lastMax, to: now, surface: currentSurface(), keepSettings });
+    lastMax = now;
+    markMax();
+    if (currentSurface() === "max") recompose(maxComposition(now), "layout", keepSettings ? "settings" : undefined);
   });
 
   // ── Summon requests (e.g. the NP card's queue button) — bring the card into the
@@ -770,7 +841,7 @@ export function initLayout(): void {
     const gone = newlyHidden(lastHidden, now) as CardId[];
     lastHidden = [...now];
     if (!gone.length) return;
-    for (const other of [MIDI, MAX]) if (other !== comp) dropFromSaved(other, gone);
+    for (const other of COMPOSITIONS) if (other !== comp) dropFromSaved(other, gone);
     for (const id of gone) {
       const slot = comp.slots.find((s) => layout[s] === id);
       if (!slot) continue;

@@ -142,6 +142,7 @@ The same table as `SYNONYMS` in `src/compass.ts`; change both.
 | expand, enlarge, big, fill | grow |
 | look, colors, colour, dark, light | theme, skin |
 | window, size | surface |
+| bento, grid | layout (Layout for Max, 2026-10-11) |
 | small | mini |
 | np, nowplaying | player |
 | large | max |

@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 44 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 570 tokens · overrides: vanilla 4, press 69, ocean 44, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 571 tokens · overrides: vanilla 4, press 69, ocean 44, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -679,12 +679,13 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-col-num-digit` | `1ch` | — | an album's # column: one digit; the column is as many as its widest number |
 | `--grow-col-year` | `3.4em` | — |  |
 | `--grow-col-plays` | `3.6em` | — |  |
-| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | -- full player (full-player.ts, ideas/fullscreen-player.md §9.4, §12) -- Now Playing grows so the cover is as large as the window allows. The cover flies from its rest place to its full place while a clip opens the card; the rows and the band come in at --player-rows-at of the open. Each skin restates the four motion values in its own block (his call, 2026-10-02): the grow's values in the first version, so a skin can get its own shape later as a change of values. --player-art-wait: how long the open waits for the large cover file to decode before it flies with what it has. --full-rows-w: the rows sit BESIDE the cover when the card is at least this much wider than tall, else OVER it on the band. --np-band-strength: how opaque the band under the rows is. |
+| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | -- full player (full-player.ts, ideas/fullscreen-player.md §9.4, §12) -- Now Playing grows so the cover is as large as the window allows. The cover flies from its rest place to its full place while a clip opens the card; the rows and the band come in at --player-rows-at of the open. Each skin restates the four motion values in its own block (his call, 2026-10-02): the grow's values in the first version, so a skin can get its own shape later as a change of values. --player-art-wait: how long the open waits for the large cover file to decode before it flies with what it has. --full-wide-w: a card at least this much wider than tall is WIDE: the controls sit under the cover, which gives up their height (his call, 2026-10-11: no column beside the cover). A card that is not wide has them under the cover only when the space there holds them, else OVER it on the band. A resize that moves them slides them in --player-dur. --np-band-strength: how opaque the band under the rows is. |
 | `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber |  |
 | `--player-rows-at` | `var(--grow-rows-at)` | press, ocean, glass, cyber |  |
 | `--player-collapse-dur` | `var(--grow-collapse-dur)` | press, ocean, glass, cyber |  |
 | `--player-art-wait` | `0.25s` | — |  |
-| `--full-rows-w` | `356px` | — |  |
+| `--full-wide-w` | `356px` | — |  |
+| `--full-history-w` | `var(--max-stage-w)` | — | The History column right of the cover (Max, his call 2026-10-11): it shows when this width (plus the panel gap) fits beside the cover without making it smaller, and slides in from the right edge in --player-dur. The Queue column's width (his ask, the same day: two columns of different widths made the centered cover feel off center; it was 300px). |
 | `--np-band-pad` | `var(--space-4)` | — |  |
 | `--np-band-strength` | `78%` | — |  |
 | `--np-band-sub-strength` | `72%` | — | the subtext on the band: its ink, a little clear |

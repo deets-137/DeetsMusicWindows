@@ -1,5 +1,6 @@
 // Card grow (docs/cards/CARD-GROW.md) — a content card takes more space for a while. It opens over
-// its neighbor (Grow: wide or tall) or over all four content cards in Max (Fill). The bento
+// its neighbor (Grow: wide or tall) or over all four content cards in Max (Fill; four-card Max
+// only — with two cards the grow over the other card is the whole area, MAX-CARDS.md). The bento
 // grid does not change: the grown panel gets a span and a higher z-index and the covered
 // panels stay mounted under it, so a Collapse shows exactly what was there.
 //
@@ -28,6 +29,7 @@ import * as frames from "./frames";
 import * as diag from "./diag";
 import { TELEMETRY } from "./telemetry-on";
 import { cancelled, registerAction, registerEvent, registerFact } from "./rules";
+import { maxBeyond, maxCanFill, maxNeighbors, type MaxCards, type MaxSlot } from "./layout-rules";
 
 /** The four content slots, plus the two anchored hosts of the max stage column. `np` is a
  *  COVER TARGET only: it has no `.panel__head`, so it never gets the button or the zones
@@ -56,20 +58,29 @@ interface Opts {
   titleOf: (slot: Slot) => string;
   /** The slot that shows a card, by card id or title ("library" / "Library") or by slot name. */
   slotOf: (name: string) => Slot | null;
+  /** Max's layout now (Settings › Window › Layout for Max, MAX-CARDS.md). */
+  maxCards?: () => MaxCards;
   bento: HTMLElement;
   body: HTMLElement;
 }
 
-// Which slot lies in each direction (the max map: "np left right / queue c d").
-const MAX_NEIGHBOR: Record<Slot, Partial<Record<SideDir, Slot>>> = {
-  left: { right: "right", down: "c" },
-  right: { left: "left", down: "d" },
-  c: { right: "d", up: "left" },
-  d: { left: "c", up: "right" },
+// Which slot lies in each direction in max: the content slots from the layout's own table
+// (Layout for Max: 4, 2 or 1 cards, MAX-CARDS.md §4.4), the stage column by hand.
+const maxNeighborMap = (n: MaxCards): Record<Slot, Partial<Record<SideDir, Slot>>> => ({
+  left: maxNeighbors(n, "left"),
+  right: maxNeighbors(n, "right"),
+  c: maxNeighbors(n, "c"),
+  d: maxNeighbors(n, "d"),
   // The stage column: the Queue grows UP over Now Playing, and nowhere else (the owner's
   // call, 2026-09-17). Now Playing itself never grows — it has no header to grow from.
   queue: { up: "np" },
   np: {},
+});
+const MAX_NEIGHBOR: Record<MaxCards, Record<Slot, Partial<Record<SideDir, Slot>>>> = {
+  "4": maxNeighborMap("4"),
+  "2cols": maxNeighborMap("2cols"),
+  "2rows": maxNeighborMap("2rows"),
+  "1": maxNeighborMap("1"),
 };
 const MIDI_NEIGHBOR: Record<Slot, Partial<Record<SideDir, Slot>>> = {
   left: { right: "right" },
@@ -134,8 +145,12 @@ const growSlots = (): Slot[] => {
   return currentSurface() === "max" ? [...live, "queue" as Slot] : live;
 };
 const isLive = (s: Slot): boolean => growSlots().includes(s);
-const neighbors = (): Record<Slot, Partial<Record<SideDir, Slot>>> => (currentSurface() === "max" ? MAX_NEIGHBOR : MIDI_NEIGHBOR);
-const canFill = (): boolean => currentSurface() === "max";
+/** Max's layout now (Layout for Max); today's 2×2 when the layout gives none. */
+const maxNow = (): MaxCards => opts?.maxCards?.() ?? "4";
+const neighbors = (): Record<Slot, Partial<Record<SideDir, Slot>>> => (currentSurface() === "max" ? MAX_NEIGHBOR[maxNow()] : MIDI_NEIGHBOR);
+/** Fill is its own grow in four-card Max only (MAX-CARDS.md §4.4). Exported for the full
+ *  player: with no Fill strip beside the stage, Now Playing's strip takes the whole gap. */
+export const canFill = (): boolean => currentSurface() === "max" && maxCanFill(maxNow());
 /** The directions a slot can grow in now (those with a neighbor in this composition). */
 export function growDirs(slot: Slot): SideDir[] {
   if (!opts) return [];
@@ -407,13 +422,23 @@ export async function fillCard(card: string, why: string): Promise<void> {
   await whenSwapSettled();
   await settled;
   const slot = opts?.slotOf(card) ?? null;
-  if (slot && state?.slot !== slot) growCard(slot, "full", why);
+  if (!slot || state?.slot === slot) return;
+  if (canFill()) return growCard(slot, "full", why);
+  // Two-card Max: the grow over the other card is the whole content area (MAX-CARDS.md §4.5).
+  // One card: nothing to cover, so the card stays as it is.
+  const dir = growDirs(slot)[0];
+  if (dir && !isStage(slot)) growCard(slot, dir, why);
 }
 
 /** The way a rule grow on `axis` goes from `slot`, or null when it cannot (or must not) grow. */
 function ruleDir(slot: Slot, axis: "horizontal" | "vertical" | "full", replace: boolean): GrowDir | null {
   if (state?.slot === slot || (state && !replace)) return null;
-  if (axis === "full") return canFill() && !isStage(slot) ? "full" : null;
+  if (axis === "full") {
+    if (isStage(slot)) return null;
+    if (canFill()) return "full";
+    // Two-card Max: the grow over the other card is the whole area (MAX-CARDS.md §4.4).
+    return currentSurface() === "max" ? growDirs(slot)[0] ?? null : null;
+  }
   const want: SideDir[] = axis === "vertical" ? ["up", "down"] : ["left", "right"];
   return growDirs(slot).find((d) => want.includes(d)) ?? null;
 }
@@ -709,16 +734,10 @@ function beyond(slot: Slot, side: Side): "card" | "outer" | "edge" | null {
   // The stage column has its own rule in zoneAction: only the Queue's top edge acts.
   if (isStage(slot)) return null;
   if (currentSurface() === "max") {
-    // The max map: content columns 2–3, rows 1–2; a grown card spans more of them.
+    // The max map: content columns 2.., rows 1.. of the layout (layout-rules.ts); a grown card
+    // spans more of them.
     const g = state?.slot === slot ? state : null;
-    const cols = g?.mode === "wide" || g?.mode === "full" ? [2, 3] : slot === "left" || slot === "c" ? [2] : [3];
-    const rows = g?.mode === "tall" || g?.mode === "full" ? [1, 2] : slot === "left" || slot === "right" ? [1] : [2];
-    switch (side) {
-      case "right": return Math.max(...cols) < 3 ? "card" : "edge";
-      case "left": return Math.min(...cols) > 2 ? "card" : "outer";
-      case "up": return Math.min(...rows) > 1 ? "card" : "outer";
-      case "down": return Math.max(...rows) < 2 ? "card" : "edge";
-    }
+    return maxBeyond(maxNow(), slot as MaxSlot, side, g?.mode ?? null);
   }
   const n = neighbors()[slot][side];
   return n && opts.slots().includes(n) ? "card" : null;
@@ -755,8 +774,9 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
     if (!n || isCovered(n) || state?.mode === "full") return null;
     return { dir: side, act: "grow", reach: "half" };
   }
-  // The outer sides: the one-click Fill zones (max only); on the grown card they collapse it.
-  if (!canFill()) return null;
+  // The outer sides: the one-click Fill zones (four-card max only); on the grown card they
+  // collapse it (two-card max too: there the grow over the other card is the whole area).
+  if (!canFill() && !(mine && currentSurface() === "max")) return null;
   if (state && !mine) return null; // while one card is grown, only its own outer zones act
   // The gap beside the stage is shared with Now Playing's full-player strip: split at its
   // middle line, as a gap between two cards is (ideas/fullscreen-player.md §10.3).
@@ -901,6 +921,12 @@ export function initCardGrow(o: Opts): void {
       emit();
     }
     if (k === "cardGrowOutside") emit();
+    // Layout for Max changed: collapse with no motion, as on a surface change, before the
+    // layout remounts the slots (this listener is wired first).
+    if (k === "maxCards") {
+      collapseNow("layout");
+      paintZones();
+    }
   });
   // Esc collapses, unless a menu, a popover or a text field takes it first.
   document.addEventListener("keydown", (e) => {

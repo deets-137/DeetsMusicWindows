@@ -95,6 +95,9 @@ One entry per shot:
   own: the walk over (`onboardingStep: 0`) and `lookSchedule: "off"`. (The Rewind unlock
   notice covered every shot on the first run; the demo itself now marks it done, WEB-DEMO.md
   §13.)
+- `storage` (added 2026-10-11) — raw localStorage keys, set after the seed's wipe of every
+  `deets.*` key: a DevTools flag (`"deets.dev.fullPlayer": "on"`) or a card map
+  (`"deets.layout.max2": "{\"left\":\"settings\",…}"`). The Layout for Max shots needed both.
 - `badges` (added 2026-09-26) — `true` keeps the New badges. By default they read as seen (his
   call): the runner hides the badge's three forms (`.new-badge`, and `::after` on `[data-new]`
   for the cog and the quick panel logo), because copying the app's seen list would go stale.
@@ -106,7 +109,9 @@ theme-skin,…]`. It starts the demo (free port from 1430) and headless Edge (fr
 9300, a throwaway profile, no window), seeds a clean store on EVERY load
 (`Page.addScriptToEvaluateOnNewDocument`), sets the size at device scale 2, waits for the load,
 the fonts and 1.5 s of arrival motion, runs the steps, and captures. A failed shot keeps its
-last good file and is marked in `manifest.json` and on the contact sheet. Edge and Vite are
+last good file and is marked in `manifest.json` and on the contact sheet. A clip that fails
+mid-run stops its screencast on the way out (fixed 2026-10-11: before, every later clip in the
+run failed with "Screencast is already active"). Edge and Vite are
 killed by process tree at the end, and on Ctrl+C. `kind: "clip"` and `source: "dev"` are
 reported as skipped until §10 steps 3–4.
 

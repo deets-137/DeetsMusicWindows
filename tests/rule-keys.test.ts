@@ -62,3 +62,14 @@ test("the new keys read back in their Settings rows' words (2026-09-27)", () => 
   const sharing = recipe("focus").rules[0];
   assert.equal(doText(sharing, NO_LISTS), "Pause sharing, Let friends listen along: Off, Put my room code on my box: Off");
 });
+
+test("2026-10-11 Layout for Max is a rule key and reads in its row's words", () => {
+  const rule = {
+    id: "user:maxcards", kind: "state" as const, source: { user: true as const }, on: true, name: "Two cards",
+    while: { is: true, fact: "charging" } as never, set: [{ target: { key: "maxCards" }, value: "2cols" }], onHand: "next" as const,
+  };
+  assert.ok((RULE_KEYS as readonly string[]).includes("maxCards"));
+  assert.equal(doWordOf(rule)?.word.id, "maxCards");
+  assert.equal(doText(rule, NO_LISTS), "Layout for Max: 2 columns");
+  assert.match(sentenceText(rule, NO_LISTS), /keeps Max at 2 columns/);
+});

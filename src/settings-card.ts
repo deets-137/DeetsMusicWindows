@@ -189,6 +189,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Apple Music", row: "getnewsongs" }, // Get songs from Apple copy, built 2026-09-29
   { section: "Cards" }, // Settings › Cards, which cards the pickers offer, built 2026-10-10 (HIDE-CARDS.md)
   { section: "Connections", row: "mcpsetup" }, // Set up the DeetsMusic MCP, built 2026-10-11 (MCP-INSTALL.md)
+  { section: "Window", row: "maxcards" }, // Layout for Max, built 2026-10-11 (MAX-CARDS.md)
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -409,7 +410,7 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, Show notices, and the Compass outside-click rule",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "goToTarget", "compassCloseAway"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Layout for Max, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
@@ -1101,6 +1102,11 @@ function mountSettings(
           kind: "choice", id: "maxshort", label: "Max window when short", key: "maxShortWindow",
           hint: "Max needs height for the album cover and the queue rows. Dragged under 745 px tall it becomes Midi, or it stops there. Becomes Midi needs Resize changes surface on",
           options: [{ value: "flip", label: "Becomes Midi" }, { value: "floor", label: "Stops at floor" }],
+        },
+        {
+          kind: "choice", id: "maxcards", label: "Layout for Max", key: "maxCards",
+          hint: "How many cards Max shows beside Now Playing and the Queue. Each layout keeps its own cards",
+          options: [{ value: "4", label: "4 cards" }, { value: "2cols", label: "2 columns" }, { value: "2rows", label: "2 rows" }, { value: "1", label: "1 card" }],
         },
         // ── Card grow (CARD-GROW.md §8) + card memory (CARD-MEMORY.md §7) ──
         // `Compass closes on outside click` left this group on 2026-09-18: it is neither a

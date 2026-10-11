@@ -3,12 +3,22 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rowsPlace, fullArtPx, fullClipFrom, flightFrom } from "../src/full-player-layout.ts";
 
-test("the rows sit beside the cover only when the card is rowsW wider than tall (§7.3)", () => {
-  assert.equal(rowsPlace(1100, 700, 356), "beside");
-  assert.equal(rowsPlace(1056, 700, 356), "beside"); // exactly rowsW wider
-  assert.equal(rowsPlace(1055, 700, 356), "over");
+test("2026-10-11 a wide card has the controls under the cover, never beside it", () => {
+  assert.equal(rowsPlace(1100, 700, 356, 150, 12), "below");
+  assert.equal(rowsPlace(1056, 700, 356, 150, 12), "below"); // exactly wideW wider
+  assert.equal(rowsPlace(1055, 700, 356, 150, 12), "over"); // not wide, no space under: the band
+  assert.equal(rowsPlace(2400, 700, 356), "below"); // ultrawide, even before a measure
   assert.equal(rowsPlace(700, 700, 356), "over");
-  assert.equal(rowsPlace(447, 600, 356), "over"); // Midi: taller than wide
+  assert.equal(rowsPlace(447, 600, 356), "over"); // Midi: taller than wide, no height given
+});
+
+test("2026-10-11 the controls go under the cover only when the space under it holds them", () => {
+  // Screenshot 2: a card 698 × 960, controls 150 tall with a 12 px gap → 262 free, they fit.
+  assert.equal(rowsPlace(698, 960, 356, 150, 12), "below");
+  assert.equal(rowsPlace(698, 860, 356, 150, 12), "below"); // exactly 162 free
+  assert.equal(rowsPlace(698, 859, 356, 150, 12), "over"); // one pixel short: on the band
+  assert.equal(rowsPlace(698, 698, 356, 150, 12), "over"); // screenshot 1: no space under it
+  assert.equal(rowsPlace(447, 600, 356), "over"); // no height given: never below
 });
 
 test("the cover file is the box in device pixels, rounded up to 200 (§12.5 examples)", () => {

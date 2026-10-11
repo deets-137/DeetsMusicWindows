@@ -41,6 +41,7 @@ const TARGETS: Record<string, string> = {
   "key:friendsRoomInvite": "Put my room code on my box", "key:toasts": "Show notices",
   "key:webPlayNew": "Play a web from the song playing", "key:webPlayMode": "how a web from the song playing plays",
   "key:webSkipSeed": "Skip the song you just heard", "key:webSkipSeedAt": "the skip point of the song you just heard",
+  "key:maxCards": "Layout for Max",
 };
 const targetWords = (t: unknown) => TARGETS[String(t)] ?? String(t);
 

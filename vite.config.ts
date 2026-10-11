@@ -34,7 +34,9 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`, and the CLI's cargo output: a
       //    `cargo build` in cli/ locks its .pdb files, and watching one crashes vite (EBUSY).
       //    Every cargo `target/` the same way: tools/deetsmeter's .exe crashed it (2026-10-10).
-      ignored: ["**/src-tauri/**", "**/target/**"],
+      //    And `shots/`: the runner writes an index.html there, and Vite reloaded the dev app's
+      //    page on it, mid desk test (2026-10-11).
+      ignored: ["**/src-tauri/**", "**/target/**", "**/shots/**"],
     },
   },
 }));

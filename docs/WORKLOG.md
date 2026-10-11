@@ -80,6 +80,31 @@ updated: 2026-10-11
 - **The dev app was put back:** Home in the slot, Ocean, the test style removed. The look hold
   was already there at start (`rule:init` holds 2); the skin clicks may have renewed it.
 
+## 2026-10-11 (late night) — Layout for Max, designed and built (branch `ten-out-of-ten`)
+
+- **His idea:** Max with only one or two content cards. Designed in
+  [MAX-CARDS.md](features/MAX-CARDS.md); his calls are §1: a real layout (not Fill), 2 columns
+  and 2 rows both offered, 1 card included, Home | Library for two and Home for one, the row
+  *Layout for Max*, Grow words with a direction (no separate Fill) for two, a rule key now.
+- **Built after the full player (468b657)**, which touches the same files; that session agreed
+  the full player's Max spans become `-1`-ended. §11 is the as-built record, and it lists the
+  two small edits in `full-player.ts`.
+- **Found on the way:** the boot and appearance lifts timed their end by the panel COUNT,
+  hidden panels included. Now `liftSteps()` (boot-cover.ts) reads the last stagger step on
+  screen.
+- **Checks:** `npm run check` (195 tests, docs:check, cargo) and vite build. Not run in the
+  app: the desk test is MAX-CARDS.md §7 (DESK-TESTS.md A8).
+- **The surface menu's Max hint** names the count (his call, the same sitting).
+- **Hop in:** Cruisin does not set the layout; a separate onboarding route will (his call).
+- **Shots pass** (MAX-CARDS.md §7a): 50 shots, no dropped frames; found Settings leaving the
+  screen on a layout pick from it (fixed, his call: it takes the last slot). The runner got a
+  `storage` key and stops its screencast when a clip fails; Vite no longer watches `shots/`.
+- **The full player, after his desk test** (fullscreen-player.md §13): the controls go under
+  the cover when there is room or the card is wide, never beside it; a resize slides them
+  (the band hides while they move: his "tearing" report); a History column (Max, as wide as
+  the Queue) slides in from the right when it fits beside the cover; the Compass and the
+  toasts no longer dodge the full player.
+
 ## 2026-10-11 (night) — Full player test version, built (branch `ten-out-of-ten`)
 
 - **His three answers (fullscreen-player.md §12.9):** a DevTools flag; a press on the Queue

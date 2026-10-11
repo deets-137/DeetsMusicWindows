@@ -29,7 +29,9 @@ import * as diag from "./diag";
 import { auroraSlots, fromOKLCH, lin, parseColor, toOKLCH, type AlbumPalette, type RGB } from "./album-slots";
 
 const PROPS = ["--album-bg", "--album-c1", "--album-c2"] as const;
-const TEXT_PROPS = ["--np-title", "--np-subtext", "--np-accent"] as const;
+// The --np-band-* three: the title block on the band while the controls are under the cover
+// (the full player's "below", 2026-10-11); styles.css falls back to the band's ink without them.
+const TEXT_PROPS = ["--np-title", "--np-subtext", "--np-accent", "--np-band-title", "--np-band-subtext", "--np-band-accent"] as const;
 
 // ── WCAG 2 contrast (the OKLCH math is in album-slots.ts) ───────────────────────
 /** Alpha of an rgba() string (1 for anything else). */
@@ -175,8 +177,12 @@ export function watchAlbumColor(card: HTMLElement): () => void {
   const token = (name: string): string => getComputedStyle(card).getPropertyValue(name).trim();
 
   const clearText = () => TEXT_PROPS.forEach((p) => card.style.removeProperty(p));
-  /** The rows sit on the full player's band now. */
-  const band = () => card.closest<HTMLElement>(".panel")?.dataset.npRows === "over";
+  /** Where the full player's rows sit: all on the band ("over"), only the title block on it
+   *  ("below": the controls are under the cover, on the card), or no band. */
+  const band = () => {
+    const rows = card.closest<HTMLElement>(".panel")?.dataset.npRows;
+    return rows === "over" || rows === "below" ? rows : null;
+  };
 
   /** Recompute the guarded text roles for the live palette (or clear them). */
   const applyText = () => {
@@ -193,10 +199,11 @@ export function watchAlbumColor(card: HTMLElement): () => void {
       .filter((c): c is RGB => !!c);
     // The full player's band (ideas/fullscreen-player.md §7.6): the rows sit on it, over the
     // cover, so the band over the darkest and the lightest cover is what the text must beat.
-    const b = band() ? bandColor(resolve("var(--np-band)")) : null;
-    const backdrops = b
-      ? [mix([0, 0, 0], b.rgb, b.a), mix([1, 1, 1], b.rgb, b.a)]
-      : [base, ...stops.map((s) => mix(base, s, strength))];
+    const where = band();
+    const b = where ? bandColor(resolve("var(--np-band)")) : null;
+    const onBand = b ? [mix([0, 0, 0], b.rgb, b.a), mix([1, 1, 1], b.rgb, b.a)] : [];
+    const onCard = [base, ...stops.map((s) => mix(base, s, strength))];
+    const backdrops = where === "over" ? onBand : onCard;
 
     const title = parseColor(livePalette?.c1 ?? "") ?? parseColor(resolve("var(--title)"));
     const sub = parseColor(livePalette?.c2 ?? "") ?? parseColor(resolve("var(--subtext)"));
@@ -205,6 +212,14 @@ export function watchAlbumColor(card: HTMLElement): () => void {
     card.style.setProperty("--np-title", hex(guard(title, backdrops, 4.5)));
     card.style.setProperty("--np-subtext", hex(guard(sub, backdrops, 4.5)));
     card.style.setProperty("--np-accent", hex(guard(accent, backdrops, 3)));
+    // Below: the controls take the card's roles above; the title block on the band takes these.
+    if (where === "below" && onBand.length) {
+      card.style.setProperty("--np-band-title", hex(guard(title, onBand, 4.5)));
+      card.style.setProperty("--np-band-subtext", hex(guard(sub, onBand, 4.5)));
+      card.style.setProperty("--np-band-accent", hex(guard(accent, onBand, 3)));
+    } else {
+      ["--np-band-title", "--np-band-subtext", "--np-band-accent"].forEach((p) => card.style.removeProperty(p));
+    }
   };
 
   const clear = () => {

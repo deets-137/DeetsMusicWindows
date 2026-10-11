@@ -49,6 +49,19 @@ function canvasRgb(): [number, number, number] | null {
 
 export const nextFrame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
 
+// Each panel's step in the lift's stagger (styles.css, html[data-boot="lift"]).
+const STAGGER_STEP: Record<string, number> = { np: 0, left: 1, right: 2, queue: 3, c: 4, d: 5 };
+/** The last stagger step among the panels on screen: the lift ends that many steps after the
+ *  first. A hidden slot (Midi's c and d, Layout for Max's unused slots) does not count, and a
+ *  count of panels was wrong for one-card Max, whose Queue is step 3 with three panels shown. */
+export function liftSteps(): number {
+  let n = 0;
+  document.querySelectorAll<HTMLElement>(".bento .panel").forEach((p) => {
+    if (p.offsetParent !== null) n = Math.max(n, STAGGER_STEP[p.dataset.slot ?? ""] ?? 0);
+  });
+  return n;
+}
+
 /** Boot (main.ts), after the cards mount. `restored` ends the click block. */
 export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>[]): void {
   const root = document.documentElement;
@@ -85,8 +98,7 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
     await nextFrame();
     const end = frames.begin("boot");
     root.dataset.boot = "lift";
-    const slots = document.querySelectorAll(".bento .panel").length;
-    const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * Math.max(0, slots - 1);
+    const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * liftSteps();
     window.setTimeout(() => {
       end();
       if (root.dataset.boot === "lift") delete root.dataset.boot;

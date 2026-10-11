@@ -1895,6 +1895,8 @@ body {
 }
 /* The max-only hosts (anchored queue + slots c/d) don't exist outside max. */
 .panel[data-slot="queue"], .panel[data-slot="c"], .panel[data-slot="d"] { display: none; }
+/* The full player's History column (full-player.ts) shows only under its own rule. */
+.panel.fp-history { display: none; }
 /* The stage wrapper (docs/cards/STAGE-COLUMN.md §4.1) is NOT a box outside max: its two panels are
    direct grid items of .bento, in document order — midi, mini and the NP player view lay out
    exactly as they did before it existed. */
@@ -1944,6 +1946,28 @@ body {
 [data-surface="max"] .panel[data-slot="right"] { grid-area: right; }
 [data-surface="max"] .panel[data-slot="c"]     { grid-area: c; display: flex; }
 [data-surface="max"] .panel[data-slot="d"]     { grid-area: d; display: flex; }
+/* Layout for Max (docs/features/MAX-CARDS.md §4.3): two cards side by side, two stacked, or one,
+   beside the same stage column. The slots a layout does not use hold no card and are hidden.
+   The stage spans every row, so the Queue keeps the whole height in each layout. */
+[data-surface="max"]:is([data-max-cards="2cols"], [data-max-cards="2rows"], [data-max-cards="1"]) .panel:is([data-slot="c"], [data-slot="d"]) { display: none; }
+[data-surface="max"][data-max-cards="1"] .panel[data-slot="right"] { display: none; }
+[data-surface="max"][data-max-cards="2cols"] .bento {
+  grid-template-columns: minmax(0, var(--max-stage-w)) repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "stage left right";
+}
+[data-surface="max"][data-max-cards="2rows"] .bento {
+  grid-template-columns: minmax(0, var(--max-stage-w)) minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "stage left"
+    "stage right";
+}
+[data-surface="max"][data-max-cards="1"] .bento {
+  grid-template-columns: minmax(0, var(--max-stage-w)) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "stage left";
+}
 
 /* mini (2026-09-09, first slice): ONE wide column — Now Playing, then the two content
    cards stacked. The composition is being built piece by piece from here. */
@@ -4023,6 +4047,10 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
 [data-surface="max"] .panel[data-slot="right"][data-grow="tall"],
 [data-surface="max"] .panel[data-slot="d"][data-grow="tall"]     { grid-area: 1 / 3 / 3 / 4; }
 [data-surface="max"] .panel[data-grow="full"]                    { grid-area: 1 / 2 / 3 / 4; }
+/* Layout for Max (MAX-CARDS.md §4.3): 2 columns reuses the wide span (1 / 2 / 2 / 4) and 2 rows
+   the left card's tall span (1 / 2 / 3 / 3), each the whole content area. The right card of
+   2 rows sits in column 2, not 3. */
+[data-surface="max"][data-max-cards="2rows"] .panel[data-slot="right"][data-grow="tall"] { grid-area: 1 / 2 / 3 / 3; }
 /* The stage column (STAGE-COLUMN.md §7): the Queue grows UP over Now Playing, and nowhere
    else. The span is inside the stage's own two-row grid, so it can never reach the bento. */
 [data-surface="max"] .stage > .panel[data-slot="queue"][data-grow="tall"] { grid-row: 1 / 3; }
@@ -4243,9 +4271,30 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 /* Max (§12.1.1): the stage stops being a box, so its two cards are bento items placed by hand:
    Now Playing over the four content cards, the Queue the whole left column. */
 :root[data-player="full"][data-surface="max"] .stage { display: contents; }
-:root[data-player="full"][data-surface="max"] .stage > .panel[data-slot="np"]    { grid-area: 1 / 2 / 3 / 4; }
-:root[data-player="full"][data-surface="max"] .stage > .panel[data-slot="queue"] { grid-area: 1 / 1 / 3 / 2; }
+/* -1 is the last grid line, so the spans fit every Layout for Max (MAX-CARDS.md §4.3): one row
+   or two, one content column or two. */
+:root[data-player="full"][data-surface="max"] .stage > .panel[data-slot="np"]    { grid-area: 1 / 2 / -1 / -1; }
+:root[data-player="full"][data-surface="max"] .stage > .panel[data-slot="queue"] { grid-area: 1 / 1 / -1 / 2; }
 :root[data-player="full"] .bento .panel[data-slot="np"] { z-index: 2; } /* over the covered cards, as a grown card */
+/* The History column (his calls, 2026-10-11): Max, a card wide enough that the column fits
+   beside the cover without making it smaller. It sits on the right edge of the full player's
+   area, over the covered cards; Now Playing gives it the room with a right margin, so the
+   grid stays the same in every Layout for Max. "leaving": it is still on screen while it
+   slides out, and Now Playing has its room back. full-player.ts decides and mounts it. */
+:root[data-player="full"][data-surface="max"] .panel.fp-history {
+  /* Laid out but unseen (no paint, no pointer) while the player is open in Max, so the slide
+     in costs no first layout of its list (a 50 ms frame, measured 2026-10-11). */
+  display: flex;
+  visibility: hidden;
+  grid-area: 1 / 2 / -1 / -1;
+  justify-self: end;
+  width: var(--full-history-w);
+  z-index: 2;
+}
+:root[data-player="full"][data-surface="max"][data-fp-history] .panel.fp-history { visibility: visible; }
+:root[data-player="full"][data-surface="max"][data-fp-history="on"] .stage > .panel[data-slot="np"] {
+  margin-right: calc(var(--full-history-w) + var(--panel-gap));
+}
 
 /* The card's inside. The PANEL is the size container: the card reads its own box as
    100cqw × 100cqh, and --fp-side is the cover's side (the largest square that fits). */
@@ -4260,11 +4309,6 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   place-content: center;
   grid-template-columns: var(--fp-side);
   grid-template-rows: var(--fp-side);
-}
-:root[data-player="full"] .panel[data-slot="np"][data-np-rows="beside"] .np {
-  --fp-side: 100cqh;
-  grid-template-columns: var(--fp-side) minmax(0, 1fr);
-  justify-content: stretch;
 }
 :root[data-player="full"] .panel[data-slot="np"] .np__art {
   grid-area: 1 / 1;
@@ -4298,7 +4342,6 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   top: calc(var(--panel-pad) + 50cqh);
   width: calc(var(--fp-side) * var(--album-aurora-reach));
 }
-:root[data-player="full"] .panel[data-slot="np"][data-np-rows="beside"] .np__aurora::before { left: calc(var(--panel-pad) + 50cqh); }
 
 /* Rows over: the band (§7.6), a fixed dark role from themes.css with a soft top edge. The text
    on it takes the band's ink; album-color.ts guards the album text against the band instead
@@ -4315,18 +4358,70 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   grid-area: 1 / 1;
   align-self: end;
   padding: calc(var(--np-band-pad) + var(--np-band-fade)) var(--np-band-pad) var(--np-band-pad);
+}
+/* The band is a layer under the rows (::before, inside the rows' own layer), not their
+   background, so a slide can hide it while the cover moves under it and fade it in once the
+   parts have landed (2026-10-11: the band's edge cut across the moving cover). */
+:root[data-player="full"] .panel[data-slot="np"][data-np-rows="over"] .np__center::before,
+:root[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np__meta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: linear-gradient(to bottom, transparent, var(--np-band) var(--np-band-fade));
   border-radius: 0 0 var(--radius-control) var(--radius-control);
+  transition: opacity var(--grow-body-fade) var(--ease-ui);
+}
+:root[data-player="full"] .panel.is-rows-sliding[data-np-rows] :is(.np__center, .np__meta)::before {
+  opacity: 0;
+  transition: none;
 }
 :root[data-player="full"] .panel[data-slot="np"][data-np-rows="over"] .np__center .panel__action {
   background: transparent;
   border-color: var(--np-band-sub);
 }
-/* Rows beside: a column right of the cover, centered on its height. */
-:root[data-player="full"] .panel[data-slot="np"][data-np-rows="beside"] .np__center {
-  grid-area: 1 / 2;
-  align-self: center;
+/* Rows below (his calls, 2026-10-11): the controls leave the band. The rows' box steps aside
+   (display: contents) and its parts are the grid's own rows: the title block stays on the
+   cover, on the band; the scrubber, the times, the transport row and the volume row follow
+   under the cover. The cover is the largest square that leaves room for them: its full size
+   when the space under it holds them, smaller in a wide card (never a column beside it). The
+   cover and the controls are one block, centered in the card. full-player.ts decides it
+   (rowsPlace) and slides the parts when a resize moves them. */
+:root[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np {
+  --fp-side: min(100cqw, 100cqh - var(--fp-controls-h, 0px) - var(--space-3));
+  grid-template-rows: var(--fp-side) repeat(4, auto);
 }
+:root[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np__center { display: contents; }
+:root[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np__meta {
+  /* album-color.ts sets the --np-band-* three, guarded against the band, when album text is on. */
+  --np-title: var(--np-band-title, var(--np-band-ink));
+  --np-subtext: var(--np-band-subtext, var(--np-band-sub));
+  --np-accent: var(--np-band-accent, var(--np-band-ink));
+  --title: var(--np-band-ink);
+  --text: var(--np-band-ink);
+  --subtext: var(--np-band-sub);
+  grid-area: 1 / 1;
+  align-self: end;
+  /* The cover is a layer of its own (z-index 1): the block takes the same one, and comes
+     after it in the page, so it paints on the cover; the close square (2) stays on top. */
+  position: relative;
+  z-index: 1;
+  padding: calc(var(--np-band-pad) + var(--np-band-fade)) var(--np-band-pad) var(--np-band-pad);
+}
+/* The controls under the cover take the cover's layer too, so a slide from the band never
+   passes UNDER the cover (2026-10-11: the cover cut them off while they crossed it). */
+:root[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np__center > :not(.np__meta) {
+  position: relative;
+  z-index: 1;
+}
+/* The halo centers on the cover, which sits above the controls (the block is centered). */
+:root[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np__aurora::before {
+  top: calc(var(--panel-pad) + 50cqh - (var(--fp-controls-h, 0px) + var(--space-3)) / 2);
+}
+/* The rows' box is not a box here, so the open's hide and fade go on its parts. */
+:root[data-player="full"] .panel.is-player-rebuild[data-np-rows="below"] .np__center > * { opacity: 0; }
+:root[data-player="full"] .panel.is-player-rows[data-np-rows="below"] .np__center > * { animation: grow-body-in var(--grow-body-fade) var(--ease-ui) both; }
+
 
 /* The motion (full-player.ts): the rows and the band are gone at once while the clip opens or
    closes, then fade in with the rows entering (enterRows). */

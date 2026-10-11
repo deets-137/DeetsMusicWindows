@@ -9,11 +9,19 @@ export interface Box {
   bottom: number;
 }
 
-/** The rows sit BESIDE the cover when the card is at least `rowsW` wider than it is tall (the
- *  cover is then the card's height and the rows take the rest), else OVER the cover on the
- *  band (§7.3). Over gives the largest square at every size; beside only when it costs none. */
-export function rowsPlace(cardW: number, cardH: number, rowsW: number): "beside" | "over" {
-  return cardW - cardH >= rowsW ? "beside" : "over";
+export type RowsPlace = "over" | "below";
+
+/** The rows sit OVER the cover on the band (§7.3), or the controls sit BELOW it and only the
+ *  title, artist and album stay on the band (his calls, 2026-10-11):
+ *  - below when the space under the full-size square holds the controls (`controlsH`, plus
+ *    the `gap` above them): the cover keeps its full size;
+ *  - below when the card is at least `wideW` wider than it is tall (a wide or ultrawide
+ *    window): the cover gives up the controls' height. There is no column beside the cover;
+ *    this test is where that column used to start;
+ *  - else over: the largest square, the controls on the band. */
+export function rowsPlace(cardW: number, cardH: number, wideW: number, controlsH = Infinity, gap = 0): RowsPlace {
+  if (cardW - cardH >= wideW) return "below";
+  return cardH - Math.min(cardW, cardH) >= controlsH + gap ? "below" : "over";
 }
 
 /** The largest file the cover box needs (§12.5): the box in device pixels, rounded UP to a

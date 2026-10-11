@@ -119,7 +119,7 @@ function starter(name) {
       "A scratch list for one bug (SHOTS.md §5d). Run: node scripts/shots.mjs --scratch " + name,
       "Steps: click, rightclick, hover, key ('Ctrl+Space'), type, wait (ms or a selector), drag {from,to}, wheel (+dy, times), resize [w,h] (+over, steps), reload, eval, probe, snap.",
       "On any step: \"frames\": N keeps the next N real paints after it (a folder + a labeled PNG with marks, stalls and the change curve); \"region\": selector measures the curve in that box; \"strip\": true starts the strip there.",
-      "Shot keys: size (mini, player, midi, max), seconds, prepare (steps before the recording), window (follow the app's set_size), settings, strip {fps, seconds, cols, width}.",
+      "Shot keys: size (mini, player, midi, max), seconds, prepare (steps before the recording), window (follow the app's set_size), settings, storage (raw localStorage keys, e.g. a DevTools flag), strip {fps, seconds, cols, width}.",
       "Flags: --slow 4 (CSS motion 4x slower), --raw (keep every real frame), --look theme-skin, --tag name (a folder of its own), --vs \"--token=value\" (a second run beside the first), --set, --repeat n (medians), --noise pct.",
       "Read: the log's frames and change lines, then <id>.<look>.console.txt, then the step's frames PNG (and <id>.<look>.s<n>.vs.png with --vs).",
     ],
@@ -336,7 +336,7 @@ function cdp(wsUrl) {
  * the first-run walk over — what the demo's Start over does, then the choices the shot needs.
  * Clearing on EVERY load is the point: each shot starts from the same state (SHOTS.md §4).
  */
-function seedScript(look, size, extra = {}, badges = false, windowed = false, tokens = {}) {
+function seedScript(look, size, extra = {}, badges = false, windowed = false, tokens = {}, storage = {}) {
   // The walk over and the look fixed (the store's theme and skin, RULES.md §7a). A shot's own `settings` go on top. The demo itself
   // marks the Rewind unlock done (vite.demo.config.ts), so its notice never covers a shot.
   const settings = { onboardingStep: 0, lookSchedule: "off", theme: look.theme, skin: look.skin, ...extra };
@@ -348,6 +348,8 @@ function seedScript(look, size, extra = {}, badges = false, windowed = false, to
       localStorage.setItem("deets.surface", ${JSON.stringify(size.surface)});
       ${size.miniView ? `localStorage.setItem("deets.surface.mini", ${JSON.stringify(size.miniView)});` : ""}
       localStorage.setItem("deets.settings", ${JSON.stringify(JSON.stringify(settings))});
+      // A shot's own keys, after the wipe: a DevTools flag such as deets.dev.fullPlayer (2026-10-11).
+      for (const [k, v] of Object.entries(${JSON.stringify(storage)})) localStorage.setItem(k, v);
     } catch (e) {}
     ${badges ? "" : NO_BADGES}
     ${windowed ? `window.__deetsDemoHost = (kind, d) => { if (kind === "resize") __shotsWindow(JSON.stringify(d)); };` : ""}
@@ -612,7 +614,7 @@ async function shoot(page, demoUrl, shot, look, outDir, variant) {
   win.follow = false; // not during the load: the boot's own set_size would move every shot
   await setWindow(page, size.w, size.h);
   const settings = { ...(shot.settings ?? {}), ...variant.settings };
-  const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: seedScript(look, size, settings, shot.badges === true, shot.window === true, variant.tokens) });
+  const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: seedScript(look, size, settings, shot.badges === true, shot.window === true, variant.tokens, shot.storage ?? {}) });
   const base = `${shot.id}.${lookId(look)}${variant.label ? `.${variant.label}` : ""}`;
   Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, base, outDir });
   try {
@@ -674,11 +676,15 @@ async function record(page, shot, base, outDir) {
     frames.push({ file, t: f.metadata.timestamp, ...jpegSize(buf) });
     page.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => {});
   });
+  // A step that throws still stops the screencast (finally, below). Without it the next clip
+  // failed at once with "Screencast is already active" (2026-10-11).
+  let casting = false;
   try {
     const seconds = shot.seconds ?? 4;
     // The frames come at 1x (495 px wide for Midi), not the page's 2x; a `snap` is 2x. Do not
     // add maxWidth / maxHeight: with them headless Edge sent its own 756×454 window instead.
     await page.send("Page.startScreencast", { format: "jpeg", quality: 90, everyNthFrame: 1 });
+    casting = true;
     recording.on = true;
     recording.kept = [];
     await evaluate(page, "__shotsRec.start()");
@@ -698,6 +704,7 @@ async function record(page, shot, base, outDir) {
     if (left > 0) await sleep(left * 1000);
     const tEnd = Date.now() / 1000;
     await page.send("Page.stopScreencast");
+    casting = false;
     await sleep(100); // the last frames in flight
     const pageRec = [...recording.kept, await takeRecord(page)];
     recording.on = false;
@@ -811,6 +818,11 @@ async function record(page, shot, base, outDir) {
 
     return { file: mp4, poster, strip, stats: { ...brief, drops: stats.gaps.length }, frameSets };
   } finally {
+    if (casting) await page.send("Page.stopScreencast").catch(() => {});
+    if (recording.on) {
+      recording.on = false;
+      await evaluate(page, "__shotsRec.stop()").catch(() => {});
+    }
     off();
     rmSync(work, { recursive: true, force: true });
   }

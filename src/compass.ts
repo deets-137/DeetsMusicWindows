@@ -125,6 +125,7 @@ export const SYNONYMS: Record<string, string[]> = {
   expand: ["grow"], enlarge: ["grow"], big: ["grow"], fill: ["grow"],
   look: ["theme", "skin"], colors: ["theme"], colour: ["theme"], dark: ["theme"], light: ["theme"],
   window: ["surface"], size: ["surface"], small: ["mini"], large: ["max"],
+  bento: ["layout"], grid: ["layout"], // Layout for Max (MAX-CARDS.md)
   np: ["player"], nowplaying: ["player"], // "NP" was this surface's name until 2026-09-18
   lib: ["library"], songs: ["library"], music: ["library"],
   lists: ["playlists"], list: ["playlists"],
@@ -1281,12 +1282,14 @@ function keepClearOfNp(panel: HTMLElement): () => void {
     const card = np.getBoundingClientRect();
     const top = bar.getBoundingClientRect();
     if (card.width <= 0 || card.height <= 0) {                      // no card: CSS falls back
-      panel.style.removeProperty("--np-drop");
-      panel.style.removeProperty("--np-right");
+      ["--np-drop", "--np-right", "--np-left", "--np-right-in"].forEach((p) => panel.style.removeProperty(p));
       return;
     }
     panel.style.setProperty("--np-drop", `${Math.max(0, Math.round(card.bottom - top.bottom))}px`);
     panel.style.setProperty("--np-right", `${Math.max(0, Math.round(card.right - top.left))}px`);
+    // The full player (2026-10-11): Now Playing IS the view, so the bar lines up with it.
+    panel.style.setProperty("--np-left", `${Math.max(0, Math.round(card.left - top.left))}px`);
+    panel.style.setProperty("--np-right-in", `${Math.max(0, Math.round(top.right - card.right))}px`);
   };
   place();
   new ResizeObserver(place).observe(np);   // the card's own size: a stack, a surface open size

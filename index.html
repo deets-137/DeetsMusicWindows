@@ -41,6 +41,10 @@
           a = a.slice(1);
           document.documentElement.setAttribute(a[1], look ? (R[look[i]] || look[i]) : saved ? (R[saved] || saved) : a[2]);
         });
+        // Layout for Max (MAX-CARDS.md §4.2): your pick, so Max's first grid is the right one.
+        // layout.ts sets it again with a rule's value, once the rules have loaded.
+        var M = S && S.maxCards;
+        document.documentElement.setAttribute("data-max-cards", /^(4|2cols|2rows|1)$/.test(M) ? M : "4");
       })();
     </script>
     <link rel="stylesheet" href="/src/styles.css" />
@@ -440,6 +444,9 @@
         <!-- max-only hosts (hidden elsewhere): two more content slots for the 2×2 bento. -->
         <section class="panel" data-slot="c"></section>
         <section class="panel" data-slot="d"></section>
+        <!-- The full player's History column (Max, a wide card; ideas/fullscreen-player.md §13).
+             Not a slot: full-player.ts mounts a History card here while it shows. -->
+        <section class="panel fp-history"></section>
       </div>
     </main>
   </body>

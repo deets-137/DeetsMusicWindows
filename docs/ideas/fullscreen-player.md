@@ -543,5 +543,89 @@ Midi and Max only.
 - The flight copy is at z-index 40: over the cards, under the menus.
 - On the close, the rows come in again at the rest place.
 
+**The controls under the cover (his call, 2026-10-11, after his desk test).** A third place
+for the rows, *below*, beside *beside* and *over*:
+
+- **When:** only when the space under the square cover holds the controls (the scrubber, the
+  times, the transport row, the volume row) plus the grid's gap. The cover keeps its full size.
+  Otherwise the rows stay *over*, on the band (his screenshot 1, "perfect"). Midi too.
+- **What moves:** the controls go under the cover; the title, artist and album stay on the
+  cover, on a band that now only holds those three lines.
+- **Where:** the cover and the controls are one block, centered in the card ("centered for
+  now, I'll debate as I test").
+- **As built:** `rowsPlace(cardW, cardH, rowsW, controlsH, gap)` in `full-player-layout.ts`
+  (tested). `placeNow` in `full-player.ts` measures the controls as they sit on the band, in
+  the same no-paint pass, at the open and on each resize, and keeps the height as
+  `--fp-controls-h` (the halo centers on the cover above them). In styles.css `.np__center` is
+  `display: contents` in *below*, its parts are the grid's rows, and `.np__meta` carries the
+  band. The open's hide and fade go on the parts. `album-color.ts` guards the album-colored
+  text twice in *below*: the controls against the card, the title block against the band
+  (`--np-band-title` / `-subtext` / `-accent`).
+- **Shots:** `shots/scratch/below.json` (Max 1100 × 950 and × 1200, Midi 495 × 1000). The
+  first run found the title block hidden under the cover (the cover is its own layer); fixed.
+
+**The slide, and no column beside the cover (his calls, 2026-10-11, the same test).** This
+replaces *beside* (§7.3; the 356 px line above in this section is history).
+
+- **The slide:** a resize that moves the controls between the band and the space under the
+  cover slides each part (the cover, the title block, the scrubber, the times, the transport
+  row, the volume row) from its old place to its new one: FLIP in `slideRows`
+  (`full-player.ts`), `--player-dur` and `--player-ease`, one `[perf] frames player-rows` line
+  and a `player:rows` log line per change. In a wide card the cover also scales to its new
+  size. A change during the open or the close snaps; reduced motion snaps.
+- **No column beside:** a card at least `--full-wide-w` (356 px, was `--full-rows-w`) wider
+  than tall keeps the controls under the cover, and the cover gives up their height (in *below*
+  the cover is `min(100cqw, 100cqh − controls − gap)`). That width is where *beside* used to
+  start. The *beside* CSS is gone.
+- **Shots:** `shots/scratch/slide.json`: a height drag 950 → 790 → 950 (under → band →
+  under) and a width drag 1300 → 1800 → 1300 (band → wide → band). Each change slid; the one
+  slow frame is the resize's own layout.
+- **The tear he saw (fixed the same day):** the band appeared at once at its new place while
+  the cover still moved under it, and the controls under the cover had no layer, so the cover
+  painted over them as they crossed it. The band is now a `::before` layer under the rows
+  that hides while the parts move (`is-rows-sliding`, ended by the animations' own finish)
+  and fades in after; the controls under the cover take the cover's layer.
+
+**The History column (his calls, 2026-10-11): History, a 300 px column, Max only, slides in
+from the right.**
+
+- **Width (changed the same day):** the Queue column's (`--full-history-w: var(--max-stage-w)`,
+  340 px). At 300 px the two columns differed and the centered cover felt off center (his
+  screenshot); the column now needs 340 px beside the cover.
+- **When:** the card is wide enough that a `--full-history-w` column and the panel
+  gap fit beside the cover without making it smaller. The test reads the card's width
+  WITHOUT the column, so showing it never turns it off (`layoutNow` in `full-player.ts`).
+- **Where:** `.panel.fp-history` in `index.html`, a host that is not a slot. It sits on the
+  right edge of the full player's area (`grid-area: 1 / 2 / -1 / -1`, `justify-self: end`)
+  and Now Playing gives it room with a right margin, so the grid is the same in every Layout
+  for Max. `layout.ts` passes `mountHistory` (it holds the registry).
+- **Motion:** it slides in from the right edge (`--player-dur`) while the cover block slides
+  over (the same FLIP pass as the rows), and out the same way. It waits for the open to land.
+  The close takes it away at once.
+- **Cost:** the History card mounts hidden once the open lands (a ~95 ms task, kept off the
+  slide's first frame) and stays mounted, laid out but unseen, until the player closes.
+  `player:history` log lines.
+- **Shots:** `shots/scratch/history.json` (1800 × 900 → 1300 → 1800, then Escape).
+- **Centered (measured, `shots/scratch/center.json`, Ocean, 963 px tall):** at rest the cover is
+  the same distance from the Queue and from History (124 / 124 px at 1650 wide, 249 / 249 at
+  1900). During the 340 ms slide the two move by different amounts, so it is off center then.
+
+**The Compass and the toasts while full (his report, 2026-10-11).** Both dodge Now Playing
+(Compass: `keepClearOfNp` in `compass.ts`; toasts: `toast.ts`). While full, Now Playing is the
+view, so in Max the Compass was pushed into the strip right of it (over History, or into a
+gutter) and in Midi below it; the toasts hung under it at the window's bottom in Midi. Now the
+Compass hangs from the title bar with Now Playing's own left and right edges, centered over the
+cover (`--np-left` / `--np-right-in`, `styles/compass.css`), and the toasts sit under the title
+bar (`styles/toast.css`).
+
+**With Layout for Max (2026-10-11, [MAX-CARDS.md](../features/MAX-CARDS.md) §11).**
+
+- A change of *Layout for Max* closes the full player with no motion (a snap), before the
+  layout remounts the slots: `initFullPlayer` registers its `maxCards` listener first.
+- In Max, Now Playing spans `1 / 2 / -1 / -1` and the Queue `1 / 1 / -1 / 2`, so the spans fit
+  4, 2 or 1 content cards.
+- Now Playing's right strip takes half the gap beside the stage when a Fill strip shares it
+  (four-card Max), and the whole gap when not (`canFill()` false: 2 or 1 cards).
+
 **Not built.** Everything in §12.7, the Mini player view, an agent route.
 

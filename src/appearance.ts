@@ -21,7 +21,7 @@
 import { effective } from "./settings-store";
 import * as frames from "./frames";
 import { mark } from "./marks";
-import { tokenMs, nextFrame } from "./boot-cover";
+import { tokenMs, nextFrame, liftSteps } from "./boot-cover";
 import type { SkinName } from "./skin";
 
 type Kind = "theme" | "skin" | "surface";
@@ -203,8 +203,8 @@ async function swap(): Promise<void> {
 
   phase = "lift";
   root.dataset.boot = "lift";
-  const slots = document.querySelectorAll(".bento .panel").length;
-  const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * Math.max(0, slots - 1);
+  const slots = liftSteps() + 1;
+  const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * liftSteps();
   // The whole-cover line counts the opaque wait stage too (the recompose, fonts, resize);
   // this one is only the rise the user sees.
   frames.during("appearance-lift", total, `${frameDetail} slots=${slots}`);

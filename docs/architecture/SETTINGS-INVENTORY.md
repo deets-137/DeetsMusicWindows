@@ -180,6 +180,7 @@ which restarts the first-run walk.
 | Midi opens at | The size for Midi | **495 × 670** |
 | Max opens at | The size for Max | **1100 × 950** |
 | Max window when short | A Max window dragged shorter than the stage column can hold | **Becomes Midi** / Stops at floor |
+| Layout for Max | How many content cards Max shows beside Now Playing and the Queue. 4 cards is the 2×2; 2 columns puts two tall cards side by side; 2 rows stacks two wide cards; 1 card shows one. Each count keeps its own cards; 2 columns and 2 rows share theirs | **4 cards** / 2 columns / 2 rows / 1 card |
 
 **Growing and drilling**
 
