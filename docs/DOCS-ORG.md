@@ -1027,10 +1027,40 @@ finds it. A site-wide `/llms.txt` at the root is a DeetsSolutions decision.
   page uses into `deetsmusic/guide/img/` with the pages. It is version-locked like the text,
   and needs no R2. The cost is git size: a picture is 0.2–1.7 MB (SHOTS.md §8), and only the
   pictures a written page uses are copied, in one look. Clips stay out of git. How a
-  walkthrough moves on the page is open (the owner raised a live replay of the web demo in
-  place of a video, 2026-10-11).
+  walkthrough moves on the page: the live web demo, below.
 - **The nav (U7):** the site already has the DeetsMusic dropdown (read 2026-10-11:
   `DeetsSolutions/deetsmusic/index.html`, items *App* and *Demo*). Guide is a third item.
+
+**Walkthroughs: the live web demo, not a video (the owner, 2026-10-11).**
+> **Part:** designed · 2026-10-11
+
+A guide page's walkthrough is the web demo itself, run by a script in a frame on the page. No
+video file is made or stored. The demo is already on the site at the released version
+(WEB-DEMO.md §9.8), so the walkthrough always matches the guide text.
+
+- **The steps are the shots runner's steps.** A walkthrough is a `shots.json` entry (`key`,
+  `click`, `type`, `wait`, `scroll`). A small player script in the guide page runs the same
+  list in the page. The shots runner still runs each list headless before a publish, so a
+  step that no longer finds its target is caught before it reaches the site.
+- **The input is synthetic.** Keys, clicks, typing and pointer drags work (`row-drag.ts` is
+  pointer events). CSS `:hover` cannot be made by a script: hover hints and *Open menus on
+  hover* do not show in a walkthrough.
+- **A cursor of our own.** The player draws a cursor that moves to each target before the
+  step, so the reader sees what is pressed.
+- **Its own storage.** A walkthrough frame keeps its state apart from the reader's own demo
+  (their ♥, pins, queue and Diary), and drops it when the walkthrough ends.
+- **Start (decided):** a still picture with a Play button. Nothing loads until the reader
+  clicks. One walkthrough plays at a time. The still is a shot (U10: copied with the pages).
+- **End (decided):** a *Try it yourself* button unlocks the frame, and the reader takes over.
+  Replay starts it again.
+- **Desktop-only parts (decided):** they are shown in the demo all the same. Their controls
+  are there with their hover hints (WEB-DEMO.md §5); a click has no effect. The walkthrough's
+  job is to show where the button is.
+  - **Two exceptions** (read 2026-10-11, WEB-DEMO.md §9.4). (1) Some clicks show a failure
+    toast in the demo: Start a room, Friends, Export to Apple, Import, the playlist web. (2)
+    The tray icon is a Windows control and is not in the page. **Open, his call;
+    recommendation:** a `point` step: the cursor goes to the button and rings it, with no
+    click, so no failure toast shows. The tray gets a still picture from the dev-app source.
 
 **Build order (replaces §13.8 steps 4–5):**
 1. `__settings.dump()` + `guide:settings` → `settings.json` (as §13.5).
@@ -1043,6 +1073,8 @@ finds it. A site-wide `/llms.txt` at the root is a DeetsSolutions decision.
    the phone menu.
 5. The push in `release:publish` and `--guide-only`.
 6. The Compass *Guide* group.
+7. The walkthrough player: the script, the cursor, the separate storage, Play and *Try it
+   yourself*; then the walkthrough entries in `shots.json`, page by page.
 
 ---
 
