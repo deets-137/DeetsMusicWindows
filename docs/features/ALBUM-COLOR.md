@@ -1,9 +1,9 @@
 ---
 status: shipped
 shipped_in: 0.4.3
-desk_test: none
-sources: [src/album-slots.ts]
-updated: 2026-09-23
+desk_test: open
+sources: [src/album-slots.ts, src/album-color.ts]
+updated: 2026-10-10
 ---
 # DeetsMusic — Album Color (the radiant Now-Playing aurora)
 
@@ -81,6 +81,25 @@ This is **the first consumer of #7's per-album palette plumbing** — build them
    - **unavailable** (no catalog match) → stay on theme fallback.
 3. Cache + lazy-fetch live with #7's palette cache (keyed by cover URL), not a batch
    pre-fetch — consistent with "catalog data is demand-driven."
+4. **The next song, one ahead.**
+   > **Part:** built · 2026-10-10 · desk test open (ideas/WORKERS.md §5.3, his call)
+
+   A miss used to start only when the song did, so the colors changed a beat after it. Now,
+   1.5 s after the queue settles (`onQueueChange`, so fast Next presses make one lookup),
+   `album-color.ts` reads `peekNext()` and asks `lookupPalette` for that song's cover: the
+   cache, or the one call its start would make anyway. It also loads the cover into the web
+   view's image cache at `stageArtPx()`, the size the NP card asks for (Apple's image
+   server, not an API call). It skips the cover when *Show cover: Playlist* puts the
+   playlist's cover on screen, and skips both when the next song has the current cover.
+   A call is wasted only when the queue changes before that song plays. It runs only while
+   an NP card watches (`watchAlbumColor`), so a surface with no NP card makes no lookups it
+   did not make before. Log: `albumColor:prefetch` on / off, `albumColor:next` per lookup.
+
+   **Desk test.** Restart not needed (front end only). Queue two songs from two albums you
+   have not played in DeetsMusic. Let the first play for 2 s, then press Next: the aurora
+   and the album text change with the song, not after it. `deetsmusic diag` shows one
+   `albumColor:next` before the press. Press Next five times fast: one `albumColor:next`
+   after the last press, not five.
 
 ---
 

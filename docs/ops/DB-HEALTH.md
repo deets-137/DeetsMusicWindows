@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.10.0
 desk_test: none
 sources: [src-tauri/src/dbhealth.rs, src-tauri/src/db_open.rs, src-tauri/src/library.rs, src-tauri/src/db_thread.rs, src/stats.ts]
-updated: 2026-09-29
+updated: 2026-10-10
 ---
 # DeetsMusic — is the database still writable?
 
@@ -90,6 +90,16 @@ command reaches `db.lock()` (RELEASE.md §1).
   runs. The lock recovers as in §2.
 - This is not the queue §5 turns down. That one would keep a failed write for later; this
   one only orders calls, and a failed write still fails to its caller.
+- **The slow-job line** (2026-10-10, ideas/WORKERS.md §5.1). A job that waited in the queue
+  or ran for 50 ms or more writes `db: slow {command} waited N ms, ran N ms` to the log.
+  `waited` is the time behind other jobs on this thread. `ran` also counts a wait for the
+  lock while the library sync holds it from its own thread. Read it with
+  `grep "db: slow"` on the log file. **The limit:** one command prints at most one line a
+  minute. The slow calls after it in that minute are held; when the minute closes, one line
+  gives `×N more in 60 s` and the worst waited and ran times. So a command that is slow on
+  every call cannot fill the 400-line ring. The summary is written by the next database
+  job after the minute, so on an idle app it can come late. Unit tests:
+  `db_thread::tests` (`slow_gate_*`).
 
 ## 3. What is measured
 

@@ -112,6 +112,12 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**Workers pass (2026-10-10, built, committed on `ten-out-of-ten`, two desk tests open).**
+The `db: slow` line with its once-a-minute limit (DB-HEALTH.md §2a): restart the runner, use
+the app a few days with one library sync, then read the lines; they decide the read
+connection (ideas/WORKERS.md §5.1). The next song's colors one ahead: ALBUM-COLOR.md data
+path item 4 has the desk test.
+
 **Rulez usability fixes (2026-10-10, built, committed on `ten-out-of-ten`, his desk test open).** The While
 row, The song section, flyout widths, the rule-key words, Clean and Party, the recipe copy:
 RULEZ.md §18. His desk test is §18.3; step 6 (Headphones on a real headset) is the open question.

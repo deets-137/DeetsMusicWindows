@@ -21,8 +21,11 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { onPlayerState } from "./player";
-import { getCurrent } from "./queue";
+import { getCurrent, onQueueChange, peekNext } from "./queue";
 import { trackById } from "./track-store";
+import { artURL, stageArtPx } from "./queue-rows";
+import { playlistCoverFor } from "./playlist-cover";
+import * as diag from "./diag";
 import { auroraSlots, fromOKLCH, lin, parseColor, toOKLCH, type AlbumPalette, type RGB } from "./album-slots";
 
 const PROPS = ["--album-bg", "--album-c1", "--album-c2"] as const;
@@ -92,8 +95,62 @@ export function currentCover(): { cover: string | null; catalogId: string | null
   return { cover: track?.artwork?.urlTemplate ?? null, catalogId: cur?.catalogId ?? track?.catalogId ?? null };
 }
 
+// ── The next song, loaded early (ideas/WORKERS.md §5.3, his call 2026-10-10) ────────────
+// On an album the cache has not seen, the palette is one Apple call, and it used to start
+// only when the song did, so the aurora and the text changed a beat late. Once the queue
+// settles on a next song, its palette goes through `lookupPalette` (the cache, or the one
+// call that song's start would make anyway) and its cover into the web view's image cache
+// at the size the NP card asks for (Apple's image server, not an API call). A call is
+// wasted only when the queue changes before that song plays. It runs only while an NP card
+// watches, so a surface with no NP card makes no lookups it did not make before.
+const PREFETCH_SETTLE_MS = 1500; // fast Next presses settle first, then one lookup
+let npWatchers = 0;
+let unsubPrefetch: (() => void) | null = null;
+let prefetchTimer: number | undefined;
+let prefetchedCover: string | null = null;
+let preloaded: HTMLImageElement | null = null; // the last cover asked for; one at a time
+
+function prefetchNext(): void {
+  const entry = peekNext();
+  const track = entry ? trackById(entry.catalogId ?? entry.libraryId) : undefined;
+  const cover = track?.artwork?.urlTemplate ?? null;
+  // Nothing next, the same album as now, or already asked: the cache answers, no work.
+  if (!entry || !cover || cover === prefetchedCover || cover === currentCover().cover) return;
+  prefetchedCover = cover;
+  lookupPalette(cover, entry.catalogId ?? track?.catalogId ?? null).catch(() => {});
+  const px = stageArtPx();
+  // "Show cover: Playlist" shows the playlist's own cover, already on screen: skip the album's.
+  const url = playlistCoverFor(entry.context, px) ? null : artURL(track, px);
+  if (url) {
+    preloaded = new Image();
+    preloaded.decoding = "async";
+    preloaded.src = url;
+  }
+  diag.log("albumColor:next", { cover: !!url });
+}
+
+function armPrefetch(): void {
+  if (npWatchers++ > 0) return;
+  unsubPrefetch = onQueueChange(() => {
+    clearTimeout(prefetchTimer);
+    prefetchTimer = window.setTimeout(prefetchNext, PREFETCH_SETTLE_MS);
+  });
+  diag.log("albumColor:prefetch", { on: true });
+}
+
+function disarmPrefetch(): void {
+  if (--npWatchers > 0) return;
+  unsubPrefetch?.();
+  unsubPrefetch = null;
+  clearTimeout(prefetchTimer);
+  prefetchedCover = null;
+  preloaded = null;
+  diag.log("albumColor:prefetch", { on: false });
+}
+
 /** Watch playback and tint `card` (the .np element) with the current album's palette. */
 export function watchAlbumColor(card: HTMLElement): () => void {
+  armPrefetch();
   let liveKey: string | null = null; // the cover the card currently reflects
   let livePalette: AlbumPalette | null = null;
 
@@ -181,6 +238,7 @@ export function watchAlbumColor(card: HTMLElement): () => void {
   applyText();
 
   return () => {
+    disarmPrefetch();
     unsub();
     mo.disconnect();
     clear();

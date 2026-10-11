@@ -12,6 +12,38 @@ updated: 2026-10-10
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-10 — WORKERS.md read again; the database slow-job line; the next song's colors (built, committed, branch `ten-out-of-ten`)
+
+- **ideas/WORKERS.md corrected in place.** The database thread is committed (e622b37). The
+  Discord pipe already had one owner thread since 0.12.2. The Apple counter and the 429
+  back-off are built (APPLE-CALLS.md). The lock counts are read again. §6 has a new order:
+  read the line, then the bundle split, then the next song's palette. Actors and the Apple
+  queue wait for a bug or a 429.
+- **The slow-job line (§5.1, his call this sitting).** `src-tauri/src/db_thread.rs` writes
+  `db: slow {command} waited N ms, ran N ms` for a job that waited or ran for 50 ms or more.
+  The name comes from the closure's type (`job_name`, one unit test), so the 78 call sites
+  did not change. DB-HEALTH.md §2a records it.
+- **Its limit (his ask, same sitting: "a smart limit").** One command prints at most one
+  line a minute. The slow calls after it are held; when the minute closes, one line gives
+  `×N more in 60 s, worst waited N ms, ran N ms`. The pure rule is `SlowGate` in
+  `db_thread.rs`, with two unit tests. It keeps no lock (only the `db` thread uses it) and
+  holds at most one entry per command. Asked first: is there a memory leak risk? No. Each
+  job holds one timestamp until it ends; the log file rotates at 512 KB and the ring holds
+  400 lines. The real risk was noise, which this limit removes.
+- **The next song's colors, one ahead (WORKERS.md §5.3).** His calls: fetch when the next
+  song is known, and load the cover too. `album-color.ts` waits 1.5 s after the queue
+  settles, then asks `lookupPalette` for `peekNext()`'s cover and loads that cover into the
+  image cache at the NP card's size. Only while an NP card watches. Decided inside his
+  choice: the 1.5 s settle; skip the cover under *Show cover: Playlist*; the two diag tags.
+  Desk test: ALBUM-COLOR.md data path item 4. Not checked: that MusicKit's `artworkUrl` for
+  a song is the same URL as our `artURL` (the card prefers MusicKit's). If they differ, the
+  cover load misses the cache; the palette still lands early.
+- **The bundle split (WORKERS.md §5.4): tabled, his call.** The gain is tens of ms at a
+  cold start; the cost is a change to `cards.ts` and a load on each first open.
+- **Desk test.** Restart the dev runner (new Rust). Use the app for a few days, including
+  one library sync. Then `grep "db: slow"` on the log file. If `waited` never prints, the
+  read connection of §5.1 is not needed.
+
 ## 2026-10-10 — deetsmeter: Apple's app heard, Next timed, the judge's play scene (built, uncommitted, branch `ten-out-of-ten`)
 
 His ask: test and keep building deetsmeter, with Apple's app open for reference. **Found:**
