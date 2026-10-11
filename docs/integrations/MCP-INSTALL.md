@@ -1,12 +1,12 @@
 ---
-status: project
+status: designed
 desk_test: none
 sources: []
 updated: 2026-10-11
 ---
 # DeetsMusic — connect AI apps (`mcp_install`)
 
-> **Designed 2026-09-16. Not built. The forks in §2 are open.** The user asked for a Rust module that
+> **Designed 2026-09-16. Not built. All forks decided 2026-10-11 (§8a–§8c).** The user asked for a Rust module that
 > does the MCP setup for the user, a `deetsmusic mcp install` command that lets the user pick
 > the AI app, and detection of the popular apps. A note from a Claude chat added a Settings screen
 > that calls the same module, restart help, status and removal, a fallback for apps we do not detect,
@@ -71,7 +71,7 @@ Using a different AI app?  [Copy setup info]
 
 ---
 
-## 2. Forks (open, the user decides)
+## 2. Forks (decided 2026-10-11: 1A 2A 3B 4A 6A, 5 is moot for v1 — read §8c, which updates each one for the four apps)
 
 ### Fork 1 — Where the module lives
 
@@ -269,7 +269,7 @@ Option<McpAct> }` with `args_conflicts_with_subcommands`. `deetsmusic mcp` and `
 1. **Motion:** the panel gets `.pop` and `enterRows` on open. A result line that appears after
    Connect goes through `enterRows`.
 2. **Tokens:** no new colors. The ✓ uses the existing success role. Grep before use.
-3. **Hints:** the row "Connect AI apps" ("Sets up DeetsMusic in the AI apps on this PC"), the
+3. **Hints:** the row "Set up the DeetsMusic MCP" ("Pick your AI app below and press Connect, then ask it to play something in a new chat"), the
    Restart button, Disconnect, Copy setup info. Add all to the ONBOARDING.md ledger.
 4. **Toasts:** none. Results show in the panel.
 5. **Settings keys:** none. State lives in the clients' files, not in `settings.json`.
@@ -294,7 +294,7 @@ Tauri commands: `mcp_detect`, `mcp_connect(client, replaceManual)`, `mcp_disconn
 6. AGENT-SETUP.md §2 rewritten around the panel and the command. AGENT.md §4 gets the new commands.
 
 ## 8a. Research and build effort (2026-10-11)
-> **Part:** designed · 2026-10-11 · forks 7–9 decided (the owner, 2026-10-11) · forks 1–6 open
+> **Part:** designed · 2026-10-11 · forks 7–9 decided (the owner, 2026-10-11) · forks 1–6 decided 2026-10-11 (§8c)
 
 **What changed outside since 2026-09-16** (read in the vendors' docs on 2026-10-11):
 - **Claude Desktop: the `.mcpb` bundle is the one-click path.** A user double-clicks the file
@@ -376,9 +376,13 @@ it (§7.8: an agent must not connect itself to other apps).
   `set__group` with a heading and one line per app. No popover. (Rejected: a dropdown panel
   on the row.) A line that appears after a press still goes through `enterRows` (§7.1).
 - **The row's label is *Set up the DeetsMusic MCP*.** It replaces *Connect AI apps* in §1 and
-  §7.3. The hint is still open: the §1 draft is "Sets up DeetsMusic in the AI apps on this PC".
+  §7.3. The hint (the owner, 2026-10-11): "Pick your AI app below and press Connect, then ask it to play something in a new chat".
 
 ### 8c. Forks 1–6, read again after 7A and 9A (2026-10-11)
+
+> **Decided (the owner, 2026-10-11): 1A, 2A, 3B, 4A, 6A.** Fork 5 is moot for v1 (every entry
+> is `mcp`). The design is complete; the build waits for his go (one load-bearing feature in
+> flight, CLAUDE.md › Working style).
 
 7A (Claude Desktop through the `.mcpb`) and 9A (four apps first) change what forks 1–6 cover.
 The four apps and how each one connects:
