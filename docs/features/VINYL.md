@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: passed 2026-09-15
 sources: [src/vinyl.ts, scripts/webview-eval.mjs, src/now-playing-card.ts, src/tray.ts, src/skin-settings.ts, src/settings-store.ts]
-updated: 2026-09-15
+updated: 2026-10-11
 ---
 # Press record player (vinyl cover)
 
@@ -39,10 +39,10 @@ day (§9); the telemetry and the trace recipe that found each fault are in §8.
 
 | Row | Key | Control | Default | Hint |
 |-----|-----|---------|---------|------|
-| Record player | `pressVinyl` | Spin · Still · Off | **Off** | Press only. The cover becomes a record. Spin: it turns while music plays |
+| Record player | `pressVinyl` | Spin · Still · Off | **Spin** (Off until 2026-10-11) | Press only. The cover becomes a record. Spin: it turns while music plays |
 | Show record on | `pressVinylWhere` | Stage · Stage + card · Everywhere | **Everywhere** | Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel |
 | Spin speed | `pressVinylSpeed` | 16⅔ · 33⅓ · 45 · 78 | **16⅔** (33⅓ until 2026-10-11) | Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single |
-| Show record plate | `pressVinylPlate` | toggle | **On** | Press only. The offset ink behind the record. Off: only the record, a little larger |
+| Show record plate | `pressVinylPlate` | toggle | **Off** (On until 2026-10-11) | Press only. The offset ink behind the record. Off: only the record, a little larger |
 
 - Row 1 shows under Press. Rows 3–4 also need Record player ≠ Off (the Sand width pattern);
   **Spin speed** needs Record player = *Spin*, because a still record has no speed.

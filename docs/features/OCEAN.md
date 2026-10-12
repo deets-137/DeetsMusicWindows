@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.14.0
 desk_test: passed 2026-09-23
 sources: [src/ocean.ts, src/ocean-texture.ts, src/ocean-worker.ts, src/styles.css, src/styles/skin.css, index.html, src/skin-settings.ts, src/settings-card.ts]
-updated: 2026-09-23
+updated: 2026-10-11
 ---
 # DeetsMusic — The Ocean sea
 
@@ -88,8 +88,8 @@ that also plays makes one ripple, not two (500 ms / 48 px). Each ripple is two r
 crest ink, flattened to 0.32 of their width like a ring seen on the water, 520 px wide at the
 end, over 3.4 s.
 
-**Cards.** Ocean's `--panel` is the old sunken fill at `oceanCardOpacity` percent (default 100:
-solid, as before). Panes paint nothing and the stuck list bar blurs the rows under it, so a
+**Cards.** Ocean's `--panel` is the old sunken fill at `oceanCardOpacity` percent (default 80
+since 2026-10-11; 100, solid, before). The Album light default is 80 since the same day (was 0). Panes paint nothing and the stuck list bar blurs the rows under it, so a
 lower opacity reads cleanly. Sand edges keep working: their fill is `--panel`.
 
 **Gates.** Animate backgrounds Off, reduced motion or a hidden window: no heave and no ripples,

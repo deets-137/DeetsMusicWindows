@@ -2,7 +2,7 @@
 status: guide
 desk_test: none
 sources: []
-updated: 2026-09-25
+updated: 2026-10-11
 ---
 # Every control in DeetsMusic
 
@@ -212,7 +212,7 @@ shortcut, a rule or a link. The quick panel shows this section under the Window 
 | Control | What it does | Choices |
 |---|---|---|
 | Change look at | What moves the look between day and night | Sunrise and sunset / Set times / Windows mode / **Off** |
-| Day look · Night look | The theme and skin for each half | **Lilac + Press** · **Black & Red + Cyber** |
+| Day look · Night look | The theme and skin for each half | **Lilac + Press** · **Black & Red + Ocean** |
 | Day runs | The set times, when *Set times* is chosen | **07:00 → 19:00** |
 | Shift sun times | Minutes added to sunrise and sunset | **None**, ± minutes |
 | Menu pick lasts | A theme or skin picked by hand | **Until next change** / For good |
@@ -237,8 +237,8 @@ under Cyber the whole section is gone.
 
 | Control | What it does | Choices |
 |---|---|---|
-| Card opacity | How solid the sunken cards are. Lower lets the swell show through | 0–100%, **100** |
-| Album light | How strongly the album's color lights the sea. 0 is the plain sea; high lights the wave crests as neon and raises the glow from the deep | 0–100%, **0** |
+| Card opacity | How solid the sunken cards are. Lower lets the swell show through | 0–100%, **80** |
+| Album light | How strongly the album's color lights the sea. 0 is the plain sea; high lights the wave crests as neon and raises the glow from the deep | 0–100%, **80** |
 | Draw card edges | The card edges break into grains of sand, or a soft glow | Sand / **Soft** |
 | Sand width | How far the sand reaches into a card | 0–100%, **15** |
 
@@ -246,8 +246,8 @@ under Cyber the whole section is gone.
 
 | Control | What it does | Choices |
 |---|---|---|
-| Canvas | What shows behind the cards: the theme's aurora, the playing album's cover with the queue's next albums around it, or one picture you choose (COVER-WALLPAPER.md) | **Aurora** / Covers / Picture |
-| Tiles | With Covers: how many covers sit around the playing one. One cover: it fills the window alone | One cover / Few (6) / **Some (12)** / Many (20) |
+| Canvas | What shows behind the cards: the theme's aurora, the playing album's cover with the queue's next albums around it, or one picture you choose (COVER-WALLPAPER.md) | Aurora / **Covers** / Picture |
+| Tiles | With Covers: how many covers sit around the playing one. One cover: it fills the window alone | **One cover** / Few (6) / Some (12) / Many (20) |
 | Picture | With Picture: a menu of the pictures you chose before (by name), and Choose for a new one; a file dropped on the row works too. Right-click renames or deletes the picture in use (a rule that shows it stops) | a menu + an action (2026-09-27) |
 | Diffusion | With Covers or Picture: softens the picture behind the cards. 0: sharp | 0–100%, **30** |
 | Aurora color | With Covers or Picture: the aurora takes the colors of the picture under it, or keeps the theme's | **Cover** / Theme |
@@ -261,10 +261,10 @@ under Cyber the whole section is gone.
 
 | Control | What it does | Choices |
 |---|---|---|
-| Record player | The cover becomes a record that turns while music plays | Spin / Still / **Off** |
+| Record player | The cover becomes a record that turns while music plays | **Spin** / Still / Off |
 | Show record on | Where the record shows | Stage / Stage + card / **Everywhere** |
 | Spin speed | Turns each minute — the four real record speeds | **16⅔** / 33⅓ / 45 / 78 |
-| Show record plate | The ink shadow behind the record | **on** / off |
+| Show record plate | The ink shadow behind the record | on / **off** |
 
 ### Menus, hints and notices
 

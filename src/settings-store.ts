@@ -467,21 +467,21 @@ export const DEFAULTS: Settings = {
   backgroundMotion: "on",
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
-  oceanCardOpacity: 100, // user's call 2026-09-23: solid — the sunken cards are the deep-ocean feel
-  oceanLight: 0, // user's call 2026-09-23: 0 is today's sea, so the neon is opt-in (and costs nothing until then)
+  oceanCardOpacity: 80, // his call 2026-10-11 (was 100, solid): the swell shows a little through the cards
+  oceanLight: 80, // his call 2026-10-11 (was 0, opt-in): the album's neon on the crests out of the box
   glassFancy: false, // user's call 2026-09-16: the painted frost; the live blur failed on software drawing (DEBUGGING.md)
   glassTint: 65, // user's call 2026-09-16: GLASS_LOCKED, the look Glass holds with Fancy Glass off
   glassBacklight: 85,
   glassCanvasGlow: 40,
   glassCanvasDim: 10,
-  glassCanvas: "aurora", // user's call 2026-09-24 (COVER-WALLPAPER.md row 9): today's Glass until you ask
-  glassTiles: "some", // user's call 2026-09-24 (row 5): 12 tiles
+  glassCanvas: "covers", // his call 2026-10-11 (was aurora, 2026-09-24 COVER-WALLPAPER.md row 9)
+  glassTiles: "one", // his call 2026-10-11 (was some, 12 tiles): the playing cover alone fills the window
   glassDiffusion: 30, // ≈ 6 px, the "soft blur" he picked 2026-09-24; set at the desk test
   glassAuroraColor: "cover", // user's call 2026-09-24 (U4): the glow follows the picture under it
   glassPictureId: "", // nothing chosen yet; the old wallpaper becomes the first picture at first load (user-files.ts)
-  pressVinyl: "off", // opt-in, like Sand
+  pressVinyl: "spin", // his call 2026-10-11 (was off, opt-in like Sand)
   pressVinylWhere: "everywhere", // user's call 2026-09-15 (VINYL.md 2C)
-  pressVinylPlate: true,
+  pressVinylPlate: false, // his call 2026-10-11 (was on): the record alone, a little larger
   // 16⅔ rpm, one turn per 3.6 s (his call, 2026-10-11): a large disc at 33⅓ took the eye off
   // the rest of the window. A user who picked 33⅓ keeps it (only set keys are stored).
   pressVinylSpeed: "16",
@@ -492,10 +492,10 @@ export const DEFAULTS: Settings = {
   theme: "lilac", // resolved at load: the saved pick, else defaultTheme() (the OS light / dark pair)
   skin: "press",
   lookSchedule: "off",
-  dayTheme: "lilac", // the two first-launch pairs (theme.ts / skin.ts defaults)
+  dayTheme: "lilac", // the day pair is the light first-launch pair; the night pair keeps Black & Red with Ocean
   daySkin: "press",
   nightTheme: "black-red",
-  nightSkin: "cyber",
+  nightSkin: "ocean", // his call 2026-10-11 (was cyber, the dark first-launch skin)
   dayStart: "07:00",
   nightStart: "19:00",
   sunShift: 0,

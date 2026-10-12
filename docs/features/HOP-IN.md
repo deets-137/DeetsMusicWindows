@@ -2,7 +2,7 @@
 status: designed
 desk_test: none
 sources: [src/walk.ts, src/settings-store.ts, src/rules.ts, src/layout.ts]
-updated: 2026-09-28
+updated: 2026-10-11
 ---
 # DeetsMusic — Hop in: the welcome screen and the Cruisin / Pro pick
 
@@ -95,6 +95,10 @@ missed.
 | `newPlaylistCover` | letters | mosaic | |
 | `shuffleMode` / `shuffleStays` | off / on | on / off | |
 | `soundEq` / `soundEqPreset` | off / flat | on / Late night | |
+
+**Defaults changed 2026-10-11 (his call).** `glassCanvas` covers, `glassTiles` one, `pressVinyl`
+spin, `pressVinylPlate` off and `nightSkin` ocean are now the defaults, so Pro need not set them.
+`oceanCardOpacity` and `oceanLight` are now 80 each; his values above still differ.
 
 **B. Out: his ears, not a style.** `soundLoudness` off, `soundLoudTarget` −16, `soundLowVol`
 full, `soundCrossfeed` always, `soundCrossfeedLevel` strong, `soundEqCustom`.
