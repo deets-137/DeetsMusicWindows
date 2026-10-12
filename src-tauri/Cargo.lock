@@ -864,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "deetsmusic"
-version = "0.25.4"
+version = "0.26.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",

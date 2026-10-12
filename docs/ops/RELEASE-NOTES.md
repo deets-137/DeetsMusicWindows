@@ -32,6 +32,33 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.26.0 — 2026-10-11
+
+**Choose how many cards Max shows.** Settings › Window › *Layout for Max* shows 4 cards, 2
+columns, 2 rows or 1 card beside Now Playing and the Queue. Each layout remembers its own cards.
+
+**Hide the cards you do not use.** Settings › Cards removes a card from the card picker. The
+feature keeps working. You can also right-click a name in the picker › *Hide from picker*.
+
+**Connect an AI app in one click.** Settings › Connections › *Set up the DeetsMusic MCP* finds
+Claude Desktop, Claude Code and Codex on this PC, and connects each one to DeetsMusic.
+
+**Rulez is easier to use.** Each rule reads When · While · Do. Type in a menu to find a word.
+Delete has Undo. The rules that your Settings make sit in their own fold. Escape goes back one
+step at a time.
+
+**A calmer record in Press.** The record turns at 16⅔ turns each minute by default, half as fast
+as before. Settings › Skin settings › *Spin speed* still offers 33⅓, 45 and 78. Lists in Press
+also scroll more smoothly.
+
+**Quick settings fold.** In the cog's quick panel, each group opens and closes by its header,
+and stays the way you left it.
+
+**Fixes.** Drag the window by any empty part of the title bar in Mini and Midi. The window opens
+from the tray on the monitor where it was. An album opened from a song shows the album's own
+release date. Discord tries again when it fails to show a song. A settings file with one bad
+value now loses only that value, not all of your settings.
+
 ## 0.25.4 — 2026-10-04
 
 **A song that stops loading picks up again.** Sometimes Apple's stream stopped in the middle
