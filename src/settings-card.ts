@@ -52,7 +52,7 @@ import { enterRows } from "./pop";
 import { mcpPanel, type McpPanel } from "./mcp-panel";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
 import { rowDrag } from "./row-drag";
-import { registerFinder } from "./find-key";
+import { searchField, fieldClearHTML } from "./search-field";
 import { sharePauseLeft, pauseSharingForAnHour } from "./presence";
 import { formatFriendCode, friendsState } from "./friends";
 import { copyMyKey, pasteAKey } from "./friends-panel";
@@ -560,7 +560,7 @@ function mountSettings(
       `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg></button></header>` +
       `<div class="lib-searchbar" data-frames="settings-search"><div class="lib-searchbar__inner">` +
       `<label class="lib-search"><svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>` +
-      `<input class="lib-search__input" data-set-q type="search" placeholder="Search settings…" autocomplete="off" spellcheck="false" /></label>` +
+      `<input class="lib-search__input" data-set-q type="search" placeholder="Search settings…" autocomplete="off" spellcheck="false" />${fieldClearHTML(false)}</label>` +
       `</div></div><div class="panel__body set"></div>`;
   const body = host.querySelector<HTMLElement>(".set")!;
   // The quick panel has no search: detached stand-ins keep the wiring below unchanged.
@@ -2931,6 +2931,7 @@ function mountSettings(
     if (query) {
       query = "";
       searchInput.value = "";
+      field?.sync();
       searchOpen = false;
       paintSearch();
     }
@@ -3023,22 +3024,34 @@ function mountSettings(
     const had = !!query;
     query = "";
     searchInput.value = "";
+    field?.sync();
     paintSearch();
     if (had) render(); // the folds come back exactly as they were
   };
   searchBtn.addEventListener("click", () => (searchOpen ? closeSearch() : openSearch()));
-  searchInput.addEventListener("input", () => {
-    query = searchInput.value.trim().toLowerCase();
-    paintSearch();
-    render();
-  });
-  searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      closeSearch();
-    }
-  });
-  const unsubFind = parts ? () => {} : registerFinder(host, openSearch);
+  // The field's own parts (search-field.ts, SEARCH-FIELDS.md §3): the ×, Escape (clears and
+  // closes), Ctrl+F, and ↓ to the first row the search left. The quick panel has no search.
+  const field = parts
+    ? null
+    : searchField(searchInput, {
+        onTerm: (term) => {
+          query = term.toLowerCase();
+          paintSearch();
+          render();
+        },
+        onClose: () => {
+          closeSearch();
+          searchInput.blur();
+        },
+        finder: { root: host, open: openSearch },
+        // The first row's own control (a toggle row is one button; a choice row holds its pills),
+        // so the focus ring shows and Tab walks on from there.
+        first: () => {
+          const row = body.querySelector<HTMLElement>(".set__section .set__row");
+          if (!row || row.matches("button, input, select, [tabindex]")) return row;
+          return row.querySelector<HTMLElement>("button, input, select, [tabindex]") ?? row;
+        },
+      });
 
   // Another card's move, or a Reset, repaints this one.
   const unsubOrder = onRowOrderChange(() => { if (alive) render(); });
@@ -3068,7 +3081,7 @@ function mountSettings(
       void lastfmUnlisten.then((un) => un());
       unsubRequest();
       unsubOrder();
-      unsubFind();
+      field?.destroy();
       sections_drag.destroy();
       dropMenus();
       window.removeEventListener("resize", closeMenus);

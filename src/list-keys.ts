@@ -222,6 +222,10 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
     watch.observe(document.body, { childList: true, subtree: true });
   };
   const onAnyKey = (e: KeyboardEvent): void => {
+    // A key typed in a field (the Library's search bar) is not a list key: it arms nothing. Else
+    // Escape there, which closes the bar and takes the focus out (search-field.ts), left the
+    // focus on <body>, and the watch put a ring on row one and scrolled to it (2026-10-12).
+    if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable]")) return;
     const row = (e.target as HTMLElement).closest<HTMLElement>(o.rows);
     if (row) mark(row);
     arm();

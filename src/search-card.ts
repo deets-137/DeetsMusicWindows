@@ -22,6 +22,7 @@ import {
 } from "./credits";
 import { onSearchTerm, takeSearchTerm } from "./layout-bus";
 import { wireListKeys } from "./list-keys";
+import { searchField } from "./search-field";
 import { esc, formatTotal, actionsRowHTML, picksRowHTML, runListAction } from "./collection-card";
 import * as diag from "./diag";
 import { toast } from "./toast";
@@ -48,7 +49,6 @@ const PINS_KEY = "deets.search.pins"; // NEXT-VERSION §1: { term, types }[] —
 import { ICON_PIN } from "./pins"; // one pin glyph for the app (PINS.md)
 import { plainError } from "./plain-error";
 const RECENTS_CAP = 8;
-const DEBOUNCE_MS = 300;
 const MIN_CHARS = 1;
 
 const SECTION_LABEL: Record<SearchType, string> = {
@@ -173,7 +173,6 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   let results: SearchResults | null = null;
   let lastTerm = "";
   let queryToken = 0;
-  let debounceTimer: number | undefined;
   const headerCbs = new Set<(h: { title: string; atRoot: boolean }) => void>();
   const paneStack: HTMLElement[] = []; // drill panes above root
   // Card memory (CARD-MEMORY.md §5a) + the drill swap (CARD-GROW.md §14.4): what each pane
@@ -382,30 +381,35 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       });
   };
 
-  const onInput = () => {
-    window.clearTimeout(debounceTimer);
-    clearBtn.hidden = !input.value;
-    // The search bar owns the card: any keystroke (or a clear, or a recents tap)
-    // returns to the root results. Otherwise a drill pane stays on top and hides
-    // the new results rendered into `root` below it.
+  // The search bar owns the card: any keystroke (or a clear, or a recents tap) returns to the
+  // root results at once. Otherwise a drill pane stays on top and hides the new results
+  // rendered into `root` below it. Too short a term shows Recents and cancels what is in flight.
+  const toRootFor = (term: string): boolean => {
     resetToRoot();
-    const term = input.value.trim();
-    if (term.length < MIN_CHARS) {
-      queryToken++; // cancel any in-flight response
-      bar.classList.remove("search__bar--busy");
-      results = null;
-      renderEmpty();
-      return;
-    }
-    debounceTimer = window.setTimeout(() => runSearch(term), DEBOUNCE_MS);
+    if (term.length >= MIN_CHARS) return true;
+    queryToken++; // cancel any in-flight response
+    bar.classList.remove("search__bar--busy");
+    results = null;
+    renderEmpty();
+    return false;
   };
-  input.addEventListener("input", onInput);
+  input.addEventListener("input", () => void toRootFor(input.value.trim()));
+  // The field's own parts (search-field.ts, SEARCH-FIELDS.md §3): the ×, Escape (clears, then
+  // the focus leaves: Recents show), Ctrl+F, the Apple delay, and ↓ to the first result.
+  const field = searchField(input, {
+    delay: "apple",
+    clear: clearBtn,
+    finder: { root: host },
+    first: () => (paneStack[paneStack.length - 1] ?? root).querySelector<HTMLElement>("[role='button']"),
+    onTerm: (term) => {
+      if (toRootFor(term)) runSearch(term);
+    },
+  });
   // A term from outside (the Compass, COMPASS.md §2): typed into the field, the search runs.
   const takeTerm = () => {
     const term = takeSearchTerm();
     if (term === null) return;
-    input.value = term;
-    onInput();
+    field.set(term);
     input.focus();
   };
   const unsubTerm = onSearchTerm(takeTerm);
@@ -417,11 +421,6 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     if (!t || t.closest("input, textarea, button") || t.getAttribute("role") !== "button") return;
     e.preventDefault();
     t.click();
-  });
-  clearBtn.addEventListener("click", () => {
-    input.value = "";
-    onInput(); // hides the clear button, cancels in-flight, resets to the empty state
-    input.focus();
   });
 
   // ── filter popover (which categories to search) ──
@@ -1027,8 +1026,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         try { localStorage.setItem(TYPES_KEY, JSON.stringify(types)); } catch { /* ok */ }
         renderFilter();
       }
-      input.value = term;
-      onInput();
+      field.set(term);
       return;
     }
     const song = t.closest<HTMLElement>("[data-song]");
@@ -1238,7 +1236,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     pendingReturn = null;
     if (s.term) {
       input.value = s.term;
-      clearBtn.hidden = false;
+      field.sync();
       // The session cache answers a term searched already, so this costs no Apple call then.
       if (s.term.trim().length >= MIN_CHARS) runSearch(s.term.trim());
     }
@@ -1260,7 +1258,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDocDown);
       drag.destroy();
-      window.clearTimeout(debounceTimer);
+      field.destroy();
       queryToken++; // orphan any in-flight response
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out
       unsubDrill(); // stop receiving remote drill intents once unmounted

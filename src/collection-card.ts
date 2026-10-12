@@ -31,6 +31,7 @@ import { tokenMs } from "./boot-cover";
 import * as diag from "./diag";
 import { emit } from "./rules";
 import { levelLeft, ruleGrowComing } from "./card-grow";
+import { searchField, fieldClearHTML } from "./search-field";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -694,6 +695,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
             <label class="lib-search">
               <svg class="lib-search__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/></svg>
               <input class="lib-search__input" data-search type="search" placeholder="Search…" autocomplete="off" spellcheck="false" />
+              ${fieldClearHTML(!!f.query)}
             </label>
           </div>
         </div>
@@ -819,6 +821,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     pane.innerHTML = `${f.ctx.toolbarBelow != null ? "" : toolbarHTML(f)}<div class="lib-view" data-view data-list-keys tabindex="0" aria-label="Songs"></div>`;
     const input = pane.querySelector<HTMLInputElement>("[data-search]");
     if (input) input.value = f.query;
+    wireSearch(pane);
     renderViewInto(pane, f);
     return pane;
   };
@@ -894,6 +897,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const settleHead = () => {
       wirePops(pane);
       syncStuck(view);
+      wireSearch(view);
       const input = view.querySelector<HTMLInputElement>("[data-search]");
       if (!input) return;
       if (input.value !== f.query) input.value = f.query;
@@ -1437,10 +1441,38 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       f.query = "";
       const input = pane.querySelector<HTMLInputElement>("[data-search]");
       if (input) input.value = "";
+      if (input) fields.get(input)?.sync();
       markSearchPill();
       renderKeepingPlace(pane, f);
     }
     return true;
+  };
+  // The search field's own parts (search-field.ts, SEARCH-FIELDS.md §3): the ×, Escape (clears
+  // the filter and closes the bar, as `closeSearch`), and ↓ to the first row. The toolbar is
+  // rebuilt with the head, so each new field is wired once, here. Ctrl+F stays the card's own
+  // (`registerFinder` below): the field comes and goes with the pane.
+  const fields = new WeakMap<HTMLInputElement, ReturnType<typeof searchField>>();
+  const wireSearch = (within: HTMLElement) => {
+    const input = within.querySelector<HTMLInputElement>("[data-search]");
+    if (!input || fields.has(input)) return;
+    fields.set(
+      input,
+      searchField(input, {
+        onTerm: () => onQuery(input),
+        onClose: () => {
+          closeSearch();
+          input.blur(); // the bar is shut: the caret must not stay in a field no one sees
+        },
+        first: () => {
+          const n = cur().items.length;
+          if (!n) return null;
+          const v = curPane?.querySelector<HTMLElement>("[data-view]");
+          const w = v ? windowers.get(v) : undefined;
+          if (w) w.reveal(0, "nearest");
+          return curPane?.querySelector<HTMLElement>('[data-idx="0"]') ?? null;
+        },
+      }),
+    );
   };
 
   // Row drag (row-drag.ts, DRAG-DROP.md §4): a reorder where the grouping offers one
@@ -1695,9 +1727,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     litLetter(curPane, cur(), groupingOf(cur()));
   });
 
-  viewport.addEventListener("input", (e) => {
-    const input = (e.target as HTMLElement).closest<HTMLInputElement>("[data-search]");
-    if (!input) return;
+  /** A typed filter: the list redraws at once (a local filter has no delay). */
+  const onQuery = (input: HTMLInputElement) => {
     const pane = input.closest<HTMLElement>(".coll-pane");
     if (pane !== curPane) return;
     cur().query = input.value;
@@ -1713,7 +1744,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const first = v.querySelector<HTMLElement>('[data-idx="0"]');
     if (first && first.getBoundingClientRect().top >= under) return;
     revealAtTop(v, 0);
-  });
+  };
 
   // Right-click a tile/row → open its grouping's context menu (cursor-anchored). Only
   // groupings that declare `menu` participate; others fall through to the native menu.

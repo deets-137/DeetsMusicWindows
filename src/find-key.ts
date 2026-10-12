@@ -18,7 +18,10 @@ interface Finder {
 const finders = new Set<Finder>();
 let last: Finder | null = null;
 
-const visible = (f: Finder) => f.root.isConnected && !!f.root.offsetParent;
+// A drawn box, not `offsetParent`: a fixed panel (the Playlist web panel on <body>) has no
+// offsetParent while it is on screen, so Ctrl+F there went to the other card's field
+// (2026-10-12). A hidden element, or one inside a hidden one, has no box.
+const visible = (f: Finder) => f.root.isConnected && f.root.getClientRects().length > 0;
 
 document.addEventListener(
   "pointerdown",

@@ -71,9 +71,9 @@ old installs' Guide button opens.
 - `QUEUE.md` — the queue model and MusicKit windowing. Read it before queue.ts / player.ts.
 - `SEARCH.md` — the catalog Search card.
 - `SECOND-SEARCH.md` — a second Search card to compare two albums.
-- `SEARCH-FIELDS.md` — DESIGNED, not built (2026-09-24): one `searchField()` for all six
-  search boxes: ×, Escape, Ctrl+F, delay, keys. Today each box is its own code; do not look
-  for the primitive.
+- `SEARCH-FIELDS.md` — BUILT 2026-10-12, desk test passed (§9, run by Claude): `searchField()` in
+  `src/search-field.ts` for all six search boxes: the ×, Escape, Ctrl+F, the delay, ↓ to the
+  results. A new search box calls it. §8 is the as-built record. The Full | Lib pill (§6) is next.
 - `STATIONS.md` — Apple stations and radio mode.
 - `FAVORITES.md` — Add to Library and ♥; the store of every track we touch.
 - `PINS.md` — pinned tiles, the shelves, the On Click verbs.
@@ -355,7 +355,8 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
      `own` and `away` rows, never list media rows by hand. A menu that is not media
      (a rule, a folder, a report) is a line in ONBOARDING.md §2.
   12. **Keyboard, picks, drags (2026-09-27):** a list of rows gets `wireListKeys`
-     (`src/list-keys.ts`); a search field registers with `src/find-key.ts` for Ctrl+F;
+     (`src/list-keys.ts`); a search field calls `searchField()` (`src/search-field.ts`:
+     the ×, Escape, the delay, Ctrl+F through `src/find-key.ts`, ↓ to the results);
      Ctrl / Shift picks are `src/row-pick.ts`; a row that drags or a card that takes a drop
      is `src/row-drag.ts` + `src/drop-actions.ts` (DRAG-DROP.md).
   13. **Popovers (2026-09-27):** three primitives, the place picks one. `makeDropdown`

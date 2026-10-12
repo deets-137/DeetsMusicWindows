@@ -1207,3 +1207,18 @@ measurements, not before.
 **Before building any of it:** baseline every skin with `npm run bench appearance -- --passes 3`
 on `dev:built`, then repeat under `--gpu=off`. The gap between those two IS the feature list,
 and it may turn out that only Glass and Ocean need anything at all.
+
+---
+
+## 26. Search delay — the pause before a field searches Apple (2026-10-12)
+
+**What it means.** The Search card and the Diary album picker call Apple as you type. They wait
+for a pause in typing first, so one word costs one call, not one per key.
+
+**What the code has.** One constant, `SEARCH_DELAY_MS = 300`, in `src/search-field.ts`
+(SEARCH-FIELDS.md §3). The local filters (Library, Settings, Playlist web, Compass) have no
+delay. An empty field is sent at once.
+
+**Fork for later.** A row such as *Search as you type: Fast | Calm*. A shorter delay shows results
+sooner and costs more Apple calls; a longer one saves calls on a slow typist. Cost: zero new calls
+at the default.

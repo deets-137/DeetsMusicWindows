@@ -176,7 +176,8 @@ nothing about authoring changed when the box did.
 | Search | Clear · Filter | Clears the search · Picks which kinds of results show: songs, albums, artists, playlists, stations | search-card.ts |
 | Song pane (2026-09-17) | a writer chip | Other songs by this writer | search-card.ts (CREDITS.md §7) |
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |
-| Diary (2026-09-24) | the + cover · the picker's × | Pick an album to write about · Closes the album search | diary-card.ts (DIARY.md §4) |
+| Diary (2026-09-24) | the + cover · the picker's × (since 2026-10-12 it clears, as every field's ×) | Pick an album to write about · Clears the search | diary-card.ts (DIARY.md §4, SEARCH-FIELDS.md §3) |
+| Every search field (2026-10-12): Library filter · Settings · Playlist web · Compass | the × | Clears the search | search-field.ts `fieldClearHTML` (SEARCH-FIELDS.md §3) |
 | Diary | an entry tile | the album and its artist ("OPIA — VITA") | diary-card.ts `tileHTML` |
 | Diary home (2026-09-26) | the playing album's box | Starts an entry for the album that is playing → has an entry: Opens your entry for the album that is playing | diary-card.ts `nowHTML` (DIARY.md §4c) |
 | Diary header (2026-09-24) | the + (home) · the check (entry) | Starts a new entry or makes a new folder · Marks this entry done and copies its Export. It moves to Completed → pressed: Done. Press again to put it back in progress | diary-card.ts (DIARY.md §4b, §7) |

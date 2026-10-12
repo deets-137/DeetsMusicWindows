@@ -36,7 +36,8 @@ import * as diag from "./diag";
 import type { Artwork, Track } from "./library";
 import { tracks, trackById } from "./track-store";
 import { creditIndex } from "./artist-credit";
-import { albumKey } from "./rewind";
+import { libraryAlbumGroups } from "./library-albums";
+import { searchField } from "./search-field";
 import { APPLE_SIGIL } from "./apple-sigil";
 
 interface WebSong {
@@ -426,16 +427,9 @@ function libraryAlbums(): LibAlbum[] {
   const list = tracks();
   const hit = albumMemo.get(list);
   if (hit) return hit;
-  const groups = new Map<string, Track[]>();
-  for (const t of list) {
-    if (!t.albumName) continue;
-    const k = albumKey(t);
-    const g = groups.get(k);
-    if (g) g.push(t);
-    else groups.set(k, [t]);
-  }
   const out: LibAlbum[] = [];
-  for (const g of groups.values()) {
+  for (const g of libraryAlbumGroups()) {
+    if (!g[0].albumName) continue;
     const withId = g.find((t) => t.catalogId);
     if (!withId) continue; // uploaded files: Apple cannot find the album
     // The artist line most of its songs carry (Apple's own album artist replaces it on build).
@@ -546,9 +540,9 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
       <span class="web__label">Start</span>
       <div class="web__seg" data-seg="kind">${KINDS.map((o) => `<button class="web__opt" type="button" data-value="${o.value}" aria-pressed="false">${o.label}</button>`).join("")}</div>
     </div>
-    <input class="web__input" data-artist type="text" placeholder="Find an artist" spellcheck="false" autocomplete="off"
+    <div class="web__field"><input class="web__input" data-artist type="text" placeholder="Find an artist" spellcheck="false" autocomplete="off"
       role="combobox" aria-expanded="false" aria-controls="${uid}-hits" aria-autocomplete="list"
-      title="Finds an artist in your library, or searches Apple Music" />
+      title="Finds an artist in your library, or searches Apple Music" /></div>
     <div class="web__hits" id="${uid}-hits" role="listbox" aria-label="Seeds" hidden></div>
     <div class="web__row" title="1 reaches the artist's collaborators. Each step reaches one circle further">
       <span class="web__label">Reach</span>
@@ -984,6 +978,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     picked = new Set();
     pickGenres = s.kind !== "artist";
     artistInput.value = "";
+    field.sync();
     renderField();
     renderSegs();
     nameEdited = false;
@@ -1087,6 +1082,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     // shrinks into the row first or pops out as it lifts (Web panel closes, `webMakeMotion`). The row must be on screen: typed text hides it, so clear the field first.
     if (artistInput.value || kind !== seed.kind) {
       artistInput.value = "";
+      field.sync();
       kind = seed.kind; // the Start row shows another kind: the picked row is not on screen
       renderField();
       renderSegs();
@@ -1143,11 +1139,17 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     window.setTimeout(finish, dur + 150); // a hidden window sends no finish
   };
 
-  artistInput.addEventListener("input", () => {
-    rows = localRows();
-    active = 0;
-    if (!artistInput.value.trim() && !seed) setStatus("");
-    renderRows(false);
+  // The field's own parts (search-field.ts, SEARCH-FIELDS.md §3): the ×, Escape (clears, then
+  // the focus leaves; the panel stays until the next Escape) and Ctrl+F. A local search, so no
+  // delay. The arrows stay the field's own below: the caret stays here (key model A, §5).
+  const field = searchField(artistInput, {
+    onTerm: (term) => {
+      rows = localRows();
+      active = 0;
+      if (!term && !seed) setStatus("");
+      renderRows(false);
+    },
+    finder: { root: panel },
   });
   artistInput.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -1192,6 +1194,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
         const from = panel.offsetHeight;
         kind = v as SeedKind;
         artistInput.value = ""; // a built web stays until a new seed is picked
+        field.sync();
         rows = localRows();
         active = 0;
         renderField();
@@ -1286,6 +1289,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
       offSettings();
       unlisten?.();
       window.removeEventListener("resize", onResize);
+      field.destroy();
       dropdown.destroy();
       panel.remove();
     },

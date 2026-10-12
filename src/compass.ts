@@ -57,6 +57,7 @@ import * as diag from "./diag";
 import { toast } from "./toast";
 import { parseSum } from "./compass-math";
 import { plainError } from "./plain-error";
+import { searchField } from "./search-field";
 
 // ── the rows ──────────────────────────────────────────────────
 
@@ -1329,6 +1330,7 @@ export function initCompass(): void {
       active = 0;
       kind = null;
       if (input) input.value = "";
+      field.sync();
       render();
       void playlistsCached().then((ps) => { playlists = ps; if (handle?.isOpen) render(); }).catch(() => {});
       enterRows(list!.children, 14);
@@ -1350,7 +1352,13 @@ export function initCompass(): void {
     if (to && document.contains(to) && (now === document.body || panel!.contains(now))) to.focus({ preventScroll: true });
   }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
 
-  input.addEventListener("input", () => { active = 0; kind = null; render(); }); // a new term: predict again
+  // The field's own parts (search-field.ts, SEARCH-FIELDS.md §3): the ×, and Escape, which
+  // clears and closes the bar in one press. The arrows stay the bar's own below: the caret
+  // stays in the field (key model A, §5). Ctrl+Space opens it, so no Ctrl+F.
+  const field = searchField(input, {
+    onTerm: () => { active = 0; kind = null; render(); }, // a new term: predict again
+    onClose: () => closeCompass(),
+  });
   input.addEventListener("keydown", (e) => {
     shiftHeld = e.shiftKey;
     // A card key printed on a row (Ctrl+L…): it acts like Enter on that row, in this
@@ -1390,15 +1398,6 @@ export function initCompass(): void {
       case "PageDown": setActive(Math.min(rows.length - 1, active + 8)); break;
       case "PageUp": setActive(Math.max(0, active - 8)); break;
       case "Enter": runRow(active, e.ctrlKey); break;
-      case "Escape":
-        // Typed text clears first (the palette idiom); an empty field lets dropdown.ts close the panel.
-        if (!input!.value) return;
-        e.stopPropagation();
-        input!.value = "";
-        active = 0;
-        kind = null;
-        render();
-        break;
       default: return;
     }
     e.preventDefault();

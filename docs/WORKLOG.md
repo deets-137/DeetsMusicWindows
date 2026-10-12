@@ -12,6 +12,34 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-12 (search fields) — desk test and stress test run by Claude: pass, two fixes
+
+- **His ask:** run the desk test and a stress test without him. Claude ran SEARCH-FIELDS.md §9
+  on `dev:app` over CDP, with the Apple search count read from `apple_calls_status` (the
+  Tauri `invoke` cannot be wrapped from the console: it is not writable).
+- **Fixed in the run:** list-keys.ts no longer arms its refocus watch on a key typed in a
+  field (Escape in the Library field put a ring on row one); find-key.ts reads the drawn box,
+  not `offsetParent` (Ctrl+F in the fixed Web panel went to the Diary).
+- **Step 7 was wrong:** card memory lasts while the app runs, so the step swaps the card away
+  and back; a reload drops it unless *Keep card places on restart* is on.
+- **Side effect in the run, undone:** two presses on the Playlists card's first shelf (*Replay*)
+  folded and unfolded it. Nothing played.
+- §9 holds the results and the stress cases. tsc, tests (212), vite build: pass.
+
+## 2026-10-12 (search fields) — built, desk test open (branch `six-seven-ten-eleven`, uncommitted)
+
+- **His calls:** no ledger or count of shared parts (the checklist names them where they are
+  used; a check cannot tell a primitive from a file). Build SEARCH-FIELDS.md §3–§5 in full, in
+  one commit.
+- **Built:** `src/search-field.ts` (`searchField`, `fieldClearHTML`, `SEARCH_DELAY_MS`) and
+  `src/library-albums.ts`. All six fields moved to it. The two delay constants and the second
+  `libraryAlbums` grouping are gone. The Diary picker's Back is the header's Back.
+- **Decided inside his choices:** SEARCH-FIELDS.md §8 (the Diary picker stays on key model B,
+  Settings ↓ goes to the first control, the Web field's library albums follow the Diary's rule).
+- **Shared file:** `settings-card.ts` holds the graphics-fallback session's changes too; the
+  search part is §8's three hunks (the markup, the field, `field?.sync()`).
+- **Desk test:** SEARCH-FIELDS.md §9, seven steps. Checks: tsc, vite build, docs:check.
+
 ## 2026-10-12 (graphics fallback) — desk test passed, four fixes (branch `main`)
 
 - **His ask:** test the whole thing, then commit. Claude ran all eight steps of

@@ -23,6 +23,9 @@ import { searchCatalog, collectionTracks, materializeTrack, catalogRelated } fro
 import { resolveEntry } from "./queue-rows";
 import { tracks as storeTracks, addTransientTracks } from "./track-store";
 import { albumKey } from "./rewind";
+import { libraryAlbumGroups } from "./library-albums";
+import { searchField } from "./search-field";
+import { registerFinder } from "./find-key";
 import { albumOrder, heroCover } from "./library-card";
 import { esc, actionsRowHTML, runListAction } from "./collection-card";
 import { openContextMenu, openContextMenuUnder, MENU_CHOSEN, MENU_DIVIDER, type MenuItem, type ActionItem } from "./context-menu";
@@ -60,7 +63,6 @@ function loadCollapsed(): Set<string> {
 
 const TILE_PX = 240;
 const ROW_PX = 72;
-const PICK_DEBOUNCE_MS = 300;
 const PICK_LIB_CAP = 8;
 const PICK_CAT_CAP = 10;
 const NOTE_SAVE_MS = 600;
@@ -103,15 +105,7 @@ const albumOf = (a: DiaryRequest["album"]): Album => ({
 
 /** The user's library albums (the Library card's album rule: name + cover), for the picker. */
 function libraryAlbums(): { album: Album; tracks: Track[] }[] {
-  const groups = new Map<string, Track[]>();
-  for (const t of storeTracks()) {
-    if (!t.libraryId) continue; // a catalog song the app only saw played is not "your library"
-    const k = albumKey(t);
-    const g = groups.get(k);
-    if (g) g.push(t);
-    else groups.set(k, [t]);
-  }
-  return [...groups.values()].map((ts) => {
+  return libraryAlbumGroups().map((ts) => {
     const t0 = ts[0];
     return {
       album: { title: t0.albumName ?? "Unknown Album", artistName: t0.artistName, artwork: t0.artwork, genres: [], releaseDate: t0.releaseDate },
@@ -160,7 +154,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     // ellipsis cuts a long name, so the header never wraps.
     titleEl.textContent = atRoot || !entry ? "Diary" : `Diary: ${entry.album.title}`;
     titleEl.title = atRoot ? "" : titleEl.textContent;
-    backEl.hidden = atRoot;
+    backEl.hidden = atRoot && !picking; // the album picker is left by Back too (SEARCH-FIELDS.md §3)
     // The + is the home page's (new entry, new folder); the check is the entry's (Done).
     addBtn.hidden = !atRoot;
     doneBtn.hidden = atRoot;
@@ -298,7 +292,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       <div class="search__field">
         ${ICON_SEARCH}
         <input class="search__input" type="search" placeholder="Find an album or an artist" spellcheck="false" data-pick-input value="${esc(pickTerm)}" />
-        <button class="search__clear" type="button" data-pick-close aria-label="Close" title="Closes the album search">${ICON_CLEAR}</button>
+        <button class="search__clear" type="button" aria-label="Clear search" title="Clears the search"${pickTerm ? "" : " hidden"}>${ICON_CLEAR}</button>
       </div>
       <div class="diary__results" data-pick-results><p class="qcard__empty">Type an album or an artist. Your library shows first, then Apple Music.</p></div>
     </div>`;
@@ -319,8 +313,8 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
         const rootEl = body.querySelector<HTMLElement>(".diary__root");
         if (rootEl) rootEl.scrollTop = keepScroll;
         if (picking) {
-          const input = body.querySelector<HTMLInputElement>("[data-pick-input]")!;
-          input.focus();
+          const input = wirePick();
+          input?.focus();
           if (pickTerm) runPick(pickTerm);
         }
       })
@@ -331,7 +325,6 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   };
 
   // The picker (5A): the library first (zero Apple calls), then Apple Music (one search).
-  let pickTimer = 0;
   let pickFound: AlbumIn[] = [];
   const pickRow = (a: Album, i: number, sub: string) =>
     `<div class="search__row" data-pick="${i}" role="button" tabindex="0">
@@ -496,11 +489,33 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       cover,
       () => {
         btn.outerHTML = pickerHTML();
+        wirePick();
+        setHeader(); // the Back button shows: it leaves the picker (SEARCH-FIELDS.md §3)
         return body.querySelector<HTMLElement>(".diary__pick .search__field");
       },
       () => body.querySelector<HTMLInputElement>("[data-pick-input]")?.focus(),
     );
     body.querySelector<HTMLInputElement>("[data-pick-input]")?.focus();
+  };
+  // The picker's field (search-field.ts, SEARCH-FIELDS.md §3): the × clears and keeps the
+  // picker; Escape clears and leaves it (as Back does); the Apple delay; ↓ to the first album.
+  // The field is drawn again with the root, so each new one is wired once, here.
+  const pickFields = new WeakSet<HTMLInputElement>();
+  const wirePick = (): HTMLInputElement | null => {
+    const input = body.querySelector<HTMLInputElement>("[data-pick-input]");
+    if (!input || pickFields.has(input)) return input;
+    pickFields.add(input);
+    searchField(input, {
+      delay: "apple",
+      clear: input.parentElement?.querySelector<HTMLButtonElement>(".search__clear") ?? undefined,
+      onTerm: () => {
+        pickTerm = input.value;
+        runPick(pickTerm);
+      },
+      onClose: () => closePicker(),
+      first: () => body.querySelector<HTMLElement>("[data-pick]"),
+    });
+    return input;
   };
   const closePicker = () => {
     const field = body.querySelector<HTMLElement>(".diary__pick .search__field");
@@ -508,6 +523,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     picking = false;
     pickTerm = "";
     ++pickSeq; // an Apple search still on its way must not draw into the bar that left
+    setHeader();
     if (!field || !pick) return renderRoot();
     morph(field, () => {
       pick.outerHTML = topHTML();
@@ -1053,6 +1069,10 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   });
 
   backEl.addEventListener("click", () => {
+    if (!entry && picking) {
+      closePicker();
+      return;
+    }
     flushNote();
     // A grow the entry's rule made ends with the entry; a grow the user made stays.
     levelLeft("diary", 0);
@@ -1087,10 +1107,6 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       }
       if (target.closest("[data-now]")) {
         openNow();
-        return;
-      }
-      if (target.closest("[data-pick-close]")) {
-        closePicker();
         return;
       }
       const pick = target.closest<HTMLElement>("[data-pick]");
@@ -1154,12 +1170,6 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
 
   body.addEventListener("input", (ev) => {
     const target = ev.target as HTMLElement;
-    if (target.matches("[data-pick-input]")) {
-      pickTerm = (target as HTMLInputElement).value;
-      window.clearTimeout(pickTimer);
-      pickTimer = window.setTimeout(() => runPick(pickTerm), PICK_DEBOUNCE_MS);
-      return;
-    }
     if (target.matches("[data-note]")) {
       const ta = target as HTMLTextAreaElement;
       if (noteTarget && noteTarget !== ta) flushNote();
@@ -1198,20 +1208,16 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       setScore(target as HTMLInputElement);
       return;
     }
-    if (target.matches("[data-pick-input]") && ev.key === "Escape") {
-      ev.preventDefault();
-      closePicker();
-      return;
-    }
-    // ↓ from the picker's field reaches its first result (the desk test of 2026-09-27: the
-    // arrows worked only once a result had the focus). list-keys.ts leaves a field's keys alone.
-    if (target.matches("[data-pick-input]") && ev.key === "ArrowDown") {
-      const first = body.querySelector<HTMLElement>("[data-pick]");
-      if (!first) return;
-      ev.preventDefault();
-      first.tabIndex = -1;
-      first.focus({ preventScroll: true });
-    }
+    // Escape and ↓ in the picker's field are the field's own (`wirePick`, search-field.ts).
+  });
+  // Ctrl+F (find-key.ts, SEARCH-FIELDS.md §3): the album picker — opened from the home page,
+  // or its field taken again. An open entry has no search field, so the key does nothing there.
+  const unsubFind = registerFinder(host, () => {
+    if (entry) return;
+    const input = body.querySelector<HTMLInputElement>("[data-pick-input]");
+    if (!input) return openPicker();
+    input.focus();
+    input.select();
   });
   // The rows' keys (list-keys.ts; 2026-09-27, before this the card answered Enter alone):
   // arrows walk the shelf tiles (by a row of tiles up and down), the picker's results and an
@@ -1495,7 +1501,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       window.removeEventListener("blur", flushNote);
       window.removeEventListener("pagehide", flushNote);
       destroyed = true;
-      window.clearTimeout(pickTimer);
+      unsubFind();
       unsubRequest();
       unsubEntry();
       unsubOutside();

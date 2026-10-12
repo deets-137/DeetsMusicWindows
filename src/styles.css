@@ -1287,6 +1287,18 @@ body {
 }
 .web__input::placeholder { color: var(--subtext); }
 .web__input:focus-visible { border-color: var(--title); }
+/* The seed field's well (SEARCH-FIELDS.md §3): the input's own box moves out to it, so the
+   shared × sits inside the same border. */
+.web__field {
+  display: flex; align-items: center; gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.web__field:focus-within { border-color: var(--title); }
+.web__field .web__input { flex: 1 1 auto; padding: 0; border: none; background: transparent; }
 /* The artist field's list: a search, not free text. The marked row (.is-active) is what
    Enter picks; the picked artist ([data-picked]) wears the picked look. */
 .web__hits { display: flex; flex-direction: column; gap: var(--space-1); }
@@ -3141,6 +3153,16 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__clear svg { width: var(--icon-sm); height: var(--icon-sm); }
 .search__clear:hover { color: var(--title); }
 .search__clear[hidden] { display: none; } /* class sets display:grid, which would beat [hidden] */
+/* The shared × (search-field.ts, SEARCH-FIELDS.md §3): the same glyph and colors as the
+   Search card's, but in the well's own flex row, so any field takes it without a reserve. */
+.field-x {
+  flex: 0 0 auto; display: grid; place-items: center; width: var(--icon-sm); height: var(--icon-sm);
+  padding: 0; background: none; border: none; color: var(--subtext); cursor: pointer;
+}
+.field-x svg { width: var(--icon-sm); height: var(--icon-sm); }
+.field-x:hover { color: var(--title); }
+.field-x:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.field-x[hidden] { display: none; }
 
 /* busy: a small pulsing dot just LEFT of the clear button while a query is in flight */
 .search__busy { display: none; }
