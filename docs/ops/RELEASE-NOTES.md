@@ -32,6 +32,14 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.26.1 — 2026-10-11
+
+**The full player.** Now Playing grows so the cover is as large as the window allows, with the
+song, the controls and the Queue around it. In Midi, click the top or bottom edge of Now
+Playing. In Max, click the edge of Now Playing beside the cards. Or type *full player* in
+Compass (Ctrl+Space). Escape, the close button or the same edge brings the cards back. A rule
+in Rulez can open it too: *Full player · Open*.
+
 ## 0.26.0 — 2026-10-11
 
 **Choose how many cards Max shows.** Settings › Window › *Layout for Max* shows 4 cards, 2
