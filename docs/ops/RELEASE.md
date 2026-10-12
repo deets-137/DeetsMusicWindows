@@ -123,6 +123,11 @@ What the log taught:
 - **A release deploys no worker.** After a theme, skin, palette or font change, run
   `npm run signin:assets` and deploy DeetsSupport by hand. After any worker deploy, curl the
   route: `node --check` passes an unresolved import that returns 1101 live.
+- **A path crate outside `src-tauri/` puts its panic sites' full paths in the exe** (0.26.0,
+  2026-10-11: `crates/mcp-install` failed check 1 three builds running). Cargo gives a crate
+  outside the package an absolute source path, so every `x[i]`, `doc["key"]`, `.unwrap()` and
+  `json!({ "k": expr })` (it unwraps the expression) in non-test code leaks it. Use `get`,
+  `split_first` and `?`, and build a JSON object by hand when a value is not a literal.
 - **Check a publish** with `curl https://music-api.deets.solutions/update/deetsmusic?v=<old>`
   and `/update/deetsmusic/health`.
 

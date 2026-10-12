@@ -293,7 +293,8 @@ pub fn toml_set(text: &str, name: &str, exe: &str) -> Result<String, String> {
         t.set_implicit(true);
         doc.insert("mcp_servers", toml_edit::Item::Table(t));
     }
-    let servers = doc["mcp_servers"].as_table_mut().ok_or("`mcp_servers` is not a table")?;
+    // `get_mut`, not `doc[…]`: an index is a panic site, and its path would reach the exe (see `run`).
+    let servers = doc.get_mut("mcp_servers").and_then(|t| t.as_table_mut()).ok_or("`mcp_servers` is not a table")?;
     let mut entry = toml_edit::Table::new();
     entry.insert("command", toml_edit::value(exe));
     let mut args = toml_edit::Array::new();
@@ -340,21 +341,35 @@ fn edit(p: &Path, f: impl FnOnce(&str) -> Result<Option<String>, String>) -> Res
 }
 
 /// Run an app's own command with no console window; its stderr is the failure text.
+/// `{ "type": "stdio", "command": exe, "args": ["mcp"], "env": {} }`, built by hand: `json!`
+/// wraps a non-literal value in `.unwrap()`, a panic site in this crate (see `run`).
+fn stdio_entry(exe: &str) -> Value {
+    let mut m = serde_json::Map::new();
+    m.insert("type".into(), Value::from("stdio"));
+    m.insert("command".into(), Value::from(exe));
+    m.insert("args".into(), Value::Array(vec![Value::from("mcp")]));
+    m.insert("env".into(), Value::Object(serde_json::Map::new()));
+    Value::Object(m)
+}
+
+/// No indexing here: a panic site in this crate puts its absolute source path in the exe,
+/// and the release check refuses that (RELEASE.md §1a; 0.26.0's first build, 2026-10-11).
 pub fn run(argv: &[String]) -> Result<(), String> {
-    let mut cmd = std::process::Command::new(&argv[0]);
-    cmd.args(&argv[1..]).stdin(std::process::Stdio::null());
+    let Some((prog, args)) = argv.split_first() else { return Err("no command to run".into()) };
+    let mut cmd = std::process::Command::new(prog);
+    cmd.args(args).stdin(std::process::Stdio::null());
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
     }
-    let out = cmd.output().map_err(|e| format!("{}: {e}", argv[0]))?;
+    let out = cmd.output().map_err(|e| format!("{prog}: {e}"))?;
     if out.status.success() {
         return Ok(());
     }
     let err = String::from_utf8_lossy(&out.stderr);
     let msg = err.lines().chain(String::from_utf8_lossy(&out.stdout).lines().collect::<Vec<_>>()).find(|l| !l.trim().is_empty()).unwrap_or("").trim().to_string();
-    Err(if msg.is_empty() { format!("{} exited with {}", argv[0], out.status) } else { msg })
+    Err(if msg.is_empty() { format!("{prog} exited with {}", out.status) } else { msg })
 }
 
 fn owner_add(id: ClientId, cli: &Path, s: &Server) -> Vec<String> {
@@ -414,7 +429,7 @@ pub fn connect(id: ClientId, s: &Server, replace: bool) -> Outcome {
             let exe = s.exe.to_string_lossy().into_owned();
             edit(&path, |t| match id {
                 ClientId::Codex => toml_set(t, &s.name, &exe).map(Some),
-                _ => json_set(t, "mcpServers", &s.name, json!({ "type": "stdio", "command": exe, "args": ["mcp"], "env": {} })).map(Some),
+                _ => json_set(t, "mcpServers", &s.name, stdio_entry(&exe)).map(Some),
             })
             .map(|_| ())
         }
