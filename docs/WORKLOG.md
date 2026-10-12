@@ -32,6 +32,32 @@ by a band shot in the five skins. Also this sitting:
 the stale git index (two phantom deletes from a shared-index commit) reset. tsc, vite build,
 tokens, docs:check: pass.
 
+## 2026-10-12 (Copy editor) — type over the app's words in the dev app
+
+His ask: the DeetsSolutions dev server's copy editor, for the Settings and Rulez cards. The app
+has no strings file (each label is a literal in its module), so the server half parses
+`src/**/*.ts` with the TypeScript compiler and maps on-screen text to one literal, one template
+or one HTML text run. His calls: **1B** every card; **2A** Alt+click edits a hover hint; **3A**
+a save writes at once and holds Vite's reload (the music plays on); **4A** labels, hints,
+pills, headers, Rulez words (no toasts); the toggle is a pencil in the title bar. Built:
+`src/copy-edit.ts` (DEV-gated import in main.ts), `scripts/copy-edit-plugin.mjs`
+(`apply: "serve"`). Decided inside his choices: Alt+E toggles; the pencil sits first in the
+icon row in the Web icon's family; outlines: solid / dashed (template) / dotted (locked);
+the most specific template wins a tie; the hold is 3 s; `index.html` is not covered. A save
+round trip on a throwaway file passed for each literal kind (double, single, template tokens,
+HTML run with `&amp;`, `${` escaped); the release bundle carries none of it. Desk test:
+features/COPY-EDIT.md §5.
+
+Later the same sitting: 253 of 296 Settings labels were locked, because each is written again in
+its mirror files (agent-settings.ts and others). His call: a word written only in
+settings-card.ts and its mirrors is one text, and a save changes every copy (COPY-EDIT.md §2a).
+Then his first pass with the tool, Settings › Playback: *Play Now plays* → *Right Click > Play
+Now behavior*; *New pins open on click* → *Pinned Item click behavior*; *Drop on Now Playing* →
+*Dragging a Song into Now Playing behavior*, its pill *Keep Up Next* → *Keep Queue*; *Previous
+rewinds* → *Previous behavior for mid-list songs*; *Idle shuffle plays* → *Shuffle with nothing
+currently playing behavior*; *Show Last.fm counts* → *Show play counts from Last.FM*. The
+current pointers in the docs and code comments follow; the dated records keep the old words.
+
 ## 2026-10-12 (Unshuffle) — press Shuffle off and the list goes on in order
 
 His ask: "tell me about shuffling an album locally … let's design the unshuffle feature", and

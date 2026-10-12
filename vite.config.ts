@@ -1,10 +1,14 @@
 import { defineConfig } from "vite";
+// The copy editor's server half (COPY-EDIT.md): dev server only, `apply: "serve"`.
+import { copyEditPlugin } from "./scripts/copy-edit-plugin.mjs";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+  plugins: [copyEditPlugin()],
+
   // Two pages: the player (index.html) and the tray panel (tray.html, TRAY.md).
   build: {
     rollupOptions: {

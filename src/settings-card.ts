@@ -1444,22 +1444,22 @@ function mountSettings(
           options: [{ value: "auto", label: "Auto" }, { value: "high", label: "High" }, { value: "low", label: "Low" }],
         },
         {
-          kind: "choice", id: "playnow", label: "Play Now plays", key: "playNowScope",
+          kind: "choice", id: "playnow", label: "Right Click > Play Now behavior", key: "playNowScope",
           hint: "The right-click action",
           options: [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }],
         },
         {
-          kind: "choice", id: "pinnewact", label: "New pins open on click", key: "pinNewAct",
+          kind: "choice", id: "pinnewact", label: "Pinned Item click behavior", key: "pinNewAct",
           hint: "The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click",
           options: [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }],
         },
         {
-          kind: "choice", id: "dropplay", label: "Drop on Now Playing", key: "dropPlayQueue",
+          kind: "choice", id: "dropplay", label: "Dragging a Song into Now Playing behavior", key: "dropPlayQueue",
           hint: "Songs dragged onto Now Playing play at once; Up Next can stay after them",
-          options: [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }],
+          options: [{ value: "keep", label: "Keep Queue" }, { value: "replace", label: "Replace it" }],
         },
         {
-          kind: "choice", id: "previous", label: "Previous rewinds", key: "previousReach",
+          kind: "choice", id: "previous", label: "Previous behavior for mid-list songs", key: "previousReach",
           hint: "The list: the songs above the one you clicked",
           options: [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }],
         },
@@ -1488,7 +1488,7 @@ function mountSettings(
           options: [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }],
         },
         {
-          kind: "choice", id: "shuffleidle", label: "Idle shuffle plays", key: "shuffleIdle",
+          kind: "choice", id: "shuffleidle", label: "Shuffle with nothing currently playing behavior", key: "shuffleIdle",
           hint: "Shuffle with nothing playing",
           options: [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }],
         },

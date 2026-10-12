@@ -733,6 +733,8 @@ window.addEventListener("DOMContentLoaded", () => {
   later.push(["initSleep", () => initSleep()]);
   later.push(["initRoomPanel", () => initRoomPanel()]); // the title bar's Room item (ROOMS.md §1)
   later.push(["initTitleWeb", () => initTitleWeb()]); // the title bar's Web item (PLAYLIST-WEB.md §1a)
+  // The copy editor's pencil (COPY-EDIT.md): dev only, so the release bundle drops the import.
+  if (import.meta.env.DEV) later.push(["initCopyEdit", () => void import("./copy-edit").then((m) => m.initCopyEdit())]);
   later.push(["initCompass", () => initCompass()]); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
   later.push(["initPlaylistExpiry", () => initPlaylistExpiry()]); // temporary web playlists (PLAYLIST-WEB.md §10)
   later.push(["initPlaylistRefresh", () => initPlaylistRefresh()]); // how often a mirrored Apple playlist re-reads its songs (PLAYLIST-REFRESH.md)

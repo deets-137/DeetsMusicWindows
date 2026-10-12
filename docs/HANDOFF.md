@@ -117,6 +117,10 @@ counts: *N Plays | M Listeners* beside the title in the full player, *N Plays* o
 corner in Max; Settings › Playback › *Show play counts from Last.FM* (on). A cut-off title slides on
 hover. Desk test: features/LISTENERS.md §4.3 (7 steps).
 
+**Copy editor (2026-10-12, built, desk test open).** A dev-only pencil in the title bar (Alt+E)
+makes the words in every card typeable and saves each into its `.ts` source; Alt+click edits a
+hover hint. Desk test: features/COPY-EDIT.md §5 (8 steps).
+
 **Unshuffle (2026-10-12, built, desk test open).** Press the Shuffle square off and the list
 goes on in its order from the playing song; a click with the mode on shuffles the whole list
 but the clicked song; the glyph stays the arrows; the queue blob is v2 (the plan rides

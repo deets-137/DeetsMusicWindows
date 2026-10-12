@@ -263,7 +263,7 @@ function mountQueue(host: HTMLElement): CardInstance {
         const ts = pick.picked().map(resolve).filter(Boolean) as Track[];
         if (ts.length) return { row, index, payload: { source: "queue", kind: "song", count: ts.length, tracks: () => ts, context: entry.context } };
       }
-      // On Now Playing, an Up Next row plays at once. Keep Up Next (Settings › Playback):
+      // On Now Playing, an Up Next row plays at once. Keep Queue (Settings › Playback):
       // it moves to the top first, so the rows above it stay. Replace: its menu's Play Now,
       // a jump that drops the rows above it.
       const play = () => {

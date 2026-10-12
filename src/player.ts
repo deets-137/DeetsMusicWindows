@@ -2244,7 +2244,7 @@ export async function insertInQueue(at: number, handles: TrackHandle[]): Promise
 }
 /**
  * Play Tracks at once and keep Up Next after them — a drop on Now Playing with Settings ›
- * Playback › Drop on Now Playing = Keep Up Next. The block goes to the top of Up Next and
+ * Playback › Dragging a Song into Now Playing behavior = Keep Queue. The block goes to the top of Up Next and
  * the player jumps to its first song: the song that was playing joins History, and the
  * rest of Up Next is untouched. Nothing playing: an ordinary play.
  */

@@ -196,7 +196,7 @@ the pointer.
 - The trailing click is swallowed for every card by one capture listener, also after an
   Escape (the release comes later).
 - **Drop on Now Playing keeps Up Next by default** (user's call after the first build,
-  2026-09-14): Settings › Playback › Drop on Now Playing, `dropPlayQueue` *keep* / *replace*.
+  2026-09-14): Settings › Playback › Dragging a Song into Now Playing behavior, `dropPlayQueue` *keep* / *replace*.
   Keep: the dropped songs go to the top of Up Next and the player jumps to the first; the
   song that was playing joins History; everything that was queued plays after them
   (`player.playTracksKeepQueue`). An Up Next row moves to the top, then plays. Replace: the

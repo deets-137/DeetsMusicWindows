@@ -291,15 +291,15 @@ under Cyber the whole section is gone.
 | Control | What it does | Choices |
 |---|---|---|
 | Stream quality | Auto follows your network live | **Auto** / High / Low |
-| Play Now plays | What right-click › Play Now starts | Song only / **Song and rest of list** |
-| Drop on Now Playing | Dragging a song onto Now Playing | **Keep Up Next** / Replace it |
-| Previous rewinds | What Previous may go back into | **The list** / only Played songs |
+| Right Click > Play Now behavior | What right-click › Play Now starts | Song only / **Song and rest of list** |
+| Dragging a Song into Now Playing behavior | Dragging a song onto Now Playing | **Keep Queue** / Replace it |
+| Previous behavior for mid-list songs | What Previous may go back into | **The list** / only Played songs |
 | Restore on launch | What comes back when the app opens | **Last song** (paused, with its queue) / Up Next only / Nothing |
 | Play a web when a list ends | A list that ends with Repeat off: a temporary web (1 day) from the album, or from the last song of any other list, plays next. Off: the list is loaded again at its first song, paused. Nothing in a room, after a station break-out, or while the sleep timer waits for an end | **On** / Off |
 | Shuffle button stays on | The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once | **on** / off |
 | Shuffle off plays | Press Shuffle off: the list goes on in its own order from the song playing. As shuffled: Up Next stays as it is | **In order** / As shuffled |
 | Shuffle keeps picks | Where songs you queued by hand land | **First** / In place / Mixed |
-| Idle shuffle plays | Shuffle with nothing playing | **Library** / Nothing |
+| Shuffle with nothing currently playing behavior | Shuffle with nothing playing | **Library** / Nothing |
 | Show the day in History | Each History row says Today, Yesterday or the date | on / **off** |
 | Show play counts from Last.FM | Now Playing wears a badge with the song's Last.fm plays and listeners: both in the full player, plays on the Max card. A click opens the song's Last.fm page. Off: Last.fm is not asked | **on** / off |
 
@@ -366,7 +366,7 @@ behind both. The dial and the three live ends are only in the panel.
 
 | Control | What it does | Choices |
 |---|---|---|
-| New pins open on click | The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click | **Open** / Play / Shuffle |
+| Pinned Item click behavior | The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click | **Open** / Play / Shuffle |
 | Show playlist counts | Fills in the song count on the overview. One small request per playlist, once | **on** / off |
 | Refresh playlists by themselves | Re-reads a playlist when you open it, and once a day. Each playlist keeps its own setting | **on** / off |
 | New playlist opens Search | Puts Search beside the new playlist. Mini shows one card, so Search would hide it | **Not in mini** / Always / Never |
@@ -609,7 +609,7 @@ Words in *italics* have their own entry.
 | Play to a speaker | The AirPlay button; Settings › AirPlay sets which sound it sends |
 | Stop the music at bedtime | The sleep timer button |
 | Listen with a friend | The listening room button |
-| Change what Play Now plays | Settings › Playback › Play Now plays |
+| Change what Play Now plays | Settings › Playback › Right Click > Play Now behavior |
 | Make Shuffle a mode that stays on | Settings › Playback › Shuffle button stays on |
 | Bring back my last song at launch | Settings › Playback › Restore on launch |
 | Let the app write to my Apple Music library | Settings › Apple Music › Add to Library and ♥ |

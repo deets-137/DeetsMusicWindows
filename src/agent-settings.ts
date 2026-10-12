@@ -299,10 +299,10 @@ const SPECS: Spec[] = [
   storeChoice("Menus, hints and notices", "goToTarget", "Go to opens", [{ value: "fits", label: "Where it fits" }, { value: "search", label: "Search" }, { value: "library", label: "Library" }]),
   // ── Playback ──
   storeChoice("Playback", "streamQuality", "Stream quality", [{ value: "auto", label: "Auto" }, { value: "high", label: "High" }, { value: "low", label: "Low" }]),
-  storeChoice("Playback", "playNowScope", "Play Now plays", [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }]),
-  storeChoice("Playback", "pinNewAct", "New pins open on click", [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }]),
-  storeChoice("Playback", "dropPlayQueue", "Drop on Now Playing", [{ value: "keep", label: "Keep Up Next" }, { value: "replace", label: "Replace it" }]),
-  storeChoice("Playback", "previousReach", "Previous rewinds", [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }]),
+  storeChoice("Playback", "playNowScope", "Right Click > Play Now behavior", [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }]),
+  storeChoice("Playback", "pinNewAct", "Pinned Item click behavior", [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }]),
+  storeChoice("Playback", "dropPlayQueue", "Dragging a Song into Now Playing behavior", [{ value: "keep", label: "Keep Queue" }, { value: "replace", label: "Replace it" }]),
+  storeChoice("Playback", "previousReach", "Previous behavior for mid-list songs", [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }]),
   storeChoice("Playback", "restoreQueue", "Restore on launch", [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }]),
   storeToggle("Playback", "listEndWeb", "Play a web when a list ends"),
   storeToggle("Playback", "shuffleStays", "Shuffle button stays on"),
@@ -320,7 +320,7 @@ const SPECS: Spec[] = [
       notifyOwnedSettingChange();
     },
   },
-  storeChoice("Playback", "shuffleIdle", "Idle shuffle plays", [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }]),
+  storeChoice("Playback", "shuffleIdle", "Shuffle with nothing currently playing behavior", [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }]),
   // ── Home (HOME.md §9, §10): the one switch over every Apple call the card makes. The
   //    hide rows stay out — a hide is the user's own gesture on a tile. ──
   storeToggle("Home", "homeApple", "Follow your other devices"),

@@ -365,7 +365,7 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
   one call: the playlist row, the Library album / artist row menus, and the four shelves' own
   `shelfMenu`. It is left out when the key is not pinned, and for `song:` / `station:` keys.
 - **Settings key** `pinNewAct` in `settings-store.ts`, default per 8.2a, with its spec in
-  `agent-settings.ts` (`storeChoice("Playback", "pinNewAct", "New pins open on click", …)`) and
+  `agent-settings.ts` (`storeChoice("Playback", "pinNewAct", "Pinned Item click behavior", …)`) and
   a line in AGENT.md. Compass reaches it for free (COMPASS.md §9).
 - **Log line:** `diag.log("ui:act", { at: <card>, do: "pin", kind, act })` at the click, and
   `pin:act` with the key when the menu row changes it — so a complaint about it is read, not
@@ -403,7 +403,7 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
 6. A pinned album **off the library** set to Open: it plays whole (no detail view), no error
    in the log.
 7. Re-pin an item that has a verb set: the verb holds, and so does its shelf position (§7).
-8. Settings › Playback › **New pins open on click** = Play. An OLD pin keeps its verb; a
+8. Settings › Playback › **Pinned Item click behavior** = Play. An OLD pin keeps its verb; a
    pin made after it starts on Play.
 9. Restart the app: every per-pin verb holds (`pins.act`). The agent's `query` over `pins`
    reads the `act` column.
@@ -420,7 +420,7 @@ fork 5: a `song:` and a `station:` pin get no On Click row.
 | `pinAct(key, kind)` | The one resolver: the pin's verb, else `open` — which is what every album, playlist and artist pin did before this shipped |
 | `pinActivate(it, at, nav?)` | **The one click rule.** It replaced the four hand-written shelf bodies that had drifted into two different answers (§8.1). A card that can open a kind in place passes a handler; a card that cannot leaves it out and the hop takes over |
 | `pinRows` · `pinArtistRows` | Each returns **On Click** (when the pin is one that is asked) followed by Pin / Unpin, which ends the Keep group. The menu builders in `media-menu.ts` call them (2026-09-23); `pinRowsFor` is gone with `trackMenu` |
-| `pinNewAct` | Settings › Playback › **New pins open on click**, default **Open**. Stamped onto the row at pin time, so it can never reach a pin that already exists |
+| `pinNewAct` | Settings › Playback › **Pinned Item click behavior**, default **Open**. Stamped onto the row at pin time, so it can never reach a pin that already exists |
 
 **Decided inside his choice:**
 

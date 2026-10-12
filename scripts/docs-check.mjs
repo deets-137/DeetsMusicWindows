@@ -69,6 +69,7 @@ const PLACERS = {
   "src/row-drag.ts": "the drag ghost and the insertion line (DRAG-DROP.md §4)",
   "src/layout.ts": "the card-swap copy (CARD-SWAP.md)",
   "src/full-player.ts": "the cover's flight copy (features/fullscreen-player.md §12.4)",
+  "src/copy-edit.ts": "the dev-only hint field under any element (COPY-EDIT.md §1); never in a release",
 };
 // Check 26: the cards whose body is not a list of rows, so list-keys.ts does not apply.
 const NO_LIST_CARDS = {

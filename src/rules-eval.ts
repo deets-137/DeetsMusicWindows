@@ -581,7 +581,7 @@ export function builtinRules(s: RowValues): Rule[] {
       });
   }
 
-  // Playback › Idle shuffle plays (FUTURE-SETTINGS §5b): a shuffle press with no song loaded plays
+  // Playback › Shuffle with nothing currently playing behavior (FUTURE-SETTINGS §5b): a shuffle press with no song loaded plays
   // the library shuffled. This rule is the one path; player.ts has no idle branch of its own.
   if (s.shuffleIdle === "library") {
     out.push({

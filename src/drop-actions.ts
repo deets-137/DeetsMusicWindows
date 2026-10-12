@@ -48,7 +48,7 @@ export function dropToQueue(p: DragPayload, at: number): void {
     .catch((e) => console.error("[drop] queue", e));
 }
 
-/** The Now Playing card: play at once. Settings › Playback › Drop on Now Playing decides Up
+/** The Now Playing card: play at once. Settings › Playback › Dragging a Song into Now Playing behavior decides Up
  *  Next: kept after the dropped songs (default), or replaced as Play Now does. */
 export function dropToPlay(p: DragPayload): void {
   const keep = setting("dropPlayQueue") === "keep";
