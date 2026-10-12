@@ -184,7 +184,10 @@ fixed layout (not a restyled Mini); a theme from a skin's colors as the cheap fi
 the forks. `AtRecords.md` — an idea (2026-10-12): when Max fills his ultrawide, Cyber gives way to a
 hidden sixth skin `at-records`, a record player, set by a built-in rule (his calls: the sixth
 skin, the full-size trigger; HE designs the UI, never write that picture for him). The mechanics
-only; §9 the forks.
+only; §9 the forks. `SupportArtist.md` — an idea (2026-10-12): a "Support" link on the artist
+view to the artist's crowdfunding page, Bandcamp and official site (his call), from MusicBrainz
+URL relationships at zero Apple calls; §4 the Apple terms read (one risk, his call); §5 the
+library probe that comes before HIS UI; §8 the forks.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

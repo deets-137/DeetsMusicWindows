@@ -41,6 +41,10 @@ the app can do any of these things.
   Cyber gives way to a hidden sixth skin `at-records`, a record player, set by a built-in rule
   (his calls: the sixth skin, the full-size trigger; he designs the UI himself). The mechanics
   only: the Press disc, the window facts, CSS first and three.js as a second step; §9 the forks.
+- [SupportArtist.md](SupportArtist.md) — an idea (2026-10-12): a "Support" link on the artist
+  view to the artist's crowdfunding page, Bandcamp and official site, from MusicBrainz URL
+  relationships (zero Apple calls). Kickstarter itself set aside (§2); the Apple terms read (§4);
+  a probe of the owner's library before he designs the UI (§5, §6); the forks (§8).
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).

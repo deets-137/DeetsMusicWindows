@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-11
+updated: 2026-10-12
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,40 @@ updated: 2026-10-11
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-12 (Listeners) — a song's Last.fm listener count, read side only
+
+His ask: "genius song listens", then: listener counts to show how rare a song is. Checked
+Genius's API: no play data, only lyrics-page views, a hot flag, annotation counts; commercial
+use needs a license. His call: **Last.fm** (`track.getInfo` gives `listeners` and
+`playcount`; the app already holds the key). Built the read side, no UI: the `listen_counts`
+table, `lastfm_listeners` (cache first on the database thread, one call a month per song,
+not-found cached too), `src/listeners.ts` (`listenersFor`, a shared promise per song;
+`fmtCount`). features/LISTENERS.md is the doc: §3 the as-built table and what I decided inside his
+choice, §4 the UI forks for the next sitting, §5 the open forks (the word, an artist ratio, a
+background pass, an off switch). Committed on `six-seven-ten-eleven` at his ask.
+
+## 2026-10-12 (Support an artist) — the idea opened, Apple's terms read; docs only
+
+His ask: "tie a Kickstarter campaign to artists as a way to donate?" Kickstarter set aside
+(no API, one project at a time, empty almost always); the idea became one "Support" link on
+the artist view to the crowdfunding page, Bandcamp and the official site (his call), found
+through MusicBrainz URL relationships at zero Apple calls, matched by the Apple artist URL
+MB stores. Read DPLA §3.3.6 D and the Identity Guidelines against it: no clause names it;
+the purpose-limit clause is the one risk, his call on the record. `docs/ideas/SupportArtist.md`
+(§4 the terms, §5 the probe, §8 the forks). Next: the probe of his library (§5), then HE
+designs the UI (§6). Nothing built.
+
+## 2026-10-12 (History click) — a click on a History row plays from there
+
+His ask: a click on a History song plays it and queues everything below it (reverse
+chronological). His calls, from my recommendations: older rows next; repeats kept; skipped
+plays kept; all 200 held plays, not only the 50 drawn; the hero follows the same rule.
+`history-card.ts`: the click handler calls `playContext(view, i)` with `context: "history"`
+handles, after `drag.consumeClick()` and the pick test; one `ui:act` line; the rows are now
+`role="button" tabindex="0"` like the Queue's. Decided inside his choice: no new hover hint
+(the row's song hint already shows; the Queue's rows carry none either). QUEUE.md § the
+History card has the rule and the desk test. Desk test open.
 
 ## 2026-10-12 (Suggest Less) — the design checked against the code; docs only
 
