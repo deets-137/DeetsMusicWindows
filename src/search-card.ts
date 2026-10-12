@@ -37,8 +37,9 @@ import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { rowDrag } from "./row-drag";
 import { rowPick, picksText } from "./row-pick";
 import {
-  yourPlaylistsFor, checkPlaylists, artistShelvesHTML, type YourPlaylists, type CheckProgress,
+  yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML, openArtistLastfm, type YourPlaylists, type CheckProgress,
 } from "./artist-view";
+import { artistInfoFor } from "./listeners";
 import { handOff } from "./handoff";
 import { emit } from "./rules";
 import { levelLeft, ruleGrowComing } from "./card-grow";
@@ -725,7 +726,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
             .join("");
           const genre = d.artist.genres?.[0];
           body.innerHTML = `
-            <div class="lib-hero">${heroCover(d.artist.artwork, d.artist.name, undefined, undefined, true)}<span class="lib-hero__title">${esc(d.artist.name)}</span>${genre ? `<span class="lib-hero__meta">${esc(genre)}</span>` : ""}</div>
+            <div class="lib-hero lib-hero--aside"><div class="lib-hero__main">${heroCover(d.artist.artwork, d.artist.name, undefined, undefined, true)}<span class="lib-hero__title">${esc(d.artist.name)}</span>${genre ? `<span class="lib-hero__meta">${esc(genre)}</span>` : ""}</div><div data-artist-info></div></div>
             ${d.topSongs.length ? actionsRowHTML({ play: `Play ${d.artist.name}'s Top Songs from Apple Music, in order`, shuffle: `Shuffle ${d.artist.name}'s Top Songs from Apple Music` }) : ""}
             ${albums ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${albums}</div>` : ""}
             <div data-shelves>${artistShelvesHTML(d.featuredPlaylists, yours, checking)}</div>
@@ -733,6 +734,11 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
             ${d.topSongs.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`}`;
           const shelves = body.querySelector<HTMLElement>("[data-shelves]")!;
           const paintShelves = () => { shelves.innerHTML = artistShelvesHTML(d.featuredPlaylists, yours, checking); };
+          // The Last.fm facts box beside the hero (LISTENERS.md §6), filled when the call answers.
+          const infoHolder = body.querySelector<HTMLElement>("[data-artist-info]");
+          void artistInfoFor(d.artist.name).then((i) => {
+            if (infoHolder && body.isConnected) infoHolder.innerHTML = artistInfoHTML(i);
+          });
           const loadYours = () =>
             yourPlaylistsFor(d.artist.name)
               .then((y) => { yours = y; paintShelves(); })
@@ -741,6 +747,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
           wireTrackList(body, d.topSongs, `search-artist:${id}`);
           body.addEventListener("click", (e) => {
             const t = e.target as HTMLElement;
+            const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
+            if (lfm) return openArtistLastfm(lfm);
             const shelf = t.closest<HTMLElement>("[data-shelf-item]");
             if (shelf) {
               const i = Number(shelf.dataset.shelfIdx);

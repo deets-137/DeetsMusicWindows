@@ -144,8 +144,70 @@ scroll is quick (it took the slide's own time, and the title stayed cut on the l
 
 1. **The word.** Closed 2026-10-12: *Plays* and *Listeners*, Last.fm's own words.
 2. **A ratio.** `artist.getInfo` gives the artist's listeners. A song's listeners over the
-   artist's says "rare for this artist" (a deep cut) against "rare" (an unknown artist). A
-   second call, cached per artist name. Recommended as a later step, after the plain number.
+   artist's says "rare for this artist" (a deep cut) against "rare" (an unknown artist).
+   The artist call is built (§6, the facts box); the ratio itself is not shown anywhere. The
+   rank from `artist.getTopTracks` is the other read: ideas/LastfmArtist.md.
 3. **A background pass** over the library, so the Library card could sort by rarity. A few
    thousand calls once, then a month's drip. Not before the plain number has been seen.
 4. **Off switch.** Closed 2026-10-12: Settings › Playback › *Show play counts from Last.FM* (§4).
+
+## 6. The artist facts box (as built, not for release yet)
+
+> **Part:** built · 2026-10-12 · desk test open (§6.3) · **behind a DevTools flag.** His call
+> (2026-10-12): the song badge (§4) ships; the box does not yet. It shows in the dev build. In
+> a release it shows only with `localStorage["deets.dev.artistBox"] = "on"` set in DevTools,
+> then a reload (`ARTIST_BOX_ON` in `listeners.ts`, read once). Off, no artist call is made.
+> When it ships: drop the gate, and give the Playback row's hint its artist words again
+> ("…; an artist view shows the artist's, with Last.fm's tags", in settings-card.ts and the
+> four mirrors: SETTINGS.md, SETTINGS-INVENTORY.md, AGENT.md, ONBOARDING.md).
+
+**His design (2026-10-12), drawn on a screenshot of the Library artist view.** In an artist
+view, the round photo moves to the left and a box sits on its right with two columns: Last.fm's
+tags and an *On tour* marker, then the artist's plays and listeners. Play and Shuffle stay
+under both. The Search artist view gets the same box.
+
+### 6.0 What `artist.getInfo` gives (probed live, Pat Kalla & Le Super Mojo)
+
+`stats.listeners` 2,648 and `stats.playcount` 11,005 (all time); `tags.tag` five names
+(*funk*, *World Music*, *Pat Kalla*, *groove*, *worldwide groove*); `ontour` 0 or 1; `url`;
+five `similar` artists (dropped today, ideas/LastfmArtist.md); a `bio` (not read). It needs
+the API key only, like the song call.
+
+### 6.1 How it is built
+
+| Piece | Where | What |
+|---|---|---|
+| The table | `artist_info` (`lastfm::init_tables`) | `artist` (the name, lower case) · `state` have / none · `listeners` · `playcount` · `tags` (JSON) · `on_tour` · `url` · `fetched_at` |
+| The command | `lastfm_artist_info(name)` in `lastfm.rs` | cache first on the database thread; one call when the row is missing or over 30 days old (`LISTENERS_TTL_MS`, shared with songs); error 6 cached as `none`; a network failure caches nothing |
+| The renderer | `artistInfoFor(name)` in `listeners.ts` | a shared promise per name; `null` when the row is off (no call), no key, or no answer |
+| The markup | `artistInfoHTML` in `artist-view.ts` | `.artist-info`: a `.artist-info__facts` column (the *On tour* marker, then up to five tag chips) and a `.artist-info__counts` button (**N** Plays, **M** Listeners on two lines). Nothing until the answer is `have` |
+| The Library view | `Hero.aside` (collection-card.ts `heroHTML`) | the hero becomes `.lib-hero--aside`: a `.lib-hero__main` column (photo, name, meta) beside the box; `library-card.ts` asks on open and reloads the card when the answer lands |
+| The Search view | `[data-artist-info]` in the inline hero (search-card.ts) | the same classes; the holder is filled when the answer lands |
+| The click | `[data-artist-lastfm]` with `data-url` | the artist's Last.fm page (`openUrl`); handled in each card's click listener (collection-card.ts cannot import artist-view.ts, which imports it) |
+| The layout | styles.css `.lib-hero--aside` | a wrapping row: on a card too narrow for both, the box drops under the photo column |
+| The tag chip | `.artist-info__tag` | the web panel chip's family (`.web__chip`, `--web-chip-radius`), on `--surface-hover` so it reads against the box's `--surface` |
+| The tokens | `--artist-info-*` in skin.css | the gap to the photo column, the column gap, the pad, the radius, the tags' wrap width, the on-tour dot |
+| The gate | `ARTIST_BOX_ON`, then `showListeners` | the DevTools flag above (dev: always on), then the same row as the song badge. The row's hint will name the artist view when the box ships |
+| Log line | `lastfm: artist info for <name>: have (N listeners, M plays, K tags[, on tour])` | one per Last.fm answer |
+
+### 6.2 Decided inside his choices (for his review)
+
+The box's look (a `--surface` box with the panel border and the control radius); the tag chip
+family; the *On tour* marker as a dot and the word in the title's weight, above the tags; the
+counts as one button on two lines, the number in the title's type; the three hints; the wrap on
+a narrow card; the lower-cased name as the cache key; the five tags as Last.fm returns them;
+the same Settings row, not a second one; nothing shown for an artist Last.fm does not know.
+
+### 6.3 Desk test
+
+1. Library › an artist with Last.fm presence: the photo moves left, the box appears on its
+   right after a beat with tags, maybe *On tour*, and the two counts. Play / Shuffle stay full
+   width under both.
+2. Click the counts: the artist's Last.fm page opens in the browser. Hover a tag, the marker
+   and the counts: the three hints.
+3. Search › an artist: the same box beside the photo.
+4. Midi (a narrow card): the box drops under the photo column; nothing is cut.
+5. Open the same artist again: no new `lastfm: artist info` log line (the month's cache).
+6. Settings › Playback › *Show play counts from Last.FM* off, open an artist: no box, no call.
+7. An artist Last.fm does not know: the plain centered hero, one log line with `none`.
+8. Right-click the box: the hero's artist menu, as anywhere on the hero.

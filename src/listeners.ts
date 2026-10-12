@@ -10,6 +10,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
+import { setting } from "./settings-store";
 
 export interface ListenCount {
   /** "have" — Last.fm knows the song. "none" — it does not. */
@@ -45,6 +46,53 @@ export function listenersFor(t: Track): Promise<ListenCount | null> {
         return null;
       });
     held.set(key, p);
+  }
+  return p;
+}
+
+/** An artist's Last.fm facts (`artist.getInfo`, LISTENERS.md §6). */
+export interface ArtistInfo {
+  state: "have" | "none";
+  listeners: number;
+  playcount: number;
+  /** Last.fm's top tags, most applied first. */
+  tags: string[];
+  onTour: boolean;
+  url?: string;
+  fetchedAt: number;
+}
+
+const heldArtists = new Map<string, Promise<ArtistInfo | null>>();
+
+/**
+ * The artist facts box is not for release yet (his call, 2026-10-12): it shows in the dev
+ * build, and in a release only with `localStorage["deets.dev.artistBox"] = "on"` set in
+ * DevTools, then a reload. Off, no artist call is made. The song badge is not gated.
+ */
+const ARTIST_BOX_ON = (() => {
+  if (import.meta.env.DEV) return true;
+  try {
+    return localStorage.getItem("deets.dev.artistBox") === "on";
+  } catch {
+    return false;
+  }
+})();
+
+/**
+ * The Last.fm facts for an artist, by name. `null` when the box is gated off (above), the row
+ * *Show play counts from Last.FM* is off (no call is made), this build has no key, or Last.fm
+ * could not be reached. Shared per name, like `listenersFor`.
+ */
+export function artistInfoFor(name: string): Promise<ArtistInfo | null> {
+  const key = name.trim().toLowerCase();
+  if (!ARTIST_BOX_ON || !key || !setting("showListeners")) return Promise.resolve(null);
+  let p = heldArtists.get(key);
+  if (!p) {
+    p = invoke<ArtistInfo | null>("lastfm_artist_info", { name: name.trim() }).catch(() => {
+      heldArtists.delete(key);
+      return null;
+    });
+    heldArtists.set(key, p);
   }
   return p;
 }

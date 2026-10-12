@@ -56,8 +56,11 @@ then the secret (the `md-5` crate). User-Agent `DeetsMusic/<version>`.
 | `auth.getSession` | Every 3 s while a connect waits, and at once on the link back | `token` |
 | `track.updateNowPlaying` | A song starts (`record_event_start`) | `artist`, `track`, `album`, `duration`, `sk` |
 | `track.scrobble` | A play is queued; 20 s after launch; 5 min after a failure | up to 50 × `artist[i]`, `track[i]`, `timestamp[i]`, `album[i]`, `duration[i]`, `chosenByUser[i]`, `sk` |
+| `track.getInfo` | A song starts in Now Playing and its counts are not cached under a month (LISTENERS.md §4) | `artist`, `track`, `autocorrect=1`; no `sk` |
+| `artist.getInfo` | An artist view opens and the artist's facts are not cached under a month (LISTENERS.md §6) | `artist`, `autocorrect=1`; no `sk` |
 
-Cost: one now-playing call per song and about one scrobble call per song. Zero Apple calls.
+Cost: one now-playing call per song and about one scrobble call per song; one counts call per
+song and one facts call per artist, each at most once a month. Zero Apple calls.
 
 ## 4. Connect (the title menu › Account › Last.fm)
 

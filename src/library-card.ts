@@ -36,9 +36,10 @@ import { dropToLibrary } from "./drop-actions";
 import { libraryAddEnabled } from "./library-add";
 import { mosaicHTML } from "./mosaic";
 import {
-  libraryArtistInfo, expireArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML,
+  libraryArtistInfo, expireArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML,
   playCounts, type LibraryArtistInfo, type YourPlaylists, type CheckProgress, type PlayCount,
 } from "./artist-view";
+import { artistInfoFor, type ArtistInfo } from "./listeners";
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
 import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
@@ -784,6 +785,14 @@ export const libraryCard: CardDef = {
           card.reload();
         })
         .catch((e) => console.error("[library] artist info", e));
+      // The Last.fm facts box beside the hero (LISTENERS.md §6): one call per artist, cached
+      // a month; nothing until it answers, and nothing with the row off.
+      let lfm: ArtistInfo | null = null;
+      void artistInfoFor(a.name).then((i) => {
+        if (!i || i.state !== "have") return;
+        lfm = i;
+        card.reload();
+      });
       const loadYours = () =>
         yourPlaylistsFor(a.name)
           .then((y) => {
@@ -818,6 +827,7 @@ export const libraryCard: CardDef = {
               ),
             title: a.name,
             meta: `${albums} album${albums === 1 ? "" : "s"} · ${ts.length} song${ts.length === 1 ? "" : "s"}`,
+            aside: artistInfoHTML(lfm),
           };
         },
         shelves: () => artistShelvesHTML(info?.featuredPlaylists, yours, checking, albumsShelf()),

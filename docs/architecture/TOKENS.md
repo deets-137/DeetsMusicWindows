@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 583 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 589 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -637,6 +637,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--hero-gap` | `var(--space-1)` | — | title ↔ subtitle ↔ meta stack spacing |
 | `--hero-cover-hover` | `0.85` | — | brightness of a clickable hero cover on hover / file drag |
 | `--hero-artist-radius` | `50%` | — | an artist hero's photo (ARTIST-VIEW.md §1) |
+| `--artist-info-gap` | `var(--space-5)` | — | The Last.fm facts box beside an artist hero (LISTENERS.md §6). — the photo column ↔ the box |
+| `--artist-info-col-gap` | `var(--space-4)` | — | the box's two columns |
+| `--artist-info-pad` | `var(--space-3)` | — |  |
+| `--artist-info-radius` | `var(--radius-control)` | — |  |
+| `--artist-info-tags-w` | `200px` | — | the tag chips wrap inside this |
+| `--artist-info-dot` | `6px` | — | the on-tour marker |
 | `--lib-stuck-h` | `0px` | — | the height of a list's stuck header (.lib-view-bar / .lib-cols), its scroll-padding-top; the engine sets the measured value on each view, this is a list with none |
 | `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
 | `--sticky-bar-backdrop` | `var(--panel-backdrop)` | ocean, glass, cyber | the card's own frost (Glass); a see-through skin without one adds a blur |

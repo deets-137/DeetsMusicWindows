@@ -12,6 +12,7 @@
 // Everything is client-side over data the card already holds in memory.
 
 import { handleUnpin } from "./pins";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import * as frames from "./frames";
 import { wireListKeys } from "./list-keys";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
@@ -140,6 +141,9 @@ export interface Hero {
   cover: string; // HTML for the cover slot — heroCover() in library-card.ts
   title: string;
   sub?: { text: string; run?: () => void };
+  /** HTML drawn BESIDE the cover column (an artist's Last.fm facts box, LISTENERS.md §6): the
+   *  hero becomes a row, the cover and its lines a column on the left. Empty: the column it was. */
+  aside?: string;
   meta?: string;
   /** Makes the cover a button that opens this menu (a local playlist: image, remove, export). */
   coverMenu?: () => MenuItem[];
@@ -330,7 +334,10 @@ function heroHTML(h: Hero | undefined): string {
   const cover = h.coverMenu
     ? `<button class="lib-hero__cover-btn" type="button" data-hero-cover${h.coverDrop ? " data-hero-drop" : ""} aria-haspopup="menu" aria-label="Cover options" title="Opens the menu for this cover">${h.cover}</button>`
     : h.cover;
-  return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(h.title)}</span>${sub}${meta}</div>`;
+  const main = `${cover}<span class="lib-hero__title">${esc(h.title)}</span>${sub}${meta}`;
+  return h.aside
+    ? `<div class="lib-hero lib-hero--aside"><div class="lib-hero__main">${main}</div>${h.aside}</div>`
+    : `<div class="lib-hero">${main}</div>`;
 }
 
 export interface CardOptions {
@@ -1645,6 +1652,13 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
 
     // Sort/View popover controls are handled in onPopClick (the pop lives on <body>).
 
+    // The Last.fm counts in an artist hero's facts box → the artist's Last.fm page
+    // (LISTENERS.md §6). Opened here, not through artist-view.ts: that module imports this one.
+    const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
+    if (lfm) {
+      if (lfm.dataset.url) void openUrl(lfm.dataset.url);
+      return;
+    }
     // the hero's tappable subtitle (an album's artist) → its own drill
     if (t.closest("[data-hero-sub]")) {
       cur().ctx.hero?.()?.sub?.run?.();

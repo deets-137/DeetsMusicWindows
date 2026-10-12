@@ -153,6 +153,7 @@ nothing about authoring changed when the box did.
 | Now Playing | Show queue · Show search | Shows the Queue card: what plays next · Shows the Search card: all of Apple Music | now-playing-card.ts |
 | Now Playing (full player, behind its DevTools flag) | Close square · the edge strips | Back to the cards · Opens the full player | now-playing-card.ts · full-player.ts |
 | Now Playing (2026-10-12) | the Last.fm badge on the cover (Max) · the badge beside the title (full player) | Plays of this song on Last.fm. Opens its Last.fm page · Plays and listeners of this song on Last.fm. Opens its Last.fm page | now-playing-card.ts (`LISTEN_HINT_COVER`, `LISTEN_HINT_META`); [LISTENERS.md §4](LISTENERS.md) |
+| Artist view, the Last.fm facts box (2026-10-12; dev build, or the DevTools flag) | a tag chip · the On tour marker · the plays and listeners | What Last.fm listeners call this artist · On tour now, says Last.fm · Plays and listeners of this artist on Last.fm. Opens the artist's Last.fm page | artist-view.ts (`ARTIST_INFO_HINTS`); [LISTENERS.md §6](LISTENERS.md) |
 | Settings › Playback (2026-10-12) | Show play counts from Last.FM | Now Playing shows how many plays and listeners a song has on Last.fm. Off: Last.fm is not asked | settings-card.ts |
 | Now Playing | Previous · Play/Pause · Next | Plays the song before this one · Play / Pause (follows state) · Plays the next song | now-playing-card.ts |
 | Now Playing | ♥ · + | Favorite / Unfavorite · Add to Library / In your library (follow state) | now-playing-card.ts |

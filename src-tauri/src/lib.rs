@@ -542,6 +542,7 @@ pub fn run() {
             lastfm::lastfm_open_profile,
             lastfm::lastfm_heard,
             lastfm::lastfm_listeners,
+            lastfm::lastfm_artist_info,
             settings::autostart_get,
             settings::autostart_set,
             settings::agent_setup_text,

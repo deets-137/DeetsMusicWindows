@@ -747,6 +747,16 @@ pub fn init_tables(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
             playcount   INTEGER,
             url         TEXT,
             fetched_at  INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS artist_info (
+            artist      TEXT PRIMARY KEY,
+            state       TEXT NOT NULL,
+            listeners   INTEGER,
+            playcount   INTEGER,
+            tags        TEXT,
+            on_tour     INTEGER,
+            url         TEXT,
+            fetched_at  INTEGER NOT NULL
         );",
     )
 }
@@ -853,4 +863,130 @@ pub async fn lastfm_listeners(track_id: String, artist: String, title: String, a
     })
     .await?;
     Ok(Some(count))
+}
+
+// ── artist facts (LISTENERS.md §6) ──────────────────────────────────────────
+//
+// `artist.getInfo`: the artist's all-time listeners and plays, Last.fm's tags for them, and
+// whether they are on tour. One call per artist, cached in `artist_info` for the same month
+// as a song's counts; keyed by the name in lower case, so "Beyoncé" asked from two songs is
+// one row. The artist view's facts box (his design, 2026-10-12) reads it.
+
+/// One artist's Last.fm facts, as the renderer sees them.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtistInfo {
+    /// "have" — Last.fm knows the artist. "none" — it does not (error 6, or no name).
+    pub state: &'static str,
+    /// Distinct Last.fm users who scrobbled the artist at least once.
+    pub listeners: i64,
+    /// Every scrobble of the artist, all users.
+    pub playcount: i64,
+    /// Last.fm's top tags for the artist, most applied first (five at most from the call).
+    pub tags: Vec<String>,
+    /// Last.fm's `ontour` flag.
+    pub on_tour: bool,
+    /// The artist's page on last.fm.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// When Last.fm answered (ms since the epoch).
+    pub fetched_at: i64,
+}
+
+fn artist_key(name: &str) -> String {
+    name.trim().to_lowercase()
+}
+
+fn cached_artist(conn: &rusqlite::Connection, key: &str) -> Option<ArtistInfo> {
+    conn.query_row(
+        "SELECT state, listeners, playcount, tags, on_tour, url, fetched_at FROM artist_info WHERE artist = ?1",
+        [key],
+        |r| {
+            let state: String = r.get(0)?;
+            let tags: Option<String> = r.get(3)?;
+            Ok(ArtistInfo {
+                state: if state == "have" { "have" } else { "none" },
+                listeners: r.get::<_, Option<i64>>(1)?.unwrap_or(0),
+                playcount: r.get::<_, Option<i64>>(2)?.unwrap_or(0),
+                tags: tags.and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default(),
+                on_tour: r.get::<_, Option<i64>>(4)?.unwrap_or(0) != 0,
+                url: r.get(5)?,
+                fetched_at: r.get(6)?,
+            })
+        },
+    )
+    .ok()
+}
+
+fn store_artist(conn: &rusqlite::Connection, key: &str, a: &ArtistInfo) {
+    let tags = serde_json::to_string(&a.tags).unwrap_or_else(|_| "[]".into());
+    let _ = conn.execute(
+        "INSERT OR REPLACE INTO artist_info(artist, state, listeners, playcount, tags, on_tour, url, fetched_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![key, a.state, a.listeners, a.playcount, tags, a.on_tour as i64, a.url, a.fetched_at],
+    );
+}
+
+/// `artist.getInfo` with `autocorrect=1`. Last.fm gives `tags.tag` as an array, or as one
+/// object when there is a single tag; both are read.
+async fn fetch_artist(name: &str) -> Result<ArtistInfo, CallError> {
+    let json = call("artist.getInfo", vec![("artist".into(), name.into()), ("autocorrect".into(), "1".into())]).await?;
+    let a = &json["artist"];
+    let stats = &a["stats"];
+    let tag_name = |t: &serde_json::Value| t.get("name").and_then(|n| n.as_str()).map(str::to_string);
+    let tags: Vec<String> = match a.get("tags").and_then(|t| t.get("tag")) {
+        Some(serde_json::Value::Array(list)) => list.iter().filter_map(tag_name).collect(),
+        Some(one @ serde_json::Value::Object(_)) => tag_name(one).into_iter().collect(),
+        _ => Vec::new(),
+    };
+    Ok(ArtistInfo {
+        state: "have",
+        listeners: stats.get("listeners").and_then(as_int).unwrap_or(0),
+        playcount: stats.get("playcount").and_then(as_int).unwrap_or(0),
+        tags,
+        on_tour: a.get("ontour").and_then(as_int).unwrap_or(0) != 0,
+        url: a.get("url").and_then(|u| u.as_str()).map(str::to_string),
+        fetched_at: now_ms(),
+    })
+}
+
+/// The Last.fm facts for one artist. Cache first; one call when the row is missing or older
+/// than a month. `Ok(None)`: no key in this build, or no name. A network failure is an `Err`
+/// and caches nothing.
+#[tauri::command]
+pub async fn lastfm_artist_info(name: String, app: AppHandle) -> Result<Option<ArtistInfo>, String> {
+    let key = artist_key(&name);
+    if API_KEY.is_none() || key.is_empty() {
+        return Ok(None);
+    }
+    let k = key.clone();
+    let hit = crate::db_thread::run(&app, move |db| Ok(cached_artist(&db.lock(), &k))).await?;
+    if let Some(a) = hit {
+        if now_ms() - a.fetched_at < LISTENERS_TTL_MS {
+            return Ok(Some(a));
+        }
+    }
+    let info = match fetch_artist(name.trim()).await {
+        Ok(a) => a,
+        Err(CallError::Api(6, _)) => ArtistInfo { state: "none", listeners: 0, playcount: 0, tags: Vec::new(), on_tour: false, url: None, fetched_at: now_ms() },
+        Err(e) => {
+            crate::log::warn(&format!("lastfm: artist info for {key} failed ({e})"));
+            return Err(e.to_string());
+        }
+    };
+    crate::log::info(&format!(
+        "lastfm: artist info for {key}: {} ({} listeners, {} plays, {} tags{})",
+        info.state,
+        info.listeners,
+        info.playcount,
+        info.tags.len(),
+        if info.on_tour { ", on tour" } else { "" }
+    ));
+    let stored = info.clone();
+    crate::db_thread::run(&app, move |db| {
+        store_artist(&db.lock(), &key, &stored);
+        Ok(())
+    })
+    .await?;
+    Ok(Some(info))
 }

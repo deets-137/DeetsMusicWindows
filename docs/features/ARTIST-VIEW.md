@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.6.0
 desk_test: passed 2026-09-15
-sources: []
-updated: 2026-09-17
+sources: [src/artist-view.ts, src/collection-card.ts, src/library-card.ts, src/search-card.ts]
+updated: 2026-10-12
 ---
 # Artist view — hero, Featured Playlists, Your Playlists
 
@@ -165,3 +165,14 @@ hidden right slot is not on screen, so it still comes into the left slot.
 
 Settings › Window will set the order of the four parts under the hero, and hide any of them.
 One order for Library and Search. A rule can change it by condition. [LAYOUT.md](LAYOUT.md) §3.1.
+
+## 9. The Last.fm facts box beside the hero (built 2026-10-12, not for release yet)
+
+> **Part:** built · 2026-10-12 · desk test open · behind a DevTools flag (dev build on;
+> release: `localStorage["deets.dev.artistBox"] = "on"`), LISTENERS.md §6
+
+His design: in both artist views the round photo moves to the left and a box sits on its
+right, Last.fm's tags and an *On tour* marker in one column, the artist's plays and listeners
+in the other. The hero takes an `aside` (`Hero.aside`, `heroHTML`) and becomes a wrapping row.
+The data, the cache, the markup and the desk test are [LISTENERS.md §6](LISTENERS.md). Top
+tracks and similar artists, the next two reads, are an idea he designs: ideas/LastfmArtist.md.

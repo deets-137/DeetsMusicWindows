@@ -26,6 +26,8 @@ the app can do any of these things.
   2026-09-25), one actor per outside subsystem, one Apple call queue, and where a worker
   speeds the app up (opened 2026-09-25).
 
+- [LastfmArtist.md](LastfmArtist.md) — an idea (2026-10-12): Last.fm's top tracks and similar
+  artists on the artist view; the calls, the costs, the cache; he designs the UI.
 - [SECRETS-AND-CSP.md](SECRETS-AND-CSP.md) — designed, not built (2026-09-29): a Content
   Security Policy for the webview, and DPAPI for the Apple token and the Last.fm session.
 - [music-app-comp.md](music-app-comp.md) — an idea (2026-10-06): metrics and methods to

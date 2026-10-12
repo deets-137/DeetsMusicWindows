@@ -10,6 +10,42 @@ import { tracks as libraryTracks } from "./track-store";
 import { playlistsCached, playlistSongIndex, playlistTracks, songs } from "./playlists";
 import { esc } from "./collection-card";
 import { mosaicHTML } from "./mosaic";
+import { fmtCount, type ArtistInfo } from "./listeners";
+import { openUrl } from "@tauri-apps/plugin-opener";
+
+// ── the Last.fm facts box beside the hero (LISTENERS.md §6; his design, 2026-10-12) ──────
+// Two columns: Last.fm's tags and the on-tour marker, then the artist's plays and listeners
+// (a button: the artist's Last.fm page). Both artist views draw it with the hero; the Library
+// one through `Hero.aside`, the Search one into its `[data-artist-info]` holder. Nothing
+// shows until Last.fm answers "have". The hints are ONBOARDING.md §1.
+export const ARTIST_INFO_HINTS = {
+  tags: "What Last.fm listeners call this artist",
+  tour: "On tour now, says Last.fm",
+  counts: "Plays and listeners of this artist on Last.fm. Opens the artist's Last.fm page",
+} as const;
+/** How many tags the box shows: Last.fm's call gives five. */
+const ARTIST_TAGS_MAX = 5;
+
+/** The counts button was clicked: the artist's Last.fm page, when the answer carried one. */
+export function openArtistLastfm(btn: HTMLElement): void {
+  const url = btn.dataset.url;
+  if (url) void openUrl(url);
+}
+
+export function artistInfoHTML(i: ArtistInfo | null | undefined): string {
+  if (!i || i.state !== "have") return "";
+  const tags = i.tags
+    .slice(0, ARTIST_TAGS_MAX)
+    .map((t) => `<span class="artist-info__tag" title="${ARTIST_INFO_HINTS.tags}">${esc(t)}</span>`)
+    .join("");
+  const tour = i.onTour ? `<span class="artist-info__tour" title="${ARTIST_INFO_HINTS.tour}"><span class="artist-info__dot" aria-hidden="true"></span>On tour</span>` : "";
+  const facts = tour || tags ? `<div class="artist-info__col artist-info__facts">${tour}${tags ? `<div class="artist-info__tags">${tags}</div>` : ""}</div>` : "";
+  const counts =
+    `<button class="artist-info__col artist-info__counts" type="button" data-artist-lastfm${i.url ? ` data-url="${esc(i.url)}"` : ""} title="${ARTIST_INFO_HINTS.counts}">` +
+    `<span class="artist-info__count"><b>${fmtCount(i.playcount)}</b>Plays</span>` +
+    `<span class="artist-info__count"><b>${fmtCount(i.listeners)}</b>Listeners</span></button>`;
+  return `<div class="artist-info">${facts}${counts}</div>`;
+}
 
 // ── the Library artist's catalog facts (§4) ─────────────────────────────────────
 export interface LibraryArtistInfo {

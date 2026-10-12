@@ -12,6 +12,26 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-12 (Artist facts box) — Last.fm's artist facts beside the hero, his design
+
+His ask: "the artist ratio next, what does Last.fm offer?" Probed live: `artist.getInfo`
+(listeners, plays, tags, on tour, five similar), `artist.getTopTracks` (ranked songs with
+counts, 1000 a page) and `album.getInfo`; the probe showed a remix is its own Last.fm page, and
+that the top-tracks page is also a bulk read. His design on a screenshot: in a drilled artist
+view the photo moves left and a two-column box sits beside it (tags + On tour; plays +
+listeners). Built: `artist_info` table and `lastfm_artist_info` (a month's cache, keyed by the
+lower-cased name), `artistInfoFor` in listeners.ts (gated by the same Playback row),
+`artistInfoHTML` in artist-view.ts, `Hero.aside` in the collection engine, the Search view's
+holder, `.lib-hero--aside` + `.artist-info` on the web chip family, `--artist-info-*` tokens.
+LISTENERS.md §6 is the as-built record (§6.2 my calls inside his, §6.3 the desk test, 8
+steps); ARTIST-VIEW.md §9 points there. Top tracks and similar artists are documented as an
+idea he designs tomorrow: ideas/LastfmArtist.md (the calls, the costs, the cache, his forks).
+Seen in the dev app (a Search artist view in Max): the photo column left, the box beside it.
+His call at the commit: the song badge is good for release, the box is not. It is behind a
+DevTools flag (`ARTIST_BOX_ON` in listeners.ts: the dev build, or
+`localStorage["deets.dev.artistBox"] = "on"` in a release); the Playback row's hint stays the
+song-only sentence until the box ships. Checks: tsc, vite build, cargo check, docs:check, tokens.
+
 ## 2026-10-12 (Listeners badge) — the Last.fm counts on Now Playing, his design
 
 His design, drawn on two screenshots: a badge *N Plays | M Listeners* at the right of the
