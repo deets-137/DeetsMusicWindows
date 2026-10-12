@@ -12,6 +12,21 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-12 (Suggest Less) — the design checked against the code; docs only
+
+SUGGEST-LESS.md was four weeks old. Checked it against the code and rewrote it in place
+(§0a lists what moved). Found: the station "skip gain" next to the sleep `duck` would not
+silence a HomePod (with a speaker, `music.volume` is held at 1), so §5b now uses the
+`resumeHush` mechanism; the menu items go in `media-menu.ts`; the queue skip rides
+`expectedIds`; Compass `dislike` today means *favorite* (§9a). His calls: artist and album
+marks in the first build; three plain toggles (Skip on stations, off by default; Leave out
+of webs, at the time a web is made; Skip in queues). Added §3a, six ways to read Apple's −1s
+more often (R1: re-ask the songs Home's `recent/played/tracks` read returns, +1 call).
+Later the same sitting he closed §11 F1–F6: R1 only; webs on, queues and stations off; the
+artist and album items always shown; all marks act on stations; a **suggest less** Compass
+command takes `dislike`, and its words toggle like `favorite` (§9a); three build parts (§10).
+No code changed. A closed fork is not a go.
+
 ## 2026-10-12 (search fields) — desk test and stress test run by Claude: pass, two fixes
 
 - **His ask:** run the desk test and a stress test without him. Claude ran SEARCH-FIELDS.md §9
