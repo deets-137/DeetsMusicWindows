@@ -462,6 +462,19 @@
   --np-meta-gap:    var(--space-1); /* title ↔ artist stack spacing */
   --np-chip-pad:    var(--space-1) var(--space-2); /* station-name chip over the cover (radio) */
   --np-chip-strength: 82%;          /* how opaque that chip's panel wash is */
+  /* The Last.fm counts badge (LISTENERS.md §4): a chip of the station chip's family, on the
+     cover's bottom-right corner (Max) or at the right of the title block (the full player). */
+  --np-listen-pad:      var(--np-chip-pad);
+  --np-listen-strength: var(--np-chip-strength);
+  --np-listen-radius:   var(--radius-control);
+  --np-listen-line-gap: var(--space-1);  /* "N Plays" over "M Listeners" (the full player) */
+  --np-listen-edge:     color-mix(in srgb, var(--np-listen-ink) 18%, transparent); /* a faint rim: the chip holds its edge on a busy cover or the band */
+  --np-listen-inset:    var(--space-2);  /* off the cover's bottom-right corner (Max) */
+  --np-listen-gap:      var(--space-3);  /* the title block ↔ the badge (the full player) */
+  /* A cut-off title slides to its end while the pointer rests on it, at this many px a second. */
+  --np-title-scroll-rate:  40;
+  --np-title-scroll-delay: 350ms;
+  --np-title-scroll-back:  var(--dur-med);  /* the way back when the pointer leaves: quick, never the slide's time */
   --np-vol-gap:     var(--space-2); /* transport row ↔ the stage volume row (max) */
 
   /* -- record player (Press "Record player"; docs/features/VINYL.md) -- */
@@ -1047,6 +1060,9 @@
      Card opacity (src/skin-settings.ts) sets --ocean-card-opacity (0–100)
      on <html>; 100 is the solid sunken card, lower lets the swell through. */
   --panel:              color-mix(in srgb, color-mix(in srgb, var(--surface), black 18%) calc(var(--ocean-card-opacity, 100) * 1%), transparent);
+  /* The Last.fm badge keeps the card color at full strength: with see-through cards the chip
+     read as bare ink on the band (seen 2026-10-12, LISTENERS.md §4). */
+  --np-listen-fill:     color-mix(in srgb, var(--surface), black 18%);
   /* the card is see-through, so a pane or a stuck bar must not paint a second fill over it
      (Cyber's rule); the bar blurs the rows under it instead */
   --spane-bg:            transparent;

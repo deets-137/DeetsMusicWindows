@@ -3861,8 +3861,11 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 }
 .np__btn svg { width: var(--transport-size); height: var(--transport-size); display: block; fill: currentColor; }
 .np__btn--play svg { width: calc(var(--transport-size) * 1.25); height: calc(var(--transport-size) * 1.25); }
-/* Now-playing title + artist, stacked above the scrubber. */
-.np__meta { min-width: 0; display: flex; flex-direction: column; gap: var(--np-meta-gap); }
+/* Now-playing title + artist, stacked above the scrubber. A grid, not a flex column, since
+   2026-10-12: the Last.fm badge takes a second column beside the three lines in the full
+   player (.np__listen--meta); with the badge hidden the grid is the same stack. */
+.np__meta { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--np-meta-gap); align-content: center; }
+.np__meta > :not(.np__listen) { grid-column: 1; min-width: 0; }
 /* A meta line: its text plus the explicit badge. The title line hugs its text, so the
    badge follows the title; the artist line fills, so the badge sits at its right end. */
 .np__line { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
@@ -3877,6 +3880,44 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   color: var(--np-title);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* A cut-off title slides to its end while the pointer rests on it (now-playing-card.ts sets
+   --np-title-shift and --np-title-scroll-dur from the overflow and the skin's rate). The
+   ellipsis goes while it moves; the way back is quick (--np-title-scroll-back), with no delay
+   (a slide back at the reading rate left the title cut on the left for seconds, seen 2026-10-12). */
+.np__title-text { display: inline-block; transition: transform var(--np-title-scroll-back) var(--ease-ui) 0ms; }
+.np__title.is-scrolling { text-overflow: clip; }
+.np__title.is-scrolling .np__title-text { transform: translateX(var(--np-title-shift, 0px)); transition: transform var(--np-title-scroll-dur, 0ms) linear var(--np-title-scroll-delay); }
+@media (prefers-reduced-motion: reduce) {
+  .np__title.is-scrolling { text-overflow: ellipsis; }
+  .np__title.is-scrolling .np__title-text { transform: none; transition: none; }
+}
+
+/* ── The Last.fm counts badge (LISTENERS.md §4; his calls 2026-10-12) ──────────────────
+   The family is the station chip's (.np__station): a panel wash, subtext type, on the cover.
+   Two elements with one paint: the cover one shows "N Plays" at the cover's bottom-right
+   corner in Max; the meta one shows "N Plays" over "M Listeners" (two lines, his call) at the
+   right of the title block in the full player, in every layout of the band (his call: above
+   the ♥ and + when the controls share the band). A click opens the song's Last.fm page.
+   The fill and ink are the --np-listen-* roles (themes.css): the band remaps --title on the
+   rows, and a chip that read the remapped ink lost its contrast on the band. */
+.np__listen {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--np-listen-line-gap);
+  padding: var(--np-listen-pad);
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--np-listen-ink);
+  background: color-mix(in srgb, var(--np-listen-fill) var(--np-listen-strength), transparent);
+  border: 1px solid var(--np-listen-edge);
+  border-radius: var(--np-listen-radius);
+  white-space: nowrap; cursor: pointer;
+}
+.np__listen[hidden] { display: none; }
+.np__listen:focus-visible { outline: var(--focus-ring-w) solid var(--np-listen-ink); outline-offset: 1px; }
+.np__listen-line { display: block; }
+.np__listen--cover { display: none; position: absolute; right: var(--np-listen-inset); bottom: var(--np-listen-inset); z-index: 2; }
+[data-surface="max"] .np__listen--cover:not([hidden]) { display: inline-flex; }
+:root[data-player="full"] .panel[data-slot="np"] .np__listen--cover { display: none; }
+.np__listen--meta { display: none; grid-column: 2; grid-row: 1 / span 3; align-self: center; justify-self: end; margin-left: var(--np-listen-gap); }
+:root[data-player="full"] .panel[data-slot="np"] .np__listen--meta:not([hidden]) { display: inline-flex; }
 .np__artist {
   font-size: var(--fs-subtext);
   color: var(--np-subtext);

@@ -10,7 +10,9 @@ import {
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 import { makeSlider } from "./slider";
 import { mountVinyl } from "./vinyl";
-import { setting } from "./settings-store";
+import { setting, onSettingsChange } from "./settings-store";
+import { listenersFor, fmtCount, type ListenCount } from "./listeners";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { mountAirplay, type AirplayMount } from "./airplay";
 import { onTracksChange } from "./track-store";
@@ -35,6 +37,12 @@ import { dropToPlay } from "./drop-actions";
 const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
 // The cover placeholder: the ♪ glyph in a one-line box (styles.css .np__art-glyph).
 const GLYPH_NOTE = '<span class="np__art-glyph" aria-hidden="true">♪</span>';
+// The Last.fm counts badge (LISTENERS.md §4; his calls 2026-10-12): "N Plays | M Listeners" at
+// the right of the title block in the full player, "N Plays" on the cover's bottom-right
+// corner in Max. Two elements, one paint; CSS shows the one for the place. Both hints are in
+// ONBOARDING.md §1.
+const LISTEN_HINT_COVER = "Plays of this song on Last.fm. Opens its Last.fm page";
+const LISTEN_HINT_META = "Plays and listeners of this song on Last.fm. Opens its Last.fm page";
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>';
 
 const TEMPLATE = `
@@ -45,13 +53,14 @@ const TEMPLATE = `
     <div class="np__center">
       <div class="np__meta">
         <div class="np__line">
-          <span class="np__title" id="np-title">Not playing</span>
+          <span class="np__title" id="np-title"><span class="np__title-text">Not playing</span></span>
           <span class="np__explicit" id="np-explicit"></span>
         </div>
         <div class="np__line">
           <span class="np__artist" id="np-artist"></span>
         </div>
         <span class="np__album" id="np-album"></span>
+        <button class="np__listen np__listen--meta" id="np-listen-meta" type="button" title="${LISTEN_HINT_META}" hidden></button>
       </div>
       <div class="np__scrub scrub">
         <div class="scrub__track"><div class="scrub__fill"></div></div>
@@ -172,6 +181,21 @@ export const nowPlayingCard: CardDef = {
       if (npTitle.scrollWidth > npTitle.clientWidth) npArtist.after(npBadge);
     };
     let titleKey = ""; // title + badge last placed — re-measured only on change
+    // A cut-off title slides to its end while the pointer rests on it (his call, 2026-10-12:
+    // the badge or the card's width may cut it). The text sits in its own span, so the box
+    // keeps its clip while the span moves; the time comes from the distance and the skin's
+    // rate token. Reduced motion: styles.css leaves the ellipsis in place.
+    const titleText = npTitle?.querySelector<HTMLElement>(".np__title-text") ?? document.createElement("span");
+    npTitle?.addEventListener("pointerenter", () => {
+      if (!npTitle) return;
+      const over = npTitle.scrollWidth - npTitle.clientWidth;
+      if (over <= 0) return;
+      const rate = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--np-title-scroll-rate")) || 40;
+      npTitle.style.setProperty("--np-title-shift", `${-over}px`);
+      npTitle.style.setProperty("--np-title-scroll-dur", `${Math.round((over / rate) * 1000)}ms`);
+      npTitle.classList.add("is-scrolling");
+    });
+    npTitle?.addEventListener("pointerleave", () => npTitle?.classList.remove("is-scrolling"));
     const npElapsed = host.querySelector<HTMLElement>("#np-elapsed");
     const npRemaining = host.querySelector<HTMLElement>("#np-remaining");
     const fmt = (s: number) => {
@@ -252,7 +276,8 @@ export const nowPlayingCard: CardDef = {
       }
       if (npTitle && `${text}|${badge}` !== titleKey) {
         titleKey = `${text}|${badge}`;
-        npTitle.textContent = text;
+        titleText.textContent = text;
+        npTitle.classList.remove("is-scrolling");
         if (npBadge) npBadge.innerHTML = badge;
         placeBadge();
       }
@@ -355,6 +380,58 @@ export const nowPlayingCard: CardDef = {
     const unsubAddTracks = onTracksChange(refreshAdd, "np.add");
     const unsubAddToggle = onLibraryAddChange(refreshAdd);
     refreshAdd();
+
+    // The Last.fm counts badge (LISTENERS.md §4). One ask per song change while the row is on;
+    // listeners.ts holds the promise and Rust the month's cache. A station, a song with no id,
+    // a song Last.fm does not know, or the row off: no badge. A click opens the song's page.
+    // The cover badge is appended AFTER the record player mounts: mountVinyl empties the cover
+    // box (vinyl.ts `box.replaceChildren()`), so a badge in the template would be gone. The
+    // record's slots are placed before the station chip and stay under the badge (z-index).
+    const listenCover = document.createElement("button");
+    listenCover.className = "np__listen np__listen--cover";
+    listenCover.id = "np-listen-cover";
+    listenCover.type = "button";
+    listenCover.title = LISTEN_HINT_COVER;
+    listenCover.hidden = true;
+    npArt?.appendChild(listenCover);
+    const listenMeta = host.querySelector<HTMLElement>("#np-listen-meta");
+    let listenKey = ""; // the song the badge is for, or "" for none
+    let listenUrl: string | undefined;
+    const paintListen = (c: ListenCount | null) => {
+      const have = !!c && c.state === "have";
+      listenUrl = have ? c.url : undefined;
+      if (listenCover) {
+        listenCover.hidden = !have;
+        if (have) listenCover.textContent = `${fmtCount(c.playcount)} Plays`;
+      }
+      if (listenMeta) {
+        listenMeta.hidden = !have;
+        if (have) listenMeta.innerHTML = `<span class="np__listen-line">${fmtCount(c.playcount)} Plays</span><span class="np__listen-line">${fmtCount(c.listeners)} Listeners</span>`;
+      }
+    };
+    const refreshListen = () => {
+      const t = lastState?.station ? undefined : currentTrack();
+      const key = setting("showListeners") && t ? (t.catalogId ?? t.libraryId ?? "") : "";
+      if (key === listenKey) return;
+      listenKey = key;
+      paintListen(null);
+      if (!key || !t) return;
+      void listenersFor(t).then((c) => {
+        if (listenKey === key) paintListen(c); // the song moved on while Last.fm answered
+      });
+    };
+    const openListen = () => {
+      if (listenUrl) void openUrl(listenUrl);
+    };
+    listenCover?.addEventListener("click", openListen);
+    listenMeta?.addEventListener("click", openListen);
+    const unsubListenState = onPlayerState(refreshListen);
+    const unsubListenSetting = onSettingsChange((k) => {
+      if (k !== "showListeners") return;
+      listenKey = "\0"; // never a real key: the next refresh repaints
+      refreshListen();
+    });
+    refreshListen();
 
     // ♥ square (NEXT-VERSION §3): hidden without consent or a catalog id; filled
     // when loved. Optimistic — favorites.ts flips the state and rolls back on error.
@@ -614,6 +691,8 @@ export const nowPlayingCard: CardDef = {
         unsubAddState();
         unsubAddTracks();
         unsubAddToggle();
+        unsubListenState();
+        unsubListenSetting();
         unsubFavState();
         unsubFavChange();
         unsubFavToggle();

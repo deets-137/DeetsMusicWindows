@@ -1,14 +1,14 @@
 ---
-status: designed
+status: built
 desk_test: open
-sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs]
+sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts]
 updated: 2026-10-12
 ---
 # Listeners — how rare a song is, from Last.fm
 
-> **Designed 2026-10-12.** The read side is built (§3, part marker). The row that shows the
-> number is not: he builds the UI with it the next sitting (§4). Until then, do not tell a
-> user the app shows this.
+> **Built 2026-10-12.** The read side (§3) and the badge on Now Playing (§4, his design) are
+> built; the desk test (§4.3) is open. §4 is the as-built record: where it disagrees with §1–§3,
+> it is the code.
 
 **Terms**
 - **Listeners:** the number of distinct Last.fm users who have scrobbled a song at least once.
@@ -66,30 +66,86 @@ cannot reach that. A background pass over the library is **not** built and is a 
 not-found answer cached for the same month; the catalog-first key; `autocorrect=1`; the
 signed POST reused; no artist call yet (§5 fork 2).
 
-## 4. The UI (next sitting, not built)
+## 4. The badge on Now Playing (as built)
 
-Where the number can show. The forks are his.
+> **Part:** built · 2026-10-12 · desk test open (§4.3)
 
-1. **The song pane's Details table** (CREDITS.md §7.2a), one row: "Listeners · 48K on
-   Last.fm". The pane is the one place a song's facts already sit; the open of the pane is
-   the moment of the call. Recommended as the first and maybe only place.
-2. **The hover hint's third line**, after the writers. The hint must answer at once, so it
-   can only show a number already in the memory map (the credits pattern, `credits.ts`).
-3. **Now Playing**, a small line under the artist. One call per song start: more calls, and
-   a number on every play whether the user cares or not.
-4. **A Rulez fact** (`listeners`), so a rule can act on rarity. Only once a surface shows it.
+**His design (2026-10-12), every call his.** Not a row in the song pane: a badge on Now
+Playing, in the place he drew.
 
-Whatever the surface: the number carries the hover hint "People on Last.fm who have heard
-this song" (ONBOARDING.md §1), the Last.fm page opens on a click (`url`), and the row joins
-the Details family of the pane (UI-ARCHITECTURE.md §2a). The desk test is written with the row.
+| Place | Reads | Where |
+|---|---|---|
+| The full player (Midi and Max) | **N Plays** over **M Listeners**, two lines (his call) | at the right of the title block, spanning its three lines, inside the band. The same place in both layouts of the band: when the controls share the band, the badge sits above the ♥ and + squares |
+| The Max card (the stage, not full) | **N Plays** | on the cover's bottom-right corner, inset by `--np-listen-inset` |
+| Mini, Midi's strip, a station, a song with no id, a song Last.fm does not know | nothing | |
+
+- **Plays** is Last.fm's all-time scrobble count for the song across all users, not this
+  app's play count. **Listeners** is the distinct users who scrobbled it at least once (§0).
+- **The row:** Settings › Playback › *Show play counts from Last.FM*, a toggle, **on** by default (his
+  call). Off: no call is made, and the badge goes at once. The key is `showListeners`
+  (SETTINGS.md §3, an agent spec in `agent-settings.ts`, a `NEW_MARKS` line). It is not a rule
+  key: it decides what shows, not when.
+- **A cut-off title slides** to its end while the pointer rests on it, at
+  `--np-title-scroll-rate` px a second after `--np-title-scroll-delay`, and snaps back in
+  `--np-title-scroll-back` when the pointer leaves (his call: the badge, or the card's width,
+  may cut the title). Every
+  surface, since the title is one element. Reduced motion: the ellipsis stays; the hover hint
+  already carries the full title.
+
+### 4.1 How it is built
+
+| Piece | Where | What |
+|---|---|---|
+| Two elements, one paint | `now-playing-card.ts` `paintListen` | `#np-listen-cover` inside the cover box (`.np__art`, over the record's slots, `z-index: 2`) and `#np-listen-meta` as the fourth child of `.np__meta`; CSS shows the one for the place (`[data-surface="max"]` for the cover, `:root[data-player="full"]` for the meta) |
+| The ask | `refreshListen` on every player state | the song's key (catalog id, else library id) is compared with the last; a new song paints nothing, then asks `listenersFor` and paints the answer only if the song is still the same |
+| The title block | `.np__meta` is a grid since 2026-10-12 | `minmax(0, 1fr) auto`: the three lines in column 1, the badge in column 2 over rows 1–3. With the badge hidden it is the stack it was |
+| The family | `.np__listen` in styles.css | the station chip's (`.np__station`): the panel wash, subtext type; `--np-listen-*` are aliases of the chip's tokens plus a radius, an inset, a gap, a line gap and a faint rim |
+| The colors (his ask: legible in every skin, 2026-10-12) | `--np-listen-fill` / `--np-listen-ink` / `--np-listen-sub` in themes.css | the card's own pair (`--panel`, `--title`), fixed at `:root` so the band's remap of `--title` on the rows cannot reach the chip. Ocean overrides the fill with its card color at full strength (skin.css): its see-through cards left the chip as bare ink on the band. Checked by screenshot in the five skins |
+| The click | `openUrl(c.url)` | the song's page on last.fm |
+| The hints | `LISTEN_HINT_COVER`, `LISTEN_HINT_META` | ONBOARDING.md §1 |
+| The title scroll | `.np__title-text`, `is-scrolling` | the text in a span inside the clipped title; `pointerenter` measures the overflow and sets `--np-title-shift` and `--np-title-scroll-dur` |
+
+### 4.2 Decided inside his choices (for his review)
+
+The row's words (*Show play counts from Last.FM*, his words 2026-10-12; its hint); the badge's two hint sentences; the
+badge's look (the station chip's family), its radius and its faint rim; the two lines
+left-aligned inside the chip; the Max badge inset (`--space-2`); the scroll rate (40 px a second) and delay
+(350 ms); the quick way back on leave (`--dur-med`, after a slide back at the reading rate
+left the title cut on the left for seconds in the first run); the scroll on every surface; the badge inside the cover box
+rides its `aria-hidden`, so a screen reader hears only the full player's badge; a song
+Last.fm does not know shows nothing (no "0 Plays"); the count's shape (`fmtCount`: 48K, 1.2M).
+
+### 4.3 Desk test
+
+**Claude's run, 2026-10-12, on his dev app over CDP (steps 1, 2, 3 and the scroll of 5 by
+probe and screenshot; the rest his).** The Max badge sat on the cover's bottom-right corner;
+the full-player badge at the right of the title block in both layouts of the band (Max: the
+controls under the cover; Midi: on the band, the badge above ♥ and +); a long title slid at
+the rate. Two fixes from the run: the cover badge is appended after the record player mounts
+(`mountVinyl` empties the cover box, so the template's badge was gone); the way back after a
+scroll is quick (it took the slide's own time, and the title stayed cut on the left).
+
+1. Max, a song playing: the cover's bottom-right corner shows *N Plays* after a beat. Hover:
+   the hint. Click: the song's Last.fm page opens in the browser.
+2. Open the full player (Max): the badge on the cover goes; *N Plays | M Listeners* sits at
+   the right of the title block in the band. Shrink the window until the controls move onto
+   the band: the badge stays at the title block's right, above ♥ and +.
+3. Midi, the strip: no badge. Open the full player from Midi: the badge beside the title.
+4. Next song: the badge goes, then the new counts come. Log: one `lastfm: listeners for …`
+   line per new song; a song heard twice this month writes none.
+5. A station: no badge. A long title in the full player: rest the pointer on it, it slides to
+   its end after a beat; move away, it slides back.
+6. Settings › Playback › *Show play counts from Last.FM* off: the badge goes at once; Next: no log line.
+   On again: the badge comes back for the song playing.
+7. A song Last.fm does not know (an obscure library upload): no badge, one log line with
+   `none`.
 
 ## 5. Open forks
 
-1. **The word.** "Listeners", "Heard by", or "Rarity"? Last.fm's own word is listeners.
+1. **The word.** Closed 2026-10-12: *Plays* and *Listeners*, Last.fm's own words.
 2. **A ratio.** `artist.getInfo` gives the artist's listeners. A song's listeners over the
    artist's says "rare for this artist" (a deep cut) against "rare" (an unknown artist). A
    second call, cached per artist name. Recommended as a later step, after the plain number.
 3. **A background pass** over the library, so the Library card could sort by rarity. A few
    thousand calls once, then a month's drip. Not before the plain number has been seen.
-4. **Off switch.** A Settings › Last.fm row to not ask, for a user who wants no call? Today
-   nothing asks until a surface is built, so this is decided with the surface.
+4. **Off switch.** Closed 2026-10-12: Settings › Playback › *Show play counts from Last.FM* (§4).

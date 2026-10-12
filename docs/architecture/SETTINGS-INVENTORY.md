@@ -301,6 +301,7 @@ under Cyber the whole section is gone.
 | Shuffle keeps picks | Where songs you queued by hand land | **First** / In place / Mixed |
 | Idle shuffle plays | Shuffle with nothing playing | **Library** / Nothing |
 | Show the day in History | Each History row says Today, Yesterday or the date | on / **off** |
+| Show play counts from Last.FM | Now Playing wears a badge with the song's Last.fm plays and listeners: both in the full player, plays on the Max card. A click opens the song's Last.fm page. Off: Last.fm is not asked | **on** / off |
 
 ### Sound
 

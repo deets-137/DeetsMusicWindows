@@ -13,8 +13,8 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
-| Theme (color roles) | themes.css | 44 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 573 tokens · overrides: vanilla 4, press 69, ocean 44, glass 73, cyber 68 |
+| Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 583 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -51,6 +51,9 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--np-band` | `color-mix(in srgb, light-dark(var(--title), var(--canvas)) var(--np-band-strength), transparent)` | — | The full player's band (features/fullscreen-player.md §7, item 6): a fixed DARK band over the bottom of the cover that holds the rows. Dark in every theme: a light theme's own dark ink (--title), a dark theme's canvas, at the strength the skin sets. The ink on it is the light one of the same pair, so the rows read on the band in every theme. Derived once here — no theme block names a band color of its own. |
 | `--np-band-ink` | `light-dark(var(--canvas), var(--title))` | — |  |
 | `--np-band-sub` | `color-mix(in srgb, var(--np-band-ink) var(--np-band-sub-strength), transparent)` | — |  |
+| `--np-listen-fill` | `var(--panel)` | — | The Last.fm counts badge (features/LISTENERS.md §4): a chip that sits on the cover (Max) or on the band (the full player). Its fill and ink are the card's own pair, fixed HERE so the band's remap of --title and --text on the rows (styles.css) cannot reach them: the ink always contrasts with the chip's fill, in every theme (his ask, 2026-10-12). |
+| `--np-listen-ink` | `var(--title)` | — |  |
+| `--np-listen-sub` | `var(--subtext)` | — |  |
 | `--glint` | `light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65))` | — | The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy scrubbers). Light is white in every theme, so this is the one role no theme remaps; a little dimmer on dark themes so it does not blaze. |
 | `--canvas` | — | every theme |  |
 | `--go` | — | every theme |  |
@@ -474,6 +477,16 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--np-meta-gap` | `var(--space-1)` | — | title ↔ artist stack spacing |
 | `--np-chip-pad` | `var(--space-1) var(--space-2)` | — | station-name chip over the cover (radio) |
 | `--np-chip-strength` | `82%` | — | how opaque that chip's panel wash is |
+| `--np-listen-pad` | `var(--np-chip-pad)` | — | The Last.fm counts badge (LISTENERS.md §4): a chip of the station chip's family, on the cover's bottom-right corner (Max) or at the right of the title block (the full player). |
+| `--np-listen-strength` | `var(--np-chip-strength)` | — |  |
+| `--np-listen-radius` | `var(--radius-control)` | — |  |
+| `--np-listen-line-gap` | `var(--space-1)` | — | "N Plays" over "M Listeners" (the full player) |
+| `--np-listen-edge` | `color-mix(in srgb, var(--np-listen-ink) 18%, transparent)` | — | a faint rim: the chip holds its edge on a busy cover or the band |
+| `--np-listen-inset` | `var(--space-2)` | — | off the cover's bottom-right corner (Max) |
+| `--np-listen-gap` | `var(--space-3)` | — | the title block ↔ the badge (the full player) |
+| `--np-title-scroll-rate` | `40` | — | A cut-off title slides to its end while the pointer rests on it, at this many px a second. |
+| `--np-title-scroll-delay` | `350ms` | — |  |
+| `--np-title-scroll-back` | `var(--dur-med)` | — | the way back when the pointer leaves: quick, never the slide's time |
 | `--np-vol-gap` | `var(--space-2)` | — | transport row ↔ the stage volume row (max) |
 
 ### record player (Press "Record player"; docs/features/VINYL.md)
@@ -843,6 +856,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 A skin sets these, but the base block never declares them — a token that only one skin reads, or a typo.
 
+- `--np-listen-fill (ocean)`
 - `--glass-glow (glass)`
 - `--glass-dim (glass)`
 - `--glass-frost-sat (glass)`

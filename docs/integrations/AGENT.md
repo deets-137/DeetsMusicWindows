@@ -338,7 +338,7 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   played and added elsewhere, and the "New" shelf of your artists' releases. Off, every shelf
   still builds from this machine alone. The hide rows are not exposed: hiding a tile is a
   gesture on the tile.
-- **Playback › New pins open on click** (2026-09-20, PINS.md §8): `pinNewAct`
+- **Playback › Pinned Item click behavior** (2026-09-20, PINS.md §8): `pinNewAct`
   (Open | Play | Shuffle). The verb a NEW pinned tile starts with. It never touches a pin that
   already exists — a verb set on a tile is kept for ever, and a pin made before this shipped
   keeps its card's own rule. A song pin and a station pin always play and have no verb. The
@@ -364,6 +364,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - **Playback › Play a web when a list ends** (2026-09-29, QUEUE.md §The end of a list,
   PLAYLIST-WEB.md §12): `listEndWeb` (On | Off, default On). On: a list that ends with Repeat off
   plays a temporary web (1 day) made from it. Off: the list waits at its first song, paused.
+- **Playback › Show play counts from Last.FM** (2026-10-12, LISTENERS.md §4): `showListeners` (On | Off,
+  default On). On: Now Playing wears the song's Last.fm plays and listeners on a badge. Off: no
+  Last.fm call is made.
 - **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).
   What happens to the scores already on a Diary entry when its scale changes. **Grow on open**:
   `diaryGrow` (New entries | Every entry | Never). An agent has no

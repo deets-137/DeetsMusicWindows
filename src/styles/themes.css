@@ -98,6 +98,14 @@
   --np-band-ink: light-dark(var(--canvas), var(--title));
   --np-band-sub: color-mix(in srgb, var(--np-band-ink) var(--np-band-sub-strength), transparent);
 
+  /* The Last.fm counts badge (features/LISTENERS.md §4): a chip that sits on the cover (Max)
+     or on the band (the full player). Its fill and ink are the card's own pair, fixed HERE so
+     the band's remap of --title and --text on the rows (styles.css) cannot reach them: the ink
+     always contrasts with the chip's fill, in every theme (his ask, 2026-10-12). */
+  --np-listen-fill: var(--panel);
+  --np-listen-ink:  var(--title);
+  --np-listen-sub:  var(--subtext);
+
   /* The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy
      scrubbers). Light is white in every theme, so this is the one role no theme remaps;
      a little dimmer on dark themes so it does not blaze. */

@@ -112,6 +112,11 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**Listeners badge (2026-10-12, built, desk test open).** Now Playing wears the song's Last.fm
+counts: *N Plays | M Listeners* beside the title in the full player, *N Plays* on the cover's
+corner in Max; Settings › Playback › *Show play counts from Last.FM* (on). A cut-off title slides on
+hover. Desk test: features/LISTENERS.md §4.3 (7 steps).
+
 **Unshuffle (2026-10-12, built, desk test open).** Press the Shuffle square off and the list
 goes on in its order from the playing song; a click with the mode on shuffles the whole list
 but the clicked song; the glyph stays the arrows; the queue blob is v2 (the plan rides

@@ -309,6 +309,7 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "shuffleOff", "Shuffle off plays", [{ value: "order", label: "In order" }, { value: "keep", label: "As shuffled" }]),
   storeChoice("Playback", "shuffleManual", "Shuffle keeps picks", [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }]),
   storeToggle("Playback", "historyShowDay", "Show the day in History"),
+  storeToggle("Playback", "showListeners", "Show play counts from Last.FM"),
   // ── AirPlay (AIRPLAY.md §7) ──
   {
     key: "airplaySend", label: "Send to speaker", section: "AirPlay", kind: "choice",

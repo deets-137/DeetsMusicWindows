@@ -12,6 +12,26 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-12 (Listeners badge) — the Last.fm counts on Now Playing, his design
+
+His design, drawn on two screenshots: a badge *N Plays | M Listeners* at the right of the
+title block in the full player (the same place when the controls share the band, above ♥
+and +), *N Plays* on the cover's bottom-right corner in the Max card, a Playback toggle on by
+default, and a cut-off title that slides to its end on hover. Built in `now-playing-card.ts`
+(two elements, one paint, `refreshListen` per song change), `.np__meta` became a grid, the
+`.np__listen` chip on the station chip's family, `showListeners` with its agent spec and New
+mark. LISTENERS.md §4 is the as-built record, §4.2 what I decided inside his calls, §4.3 the
+desk test (7 steps). Then, his ask, Claude drove his running dev app over CDP and shot the
+three places (Max card, Max full, Midi full with the controls on the band): all three match
+his pictures. Two fixes from the run (§4.3): the cover badge is appended after `mountVinyl`
+(it empties the box), and the title's way back after a scroll is quick. His next asks: the
+two counts on two lines, and legible text in every skin: the chip got its own color roles
+(`--np-listen-fill` / `-ink`, fixed at `:root` past the band's remap of `--title`), a faint
+rim, and an opaque fill in Ocean (its see-through cards left bare ink on the band); checked
+by a band shot in the five skins. Also this sitting:
+the stale git index (two phantom deletes from a shared-index commit) reset. tsc, vite build,
+tokens, docs:check: pass.
+
 ## 2026-10-12 (Unshuffle) — press Shuffle off and the list goes on in order
 
 His ask: "tell me about shuffling an album locally … let's design the unshuffle feature", and

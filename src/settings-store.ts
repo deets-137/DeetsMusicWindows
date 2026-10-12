@@ -268,6 +268,9 @@ export interface Settings {
   /** The History card says which day each play was, inside the row's own subtitle line
    *  (never as a divider — the card keeps its shape). NEXT-VERSION §16. */
   historyShowDay: boolean;
+  /** Now Playing shows the song's Last.fm counts on a badge: plays and listeners in the full
+   *  player, plays on the Max card (LISTENERS.md §4). Off: no Last.fm call is made. */
+  showListeners: boolean;
   /** A drop on the Now Playing card: play it and keep Up Next after it, or replace Up Next
    *  as Play Now does (DRAG-DROP.md §3). */
   dropPlayQueue: "keep" | "replace";
@@ -545,6 +548,7 @@ export const DEFAULTS: Settings = {
   streamQuality: "auto", // user's call 2026-09-16: Auto, and ours follows the network live (AUDIO-QUALITY.md)
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   historyShowDay: false, // user's call 2026-09-15: History looks as it always did until you ask
+  showListeners: true, // his call 2026-10-12: the badge shows for everyone; one Last.fm call per song, cached a month
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
