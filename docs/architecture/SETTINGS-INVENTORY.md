@@ -2,7 +2,7 @@
 status: guide
 desk_test: none
 sources: []
-updated: 2026-10-11
+updated: 2026-10-12
 ---
 # Every control in DeetsMusic
 
@@ -297,6 +297,7 @@ under Cyber the whole section is gone.
 | Restore on launch | What comes back when the app opens | **Last song** (paused, with its queue) / Up Next only / Nothing |
 | Play a web when a list ends | A list that ends with Repeat off: a temporary web (1 day) from the album, or from the last song of any other list, plays next. Off: the list is loaded again at its first song, paused. Nothing in a room, after a station break-out, or while the sleep timer waits for an end | **On** / Off |
 | Shuffle button stays on | The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once | **on** / off |
+| Shuffle off plays | Press Shuffle off: the list goes on in its own order from the song playing. As shuffled: Up Next stays as it is | **In order** / As shuffled |
 | Shuffle keeps picks | Where songs you queued by hand land | **First** / In place / Mixed |
 | Idle shuffle plays | Shuffle with nothing playing | **Library** / Nothing |
 | Show the day in History | Each History row says Today, Yesterday or the date | on / **off** |

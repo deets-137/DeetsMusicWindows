@@ -72,6 +72,53 @@ test("shuffle keeps manual picks on top by default (FUTURE-SETTINGS §5a)", () =
   assert.deepEqual(ids(up.slice(2)).sort(), ["b", "c", "d", "e"]);
 });
 
+test("shuffle mode: the clicked song first, then EVERY other song shuffled, no lookback (3A, 2026-10-12)", () => {
+  q.setContext([h("a"), h("b"), h("c"), h("d"), h("e")], 3, true);
+  assert.equal(q.getCurrent()?.catalogId, "d");
+  assert.deepEqual(ids(q.getUpcoming()).sort(), ["a", "b", "c", "e"], "the songs above the click play too");
+  assert.deepEqual(ids(q.getHistory()), [], "no parked lookback in shuffle mode");
+  assert.deepEqual(ids(q.getPlan()), ["a", "b", "c", "d", "e"], "the plan keeps the list's order");
+});
+
+test("unshuffle: the list goes on in its order from the playing song; the rest parks for Previous (1A, 2026-10-12)", () => {
+  // A shuffled order, made by hand so the test is not random: a b c, then f before d and e.
+  q.setContext([h("a"), h("b"), h("c"), h("d"), h("e"), h("f")], 0);
+  q.move(4, 0); // Up Next: f b c d e
+  q.move(3, 1); // Up Next: f d b c e
+  q.advance(); // f plays (a heard)
+  q.advance(); // d plays (f heard)
+  assert.equal(q.getCurrent()?.catalogId, "d");
+  assert.deepEqual(ids(q.getRecentlyPlayed()), ["a", "f"]);
+  assert.equal(q.unshuffle(), true);
+  assert.deepEqual(ids(q.getUpcoming()), ["e", "f"], "the songs after d in the list — f again, though heard");
+  // Previous: the heard trail (f, then a), then the lookback a..c minus the heard (c, b).
+  assert.deepEqual(ids(q.getHistory()), ["b", "c", "a", "f"]);
+  assert.deepEqual(ids(q.getRecentlyPlayed()), ["a", "f"], "the heard trail is untouched");
+});
+
+test("unshuffle keeps manual picks on top and does nothing with no plan", () => {
+  q.setContext([h("a"), h("b"), h("c")], 0, true);
+  q.playNextMany([h("x", "song")]);
+  assert.equal(q.unshuffle(), true);
+  assert.deepEqual(ids(q.getUpcoming()), ["x", "b", "c"]);
+  q.clear();
+  assert.equal(q.unshuffle(), false, "nothing playing");
+});
+
+test("the snapshot carries the plan (v2) and a v1 blob still restores without one", () => {
+  q.setContext([h("a"), h("b"), h("c")], 1);
+  const s = q.snapshot();
+  assert.equal(s.v, 2);
+  assert.deepEqual(ids(s.plan ?? []), ["a", "b", "c"]);
+  q.clear();
+  q.restore(s, true);
+  assert.deepEqual(ids(q.getPlan()), ["a", "b", "c"]);
+  q.clear();
+  q.restore({ ...s, v: 1, plan: undefined }, true);
+  assert.deepEqual(ids(q.getPlan()), []);
+  assert.equal(q.getCurrent()?.catalogId, "b");
+});
+
 test("Repeat all refills an empty Up Next with the whole list, in order", () => {
   q.setContext([h("a"), h("b")], 0);
   q.advance();

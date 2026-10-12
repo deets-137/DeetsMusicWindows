@@ -34,7 +34,7 @@ import { isPinned, songKey, togglePin, onPinsChange } from "./pins";
 import { startStationItem } from "./start-station";
 import { inLibrary, loadTracks, onTracksChange } from "./track-store";
 import { playTracks, playTracksKeepQueue, queueTracksAt, queueTracksNext, queueTracksLater, playStation, reconcileUpcoming } from "./player";
-import { toggleShuffle, setShuffleMode, cycleRepeat, setRepeat, getRepeat, isShuffleOn } from "./player";
+import { toggleShuffle, setShuffleMode, shuffleOff, cycleRepeat, setRepeat, getRepeat, isShuffleOn } from "./player";
 import { runAgentWrite } from "./agent-writes";
 import { materializeTrack } from "./search";
 import type { Track } from "./library";
@@ -238,7 +238,7 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
         case "mute": toggleMute(); break;
         case "shuffle": await toggleShuffle(); break; // as the button: the mode, or once
         case "shuffle-on": setShuffleMode(true); break;
-        case "shuffle-off": setShuffleMode(false); break;
+        case "shuffle-off": await shuffleOff(); break; // a press: the list goes on in order, per Settings
         case "repeat": cycleRepeat(); break;
         case "repeat-off": setRepeat("off"); break;
         case "repeat-all": setRepeat("all"); break;

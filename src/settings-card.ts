@@ -192,6 +192,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Connections", row: "mcpsetup" }, // Set up the DeetsMusic MCP, built 2026-10-11 (MCP-INSTALL.md)
   { section: "Window", row: "maxcards" }, // Layout for Max, built 2026-10-11 (MAX-CARDS.md)
   { section: "Motion", row: "graphicsfallback" }, // If graphics fail, built 2026-10-11 (GRAPHICS-FALLBACK.md)
+  { section: "Playback", row: "shuffleoff" }, // Shuffle off plays, unshuffle, built 2026-10-12 (QUEUE.md §Shuffle and unshuffle)
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -415,7 +416,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Layout for Max, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "pinNewAct"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1473,6 +1474,12 @@ function mountSettings(
           hint: () => "The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once",
           get: () => setting("shuffleStays"),
           set: (on) => setSetting("shuffleStays", on),
+        },
+        {
+          // Unshuffle (QUEUE.md §Shuffle and unshuffle; his call 1A, 2026-10-12).
+          kind: "choice", id: "shuffleoff", label: "Shuffle off plays", key: "shuffleOff",
+          hint: "Press Shuffle off: the list goes on in its own order from the song playing. As shuffled: Up Next stays as it is",
+          options: [{ value: "order", label: "In order" }, { value: "keep", label: "As shuffled" }],
         },
         {
           kind: "choice", id: "shufflemanual", label: "Shuffle keeps picks", key: "shuffleManual",

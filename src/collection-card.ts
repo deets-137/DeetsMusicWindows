@@ -20,8 +20,8 @@ import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload, t
 import { registerFinder } from "./find-key";
 import { isAddSquare } from "./add-square";
 import { rowPick, canPick, picksText, objectId } from "./row-pick";
-import { shuffleInPlace } from "./queue";
-import { isShuffleOn, setShuffleMode } from "./player";
+import { randomIndex } from "./queue";
+import { isShuffleOn, shuffledPlay } from "./player";
 import { setting } from "./settings-store";
 import { enterRows } from "./pop";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
@@ -125,7 +125,7 @@ export interface Grouping<T = any> {
     id?: (x: T) => string;
     menu: (xs: T[]) => MenuItem[];
     drag: (xs: T[]) => DragPayload;
-    play: (xs: T[]) => void;
+    play: (xs: T[], start: number) => void;
   };
 }
 
@@ -281,15 +281,16 @@ function actionsHTML(g: Grouping, count: number, picked: number, enter: boolean)
 }
 
 /**
- * What a press on the row does: `run` gets the list to play from its first item — the
- * rows as they are for Play, a shuffled copy for Shuffle (and for Play while the shuffle
- * mode is on, as Apple does). With "Shuffle button stays on", Shuffle turns the mode on.
+ * What a press on the row does: `run` gets the list and the index to play from. Play: the
+ * rows as they are, from the top — or from a random song while the shuffle mode is on (as
+ * Apple does; the queue shuffles the rest). Shuffle: `shuffledPlay` — the mode turns on
+ * and the list goes over in order from a random song, so the plan keeps the order for
+ * unshuffle (his call 3A, 2026-10-12); with "Shuffle button stays on" off, a shuffled copy.
  */
-export function runListAction<T>(act: string, items: T[], run: (list: T[]) => void): void {
+export function runListAction<T>(act: string, items: T[], run: (list: T[], start: number) => void): void {
   if (!items.length) return;
-  const shuffle = act === "shuffle";
-  if (shuffle && setting("shuffleStays")) setShuffleMode(true);
-  run(shuffle || isShuffleOn() ? shuffleInPlace(items.slice()) : items);
+  if (act === "shuffle") return shuffledPlay(items, run);
+  run(items, isShuffleOn() ? randomIndex(items.length) : 0);
 }
 
 /** The column headers of a grown song list (CARD-GROW.md §9a). A sortable header is a button. */
@@ -1588,11 +1589,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       // The count row (§19): Clear drops the picks; Play / Shuffle act on them alone.
       if (g.pick && pick.size()) {
         const picked = pick.picked();
-        runListAction(what, picked, (list) => g.pick!.play(list));
+        runListAction(what, picked, (list, start) => g.pick!.play(list, start));
         return;
       }
       if (!g.activate) return;
-      runListAction(what, f.items, (list) => g.activate!(list[0], 0, list));
+      runListAction(what, f.items, (list, start) => g.activate!(list[start], start, list));
       return;
     }
 

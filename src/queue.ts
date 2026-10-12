@@ -122,16 +122,35 @@ export function setContext(handles: TrackHandle[], startIndex: number, shuffle =
   if (state.current && idOf(state.current) !== startId) heard.push(state.current);
   while (heard.length > HISTORY_CAP) heard.shift();
 
-  // Ephemeral lookback: the pre-click tracks, minus anything already reachable via the
-  // heard trail (or the clicked song itself) — keeps the back-chain duplicate-free.
+  // Shuffle mode (NEXT-VERSION §14; his call 3A, 2026-10-12): the clicked song first, then
+  // EVERY other song of its list, shuffled — the songs above the click included, so a click
+  // on song 7 of 10 plays all ten. There is no parked lookback then: Previous walks the
+  // heard trail only. (The alternative, the song and the songs after it, is a future
+  // setting: FUTURE-SETTINGS §5c.) In order: the songs above the click park as the lookback.
+  state.history = shuffle ? heard.slice() : [...lookbackOf(handles, startIndex, heard, startId), ...heard];
+  while (state.history.length > HISTORY_CAP) state.history.shift();
+
+  setCurrent(startHandle ? { ...startHandle, origin: "auto" } : null);
+  const rest = shuffle ? handles.filter((_, i) => i !== startIndex) : handles.slice(startIndex + 1);
+  const autoTail: QueueEntry[] = rest.map((h) => ({ ...h, origin: "auto" }));
+  state.upcoming = [...manualKept, ...(shuffle ? shuffleInPlace(autoTail) : autoTail)];
+  emit();
+  return state.current;
+}
+
+/**
+ * The ephemeral lookback: the tracks ABOVE `startIndex` in `handles`, minus anything already
+ * reachable through the heard trail (or the song at the start itself), so the back-chain
+ * stays duplicate-free. "Heard songs only" (SETTINGS.md / FUTURE-SETTINGS §4 option b)
+ * seeds nothing — Previous then walks strictly the heard trail.
+ */
+function lookbackOf(handles: readonly TrackHandle[], startIndex: number, heard: readonly QueueEntry[], startId: string | undefined): QueueEntry[] {
   const exclude = new Set<string>();
   for (const e of heard) {
     const id = idOf(e);
     if (id) exclude.add(id);
   }
   if (startId) exclude.add(startId);
-  // "Heard songs only" (SETTINGS.md / FUTURE-SETTINGS §4 option b): don't seed the
-  // parked lookback at all — Previous then walks strictly the heard trail.
   const seedFrom = setting("previousReach") === "heard" ? startIndex : Math.max(0, startIndex - HISTORY_CAP);
   const lookback: QueueEntry[] = [];
   for (let i = seedFrom; i < startIndex; i++) {
@@ -140,19 +159,36 @@ export function setContext(handles: TrackHandle[], startIndex: number, shuffle =
     if (id) exclude.add(id); // also de-dup within the lookback itself
     lookback.push({ ...handles[i], origin: "auto", played: false });
   }
-
-  state.history = [...lookback, ...heard];
-  while (state.history.length > HISTORY_CAP) state.history.shift();
-
-  setCurrent(startHandle ? { ...startHandle, origin: "auto" } : null);
-  const autoTail: QueueEntry[] = handles
-    .slice(startIndex + 1)
-    .map((h) => ({ ...h, origin: "auto" }));
-  // Shuffle mode (NEXT-VERSION §14): the clicked song first, the rest of its list shuffled.
-  state.upcoming = [...manualKept, ...(shuffle ? shuffleInPlace(autoTail) : autoTail)];
-  emit();
-  return state.current;
+  return lookback;
 }
+
+/**
+ * Unshuffle (QUEUE.md §Shuffle and unshuffle; his call 1A, 2026-10-12): Up Next becomes the
+ * plan's songs AFTER the current song, in the plan's order — the list goes on from here as
+ * written, songs already heard this lap included (Apple's answer). The songs above it in
+ * the plan park as the lookback, so Previous reaches them. Manual picks stay on top in
+ * their order, as `setContext` keeps them. `current` never moves. False, and nothing
+ * changes, when the current song is not in the plan (a manual pick playing, a station, a
+ * restored session with no plan).
+ */
+export function unshuffle(): boolean {
+  const cur = state.current;
+  const curId = cur ? idOf(cur) : undefined;
+  if (!cur || !curId) return false;
+  const at = plan.findIndex((h) => idOf(h) === curId);
+  if (at < 0) return false;
+  const heard = state.history.filter((e) => e.played && idOf(e) !== curId);
+  state.history = [...lookbackOf(plan, at, heard, curId), ...heard];
+  while (state.history.length > HISTORY_CAP) state.history.shift();
+  const manualKept = state.upcoming.filter((e) => e.origin === "manual");
+  state.upcoming = [...manualKept, ...plan.slice(at + 1).map((h): QueueEntry => ({ ...h, origin: "auto" }))];
+  emit();
+  return true;
+}
+
+/** A random index into a list of `n` — where a shuffled play of a list starts, so the
+ *  plan keeps the list's order and `setContext` shuffles the rest (3A). 0 for an empty list. */
+export const randomIndex = (n: number): number => (n > 1 ? Math.floor(Math.random() * n) : 0);
 
 // ── Repeat all (NEXT-VERSION §12d) ────────────────────────────────────────────
 /** The last context's full list, in its order — what a lap of Repeat all replays. Not
@@ -356,10 +392,14 @@ export function clear(): void {
 // The three zones as one JSON-able blob. queue-persist.ts writes it on every change and
 // reads it back at launch; the model itself stays ignorant of where it lives.
 export interface QueueSnapshot {
-  v: 1;
+  /** 1 = the three zones (2026-09-12); 2 adds `plan` (2026-10-12), so unshuffle and Repeat
+   *  all keep the list's order across a restart. A v1 blob still restores, with no plan. */
+  v: 1 | 2;
   history: QueueEntry[];
   current: QueueEntry | null;
   upcoming: QueueEntry[];
+  /** The last context's list in its order (v2). Handles only: ~250 KB for a 3,895-song library. */
+  plan?: TrackHandle[];
   savedAt: number;
   /** Written only by the update restart (queue-persist `flushForRestart`, RELEASE.md §6.3):
    *  the song comes back whatever Restore on launch says, and resumes at `at` seconds. */
@@ -367,7 +407,7 @@ export interface QueueSnapshot {
   at?: number;
 }
 export function snapshot(): QueueSnapshot {
-  return { v: 1, history: state.history.slice(), current: state.current, upcoming: state.upcoming.slice(), savedAt: Date.now() };
+  return { v: 2, history: state.history.slice(), current: state.current, upcoming: state.upcoming.slice(), plan: plan.slice(), savedAt: Date.now() };
 }
 /**
  * Replace the model with a saved snapshot. Launch only — nothing is playing, and nothing
@@ -382,6 +422,8 @@ export function restore(s: QueueSnapshot, asCurrent: boolean): void {
   const norm = (e: QueueEntry): QueueEntry => ({ ...e, origin: e.origin === "manual" ? "manual" : "auto" });
   state.history = (Array.isArray(s.history) ? s.history : []).filter(ok).map(norm).slice(-HISTORY_CAP);
   state.upcoming = (Array.isArray(s.upcoming) ? s.upcoming : []).filter(ok).map(norm);
+  // v2: the plan comes back too, so unshuffle and a Repeat-all lap keep the list's order.
+  plan = (Array.isArray(s.plan) ? s.plan : []).filter(ok).map(({ catalogId, libraryId, context }) => ({ catalogId, libraryId, context }));
   const cur = ok(s.current) ? norm(s.current) : null;
   if (cur && !asCurrent) {
     state.upcoming.unshift(cur);

@@ -604,7 +604,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         const list = picks.size() ? picks.picked() : tracks;
         // The click trail (LOGGING.md §The click trail).
         diag.log("ui:act", { at: context, do: act.dataset.act ?? "", n: list.length, picked: picks.size() > 0 });
-        runListAction(act.dataset.act ?? "", list, (l) => start(l, 0));
+        runListAction(act.dataset.act ?? "", list, (l, i) => start(l, i));
         return;
       }
       const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");

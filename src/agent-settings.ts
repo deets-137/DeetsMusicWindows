@@ -306,6 +306,7 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "restoreQueue", "Restore on launch", [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }]),
   storeToggle("Playback", "listEndWeb", "Play a web when a list ends"),
   storeToggle("Playback", "shuffleStays", "Shuffle button stays on"),
+  storeChoice("Playback", "shuffleOff", "Shuffle off plays", [{ value: "order", label: "In order" }, { value: "keep", label: "As shuffled" }]),
   storeChoice("Playback", "shuffleManual", "Shuffle keeps picks", [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }]),
   storeToggle("Playback", "historyShowDay", "Show the day in History"),
   // ── AirPlay (AIRPLAY.md §7) ──

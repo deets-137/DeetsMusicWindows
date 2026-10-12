@@ -12,6 +12,26 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-12 (Unshuffle) — press Shuffle off and the list goes on in order
+
+His ask: "tell me about shuffling an album locally … let's design the unshuffle feature", and
+whether the library shuffle repeats too often (no: a Fisher–Yates permutation of the whole
+cached library, every song once per lap; a new permutation each Repeat-all lap is the one seam).
+Four forks, his calls: **1A** unshuffle = the list's songs after the playing one in list order,
+heard or not (Apple), with a row for the Spotify answer (*Shuffle off plays*: In order / As
+shuffled, `shuffleOff`); **2A** the Shuffle square does it; a double helix for "on" was drawn from
+his sketch, tried at 14 px and dropped the same day (the fill says "on", the arrows stay); **3A** a click with the mode on
+shuffles the whole list but the clicked song (no lookback), the "song and following" variant
+documented as FUTURE-SETTINGS §5c, no row; **4A** the plan rides the queue blob (v2). Built:
+`queue.unshuffle`, `randomIndex`, `lookbackOf` (the lookback rule shared by a click and
+unshuffle); `player.unshuffleQueue`, `shuffleOff` (a press, incl. the agent's `shuffle-off`),
+`shuffledPlay` (every list Shuffle: the mode on, the list in order from a random song, so the
+plan keeps the order), `shuffledStart`; `runListAction` hands `(list, start)` to its callers
+(nine call sites). Decided inside his choices: manual picks stay on top; a rule's *Turn shuffle
+off* only sets the mode; no unshuffle in a room; the
+hint *Press again to play the list in order*; `player:unshuffle` log line.
+Four tests in `tests/queue.test.ts`. Desk test: QUEUE.md §Shuffle and unshuffle.
+
 ## 2026-10-12 (Listeners) — a song's Last.fm listener count, read side only
 
 His ask: "genius song listens", then: listener counts to show how rare a song is. Checked

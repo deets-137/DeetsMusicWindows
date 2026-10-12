@@ -27,8 +27,7 @@ import type { Station } from "./radio";
 import type { HomeItem } from "./home";
 import { artistDetail, catalogRelated, materializeTrack } from "./search";
 import { addTransientTracks, tracks } from "./track-store";
-import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, setShuffleMode } from "./player";
-import { shuffleInPlace } from "./queue";
+import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, shuffledPlay } from "./player";
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
 import { requestDrillCard, requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
 import { goTo, goToArtistItem, goToAlbumItem, goToAlbumPaneItem, artistSearch, songCreditsItem, requestPlaylistPane, requestArtistPane, type LibraryWay } from "./go-to";
@@ -86,11 +85,9 @@ export function playRows(
           ts.forEach(materializeTrack);
         }
         if (how === "now") return opts.now ? opts.now(ts) : playTracks(ts, 0, context);
-        // The Shuffle button's rule (runListAction): with "Shuffle stays on" it turns the mode on.
-        if (how === "shuffle") {
-          if (setting("shuffleStays")) setShuffleMode(true);
-          return playTracks(shuffleInPlace(ts.slice()), 0, context);
-        }
+        // The Shuffle button's rule (shuffledPlay): the mode turns on, the list goes over in
+        // order from a random song, and the queue shuffles the rest (3A, 2026-10-12).
+        if (how === "shuffle") return new Promise<void>((res, rej) => shuffledPlay(ts, (list, start) => playTracks(list, start, context).then(res, rej)));
         return how === "next" ? queueTracksNext(ts, context) : queueTracksLater(ts, context);
       })
       .catch(err(`play ${how}`));

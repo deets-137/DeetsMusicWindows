@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/styles.css, src/search-card.ts, src/now-playing-card.ts, src/styles/skin.css, src/row-pick.ts, src-tauri/src/playlists.rs]
-updated: 2026-09-18
+updated: 2026-10-12
 ---
 # DeetsMusic — Next version (feature notes)
 
@@ -577,6 +577,13 @@ While on, `playContext` → `queue.setContext(…, shuffle = true)` puts the cli
 and the rest of its list shuffled behind it (manual picks stay in front, §5a unchanged),
 and a Repeat-all lap is shuffled too. Agent: `shuffle` presses the button, `shuffle-on` /
 `shuffle-off` set the mode; the snapshot's `shuffle` says whether it is on.
+
+> **Part:** built · 2026-10-12 — **unshuffle.** Press off now restores the list's order from
+> the playing song (his call 1A; *Shuffle off plays* = *As shuffled* keeps the Spotify answer);
+> a click while the mode is on shuffles the WHOLE list but the clicked song (3A); a list's
+> Shuffle hands the list over in order from a random song, so the plan keeps the order; the
+> plan rides the queue blob (v2); the glyph stays the arrows (a helix was tried and dropped). The record is
+> [QUEUE.md §Shuffle and unshuffle](features/QUEUE.md).
 
 **2026-09-16 — the "on" state was invisible, and a press had no answer.** Two faults, both fixed:
 

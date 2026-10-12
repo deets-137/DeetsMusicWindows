@@ -10,6 +10,7 @@ import {
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 import { makeSlider } from "./slider";
 import { mountVinyl } from "./vinyl";
+import { setting } from "./settings-store";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { mountAirplay, type AirplayMount } from "./airplay";
 import { onTracksChange } from "./track-store";
@@ -78,6 +79,9 @@ const TEMPLATE = `
                   <circle cx="12" cy="12" r="4.5" fill="url(#np-sh-fade)" stroke="none"></circle>
                 </mask>
               </defs>
+              <!-- One glyph for both states (his call, 2026-10-12: a helix for "on" was tried
+                   and did not read at 14 px): the filled square says the mode is on, and the
+                   cross-the-wires run answers each press. -->
               <g class="np__sh-up">
                 <polyline points="16 3 21 3 21 8"></polyline>
                 <line x1="4" y1="20" x2="21" y2="3"></line>
@@ -213,7 +217,10 @@ export const nowPlayingCard: CardDef = {
       }
       if (shuffleBtn) {
         shuffleBtn.setAttribute("aria-pressed", String(shuffle));
-        shuffleBtn.title = shuffle ? "Shuffle is on. Press again to turn it off" : "Shuffles the songs after this one";
+        // Off → the list goes on in order (unshuffle) or stays as shuffled: Settings › Playback › Shuffle off plays.
+        shuffleBtn.title = shuffle
+          ? setting("shuffleOff") === "order" ? "Shuffle is on. Press again to play the list in order" : "Shuffle is on. Press again to turn it off"
+          : "Shuffles the songs after this one";
       }
     };
     paintModes(getRepeat(), isShuffleOn(), false); // the persisted modes, before the first state event

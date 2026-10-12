@@ -44,7 +44,7 @@ export async function initQueuePersist(): Promise<void> {
     const s = json ? (JSON.parse(json) as queue.QueueSnapshot) : null;
     fromUpdate = !!s?.updateRestart;
     const mode = fromUpdate ? "song" : setting("restoreQueue");
-    if (s && s.v === 1 && mode !== "off") {
+    if (s && (s.v === 1 || s.v === 2) && mode !== "off") {
       queue.restore(s, mode === "song");
       const cur = queue.getCurrent();
       const id = cur?.catalogId ?? cur?.libraryId;

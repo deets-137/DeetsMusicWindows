@@ -32,6 +32,7 @@ export const queueTracksLater = later;
 export const playStation = later;
 export const queueStationAfter = later;
 export const setShuffleMode = noop;
+export const shuffledPlay = noop;
 
 // ./playlists
 export const addToPlaylistItem = () => row("Add to Playlist");

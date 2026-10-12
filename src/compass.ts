@@ -33,13 +33,13 @@ import type { Playlist } from "./search";
 import type { Track } from "./library";
 import {
   playPause, nextTrack, prevTrack, toggleShuffle, cycleRepeat, toggleMute, isMuted, isPlayingNow, isShuffleOn, getRepeat,
-  playTracks, playStation, jumpToUpcoming, setVolume, queueTracksNext, queueTracksLater, queueTracksAt, setShuffleMode,
+  playTracks, playStation, jumpToUpcoming, setVolume, queueTracksNext, queueTracksLater, queueTracksAt, shuffledPlay,
 } from "./player";
 import { sleepIn, sleepOff, sleepArmed, sleepAtEnd, openSleepPanel } from "./sleep";
 import { restartWalk } from "./walk";
 import { checkPlaylistRefreshNow } from "./playlist-refresh";
 import { presetOptions, selectPreset } from "./sound";
-import { getUpcoming, getRecentlyPlayed, getCurrent, shuffleInPlace } from "./queue";
+import { getUpcoming, getRecentlyPlayed, getCurrent } from "./queue";
 import { isLoved, setLoved, favoriteOffered } from "./favorites";
 import { addTrackToLibrary, alreadyInLibrary, libraryAddEnabled } from "./library-add";
 import { trackById } from "./track-store";
@@ -856,9 +856,8 @@ function shuffleRow(term: string): Row[] {
       void hit.tracks!()
         .then((ts) => {
           if (!ts.length) return;
-          if (setting("shuffleStays")) setShuffleMode(true);
           diag.log("compass:shuffle", { title: hit.title, n: ts.length });
-          return playTracks(shuffleInPlace(ts.slice()), 0, CONTEXT);
+          return new Promise<void>((res, rej) => shuffledPlay(ts, (list, start) => playTracks(list, start, CONTEXT).then(res, rej)));
         })
         .catch((e) => console.error("[compass] shuffle", e));
     },

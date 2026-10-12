@@ -15,7 +15,7 @@
 import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
 import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange, noCatalogCopy } from "./track-store";
-import { playTracks } from "./player";
+import { playTracks, shuffledStart } from "./player";
 import { requestOpenPlaylist, playlistTracks } from "./playlists";
 import { onLibraryDrill, takeLibraryDrill } from "./layout-bus";
 import { isLoved, onFavoritesChange, reconcileAlbum } from "./favorites";
@@ -502,7 +502,7 @@ export function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<T
       can: o.mark ? (t) => !t.unreleased : undefined, // an unreleased song is never picked (SEARCH.md)
       menu: (ts) => setMenu(() => ts, ts.length, "song", { context: o.context }),
       drag: (ts) => ({ source: "library", kind: "song", count: ts.length, tracks: () => ts, context: o.context }),
-      play: (ts) => void playTracks(ts, 0, o.context).catch((e) => console.error("[library] play picked", e)),
+      play: (ts, start) => void playTracks(ts, start, o.context).catch((e) => console.error("[library] play picked", e)),
     },
   };
 }
@@ -540,7 +540,7 @@ function albumsGrouping(
         const ts = albumsTracks(as, list);
         return { source: "library", kind: "album", count: ts.length, tracks: () => ts, context: "albums:picked" };
       },
-      play: (as) => void playTracks(albumsTracks(as, list), 0, "albums:picked").catch((e) => console.error("[library] play albums", e)),
+      play: (as) => void playTracks(...shuffledStart(albumsTracks(as, list)), "albums:picked").catch((e) => console.error("[library] play albums", e)),
     },
   };
 }
@@ -587,7 +587,7 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
         const ts = artistsTracks(as, list);
         return { source: "library", kind: "artist", count: ts.length, tracks: () => ts, context: "artists:picked" };
       },
-      play: (as) => void playTracks(artistsTracks(as, list), 0, "artists:picked").catch((e) => console.error("[library] play artists", e)),
+      play: (as) => void playTracks(...shuffledStart(artistsTracks(as, list)), "artists:picked").catch((e) => console.error("[library] play artists", e)),
     },
   };
 }
@@ -616,7 +616,7 @@ function genresGrouping(list: () => Track[], openDetail: (g: GenreGroup) => Cont
         const ts = gs.flatMap((g) => genreTracks(list(), g.name));
         return { source: "library", kind: "artist", count: ts.length, tracks: () => ts, context: "genres:picked" };
       },
-      play: (gs) => void playTracks(gs.flatMap((g) => genreTracks(list(), g.name)), 0, "genres:picked").catch((e) => console.error("[library] play genres", e)),
+      play: (gs) => void playTracks(...shuffledStart(gs.flatMap((g) => genreTracks(list(), g.name))), "genres:picked").catch((e) => console.error("[library] play genres", e)),
     },
   };
 }

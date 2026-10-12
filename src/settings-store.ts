@@ -292,6 +292,10 @@ export interface Settings {
   /** The shuffle mode's live state (no Settings row: the Now Playing button and the toolbar
    *  Shuffle set it). Persisted like Apple's. Only read while `shuffleStays` is on. */
   shuffleMode: boolean;
+  /** A press turns the mode off (QUEUE.md §Shuffle and unshuffle, 2026-10-12): the list goes
+   *  on in its own order from the playing song (`order`, unshuffle), or Up Next stays as
+   *  shuffled (`keep`, Spotify's way, the 2026-09-15 answer). Only read while `shuffleStays` is on. */
+  shuffleOff: "order" | "keep";
   /** Repeat (NEXT-VERSION §12): the Now Playing button cycles it; no Settings row. */
   repeatMode: "off" | "all" | "one";
   /** When a play counts as listened-through (§7). */
@@ -550,6 +554,7 @@ export const DEFAULTS: Settings = {
   goToTarget: "fits", // RULEZ.md §10.1: what Go to did before the row existed, so nothing moves
   shuffleStays: true, // user's call 2026-09-15: shuffle is a mode (NEXT-VERSION §14 A)
   shuffleMode: false,
+  shuffleOff: "order", // his call 1A, 2026-10-12: press off = the list goes on in order (unshuffle)
   repeatMode: "off",
   fullPlayRule: "fraction",
   replayAuto: true,

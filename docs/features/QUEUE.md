@@ -2,7 +2,7 @@
 status: foundation
 desk_test: passed 2026-09-24
 sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts]
-updated: 2026-10-04
+updated: 2026-10-12
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -745,6 +745,70 @@ with "unavailable": the `player:deadNext` line's `id` is the song that did not p
 song after it plays. After the next `player:insertDropped` of an `i.` id: `player:healAsked`
 with `banked: 1` when there is no copy, and no second `insertDropped` of that id this session.
 
+## Shuffle and unshuffle (2026-10-12)
+
+> **Part:** built · 2026-10-12 · desk test open (§Desk test below)
+
+Shuffling is the model's alone: MusicKit's own `shuffleMode` is never set. The shuffle is a
+Fisher–Yates permutation (`shuffleInPlace`): every song once per lap, a uniform order, no
+spread by artist. The mode is `shuffleStays` (the button is a mode) and `shuffleMode` (it is
+on), both in the settings store; `isShuffleOn` reads them together.
+
+**Three ways in.** (1) **A list's Shuffle** — the hero's Play / Shuffle row, the Shuffle row
+of every album and playlist menu, the Compass's *Shuffle "…"*, a pin's On Click, the idle
+press's rule *Play the library shuffled*: all go through `player.shuffledPlay`. With the mode
+available it turns the mode on and hands the list over **in its order, from a random song**;
+`setContext(…, shuffle = true)` then shuffles the rest. So `plan` keeps the list's order, and
+unshuffle can bring it back. (With *Shuffle button stays on* off there is no mode and no
+unshuffle: a shuffled copy plays from its top, as before.) Play while the mode is on also
+starts at a random song (`shuffledStart`), as Apple does. (2) **A click on one song while the
+mode is on** — the clicked song first, then **every other song of its list** shuffled (his
+call 3A, 2026-10-12: a click on song 7 of 10 plays all ten, not 8–10 only). There is no parked
+lookback then; Previous walks the heard trail. The alternative, the song and the songs after
+it, is FUTURE-SETTINGS §5c. (3) **The Shuffle square** turned on mid-list — the one-shot
+`shuffleUpcoming`: manual picks per `shuffleManual`, the auto tail shuffled, MusicKit's window
+reconciled gaplessly.
+
+**Unshuffle** (his call 1A, 2026-10-12): a press that turns the mode off — the square, the
+agent's `shuffle-off` — makes Up Next **the list's songs after the playing one, in the list's
+order**, songs already heard this lap included (Apple's answer: the album goes on from here as
+written). The songs above it in the list park as the Previous lookback, minus the heard
+trail, exactly as a click does. Manual picks stay on top in their order. `current` never
+moves; `reconcileUpcoming` re-feeds MusicKit. `queue.unshuffle` returns false and changes
+nothing when the playing song is not in the plan (a manual pick, a station, a restored session
+whose blob was v1). The row **Settings › Playback › Shuffle off plays** (`shuffleOff`: *In
+order* / *As shuffled*) keeps the 2026-09-15 answer available: *As shuffled* leaves Up Next as
+it is, Spotify's way. A rule's *Turn shuffle off* is not a press: it sets the mode and leaves
+the order (RULEZ.md §10.1 says a rule's mode change is not a press). In a room every queue
+edit is the room's: no unshuffle.
+
+**The plan survives a restart.** The queue blob is v2: `plan` rides with the three zones, so
+unshuffle and a Repeat-all lap keep the list's order after a relaunch. A v1 blob still
+restores, with no plan (then unshuffle is a no-op until the next list is clicked).
+
+**The square's glyph** (his call, 2026-10-12): one glyph, the crossed arrows, in both states.
+The filled square says the mode is on (the 2026-09-16 shape signal), and the cross-the-wires
+run answers each press. A double helix for "on" was drawn from his sketch and tried the same
+day: at the square's 14 px it read as a blur, so he dropped it.
+
+Log lines: `player:unshuffle {ok, before, up}`; `player:shuffle` as before.
+
+### Desk test — shuffle and unshuffle
+
+1. Open an album of 10+ songs. Press its **Shuffle**. Expect: a random song plays, the square
+   fills (the arrows stay), Up Next holds every other song of the album in a random order.
+2. Press the square. Expect: the fill goes, the wires cross once; Up Next is the album's songs after the
+   playing one, in album order; Previous (the ‹ button) walks the songs above it in album
+   order, then the songs heard.
+3. With the mode on, click song 7 of the album. Expect: song 7 plays; Up Next holds the other
+   nine, shuffled.
+4. Turn the mode on mid-album, Play Next a song, press the square off. Expect: the picked song
+   stays first, the album's rest follows in order.
+5. Settings › Playback › Shuffle off plays = *As shuffled*. Press the square off. Expect: Up
+   Next does not move. The square's hint reads *Press again to turn it off*.
+6. Quit the app with the mode on, relaunch, press the square off. Expect: the album in order
+   (the plan came back with the blob).
+
 ## The end of a list (2026-09-29)
 
 > **Part:** built · 2026-09-29 · desk test open
@@ -860,10 +924,26 @@ never removes its earlier rows — the window dedup in `loadFromModel` handles p
 correctness; the log is display-only.
 
 The **History card** (`history-card.ts`) keeps that shape over the durable rows: hero block
-(most recent, mirrors the Qcard's Now Playing) + "Previously" list, newest first. Read-only
-rows; right-click → Play Now / Play Next / Add to Queue via the handle-level ops
+(most recent, mirrors the Qcard's Now Playing) + "Previously" list, newest first.
+Right-click → Play Now / Play Next / Add to Queue via the handle-level ops
 (`playContext` / `enqueueNext` / `enqueueLater`), stamped `context: "history"`. Row
 markup/resolution is shared with the Qcard via `queue-rows.ts`.
+
+**A click plays from that row (2026-10-12, his calls).** A plain click or Enter on a row (or
+the hero) calls `playContext(view, i)`: that play starts, and every row below it follows,
+older first, in the order the card shows them — the history played backwards. The list is
+the whole held view (up to 200 plays, not only the 50 drawn), with repeats and skipped plays
+kept, so the queue is the list you see. The rows above the click are the lookback, so
+Previous climbs back up the card. A click on the hero (often the song playing now) follows
+the same rule. Ctrl / Shift still pick. The songs you hear this way write new plays, which
+land on top of the card; the queue is a copy taken at the click, so it does not move.
+
+*Desk test.* (1) Play three or four songs, then click the third History row: it plays, and
+the Queue's Up Next is the rows below it, in card order. (2) Press Previous a few times: first
+the song you heard before the click (the usual Previous rule), then the rows above the
+clicked one. (3) Ctrl+click two rows: they are picked, nothing plays.
+(4) Drag a row onto a playlist: it is added, nothing plays. (5) Click the + on a row: the
+song is added to the library, nothing plays. (6) Arrow to a row, press Enter: it plays.
 
 **What it reads.** `play_events_since(now − 14 days)` at mount (one SQLite call, no Apple
 calls), newest first, 200 rows held. After that, **every write to the log re-reads the last
@@ -905,7 +985,7 @@ for the already-playing song).
 | change window size / dedup / load sequence | `loadFromModel` in [player.ts](../../src/player.ts) |
 | change re-click behaviour | `playContext` in [player.ts](../../src/player.ts) |
 | change Repeat all (the lap) / Repeat one | `refillFromPlan` in [queue.ts](../../src/queue.ts) + `maybeFinishQueue` / `applyRepeatToMusicKit` in [player.ts](../../src/player.ts) — NEXT-VERSION §12 |
-| change the shuffle mode (a context starts shuffled) | `setContext(…, shuffle)` in [queue.ts](../../src/queue.ts); `isShuffleOn` / `toggleShuffle` in [player.ts](../../src/player.ts) — NEXT-VERSION §14 |
+| change the shuffle mode (a context starts shuffled) / unshuffle | `setContext(…, shuffle)`, `unshuffle`, `randomIndex` in [queue.ts](../../src/queue.ts); `isShuffleOn` / `toggleShuffle` / `shuffleOff` / `shuffledPlay` in [player.ts](../../src/player.ts) — §Shuffle and unshuffle, NEXT-VERSION §14 |
 | change Play Next / Add to Queue | `enqueueNext`/`enqueueLater` in [player.ts](../../src/player.ts), `*Many` in [queue.ts](../../src/queue.ts) |
 | change Up Next Remove / Move | `removeFromQueue`/`moveInQueue` (+ `mkUpcomingIndex`) in [player.ts](../../src/player.ts) |
 | change drag-reorder sync / re-windowing | `reconcileUpcoming` + `maybeTopUpWindow` (+ the `prevTrack` edge) in [player.ts](../../src/player.ts) |

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: none
 sources: [src/hint.ts, src/walk.ts, src/context-menu.ts, src/styles/hint.css, src/styles/walk.css, scripts/dev-app.mjs]
-updated: 2026-09-28
+updated: 2026-10-12
 ---
 # Onboarding — how the app explains itself
 
@@ -148,7 +148,7 @@ nothing about authoring changed when the box did.
 | Title bar | AirPlay square | Plays on a speaker or TV on your network · *Playing on {speaker}* while connected | index.html / airplay.ts |
 | "Play on" panel | Scan for speakers · Not now · Continue | Scan for speakers · Keep the speaker list open and ask again later · Show the Windows permission prompt, then play on the speaker | airplay.ts (the last two show once, before the first connect) |
 | Title bar | Maximize · Minimize · Close | Fills the screen. Press again to go back · Puts the window on the taskbar · Closes DeetsMusic. With Close to tray on, it hides to the tray and keeps playing | index.html |
-| Now Playing | Shuffle | Shuffles the songs after this one · *Shuffle is on. Press again to turn it off* | now-playing-card.ts (`paintModes`) |
+| Now Playing | Shuffle | Shuffles the songs after this one · *Shuffle is on. Press again to play the list in order* (Shuffle off plays = In order) · *Shuffle is on. Press again to turn it off* (As shuffled) | now-playing-card.ts (`paintModes`) |
 | Now Playing | Repeat | Repeats the list, then one song, then off → Repeats the list. Press again: one song → Repeats this song. Press again: off | now-playing-card.ts (`REPEAT_HINT`) |
 | Now Playing | Show queue · Show search | Shows the Queue card: what plays next · Shows the Search card: all of Apple Music | now-playing-card.ts |
 | Now Playing (full player, behind its DevTools flag) | Close square · the edge strips | Back to the cards · Opens the full player | now-playing-card.ts · full-player.ts |

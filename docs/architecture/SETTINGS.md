@@ -2,7 +2,7 @@
 status: foundation
 desk_test: none
 sources: [src/settings-store.ts, src/settings-card.ts, src/styles/settings.css, src/agent-settings.ts]
-updated: 2026-10-11
+updated: 2026-10-12
 ---
 # DeetsMusic — Settings: the machinery
 
@@ -187,6 +187,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Playback | Restore on launch (2026-09-12) — *Last song* / *Up Next* / *Nothing* | `restoreQueue` | song / queue / off | `queue-persist.ts` (blob in the cache db's `meta`; song = Now Playing paused + Up Next + Previous, queue = song parked atop Up Next, Now Playing idle) |
 | Playback | Play a web when a list ends (A web of songs like the album or song that ended plays next, and is deleted after 1 day. Off: the list waits at its first song) — toggle (2026-09-29) | `listEndWeb` | **on** / off | `player.ts` `afterListEnd` + `web.ts` `webAtListEnd` — [QUEUE.md §The end of a list](../features/QUEUE.md), [PLAYLIST-WEB.md §12](../features/PLAYLIST-WEB.md) |
 | Playback | Button is perma-shuffle (NEXT-VERSION §14, 2026-09-15) — toggle: the Shuffle button is a mode; off = it shuffles Up Next once | `shuffleStays` | **on** / off | `player.ts` `toggleShuffle` / `isShuffleOn`; the mode's state is `shuffleMode` (no row; Reset › Playback clears it), repeat's is `repeatMode` (no row, NEXT-VERSION §12) |
+| Playback | Shuffle off plays (2026-10-12) — *In order* / *As shuffled*: a press that turns the mode off makes Up Next the list in its order from the playing song (unshuffle), or leaves it | `shuffleOff` | **order** / keep | `player.ts` `shuffleOff` → `queue.ts` `unshuffle` ([QUEUE.md §Shuffle and unshuffle](../features/QUEUE.md)) |
 | Playback | Shuffle keeps picks (§5a) — *First* / *In place* / *Mixed* | `shuffleManual` | top / hold / mix | `queue.ts` `shuffleUpcoming` |
 | Playback | Stream quality (Auto follows your network speed; High is 256 kbps and Low is 64 kbps, from the next song) — *Auto* / *High* / *Low* (2026-09-16) | `streamQuality` | **auto** / high / low | `player.ts` `applyStreamQuality`: sets `music.bitrate` after configure, on a change, and (Auto) on Chromium's `navigator.connection` change, with a 0.5 / 1 Mbps gap. [AUDIO-QUALITY.md](../features/AUDIO-QUALITY.md) §4.1 |
 | Playback | Idle shuffle plays (§5b) — *Library* / *Nothing* | `shuffleIdle` | library / noop | the built-in rule `row:shuffleIdle` (RULES.md §13); `player.ts` `shuffleLibrary` |

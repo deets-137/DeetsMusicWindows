@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-14
 sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts, src/agent-rules.ts, src/agent-rules-shape.ts, cli/src/main.rs]
-updated: 2026-09-27
+updated: 2026-10-12
 ---
 # Agent / CLI control — `deetsmusic`
 
@@ -76,7 +76,7 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 | Route | Body → Reply |
 |---|---|
 | `GET /now-playing` | `{active, playing, title, artist, album, artworkUrl, catalogId, inLibrary, live, progress, currentTime, duration, volume, muted, repeat, shuffle}` (`repeat` = off / all / one; `shuffle` = the mode is on) |
-| `POST /command` | `{kind, value?}` — `play-pause` · `play` · `pause` · `next` · `previous` · `seek` (0..1) · `volume` (0..1) · `mute` · `shuffle` (the button: the mode, or once) · `shuffle-on` / `shuffle-off` · `repeat` (cycle) · `repeat-off` / `repeat-all` / `repeat-one` · `clear` (drops Up Next) → the snapshot after |
+| `POST /command` | `{kind, value?}` — `play-pause` · `play` · `pause` · `next` · `previous` · `seek` (0..1) · `volume` (0..1) · `mute` · `shuffle` (the button: the mode, or once) · `shuffle-on` / `shuffle-off` (off is a press: Up Next follows Settings › Playback › *Shuffle off plays* — in order, or as shuffled) · `repeat` (cycle) · `repeat-off` / `repeat-all` / `repeat-one` · `clear` (drops Up Next) → the snapshot after |
 | `POST /play` | `{id}` \| `{term}` \| `{track}` \| `{tracks:[…]}`, `keepQueue?` → `{ok, tracks}` or `{ok, station}` |
 | `POST /queue` | same + `{mode: "next" \| "later"}` or `{at: N}` (row of Up Next, 1 = top) → `{ok, tracks}` (a station → `400`) |
 | `POST /tracks` | same body as `/play` → `{tracks:[Track…]}`. A **read**: it resolves the id and hands back the songs without touching playback. Use it to see inside an album or playlist (a station → `400`, it has no fixed list). Added 2026-09-16, so reading a tracklist no longer means writing one to a playlist first. |

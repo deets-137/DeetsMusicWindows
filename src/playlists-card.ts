@@ -22,7 +22,7 @@ import {
 } from "./playlist-refresh";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
-import { playTracks } from "./player";
+import { playTracks, shuffledStart } from "./player";
 import { initFavorites, reconcile, reconcilePlaylist, playlistFav } from "./favorites";
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { picksText } from "./row-pick";
@@ -424,7 +424,7 @@ export const playlistsCard: CardDef = {
             ] });
           },
           drag: (ts) => ({ source: "playlists", kind: "song", count: ts.length, tracks: () => ts, context: ctxTag, playlistId: p.libraryId }),
-          play: (ts) => void playTracks(ts, 0, ctxTag).catch((e) => console.error("[playlists] play picked", e)),
+          play: (ts, start) => void playTracks(ts, start, ctxTag).catch((e) => console.error("[playlists] play picked", e)),
         },
         // Remove is the take-away row, last, on hand-made playlists only: mirrors have no
         // remove path, and a Replay isn't edited by hand.
@@ -948,7 +948,7 @@ export const playlistsCard: CardDef = {
             }),
             play: (xs) =>
               void pickedTracks(xs)
-                .then((ts) => (ts.length ? playTracks(ts, 0, "playlists:picked") : undefined))
+                .then((ts) => (ts.length ? playTracks(...shuffledStart(ts), "playlists:picked") : undefined))
                 .catch((e) => console.error("[playlists] play picked", e)),
           },
         } satisfies Grouping<PlRow>,

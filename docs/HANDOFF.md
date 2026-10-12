@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-10-03
+updated: 2026-10-12
 ---
 # DeetsMusic — Handoff
 
@@ -111,6 +111,13 @@ extension's icons are LANCZOS resizes of the same file.
 
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
+
+**Unshuffle (2026-10-12, built, desk test open).** Press the Shuffle square off and the list
+goes on in its order from the playing song; a click with the mode on shuffles the whole list
+but the clicked song; the glyph stays the arrows; the queue blob is v2 (the plan rides
+with it). The desk test is QUEUE.md §Shuffle and unshuffle › Desk test (6 steps). His to see
+once: the row's words (*Shuffle off plays*: In order /
+As shuffled), the hint *Press again to play the list in order*.
 
 **Listeners from Last.fm (2026-10-12, read side built, UI next).** `lastfm_listeners` +
 `listen_counts` + `src/listeners.ts` read a song's Last.fm listener count and cache it a month.

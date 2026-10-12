@@ -2411,6 +2411,55 @@ export async function shuffleQueue(): Promise<void> {
   await reconcileUpcoming();
 }
 
+/**
+ * Unshuffle (QUEUE.md §Shuffle and unshuffle; his call 1A, 2026-10-12): Up Next becomes the
+ * list's songs after the playing one, in the list's order, and MusicKit's window is
+ * reconciled gaplessly — `current` never moves. Nothing happens with no song loaded, or
+ * when the playing song is not in the plan (queue.unshuffle says so).
+ */
+export async function unshuffleQueue(): Promise<void> {
+  if (roomBridge) return; // the room decides the order (§10)
+  await initPlayer();
+  if (!queue.getCurrent()) return;
+  const before = queue.getUpcoming().length;
+  const ok = queue.unshuffle();
+  diag.log("player:unshuffle", { ok, before, up: queue.getUpcoming().length });
+  if (ok) await reconcileUpcoming();
+}
+
+/**
+ * Turn the mode off from a PRESS (the square, the agent's `shuffle-off`): Settings ›
+ * Playback › *Shuffle off plays* says whether the list goes on in its order (unshuffle) or
+ * stays as shuffled. A rule's *Turn shuffle off* is not a press: it only sets the mode.
+ */
+export async function shuffleOff(): Promise<void> {
+  if (roomBridge) return;
+  setShuffleMode(false);
+  if (setting("shuffleOff") === "order") await unshuffleQueue();
+}
+
+/**
+ * Play a list shuffled (the hero's Shuffle, a menu's Shuffle row, the Compass, a pin's
+ * On Click, the idle press's rule). With "Shuffle stays on" the mode turns on and the list
+ * is handed over IN ORDER from a random song: `setContext` shuffles the rest (his call
+ * 3A), and the plan keeps the list's order, so unshuffle can bring it back. With the row
+ * off there is no mode and no unshuffle: a shuffled copy plays from its top, as before.
+ */
+export function shuffledPlay<T>(items: T[], play: (list: T[], start: number) => void): void {
+  if (!items.length) return;
+  if (setting("shuffleStays")) {
+    setShuffleMode(true);
+    play(items, queue.randomIndex(items.length));
+  } else {
+    play(queue.shuffleInPlace(items.slice()), 0);
+  }
+}
+
+/** The list and where Play starts in it: a random song while the shuffle mode is on (the
+ *  queue shuffles the rest), else the top. For a Play / Shuffle row whose picks resolve to
+ *  songs later (albums, artists, genres, playlists picked), so the start spans the SONGS. */
+export const shuffledStart = <T>(ts: T[]): [T[], number] => [ts, isShuffleOn() ? queue.randomIndex(ts.length) : 0];
+
 /** Play the whole cached library shuffled (the idle shuffle press's rule, *Play the library shuffled*). */
 export async function shuffleLibrary(): Promise<void> {
   if (roomBridge) return;
@@ -2420,22 +2469,23 @@ export async function shuffleLibrary(): Promise<void> {
     console.warn("[player] shuffle: no cached library to play");
     return;
   }
-  const handles = queue.shuffleInPlace(all.map((t) => toHandle(t)));
+  const handles = all.map((t) => toHandle(t));
   diag.log("player:shuffle", { idle: true, n: handles.length });
-  await playContext(handles, 0);
+  await new Promise<void>((resolve, reject) => shuffledPlay(handles, (list, start) => playContext(list, start).then(resolve, reject)));
 }
 
 /**
  * The Shuffle square (NEXT-VERSION §14 A). With "Shuffle stays on" (the default) it is a
- * mode: press = on (and Up Next shuffles now, the one-shot above), press again = off (Up
- * Next stays as it is; the next list plays in order). With the row off it is the one-shot.
+ * mode: press = on (and Up Next shuffles now, the one-shot above), press again = off (the
+ * list goes on in its order, or stays as shuffled: `shuffleOff`). With the row off it is
+ * the one-shot.
  */
 export async function toggleShuffle(): Promise<void> {
   if (roomBridge) return;
   if (!setting("shuffleStays")) return shuffleQueue();
-  const on = !setting("shuffleMode");
-  setShuffleMode(on);
-  if (on) await shuffleQueue();
+  if (setting("shuffleMode")) return shuffleOff();
+  setShuffleMode(true);
+  await shuffleQueue();
 }
 
 // ── Listening rooms (docs/integrations/ROOMS.md) ──────────────────────────────────────────

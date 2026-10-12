@@ -210,7 +210,7 @@ export function pinActivate(it: HomeItem, at: string, nav?: PinNav): void {
       if (!ts.length) return;
       // The house rule (§8.1 fact 3): Shuffle plays a shuffled COPY, and with "Shuffle
       // button stays on" it turns the mode on, exactly as a card's Shuffle button does.
-      runListAction(act === "shuffle" ? "shuffle" : "play", ts, (list) => void playTracks(list, 0, it.context).catch(err("play")));
+      runListAction(act === "shuffle" ? "shuffle" : "play", ts, (list, start) => void playTracks(list, start, it.context).catch(err("play")));
     })
     .catch(err("activate"));
 }

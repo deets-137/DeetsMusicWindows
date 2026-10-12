@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/player.ts, src/stats.ts, src/playlists-card.ts, src/queue.ts, src/layout.ts, src/surface.ts]
-updated: 2026-09-17
+updated: 2026-10-12
 ---
 # DeetsMusic — Future Settings (deferred toggles)
 
@@ -187,6 +187,22 @@ the button is the toggle (Settings › Playback › *Button is perma-shuffle*, d
 one-shot). The answers to the two questions above: un-shuffling **leaves** the shuffled
 order (Spotify); toggling it on mid-playback **reshuffles the live `auto` tail** (this
 one-shot, §5a rule) *and* every later context starts shuffled. 5a and 5b still apply.
+
+> **Part:** built · 2026-10-12 — un-shuffling now **restores the list's order** from the
+> playing song by default (his call 1A); the Spotify answer is the row *Shuffle off plays* =
+> *As shuffled* (`shuffleOff`). [QUEUE.md §Shuffle and unshuffle](features/QUEUE.md).
+
+**5c. A click while the mode is on — which songs shuffle.**
+
+> **Part:** designed · 2026-10-12 — a documented alternative, no row yet (his ask).
+- **(current, his call 3A)** **The whole list but the clicked song.** A click on song 7 of 10
+  plays 7, then the other nine shuffled. No parked lookback: Previous walks the heard trail.
+- Alternative: **the clicked song and the songs after it** — 7, then 8–10 shuffled; 1–6 park
+  as the lookback, as a click in order does. For a user who clicks "from here" on purpose.
+- Wiring: `shuffleScope` = `"list" | "rest"` (default `"list"`), read in `queue.setContext`
+  (the `rest` branch is the `handles.slice(startIndex + 1)` tail that the in-order path
+  already builds). A list's own Shuffle button is unaffected: it starts at a random song
+  with the whole list shuffled either way.
 
 ---
 
