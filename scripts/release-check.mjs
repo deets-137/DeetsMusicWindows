@@ -235,10 +235,9 @@ if (signed.length) {
     // not `spawn_blocking` but `crate::db_thread::run`, which keeps the calls in order.
     [/\bdb\.lock\(\)/, "takes the database lock, which a sync can hold for seconds (use `crate::db_thread::run`)"],
     // A file write or delete waits on the disk and on antivirus (added 2026-10-11: sixteen
-    // setters wrote settings.json on the UI thread, settings.rs). Soft for now: twelve commands
-    // in friends.rs, report.rs and sotd/outlet.rs still write on the UI thread, and their
-    // conversion is the owner's call (WORKLOG 2026-10-11). Make it hard once they are async.
-    [/\bfs::(write|remove_file|rename|copy)\b|\bwrite_atomic\b|\bFile::create\b/, "writes or deletes a file", { soft: true }],
+    // setters wrote settings.json on the UI thread, settings.rs; twelve friends, report and
+    // outlet commands the same day).
+    [/\bfs::(write|remove_file|rename|copy)\b|\bwrite_atomic\b|\bFile::create\b/, "writes or deletes a file"],
   ];
   // Anything listed here is a sync command we have decided is safe. Give the reason: the next
   // reader has to be able to check it. An empty list is the healthy state.

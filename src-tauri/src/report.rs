@@ -336,17 +336,22 @@ pub fn report_list(app: AppHandle) -> Vec<ReportView> {
 }
 
 /// Open a report's page in the browser. Only a code this install saved. The thread is read
-/// there, so this marks the owner replies seen (My reports' dot goes).
+/// there, so this marks the owner replies seen (My reports' dot goes). Async with the body on
+/// the blocking pool: it may rewrite the list file (2026-10-11, release check 9).
 #[tauri::command]
-pub fn report_open(app: AppHandle, code: String) -> Result<(), String> {
+pub async fn report_open(app: AppHandle, code: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || open(&app, &code)).await.map_err(|e| e.to_string())?
+}
+
+fn open(app: &AppHandle, code: &str) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
-    let mut list = load(&app);
-    let Some(s) = list.iter_mut().find(|s| valid_code(&code) && s.code == code) else {
+    let mut list = load(app);
+    let Some(s) = list.iter_mut().find(|s| valid_code(code) && s.code == code) else {
         return Err("unknown report".into());
     };
     if s.seen_replies != s.owner_replies {
         s.seen_replies = s.owner_replies;
-        save(&app, &list);
+        save(app, &list);
     }
     app.opener().open_url(format!("{TICKET_PAGE}{code}"), None::<&str>).map_err(|e| e.to_string())
 }
@@ -449,12 +454,17 @@ pub async fn report_close(app: AppHandle, code: String) -> Result<Vec<ReportView
 }
 
 /// My reports › right-click › Clear: forget a report on this PC. The post stays on the worker.
+/// Async with the body on the blocking pool: it rewrites the list file (2026-10-11).
 #[tauri::command]
-pub fn report_clear(app: AppHandle, code: String) -> Vec<ReportView> {
-    let mut list = load(&app);
-    list.retain(|s| s.code != code);
-    save(&app, &list);
-    list.into_iter().map(Into::into).collect()
+pub async fn report_clear(app: AppHandle, code: String) -> Result<Vec<ReportView>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut list = load(&app);
+        list.retain(|s| s.code != code);
+        save(&app, &list);
+        list.into_iter().map(Into::into).collect()
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

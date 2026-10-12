@@ -91,6 +91,19 @@ updated: 2026-10-11
   repair: quit the dev app, set `"sotdPostMode": "weekly"` in
   `%APPDATA%\com.deetsmusic.dev\settings.json`, start it. Expect the toast, and the value back to
   Ask. The toast's words are drafted, his to change.
+- **The twelve other sync commands that wrote files, converted (his call: if safe and well
+  scoped).** friends.rs: `friend_me`, `friend_code`, `friend_sign`, `friend_key_export`,
+  `friend_key_import`, `friend_add`, `friend_rename`, `friend_remove` are `async` wrappers
+  over the old bodies (now sync `me` / `code_if_any` / `sign` / … ), run on the blocking pool.
+  report.rs: `report_open`, `report_clear` (now returns `Result`; same shape on success).
+  sotd/outlet.rs: `outlet_disconnect`, `outlet_set_on`. Safe because every friends.ts call
+  awaits the one before, the Settings report and outlet calls are one per click, and STORE's
+  mutex still takes the calls in turn. Not converted: `friend_list`, `report_list`,
+  `outlet_status` (reads, not writes; check 9 does not count a read). `friend_code` only reads
+  in practice (it never mints) — check 9 named it through `key()`.
+  Release check 9's file-write rule is now HARD. The limit, also true of the settings setters:
+  two calls to one command within a millisecond or two could finish out of order; only a
+  script fires that fast.
 
 ## 2026-10-11 — Backup designed (docs only; branch `ten-out-of-ten`)
 

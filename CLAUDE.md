@@ -418,7 +418,7 @@ Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 - **A synchronous `#[tauri::command]` runs on the UI thread.** Never let one reach blocking
   I/O: make it `async fn` + `tauri::async_runtime::spawn_blocking`. The release check (check 9)
   fails a build that does it; 0.12.0 froze on live this way (FRIENDS.md §8.11). A file write
-  counts (check 9 warns since 2026-10-11; twelve friends / report / outlet commands are open).
+  counts (check 9 fails it since 2026-10-11; `log_event` / `diag_flush` are allowed, with why).
 - **A file we cannot lose half of** (settings, keys, tokens, sessions) is written with
   `safe_file::write_atomic` (beside, flush, rename over) and read with `safe_file::parse_lenient`
   (one unreadable value resets that field, not the file). Never `serde_json::from_str(..).ok()

@@ -224,23 +224,33 @@ pub async fn outlet_connect(outlet: String, input: String, app: AppHandle) -> Re
     Ok(outlet_status().into_iter().find(|s| s.outlet == outlet).ok_or("no status")?)
 }
 
+// The two below rewrite the outlet file (DPAPI + a file write). A sync command runs on the UI
+// thread, so each is async with its body on the blocking pool (2026-10-11, release check 9).
+
 /// Forget an outlet. Its picks stay; only the connection goes.
 #[tauri::command]
-pub fn outlet_disconnect(outlet: String, app: AppHandle) -> Result<(), String> {
-    put(&outlet, None);
-    crate::log::info(&format!("sotd: {outlet} removed"));
-    super::changed(&app);
-    Ok(())
+pub async fn outlet_disconnect(outlet: String, app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        put(&outlet, None);
+        crate::log::info(&format!("sotd: {outlet} removed"));
+        super::changed(&app);
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// The per-outlet toggle. Off keeps the connection: it pauses what the outlet receives.
 #[tauri::command]
-pub fn outlet_set_on(outlet: String, on: bool, app: AppHandle) -> Result<(), String> {
-    let Some(mut c) = conn(&outlet) else { return Err("not set up".into()) };
-    c.on = on;
-    put(&outlet, Some(c));
-    super::changed(&app);
-    Ok(())
+pub async fn outlet_set_on(outlet: String, on: bool, app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(mut c) = conn(&outlet) else { return Err("not set up".to_string()) };
+        c.on = on;
+        put(&outlet, Some(c));
+        super::changed(&app);
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 pub fn note_error(outlet: &str, err: Option<String>) {

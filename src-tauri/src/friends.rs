@@ -206,23 +206,28 @@ pub struct Me {
     pub public_key: String,
 }
 
+// ── the commands: off the UI thread ──────────────────────────────────────────
+// A sync command runs on the UI thread, and these reach friends.json: a DPAPI decrypt on the
+// first read, and a DPAPI encrypt plus a file write when the key is minted or the list changes.
+// Each command is `async` and runs its body on the blocking pool (2026-10-11, release check 9).
+// STORE's mutex still puts them in turn, and the front end awaits every call (friends.ts), so
+// their order holds. The bodies stay sync functions: friend_add reads `me()` inside its own.
+async fn off_ui<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())
+}
+
 /// Your friend code, minting it if this is the first time.
 #[tauri::command]
-pub fn friend_me() -> Result<Me, String> {
-    let k = key()?;
-    let public = k.verifying_key();
-    Ok(Me { code: code_for(&public), public_key: b64().encode(public.as_bytes()) })
+pub async fn friend_me() -> Result<Me, String> {
+    off_ui(me).await?
 }
 
 /// Your friend code if this PC has one, and `None` if it has none. It NEVER mints: joining
 /// a room reads it to make the room tag (FRIENDS.md §18.5), and joining a room is not one of
 /// the three doors that make an identity (§16.5).
 #[tauri::command]
-pub fn friend_code() -> Option<String> {
-    if with_store(|s| s.seed.is_empty()) {
-        return None;
-    }
-    key().ok().map(|k| code_for(&k.verifying_key()))
+pub async fn friend_code() -> Option<String> {
+    off_ui(code_if_any).await.ok().flatten()
 }
 
 /// Sign the worker's nonce, so it can tell that this socket really is this friend code
@@ -231,27 +236,71 @@ pub fn friend_code() -> Option<String> {
 ///
 /// The renderer gets a signature and never the key.
 #[tauri::command]
-pub fn friend_sign(nonce: String) -> Result<String, String> {
+pub async fn friend_sign(nonce: String) -> Result<String, String> {
     if nonce.len() > 256 {
         return Err("that nonce is not a nonce".into());
     }
-    let k = key()?;
-    Ok(b64().encode(k.sign(nonce.as_bytes()).to_bytes()))
+    off_ui(move || sign(&nonce)).await?
 }
 
 /// §2a, *Copy my key*. The one door the seed leaves by, and the UI that calls it carries
 /// the warning that the key IS you.
 #[tauri::command]
-pub fn friend_key_export() -> Result<String, String> {
-    key()?; // mint first, so there is always something to copy
-    Ok(with_store(|s| s.seed.clone()))
+pub async fn friend_key_export() -> Result<String, String> {
+    off_ui(key_export).await?
 }
 
 /// §2a, *Paste a key*. Adopting a key REPLACES this PC's identity, so the caller confirms
 /// first. The friend list is left alone: it is this PC's list, and the key is who you are,
 /// not who you know.
 #[tauri::command]
-pub fn friend_key_import(key_b64: String) -> Result<Me, String> {
+pub async fn friend_key_import(key_b64: String) -> Result<Me, String> {
+    off_ui(move || key_import(key_b64)).await?
+}
+
+/// Add a code. It checks the shape, refuses your own code and a duplicate, and holds the
+/// cap. Adding is local and silent: the other person learns nothing until they add you too.
+#[tauri::command]
+pub async fn friend_add(code: String, name: String) -> Result<Friend, String> {
+    off_ui(move || add(code, name)).await?
+}
+
+#[tauri::command]
+pub async fn friend_rename(code: String, name: String) -> Result<(), String> {
+    off_ui(move || rename(code, name)).await?
+}
+
+#[tauri::command]
+pub async fn friend_remove(code: String) -> Result<(), String> {
+    off_ui(move || remove(code)).await?
+}
+
+// ── the bodies ───────────────────────────────────────────────────────────────
+
+fn me() -> Result<Me, String> {
+    let k = key()?;
+    let public = k.verifying_key();
+    Ok(Me { code: code_for(&public), public_key: b64().encode(public.as_bytes()) })
+}
+
+fn code_if_any() -> Option<String> {
+    if with_store(|s| s.seed.is_empty()) {
+        return None;
+    }
+    key().ok().map(|k| code_for(&k.verifying_key()))
+}
+
+fn sign(nonce: &str) -> Result<String, String> {
+    let k = key()?;
+    Ok(b64().encode(k.sign(nonce.as_bytes()).to_bytes()))
+}
+
+fn key_export() -> Result<String, String> {
+    key()?; // mint first, so there is always something to copy
+    Ok(with_store(|s| s.seed.clone()))
+}
+
+fn key_import(key_b64: String) -> Result<Me, String> {
     let bytes = b64()
         .decode(key_b64.trim())
         .map_err(|_| "That does not look like a DeetsMusic key.".to_string())?;
@@ -287,12 +336,9 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-/// Add a code. It checks the shape, refuses your own code and a duplicate, and holds the
-/// cap. Adding is local and silent: the other person learns nothing until they add you too.
-#[tauri::command]
-pub fn friend_add(code: String, name: String) -> Result<Friend, String> {
+fn add(code: String, name: String) -> Result<Friend, String> {
     let code = crate::rooms::normalize(&code).ok_or("That is not a friend code.")?;
-    if code == friend_me()?.code {
+    if code == me()?.code {
         return Err("That is your own code.".into());
     }
     let name = clean_name(&name);
@@ -310,8 +356,7 @@ pub fn friend_add(code: String, name: String) -> Result<Friend, String> {
     })
 }
 
-#[tauri::command]
-pub fn friend_rename(code: String, name: String) -> Result<(), String> {
+fn rename(code: String, name: String) -> Result<(), String> {
     let code = crate::rooms::normalize(&code).ok_or("That is not a friend code.")?;
     let name = clean_name(&name);
     with_store(|s| {
@@ -323,8 +368,7 @@ pub fn friend_rename(code: String, name: String) -> Result<(), String> {
     })
 }
 
-#[tauri::command]
-pub fn friend_remove(code: String) -> Result<(), String> {
+fn remove(code: String) -> Result<(), String> {
     let code = crate::rooms::normalize(&code).ok_or("That is not a friend code.")?;
     with_store(|s| {
         s.friends.retain(|f| f.code != code);
