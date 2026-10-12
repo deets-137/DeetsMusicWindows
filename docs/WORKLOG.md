@@ -24,6 +24,10 @@ updated: 2026-10-11
   on the AMD card, so the rule did not hold. A second session's saves to `settings-card.ts`
   reloaded the dev page during the run (vite), which is not this feature.
 - **Still his:** the rule's place in the engine's order (§9 item 3).
+- **Committed** as 811bfdb on `main`. Another session had moved the checkout to
+  `six-seven-ten-eleven` (still at ce37d6a); that branch was fast-forwarded to 811bfdb, his ask.
+- **Max cards:** the owner reports the desk test done; MAX-CARDS.md and DESK-TESTS.md A8 marked
+  passed 2026-10-12.
 
 ## 2026-10-11 (graphics fallback) — built, desk test open (branch `main`, uncommitted)
 

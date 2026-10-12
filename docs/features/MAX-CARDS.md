@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-12
 sources: [src/layout.ts, src/layout-rules.ts, src/card-grow.ts, src/full-player.ts, src/styles.css, index.html, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/rulez-words.ts, src/rulez-logs.ts, src/compass.ts, src/appearance.ts, src/boot-cover.ts, src/rulez-card.ts, src/surface.ts]
 updated: 2026-10-11
 ---
@@ -8,7 +8,8 @@ updated: 2026-10-11
 
 > **Status (2026-10-11):** the idea came from the owner. He closed the forks the same day (§1).
 > Built the same day on `ten-out-of-ten`, on top of the full player (468b657), uncommitted.
-> §11 is the as-built record. The desk test (§7) is open; the shots pass is §7a. Every fork is closed (§9).
+> §11 is the as-built record. The desk test (§7) passed: the owner ran it (his report,
+> 2026-10-12). The shots pass is §7a. Every fork is closed (§9).
 
 **Max can show fewer content cards.** Today Max always shows four content cards in a 2×2 grid
 beside the stage column. With this feature the user picks one card, two cards, or four. The
@@ -314,6 +315,8 @@ The grid and the grow geometry are DOM and CSS, not pure. The geometry table in 
   load-bearing feature rule, it is the feature in flight while it is built.
 
 ## 7. The desk test
+
+> **Part:** passed · the owner ran it (his report, 2026-10-12)
 
 Run on `npm run dev:app`, in Max. The owner or Claude can run it (the shots runner covers the
 pictures).

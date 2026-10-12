@@ -123,7 +123,7 @@ old installs' Guide button opens.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   The Album theme (colors from the cover, §12) is built with it; its forks are open.
-- `MAX-CARDS.md` — BUILT 2026-10-11, desk test open (§7): Settings › Window › *Layout for Max*
+- `MAX-CARDS.md` — BUILT 2026-10-11, desk test passed 2026-10-12 (§7): Settings › Window › *Layout for Max*
   (4 cards · 2 columns · 2 rows · 1 card), the `maxCards` key and rule key. The geometry is
   pure in `layout-rules.ts`. §11 is the as-built record. A separate onboarding route will offer it (§9.1, not designed).
 - `fullscreen-player.md` — BUILT 2026-10-11, tested, on for everyone (the DevTools flag
