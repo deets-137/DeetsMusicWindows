@@ -181,7 +181,10 @@ against the last from 0.25.4 with Apple's app as the control; §17 scopes `deets
 input + screen + sound tool (F13–F16 decided, not built); §9 the rest of the forks.
 `ClassicSkins.md` — an idea (2026-10-10): Winamp `.wsz` skins for a small player in Winamp's
 fixed layout (not a restyled Mini); a theme from a skin's colors as the cheap first step; §8
-the forks.
+the forks. `AtRecords.md` — an idea (2026-10-12): when Max fills his ultrawide, Cyber gives way to a
+hidden sixth skin `at-records`, a record player, set by a built-in rule (his calls: the sixth
+skin, the full-size trigger; HE designs the UI, never write that picture for him). The mechanics
+only; §9 the forks.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

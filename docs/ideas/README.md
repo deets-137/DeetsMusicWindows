@@ -37,6 +37,10 @@ the app can do any of these things.
   for a small player. A skin is sprites for Winamp's fixed layout, so it needs its own window
   in that layout, not a restyled Mini; what maps, what does not, a theme-from-a-skin first
   step, the rights, the forks.
+- [AtRecords.md](AtRecords.md) — an idea (2026-10-12): when Max fills the owner's ultrawide,
+  Cyber gives way to a hidden sixth skin `at-records`, a record player, set by a built-in rule
+  (his calls: the sixth skin, the full-size trigger; he designs the UI himself). The mechanics
+  only: the Press disc, the window facts, CSS first and three.js as a second step; §9 the forks.
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).
