@@ -225,6 +225,7 @@ shortcut, a rule or a link. The quick panel shows this section under the Window 
 | Animate card swaps | Cards move to their new places in the skin's own motion | **on** / off |
 | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt | **on** / off |
 | Animate backgrounds | The moving backgrounds: the Ocean swell, the Glass aurora, the Cyber storm | **On** / Reduced / Off |
+| If graphics fail | When the graphics card stops and the window draws in software. Save + tell: Fancy Glass, the three Animate rows and a Covers or Picture canvas go off until the next start, and a notice offers a restart. Tell only: the notice only. Off: nothing | **Save + tell** / Tell only / Off |
 
 Your Windows reduced-motion preference always wins over these.
 

@@ -78,6 +78,10 @@ export interface Settings {
    *  aurora): on = 30 fps, reduced = 15 fps, off = still (the storm hides). The OS
    *  reduced-motion preference still wins. src/ambient.ts applies it. */
   backgroundMotion: "on" | "reduced" | "off";
+  /** If graphics fail (GRAPHICS-FALLBACK.md §3): when the window draws in software (WARP),
+   *  `save` holds the heavy effects off with a built-in rule and tells you, `tell` only tells
+   *  you, `off` does neither. src/gpu.ts reads the renderer; rules-eval.ts makes the rule. */
+  graphicsFallback: "save" | "tell" | "off";
   /** Ocean only: the card edges break into grains of sand (a dark beach), or the plain soft
    *  glow. skin-settings.ts applies it as `data-ocean-edges` on <html>. */
   oceanEdges: "sand" | "soft";
@@ -465,6 +469,7 @@ export const DEFAULTS: Settings = {
   cardSwapMotion: true, // user's call 2026-09-16: on by default (was off, 2026-09-15)
   fancyScrubber: true, // user's call 2026-09-16: on for now, a performance eval decides
   backgroundMotion: "on",
+  graphicsFallback: "save", // his call 2026-09-29: every user gets the rule, Cruisin users too (GRAPHICS-FALLBACK.md §2)
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
   oceanCardOpacity: 80, // his call 2026-10-11 (was 100, solid): the swell shows a little through the cards

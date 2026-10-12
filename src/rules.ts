@@ -131,7 +131,7 @@ const STORE_HOLDS = "deets.rules.holds";
 const ROW_KEYS: (keyof RowValues)[] = [
   "drillGrow", "diaryGrow", "lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "lookHold",
   "alwaysOnTop", "soundEqPerOutput", "soundEqOutputs", "sharePauseUntil", "playlistCreateSummon", "sleepSchedule",
-  "goToTarget", "shuffleIdle",
+  "goToTarget", "shuffleIdle", "graphicsFallback",
 ];
 
 let started = false;
@@ -703,6 +703,21 @@ export function resumeRule(ruleId: string, target?: string): void {
   diag.log("rule:resume", { id: ruleId, target: one });
   saveHolds();
   recheck("resume");
+}
+
+/** Set a state rule aside until the next start, on every target it sets: a hand change made by
+ *  a button, not a row (the graphics toast's Turn effects on, GRAPHICS-FALLBACK.md §5). */
+export function holdForSession(ruleId: string): void {
+  const r = live.find((x) => x.id === ruleId);
+  if (r?.kind !== "state") return;
+  for (const s of r.set) {
+    const t = targetId(s.target);
+    holds = holds.filter((h) => !(h.ruleId === r.id && h.target === t));
+    holds.push({ ruleId: r.id, target: t, kind: "session" });
+  }
+  diag.log("rule:hand", { id: r.id, target: "*", do: "hold", why: "button" });
+  saveHolds();
+  recheck("hand");
 }
 
 /** End every hold of the rules whose id starts with `prefix` (a row's own settings changed). */

@@ -37,6 +37,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { TELEMETRY } from "./telemetry-on";
 import { nextPeriod } from "./frame-period";
 import { mark } from "./marks";
+import { rendererName } from "./gpu-probe";
+import { isSoftwareRenderer } from "./rules-eval";
 
 const ON = TELEMETRY; // dev, or a VITE_PERF=1 release-shaped build (telemetry-on.ts)
 const SCROLL_IDLE_MS = 150; // a scroll window closes this long after the last scroll event
@@ -212,18 +214,8 @@ function sampleHz(): void {
  * rasteriser, which names itself "Microsoft Basic Render Driver" (seen 2026-09-16), not SwiftShader.
  */
 function logRenderer(): void {
-  let name = "unknown";
-  try {
-    const c = document.createElement("canvas");
-    const gl = (c.getContext("webgl") ?? c.getContext("experimental-webgl")) as WebGLRenderingContext | null;
-    const dbg = gl?.getExtension("WEBGL_debug_renderer_info");
-    if (gl && dbg) name = String(gl.getParameter((dbg as { UNMASKED_RENDERER_WEBGL: number }).UNMASKED_RENDERER_WEBGL));
-    const lost = gl?.getExtension("WEBGL_lose_context");
-    lost?.loseContext(); // the probe must not hold a live context of its own
-  } catch {
-    /* no WebGL at all — leave it unknown */
-  }
-  const soft = /swiftshader|software|llvmpipe|basic render driver|warp/i.test(name);
+  const name = rendererName(); // the probe ships in gpu-probe.ts (GRAPHICS-FALLBACK.md §4)
+  const soft = isSoftwareRenderer(name);
   const line = `[perf] gpu ${soft ? "SOFTWARE" : "accelerated"} · ${name}`;
   console.info(line);
   toLog(line);

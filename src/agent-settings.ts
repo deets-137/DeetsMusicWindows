@@ -267,6 +267,7 @@ const SPECS: Spec[] = [
   storeToggle("Motion", "cardSwapMotion", "Animate card swaps"),
   storeToggle("Motion", "fancyScrubber", "Fancy scrubber"),
   storeChoice("Motion", "backgroundMotion", "Animate backgrounds", [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }]),
+  storeChoice("Motion", "graphicsFallback", "If graphics fail", [{ value: "save", label: "Save + tell" }, { value: "tell", label: "Tell only" }, { value: "off", label: "Off" }]),
   storeRange("Skin settings", "oceanCardOpacity", "Card opacity", { only: "Ocean only", note: skinNote("ocean", "Ocean") }),
   storeRange("Skin settings", "oceanLight", "Album light", { only: "Ocean only", note: skinNote("ocean", "Ocean") }),
   storeChoice("Skin settings", "oceanEdges", "Draw card edges", [{ value: "sand", label: "Sand" }, { value: "soft", label: "Soft" }], { only: "Ocean only", note: skinNote("ocean", "Ocean") }),

@@ -3,21 +3,24 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   validate, validateDraft, evalCond, pickMoment, resolveState, handChange, factsChanged, resume, restart, keepHolds, holdVerdict, verdictOf,
-  builtinRules, nextEdge, timeFacts, nextClock, readsFact, noteFire, chainDepth, appleMayRun, failingLeaf, CHAIN_CAP, type Known, type Rule, type RowValues, type StateRule, type MomentRule, type Cond,
+  builtinRules, isSoftwareRenderer, nextEdge, timeFacts, nextClock, readsFact, noteFire, chainDepth, appleMayRun, failingLeaf, CHAIN_CAP, type Known, type Rule, type RowValues, type StateRule, type MomentRule, type Cond,
 } from "../src/rules-eval.ts";
 
 const known: Known = {
   events: new Set(["album.open", "artist.open", "diary.open", "cog", "playlist.create", "sleep.arm", "goto.artist", "goto.album", "shuffle.press"]),
-  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded"]),
+  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded", "graphics"]),
   actions: new Set(["grow", "summon", "sleep", "openIn", "shuffleLibrary"]),
-  targets: new Set(["key:theme", "key:skin", "key:soundEqPreset", "key:shareActivityApp", "key:shareActivityDiscord", "key:discordRoomInvite", "prop:window.onTop"]),
+  targets: new Set([
+    "key:theme", "key:skin", "key:soundEqPreset", "key:shareActivityApp", "key:shareActivityDiscord", "key:discordRoomInvite", "prop:window.onTop",
+    "key:glassFancy", "key:backgroundMotion", "key:cardSwapMotion", "key:appearanceMotion", "key:glassCanvas",
+  ]),
 };
 
 const ROWS: RowValues = {
   drillGrow: "vertical", diaryGrow: "new", lookSchedule: "off", dayTheme: "lilac", daySkin: "press",
   nightTheme: "black-red", nightSkin: "cyber", lookHold: "next", alwaysOnTop: "off", soundEqPerOutput: true,
   soundEqOutputs: {}, sharePauseUntil: 0, playlistCreateSummon: "notmini", sleepSchedule: "off",
-  goToTarget: "fits", shuffleIdle: "library",
+  goToTarget: "fits", shuffleIdle: "library", graphicsFallback: "save",
 };
 const rows = (patch: Partial<RowValues>) => builtinRules({ ...ROWS, ...patch });
 const byId = (rs: Rule[], id: string) => rs.find((r) => r.id === id);
@@ -210,6 +213,32 @@ test("Idle shuffle plays (2026-09-27): the library only with no song loaded; Not
   assert.equal(plays("library", false), true);
   assert.equal(plays("library", true), false); // a paused song shuffles Up Next, as before
   assert.equal(plays("noop", false), false);
+});
+
+test("If graphics fail (2026-10-11): Save + tell holds the five effects off while software; Tell only and Off make no rule", () => {
+  const off = (v: RowValues["graphicsFallback"], graphics: string) => resolveState(rows({ graphicsFallback: v }), { graphics }, []).set;
+  const soft = off("save", "software");
+  assert.equal(soft.get("key:glassFancy")?.value, false);
+  assert.equal(soft.get("key:backgroundMotion")?.value, "off"); // Off, not Battery saver's Reduced
+  assert.equal(soft.get("key:cardSwapMotion")?.value, false);
+  assert.equal(soft.get("key:appearanceMotion")?.value, false);
+  assert.equal(soft.get("key:glassCanvas")?.value, "aurora");
+  assert.equal(off("save", "accelerated").size, 0);
+  assert.equal(off("tell", "software").size, 0);
+  assert.equal(off("off", "software").size, 0);
+  // No fact yet (before the first read): nothing holds.
+  assert.equal(resolveState(rows({}), {}, []).set.size, 0);
+  // Turn effects on: a session hold on every target sets the rule aside.
+  const holds = ["glassFancy", "backgroundMotion", "cardSwapMotion", "appearanceMotion", "glassCanvas"].map((k) => ({ ruleId: "row:graphicsFallback", target: `key:${k}`, kind: "session" as const }));
+  assert.equal(resolveState(rows({}), { graphics: "software" }, holds).set.size, 0);
+});
+
+test("the software renderer names (2026-10-11): WARP, SwiftShader, llvmpipe; a card name and unknown are not", () => {
+  assert.equal(isSoftwareRenderer("ANGLE (Microsoft, Microsoft Basic Render Driver (0x0000008C) Direct3D11 vs_5_0 ps_5_0, D3D11)"), true);
+  assert.equal(isSoftwareRenderer("ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)"), true);
+  assert.equal(isSoftwareRenderer("llvmpipe (LLVM 15.0.7, 256 bits)"), true);
+  assert.equal(isSoftwareRenderer("ANGLE (AMD, AMD Radeon RX 6800 XT (0x000073BF) Direct3D11 vs_5_0 ps_5_0, D3D11)"), false);
+  assert.equal(isSoftwareRenderer("unknown"), false); // his call: never turn effects off on a guess
 });
 
 test("every built-in rule is valid", () => {

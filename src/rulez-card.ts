@@ -61,6 +61,7 @@ const ROWS: Record<string, { name: string; row: string | null }> = {
   sleepSchedule: { name: "Sleep every day", row: "sleepsched" },
   goToTarget: { name: "Go to opens", row: "gototarget" },
   shuffleIdle: { name: "Idle shuffle plays", row: "shuffleidle" },
+  graphicsFallback: { name: "If graphics fail", row: "graphicsfallback" },
 };
 const builtinKey = (r: Rule): string | undefined => ("row" in r.source ? r.source.row : "fixed" in r.source ? r.source.fixed : undefined);
 const builtinOf = (r: Rule) => {

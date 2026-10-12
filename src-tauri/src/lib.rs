@@ -12,6 +12,7 @@ mod diary;
 mod enrich;
 mod favorites;
 mod friends;
+mod gpu;
 mod heal;
 mod lastfm;
 mod library;
@@ -316,6 +317,8 @@ pub fn run() {
                 if let Err(e) = smtc::init(app.handle().clone(), &win) {
                     log::warn(&format!("smtc: init failed: {e}"));
                 }
+                // Tell the page when the GPU process exits (GRAPHICS-FALLBACK.md §4.2).
+                gpu::watch(app.handle(), &win);
             }
 
             // No browser keys in the installed app (DRAG-DROP.md §6): Ctrl+F find, Ctrl+P
@@ -611,11 +614,13 @@ pub fn run() {
 }
 
 /// Restart DeetsMusic: the Restart button of the startup guard's toast ("Something didn't
-/// load", main.ts, 2026-09-29). Tauri's own restart (no process plugin): the reply goes out
-/// first, then the app restarts from a short-lived thread, as `beta::request_pull` does.
+/// load", main.ts, 2026-09-29) and of the graphics toast (gpu.ts, GRAPHICS-FALLBACK.md §5).
+/// Tauri's own restart (no process plugin): the reply goes out first, then the app restarts
+/// from a short-lived thread, as `beta::request_pull` does.
 #[tauri::command]
-fn app_restart(app: tauri::AppHandle) {
-    log::warn("app: restart asked from the window (a startup part failed)");
+fn app_restart(app: tauri::AppHandle, why: Option<String>) {
+    let why = why.unwrap_or_else(|| "a startup part failed".into());
+    log::warn(&format!("app: restart asked from the window ({why})"));
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
         app.request_restart();

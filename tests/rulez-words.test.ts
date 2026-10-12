@@ -48,11 +48,21 @@ test("every built-in rule reads back as words (the locked rows)", () => {
   const all: Rule[] = builtinRules({
     drillGrow: "vertical", diaryGrow: "new", lookSchedule: "sun", dayTheme: "lilac", daySkin: "press", nightTheme: "black-red", nightSkin: "cyber",
     lookHold: "next", alwaysOnTop: "player", soundEqPerOutput: true, soundEqOutputs: { hp: "bass" }, sharePauseUntil: 5, playlistCreateSummon: "notmini", sleepSchedule: "sun",
-  });
+    graphicsFallback: "save",
+  } as Parameters<typeof builtinRules>[0]);
   for (const r of all) {
     assert.ok(whenText(r, lists).length > 0, r.id);
     assert.ok(doText(r, lists).length > 0, r.id);
+    assert.ok(!sentenceText(r, lists).includes("undefined"), `${r.id}: ${sentenceText(r, lists)}`);
   }
+});
+
+test("If graphics fail reads as words (2026-10-12): the canvas alone is not a picture", () => {
+  const r = builtinRules({ graphicsFallback: "save" } as Parameters<typeof builtinRules>[0]).find((x) => x.id === "row:graphicsFallback")!;
+  assert.equal(
+    sentenceText(r, lists),
+    "While graphics is Software, DeetsMusic keeps Fancy Glass off and keeps background motion off and keeps card-swap motion off and keeps look-change motion off and keeps the Glass canvas on Aurora.",
+  );
 });
 
 test("a yes / no fact is one phrase, never a name cut off it (the 2026-09-27 'Charging s on battery' bug)", () => {

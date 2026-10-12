@@ -171,6 +171,8 @@ export const FACTS: FactWord[] = [
   { id: "charging", section: "Window", label: "Charging", kind: "bool", yes: "The PC is charging", no: "The PC is on battery" },
   { id: "online", section: "Window", label: "Online", kind: "bool", yes: "The PC is online", no: "The PC is offline" },
   { id: "dataSaver", section: "Window", label: "Data saver", kind: "bool", yes: "Data saver is on", no: "Data saver is off" },
+  // GRAPHICS-FALLBACK.md §4: the WebGL renderer name, read at start, on a GPU-process exit, every 5 min.
+  { id: "graphics", section: "Window", label: "Graphics", kind: "choice", choices: [{ value: "accelerated", label: "Graphics card" }, { value: "software", label: "Software" }] },
   { id: "card", section: "Window", label: "Card", kind: "choice", choices: "cards" },
   { id: "grown", section: "Window", label: "Grown card", kind: "choice", choices: "cards" },
   // The full player (features/fullscreen-player.md §12.6).
@@ -284,6 +286,9 @@ export const DOS: DoWord[] = [
     moment: (v) => ({ picture: String(v) }),
     state: (v) => [{ target: { key: "glassCanvas" }, value: "picture" }, { target: { key: "glassPictureId" }, value: String(v) }],
   },
+  // Glass › Canvas on its own (Aurora, Covers): a built-in rule sets it (If graphics fail,
+  // GRAPHICS-FALLBACK.md §2.2). No `state`, so a row never offers it; the sentence reads it.
+  { id: "glassCanvas", section: "Look", label: "Glass canvas", input: "choice", choices: [{ value: "aurora", label: "Aurora" }, { value: "covers", label: "Covers" }, { value: "picture", label: "Picture" }] },
   { id: "playSound", section: "Sound", label: "Play sound", input: "choice", choices: "sounds", moment: (v) => ({ playSound: String(v) }) },
   { id: "scrobble", section: "Playback", label: "Turn scrobbling", input: "choice", choices: ON_OFF, moment: (v) => ({ scrobble: v === true }) },
   // Route 8 (RULEZ.md §10.1).
@@ -503,7 +508,7 @@ export function setText(set: StateSet, lists: Lists): string {
       else if (t.key === "soundEqPreset") out.push(`Use EQ preset ${labelOf(lists.presets, s.value)}`);
       else if (t.key === "cardGrowOutside") out.push(`Collapse on outside click: ${s.value ? "On" : "Off"}`);
       else if (t.key === "glassPictureId") out.push(`Use the picture ${labelOf(lists.pictures, s.value)}`);
-      else if (t.key === "glassCanvas") continue; // one part with the picture
+      else if (t.key === "glassCanvas" && s.value === "picture") continue; // one part with the picture
       else {
         const w = doWord(t.key);
         out.push(w ? `${w.label}: ${labelOf(choicesOf(w, lists), s.value)}` : `Set ${t.key}`);
@@ -543,7 +548,7 @@ export function doWordOf(r: Rule): { word: DoWord; value: Value } | null {
   if (!first) return null;
   const t = first.target;
   const id = "key" in t
-    ? t.key === "soundEqPreset" ? "preset" : t.key === "cardGrowOutside" ? "growOutside" : t.key === "glassPictureId" || t.key === "glassCanvas" ? "picture" : (SHARING as readonly string[]).includes(t.key) ? "sharePause" : t.key
+    ? t.key === "soundEqPreset" ? "preset" : t.key === "cardGrowOutside" ? "growOutside" : t.key === "glassPictureId" || (t.key === "glassCanvas" && first.value === "picture") ? "picture" : (SHARING as readonly string[]).includes(t.key) ? "sharePause" : t.key
     : t.prop === "window.onTop" ? "onTop" : t.prop.startsWith("tone.") ? t.prop.slice(5) : t.prop;
   const w = doWord(id);
   return w ? { word: w, value: first.value as Value } : null;
@@ -573,7 +578,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   friendsRoomInvite: { keep: "keeps the room-code invite on my box" }, toasts: { keep: "shows notices for" },
   webPlayNew: { keep: "keeps a web from the song playing" }, webPlayMode: { keep: "keeps a web from the song playing at" },
   webSkipSeed: { keep: "keeps skipping the song you just heard" }, webSkipSeedAt: { keep: "skips the song you just heard past" },
-  maxCards: { keep: "keeps Max at" },
+  maxCards: { keep: "keeps Max at" }, glassCanvas: { keep: "keeps the Glass canvas on" },
 };
 /** Every Do word has its own SAYS phrase (tests/rulez-words.test.ts checks it); the label is only
  *  a fallback, and it goes through `lowerFirst` so a name in it keeps its case. */
@@ -621,8 +626,9 @@ export function stateParts(set: StateSet): { word: DoWord | undefined; value: un
   const sharing = set.filter((s) => "key" in s.target && (SHARING as readonly string[]).includes(s.target.key));
   const out: { word: DoWord | undefined; value: unknown; set: StateSet }[] = [];
   if (sharing.length) out.push({ word: doWord("sharePause"), value: true, set: sharing });
-  // A picture is two targets, Glass › Canvas and the picture: one part.
-  const pic = set.filter((s) => "key" in s.target && (s.target.key === "glassCanvas" || s.target.key === "glassPictureId"));
+  // A picture is two targets, Glass › Canvas and the picture: one part. A canvas of Aurora or
+  // Covers is its own part (the graphics rule).
+  const pic = set.filter((s) => "key" in s.target && ((s.target.key === "glassCanvas" && s.value === "picture") || s.target.key === "glassPictureId"));
   if (pic.length) out.push({ word: doWord("picture"), value: pic.find((s) => "key" in s.target && s.target.key === "glassPictureId")?.value, set: pic });
   for (const s of set) {
     if (sharing.includes(s) || pic.includes(s)) continue;

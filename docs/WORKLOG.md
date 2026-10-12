@@ -12,6 +12,35 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-12 (graphics fallback) — desk test passed, four fixes (branch `main`)
+
+- **His ask:** test the whole thing, then commit. Claude ran all eight steps of
+  GRAPHICS-FALLBACK.md §8 on `dev:app -- --gpu=off` and a plain `dev:app`, over CDP: 8 pass.
+- **Fixed in the run:** the Rulez sentence read *keeps the picture undefined* (Glass › Canvas
+  alone now has its own word); the rule had no name or *Open in Settings* in Rulez (`ROWS` in
+  rulez-card.ts); the toast's buttons wrote no log line (`gpu:toast`); the Canvas bolt hint said
+  *off*. One more test in rulez-words.test.ts.
+- **Seen:** ending the dev app's GPU process fires `ProcessFailed` (kind 6); WebView2 came back
+  on the AMD card, so the rule did not hold. A second session's saves to `settings-card.ts`
+  reloaded the dev page during the run (vite), which is not this feature.
+- **Still his:** the rule's place in the engine's order (§9 item 3).
+
+## 2026-10-11 (graphics fallback) — built, desk test open (branch `main`, uncommitted)
+
+- **His calls:** the row, the toast text and the three choices as written in
+  GRAPHICS-FALLBACK.md §3 and §5. A renderer name of "unknown" counts as the graphics card.
+- **Built:** `src/gpu.ts` (the `graphics` fact, three reads, the toast, the chip words),
+  `src/gpu-probe.ts` (the WebGL probe, shared with the dev `[perf] gpu` line),
+  `row:graphicsFallback` in `rules-eval.ts`, `holdForSession` in `rules.ts` (Turn effects on),
+  `src-tauri/src/gpu.rs` (the `ProcessFailed` watch, dev and release), the `graphicsFallback` key,
+  the Settings › Motion row, the agent spec, the `NEW_MARKS` line, the Rulez word, two tests.
+  `app_restart` takes an optional `why`.
+- **Decided inside his choices** (GRAPHICS-FALLBACK.md §9): the row is last in Motion; any hand
+  change sets the rule aside for the session; the engine's order means Battery saver's Reduced
+  wins over the rule's Off on a laptop on battery; the chip words and a failed-restart toast are
+  new text; the fact shows in Rulez.
+- **Checks:** tsc, 211 tests, vite build, cargo check, docs:check. The desk test is DESK-TESTS.md A9.
+
 ## 2026-10-11 (full player) — on for everyone, released as 0.26.1 (branch `main`)
 
 - **His call:** the full player's test version was committed and pushed, so it is tested. The

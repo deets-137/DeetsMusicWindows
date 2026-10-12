@@ -27,6 +27,8 @@ export type FactId =
   // Route 5 (RULEZ.md §3): facts that cost nothing, from app state.
   | "outputKind" | "loved" | "diaryScore" | "plays" | "queueLength" | "sinceOpen" | "idle"
   | "battery" | "charging" | "online" | "dataSaver"
+  // GRAPHICS-FALLBACK.md §4: "accelerated" or "software", from the WebGL renderer name.
+  | "graphics"
   // Route 8 (RULEZ.md §10.1): a song is loaded; the window's size.
   | "loaded" | "windowWidth" | "windowHeight"
   // RULEZ.md §11: the cover's color as a word, and light or dark.
@@ -452,7 +454,22 @@ export interface RowValues {
   sleepSchedule: "off" | "sun" | "clock";
   goToTarget: "fits" | "search" | "library";
   shuffleIdle: "library" | "noop";
+  graphicsFallback: "save" | "tell" | "off";
 }
+
+/** The heavy effects the graphics rule holds off (GRAPHICS-FALLBACK.md §2.2): Battery saver's
+ *  set, with the backgrounds Off (not Reduced) and a Covers or Picture canvas on Aurora. */
+export const GRAPHICS_OFF: { key: string; value: unknown }[] = [
+  { key: "glassFancy", value: false },
+  { key: "backgroundMotion", value: "off" },
+  { key: "cardSwapMotion", value: false },
+  { key: "appearanceMotion", value: false },
+  { key: "glassCanvas", value: "aurora" },
+];
+
+/** A WebGL renderer name that means software drawing: WARP ("Microsoft Basic Render Driver"),
+ *  SwiftShader, llvmpipe. Any other name, and no name at all, is the graphics card. */
+export const isSoftwareRenderer = (name: string): boolean => /swiftshader|software|llvmpipe|basic render driver|warp/i.test(name);
 
 /** What a row is set to when one of its rules says `onHand: "off"` (a hand change turns it off). */
 export const ROW_OFF: Record<string, [key: string, value: unknown]> = {
@@ -570,6 +587,17 @@ export function builtinRules(s: RowValues): Rule[] {
     out.push({
       id: "row:shuffleIdle", kind: "moment", source: row("shuffleIdle"), on: true,
       when: "shuffle.press", card: "*", if: { fact: "loaded", is: false }, do: { shuffleLibrary: true },
+    });
+  }
+
+  // Motion › If graphics fail (GRAPHICS-FALLBACK.md §3): while the window draws in software, the
+  // heavy effects stay off. Your own values never change. A hand change, or the toast's Turn
+  // effects on, sets the rule aside until the next start. Tell only and Off make no rule.
+  if (s.graphicsFallback === "save") {
+    out.push({
+      id: "row:graphicsFallback", kind: "state", source: row("graphicsFallback"), on: true,
+      while: { fact: "graphics", is: "software" },
+      set: GRAPHICS_OFF.map((g) => ({ target: { key: g.key }, value: g.value })), onHand: "session",
     });
   }
   return out;

@@ -254,12 +254,14 @@ or Pro (his own settings) to pre-set settings. No mode; one gate: the Rulez card
 under Pro. Every fork is decided but the words and the Pro walk's order
 ([HOP-IN.md §5](features/HOP-IN.md)); ready to build when he says go.
 
-**Graphics fallback (2026-09-29, designed, not built).** A driver update left the live app on
-WARP (software drawing) for 3 hours: 100 % of one core in the GPU process, slow clicks and hovers.
-Design: a `graphics` fact, a built-in rule owned by an *If graphics fail* row that turns the heavy
-effects off, a sticky toast [Restart now] [Turn effects on] [Later]. His calls are in
-[GRAPHICS-FALLBACK.md §2](features/GRAPHICS-FALLBACK.md); the row words, its place and the toast
-text are open (§7). He comes back to it on the evening of 2026-09-29.
+**Graphics fallback (built 2026-10-11, desk test passed 2026-10-12).** A driver update left the
+live app on WARP (software drawing) for 3 hours: 100 % of one core in the GPU process, slow clicks
+and hovers. Built: the `graphics` fact (`src/gpu.ts`), a built-in rule owned by Settings › Motion ›
+*If graphics fail* that holds the heavy effects off, a sticky toast [Restart now] [Turn effects on]
+[Later], and a WebView2 `ProcessFailed` watch in Rust (`src-tauri/src/gpu.rs`). The desk test and
+its results are [GRAPHICS-FALLBACK.md §8](features/GRAPHICS-FALLBACK.md); §9 is the as-built record
+and lists the calls made inside his choices. Open with him: the rule's place in the engine's order
+(Battery saver's Reduced wins over its Off, §9 item 3).
 
 **The animation design pass (2026-09-28, branch `visualz`, in progress).** His ask: a full
 visual design pass on motion, with the shots made ready for Claude to review and to help debug.

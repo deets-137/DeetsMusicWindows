@@ -191,6 +191,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Cards" }, // Settings › Cards, which cards the pickers offer, built 2026-10-10 (HIDE-CARDS.md)
   { section: "Connections", row: "mcpsetup" }, // Set up the DeetsMusic MCP, built 2026-10-11 (MCP-INSTALL.md)
   { section: "Window", row: "maxcards" }, // Layout for Max, built 2026-10-11 (MAX-CARDS.md)
+  { section: "Motion", row: "graphicsfallback" }, // If graphics fail, built 2026-10-11 (GRAPHICS-FALLBACK.md)
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -401,7 +402,7 @@ const RESET_GROUPS: ResetGroup[] = [
     id: "schedule", label: "Look schedule", hint: "Change look at, the day and night looks, the times, and Menu pick lasts",
     keys: ["lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "dayStart", "nightStart", "sunShift", "lookHold"],
   },
-  { id: "motion", label: "Motion", hint: "The three Animate rows and Fancy scrubber", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber"] },
+  { id: "motion", label: "Motion", hint: "The three Animate rows, Fancy scrubber, and If graphics fail", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
   {
     id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, and the Press record player",
     keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
@@ -1206,6 +1207,12 @@ function mountSettings(
           kind: "choice", id: "bgmotion", label: "Animate backgrounds", key: "backgroundMotion",
           hint: "The moving Ocean, Glass, and Cyber backgrounds. Reduced: fewer updates, less CPU. Off: they hold still",
           options: [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }],
+        },
+        {
+          // GRAPHICS-FALLBACK.md §3: Save + tell makes the built-in rule (rules-eval.ts).
+          kind: "choice", id: "graphicsfallback", label: "If graphics fail", key: "graphicsFallback",
+          hint: "When the graphics card stops, turn off heavy effects until DeetsMusic restarts",
+          options: [{ value: "save", label: "Save + tell" }, { value: "tell", label: "Tell only" }, { value: "off", label: "Off" }],
         },
       ],
     },

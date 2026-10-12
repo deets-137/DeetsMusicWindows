@@ -407,6 +407,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `.history`, `.rewind`, `.radio`, `.diary`, `.rulez`, labels "Home in the card picker" and so
   on. On = offered in the slot pickers. A hide that would leave fewer than three everyday cards
   is refused, and the reply says so. Replaced `rewindCard`.
+- `graphicsFallback` "If graphics fail" (Save + tell | Tell only | Off, 2026-10-11) is in Motion;
+  Save + tell makes the built-in rule `row:graphicsFallback`, which holds the heavy effects off
+  while the window draws in software ([GRAPHICS-FALLBACK.md](../features/GRAPHICS-FALLBACK.md)).
 - `streamQuality` (Auto | High | Low, 2026-09-16): the stream bitrate. A set takes effect from the
   next song; the song that plays does not reload.
 - A time takes `HH:MM` on the hour or the half hour, inside the card's menu range

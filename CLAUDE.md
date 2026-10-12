@@ -109,9 +109,10 @@ old installs' Guide button opens.
 - `HOP-IN.md` — DESIGNED, not built (2026-09-28): the welcome screen before sign-in, the
   Cruisin / Pro pick, the two presets (Cruisin = defaults, Pro = his own settings), the Rulez
   gate. Recipes in Settings are RULEZ.md §16.
-- `GRAPHICS-FALLBACK.md` — DESIGNED, not built (2026-09-29): when the GPU process falls back to
-  WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers a
-  restart; the *If graphics fail* row; the `graphics` fact. Row words and toast text are open.
+- `GRAPHICS-FALLBACK.md` — BUILT 2026-10-11, desk test passed 2026-10-12 (§8): when the GPU process falls
+  back to WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers
+  a restart; Settings › Motion › *If graphics fail*; the `graphics` fact (`src/gpu.ts`); the
+  WebView2 `ProcessFailed` watch (`src-tauri/src/gpu.rs`). §9 is the as-built record.
 - `HIDE-CARDS.md` — BUILT 2026-10-10, desk test passed 2026-10-10 (§9): Settings › Cards hides any card but
   Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaced
   `rewindCard`); the picker only, the feature keeps working; right-click a name in the picker

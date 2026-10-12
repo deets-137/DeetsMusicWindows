@@ -136,6 +136,7 @@ nothing about authoring changed when the box did.
 | Settings › Menus, hints and notices | Compass closes on outside click | A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it | settings-card.ts |
 | Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open. Max only: Mini and Midi always use the small pill (was *A window thinner than 455 px uses the small pill anyway* until 2026-10-11) | settings-card.ts |
 | Settings › Motion | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
+| Settings › Motion (2026-10-11) | If graphics fail | When the graphics card stops, turn off heavy effects until DeetsMusic restarts | settings-card.ts (GRAPHICS-FALLBACK.md §3) |
 | Settings › Skin settings | Card opacity | Ocean only. How solid the sunken cards are. Lower: the sea shows through | settings-card.ts |
 | Settings › Skin settings | Album light | Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon, and cost more on a PC without a graphics card | settings-card.ts |
 | Settings › Skin settings (2026-09-24) | Canvas | Glass only. What shows behind the cards: the theme's glow, the album covers, or a picture you choose | settings-card.ts (COVER-WALLPAPER.md §3.7) |
