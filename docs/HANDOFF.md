@@ -112,6 +112,11 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**Listeners from Last.fm (2026-10-12, read side built, UI next).** `lastfm_listeners` +
+`listen_counts` + `src/listeners.ts` read a song's Last.fm listener count and cache it a month.
+Nothing shows it yet: the row (features/LISTENERS.md §4, his forks §5) is the next sitting. Desk
+test with the row.
+
 **Code review: TypeScript and Rust quirks (2026-10-11, built, pushed to `main` and
 `ten-out-of-ten`, his desk tests open).** WORKLOG 2026-10-11 (code review) is the record. Desk
 tests: Rulez › ⋯ › Paste a rule with the real clipboard, and Import from a file (the pasted-draft

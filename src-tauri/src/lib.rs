@@ -240,6 +240,7 @@ pub fn run() {
             playlists::init_tables(&conn).expect("init playlist tables");
             web::init_tables(&conn).expect("init web tables");
             credits::init_tables(&conn).expect("init credit tables");
+            lastfm::init_tables(&conn).expect("init listen_counts table");
             dbhealth::init_tables(&conn).expect("init db health tables");
             if migrate {
                 library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
@@ -540,6 +541,7 @@ pub fn run() {
             lastfm::lastfm_status,
             lastfm::lastfm_open_profile,
             lastfm::lastfm_heard,
+            lastfm::lastfm_listeners,
             settings::autostart_get,
             settings::autostart_set,
             settings::agent_setup_text,

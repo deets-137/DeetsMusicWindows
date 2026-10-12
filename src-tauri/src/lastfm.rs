@@ -724,3 +724,133 @@ async fn run_flush(app: &AppHandle) {
         }
     }
 }
+
+// ── listener counts (LASTFM.md §10) ─────────────────────────────────────────
+//
+// How many people on Last.fm have heard a song, and how many times: the "rarity" of a song
+// for a user who cares. `track.getInfo` needs the API key only, no session, so it works
+// before the user connects an account. The answer is cached in `listen_counts` for
+// `LISTENERS_TTL`, so a song pane opened twice makes one call. A song Last.fm does not know
+// (error 6) is cached as `state = none` for the same time, so it is not asked again on every
+// open. The read side is built 2026-10-12; the UI is not (§10).
+
+/// How long a cached count stands before the next read asks Last.fm again. Listener counts
+/// move slowly; a month keeps a library of a few thousand songs at a few calls a day.
+const LISTENERS_TTL_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+
+pub fn init_tables(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS listen_counts (
+            track_id    TEXT PRIMARY KEY,
+            state       TEXT NOT NULL,
+            listeners   INTEGER,
+            playcount   INTEGER,
+            url         TEXT,
+            fetched_at  INTEGER NOT NULL
+        );",
+    )
+}
+
+/// One song's Last.fm counts, as the renderer sees them.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListenCount {
+    /// "have" — Last.fm knows the song. "none" — it does not (error 6, or no artist / title).
+    pub state: &'static str,
+    /// Distinct Last.fm users who scrobbled it at least once.
+    pub listeners: i64,
+    /// Every scrobble of it, all users.
+    pub playcount: i64,
+    /// The song's page on last.fm, for a link.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// When Last.fm answered (ms since the epoch). The UI can say how fresh the number is.
+    pub fetched_at: i64,
+}
+
+fn cached_count(conn: &rusqlite::Connection, track_id: &str) -> Option<ListenCount> {
+    conn.query_row(
+        "SELECT state, listeners, playcount, url, fetched_at FROM listen_counts WHERE track_id = ?1",
+        [track_id],
+        |r| {
+            let state: String = r.get(0)?;
+            Ok(ListenCount {
+                state: if state == "have" { "have" } else { "none" },
+                listeners: r.get::<_, Option<i64>>(1)?.unwrap_or(0),
+                playcount: r.get::<_, Option<i64>>(2)?.unwrap_or(0),
+                url: r.get(3)?,
+                fetched_at: r.get(4)?,
+            })
+        },
+    )
+    .ok()
+}
+
+fn store_count(conn: &rusqlite::Connection, track_id: &str, c: &ListenCount) {
+    let _ = conn.execute(
+        "INSERT OR REPLACE INTO listen_counts(track_id, state, listeners, playcount, url, fetched_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params![track_id, c.state, c.listeners, c.playcount, c.url, c.fetched_at],
+    );
+}
+
+/// `track.getInfo` with `autocorrect=1`, so "Beyoncé" and "Beyonce" land on one page. The
+/// signed POST `call` is reused: Last.fm ignores `api_sig` on a method that needs none.
+async fn fetch_count(artist: &str, title: &str) -> Result<ListenCount, CallError> {
+    let json = call(
+        "track.getInfo",
+        vec![("artist".into(), artist.into()), ("track".into(), title.into()), ("autocorrect".into(), "1".into())],
+    )
+    .await?;
+    let t = &json["track"];
+    Ok(ListenCount {
+        state: "have",
+        listeners: t.get("listeners").and_then(as_int).unwrap_or(0),
+        playcount: t.get("playcount").and_then(as_int).unwrap_or(0),
+        url: t.get("url").and_then(|u| u.as_str()).map(str::to_string),
+        fetched_at: now_ms(),
+    })
+}
+
+/// The Last.fm counts for one song. Cache first; one call when the row is missing or older
+/// than a month. `Ok(None)` means this build has no key, or the song has no artist or title
+/// to ask with. A network failure is an `Err` and caches nothing, so the next open tries again.
+#[tauri::command]
+pub async fn lastfm_listeners(track_id: String, artist: String, title: String, app: AppHandle) -> Result<Option<ListenCount>, String> {
+    if API_KEY.is_none() || track_id.is_empty() {
+        return Ok(None);
+    }
+    let artist = artist.trim().to_string();
+    let title = title.trim().to_string();
+    if artist.is_empty() || title.is_empty() {
+        return Ok(None);
+    }
+    let id = track_id.clone();
+    let hit = crate::db_thread::run(&app, move |db| Ok(cached_count(&db.lock(), &id))).await?;
+    if let Some(c) = hit {
+        if now_ms() - c.fetched_at < LISTENERS_TTL_MS {
+            return Ok(Some(c));
+        }
+    }
+    let count = match fetch_count(&artist, &title).await {
+        Ok(c) => c,
+        // Track not found: an answer, cached like one.
+        Err(CallError::Api(6, _)) => ListenCount { state: "none", listeners: 0, playcount: 0, url: None, fetched_at: now_ms() },
+        Err(e) => {
+            crate::log::warn(&format!("lastfm: listeners for {track_id} failed ({e})"));
+            return Err(e.to_string());
+        }
+    };
+    crate::log::info(&format!(
+        "lastfm: listeners for {track_id}: {} ({} listeners, {} plays)",
+        count.state, count.listeners, count.playcount
+    ));
+    let stored = count.clone();
+    let id = track_id;
+    crate::db_thread::run(&app, move |db| {
+        store_count(&db.lock(), &id, &stored);
+        Ok(())
+    })
+    .await?;
+    Ok(Some(count))
+}

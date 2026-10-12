@@ -9,6 +9,8 @@ updated: 2026-09-17
 
 Built 2026-09-16. **Desk-tested 2026-09-16 in the dev app: complete.** Connect, now playing and
 scrobbles (two songs heard to the end) all worked. §9 has what the test covered.
+A second use of the key, a song's listener count (`track.getInfo`, read side built 2026-10-12),
+is [features/LISTENERS.md](../features/LISTENERS.md).
 
 **Terms**
 - **Scrobble:** one play that Last.fm saves to the user's profile.

@@ -136,6 +136,9 @@ old installs' Guide button opens.
   cloud copy on Cloudflare R2 through a worker: Sign in with Apple, the worker holds the key
   for now (his calls, §9.3). R3 to R6 open. §9.4 Apple's CloudKit private database as an option
   beside R2 (fork R0, open; an iCloud sign-in test in WebView2 decides it).
+- `LISTENERS.md` — DESIGNED 2026-10-12, read side BUILT: a song's Last.fm listener count (its
+  "rarity"); `track.getInfo` cached a month in `listen_counts`, `lastfm_listeners`,
+  `src/listeners.ts`. The UI row is next (§4; his forks §5). Genius has no play data (§1).
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.

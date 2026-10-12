@@ -83,7 +83,7 @@ copies and to send to a cloud folder every week.
 `loudness` is kept: we measure it while a song plays, so only more listening fills it again.
 
 **Left out (caches):** `tracks`, `track_catalog`, `artist_catalog`, `album_palette`,
-`song_credits`, `apple_playlists`, `apple_playlist_tracks`, `dead_ids`, `catalog_heal`,
+`song_credits`, `listen_counts`, `apple_playlists`, `apple_playlist_tracks`, `dead_ids`, `catalog_heal`,
 `web_artists`, `web_names`, `web_albums`, `web_seed_list`, `db_canary`.
 
 **A check before the build:** `lastfm.rs` joins `play_events` to `tracks` for a song's
