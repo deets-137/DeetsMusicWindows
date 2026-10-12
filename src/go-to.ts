@@ -70,7 +70,18 @@ const subs = new Set<Cb>();
 // the request takes it on mount, one already on screen through the subscription. A skin with
 // an out step mounts the card after the swap plays, so an emit alone would be lost. An old
 // request is dropped, so it cannot open a pane much later.
+//
+// So the emit clears the hold ONLY when a card heard it. The old code cleared it always, right
+// after the emit: with the Search card off screen and a skin with an out step, the card
+// mounted after the clear and opened empty (the first Go to Artist on live, 2026-10-12).
 const HOLD_TTL_MS = 5000;
+
+/** Emit a held request to the cards on screen. The hold stays for a card still to mount. */
+function emitHeld<T>(subs: Set<(v: T) => void>, intent: T, stillHeld: () => boolean, clear: () => void): void {
+  if (!stillHeld() || !subs.size) return; // taken on mount already, or no card yet: it waits
+  subs.forEach((cb) => cb(intent));
+  clear();
+}
 let pendingDrill: { intent: DrillIntent; at: number } | null = null;
 
 /** Search-card side: subscribe to drill intents. Returns an unsubscribe fn. */
@@ -89,8 +100,7 @@ export function takeDrillRequest(): DrillIntent | null {
 function requestDrill(intent: DrillIntent): void {
   pendingDrill = { intent, at: Date.now() };
   requestDrillCard("search");
-  if (pendingDrill) subs.forEach((cb) => cb(intent));
-  pendingDrill = null;
+  emitHeld(subs, intent, () => !!pendingDrill, () => (pendingDrill = null));
 }
 
 /**
@@ -145,8 +155,7 @@ export function takePlaylistPaneRequest(): PlaylistPaneIntent | null {
 export function requestPlaylistPane(intent: PlaylistPaneIntent): void {
   pendingPane = { intent, at: Date.now() };
   requestDrillCard("search");
-  if (pendingPane) paneSubs.forEach((cb) => cb(intent));
-  pendingPane = null;
+  emitHeld(paneSubs, intent, () => !!pendingPane, () => (pendingPane = null));
 }
 
 /** A catalog ALBUM to open as a Search pane, by its OWN id — the sibling the playlist pane
@@ -181,8 +190,7 @@ export function takeAlbumPaneRequest(): AlbumPaneIntent | null {
 export function requestAlbumPane(intent: AlbumPaneIntent): void {
   pendingAlbum = { intent, at: Date.now() };
   requestDrillCard("search");
-  if (pendingAlbum) albumSubs.forEach((cb) => cb(intent));
-  pendingAlbum = null;
+  emitHeld(albumSubs, intent, () => !!pendingAlbum, () => (pendingAlbum = null));
 }
 
 /** A catalog ARTIST to open as a Search pane, by its OWN id (CONTEXT-MENUS.md §3): an
@@ -211,8 +219,7 @@ export function takeArtistPaneRequest(): ArtistPaneIntent | null {
 export function requestArtistPane(intent: ArtistPaneIntent): void {
   pendingArtist = { intent, at: Date.now() };
   requestDrillCard("search");
-  if (pendingArtist) artistSubs.forEach((cb) => cb(intent));
-  pendingArtist = null;
+  emitHeld(artistSubs, intent, () => !!pendingArtist, () => (pendingArtist = null));
 }
 
 /** "Go to Album" from the ALBUM's own catalog id — `null` without one. */
@@ -262,8 +269,7 @@ export function takeSongPaneRequest(): SongPaneIntent | null {
 export function requestSongPane(intent: SongPaneIntent): void {
   pendingSong = { intent, at: Date.now() };
   requestDrillCard("search");
-  if (pendingSong) songSubs.forEach((cb) => cb(intent));
-  pendingSong = null;
+  emitHeld(songSubs, intent, () => !!pendingSong, () => (pendingSong = null));
 }
 
 /**
