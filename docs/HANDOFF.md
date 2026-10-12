@@ -112,6 +112,18 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**Code review: TypeScript and Rust quirks (2026-10-11, built, pushed to `main` and
+`ten-out-of-ten`, his desk tests open).** WORKLOG 2026-10-11 (code review) is the record. Desk
+tests: Rulez › ⋯ › Paste a rule with the real clipboard, and Import from a file (the pasted-draft
+check, `validateDraft`); Rulez rows with no name (the switch whole, the ⋯ in line); and, to
+see it once, the settings.json repair toast (set `"sotdPostMode": "weekly"` in the dev
+settings.json, start the dev app). **His to change:** the repair toast's words
+(`settings-repair.ts`, TOASTS.md §5) and the two new Rulez skip reasons. **Still open, his
+call:** the TypeScript settings store trusts stored choice values (`{ ...DEFAULTS, ...stored }`
+in settings-store.ts) — check each choice key against its options before Backup is built; and
+generated types (ts-rs / specta) for the other `invoke<T>` shapes, if ever (`RustSettings` and
+its drift test cover the settings).
+
 **Set up the DeetsMusic MCP (2026-10-11, built, committed on `ten-out-of-ten`, his desk test
 open).** Settings › Connections connects Claude Desktop (the `.mcpb`), Claude Code, and Codex and
 ChatGPT; `deetsmusic mcp install|status|uninstall`; *last used*; the uninstall hook.
@@ -890,7 +902,12 @@ src-tauri/src/enrich.rs     lazy catalog enrichment: storefront cache, batch fet
 src-tauri/src/playlists.rs  playlists: local store + CRUD, Apple mirror sync + content cache
 src-tauri/src/tray.rs       tray icon/menu, window policy, single-instance activation (TRAY.md)
 src-tauri/src/settings.rs   back-end settings.json: minimizeToTray, readWindowsMedia,
-                            bridgeToken, windowPos
+                            bridgeToken, windowPos; read field by field, async setters
+src-tauri/src/safe_file.rs  write_atomic (beside, flush, rename) + parse_lenient (one bad
+                            value resets that field) for settings, keys, tokens, sessions
+src/rust-settings.ts        RustSettings: the one front-end shape of SettingsData
+                            (tests/rust-settings.test.ts reads settings.rs for drift)
+src/settings-repair.ts      the launch toast's words when settings.json reset a field
 src-tauri/src/bridge.rs     loopback bridge: Hub state relay + extension/agent routes
 src-tauri/src/media.rs      Windows media session (GSMTC) + master volume
 src-tauri/nsis/hooks.nsh    NSIS hooks: stop the CLI pre-(un)install, offer the extension

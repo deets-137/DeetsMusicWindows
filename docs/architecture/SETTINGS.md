@@ -81,7 +81,10 @@ pairing token. The old file stays as `settings.json.bad`, the log names the fiel
 sticky toast names the rows (`settings_load_problems`, words in `settings-repair.ts`, TOASTS.md
 §5). Every write goes beside the file and is renamed over it (`safe_file::write_atomic`), one at
 a time, and every setter is `async` with its write on the blocking pool. A new Rust-owned key
-gets a row label in `settings-repair.ts` `ROW`.
+gets a row label in `settings-repair.ts` `ROW`, and a field in `src/rust-settings.ts`
+(`RustSettings`, the one front-end shape of `SettingsData`, 2026-10-11). Every reader imports it
+(agent-settings, settings-card, sotd, tray); `tests/rust-settings.test.ts` reads settings.rs and
+fails when a field is on one side only, or when an `Option` is not `| null`.
 
 ## 3. The rows of the Settings card
 

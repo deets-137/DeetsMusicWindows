@@ -13,6 +13,7 @@
 // `__tray.state()` snapshots what the panel believes.
 
 import { invoke } from "@tauri-apps/api/core";
+import type { RustSettings } from "./rust-settings";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { makeSlider } from "./slider";
@@ -42,10 +43,9 @@ interface SystemVolume {
   level: number;
   muted: boolean;
 }
-interface Settings {
-  minimizeToTray: boolean;
-  readWindowsMedia: boolean;
-}
+/** The two Rust settings the panel reads, from `settings_get` and the `settings` event (both
+ *  carry the whole SettingsData; rust-settings.ts is the shape). */
+type Settings = Pick<RustSettings, "minimizeToTray" | "readWindowsMedia">;
 interface Candidate {
   track: Track;
   inLibrary: boolean;

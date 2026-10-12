@@ -9,6 +9,7 @@
 // it was (`meta`), so a pick still draws after the song leaves your library.
 
 import { invoke } from "@tauri-apps/api/core";
+import type { RustSettings } from "./rust-settings";
 import { listen } from "@tauri-apps/api/event";
 import { errorOf } from "./dom";
 import type { Track } from "./library";
@@ -53,15 +54,10 @@ export interface OutletStatus {
   error?: string | null;
 }
 
-/** The rows Rust owns (settings.rs), cached here the way the Settings card caches its own. */
-interface SotdSettings {
-  sotd: boolean;
-  sotdDayStart: number;
-  sotdPicksPerDay: number;
-  sotdPostMode: "ask" | "now" | "time";
-  sotdPostAt: string;
-  sotdPostAs: string;
-}
+/** The rows Rust owns (settings.rs), cached here the way the Settings card caches its own. Its
+ *  part of the one shared shape (rust-settings.ts). */
+// A mapped type, not `Pick<…>`: this module's own `Pick` (a song pick) hides the built-in one.
+type SotdSettings = { [K in "sotd" | "sotdDayStart" | "sotdPicksPerDay" | "sotdPostMode" | "sotdPostAt" | "sotdPostAs"]: RustSettings[K] };
 
 const err = errorOf("sotd");
 

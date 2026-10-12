@@ -15,6 +15,7 @@
 
 import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
+import type { AirplayCapture, RustSettings } from "./rust-settings";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
 import { HIDEABLE_CARDS, HIDE_LOCK_HINT, canHide } from "./layout-rules";
@@ -586,8 +587,7 @@ function mountSettings(
   let agentDiary = false;
   // AirPlay (AIRPLAY.md §7, §12): Rust reads it at connect time; a change while connected
   // reconnects in place.
-  let airplayCapture: "app" | "system" = "app";
-  interface RustSettings { minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; agentDiary: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean; airplayCapture: "app" | "system" }
+  let airplayCapture: AirplayCapture = "app";
   const takeRust = (s: RustSettings) => {
     minimizeToTray = s.minimizeToTray;
     airplayCapture = s.airplayCapture;
@@ -1580,7 +1580,7 @@ function mountSettings(
           options: [{ value: "app", label: "DeetsMusic only" }, { value: "system", label: "All PC sound" }],
           get: () => airplayCapture,
           set: (v) => {
-            airplayCapture = v as "app" | "system";
+            airplayCapture = v as AirplayCapture;
             invoke("settings_set_airplay_capture", { v }).catch((e) => console.error("[settings] airplay", e));
           },
         },

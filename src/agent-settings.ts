@@ -12,6 +12,7 @@
 // The rows mirror settings-card.ts: a new card row joins SPECS as well (SETTINGS.md §5).
 
 import { invoke } from "@tauri-apps/api/core";
+import type { RustSettings } from "./rust-settings";
 import { setting, setSetting, ownSetting, effective, notifyOwnedSettingChange, adaptiveUnhidden, type Settings } from "./settings-store";
 import { toast } from "./toast";
 import { HIDEABLE_CARDS, HIDE_LOCK_HINT, canHide } from "./layout-rules";
@@ -94,12 +95,10 @@ const storeSize = (slot: SizeSlot, label: string): Spec => ({
 });
 
 /** Rust owns these (settings.json, the Run key); the card caches them, so tell it. */
-/** The Song of the Day rows Rust owns (settings.rs). Same call as `rustSettings`, its own
- *  shape: they are read and written one row at a time, like Last.fm's. */
-const sotdRust = () =>
-  invoke<{ sotd: boolean; sotdDayStart: number; sotdPicksPerDay: number; sotdPostMode: string; sotdPostAt: string }>("settings_get");
-const rustSettings = () =>
-  invoke<{ minimizeToTray: boolean; agentControl: boolean; agentHistory: boolean; agentDiary: boolean; lastfmScrobble: boolean; lastfmNowPlaying: boolean; airplayCapture: "app" | "system" }>("settings_get");
+/** The rows Rust owns (settings.rs), in the one shared shape (rust-settings.ts). The Song of
+ *  the Day rows read the same call: they are read and written one row at a time, like Last.fm's. */
+const rustSettings = () => invoke<RustSettings>("settings_get");
+const sotdRust = rustSettings;
 const rustToggle = (section: string, key: string, label: string, get: () => Promise<boolean>, set: (on: boolean) => Promise<unknown>, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "toggle", options: ON_OFF,
   get: async () => ((await get()) ? "on" : "off"),

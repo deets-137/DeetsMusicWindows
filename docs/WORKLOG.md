@@ -104,6 +104,18 @@ updated: 2026-10-11
   Release check 9's file-write rule is now HARD. The limit, also true of the settings setters:
   two calls to one command within a millisecond or two could finish out of order; only a
   script fires that fast.
+- **One shared `RustSettings` type (his call: next, if safe).** `src/rust-settings.ts` holds
+  the whole `SettingsData` shape (21 fields, `AirplayCapture`, `PostMode`, `AirplaySpeaker`).
+  The five readers that each wrote their own part by hand now import it: agent-settings.ts (two
+  inline shapes → `RustSettings`; `sotdRust` is now `rustSettings`), settings-card.ts (its local
+  interface), sotd.ts (`SotdSettings` is a mapped type over it: the module's own `Pick` type, a
+  song pick, hides the built-in), tray.ts (`Settings` is a `Pick` of it). New
+  `tests/rust-settings.test.ts` reads settings.rs: the field names must match, an `Option` must
+  be `| null`, and bool / number / String must match. Planting a renamed field and a missing
+  `| null` failed all three tests; restored. Type-stripped, settings-card, sotd and tray are the
+  same code as before; agent-settings differs by the `sotdRust` alias (the same call). tsc found
+  no hidden mismatch. `npm run check` passes (209 tests); `deetsmusic settings list` on the dev
+  app reads every Rust row.
 
 ## 2026-10-11 — Backup designed (docs only; branch `ten-out-of-ten`)
 
