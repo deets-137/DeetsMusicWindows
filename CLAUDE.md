@@ -125,6 +125,10 @@ old installs' Guide button opens.
 - `MAX-CARDS.md` — BUILT 2026-10-11, desk test open (§7): Settings › Window › *Layout for Max*
   (4 cards · 2 columns · 2 rows · 1 card), the `maxCards` key and rule key. The geometry is
   pure in `layout-rules.ts`. §11 is the as-built record. A separate onboarding route will offer it (§9.1, not designed).
+- `fullscreen-player.md` — BUILT 2026-10-11, tested, on for everyone (the DevTools flag
+  removed): Now Playing grows so the cover is as large as the window allows, Midi and Max
+  only. §6–§7 the decisions, §9 the motion, §10 the edge zones, §13 the as-built record.
+  Mini's player view and a turning Press copy in the flight are open.
 - `BACKUP.md` — DESIGNED, not built (2026-10-11): one backup file (no secrets, no caches),
   *Back up now* plus a weekly copy to a folder, restore = replace all on a fresh install (his
   calls, §1); a `.deetsbackup` file; the rows in Settings › Updates. §8 the open forks. §9 a
@@ -170,11 +174,6 @@ old installs' Guide button opens.
 
 **`docs/ideas/`** — not built; never tell a user the app does these. `SECRETS-AND-CSP.md` —
 designed 2026-09-29: a CSP for the webview; DPAPI for the Apple token and Last.fm session.
-`fullscreen-player.md` — every fork decided 2026-10-02, not built: grow Now Playing so the
-cover is as large as the window allows (Midi, Max, Mini's player view); §6–§7 the decisions,
-§9 the motion (decided), §10 the edge zones (decided 2026-10-10). §12 is the code shape of a
-first TEST version, scoped 2026-10-10 for a build on 2026-10-11; §12.9 has three questions
-to ask him first.
 `music-app-comp.md` — an idea (2026-10-06): metrics and methods to measure DeetsMusic against
 the Apple Music app for Windows with symmetric OS-level tools, and (2026-10-10) each release
 against the last from 0.25.4 with Apple's app as the control; §17 scopes `deetsmeter`, our own

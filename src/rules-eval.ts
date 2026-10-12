@@ -31,7 +31,7 @@ export type FactId =
   | "loaded" | "windowWidth" | "windowHeight"
   // RULEZ.md §11: the cover's color as a word, and light or dark.
   | "albumColor" | "albumLight"
-  // The full player (ideas/fullscreen-player.md §12.6): "on" while it is open.
+  // The full player (features/fullscreen-player.md §12.6): "on" while it is open.
   | "player";
 export type Value = string | number | boolean;
 /** A fact's value. A list (a song's genres) holds when any member does. */
@@ -82,7 +82,7 @@ export type Action =
   // the idle shuffle press.
   | { openIn: "library" | "search" }
   | { shuffleLibrary: true }
-  // The full player (ideas/fullscreen-player.md §12.6).
+  // The full player (features/fullscreen-player.md §12.6).
   | { player: "open" | "close" };
 
 /** Name and Desc (Rulez), and `draft`: a row with a part still missing is saved and never runs. */

@@ -197,7 +197,7 @@ export function watchAlbumColor(card: HTMLElement): () => void {
     const stops = ["var(--album-bg)", "var(--album-c1)", "var(--album-c2)"]
       .map((v) => parseColor(resolve(v)))
       .filter((c): c is RGB => !!c);
-    // The full player's band (ideas/fullscreen-player.md §7.6): the rows sit on it, over the
+    // The full player's band (features/fullscreen-player.md §7.6): the rows sit on it, over the
     // cover, so the band over the darkest and the lightest cover is what the text must beat.
     const where = band();
     const b = where ? bandColor(resolve("var(--np-band)")) : null;

@@ -198,7 +198,7 @@ in Max (`styles.css:1945`–`1946`). Add one rule set per count, under the exist
   `right` tall is `1 / 2 / 3 / 3` too (today's `right` tall is column 3, which does not exist
   there). The covered card is placed by hand, like Midi's rule at `styles.css:4032`, or
   auto-placement opens a new row for it.
-- **The full player** (`docs/ideas/fullscreen-player.md`, built in the same tree, 2026-10-11)
+- **The full player** (`docs/features/fullscreen-player.md`, built in the same tree, 2026-10-11)
   sets `:root[data-player="full"]`: in Max, Now Playing spans `1 / 2 / 3 / 4` and the Queue
   `1 / 1 / 3 / 2`. Those numbers assume content columns 2–3 and rows 1–2. With one column or
   one row, Now Playing must still cover the whole content area: `1 / 2 / -1 / -1` covers every

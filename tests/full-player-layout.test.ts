@@ -1,4 +1,4 @@
-// full-player-layout.ts: the full player's pure rules (ideas/fullscreen-player.md §12.2).
+// full-player-layout.ts: the full player's pure rules (features/fullscreen-player.md §12.2).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rowsPlace, fullArtPx, fullClipFrom, flightFrom } from "../src/full-player-layout.ts";

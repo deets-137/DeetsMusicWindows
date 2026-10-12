@@ -4,7 +4,6 @@
 // in as `Lists`. tests/rulez-words.test.ts covers the reading-back and the time field.
 
 import type { Action, Cond, EventId, FactId, Leaf, Rule, RuleTarget, StateRule, Value } from "./rules-eval";
-import { fullPlayerUnhidden } from "./full-player-flag";
 
 // "The song" holds the facts about the song playing (2026-10-10: the Playback fact list was one
 // column of 18, five labels wrapped); Playback keeps the player's own state.
@@ -174,8 +173,8 @@ export const FACTS: FactWord[] = [
   { id: "dataSaver", section: "Window", label: "Data saver", kind: "bool", yes: "Data saver is on", no: "Data saver is off" },
   { id: "card", section: "Window", label: "Card", kind: "choice", choices: "cards" },
   { id: "grown", section: "Window", label: "Grown card", kind: "choice", choices: "cards" },
-  // The full player (ideas/fullscreen-player.md §12.6): only behind its DevTools flag (§12.9).
-  ...(fullPlayerUnhidden() ? [{ id: "player", section: "Window", label: "Full player", kind: "choice", choices: [{ value: "on", label: "On" }, { value: "off", label: "Off" }] } as FactWord] : []),
+  // The full player (features/fullscreen-player.md §12.6).
+  { id: "player", section: "Window", label: "Full player", kind: "choice", choices: [{ value: "on", label: "On" }, { value: "off", label: "Off" }] },
 ];
 /** Built-in only (a Settings row's rule reads them). */
 const HIDDEN_FACTS: Partial<Record<FactId, string>> = { "entry.new": "The entry is new", now: "Now", lookMode: "Look schedule", cause: "Cause", from: "From" };
@@ -257,12 +256,10 @@ export const DOS: DoWord[] = [
   },
   { id: "grow", section: "Window", label: "Grow this card", input: "choice", choices: AXES, moment: (v) => ({ grow: v as "full" }) },
   { id: "summon", section: "Window", label: "Open a card", input: "choice", choices: "cards", moment: (v) => ({ summon: String(v) }) },
-  ...(fullPlayerUnhidden()
-    ? [{
-        id: "player", section: "Window", label: "Full player", input: "choice", choices: [{ value: "open", label: "Open" }, { value: "close", label: "Close" }],
-        moment: (v) => ({ player: v === "close" ? "close" : "open" }),
-      } as DoWord]
-    : []),
+  {
+    id: "player", section: "Window", label: "Full player", input: "choice", choices: [{ value: "open", label: "Open" }, { value: "close", label: "Close" }],
+    moment: (v) => ({ player: v === "close" ? "close" : "open" }),
+  },
   { id: "onTop", section: "Window", label: "Keep on top", input: "none", state: () => [{ target: { prop: "window.onTop" }, value: true }] },
   { id: "keep", section: "Window", label: "Keep it from happening", input: "none", cancel: true, moment: () => ({ keep: true }) },
   {

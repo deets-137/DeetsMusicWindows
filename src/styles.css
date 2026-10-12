@@ -4261,7 +4261,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   .panel.is-grow-rows > :not(.panel__head) { animation: none; }
 }
 
-/* ── The full player (src/full-player.ts, docs/ideas/fullscreen-player.md) ─────────────────
+/* ── The full player (src/full-player.ts, docs/features/fullscreen-player.md) ─────────────────
    Now Playing grows so the cover is as large as the window allows. Nothing here applies at
    rest: every rule hangs on data-player="full" on <html> (or the close square, hidden). The
    card wears data-np-rows: "over" puts the rows on a dark band over the bottom of the cover,

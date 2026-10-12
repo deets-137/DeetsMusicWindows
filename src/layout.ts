@@ -356,7 +356,7 @@ export function initLayout(): void {
         }) ?? null;
       },
     });
-  // The full player (ideas/fullscreen-player.md §12): after the grow, so its surface listener
+  // The full player (features/fullscreen-player.md §12): after the grow, so its surface listener
   // also runs before this module remounts the slots.
   // Its side column (his calls, 2026-10-11): any card but Now Playing and Rulez, with the
   // slots' own title picker; Queue in that list flips the columns (full-player.ts).
@@ -810,7 +810,7 @@ export function initLayout(): void {
     id === "queue" && !!replaces && cancelled("queue.summon", { card: replaces });
   onCardRequest((id, how: RequestHow) => {
     // The full player covers every content card: a request closes it first, with no motion,
-    // then runs as it would at rest (ideas/fullscreen-player.md §12.3).
+    // then runs as it would at rest (features/fullscreen-player.md §12.3).
     if (isFullPlayer()) void closeFullPlayer("request", false);
     if (comp.anchored.includes(id)) {
       // An anchored card is on screen by construction — unless a grow covers it. In max the

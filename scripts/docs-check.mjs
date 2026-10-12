@@ -68,7 +68,7 @@ const PLACERS = {
   "src/walk.ts": "the first-run tour's stops (ONBOARDING.md §4)",
   "src/row-drag.ts": "the drag ghost and the insertion line (DRAG-DROP.md §4)",
   "src/layout.ts": "the card-swap copy (CARD-SWAP.md)",
-  "src/full-player.ts": "the cover's flight copy (ideas/fullscreen-player.md §12.4)",
+  "src/full-player.ts": "the cover's flight copy (features/fullscreen-player.md §12.4)",
 };
 // Check 26: the cards whose body is not a list of rows, so list-keys.ts does not apply.
 const NO_LIST_CARDS = {

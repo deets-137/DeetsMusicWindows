@@ -1,4 +1,4 @@
-// The full player (ideas/fullscreen-player.md): Now Playing grows so the cover is as large as
+// The full player (features/fullscreen-player.md): Now Playing grows so the cover is as large as
 // the window allows. Midi: over the Library and Queue cards, the rows over the cover on a dark
 // band. Max: over the four content cards, the Queue takes the whole stage column. In both, the
 // controls go under the cover when there is room or the card is wide, else over it on the band;
@@ -20,7 +20,7 @@
 // over the old place in Max, and the rows and the band come in at --player-rows-at. The close
 // is the reverse; the rows and the band go first. Reduced motion snaps.
 //
-// Behind a DevTools flag for the test version (full-player-flag.ts).
+// On for everyone since 2026-10-11 (his call); the DevTools flag of the test version is gone.
 
 import { currentSurface, onSurfaceChange } from "./surface";
 import { setting, onSettingsChange } from "./settings-store";
@@ -32,7 +32,6 @@ import { TELEMETRY } from "./telemetry-on";
 import { registerAction, registerFact } from "./rules";
 import { refreshPlayerState } from "./player";
 import { setFullArtPx, stageArtPx } from "./queue-rows";
-import { fullPlayerUnhidden } from "./full-player-flag";
 import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, type Box, type RowsPlace } from "./full-player-layout";
 import {
   canFill, clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, type Slot,
@@ -72,8 +71,8 @@ export function onFullPlayerChange(cb: (on: boolean) => void): () => void {
   subs.add(cb);
   return () => subs.delete(cb);
 }
-/** It can open now: the flag is on and the window is Midi or Max. */
-export const fullPlayerAvailable = (): boolean => !!opts && fullPlayerUnhidden() && surfaceNow() !== null;
+/** It can open now: the window is Midi or Max. */
+export const fullPlayerAvailable = (): boolean => !!opts && surfaceNow() !== null;
 
 // ── the motion values (skin.css --player-*, a set per skin, §9.4.4) ─────────────
 interface Motion {
@@ -816,7 +815,6 @@ export function initFullPlayer(o: Opts): void {
     cost: "free",
     run: (arg) => (arg === "close" ? closeFullPlayer("rule") : openFullPlayer("rule")),
   });
-  if (!fullPlayerUnhidden()) return; // the test version's gate: no strips, no keys
   if (o.hosts.np) makeZones(o.hosts.np);
   onGrowChange(() => paintZones());
   onSettingsChange((k) => {

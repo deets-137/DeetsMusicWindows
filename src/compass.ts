@@ -476,8 +476,8 @@ function actions(all: boolean): Row[] {
     { group: "Actions", title: "Sleep at end of Up Next", sub: "The sleep timer", run: () => sleepAtEnd("queue") },
   );
   if (sleepArmed()) rows.push({ group: "Actions", title: "Sleep timer off", run: () => sleepOff() });
-  // The full player (ideas/fullscreen-player.md §12.6), behind its DevTools flag: the words live
-  // in the row's aliases until it ships, so COMPASS-TERMS.md does not list them yet.
+  // The full player (features/fullscreen-player.md §12.6). Its words are the row's aliases;
+  // COMPASS-TERMS.md §3 lists them.
   if (fullPlayerAvailable())
     rows.push({
       group: "Actions",

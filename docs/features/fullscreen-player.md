@@ -1,13 +1,14 @@
 ---
-status: idea
-desk_test: open
-sources: [src/full-player.ts, src/full-player-layout.ts, src/full-player-flag.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
+status: built
+desk_test: passed 2026-10-11
+sources: [src/full-player.ts, src/full-player-layout.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
 updated: 2026-10-11
 ---
 # Full player — grow the Now Playing card
 
 > **An idea, opened 2026-10-01; every fork decided 2026-10-02 (§6, §7) and 2026-10-10 (§10.3,
-> §11). Not built.** The owner asked for a discussion doc: the visual idea first, the
+> §11). Built 2026-10-11 (§13); on for everyone since 2026-10-11, the DevTools flag
+> removed.** The owner asked for a discussion doc: the visual idea first, the
 > technology after. Every fork in §5 is his. The numbers in §3 come from the tokens in the
 > code today.
 >
@@ -472,20 +473,20 @@ version. Later: a turning copy that flies (or the real disc); that choice is ope
 5. Each skin: the same motion; reduced motion snaps.
 6. `deetsmusic diag` shows one `player` line per open and close.
 
-0. **Before step 1:** in DevTools, `localStorage["deets.dev.fullPlayer"] = "on"`, then a reload.
 7. Max: press a row in the Queue while the player is full. The player stays open.
 8. Press: the record turns through the flight, at its own rate, and lands at the angle the disc shows. No stop, no jump (2026-10-11).
 9. Midi: press Show queue on the band. The player closes and the Queue comes in.
 
 ## 13. As built (2026-10-11)
 
-> **Part:** built · 2026-10-11 · desk test open (§12.10). Where this section and §12
-> disagree, this section is the code.
+> **Part:** built · 2026-10-11 · desk test passed 2026-10-11 (§12.10). Where this section and
+> §12 disagree, this section is the code.
 
-**The gate.** `src/full-player-flag.ts` reads `localStorage["deets.dev.fullPlayer"] === "on"`
-once, at load. With the flag off there are no strips on Now Playing, no Compass row and no
-Rulez words, and no key does anything. Mini is not in the test version: the player opens in
-Midi and Max only.
+**The gate: gone (2026-10-11, his call).** The test version sat behind a DevTools flag
+(`src/full-player-flag.ts`, `localStorage["deets.dev.fullPlayer"]`). He tested it and turned it
+on for everyone the same day. The flag file is deleted: the strips, the keys, the Compass row
+and the Rulez words are there for every user. Mini is still not in it: the player opens in
+Midi and Max only, and Mini's player view stays as it is until he says.
 
 **The files.**
 
@@ -494,8 +495,6 @@ Midi and Max only.
   rule fact and action, Escape, `window.__full` on the TELEMETRY gate.
 - `src/full-player-layout.ts` — pure: `rowsPlace`, `fullArtPx`, `fullClipFrom`, `flightFrom`.
   `tests/full-player-layout.test.ts` covers them (7 tests).
-- `src/full-player-flag.ts` — the gate. Its own file with no imports, so the pure Rulez words
-  can read it.
 
 **Changes from §12.**
 
@@ -649,7 +648,7 @@ Compass hangs from the title bar with Now Playing's own left and right edges, ce
 cover (`--np-left` / `--np-right-in`, `styles/compass.css`), and the toasts sit under the title
 bar (`styles/toast.css`).
 
-**With Layout for Max (2026-10-11, [MAX-CARDS.md](../features/MAX-CARDS.md) §11).**
+**With Layout for Max (2026-10-11, [MAX-CARDS.md](MAX-CARDS.md) §11).**
 
 - A change of *Layout for Max* closes the full player with no motion (a snap), before the
   layout remounts the slots: `initFullPlayer` registers its `maxCards` listener first.

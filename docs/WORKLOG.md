@@ -12,6 +12,15 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-11 (full player) — on for everyone, released as 0.26.1 (branch `main`)
+
+- **His call:** the full player's test version was committed and pushed, so it is tested. The
+  DevTools flag is removed: `src/full-player-flag.ts` is deleted, and the strips, the keys, the
+  Compass row and the Rulez words are there for every user (Midi and Max).
+- **The doc moved** from `ideas/` to `features/fullscreen-player.md` (built, passed 2026-10-11);
+  §13 records the gate's removal. The Compass words got a row in COMPASS-TERMS.md §3.
+- **Released as 0.26.1** with one notes entry: the full player.
+
 ## 2026-10-11 (Press record) — a slower spin and a turning grow (branch `code-review`)
 
 - **Spin speed, his call:** a fourth choice, 16⅔ rpm (one turn every 3.6 s), and the new

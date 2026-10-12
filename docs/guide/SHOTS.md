@@ -96,7 +96,7 @@ One entry per shot:
   notice covered every shot on the first run; the demo itself now marks it done, WEB-DEMO.md
   §13.)
 - `storage` (added 2026-10-11) — raw localStorage keys, set after the seed's wipe of every
-  `deets.*` key: a DevTools flag (`"deets.dev.fullPlayer": "on"`) or a card map
+  `deets.*` key: a DevTools flag (a `deets.dev.*` key) or a card map
   (`"deets.layout.max2": "{\"left\":\"settings\",…}"`). The Layout for Max shots needed both.
 - `badges` (added 2026-09-26) — `true` keeps the New badges. By default they read as seen (his
   call): the runner hides the badge's three forms (`.new-badge`, and `::after` on `[data-new]`

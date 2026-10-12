@@ -707,7 +707,7 @@
   --grow-col-year:   3.4em;
   --grow-col-plays:  3.6em;
 
-  /* -- full player (full-player.ts, ideas/fullscreen-player.md §9.4, §12) --
+  /* -- full player (full-player.ts, features/fullscreen-player.md §9.4, §12) --
      Now Playing grows so the cover is as large as the window allows. The cover flies from its
      rest place to its full place while a clip opens the card; the rows and the band come in at
      --player-rows-at of the open. Each skin restates the four motion values in its own block
@@ -954,7 +954,7 @@
   --panel-backdrop:     none;
   --shadow-card:        4px 4px 0 var(--ink-2);
   --grow-clip-pad:      6px;        /* the plate's offset stays inside the opening clip */
-  /* full player motion (ideas/fullscreen-player.md §9.4): the grow's values for now */
+  /* full player motion (features/fullscreen-player.md §9.4): the grow's values for now */
   --player-dur:          0.34s;
   --player-ease:         var(--pop-ease);
   --player-rows-at:      0.4;
@@ -1055,7 +1055,7 @@
   /* soft border = a diffuse ring in the theme hairline color + depth */
   --shadow-card: 0 0 8px 1px var(--border), 0 12px 32px rgba(0, 0, 0, 0.16);
   --grow-clip-pad: 44px;            /* the lift's reach, so the opening clip keeps the shadow */
-  /* full player motion (ideas/fullscreen-player.md §9.4): the grow's values for now */
+  /* full player motion (features/fullscreen-player.md §9.4): the grow's values for now */
   --player-dur:          0.34s;
   --player-ease:         var(--pop-ease);
   --player-rows-at:      0.4;
@@ -1281,7 +1281,7 @@
     inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent),
     inset 0 0 0 100vmax var(--panel);
   --grow-clip-pad:      40px;       /* the halo and the drop shadow stay inside the opening clip */
-  /* full player motion (ideas/fullscreen-player.md §9.4): the grow's values for now */
+  /* full player motion (features/fullscreen-player.md §9.4): the grow's values for now */
   --player-dur:          0.34s;
   --player-ease:         var(--pop-ease);
   --player-rows-at:      0.4;
@@ -1404,7 +1404,7 @@
    jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
 [data-skin="cyber"] {
-  /* full player motion (ideas/fullscreen-player.md §9.4): the grow's values for now */
+  /* full player motion (features/fullscreen-player.md §9.4): the grow's values for now */
   --player-dur:          0.34s;
   --player-ease:         var(--pop-ease);
   --player-rows-at:      0.4;

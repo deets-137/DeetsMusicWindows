@@ -1,4 +1,4 @@
-// The full player's pure rules (ideas/fullscreen-player.md §12.2): where the rows go, how
+// The full player's pure rules (features/fullscreen-player.md §12.2): where the rows go, how
 // large a cover file to ask for, and where the open's clip starts. No DOM here, so
 // tests/full-player-layout.test.ts covers them.
 

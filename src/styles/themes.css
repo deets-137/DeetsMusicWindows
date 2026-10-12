@@ -89,7 +89,7 @@
   --rail-ink:      var(--subtext);
   --rail-ink-lit:  var(--title);
 
-  /* The full player's band (ideas/fullscreen-player.md §7, item 6): a fixed DARK band over the
+  /* The full player's band (features/fullscreen-player.md §7, item 6): a fixed DARK band over the
      bottom of the cover that holds the rows. Dark in every theme: a light theme's own dark
      ink (--title), a dark theme's canvas, at the strength the skin sets. The ink on it is
      the light one of the same pair, so the rows read on the band in every theme. Derived

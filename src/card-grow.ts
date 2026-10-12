@@ -125,7 +125,7 @@ const emit = () => {
   subs.forEach((cb) => cb(state));
 };
 
-// The full player (full-player.ts, ideas/fullscreen-player.md §10, §12.3) sets these: while it
+// The full player (full-player.ts, features/fullscreen-player.md §10, §12.3) sets these: while it
 // is full no card grows and every strip hides; while Now Playing's strips are live (Max, at
 // rest) the Fill strips beside it take only their half of the gap (§10.3, split at the middle),
 // and so does the Queue's top strip under it (its bottom strip, 2026-10-11).
@@ -781,7 +781,7 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
   if (!canFill() && !(mine && currentSurface() === "max")) return null;
   if (state && !mine) return null; // while one card is grown, only its own outer zones act
   // The gap beside the stage is shared with Now Playing's full-player strip: split at its
-  // middle line, as a gap between two cards is (ideas/fullscreen-player.md §10.3).
+  // middle line, as a gap between two cards is (features/fullscreen-player.md §10.3).
   const shared = side === "left" && !state && npRightLive();
   return { dir: "full", act: mine ? "collapse" : "grow", reach: b === "edge" ? "edge" : shared ? "half" : "full" };
 }

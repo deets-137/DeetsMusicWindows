@@ -18,7 +18,7 @@ export function resolveEntry(e: QueueEntry): Track | undefined {
  *  costs a bigger download on a dense screen and no extra API call. */
 export const stageArtPx = (): number => (window.devicePixelRatio > 1.5 ? 640 : 480);
 
-// The full player (ideas/fullscreen-player.md §12.5) asks for a larger file while it is open:
+// The full player (features/fullscreen-player.md §12.5) asks for a larger file while it is open:
 // full-player.ts sets the size, 0 = the rest size. Kept here, not there, so the size has one
 // source and nothing that reads it imports the player's DOM module.
 let fullPx = 0;

@@ -137,11 +137,11 @@ the app a few days with one library sync, then read the lines; they decide the r
 connection (ideas/WORKERS.md §5.1). The next song's colors one ahead: ALBUM-COLOR.md data
 path item 4 has the desk test.
 
-**Full player: test version (2026-10-11, built, committed on `ten-out-of-ten`, his desk test
-open).** Behind a DevTools flag: `localStorage["deets.dev.fullPlayer"] = "on"`, then a reload.
-Midi and Max only. ideas/fullscreen-player.md §13 is the as-built record and lists what was
-decided inside his forks; §12.10 is the desk test. The doc moves out of ideas/ when he keeps it.
-The Max-cards session (MAX-CARDS.md) builds on top of this one.
+**Full player (2026-10-11, built, tested, on for everyone).** The code shipped hidden in 0.26.0
+behind a DevTools flag; the flag is removed for the next release. Midi and Max only.
+features/fullscreen-player.md §13 is the as-built record and lists what was decided inside his
+forks. Open: Mini's player view (his call), a turning copy of the Press record in the flight
+(§8).
 
 **Rulez usability fixes (2026-10-10, built, committed on `ten-out-of-ten`, his desk test open).** The While
 row, The song section, flyout widths, the rule-key words, Clean and Party, the recipe copy:

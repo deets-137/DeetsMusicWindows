@@ -432,7 +432,7 @@ export const nowPlayingCard: CardDef = {
     });
     repeatBtn?.addEventListener("animationend", () => repeatBtn.classList.remove("is-looping"));
 
-    // The full player's close square (ideas/fullscreen-player.md §7.4): over the cover, top right.
+    // The full player's close square (features/fullscreen-player.md §7.4): over the cover, top right.
     // CSS shows it only while the player is full.
     host.querySelector<HTMLElement>(".np__close")?.addEventListener("click", () => void closeFullPlayer("button"));
 
