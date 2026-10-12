@@ -12,6 +12,19 @@ updated: 2026-10-11
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-11 (Press record) — a slower spin and a turning grow (branch `code-review`)
+
+- **Spin speed, his call:** a fourth choice, 16⅔ rpm (one turn every 3.6 s), and the new
+  default. A user who picked 33⅓ keeps it. VINYL.md §Speed.
+- **The grow keeps the turn (his ask):** the record that flies when Now Playing grows into the
+  full player, or shrinks back, now turns at the real disc's angle and rate. Before, it flew
+  still and jumped when it landed. fullscreen-player.md §8.
+- **Desk test (owner):** Press, Record player on Spin, music playing. (1) Settings › Skin
+  settings › Spin speed shows 16⅔ · 33⅓ · 45 · 78; with no pick of your own it is 16⅔. (2) Grow
+  Now Playing into the full player and back, several times: the record never stops and never
+  jumps when it lands. (3) The same while paused: the record flies still and stays at its angle.
+  (4) Pick 78 and grow: the copy turns at 78.
+
 ## 2026-10-11 (code review) — two TypeScript-blind bugs fixed (branch `code-review`)
 
 - **The review:** where TypeScript cannot see. Checked against Rust: `Track` and the six

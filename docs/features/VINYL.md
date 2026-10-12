@@ -41,7 +41,7 @@ day (§9); the telemetry and the trace recipe that found each fault are in §8.
 |-----|-----|---------|---------|------|
 | Record player | `pressVinyl` | Spin · Still · Off | **Off** | Press only. The cover becomes a record. Spin: it turns while music plays |
 | Show record on | `pressVinylWhere` | Stage · Stage + card · Everywhere | **Everywhere** | Press only. Stage: the big cover in max and the player view. Everywhere adds the tray panel |
-| Spin speed | `pressVinylSpeed` | 33⅓ · 45 · 78 | **33⅓** | Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single |
+| Spin speed | `pressVinylSpeed` | 16⅔ · 33⅓ · 45 · 78 | **16⅔** (33⅓ until 2026-10-11) | Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single |
 | Show record plate | `pressVinylPlate` | toggle | **On** | Press only. The offset ink behind the record. Off: only the record, a little larger |
 
 - Row 1 shows under Press. Rows 3–4 also need Record player ≠ Off (the Sand width pattern);
@@ -112,6 +112,10 @@ a turn per song (under 0.5% for 3 minutes). **Rule 3:** no duration (a live stat
 
 The **Spin speed** row picks the rate; `turnS()` reads it and every other number follows. The rules
 above do not change, so each disc still starts and ends upright at any speed. Two notes:
+
+- **16⅔ rpm, the default since 2026-10-11 (his call).** One turn every 3.6 s. A large disc at
+  33⅓ took the eye off the rest of the window. A user who picked 33⅓ keeps it: only keys the user
+  set are stored. Per frame at 60 Hz: 1.7°.
 
 - **The snap floor is an angle, not a time** (`SNAP_MIN_DEG = 50°`). A fixed 250 ms was 50° of a
   33⅓ turn but 117° of a 78 rpm turn, so a wrong disc would never have jumped at 78.

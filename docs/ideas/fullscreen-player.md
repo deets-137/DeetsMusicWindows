@@ -204,9 +204,10 @@ All the forks in §7 are closed.
   color as a future addition".
 - **OS full screen.** The player also hides the title bar and the taskbar (§5 fork 5; the
   app window only for now).
-- **Press: a turning flight.** The test version flies a still copy of the disc (§12.9 Q3).
-  Later, a turning copy that starts at the disc's angle flies, or the real disc flies. His
-  call (2026-10-11): plan for it; which one is open.
+- **Press: a turning flight.** BUILT 2026-10-11 (his ask): the copy that flies turns. It takes
+  the real disc's Web Animation (`makeFlight`, full-player.ts): the same turn, the same angle,
+  the same rate. So it lands at the angle the real disc shows then, with no stop and no jump. A
+  paused disc flies still. The test version flew a still copy (§12.9 Q3).
 
 ## 9. The motion (design pass, 2026-10-02)
 
@@ -473,7 +474,7 @@ version. Later: a turning copy that flies (or the real disc); that choice is ope
 
 0. **Before step 1:** in DevTools, `localStorage["deets.dev.fullPlayer"] = "on"`, then a reload.
 7. Max: press a row in the Queue while the player is full. The player stays open.
-8. Press: the record flies as a still disc and turns again where it lands.
+8. Press: the record turns through the flight, at its own rate, and lands at the angle the disc shows. No stop, no jump (2026-10-11).
 9. Midi: press Show queue on the band. The player closes and the Queue comes in.
 
 ## 13. As built (2026-10-11)

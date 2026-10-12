@@ -263,7 +263,7 @@ under Cyber the whole section is gone.
 |---|---|---|
 | Record player | The cover becomes a record that turns while music plays | Spin / Still / **Off** |
 | Show record on | Where the record shows | Stage / Stage + card / **Everywhere** |
-| Spin speed | Turns each minute — the three real record speeds | **33⅓** / 45 / 78 |
+| Spin speed | Turns each minute — the four real record speeds | **16⅔** / 33⅓ / 45 / 78 |
 | Show record plate | The ink shadow behind the record | **on** / off |
 
 ### Menus, hints and notices

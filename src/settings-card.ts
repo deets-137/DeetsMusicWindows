@@ -1332,7 +1332,7 @@ function mountSettings(
         {
           kind: "choice", id: "pressvinylspeed", label: "Spin speed", key: "pressVinylSpeed",
           hint: "Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single",
-          options: [{ value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }],
+          options: [{ value: "16", label: "16⅔" }, { value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }],
           when: () => currentSkin() === "press" && setting("pressVinyl") === "spin",
         },
         {

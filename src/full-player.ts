@@ -425,7 +425,8 @@ function askArt(boxPx: number): void {
 }
 
 /** The copy of the cover that flies (§12.4.3): the art box, cloned, laid out at `at`. A Press
- *  record flies as a still of the disc at the angle it shows now (§12.9 Q3). */
+ *  record flies turning from the angle it shows now, at the real disc's rate (his ask, 2026-10-11;
+ *  it flew as a still before, §12.9 Q3). */
 function makeFlight(art: HTMLElement, at: DOMRect, src: string | null): HTMLElement | null {
   const real = art.querySelector<HTMLElement>(".vinyl:not(.vinyl--out)");
   if (!real || real.classList.contains("vinyl--glyph")) return null; // the ♪ placeholder does not fly
@@ -435,7 +436,22 @@ function makeFlight(art: HTMLElement, at: DOMRect, src: string | null): HTMLElem
   const disc = real.cloneNode(true) as HTMLElement;
   const spin = real.querySelector<HTMLElement>(".vinyl__spin");
   const still = disc.querySelector<HTMLElement>(".vinyl__spin");
-  if (spin && still) still.style.transform = getComputedStyle(spin).transform; // the angle now, held
+  if (spin && still) {
+    // The copy turns on with the real disc (vinyl.ts): the same turn, angle and rate, so the
+    // record lands at the angle the real one has then. A paused disc flies still.
+    const real = spin.getAnimations()[0];
+    const timing = real?.effect?.getTiming();
+    if (real && timing && real.currentTime !== null) {
+      const copy = still.animate([{ transform: "rotate(0turn)" }, { transform: "rotate(1turn)" }], {
+        duration: timing.duration, iterations: Infinity, easing: "linear",
+      });
+      copy.currentTime = real.currentTime;
+      copy.playbackRate = real.playbackRate;
+      if (real.playState !== "running") copy.pause();
+    } else {
+      still.style.transform = getComputedStyle(spin).transform; // the angle now, held
+    }
+  }
   const img = disc.querySelector<HTMLImageElement>("img");
   if (img && src) img.src = src;
   fly.appendChild(disc);

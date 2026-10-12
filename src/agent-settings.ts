@@ -282,7 +282,7 @@ const SPECS: Spec[] = [
   storeRange("Skin settings", "glassCanvasDim", "Dim canvas", { only: "Glass only, with Fancy Glass on", note: skinNote("glass", "Glass") }),
   storeChoice("Skin settings", "pressVinyl", "Record player", [{ value: "spin", label: "Spin" }, { value: "still", label: "Still" }, { value: "off", label: "Off" }], { only: "Press only", note: skinNote("press", "Press") }),
   storeChoice("Skin settings", "pressVinylWhere", "Show record on", [{ value: "stage", label: "Stage" }, { value: "card", label: "Stage + card" }, { value: "everywhere", label: "Everywhere" }], { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
-  storeChoice("Skin settings", "pressVinylSpeed", "Spin speed", [{ value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
+  storeChoice("Skin settings", "pressVinylSpeed", "Spin speed", [{ value: "16", label: "16⅔" }, { value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
   storeToggle("Skin settings", "pressVinylPlate", "Show record plate", { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
   {
     key: "menuMode", label: "Open menus on hover", section: "Menus, hints and notices", kind: "toggle", options: ON_OFF,

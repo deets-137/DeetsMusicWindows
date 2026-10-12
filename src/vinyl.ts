@@ -44,9 +44,9 @@ if (TEL) {
   };
 }
 
-const RPM: Record<string, number> = { "33": 100 / 3, "45": 45, "78": 78 }; // the three record speeds
-/** One turn, in seconds, at the speed the row asks for (33⅓ rpm = 1.8 s). */
-const turnS = (): number => 60 / (RPM[setting("pressVinylSpeed")] ?? RPM["33"]);
+const RPM: Record<string, number> = { "16": 50 / 3, "33": 100 / 3, "45": 45, "78": 78 }; // the four record speeds
+/** One turn, in seconds, at the speed the row asks for (16⅔ rpm = 3.6 s, 33⅓ rpm = 1.8 s). */
+const turnS = (): number => 60 / (RPM[setting("pressVinylSpeed")] ?? RPM["16"]);
 const SEEK_S = 1.5; // an exact reading this far from the disc is a seek: snap to it…
 const SNAP_MIN_DEG = 50; // …but only when the disc is this far off; less is a speed change.
 // An angle, not a time: 50° is 250 ms of a 33⅓ turn and 107 ms of a 78 rpm turn.

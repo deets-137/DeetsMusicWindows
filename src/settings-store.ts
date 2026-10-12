@@ -134,7 +134,7 @@ export interface Settings {
   pressVinylPlate: boolean;
   /** Press record only, spin only: how fast the record turns, in turns each minute — the three
    *  real record speeds. vinyl.ts turns it into the period (docs/features/VINYL.md §4). */
-  pressVinylSpeed: "33" | "45" | "78";
+  pressVinylSpeed: "16" | "33" | "45" | "78";
   /** Hover hints (ONBOARDING.md §1; src/hint.ts): the themed box every `title` becomes.
    *  Off = no hover text at all, of either kind. */
   hoverHints: boolean;
@@ -482,7 +482,9 @@ export const DEFAULTS: Settings = {
   pressVinyl: "off", // opt-in, like Sand
   pressVinylWhere: "everywhere", // user's call 2026-09-15 (VINYL.md 2C)
   pressVinylPlate: true,
-  pressVinylSpeed: "33", // an LP: 33⅓ rpm, one turn per 1.8 s
+  // 16⅔ rpm, one turn per 3.6 s (his call, 2026-10-11): a large disc at 33⅓ took the eye off
+  // the rest of the window. A user who picked 33⅓ keeps it (only set keys are stored).
+  pressVinylSpeed: "16",
   hoverHints: true,
   hoverHintDelay: "normal",
   hoverSongNames: "always", // user's call 2026-09-15: name the song on every row, not only cut-off ones
