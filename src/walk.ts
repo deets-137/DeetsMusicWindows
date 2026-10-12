@@ -68,6 +68,9 @@ interface Stop {
   text: string;
   /** The control this step names. Missing = no target (the send-off). */
   target?: () => HTMLElement | null;
+  /** The target may be hidden on this surface (the Compass button, Max only): null then
+   *  means "no pointer, the middle of the window" at once, not "still mounting". */
+  optional?: boolean;
   /** Subscribe to the gesture; call `done` when it happens. Returns the unsubscribe. */
   gesture?: (done: () => void) => () => void;
   /** Said while this step's own panel is open, in place of `text`. The step has already
@@ -137,7 +140,12 @@ const STOPS: Stop[] = [
     n: 4,
     text: "Press Ctrl + Space. The DeetsBar opens everywhere: go anywhere, search anything, and reach settings and functions too.",
     openText: "Esc or Ctrl + Space to close again!",
-    target: () => document.querySelector<HTMLElement>("#compass-open"),
+    // The button shows in Max only (2026-10-11); in Mini and Midi the step names the keys alone.
+    target: () => {
+      const el = document.querySelector<HTMLElement>("#compass-open");
+      return el && el.offsetWidth > 0 ? el : null;
+    },
+    optional: true,
     gesture: (done) => onAppear("#compass:not([hidden])", done),
   },
   {
@@ -421,6 +429,7 @@ function run(from: number): void {
     const look = (): void => {
       const el = s.target!();
       if (el) return then(el);
+      if (s.optional) return then(null);
       if (Date.now() - t0 > FIND_CAP_MS) {
         diag.warn("walk:noTarget", { step: s.n });
         return then(null);

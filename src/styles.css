@@ -40,8 +40,9 @@ body {
   padding: 0 var(--space-3);
 }
 
-/* The only draggable zone: the gap between the title and the lights.
-   Interactive children deliberately do NOT carry data-tauri-drag-region. */
+/* The spacer between the left group and the right cluster. Since 2026-10-11 the whole
+   .titlebar drags (data-tauri-drag-region="deep" in index.html), so this is no longer the
+   only handle: it is the widest one. Buttons and sliders block the drag on their own. */
 .drag-region { flex: 1 1 auto; align-self: stretch; }
 
 /* ── Settings trigger (the app title) ───────────────────────── */
@@ -67,9 +68,15 @@ body {
 }
 .app-title:hover { background: var(--surface-hover); }
 .app-title:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* Mini says "DM" (his call, 2026-10-11): the full name left the title bar no room to drag
+   the window. The button's aria-label keeps the full name. */
+.app-title__short { display: none; }
+[data-surface="mini"] .titlebar .app-title__full { display: none; }
+[data-surface="mini"] .titlebar .app-title__short { display: inline; }
 
 /* ── The cog (SETTINGS.md) ───────────────────────────────────
-   The title bar's own way into the Settings card, right of the Compass. Same
+   The title bar's own way into the Settings card, right of the title and left of the
+   Compass (moved 2026-10-11: the larger glyph sits by the title). Same
    control family as the Compass button and the right cluster's icon squares:
    the row's height, no fill, no border, --subtext until hover.
    The turn (src/main.ts): every click adds --cog-step to --cog-angle and the

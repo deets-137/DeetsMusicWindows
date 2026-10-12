@@ -145,6 +145,9 @@
   transition: color var(--dur-fast) var(--ease-ui);
 }
 .compass__btn:hover, .compass__btn[aria-expanded="true"] { color: var(--title); }
+/* Max only (his call, 2026-10-11): in Mini and Midi the title bar had no room left to drag the
+   window. Ctrl+Space still opens the bar there. */
+[data-surface="mini"] .compass__btn, [data-surface="midi"] .compass__btn { display: none; }
 .compass__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .compass__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 

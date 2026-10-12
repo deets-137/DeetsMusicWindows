@@ -478,10 +478,15 @@ our own chrome.
   (`.chrome-right`) holding the **sleep timer** clock (NEXT-VERSION §17), the **volume
   pill** (it grows in place on hover and scrubs there, NEXT-VERSION §20 — no flyout since
   2026-09-16) and the traffic lights in Windows' order (minimize, maximize, close).
-- **Drag:** the bar carries `data-tauri-drag-region`, which makes it the OS drag
-  handle. Interactive children (the buttons) opt out automatically by *not*
-  carrying the attribute. `--webkit-app-region` is **not** used — Tauri's attribute
-  is the supported path.
+- **Drag (since 2026-10-11):** the `<header>` carries `data-tauri-drag-region="deep"`, so a
+  press anywhere in the bar moves the window: the gaps, the side padding and the strips
+  above and below the icons. Tauri's `drag.js` (2.11) blocks the drag on a button, a link,
+  anything with a `tabindex` (the volume pill) or an interactive `role`, so the controls
+  need nothing. A panel that hangs from the bar (the title menu, the quick panel, the
+  Compass bar, the Room, Sound and Sleep panels) carries `data-tauri-drag-region="false"`;
+  without it a press on a panel's padding moves the window. A new panel inside the header
+  needs the same attribute. A panel portaled to `<body>` does not. `--webkit-app-region` is
+  **not** used — Tauri's attribute is the supported path.
 - **Traffic lights:** `+` maximize / `−` minimize / `×` close, colored
   `--go` / `--pause` / `--stop`. Glyphs always visible for now.
 
@@ -504,8 +509,9 @@ active — the same selection indicator the theme flyout uses; the choice persis
 (`localStorage` `deets.menuMode`, default off/click) — see the dropdown primitive below.
 A **Skin** row mirrors Theme exactly (flyout of `[data-skin-choice]` items, wired in
 `src/skin.ts` — `paintSkin`; the choice is the settings store's `skin`, RULES.md §7a); further settings
-slot in the same way. Because the title is now interactive, the **draggable zone is the
-middle `.drag-region`** between the title and the lights, not the whole bar.
+slot in the same way. Because the title is now interactive, the **draggable zone was the
+middle `.drag-region`** between the title and the lights, not the whole bar (until
+2026-10-11; now the whole bar, see Drag above).
 
 **One dropdown open at a time (2026-09-16).** A trigger's click stops propagation, so no other open
 dropdown sees a "click away". Opening a dropdown therefore closes every other open one itself

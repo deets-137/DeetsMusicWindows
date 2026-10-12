@@ -264,7 +264,8 @@ the text caret; Tab belongs to the filter row (2a).
 
 - **Open:** Ctrl+Space or Ctrl+Shift+Space, anywhere, a text field included (none of ours
   uses the key, and the Search field is where a person often is when they want to go
-  elsewhere). The compass button in the title bar (right of the title) opens it too. The panel arrives with `.pop`; the rows
+  elsewhere). The compass button in the title bar (right of the cog, Max only since 2026-10-11: Mini and
+  Midi needed the room to drag the window) opens it too. The panel arrives with `.pop`; the rows
   enter with `enterRows`. The panel sets `data-frames="compass"` for frames.ts.
 - **Move:** Up / Down move the highlight and keep it in view; Home / End jump. The field keeps
   the focus the whole time; the highlighted row carries `is-active` and `aria-selected`.
@@ -389,7 +390,7 @@ Diary tile keeps its own `tabindex="0"` (each tile stays a Tab stop, as built 20
 | `src/compass.ts` | The bar: the index, the query, the rows, the keys, the inline settings rows. |
 | `src/styles/compass.css` | The panel and its rows. Color through theme roles; geometry through the `--compass-*` tokens. |
 | `src/styles/skin.css` | `--compass-max-h`, `--compass-row-h`, `--compass-field-h` in the base block. |
-| `index.html` | The panel host under the title bar; the compass button right of the title. |
+| `index.html` | The panel host under the title bar; the compass button right of the cog (shown in Max only, `styles/compass.css`). |
 | `src/main.ts` | `initCompass()`; Space for play / pause. |
 | `src/layout-bus.ts` | `requestLibraryDrill` (an artist by name or an album by a track) and `requestPlaylistOpen` (by id), held until the card takes them, like `requestSetting`. |
 | `src/library-card.ts`, `src/playlists-card.ts` | Take those requests on mount and while on screen. |

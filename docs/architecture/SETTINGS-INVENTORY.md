@@ -135,7 +135,8 @@ Music pauses when the timer runs out. The last three rows are also in Settings �
 | Every day | A sleep time that arms itself daily. It pauses only if music is playing then | **Off** / Sunset / a set time (**10:00 PM**) |
 
 ### Volume
-The slider, and **Mute**. Settings › Window › *Shrink volume bar* makes it a small pill.
+The slider, and **Mute**. Mini and Midi show it as a small pill; in Max, Settings › Window ›
+*Shrink volume bar* makes it one.
 
 ### AirPlay ("Play on")
 **This computer** · each speaker found · **Last used** · **Scan for speakers** ·
@@ -168,7 +169,7 @@ which restarts the first-run walk.
 | Tray icon opens | What a click on the tray icon pops | **Mini** / Player |
 | Start with Windows | Starts in the tray when you sign in | on / off |
 | Resize changes surface | A window made narrow or short becomes the surface that fits it. Off: it resizes inside the current surface | **on** / off |
-| Shrink volume bar | The title bar volume is a small pill that grows when you click it. A window thinner than 455 px uses the pill anyway | on / **off** |
+| Shrink volume bar | The title bar volume is a small pill that grows when you click it. Max only: Mini and Midi always use the pill (since 2026-10-11) | on / **off** |
 | Keep on top | The window stays above other windows | Always / Player / **Off** |
 
 **Window sizes**

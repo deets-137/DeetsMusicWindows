@@ -88,9 +88,12 @@
     <!-- Launch cover (src/boot-cover.ts, UX-COVERUPS.md §6): opaque --canvas over the page
          while <html data-boot> is set, so the window shows a finished ground, then fades. -->
     <div class="boot-cover" aria-hidden="true"></div>
-    <!-- Custom frameless chrome. The middle .drag-region is the OS drag handle;
-         the title (settings trigger) and lights opt out by not carrying it. -->
-    <header class="titlebar">
+    <!-- Custom frameless chrome. The whole bar drags the window (2026-10-11, his call):
+         `deep` makes every gap, the side padding and the strips above and below the icons
+         a drag handle. Tauri's drag.js lets a button, a slider (tabindex) or a role=button
+         block it on its own. Each panel that hangs from the bar carries
+         data-tauri-drag-region="false", or a press on its padding would move the window. -->
+    <header class="titlebar" data-tauri-drag-region="deep">
       <div class="settings">
         <button
           class="app-title"
@@ -98,10 +101,11 @@
           type="button"
           aria-haspopup="true"
           aria-expanded="false"
+          aria-label="DeetsMusic"
           title="Opens the menu: theme, skin, window size, account, and Settings"
-        >DeetsMusic</button>
+        ><span class="app-title__full">DeetsMusic</span><span class="app-title__short" aria-hidden="true">DM</span></button>
 
-        <div class="menu" id="settings-menu" role="menu" hidden>
+        <div class="menu" id="settings-menu" role="menu" data-tauri-drag-region="false" hidden>
           <div class="menu__row" data-row="theme">
             <span class="menu__label">Theme</span>
             <span class="menu__chev" aria-hidden="true">›</span>
@@ -176,12 +180,9 @@
         </div>
       </div>
 
-      <!-- The Compass (COMPASS.md): the title bar's own button, right of the title. The glyph
-           is the hand-drawn compass the owner gave (a face, a needle, two ticks). -->
-      <button class="compass__btn" id="compass-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Go anywhere" title="Go anywhere! (Ctrl + Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg></button>
-
       <!-- The cog (QUICK-SETTINGS.md): the title bar's own way into settings, right of the
-           Compass. It opens the quick panel: a strip of service logos (Apple Music, Discord)
+           title (left of the Compass since 2026-10-11: the larger glyph sits next to the
+           title, his call for visual consistency). It opens the quick panel: a strip of service logos (Apple Music, Discord)
            and "All settings", which opens the Settings card as wide as the window allows
            (the cog's own job until 2026-09-20). A logo shows that service's rows, drawn by
            the Settings card's own code. Six teeth, so the 120-degree turn each press adds
@@ -189,7 +190,7 @@
            wires it. -->
       <div class="quick" id="quick">
       <button class="cog__btn" id="cog-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Quick settings" title="Quick settings, grouped by what they are for, and the way to all of Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.41 2.96A9.4 9.4 0 0 1 14.59 2.96L14.75 6.11A6.5 6.5 0 0 1 15.73 6.68L18.53 5.24A9.4 9.4 0 0 1 21.12 9.73L18.48 11.43A6.5 6.5 0 0 1 18.48 12.57L21.12 14.27A9.4 9.4 0 0 1 18.53 18.76L15.73 17.32A6.5 6.5 0 0 1 14.75 17.89L14.59 21.04A9.4 9.4 0 0 1 9.41 21.04L9.25 17.89A6.5 6.5 0 0 1 8.27 17.32L5.47 18.76A9.4 9.4 0 0 1 2.88 14.27L5.52 12.57A6.5 6.5 0 0 1 5.52 11.43L2.88 9.73A9.4 9.4 0 0 1 5.47 5.24L8.27 6.68A6.5 6.5 0 0 1 9.25 6.11L9.41 2.96Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-        <div class="quick__panel pop app-scroll" id="quick-panel" role="group" aria-label="Quick settings" data-frames="quick" hidden>
+        <div class="quick__panel pop app-scroll" id="quick-panel" role="group" aria-label="Quick settings" data-frames="quick" data-tauri-drag-region="false" hidden>
           <!-- Tips stay in the Settings card; this line takes you there (quick-panel.ts). -->
           <button class="quick__tips" type="button" data-quick-tips title="Opens Settings at Tips">Tips are in the Settings card itself!</button>
           <div class="quick__bar">
@@ -222,11 +223,17 @@
         </div>
       </div>
 
+      <!-- The Compass (COMPASS.md): the title bar's own button, right of the cog. The glyph
+           is the hand-drawn compass the owner gave (a face, a needle, two ticks). Max only
+           since 2026-10-11 (styles/compass.css): Mini and Midi need the room to drag the
+           window; Ctrl+Space opens the bar on every surface. -->
+      <button class="compass__btn" id="compass-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Go anywhere" title="Go anywhere! (Ctrl + Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg></button>
+
       <div class="drag-region" data-tauri-drag-region></div>
 
       <!-- The Compass (COMPASS.md): the bar Ctrl+Space drops under the title bar, in every
            surface. src/compass.ts fills it. -->
-      <div class="compass pop app-scroll" id="compass" role="dialog" aria-label="Go anywhere" hidden></div>
+      <div class="compass pop app-scroll" id="compass" role="dialog" aria-label="Go anywhere" data-tauri-drag-region="false" hidden></div>
 
       <div class="chrome-right">
         <!-- Web (PLAYLIST-WEB.md §1a, src/web.ts): the Playlists card's web button again, with
@@ -255,7 +262,7 @@
             aria-label="Listening room"
             title="Listen with friends"
           ></button>
-          <div class="room__panel pop app-scroll" id="room-panel" role="group" aria-label="Listening room" hidden></div>
+          <div class="room__panel pop app-scroll" id="room-panel" role="group" aria-label="Listening room" data-tauri-drag-region="false" hidden></div>
         </div>
 
         <!-- Sound (SOUND.md §2.3, src/sound-panel.ts): the equalizer and DeetsAdaptiveSound.
@@ -271,7 +278,7 @@
             aria-label="Sound"
             title="Sound: the equalizer and adaptive sound"
           ></button>
-          <div class="sound__panel pop" id="sound-panel" role="group" aria-label="Sound" hidden></div>
+          <div class="sound__panel pop" id="sound-panel" role="group" aria-label="Sound" data-tauri-drag-region="false" hidden></div>
         </div>
 
         <!-- Sleep timer (NEXT-VERSION §17, src/sleep.ts): the alarm clock. Its panel is a
@@ -289,7 +296,7 @@
             title="The sleep timer. Music pauses when it runs out"
           ></button>
 
-          <div class="sleep__panel pop" id="sleep-panel" role="group" aria-label="Sleep timer" hidden>
+          <div class="sleep__panel pop" id="sleep-panel" role="group" aria-label="Sleep timer" data-tauri-drag-region="false" hidden>
             <div class="sleep__dial" id="sleep-dial" role="slider" tabindex="0" aria-label="Minutes until sleep"
                  aria-valuemin="0" aria-valuemax="120" aria-valuenow="0"
                  title="Turn the timer to set the minutes. Music pauses when it runs out">

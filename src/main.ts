@@ -72,7 +72,7 @@ import { launchMark } from "./launch-perf";
 launchMark("module");
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
-// handled declaratively by data-tauri-drag-region on .drag-region in index.html.
+// handled declaratively by data-tauri-drag-region="deep" on the <header> in index.html.
 const appWindow = getCurrentWindow();
 
 // ── The startup guard (DEBUGGING.md §Startup guard, 2026-09-29) ──────────────────
@@ -639,8 +639,10 @@ window.addEventListener("DOMContentLoaded", () => {
     const GRACE_MS = 400;
     let shrinkTimer = 0;
     // A thin window forces the small pill whatever the setting says: below 455 px the full
-    // bar pushes the window buttons off the right end of the title bar (2026-09-18).
-    const shrinkMode = () => setting("volumeShrink") || isNarrowWindow();
+    // bar pushes the window buttons off the right end of the title bar (2026-09-18). Mini and
+    // Midi force it too (his call, 2026-10-11): the title bar needs the room to drag the
+    // window. So the setting decides Max only.
+    const shrinkMode = () => setting("volumeShrink") || isNarrowWindow() || currentSurface() !== "max";
     const hoverMode = () => setting("menuMode") === "hover";
     const isGrown = () => volPill.classList.contains("is-grown");
     const held = () => slider.dragging || volAirplay?.getAttribute("aria-expanded") === "true";
@@ -668,6 +670,7 @@ window.addEventListener("DOMContentLoaded", () => {
     };
     applyShrink();
     onNarrowChange(() => applyShrink()); // the window crossed the thin edge, either way
+    onSurfaceChange(() => applyShrink()); // into Max or out of it
     onSettingsChange((k) => {
       if (k === "volumeShrink") applyShrink();
       if (k === "menuMode" && !hoverMode()) shrinkSoon();

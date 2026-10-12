@@ -54,8 +54,8 @@ nothing about authoring changed when the box did.
 | Sleep panel | the ‹ › beside the dial | 15 minutes earlier · 15 minutes later | index.html |
 | Sound panel | the ‹ › beside the preset name · the preamp's + · the Ask to keep after pill · Undo Reset | The previous preset · The next preset · 0.5 dB higher · When to ask whether the effects are worth keeping, counted from the first time one was turned on. Click for the next choice · Brings back the curve from before Reset | sound-panel.ts |
 | Title menu | Settings… | Shows the Settings card | index.html |
-| Title bar | the compass (right of the title) | Go anywhere! (Ctrl + Space) | index.html |
-| Title bar | the cog (right of the compass) | Quick settings, grouped by what they are for, and the way to all of Settings (was *Opens Settings at full size* until 2026-09-20, QUICK-SETTINGS.md) | index.html |
+| Title bar | the compass (right of the cog; Max only since 2026-10-11) | Go anywhere! (Ctrl + Space) | index.html |
+| Title bar | the cog (right of the title; left of the compass since 2026-10-11) | Quick settings, grouped by what they are for, and the way to all of Settings (was *Opens Settings at full size* until 2026-09-20, QUICK-SETTINGS.md) | index.html |
 | Quick panel (2026-09-20) | the Tips line over the icons | Opens Settings at Tips | index.html |
 | Quick panel (2026-09-20) | the Apple Music logo · the Discord logo · the Window icon · the brush · the helipad · the robot · the net · the beetle · the ring · the panel's cog | Apple Music: your sign-in and the Apple Music settings · Discord: your profile's activity and the Song of the Day channel · Window: the tray, the sizes, keep on top, and growing cards · Look: the day and night looks, this skin's own settings, and motion · Help and playback: menus, hints and notices, and how songs play · Connections: the browser extension and AI agents · Fun things: Song of the Day and Friends · Updates and bugs: how updates arrive, roll back, and send a report · Reset: put a group of settings, or all of them, back as they came · All settings: opens Settings at full size → while Settings is grown, Collapse settings: puts Settings back in its place | index.html, quick-panel.ts |
 | Title bar | the Friends item (three figures) | Listen with friends → in a room: "N listening together in room K7QM-4XHT" | index.html, room-panel.ts |
@@ -134,7 +134,7 @@ nothing about authoring changed when the box did.
 | Settings › Sound (also in the Sound panel) | Follow the volume of · Blend amount · Ask to keep after | App + Windows: counts the DeetsMusic volume and the Windows volume together · How much of each side goes into the other · When to ask whether the effects are worth keeping, counted from the first time one was turned on | settings-card.ts |
 | Settings › Sleep (also in the sleep panel) | Sleep every day · Sleep at · Wind down · Play out song | Arms a sleep time every day. It pauses only if music is playing when the time comes · The time the daily sleep timer runs out · Over these last minutes the volume sinks to nothing, then the music pauses. Off: a plain pause at the time · The song that is playing when the time comes finishes first. Off: the time is the silence | settings-card.ts |
 | Settings › Menus, hints and notices | Compass closes on outside click | A click outside the Ctrl+Space bar closes it. Off: only Ctrl+Space, Escape, the compass button, or a pick closes it | settings-card.ts |
-| Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open. A window thinner than 455 px uses the small pill anyway | settings-card.ts |
+| Settings › Window | Shrink volume bar | On: a small pill in the title bar that grows when you click it, or hover, as the menus open. Max only: Mini and Midi always use the small pill (was *A window thinner than 455 px uses the small pill anyway* until 2026-10-11) | settings-card.ts |
 | Settings › Motion | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle | settings-card.ts |
 | Settings › Skin settings | Card opacity | Ocean only. How solid the sunken cards are. Lower: the sea shows through | settings-card.ts |
 | Settings › Skin settings | Album light | Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon, and cost more on a PC without a graphics card | settings-card.ts |
@@ -362,7 +362,7 @@ gesture on it:
 | 1 | the DeetsMusic wordmark — sign in to Apple Music | `deets:signed-in` (main.ts, after Apple accepts) |
 | 2 | the wordmark again — it is the menu | `#settings-trigger` goes `aria-expanded="true"` |
 | 3 | the left card's title — every title is a card picker | a `.slot-picker__menu` opens |
-| 4 | the Compass button — Ctrl + Space reaches everything | `#compass` loses `hidden` |
+| 4 | the Compass button — Ctrl + Space reaches everything (Mini and Midi hide the button since 2026-10-11: the step sits centred, no pointer, `optional` in walk.ts) | `#compass` loses `hidden` |
 | 5 | nothing. The send-off, centred, with **Let's go** | — |
 
 **Four decisions, and what each one cost:**
