@@ -78,6 +78,28 @@ type the old album "Salt & Signal" (§15.7); a site push is his call.
 the Diary" was Max: the app is wider than the room beside it, so the panel sits below the frame
 (as built, §15.5). His call: commit, and push the site. The demo build and the panel are live.
 
+## 2026-10-12 (network drop) — a raw error in the artist view, and a UI-thread freeze
+
+His report: a Search artist view (Lucy Park & Botaii) showed *Failed to load: error sending
+request for url (https://api.music.apple.com/v1/catalog/us/songs/6799096301?include=artists)*.
+He thought his network dropped. The logs confirm it:
+- Dev log, 14:55:29: `[playlists] sync error sending request for url (…/me/library/playlists…)`.
+  Two Apple endpoints failed with the same transport error at once (no HTTP status, so not
+  an Apple refusal). The artist view's own failure is not logged (search-card.ts prints it to
+  the card only).
+- Live log, same minute: AirPlay rtt rose to 44 ms with a resend (14:55:22); the HomePod
+  "Living Room" dropped after 9,097 s (14:55:41); the reconnect timed out (14:55:48); rtt p95
+  11,769 ms (14:56:19). AirPlay is LAN only, so the fault was the local network. A Last.fm
+  scrobble got through at 14:55:40: the drop came and went.
+- Windows logged no network event; the Ethernet adapter (Realtek 2.5GbE) is linked at
+  100 Mbps, which can mean a bad cable or port.
+- Live log, 14:56:11: the window froze 6 s inside `np_publish`, a sync command that calls
+  AirPlay while AirPlay waited on timeouts.
+
+His asks: document (1) using this error combination to tell the user early, in plain words,
+and (2) the UI-thread freeze, for the next sitting. Both are HANDOFF › Open now items. Nothing
+was built.
+
 ## 2026-10-12 (Artist facts box) — Last.fm's artist facts beside the hero, his design
 
 His ask: "the artist ratio next, what does Last.fm offer?" Probed live: `artist.getInfo`

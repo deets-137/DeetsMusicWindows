@@ -117,6 +117,36 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 Music panel). Still his: the page lede says "everything mocked"; two shot lists type the old
 album "Salt & Signal" (§15.7).
 
+**`np_publish` blocks the UI thread on AirPlay (2026-10-12, found, NOT FIXED; next sitting).**
+In a LAN drop the installed app's window froze 6 s: `ui: the window stopped answering 6.0 s
+ago — inside command np_publish for 4.4 s` (live log, 14:56:11). `np_publish`
+(`src-tauri/src/bridge.rs`) is a synchronous `#[tauri::command]`, so it runs on the UI thread,
+and it calls `crate::airplay::on_np_state`. At that moment the HomePod session was gone and
+its `SET_PARAMETER artwork` / `progress` calls waited on connection timeouts. The rule it
+breaks is CLAUDE.md › Conventions (the 0.12.0 freeze, FRIENDS.md §8.11). To do: trace what
+`on_np_state` waits on (a lock the network path holds, or a direct send); fix the cause, so
+the command only hands the state over and never waits on the network; find out why release
+check 9 did not see it, and extend the check if it can. `smtc::update` in the same command
+is to be checked too. WORKLOG 2026-10-12 (network drop) is the record.
+
+**Network errors in plain words (2026-10-12, an ask, not designed; every fork his).** A
+network drop showed raw text in a Search artist view: *Failed to load: error sending request
+for url (https://api.music.apple.com/v1/catalog/us/songs/…?include=artists)*. His ask: use the
+error combination to tell the user early, in plain words, so no jargon reaches them. The
+signal: two or more Apple calls fail in a few seconds with `error sending request` (a
+connection failure: DNS, connect or timeout; never an HTTP status), and here the installed
+app's AirPlay lost the HomePod at the same minute (so the fault was the local network). What
+exists: `apple-health.ts` already has the *can't reach Apple Music* warn toast, the fast
+recheck and the resume (TOASTS.md §5); the raw text comes from three `.catch` sites in
+`src/search-card.ts` (`Failed to load: ${String(e)}`), and the playlist sync logs the same
+error only to the console. To design with him: (1) one classifier (Rust or front end) that
+calls a transport error "offline" and hands it to `apple-health` (`check` / `show`); (2) what
+a card shows in place of the raw text (a plain line, a *Try again* button, the view loading
+again by itself when the check passes); (3) whether a burst of these errors raises the toast
+at once or waits for the health check; (4) whether an AirPlay drop counts as a network signal
+too; (5) a sweep for other cards that print `String(e)` to the user. The raw error stays in
+the log. WORKLOG 2026-10-12 (network drop) is the record.
+
 **Last.fm top tracks and similar artists (an idea, his to design).** The artist and album
 facts boxes are built and desk-tested (2026-10-13, LISTENERS.md §6–§7). The next reads are
 his to design: ideas/LastfmArtist.md holds the calls.
