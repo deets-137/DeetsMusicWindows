@@ -117,25 +117,17 @@ When an item closes, delete it here and write the day in WORKLOG.md.
 Music panel). Still his: the page lede says "everything mocked"; two shot lists type the old
 album "Salt & Signal" (§15.7).
 
-**Artist facts box (2026-10-12, built, desk test open, FOR RELEASE).** In an artist view the
-photo moves left and a box beside it shows four sections: Tags, Listening Stats, On tour,
-Links (one `artist.getInfo` per artist, cached a month). Its own row gates it: Settings ›
-Playback › *Show artist info on the artist's page* (default On); the DevTools flag is gone.
-On a narrow card it folds under an *Artist Info* line, closed by default, the last choice kept
-(LISTENERS.md §6). Desk test: features/LISTENERS.md §6.3 (8 steps). Top tracks and similar artists: he designs
-the UI tomorrow, ideas/LastfmArtist.md holds the calls.
+**Last.fm top tracks and similar artists (an idea, his to design).** The artist and album
+facts boxes are built and desk-tested (2026-10-13, LISTENERS.md §6–§7). The next reads are
+his to design: ideas/LastfmArtist.md holds the calls.
 
-**One code path for the Apple pages (2026-10-12, decided, NOT BUILT; after the box's desk
-test).** The Search card's artist, album and playlist panes duplicate the Library's Full levels
-in their own HTML. His calls: Search runs the engine's Full levels, with its compact rows kept.
-One pane per step, a desk test each. ARTIST-VIEW.md §10.
+**Our scrobble names (2026-10-12, found, not designed; every fork his).** We scrobble Apple's
+raw names, so his plays land on Last.fm's small pages. LASTFM.md §10.
 
-**Album facts box (2026-10-13, BUILT, desk test open).** The artist box's
-sections per album: Tags, Listening Stats, About (the wiki's two sentences), Links; its own
-row (`showAlbumInfo`); a small right-click menu (Open Last.fm, Hide + Undo) on both boxes. In
-all three album views (Lib, Full, the Search pane). The Last.fm page is read in Spotify's form
-first (main artist, no ` - EP`). LISTENERS.md §7.3 as built, §7.5 the desk test. Related,
-separate: our scrobbles send Apple's raw names (LASTFM.md §10).
+**One code path for the Apple pages (2026-10-12, decided, NOT BUILT; his next sitting).** The
+Search card's artist, album and playlist panes duplicate the Library's Full levels in their own
+HTML. His calls: Search runs the engine's Full levels, with its compact rows kept. One pane
+per step, a desk test each. ARTIST-VIEW.md §10.
 
 **Listeners badge (2026-10-12, built, desk test open).** Now Playing wears the song's Last.fm
 counts: *N Plays | M Listeners* beside the title in the full player, *N Plays* on the cover's

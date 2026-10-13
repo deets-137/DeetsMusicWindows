@@ -168,7 +168,7 @@ One order for Library and Search. A rule can change it by condition. [LAYOUT.md]
 
 ## 9. The Last.fm facts box beside the hero (built 2026-10-12)
 
-> **Part:** built · 2026-10-12 · desk test open · for release, behind its own Settings row
+> **Part:** built · 2026-10-12 · desk test passed 2026-10-13 · for release, behind its own Settings row
 > (*Show artist info on the artist's page*); on a narrow card it folds under *Artist Info*.
 > LISTENERS.md §6
 

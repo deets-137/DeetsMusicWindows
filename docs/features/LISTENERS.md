@@ -153,7 +153,7 @@ scroll is quick (it took the slide's own time, and the title stayed cut on the l
 
 ## 6. The artist facts box (as built)
 
-> **Part:** built · 2026-10-12 · desk test open (§6.3) · **for release** (his call, later
+> **Part:** built · 2026-10-12 · desk test passed 2026-10-13 (§6.3, his) · **for release** (his call, later
 > 2026-10-12): the DevTools flag (`deets.dev.artistBox`, `ARTIST_BOX_ON`) is gone. Its own
 > row gates it: Settings › Playback › *Show artist info on the artist's page*
 > (`showArtistInfo`, default On, independent of the badge's row). Off, no artist call is made.
@@ -234,7 +234,7 @@ convenience no agent needs).
 
 ## 7. The album facts box
 
-> **Part:** built · 2026-10-13 · desk test open (§7.5). The as-built record is §7.3.
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (§7.5, his). The as-built record is §7.3.
 
 His ask (2026-10-12): the artist box's data and style, per album. The same box beside the
 album cover in the album hero, the same 2×2 grid, the same fold on a narrow card.
@@ -285,7 +285,7 @@ does not help; an `mbid` works but small releases have none.
 
 ### 7.3 As built (2026-10-13)
 
-> **Part:** built · 2026-10-13 · desk test open (§7.5)
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (§7.5)
 
 | Piece | Where | What |
 |---|---|---|

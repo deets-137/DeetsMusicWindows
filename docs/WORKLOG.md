@@ -31,7 +31,7 @@ wrap now takes `flex-basis: 0`). Seen in the dev app: *THREAD 27 - EP* reads 616
 (`as Lucy Park / THREAD 27`), *Essex Honey* shows all four sections beside the cover, the box
 menu and the hero menu. Not seen: the Search album pane (no Search card on screen). Checks:
 `npm run check`. LISTENERS.md §7.3–§7.5. His look at it: the About to 4 lines (it cut Essex
-Honey's second sentence at 3); the narrow row minimum to 100 px with it. Committed. Next
+Honey's second sentence at 3); the narrow row minimum to 100 px with it. Committed. He desk-tested both boxes (LISTENERS.md §6.3, §7.5): passed; pushed. Next
 sitting (his): unite the album and artist views (ARTIST-VIEW.md §10).
 
 ## 2026-10-12 (artist info sections) — the facts box as four sections, a fold, its own row
