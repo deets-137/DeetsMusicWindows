@@ -10,11 +10,13 @@
 //! along. The per-process capture of §10 is gone: it sat after the app's mixer
 //! volume, so it could never make the PC quiet.
 //!
-//! Every command that touches the network or WASAPI runs on `spawn_blocking`.
+//! Every command that touches the network or WASAPI runs on `spawn_blocking`. The
+//! now-playing sends run on one `airplay-np` thread (`post`), since `np_publish` is a sync
+//! command on the UI thread.
 
 use crate::lock::LockExt;
 use std::net::Ipv4Addr;
-use std::sync::Mutex;
+use std::sync::{Condvar, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use deets_airplay::airplay::alac::SAMPLE_RATE;
@@ -70,6 +72,31 @@ pub struct AirplayState {
     error: Mutex<Option<String>>,
     /// Where `airplay_tap` chunks go while a tap session is live; dropped otherwise.
     tap: Mutex<Option<std::sync::Arc<Ring>>>,
+    /// What the `airplay-np` thread sends to the speaker next (see `post`).
+    outbox: Outbox,
+}
+
+/// The `airplay-np` thread's inbox. Each slot keeps only the newest value: a publish that
+/// arrives while the thread is still sending replaces the one waiting, so a dead speaker
+/// never builds a backlog.
+#[derive(Default)]
+struct Outbox {
+    next: Mutex<Pending>,
+    wake: Condvar,
+    started: OnceLock<()>,
+}
+
+#[derive(Default)]
+struct Pending {
+    np: Option<NpState>,
+    art: Option<Art>,
+}
+
+/// A fetched cover, for the track whose `art_url` is `url`.
+struct Art {
+    url: String,
+    content_type: &'static str,
+    bytes: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -427,10 +454,56 @@ pub fn shutdown(app: &AppHandle) {
 
 // ── now playing → the speaker ────────────────────────────────────────────
 
-/// Every front-end publish lands here (bridge::np_publish). While connected:
-/// title/artist/album on change, cover art on change, progress on a track
-/// change, a play/pause flip, or a seek. Cheap when nothing changed.
+/// Every front-end publish lands here (bridge::np_publish), on the UI thread. It only hands
+/// the state to the `airplay-np` thread and returns: the sends to the speaker wait on the
+/// network, and on a lost speaker they wait for its timeouts (a 6 s freeze, 2026-10-12).
 pub fn on_np_state(app: &AppHandle, np: &NpState) {
+    let np = np.clone();
+    post(app, move |p| p.np = Some(np));
+}
+
+/// Put a job in the outbox and wake the `airplay-np` thread, starting it on first use.
+/// The outbox lock is held only to swap a value in or out, never across a send.
+fn post(app: &AppHandle, put: impl FnOnce(&mut Pending)) {
+    let state = app.state::<AirplayState>();
+    let outbox = &state.outbox;
+    outbox.started.get_or_init(|| {
+        let app = app.clone();
+        if let Err(e) = std::thread::Builder::new().name("airplay-np".into()).spawn(move || sender(app)) {
+            log(&format!("no now-playing thread ({e})"));
+        }
+    });
+    put(&mut outbox.next.lock_or_recover());
+    outbox.wake.notify_one();
+}
+
+/// The `airplay-np` thread: every now-playing send to the speaker, in order, off the UI
+/// thread. It holds the `live` lock while it sends, as the commands on the blocking pool do.
+fn sender(app: AppHandle) {
+    let state = app.state::<AirplayState>();
+    loop {
+        let job = {
+            let mut next = state.outbox.next.lock_or_recover();
+            while next.np.is_none() && next.art.is_none() {
+                next = state.outbox.wake.wait(next).unwrap_or_else(|e| e.into_inner());
+            }
+            std::mem::take(&mut *next)
+        };
+        // A send that panics is caught here, so one bad publish cannot end the thread.
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            if let Some(np) = &job.np {
+                send_np_state(&app, np);
+            }
+            if let Some(art) = job.art {
+                send_artwork(&app, art);
+            }
+        }));
+    }
+}
+
+/// While connected: title/artist/album on change, cover art on change, progress on a track
+/// change, a play/pause flip, or a seek. Cheap when nothing changed.
+fn send_np_state(app: &AppHandle, np: &NpState) {
     // A retune that waits (AIRPLAY.md §13.5) runs at the next song change or pause.
     let due = {
         let state = app.state::<AirplayState>();
@@ -456,7 +529,8 @@ pub fn on_np_state(app: &AppHandle, np: &NpState) {
     };
     push_now_playing(app, np, false);
     if let Some((target, why)) = due {
-        // np_publish runs on the UI thread: the reconnect blocks for seconds, so it runs off it.
+        // The reconnect blocks for seconds: it runs on the blocking pool, so this thread
+        // keeps the outbox drained meanwhile.
         let (app, playing) = (app.clone(), np.playing);
         tauri::async_runtime::spawn_blocking(move || retune(&app, target, why, playing));
     }
@@ -525,8 +599,8 @@ fn push_now_playing(app: &AppHandle, np: &NpState, force: bool) {
 }
 
 /// Cover art comes from Apple's image CDN (not the API); one fetch per track
-/// change, sent as-is. Off the caller's thread: a publish must never wait on
-/// the network.
+/// change, sent as-is. The fetch runs on the async runtime; the send goes through the
+/// outbox, so it never holds the `live` lock on a runtime worker.
 fn fetch_artwork(app: AppHandle, url: String) {
     tauri::async_runtime::spawn(async move {
         let fetched = async {
@@ -538,19 +612,23 @@ fn fetch_artwork(app: AppHandle, url: String) {
         .await;
         match fetched {
             Ok((ct, bytes)) => {
-                let state = app.state::<AirplayState>();
-                let guard = state.live.lock_or_recover();
-                // Only if this is still the current cover (a fast skip can outrun the fetch).
-                if let Some(live) = guard.as_ref().filter(|l| l.art_url.as_deref() == Some(url.as_str())) {
-                    let ct = if ct.starts_with("image/png") { "image/png" } else { "image/jpeg" };
-                    if let Err(e) = live.session.set_artwork(&bytes, ct) {
-                        log(&format!("artwork: {e}"));
-                    }
-                }
+                let content_type = if ct.starts_with("image/png") { "image/png" } else { "image/jpeg" };
+                post(&app, move |p| p.art = Some(Art { url, content_type, bytes }));
             }
             Err(e) => log(&format!("artwork fetch: {e}")),
         }
     });
+}
+
+fn send_artwork(app: &AppHandle, art: Art) {
+    let state = app.state::<AirplayState>();
+    let guard = state.live.lock_or_recover();
+    // Only if this is still the current cover (a fast skip can outrun the fetch).
+    if let Some(live) = guard.as_ref().filter(|l| l.art_url.as_deref() == Some(art.url.as_str())) {
+        if let Err(e) = live.session.set_artwork(&art.bytes, art.content_type) {
+            log(&format!("artwork: {e}"));
+        }
+    }
 }
 
 // ── the Windows Firewall prompt (once, UAC) ──────────────────────────────

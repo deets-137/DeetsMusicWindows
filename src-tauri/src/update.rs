@@ -295,7 +295,7 @@ pub async fn update_install(app: AppHandle) -> Result<(), String> {
 }
 
 /// Stop AirPlay on its own thread and wait for it at most AIRPLAY_STOP_LIMIT.
-fn airplay_shutdown_bounded(app: &AppHandle) {
+pub(crate) fn airplay_shutdown_bounded(app: &AppHandle) {
     let (tx, rx) = std::sync::mpsc::channel();
     let a = app.clone();
     std::thread::spawn(move || {

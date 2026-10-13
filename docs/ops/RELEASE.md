@@ -182,8 +182,12 @@ npm run release     # secrets → cli:build → sign cli → tauri build (signed
    pin and updater settings intact, the `.sig` present, the CLI and installer signed, and
    **no synchronous `#[tauri::command]` that blocks the UI thread** (check 9, 2026-09-20:
    a sync command runs on the thread that paints, so a wait in one freezes the window —
-   FRIENDS.md §8.11. It walks calls inside the same file three deep and skips bodies handed
+   FRIENDS.md §8.11. It walks calls three deep and skips bodies handed
    to `spawn`/`spawn_blocking`; checked against the 0.12.0 `presence.rs`, which it names).
+   Since 2026-10-13 the walk follows `crate::x::f(` and `x::f(` into other modules, and a send
+   on the AirPlay session is a blocker: the walk had stopped at `bridge.rs`, so `np_publish`
+   froze the window 6 s in a LAN drop (AIRPLAY.md §13.6). Checked against the old
+   `airplay.rs`, which it names. `log.rs:append` is allowed, as `log_event` is.
    Since 2026-09-25 it also names a sync command that takes `db.lock()`: the library sync
    and the playlist refresh hold that lock for whole write batches. It fails the build. The
    fix for this one is `crate::db_thread::run`, not `spawn_blocking`: one thread in arrival

@@ -422,6 +422,56 @@ export function check() {
     });
   }
 
+  // 30. Every place the code starts a thread is a row in the thread ledger (DEBUGGING.md
+  //     § Threads, 2026-10-13), and every row still has its site. A function has no thread of
+  //     its own; only these calls make one, so the ledger is the whole list. A Rust site is
+  //     keyed `file.rs:fn` (the function it sits in, so a line move keeps it); a Worker or a
+  //     worklet `file.ts:module.ts` (the module it loads). `#[cfg(test)]` code is skipped.
+  {
+    const DOC = "docs/ops/DEBUGGING.md";
+    const t = doc(DOC);
+    const at = t.indexOf("\n## Threads");
+    const section = at < 0 ? "" : t.slice(at, (t.indexOf("\n## ", at + 1) + 1 || t.length + 1) - 1);
+    const rows = new Set([...section.matchAll(/^\| `([^`]+\.(?:rs|ts):[^`]+)` \|/gm)].map((m) => m[1]));
+    const sites = new Map(); // key → "file:line"
+    const blank = (s) => s.replace(/\/\/[^\n]*|"(?:[^"\\\n]|\\.)*"/g, (m) => " ".repeat(m.length));
+    const closeOf = (s, i) => {
+      for (let j = i, d = 0; j < s.length; j++) {
+        if (s[j] === "{") d++;
+        else if (s[j] === "}" && --d === 0) return j;
+      }
+      return s.length;
+    };
+    for (const f of files.filter((f) => /^src-tauri\/src\/.+\.rs$/.test(f))) {
+      const raw = read(f);
+      let code = blank(raw);
+      for (const m of code.matchAll(/#\[cfg\(test\)\]\s*mod\s+\w+\s*\{/g)) {
+        const end = closeOf(code, m.index + m[0].length - 1);
+        code = code.slice(0, m.index) + code.slice(m.index, end + 1).replace(/[^\n]/g, " ") + code.slice(end + 1);
+      }
+      const fns = [];
+      for (const m of code.matchAll(/\bfn\s+(\w+)[^{;]*\{/g)) fns.push([m[1], m.index, closeOf(code, m.index + m[0].length - 1)]);
+      for (const m of code.matchAll(/\bthread::(spawn\s*\(|Builder::new\(\))/g)) {
+        const inner = fns.filter(([, a, b]) => a < m.index && m.index < b).sort((x, y) => y[1] - x[1])[0];
+        const key = `${f.slice("src-tauri/src/".length)}:${inner?.[0] ?? "(top level)"}`;
+        if (!sites.has(key)) sites.set(key, `${f}:${lineOf(raw, m.index)}`);
+      }
+    }
+    for (const [f, text] of src) {
+      const imports = new Map([...text.matchAll(/^import (\w+) from "\.\/([\w-]+\.ts)\?[^"]*";/gm)].map((m) => [m[1], m[2]]));
+      for (const m of text.matchAll(/new (?:Shared)?Worker\(\s*new URL\("\.\/([\w-]+\.ts)"|audioWorklet\.addModule\((\w+)\)/g)) {
+        const key = `${f.slice("src/".length)}:${m[1] ?? imports.get(m[2]) ?? m[2]}`;
+        if (!sites.has(key)) sites.set(key, `${f}:${lineOf(text, m.index)}`);
+      }
+    }
+    for (const [key, where] of sites) {
+      if (!rows.has(key)) fail(30, where, 0, `starts a thread (\`${key}\`) that is not in the thread ledger, ${DOC} § Threads — add its row: what it does, how long it lives, its name`);
+    }
+    for (const key of rows) {
+      if (!sites.has(key)) fail(30, DOC, 0, `the thread ledger row \`${key}\` has no site in the code any more — remove it, or fix the key`);
+    }
+  }
+
   return { facts, docs: docs.length };
 }
 
@@ -430,7 +480,7 @@ export function report({ facts, docs }) {
   const names = {
     1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links",
     20: "settings keys", 21: "toast sites", 22: "hover hints", 23: "scrollers", 24: "right-click ledger", 25: "popover placers", 26: "list keys",
-    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles",
+    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger",
   };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);

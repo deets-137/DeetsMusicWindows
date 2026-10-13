@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
-updated: 2026-10-03
+updated: 2026-10-13
 ---
 # DeetsMusic — Debugging tools
 
@@ -1562,6 +1562,69 @@ this PC signs a token locally from the `.p8` with no network, so the real test i
 build on a PC (or Windows Sandbox) that never ran DeetsMusic: Wi-Fi off, start the app (the toast
 shows), Wi-Fi on. The toast goes within a few seconds, the library syncs after a sign-in, and a
 song plays with no restart.
+
+## Threads — the ledger (2026-10-13)
+
+> **Part:** built · 2026-10-13
+
+**What a thread is here.** A function has no thread of its own: it runs on the thread of the
+code that called it. Only these calls start one:
+
+- `std::thread::spawn` / `thread::Builder::new().name("x").spawn`: an OS thread we own. Every
+  one is a row in the table below.
+- `new Worker(…)` and `audioWorklet.addModule(…)` in the page: a Web Worker, or the code for
+  the audio thread. Every one is a row too.
+- `tauri::async_runtime::spawn_blocking`: a job on Tokio's blocking pool (threads made and
+  reused as needed). Not a row: the pool is listed once, below.
+- `tauri::async_runtime::spawn` and every `async fn` command: a task on Tokio's async
+  workers. A task is not a thread.
+
+Where code runs depends on where it entered: a **sync** `#[tauri::command]`, a menu or tray
+event and the `setup` code run on the **UI thread**, the one that paints. A wait there freezes
+the window (CLAUDE.md › Conventions; release check 9 fails the build).
+
+**The check.** docs:check 30 finds every thread start in `src-tauri/src/` and `src/` and fails
+when its row is missing, or when a row has no site any more. A Rust row is keyed
+`file.rs:function` (the function the start sits in); a page row `file.ts:module.ts` (the module
+it loads). A new thread gets a name (`Builder::name`) when it lives more than a moment: the
+name shows in a debugger and in a crash dump.
+
+| Site | Name | Lives | What it does |
+|---|---|---|---|
+| `db_thread.rs:start` | `db` | the whole run | Every database command, in arrival order (DB-HEALTH.md §2a) |
+| `bridge.rs:start` | `deets-bridge` | the whole run | The loopback HTTP bridge: the extension, the CLI, the MCP (AGENT.md) |
+| `watchdog.rs:start` | `watchdog` | the whole run | Asks the UI thread to answer; logs `ui: the window stopped answering` (LOGGING.md) |
+| `audio_out.rs:setup` | `audio-out` | the whole run | Holds the Windows audio COM objects; reads the default output and its volume on a change (SOUND.md §2.2) |
+| `dbhealth.rs:start` | none | the whole run | The database canary, every 10 minutes (DB-HEALTH.md) |
+| `apple_calls.rs:start` | `apple-calls` | the whole run | The hourly Apple call count line (APPLE-CALLS.md) |
+| `apple_calls.rs:watch_for_end` | `apple-backoff` | while a 429 back-off holds | Logs `back-off off` when the hold ends |
+| `presence.rs:request` | `presence` | from the first use | Owns the Discord pipe; every presence write goes through it (FRIENDS.md §8.11) |
+| `airplay.rs:post` | `airplay-np` | from the first publish | Sends now playing and the cover to the AirPlay speaker, newest first (AIRPLAY.md §13.6) |
+| `lib.rs:run` | none | one per request | The `cover`, `wallpaper` and `user` link schemes: reads the file and answers off the webview thread |
+| `bridge.rs:ask_for` | none | one per agent request, up to its time-out | Sleeps for the time-out, then fails the request if the window has not answered |
+| `apple.rs:handle_link` | none | one sign-in | Checks the token the sign-in link carried and stores it |
+| `apple.rs:begin_hosted` | none | 5 minutes | Ends a hosted sign-in link that was not used |
+| `apple.rs:apple_begin_auth` | none | one sign-in | Serves the loopback sign-in page (the fallback to the hosted page) |
+| `apple.rs:tokio_sleep_1s` | none | 1 s | A one-second wait between two token checks |
+| `tray.rs:reveal_fallback` | none | 3 s | Shows the window if the page never said it was ready |
+| `update.rs:airplay_shutdown_bounded` | none | up to 3 s | Stops AirPlay before an install or a quit; the caller waits 3 s at most |
+| `lib.rs:app_restart` | none | 200 ms | Lets the command's answer go out, then restarts the app |
+| `beta.rs:request_pull` | none | 400 ms | The same, for the Beta's data pull (BETA.md) |
+| `mosaic.ts:mosaic-worker.ts` | Web Worker | from the first mosaic | Draws a playlist's mosaic cover (PLAYLISTS.md §11) |
+| `ocean.ts:ocean-worker.ts` | Web Worker | while Ocean draws | Paints the swell layers (OCEAN.md) |
+| `wallpaper.ts:wallpaper-worker.ts` | Web Worker | from the first soft copy | Bakes the soft copy of the Glass wallpaper (COVER-WALLPAPER.md §3.3) |
+| `sound.ts:sound-worklet.ts` | audio thread | while the Sound graph runs | The EQ bus, the meters and the AirPlay tap (SOUND.md); `offlineTest` loads it into a test context too |
+
+**Not in the table (not ours to start, or not threads):**
+- **The UI thread**, Tauri's own, and the page's main JS thread in WebView2.
+- **Tokio's async workers and its blocking pool** (every `spawn_blocking`).
+- **The AirPlay crate**, per live session (`deets-airplay`, session.rs): `ap-timing`,
+  `ap-events`, `ap-control`, `ap-pacer`, `ap-keepalive`; plus `wasapi-loopback` for *All PC
+  sound*. They end with the session.
+- **WebView2's processes**: the browser, the renderer, the GPU process.
+
+**Open (2026-10-13, not changed):** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` start a
+thread only to sleep. A Tokio timer does the same with no thread.
 
 ## Recipe — debugging a player issue
 1. Reproduce the bad behaviour.

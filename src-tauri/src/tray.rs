@@ -451,8 +451,13 @@ pub fn tray_panel_resize(width: f64, height: f64, app: AppHandle) {
     }
 }
 
+/// Off the UI thread: the AirPlay TEARDOWN waits on the speaker, and a lost one waits for
+/// its timeouts. Bounded as the update install does it.
 #[tauri::command]
-pub fn app_quit(app: AppHandle) {
-    crate::airplay::shutdown(&app);
-    app.exit(0);
+pub async fn app_quit(app: AppHandle) {
+    let _ = tauri::async_runtime::spawn_blocking(move || {
+        crate::update::airplay_shutdown_bounded(&app);
+        app.exit(0);
+    })
+    .await;
 }

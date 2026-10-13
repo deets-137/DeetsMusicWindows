@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-19
 sources: [src-tauri/src/airplay.rs, src/airplay.ts, scripts/webview-eval.mjs, src/player.ts, src/sound-worklet.ts, src/sound.ts]
-updated: 2026-10-02
+updated: 2026-10-13
 ---
 # DeetsMusic — AirPlay (play on a HomePod)
 
@@ -673,8 +673,8 @@ needed at the next song change or a pause.
 - **The run** (`on_np_state`, the front end's now-playing publish): the title, artist or album
   changes, or the player pauses → `airplay: retune at song change|pause: A ms → B ms`. At a
   song change the music pauses (`np-command` pause, from `airplay-retune`), the session
-  reconnects, the delay is remembered, and the music plays again. The reconnect runs off the
-  UI thread (`np_publish` is a sync command).
+  reconnects, the delay is remembered, and the music plays again. The reconnect runs on the
+  blocking pool, so the `airplay-np` thread (§13.6) keeps going.
 - **The gap is held:** `airplay_status` has `reconnecting: true` between the two sessions. The
   poll in `airplay.ts` keeps its last state, so the PC stays silent, the tap stays armed and
   the panel still says playing. This also covers the reconnect after a Settings › AirPlay
@@ -697,3 +697,37 @@ needed at the next song change or a pause.
    play starts by itself.
 4. Change Settings › AirPlay › Send to speaker while playing: the PC speakers stay silent
    during the reconnect.
+
+### 13.6 The now-playing sends leave the UI thread (2026-10-13)
+
+> **Part:** built · 2026-10-13
+
+**The cause.** In a LAN drop on 2026-10-12 the installed app's window froze 6 s: `ui: the
+window stopped answering 6.0 s ago — inside command np_publish for 4.4 s`. `bridge::np_publish`
+is a sync command, so it runs on the UI thread, about once a second. It called `on_np_state`,
+which sent `set_metadata` and `set_progress` to the speaker under the `live` lock. The speaker
+was gone, so each send waited for its timeout. The artwork send held the same lock on a
+runtime worker, so a stalled cover could also make the next publish wait.
+
+**The fix (his call: one sender thread).** `on_np_state` only puts the state in an outbox and
+returns. One thread, `airplay-np`, started on the first publish, takes the newest state and
+sends it. The outbox has two slots (now playing, the fetched cover); each keeps only the
+newest value, so a dead speaker builds no backlog, and the sends stay in order. The cover
+fetch still runs on the async runtime; its send goes through the outbox. A panic in a send is
+caught, so the thread does not end. The connect and the reconnect still call
+`push_now_playing` themselves: they run on the blocking pool.
+
+**On the way:** the release check's walk now crosses files (RELEASE.md §1, check 9). It found
+two more sync commands that waited: `app_quit` (the AirPlay TEARDOWN, now `async` and bounded
+at 3 s, as the update install does it) and `friend_list` (the first read and decrypt of
+friends.json, now `async`). `smtc::update` stays in `np_publish`: it makes in-process WinRT
+calls and no network call.
+
+**Desk test (restart: new Rust). His to run (his call, 2026-10-13):** the live app holds the
+HomePod, and an agent cannot cut the Rust side's network (the CDP drop takes only the webview
+offline). Claude reads the logs after.
+1. Connect to the HomePod and play. The speaker shows the title, the cover and the progress,
+   as before. Skip twice fast: the speaker ends on the last song's cover.
+2. Pull the network cable (or turn off Wi-Fi) while connected and playing. The window keeps
+   answering: no `ui: the window stopped answering … np_publish` line in the log.
+3. Put the network back. `airplay.ts`'s recover reconnects; the speaker gets the current song.

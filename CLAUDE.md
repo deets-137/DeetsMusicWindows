@@ -385,6 +385,10 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
      through `(window as any)`. Grep the name first. A second module on the same name then
      fails tsc (TS2717); under a cast, `__player` from full-player.ts silently replaced
      player.ts's. `?` when the handle is gated (TELEMETRY, DEV). docs:check 29 fails a cast.
+  16. **Threads (2026-10-13):** a new `thread::spawn`, `new Worker` or worklet is a row in
+     the thread ledger (DEBUGGING.md § Threads): what it does, how long it lives, its name.
+     A long-lived one gets `Builder::name`. Prefer `spawn_blocking` or a Tokio timer to a new
+     thread that only waits. docs:check 30 fails a start with no row.
 - **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
   change since the last release is low risk to the app's integrity (no hang, music plays).
   Otherwise stop and ask him for a hand test. The lists are RELEASE.md §0b.

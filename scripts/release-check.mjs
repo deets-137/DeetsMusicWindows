@@ -194,7 +194,7 @@ if (signed.length) {
 // reported AppHangB1. An `async fn` + `spawn_blocking` is the fix, and the rule was already
 // written down in media.rs and airplay.rs — nothing enforced it.
 //
-// The walk follows calls INSIDE the same file, up to three deep, because the wait is usually
+// The walk follows calls up to three deep, into other modules too, because the wait is usually
 // a helper away (`autostart_get` → `autostart_enabled` → `reg` → Command::new). Bodies handed
 // to `spawn`/`spawn_blocking` are skipped: that is precisely the "not on this thread" move.
 {
@@ -238,6 +238,9 @@ if (signed.length) {
     // setters wrote settings.json on the UI thread, settings.rs; twelve friends, report and
     // outlet commands the same day).
     [/\bfs::(write|remove_file|rename|copy)\b|\bwrite_atomic\b|\bFile::create\b/, "writes or deletes a file"],
+    // A send on the AirPlay session waits on the speaker, and on a lost speaker for its
+    // timeouts (added 2026-10-13: `np_publish` froze the window 6 s in a LAN drop).
+    [/\.session\.(set_metadata|set_progress|set_artwork|set_volume|disconnect)\s*\(/, "sends to the AirPlay speaker over the network"],
   ];
   // Anything listed here is a sync command we have decided is safe. Give the reason: the next
   // reader has to be able to check it. An empty list is the healthy state.
@@ -247,11 +250,19 @@ if (signed.length) {
     // diag_flush runs on `beforeunload`, where an async call may never finish (2026-10-11).
     ["log.rs:log_event", "appends to the open log file; order matters"],
     ["log.rs:diag_flush", "appends to the open log file; runs on beforeunload"],
+    // The helper every `crate::log::*` line goes through, reached once the walk crossed files
+    // (2026-10-13). The same append as log_event; it renames only once per rotation.
+    ["log.rs:append", "appends to the open log file; every log line goes through it"],
   ]);
   const blocking = [];
   const soft = [];
-  // Recursive: the commands in src/sotd/ went unread until 2026-09-29.
-  for (const file of readdirSync(srcDir, { recursive: true }).filter((f) => String(f).endsWith(".rs"))) {
+  // Every file first, so a call can be followed into another module (added 2026-10-13:
+  // `bridge::np_publish` reached `crate::airplay::on_np_state`, and the walk stopped at the
+  // file edge). Recursive: the commands in src/sotd/ went unread until 2026-09-29.
+  const files = new Map(); // "sotd/mod.rs" → { raw, code, fns, onThisThread }
+  const modules = new Map(); // "sotd" / "sotd::x" → file
+  for (const f of readdirSync(srcDir, { recursive: true }).filter((f) => String(f).endsWith(".rs"))) {
+    const file = String(f).replaceAll("\\", "/");
     const raw = readFileSync(join(srcDir, file), "utf8");
     const code = blankOut(raw);
     const fns = new Map();
@@ -270,37 +281,50 @@ if (signed.length) {
       if (e > 0) offThread.push([m.index, e]);
     }
     const onThisThread = (i) => !offThread.some(([a, b]) => i >= a && i <= b);
-    const scan = (name, seen, depth) => {
-      const at = fns.get(name);
-      if (!at || seen.has(name) || depth > 3) return null;
-      seen.add(name);
-      const [b, e] = at;
-      // A hard hit wins over a soft one, so a warning never hides a failure.
-      let softHit = null;
-      for (const [re, why, opts] of BLOCKERS) {
-        for (const hit of raw.slice(b, e).matchAll(new RegExp(re, "g"))) {
-          if (!onThisThread(b + hit.index)) continue;
-          if (!opts?.soft) return { name, why, soft: false };
-          softHit ??= { name, why, soft: true };
-        }
+    files.set(file, { raw, code, fns, onThisThread });
+    modules.set(file.replace(/\.rs$/, "").replace(/\/mod$/, "").replaceAll("/", "::"), file);
+  }
+  // `crate::airplay::x(` and `airplay::x(` go to airplay.rs; a path that names no module of
+  // ours (`Settings::get(`, `Command::new(`) is looked up in the same file, as before.
+  const resolve = (file, path) => {
+    const segs = path.split("::").filter((s) => s && s !== "crate" && s !== "self");
+    if (!segs.length) return file;
+    return modules.get(segs.join("::")) ?? modules.get(segs[segs.length - 1]) ?? file;
+  };
+  const scan = (file, name, seen, depth) => {
+    const f = files.get(file);
+    const at = f?.fns.get(name);
+    const key = `${file}:${name}`;
+    if (!at || seen.has(key) || ALLOW.has(key) || depth > 3) return null;
+    seen.add(key);
+    const [b, e] = at;
+    // A hard hit wins over a soft one, so a warning never hides a failure.
+    let softHit = null;
+    for (const [re, why, opts] of BLOCKERS) {
+      for (const hit of f.raw.slice(b, e).matchAll(new RegExp(re, "g"))) {
+        if (!f.onThisThread(b + hit.index)) continue;
+        if (!opts?.soft) return { name: key, why, soft: false };
+        softHit ??= { name: key, why, soft: true };
       }
-      for (const call of code.slice(b, e).matchAll(/\b([A-Za-z_]\w*)\s*\(/g)) {
-        if (!onThisThread(b + call.index)) continue;
-        const deeper = scan(call[1], seen, depth + 1);
-        if (deeper && !deeper.soft) return deeper;
-        softHit ??= deeper;
-      }
-      return softHit;
-    };
+    }
+    for (const call of f.code.slice(b, e).matchAll(/\b((?:\w+::)*)([A-Za-z_]\w*)\s*\(/g)) {
+      if (!f.onThisThread(b + call.index)) continue;
+      const deeper = scan(resolve(file, call[1]), call[2], seen, depth + 1);
+      if (deeper && !deeper.soft) return deeper;
+      softHit ??= deeper;
+    }
+    return softHit;
+  };
+  for (const [file, { code }] of files) {
     for (const m of code.matchAll(/#\[tauri::command\]/g)) {
       const fnAt = code.indexOf("fn ", m.index);
       if (fnAt < 0) continue;
       if (/\basync\b/.test(code.slice(m.index, fnAt))) continue; // its body is off this thread
       const name = /fn\s+(\w+)/.exec(code.slice(fnAt))?.[1];
       if (!name || ALLOW.has(`${file}:${name}`)) continue;
-      const hit = scan(name, new Set(), 0);
+      const hit = scan(file, name, new Set(), 0);
       if (!hit) continue;
-      const line = `${file}: the sync command \`${name}\` ${hit.name === name ? "" : `reaches \`${hit.name}\`, which `}${hit.why} — make it \`async fn\` + \`tauri::async_runtime::spawn_blocking\` (FRIENDS.md §8.11)`;
+      const line = `${file}: the sync command \`${name}\` ${hit.name === `${file}:${name}` ? "" : `reaches \`${hit.name}\`, which `}${hit.why} — make it \`async fn\` + \`tauri::async_runtime::spawn_blocking\` (FRIENDS.md §8.11)`;
       (hit.soft ? soft : blocking).push(line);
     }
   }

@@ -320,13 +320,19 @@ fn key_import(key_b64: String) -> Result<Me, String> {
 // ── the friend list ──────────────────────────────────────────────────────────
 
 /// Your friends, newest first — the order the panel draws before presence reorders it.
+/// Off the UI thread: the first call reads and decrypts friends.json, and keeps a copy of
+/// an unreadable one.
 #[tauri::command]
-pub fn friend_list() -> Vec<Friend> {
-    with_store(|s| {
-        let mut out = s.friends.clone();
-        out.sort_by(|a, b| b.added_at.cmp(&a.added_at));
-        out
+pub async fn friend_list() -> Result<Vec<Friend>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        with_store(|s| {
+            let mut out = s.friends.clone();
+            out.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+            out
+        })
     })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 fn now_ms() -> i64 {

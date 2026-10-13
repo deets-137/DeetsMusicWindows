@@ -12,6 +12,34 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (np_publish) — the AirPlay sends leave the UI thread
+
+His ask: the `np_publish` freeze (2026-10-12, network drop) and a precedented fix. Traced:
+`push_now_playing` sent `set_metadata` / `set_progress` to the speaker under the `live` lock
+on the UI thread; `fetch_artwork`'s send held the same lock on a runtime worker. Check 9 had
+missed it because its walk stopped at the file edge and no BLOCKERS row named a session send.
+Two precedents offered (`presence_set`'s `async` + `spawn_blocking`; one ordered thread like
+`db_thread`). His call: a single AirPlay sender thread. Built: the `airplay-np` thread and its
+two-slot, newest-wins outbox (`post`, `sender`, `send_np_state`, `send_artwork` in
+airplay.rs); check 9 walks across modules and has an AirPlay send row; it names the old
+`airplay.rs` and passes the new one. The wider walk found `app_quit` (TEARDOWN on the UI
+thread; now `async`, bounded at 3 s through `update::airplay_shutdown_bounded`) and
+`friend_list` (the first read + DPAPI decrypt of friends.json; now `async`); `log.rs:append`
+was allowed, as `log_event` is. Decided inside his call: the thread starts on the first
+publish; the connect and reconnect keep calling `push_now_playing` themselves (blocking pool).
+`npm run check` passes. Desk test: AIRPLAY.md §13.6, his to run (his call): the live app held
+the HomePod, the only other speaker was his ARCAM receiver, and the CDP drop cuts only the
+webview, not Rust's AirPlay sockets.
+
+Then his ask, "how do we control which are officially threads": a function has no thread; only
+`thread::spawn`, a Worker or a worklet starts one. His call: a thread ledger. Built:
+DEBUGGING.md § Threads (23 sites, the pools, the AirPlay crate's threads), docs:check 30 (a
+start with no row, or a row with no site, fails; tried both ways), DOCS-ORG.md §8 row 30,
+CLAUDE.md checklist 16. Decided inside his call: Rust rows keyed `file.rs:function`, page rows
+`file.ts:module.ts`; the pools and crate threads are listed but not checked; test modules are
+skipped. Two threads that only sleep (`bridge.rs:ask_for`, `apple.rs:tokio_sleep_1s`) are
+noted as open, not changed.
+
 ## 2026-10-13 (album info) — the album facts box, the box menu, the Last.fm name forms
 
 His ask: the artist box's data and style per album. Probed `album.getInfo` live: tags,
