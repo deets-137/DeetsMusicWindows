@@ -18,6 +18,23 @@
       "steps": [{ "wait": 600 }]
     },
     {
+      "id": "max-full-player",
+      "about": "The website's Demos box (2026-10-11): Max at 1800×900, the full player open, the Queue left and History right. Salt & Signal plays from the Compass (Ctrl+Enter) so the Queue fills and the cover has no printed title under the app's; the wait lets the demo's Replay toast leave.",
+      "covers": "features/fullscreen-player.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "window": true,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "wait": 1000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "salt & signal", "delay": 40 }, { "wait": 600 },
+        { "key": "Ctrl+Enter" }, { "wait": 1500 },
+        { "key": "Escape" }, { "wait": 6000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 40 }, { "wait": 500 },
+        { "key": "Enter" }, { "wait": 2500 }
+      ]
+    },
+    {
       "id": "compass-open",
       "covers": "features/COMPASS.md",
       "kind": "picture",
