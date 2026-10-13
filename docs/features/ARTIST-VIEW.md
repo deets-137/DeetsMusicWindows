@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.0
 desk_test: passed 2026-09-15
 sources: [src/artist-view.ts, src/collection-card.ts, src/library-card.ts, src/search-card.ts]
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 # Artist view — hero, Featured Playlists, Your Playlists
 
@@ -197,3 +197,136 @@ album pane, then the playlist pane. What must hand over to the engine: the pane 
 the picks and their count row, the chip flights, *Check N more*, the hero menus, card memory.
 The forks inside each step (what the compact row shows, which toolbar Search keeps) are his, to
 bring him before that step.
+
+### 10.1 His calls (2026-10-13)
+
+> **Part:** designed · 2026-10-13
+
+The facts box desk test passed on 2026-10-13, so the gate is open. It is still not a go: the
+facts box and `hero-slide.ts` work is committed first, and the build waits for his word.
+
+1. **The engine starts at the first drill.** The Search results page (the box, the filter, the
+   tiles, the station tiles) stays the Search card's own code. The first album, artist,
+   playlist, song or writer that opens starts one engine (`collection-card.ts`) in the card, and
+   every level after it is an engine level. Back on the first level closes the engine and shows
+   the results.
+2. **Full | Lib stays a swap, and works in Search too.** Lib is not a filter on Full: an album
+   could nearly be one (an edition or an uploaded copy is the edge), an artist cannot (Full
+   lists Apple's Top Songs, Lib lists every song of the artist you hold). In Search, Lib opens
+   the Lib level in place, in the Search card. So the Lib album and Lib artist levels leave the
+   Library card's `mount` for a shared module.
+3. **Lib and Full are structured the same.** One builder per page (an album, an artist) with two
+   data sources (your library, Apple), not two builders. The same parts in the same places; only
+   the data differs. The differences today are the table below; each "his" row is a fork to
+   bring him before that step.
+4. **The song pane and the writer pane are step 4**, after the artist, album and playlist
+   panes. They run the Library's `songDetail` / `writerDetail` levels.
+5. **The Apple levels in Search show the full toolbar** (Sort, View, the Search pill), as Full
+   does in the Library. Search's compact row is the default density there.
+
+**Lib and Full today** (read from the code, 2026-10-13):
+
+| Part | Lib | Full | Decided |
+|---|---|---|---|
+| Album ♥ state asked on open (`reconcileAlbum`) | yes | **no** (the Search pane does) | parity, no fork: Full asks too |
+| Artist hero line | "N albums · N songs" | the genre | his (2026-10-13): **kept as today** |
+| Artist cover button (`coverMenu`, left-click) | yes | no | his (2026-10-13): **Full gains it** |
+| Artist sorts | Popular, Most Played | Popular | his (2026-10-13): **Full gains Most Played** (own play counts, zero calls) |
+| Artist default sort | release, newest first | Popular | kept: the data differs (all your songs vs a top list) |
+| Artist rows label (`toolbarBelow`) | Songs | Top Songs | data, no fork: it names the list |
+| Rows end in the Add square with ✓ (`mark`) | no | yes | his (2026-10-13): **kept**: every Lib row is yours |
+| Album opened from a song: the song lit (`selectedId`) | yes | no | his (2026-10-13): **Full gains it** |
+| Albums shelf | your albums | Apple's albums | data, no fork |
+
+The artist's default sort was not put to him: it follows from the data, and he kept the
+other data-led rows. Bring it to him if a step changes it.
+
+**The steps:** 1, the shared builders (the Library only) · 2, the Search artist pane · 3, the
+album pane · 4, the playlist pane · 5, the song and writer panes. One desk test each.
+
+**His calls for steps 2–5 (2026-10-13):** build them in one sitting, each step desk-tested by
+Claude on the dev app and committed on its own before the next; a new fork found in a test
+stops the run.
+- An album page in Search shows **track numbers**, not a cover per row (as the Library does).
+- A song page lists the writers as **rows** (the Library's song level), not chips.
+- *Go to Genre* from a Lib row inside Search opens the genre **in the Library** (a Library view).
+- Apple's playlist page gets **its own builder** in the shared module; a merge with the
+  Playlists card's playlist level is a later project.
+- Already his: compact rows in Search (never the column table, even grown), the full toolbar,
+  Full | Lib in Search with Lib in place.
+- Decided inside "structured the same" (told to him, 2026-10-13): the shared album keeps the
+  Search pane's pre-release line ("Coming 09/25", "3 of 10 songs out"), so the Library's Full
+  album shows it too. The search field stays above the levels; a new search returns to the
+  results, as today.
+
+### 10.2 Step 1 as built: one builder per page (2026-10-13)
+
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (§10.3, run by Claude on the dev app)
+
+- `src/media-levels.ts` replaces `library-full.ts`. `mediaLevels(deps)` returns the four
+  levels (`libAlbum`, `libArtist`, `fullAlbum`, `fullArtist`) and their `resolve`. Inside, one
+  `albumLevel(data)` and one `artistLevel(data)` own every part; the four sources give data
+  only (an `AlbumData` / `ArtistData` record).
+- `src/library-model.ts` holds the album model and its pure helpers (`albumKey`,
+  `groupAlbums`, `albumOrder`, `artistOrder`, `libAlbum`, `artURL`, `trackId`, `playsKey`),
+  moved from `library-card.ts`, which re-exports the four that other modules import.
+- `library-card.ts` keeps the root, the genre, song and writer levels; its drills and its
+  resolver hand albums and artists to `mediaLevels`.
+- Each builder calls `card.heroAside(ctx)` once for the facts box (LISTENERS.md §6b); no
+  `card.reload()` on that path.
+- Full gains, per the table: the ♥ question, the cover button, Most Played, the lit song.
+- Decided inside his calls (for him to see): a Full artist asks Last.fm and Your Playlists
+  **once**, by the first name it knows. Opened from the Library, that is the name at once (as
+  before). Restored by its id alone, it waits for Apple's name; before, it asked Last.fm for
+  "Artist". The Lib artist's Most Played and Popular sorts are the same code as Full's now.
+- **Most Played on a Full row counts your copies (found in the desk test).** Apple's top song is
+  often another release of a song you hold (a single, an EP) with its own catalog id, so the
+  first build found one played song of Lucy Park's top ten. A Full row now sums the plays of
+  every library copy of the song by the artist (any match key: catalog id, ISRC, title — the
+  keys Popular uses). OUTLINE is held twice, the single with no plays and the EP with them;
+  both count. A Lib row keeps its own count, as before.
+
+### 10.3 Desk test, step 1 (the Library only; Search is unchanged)
+
+1. Library › Albums › an album: the hero, the facts box sliding in, the rows in track order,
+   the ♥ state. Right-click the hero: the album menu, no Go to Album.
+2. Full on that album: Apple's rows with + / ✓. Lib goes back. Back from either goes to the
+   Albums list.
+3. A song row › Go to Album: the album opens with that song lit. Press Full: the same song
+   is lit among Apple's rows.
+4. Library › Artists › an artist: the photo, the count line, the shelves, the Songs bar.
+   Left-click the photo: the artist menu. Sort: Popular, Most Played.
+5. Full on that artist: the genre line, Top Songs. Left-click the photo: the artist menu
+   (new). Sort › Most Played (new): songs you played lead.
+6. On the Full artist, an album tile: the Full album. Its artist link: the Full artist.
+7. Card memory on a Full artist level: it comes back, with the facts box for the real artist
+   name. (A restart restores nothing here by design: *Keep card places on restart*,
+   `cardMemoryDisk`, is off, his call 2026-09-17. So the test is a remount in the session:
+   pick Library from another card's picker, which moves it to that slot.)
+8. Nothing changed in Search: an artist and an album pane look and act as before.
+
+**Run 2026-10-13 (Claude, dev app, Max, Cyber · black-red): all 8 pass**, after one fix.
+1. The Fool (Embla and the Karidotters): hero, facts box, ♥ square, track order; the hero menu
+   has no Go to Album. The card grew on open (the built-in album rule).
+2. Full: Apple's 8 songs, ✓ on Your Own Moon, + on the rest. Lib → 1 song. Back → Albums.
+3. Go to Album from Your Own Moon: lit in Lib, and lit again among Apple's rows after Full.
+4. Lib artist: photo, "1 album · 1 song", Albums + Your Playlists shelves, Songs bar; the photo
+   opens the artist menu (no Go to Artist); Sort has Popular and Most Played.
+5. Full artist: "Country", Top Songs, the photo button. **Most Played found one played song
+   of ten** (Lucy Park) → fixed (§10.2): now BLUE SASHIKO (2 full · 19 starts), OUTLINE (2 · 6),
+   TOUCH CONTROL lead.
+6. Full Embla › Off Leash tile → the Full album (10 songs) → its artist link → the Full artist;
+   Back walks back one level each.
+7. The Library moved to slot d from the Search picker: back on the Full artist, rebuilt from
+   its catalog id (`memory restore, levels 2`), Apple's name, the facts box, the shelves.
+8. Search › "thread 27" › THREAD 27 - EP pane (6 songs, facts box) › Lucy Park pane
+   (Featured, Your Playlists, Top Songs): unchanged.
+No errors in the diag ring; every `library:full` load `failed: false`. The cards were put back
+(Library root: Songs, Added Date).
+
+**Seen in the run, not caused by this step (his forks, not built):**
+- A sort picked from the Sort pop keeps the direction in force. The Lib artist opens newest
+  first (↓), so its Most Played lists the least played first. Full opens on Popular (↑), so its
+  Most Played lists the most played first. The same sort reads two ways on the two levels.
+- Lucy Park has no Albums shelf in Full or in Search: Apple's artist page sends none for her
+  (her releases are EPs and singles). The Lib view shows her 4.

@@ -1,8 +1,8 @@
 ---
 status: built
 desk_test: open
-sources: [src/library-full.ts, src/library-card.ts, src/collection-card.ts, src/add-square.ts, src/styles.css, src/styles/skin.css]
-updated: 2026-09-24
+sources: [src/media-levels.ts, src/library-model.ts, src/library-card.ts, src/collection-card.ts, src/add-square.ts, src/styles.css, src/styles/skin.css]
+updated: 2026-10-13
 ---
 # DeetsMusic — Full | Lib: Apple's whole page from a Library drill
 
@@ -39,14 +39,23 @@ updated: 2026-09-24
 - The rows: every song of the album in track order. A song you have shows the **✓** at rest
   (fork 4A). A song you do not have shows the **+** on hover, as on every other song row. An
   unreleased song is dimmed and has no square (SEARCH.md §Unreleased songs).
+- Opened from a song (Go to Album in the Full view, or Full on a Lib album opened from a
+  song), that song's row is lit, as in the Lib view (his call, 2026-10-13). It is found among
+  Apple's rows by catalog id, then by ISRC.
+- The ♥ state is asked once per install when the album opens, as the Lib view and the Search
+  pane ask it (2026-10-13; the Full view did not before).
 
 ### 2.2 The Full artist
 
-- The hero: the photo (round), the name, the first genre. A right-click is the artist menu.
+- The hero: the photo (round), the name, the first genre. A right-click is the artist menu,
+  and a left-click on the photo opens the same menu, as in the Lib view (his call, 2026-10-13).
 - The shelves: **Albums** (Apple's albums, newest first; a tile drills to that album's Full
   view), **Featured Playlists**, **Your Playlists** (the same as the Lib view and Search).
 - The rows: Apple's **Top Songs**, under a sticky "Top Songs" bar. The Sort adds **Popular**
-  (Apple's order, the default) to the usual song sorts.
+  (Apple's order, the default) and **Most Played** (this app's own play counts, zero calls; his
+  call, 2026-10-13) to the usual song sorts. A top song's plays are the sum over every copy
+  of it in your library (catalog id, ISRC or title), since Apple's copy is often another
+  release with its own id (ARTIST-VIEW.md §10.2).
 
 ### 2.3 Menus in the Full view
 
@@ -79,17 +88,21 @@ An album with an unreleased song is not cached, so each open asks Apple again (a
 
 ## 5. As built
 
-- `src/library-full.ts` — `fullViews(deps)` builds the two Full levels and their resolver.
-  The Library card hands it the pieces it owns (the song grouping, the hero cover, the Lib
-  builders, its drills), so there is no import cycle.
+- `src/media-levels.ts` (since 2026-10-13; it replaced `fullViews` in a module of its own) —
+  `mediaLevels(deps)` builds all four levels and their resolver: one album builder and one
+  artist builder (`albumLevel`, `artistLevel`), each fed by a Lib source and a Full source
+  (ARTIST-VIEW.md §10.1). The builder owns the parts; a source owns only the data. A card
+  hands it the pieces it owns (its engine handle, the song grouping, the hero cover, its
+  drills). The album model it shares with the Library card is `src/library-model.ts`, so
+  there is no import cycle.
 - `collection-card.ts` — `Context.views` (a `ViewSwitch`: the options, the active key, `to`)
   and `replace(ctx)`. The engine draws the pill into the head's `[data-coll-views]` slot on
   every header change. `replace` keeps the head still, swaps the body with no slide, and runs
   `enterRows` on the new body. A `reload()` paints the pill again, so Lib wakes up when the
   album's songs land.
-- `library-card.ts` — the slot in `HEAD`; `views` on `albumDetail` and `artistDetail`;
-  `SongOpts.mark` (the marked square and the unreleased dim); the resolver takes
-  `full-album:` and `full-artist:` keys.
+- `library-card.ts` — the slot in `HEAD`; `SongOpts.mark` (the marked square and the
+  unreleased dim); its drills and its resolver hand the album and artist levels, Lib and Full,
+  to `mediaLevels`.
 - `add-square.ts` — `addSquareHTML(t, cls, mark)`. `mark` shows the ✓ on a song you have,
   whatever Settings › Apple Music › "Show ✓ on songs you have" says.
 - The queue tags are Search's: `search-albums:<id>` and `search-artist:<id>`. Home reads

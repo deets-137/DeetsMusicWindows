@@ -91,7 +91,12 @@ const TOKEN_FILES = new Set(["src/styles/palette.css", "src/styles/themes.css", 
 const read = (p) => readFileSync(join(ROOT, p), "utf8").replace(/\r\n/g, "\n");
 // Private docs: a docs/*.md line in .gitignore. The file may not exist in this checkout.
 const PRIVATE = new Set([...read(".gitignore").matchAll(/^docs\/([\w-]+\.md)\s*$/gm)].map((m) => m[1]));
-const tracked = () => execFileSync("git", ["ls-files", "-co", "--exclude-standard"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
+// A tracked file deleted in the tree but not yet committed is still listed: skip it, or the
+// check crashes for every session in a shared checkout (library-full.ts, 2026-10-13).
+const tracked = () =>
+  execFileSync("git", ["ls-files", "-co", "--exclude-standard"], { cwd: ROOT, encoding: "utf8" })
+    .split("\n")
+    .filter((f) => f && existsSync(join(ROOT, f)));
 
 /** Text with fenced code blocks blanked (line count kept, so line numbers stay true). */
 const unfence = (t) => t.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, (m) => m.replace(/[^\n]/g, ""));

@@ -262,8 +262,9 @@ rows size it differently. The Add square (+ / ✓) of the Full view sits inside 
 after the title, so a long title's ellipsis cuts it off.
 
 **Scope: album lists only.** These are the two `songsGrouping` calls with `numbered: true`: the
-Library's album drill (`library-card.ts`, the Lib view) and Apple's whole album
-(`library-full.ts`, the Full view, also used by Search). Library Songs, playlists, History and
+Library's album drill (the Lib view) and Apple's whole album (the Full view), both built by
+`media-levels.ts` (one album builder since 2026-10-13; Search's album pane joins it next,
+ARTIST-VIEW.md §10.1). Library Songs, playlists, History and
 the artist view keep §9a's columns and their ♥ column. Full and Lib exist in many places, so an
 album drilled from the Library can show either view.
 

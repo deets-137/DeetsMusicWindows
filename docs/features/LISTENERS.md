@@ -259,7 +259,8 @@ jump. The Search panes filled their holder in place (no flicker), but they jumpe
   instead of jumping. The box fades in, starting at 30 % of the slide. Leaving: the box fades
   out (`--pop-out`), then the column slides back.
 - `CollectionCardHandle.heroAside(ctx)` (collection-card.ts) replaces the three `card.reload()`
-  calls (library-card.ts artist and album, library-full.ts artist and album). An answer during
+  calls (the Lib and Full artist and album levels; since 2026-10-13 one call in each of the
+  two builders in media-levels.ts, `albumLevel` and `artistLevel`). An answer during
   the drill slide waits for the slide's end, so the drill arrives and then the cover moves. A
   hero that changed in another way since its draw (the photo landed) takes the plain redraw,
   as before. A level that is not on screen draws the box when it comes back.
@@ -364,7 +365,7 @@ does not help; an `mbid` works but small releases have none.
 | The About | `wikiSentences` / `wikiText` in `lastfm-names.ts` | the *Read more on Last.fm* link and every tag removed, entities decoded, the first two sentences |
 | The reader | `albumInfoFor` / `albumInfoNow` in `listeners.ts` | gated by `showAlbumInfo`; one ask per album; `…Now` returns an answer that has landed this session, so a view drawn again draws its box in the FIRST paint (the artist's got the same, `artistInfoNow`) |
 | The markup | `albumInfoHTML` in `src/info-box.ts` (with the artist's, moved there) | the same wrap, fold and grid; `.artist-info__sec--about` sits in the bottom-left cell; the fold line reads *Album Info* |
-| The views | `library-card.ts` `albumDetail` and `library-full.ts` `album()` through `Hero.aside`; `search-card.ts` `heroHTML` (albums) + `fillCollection` into a `[data-artist-info]` holder | the Lib and Full levels ask by the same Apple names, so they share one answer |
+| The views | `media-levels.ts` `albumLevel` (the Lib and Full albums) through `Hero.aside`; `search-card.ts` `heroHTML` (albums) + `fillCollection` into a `[data-artist-info]` holder | the Lib and Full levels ask by the same Apple names, so they share one answer |
 | One size | `.artist-info__about` (a fixed block of `--artist-info-about-lines` × `--artist-info-about-lh`, clamped); on a narrow card each row is at least `--artist-info-row-min` | a long summary and a short one, an artist's box and an album's, draw one size |
 | The menu | `src/info-box-menu.ts` (`infoBoxAt`, `openInfoBoxMenu`), called first in the hero's right-click in collection-card.ts and both Search panes | *Open Last.fm* · *Hide artist info* / *Hide album info*; Hide turns the row off, hides the box, and toasts with Undo (TOASTS.md §5) |
 | The row | Settings › Playback › *Show album info on the album's page* (`showAlbumInfo`, on) | a New mark; the agent's `settings` reaches it |

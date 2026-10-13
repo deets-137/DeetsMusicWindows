@@ -16,11 +16,9 @@ import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
 import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange, noCatalogCopy } from "./track-store";
 import { playTracks, shuffledStart } from "./player";
-import { requestOpenPlaylist, playlistTracks } from "./playlists";
 import { onLibraryDrill, takeLibraryDrill } from "./layout-bus";
-import { isLoved, onFavoritesChange, reconcileAlbum } from "./favorites";
-import { requestPlaylistPane } from "./go-to";
-import { songMenu, albumMenu, artistMenu, playlistMenu, listMenu, setMenu, tileMenu, type AlbumSubject } from "./media-menu";
+import { isLoved, onFavoritesChange } from "./favorites";
+import { songMenu, albumMenu, artistMenu, listMenu, setMenu, tileMenu } from "./media-menu";
 import {
   creditsFor, primeCredits, songsByWriter, fetchCredits, searchAppleForWriter,
   CREDITS_LABEL, CREDITS_NONE, CREDITS_READING, CREDITS_READ_FAILED,
@@ -35,29 +33,17 @@ import { registerDropTarget } from "./row-drag";
 import { dropToLibrary } from "./drop-actions";
 import { libraryAddEnabled } from "./library-add";
 import { mosaicHTML } from "./mosaic";
-import {
-  libraryArtistInfo, expireArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML,
-  playCounts, type LibraryArtistInfo, type YourPlaylists, type CheckProgress, type PlayCount,
-} from "./artist-view";
-import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, type ArtistInfo } from "./listeners";
-import { albumInfoHTML } from "./info-box";
-import { handOff } from "./handoff";
-import { collectionTracks } from "./search";
+import { expireArtistInfo, playCounts, type PlayCount } from "./artist-view";
 import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 import { addSquareHTML, markCellHTML } from "./add-square";
 import { unreleasedHint } from "./release";
-import { fullViews, FULL_LIB, type FullViews } from "./library-full";
+import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey } from "./library-model";
+import { mediaLevels } from "./media-levels";
 
 // ── derived models ────────────────────────────────────────────────────────────
-interface AlbumGroup {
-  key: string;
-  name: string;
-  artist: string;
-  artwork?: Artwork;
-  releaseDate?: string; // earliest track release
-  addedRank?: number; // earliest-added track's rank
-  count: number;
-}
+// The album model and its pure helpers live in library-model.ts (shared with the album and
+// artist levels, media-levels.ts); the ones other modules import from here are re-exported.
+export { albumKey, albumOrder, artistOrder, libAlbum };
 /** A genre of the library (a song's first genre), for the Genres view. */
 interface GenreGroup {
   name: string;
@@ -74,45 +60,6 @@ interface ArtistGroup {
   addedRank?: number;
   albumCount: number;
   songCount: number;
-}
-
-// Albums key on album name + COVER-ART URL, not the per-track artist. Every track on an
-// album shares one cover URL, so this reunites tracks that credit a featured guest (which
-// used to fragment the album into one entry per artist) and collapses various-artists
-// compilations, while two same-named albums with different covers stay distinct. Tracks
-// with no artwork fall back to the old name+artist key. The TRUE album identity (a real
-// library/catalog album id) is a later catalog-hydrate upgrade; this is the cheap fix.
-export const albumKey = (t: Track) => {
-  const name = t.albumName ?? "Unknown Album";
-  const art = t.artwork?.urlTemplate;
-  return art ? `${name} ${art}` : `${name} ${t.artistName ?? ""}`;
-};
-
-function groupAlbums(tracks: Track[]): AlbumGroup[] {
-  // Album's displayed artist = its DOMINANT track artist (a featured guest on one track
-  // shouldn't relabel the whole album), tracked via per-artist counts.
-  const map = new Map<string, AlbumGroup & { artistCounts: Map<string, number> }>();
-  for (const t of tracks) {
-    const key = albumKey(t);
-    let g = map.get(key);
-    if (!g) {
-      g = { key, name: t.albumName ?? "Unknown Album", artist: "", count: 0, artistCounts: new Map() };
-      map.set(key, g);
-    }
-    g.count++;
-    const an = t.artistName ?? "";
-    g.artistCounts.set(an, (g.artistCounts.get(an) ?? 0) + 1);
-    if (!g.artwork && t.artwork) g.artwork = t.artwork;
-    if (t.releaseDate && (!g.releaseDate || t.releaseDate < g.releaseDate)) g.releaseDate = t.releaseDate;
-    // album's "added" = its MOST-RECENTLY-added track, so a freshly-touched album surfaces first
-    if (t.addedRank != null && (g.addedRank == null || t.addedRank > g.addedRank)) g.addedRank = t.addedRank;
-  }
-  const groups = [...map.values()];
-  for (const g of groups) {
-    let best = -1;
-    for (const [name, n] of g.artistCounts) if (n > best) { best = n; g.artist = name; }
-  }
-  return groups;
 }
 
 // Artists come from PARSED credits, not raw strings ("Drake & Future" counts under
@@ -167,12 +114,6 @@ const genreTracks = (ts: Track[], name: string): Track[] => artistOrder(ts.filte
 // The shared cell for every collection card. `musicCell` (below) is the only export;
 // the Playlists card renders through it too, so one shape/density system serves both.
 // The builders it composes (rowThumb/tileCover/rowHTML/tileHTML) are private here.
-function artURL(art: Artwork | undefined, px: number): string | null {
-  if (!art?.urlTemplate) return null;
-  const s = String(px);
-  return art.urlTemplate.replace("{w}", s).replace("{h}", s).replace("{f}", "jpg");
-}
-const trackId = (t: Track) => t.libraryId ?? t.catalogId ?? `${t.title} ${t.artistName}`;
 
 /** The explicit mark (Apple's `contentRating: "explicit"`): a filled square with an E,
  *  the same badge slot and size as the Apple sigil on playlist rows. Theme roles only. */
@@ -292,9 +233,6 @@ const songSorts: SortSpec<Track>[] = [
   { key: "time", label: "Length", type: "num", get: (t) => t.durationMs },
   { key: "genre", label: "Genre", type: "str", hidden: true, get: (t) => `${t.genres[0] ?? ""}\u0001${t.artistName}\u0001${inAlbum(t)}` },
 ];
-// The play_stats key is CATALOG-first (`record_play` in library.rs, to match the tracks PK).
-// A library song carries both ids and they differ, so a library-first lookup misses every one.
-const playsKey = (t: Track) => t.catalogId ?? t.libraryId ?? "";
 /** This app's own play tallies (zero Apple calls): most played first under the default ↑. */
 const playsSort = (plays: () => Map<string, PlayCount> | undefined): SortSpec<Track> => ({
   key: "plays",
@@ -329,22 +267,6 @@ const genreSorts: SortSpec<GenreGroup>[] = [
   { key: "artists", label: "Artist Count", type: "num", get: (g) => g.artistCount },
 ];
 
-// ── right-click menu (Play Now / Play Next / Add to Queue) ───────────────────────
-// One builder for songs and albums: a song is a 1-track list; an album is its tracks
-// in disc/track order. "Play Now" plays the list from the top (a song → just that song;
-// an album → the whole album as the new context). Next/Later insert without a rebuild.
-export const albumOrder = (ts: Track[]): Track[] =>
-  [...ts].sort((a, b) => (a.discNumber ?? 1) - (b.discNumber ?? 1) || (a.trackNumber ?? 0) - (b.trackNumber ?? 0));
-/** An artist's songs in album order: albums oldest first, each in disc/track order (a drag). */
-export const artistOrder = (ts: Track[]): Track[] =>
-  [...ts].sort(
-    (a, b) =>
-      (a.releaseDate ?? "").localeCompare(b.releaseDate ?? "") ||
-      (a.albumName ?? "").localeCompare(b.albumName ?? "") ||
-      (a.discNumber ?? 1) - (b.discNumber ?? 1) ||
-      (a.trackNumber ?? 0) - (b.trackNumber ?? 0),
-  );
-
 /**
  * In-place drill navigation for a card's right-click menus. When passed to a media-menu.ts builder
  * (the Library card supplies it), "Go to Artist/Album" pushes the SAME context an
@@ -361,16 +283,6 @@ export interface LibNav {
   /** The song level (CREDITS.md §7.6) — local, so it stays in this card. */
   drillSong: (t: Track) => void;
 }
-
-/** A library album (its songs in disc/track order) as the menu builders take it
- *  (media-menu.ts, CONTEXT-MENUS.md). `pinKey`: the tile's own key, where it has one. */
-export const libAlbum = (ts: Track[], pinKey?: string): AlbumSubject => ({
-  title: ts[0]?.albumName ?? "Album",
-  artistName: ts[0]?.artistName,
-  artwork: ts[0]?.artwork,
-  known: ts,
-  pinKey,
-});
 
 // ── groupings ─────────────────────────────────────────────────────────────────
 export interface SongOpts {
@@ -657,264 +569,6 @@ export const libraryCard: CardDef = {
     const refreshBtn = host.querySelector<HTMLElement>("#library-refresh");
 
     // `tracks` is the shared store's live accessor — no per-card copy of the library.
-    // detail contexts (filter live over the current cache via closures)
-    // album detail: track number order feels right for an album, so default to it
-    const albumDetail = (a: AlbumGroup, highlight?: Track): Context => {
-      const list = () => tracks().filter((t) => albumKey(t) === a.key);
-      // The Last.fm facts box beside the cover (LISTENERS.md §7): drawn in the first paint
-      // when its answer is known this session, else it slides in beside the cover when it
-      // lands, in place (hero-slide.ts).
-      const lfmArtist = a.artist || list()[0]?.artistName || "";
-      if (lfmArtist && !albumInfoNow(lfmArtist, a.name)) void albumInfoFor(lfmArtist, a.name).then(() => card.heroAside(ctx));
-      const ctx: Context = {
-        title: a.name,
-        key: `album:${a.key}`, // card memory (CARD-MEMORY.md §5)
-        headerLabel: "Album",
-        // The hero: cover, name, the artist as a tappable subtitle (→ artist detail), and
-        // year · songs · length. Read live so a sync that adds a track updates the line.
-        hero: () => {
-          const ts = list();
-          const artist = a.artist || ts[0]?.artistName || "";
-          const year = (a.releaseDate ?? ts.find((t) => t.releaseDate)?.releaseDate)?.slice(0, 4);
-          const total = formatTotal(ts.reduce((n, t) => n + (t.durationMs ?? 0), 0));
-          // The ♥ state: asked once per install, the first time this hero draws (F1A). The
-          // seed is the album's first song, as `albumMenu` picks it.
-          reconcileAlbum({ seed: albumOrder(ts).find((t) => t.catalogId)?.catalogId, name: a.name });
-          return {
-            cover: heroCover(a.artwork ?? ts[0]?.artwork, a.name),
-            title: a.name,
-            sub: artist ? { text: artist, run: () => libNav.drillArtist(artist) } : undefined,
-            meta: [year, `${ts.length} song${ts.length === 1 ? "" : "s"}`, total].filter(Boolean).join(" · "),
-            // Right-click anywhere on the hero: the album's own menu, without Go to Album
-            // (you are there) — CONTEXT-MENUS.md §3a.
-            menu: () => albumMenu(libAlbum(albumOrder(list())), { context: `album:${a.key}`, nav: libNav, here: true }),
-            aside: lfmArtist ? albumInfoHTML(albumInfoNow(lfmArtist, a.name)) : undefined,
-          };
-        },
-        density: true,
-        groupings: [
-          songsGrouping(list, {
-            hideCover: true,
-            numbered: true,
-            selectedId: highlight ? trackId(highlight) : undefined,
-            context: `album:${a.key}`,
-            nav: libNav,
-          }),
-        ],
-        defaults: { density: "lines", sortKey: "track" },
-        // Full | Lib (FULL-LIB.md): Full is Apple's whole album, in place of this level.
-        views: {
-          options: FULL_LIB,
-          active: "lib",
-          to: (k) => {
-            if (k !== "full") return null;
-            const ts = list();
-            return full.album({ libKey: a.key, songId: ts.find((t) => t.catalogId)?.catalogId, name: a.name, artist: a.artist || ts[0]?.artistName, artwork: a.artwork ?? ts[0]?.artwork });
-          },
-        },
-      };
-      return ctx;
-    };
-
-    // artist detail (ARTIST-VIEW.md): the Search artist pane's order — a round hero, then the
-    // Albums, Featured Playlists and Your Playlists shelves, then the artist's Songs as rows.
-    // The playlist shelves fill in as their facts land.
-    const artistDetail = (a: ArtistGroup): Context => {
-      const sub = () => creditIndex(tracks()).tracksFor(a.name);
-      let info: LibraryArtistInfo | null = null; // photo + featured playlists (0–2 Apple calls, saved)
-      let yours: YourPlaylists | undefined; // the user's playlists with this artist (0 calls)
-      let checking: CheckProgress | null = null;
-      let albumList: AlbumGroup[] = []; // the Albums shelf as last drawn (a tile's index → its album)
-
-      // The Songs rows' extra sorts (ARTIST-VIEW.md §1). Popular = Apple's top-songs order
-      // (call 2 brings it with the featured playlists: no extra call), then the rest newest
-      // first. Most Played = this app's own play counts (zero calls).
-      let plays: Map<string, PlayCount> | undefined;
-      void playCounts()
-        .then((m) => {
-          plays = m;
-          card.reload();
-        })
-        .catch((e) => console.error("[library] play counts", e));
-      // A library song matches a top song by catalog id, then ISRC, then title — library and
-      // catalog ids can differ for the same recording. Rebuilt when the info changes.
-      const matchKeys = (t: Track) => [t.catalogId, t.isrc ? `isrc:${t.isrc}` : undefined, `title:${t.title.toLowerCase()}`];
-      let ranksOf: LibraryArtistInfo | null = null;
-      let ranks = new Map<string, number>();
-      const popularity = (t: Track): number | undefined => {
-        if (ranksOf !== info) {
-          ranksOf = info;
-          ranks = new Map();
-          (info?.topSongs ?? []).forEach((s, i) => {
-            for (const k of matchKeys(s)) if (k && !ranks.has(k)) ranks.set(k, i);
-          });
-        }
-        for (const k of matchKeys(t)) {
-          const r = k ? ranks.get(k) : undefined;
-          if (r !== undefined) return r;
-        }
-        // Not a top song: after every top song, newest first (a later date = a smaller value).
-        const ms = t.releaseDate ? Date.parse(t.releaseDate) : NaN;
-        return Number.isFinite(ms) ? 1e15 - ms : undefined;
-      };
-      const artistSongSorts: SortSpec<Track>[] = [
-        { key: "popular", label: "Popular", type: "num", get: popularity },
-        {
-          key: "plays",
-          label: "Most Played",
-          type: "num",
-          // Full listens lead, starts break a tie; a song never played goes last.
-          get: (t) => {
-            const c = plays?.get(playsKey(t));
-            return c ? -(c.full * 1e6 + c.partial) : undefined;
-          },
-        },
-      ];
-      // Newest first, as the Search pane lists them; an album with no date goes last.
-      const albumsShelf = (): string => {
-        albumList = groupAlbums(sub()).sort((x, y) => (y.releaseDate ?? "").localeCompare(x.releaseDate ?? ""));
-        const tiles = albumList
-          .map((al, i) => {
-            const url = artURL(al.artwork, 128);
-            const cover = url
-              ? `<img class="search__tile-art" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`
-              : `<div class="search__tile-art search__tile-art--empty" aria-hidden="true">♪</div>`;
-            return (
-              `<div class="search__tile" data-shelf-item="album" data-shelf-idx="${i}" role="button" tabindex="0">${cover}` +
-              `<span class="search__tile-name">${esc(al.name)}</span><span class="search__tile-sub">${esc(al.releaseDate?.slice(0, 4) ?? "")}</span></div>`
-            );
-          })
-          .join("");
-        return tiles ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${tiles}</div>` : "";
-      };
-      void libraryArtistInfo(a.name, sub().map((t) => t.catalogId))
-        .then((i) => {
-          info = i;
-          card.reload();
-        })
-        .catch((e) => console.error("[library] artist info", e));
-      // The Last.fm facts box beside the hero (LISTENERS.md §6): one call per artist, cached
-      // a month; nothing until it answers, and nothing with the row off. Known this session:
-      // drawn in the first paint. Else the hero draws centered and the box slides in when it
-      // lands, in place (hero-slide.ts; a card redraw here was the flicker, 2026-10-13).
-      let lfm: ArtistInfo | null | undefined = artistInfoNow(a.name);
-      if (!lfm)
-        void artistInfoFor(a.name).then((i) => {
-          lfm = i;
-          card.heroAside(ctx);
-        });
-      const loadYours = () =>
-        yourPlaylistsFor(a.name)
-          .then((y) => {
-            yours = y;
-            card.reload();
-          })
-          .catch((e) => console.error("[library] your playlists", e));
-      void loadYours();
-      const ctx: Context = {
-        title: a.name,
-        key: `artist:${a.name}`, // card memory (CARD-MEMORY.md §5)
-        headerLabel: "Artist",
-        // Until the photo is known, a song's album cover stands in (round).
-        hero: () => {
-          const ts = sub();
-          const albums = groupAlbums(ts).length;
-          return {
-            cover: heroCover(info?.artwork ?? ts.find((t) => t.artwork)?.artwork, a.name, undefined, undefined, true),
-            // The cover's menu: the artist's own menu, without Go to Artist (you are there).
-            // The pin's snapshot carries the catalog id and photo, so it outlives the
-            // artist's songs leaving the library (PINS.md).
-            coverMenu: () =>
-              artistMenu(
-                { name: a.name, catalogId: info?.catalogId, artwork: info?.artwork, songs: artistOrder(ts), inLibrary: true },
-                { context: `artist:${a.name}`, here: true },
-              ),
-            // The same menu anywhere on the hero, as the Search artist pane has it (his call 1A).
-            menu: () =>
-              artistMenu(
-                { name: a.name, catalogId: info?.catalogId, artwork: info?.artwork, songs: artistOrder(sub()), inLibrary: true },
-                { context: `artist:${a.name}`, here: true },
-              ),
-            title: a.name,
-            meta: `${albums} album${albums === 1 ? "" : "s"} · ${ts.length} song${ts.length === 1 ? "" : "s"}`,
-            aside: artistInfoHTML(lfm),
-          };
-        },
-        shelves: () => artistShelvesHTML(info?.featuredPlaylists, yours, checking, albumsShelf()),
-        // Sort / View / Search act only on the Songs rows, so they sit under this label.
-        toolbarBelow: "Songs",
-        // An album drills in place. A featured playlist opens as a Search pane; one of yours in
-        // the Playlists card — each after the chip flight, which fetches the songs first so the
-        // view arrives full (§5). "Check N more" fetches the unopened ones (§3).
-        onShelf: (el) => {
-          const i = Number(el.dataset.shelfIdx);
-          const kind = el.dataset.shelfItem;
-          if (kind === "album") {
-            const al = albumList[i];
-            if (al) card.drill(albumDetail(al));
-          } else if (kind === "featured") {
-            const p = info?.featuredPlaylists?.[i];
-            const id = p?.catalogId;
-            if (p && id) {
-              const intent = { id, name: p.name, artwork: p.artwork, curatorName: p.curatorName };
-              handOff(el, "search", () => collectionTracks("playlists", id), (ts) => requestPlaylistPane({ ...intent, tracks: ts }));
-            }
-          } else if (kind === "yours") {
-            const p = yours?.hits[i]?.p;
-            const lid = p?.libraryId;
-            if (p && lid) handOff(el, "playlists", () => playlistTracks(p), (ts) => requestOpenPlaylist(lid, ts), p.trackCount);
-          } else if (kind === "check" && yours && !checking) {
-            checking = { done: 0, total: yours.unchecked.length };
-            card.reload();
-            void checkPlaylists(yours.unchecked, (pr) => {
-              checking = pr;
-              card.reload();
-            })
-              .then(loadYours)
-              .finally(() => {
-                checking = null;
-                card.reload();
-              });
-          }
-        },
-        shelfMenu: (el) => {
-          const i = Number(el.dataset.shelfIdx);
-          if (el.dataset.shelfItem === "album") {
-            const al = albumList[i];
-            return al ? albumMenu(libAlbum(albumOrder(tracks().filter((t) => albumKey(t) === al.key))), { context: `album:${al.key}`, nav: libNav, inArtist: true }) : [];
-          }
-          if (el.dataset.shelfItem === "featured") {
-            const p = info?.featuredPlaylists?.[i];
-            const id = p?.catalogId;
-            return p && id ? playlistMenu(p, () => collectionTracks("playlists", id), { context: `search-playlists:${id}`, catalog: true }) : [];
-          }
-          const p = el.dataset.shelfItem === "yours" ? yours?.hits[i]?.p : undefined;
-          return p ? playlistMenu(p, () => playlistTracks(p), { context: `playlist:${p.libraryId}` }) : [];
-        },
-        density: true,
-        // The Albums shelf replaces the old Albums grouping; the rows are the artist's songs.
-        groupings: [
-          songsGrouping(sub, {
-            context: `artist:${a.name}`,
-            nav: libNav,
-            extraSorts: artistSongSorts,
-            // The rows are every song by the artist in YOUR library (not the catalog discography).
-            actionTitles: {
-              play: `Play every song by ${a.name} in your library, in this order`,
-              shuffle: `Shuffle every song by ${a.name} in your library`,
-            },
-          }),
-        ],
-        defaults: { density: "lines", sortKey: "release", sortDir: "desc" },
-        // Full | Lib (FULL-LIB.md): Full is Apple's artist page, in place of this level.
-        views: {
-          options: FULL_LIB,
-          active: "lib",
-          to: (k) => (k === "full" ? full.artist({ name: a.name, id: info?.catalogId, artwork: info?.artwork }) : null),
-        },
-      };
-      return ctx;
-    };
 
     // In-place drill nav for the library's menus: "Go to Artist/Album" pushes the same
     // context the artist/album tile would, over the user's library. Defined here (not at
@@ -925,36 +579,16 @@ export const libraryCard: CardDef = {
     // (go-to.ts). In-place vs Search is a future toggle — see docs/FUTURE-SETTINGS.md §20.
     const libNav: LibNav = {
       artistNames: (t) => creditIndex(tracks()).namesOf(t),
-      drillArtist: (name) => card.drill(artistDetail({ name, albumCount: 0, songCount: 0 })),
+      drillArtist: (name) => card.drill(levels.libArtist(name)),
       drillAlbum: (t) =>
-        card.drill(
-          albumDetail({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0 }, t),
-        ),
+        card.drill(levels.libAlbum({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0 }, t)),
       drillGenre: (name) => card.drill(genreDetail({ name, songCount: 0, artistCount: 0, covers: [] })),
       drillSong: (t) => card.drill(songDetail(t)),
     };
 
-    // Full | Lib (docs/features/FULL-LIB.md): Apple's whole album or artist page as a level
-    // of this card, in place of the Lib level. A Full level goes back to Lib only when the
-    // library holds some of it: an album by its key, or by any of its songs (catalog id, ISRC).
-    const libAlbumOf = (t: Track) =>
-      albumDetail({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0, artwork: t.artwork, releaseDate: t.releaseDate });
-    const full: FullViews = fullViews({
-      card: () => card,
-      songs: songsGrouping,
-      heroCover,
-      artURL,
-      nav: libNav,
-      libAlbum: (songs, libKey) => {
-        const all = tracks();
-        const byKey = libKey ? all.find((t) => albumKey(t) === libKey) : undefined;
-        if (byKey) return libAlbumOf(byKey);
-        const ids = new Set(songs.flatMap((s) => [s.catalogId, s.isrc ? `isrc:${s.isrc}` : undefined]).filter(Boolean));
-        const hit = ids.size ? all.find((t) => ids.has(t.catalogId) || (t.isrc && ids.has(`isrc:${t.isrc}`))) : undefined;
-        return hit ? libAlbumOf(hit) : null;
-      },
-      libArtist: (name) => (creditIndex(tracks()).tracksFor(name).length ? artistDetail({ name, albumCount: 0, songCount: 0 }) : null),
-    });
+    // The album and artist levels, Lib and Full (media-levels.ts, ARTIST-VIEW.md §10.1): one
+    // builder per page, two data sources, shared with the Search card's Apple panes next.
+    const levels = mediaLevels({ card: () => card, songs: songsGrouping, heroCover, nav: libNav });
 
     // ── song detail and writer detail (CREDITS.md §7.6) ──
     // A song is a LOCAL target: every fact on the level is already in hand, so it drills
@@ -1137,8 +771,8 @@ export const libraryCard: CardDef = {
         density: true,
         groupings: [
           songsGrouping(list, { context: `genre:${g.name}`, nav: libNav, plays: () => rootPlays }),
-          albumsGrouping(list, albumDetail, libNav),
-          artistsGrouping(list, artistDetail, libNav),
+          albumsGrouping(list, (a) => levels.libAlbum(a), libNav),
+          artistsGrouping(list, (a) => levels.libArtist(a.name), libNav),
         ],
         defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },
       };
@@ -1180,8 +814,8 @@ export const libraryCard: CardDef = {
       shelfMenu: pinShelfMenu,
       groupings: [
         songsGrouping(source, { context: "library", nav: libNav, plays: () => rootPlays }),
-        albumsGrouping(source, albumDetail, libNav),
-        artistsGrouping(source, artistDetail, libNav),
+        albumsGrouping(source, (a) => levels.libAlbum(a), libNav),
+        artistsGrouping(source, (a) => levels.libArtist(a.name), libNav),
         genresGrouping(source, genreDetail),
       ],
       defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },
@@ -1198,15 +832,8 @@ export const libraryCard: CardDef = {
       const i = key.indexOf(":");
       const kind = key.slice(0, i);
       const name = key.slice(i + 1);
-      if (kind === "artist") {
-        return creditIndex(tracks()).tracksFor(name).length ? artistDetail({ name, albumCount: 0, songCount: 0 }) : null;
-      }
-      if (kind === "album") {
-        const t = tracks().find((x) => albumKey(x) === name);
-        return t
-          ? albumDetail({ key: name, name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0, artwork: t.artwork, releaseDate: t.releaseDate })
-          : null;
-      }
+      // An album or an artist, Lib or Full (FULL-LIB.md): the levels module reads its own keys.
+      if (kind === "artist" || kind === "album" || kind === "full-album" || kind === "full-artist") return levels.resolve(key);
       if (kind === "genre") return genreTracks(tracks(), name).length ? genreDetail({ name, songCount: 0, artistCount: 0, covers: [] }) : null;
       // A song level is keyed by its catalog id, over the live store: a song no longer in
       // the library ends the restore there, as an album that has gone does.
@@ -1216,8 +843,6 @@ export const libraryCard: CardDef = {
       }
       // A writer level needs no store: its rows are read again from the collection.
       if (kind === "writer") return name ? writerDetail(name) : null;
-      // A Full level (FULL-LIB.md) is keyed by its catalog id and reads Apple's page again.
-      if (kind === "full-album" || kind === "full-artist") return full.resolve(key);
       return null;
     };
     const card = initCollectionCard({
