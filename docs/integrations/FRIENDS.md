@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
 sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts, src/friend-pin.ts]
-updated: 2026-10-01
+updated: 2026-10-12
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
@@ -681,6 +681,11 @@ no 7A code is written before them.
 - `details` = the song, `state` = the artist, `assets.large_text` = the album — the three lines a
   Listening card draws. `assets.large_image` = the cover at **512 px**, from Apple's own URL with the
   size segment rewritten; Discord's media proxy fetches it, so there is **no upload and no Apple call**.
+  `assets.small_image` = the **app icon** as the round badge on the cover's corner (added
+  2026-10-12), `small_text` = *DeetsMusic*. This one IS an asset key, `deetsmusic`, uploaded once
+  to the application (Developer Portal › Rich Presence › Art Assets); an unknown key draws
+  nothing, so a missing upload costs only the badge. The badge only draws beside a large image,
+  so a song with no artwork shows neither.
 - `timestamps.start/end` = the progress bar, from the live progress. A **live station gets none**,
   because it has no length and a bar that lies is worse than no bar.
 - `details_url` / `state_url` = the Apple Music link, which spends no button slot.

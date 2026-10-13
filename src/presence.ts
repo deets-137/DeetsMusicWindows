@@ -45,6 +45,12 @@ const cut = (s: string, n = CAP) => (s.length > n ? `${s.slice(0, n - 1)}…` : 
 const bigArt = (url?: string): string | undefined =>
   url ? url.replace(/\/\d+x\d+bb\.jpg$/, "/512x512bb.jpg") : undefined;
 
+/** The app icon as the small badge on the cover's corner. An **asset key**, not a URL: the
+ *  icon is uploaded once to the Discord application (Developer Portal › Rich Presence › Art
+ *  Assets) under this name. A key Discord does not know draws nothing, so a missing upload
+ *  costs only the badge. */
+const APP_ICON_ASSET = "deetsmusic";
+
 let state: PlayerState = { playing: false, repeat: "off", shuffle: false };
 let progress: PlayerProgress = { progress: 0, currentTime: 0, duration: 0 };
 
@@ -93,7 +99,17 @@ function activity(): Record<string, unknown> | null {
   // Three text lines on a Listening card: details, state, then large_text — so the album
   // is the third line, not a tooltip (§8.4a).
   const art = bigArt(state.artworkUrl);
-  if (art) act.assets = { large_image: art, large_text: cut(state.album ?? title) };
+  // `small_image` is the round badge on the cover's corner: the app icon, an asset uploaded
+  // once to the Discord application under the key below (2026-10-12). It draws only beside a
+  // large image, so it rides the same gate.
+  if (art) {
+    act.assets = {
+      large_image: art,
+      large_text: cut(state.album ?? title),
+      small_image: APP_ICON_ASSET,
+      small_text: "DeetsMusic",
+    };
+  }
   // The progress bar. A live station has no length, so it gets none rather than a bar
   // that lies; a paused song keeps the bar it had, because we do not re-send on a pause.
   if (!live && progress.duration > 0 && state.playing) {
