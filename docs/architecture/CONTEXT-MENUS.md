@@ -162,7 +162,8 @@ had only its cover menu, and the Library artist hero answered on the cover only.
   the short cover menu (Choose Image… first, PLAYLISTS.md §10 1B).
 - **Code:** a collection-card hero sets `menu` (the `Hero` interface); the engine's
   right-click handler takes `.lib-hero` first. A hero without `menu` keeps the old rule (the
-  cover button's `coverMenu`). The Search panes wire their own hero listener in `fillCollection`.
+  cover button's `coverMenu`). Since 2026-10-13 the Search card's pages are engine levels too
+  (media-levels.ts, ARTIST-VIEW.md §10.1), so the same handler serves them.
 - **Not yet** (his call 6, later): the song credits, Writer and Genre heroes have no menu.
 
 **Desk test.**

@@ -358,6 +358,12 @@ export interface CardOptions {
   onReturn?: () => boolean;
   /** The card that return goes to, for the Back button's hint. */
   returnTitle?: string;
+  /** The root is the host's own page, not a level (the Search card's results, ARTIST-VIEW.md
+   *  §10.1): the engine draws an empty, see-through root pane with no toolbar, and the host
+   *  shows its page under the levels. `rootContext` then only has to be a valid shape. */
+  bare?: boolean;
+  /** False: Ctrl+F is the host's own (the Search card's field), not the level's search. */
+  finder?: boolean;
 }
 
 /** A card's place (CARD-MEMORY.md §2): the key and view state of each level, root first. */
@@ -439,6 +445,9 @@ export interface CollectionCardHandle {
   hold(): void;
   /** How many levels are open (1 = the root). */
   depth(): number;
+  /** Close every level at once, with no slide: the root shows again (a new search in the
+   *  Search card leaves the levels for its results). */
+  toRoot(): void;
   /** Drop the multi-select picks (§19). A host action that removes the rows it acted on
    *  calls this, or the count row keeps counting rows that have left the list. */
   dropPicks(): void;
@@ -461,6 +470,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       restore: (_s: unknown): boolean => false,
       hold: () => {},
       depth: () => 1,
+      toRoot: () => {},
       dropPicks: () => {},
     };
 
@@ -837,6 +847,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const pane = document.createElement("div");
     pane.className = "coll-pane";
     pane.dataset.pos = "center";
+    // A bare root (`opts.bare`): nothing in it, so the host's own page shows through.
+    if (opts.bare && f === stack[0]) {
+      pane.classList.add("coll-pane--bare");
+      return pane;
+    }
     pane.innerHTML = `${f.ctx.toolbarBelow != null ? "" : toolbarHTML(f)}<div class="lib-view" data-view data-list-keys tabindex="0" aria-label="Songs"></div>`;
     const input = pane.querySelector<HTMLInputElement>("[data-search]");
     if (input) input.value = f.query;
@@ -1145,6 +1160,23 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       stack.pop();
       levelLeft(cardId(), stack.length); // a rule grow ends when Back leaves its level
     });
+  };
+
+  /** Every level closes at once, no slide: the root is on screen again (`toRoot`). */
+  const toRoot = () => {
+    if (stack.length <= 1) return;
+    pick.clear();
+    stack.length = 1;
+    dropPane(curPane);
+    curPane?.remove();
+    const pane = buildPane(stack[0]);
+    viewport.appendChild(pane);
+    curPane = pane;
+    paneFrame = stack[0];
+    animating = false;
+    applyScroll(pane, stack[0]);
+    setHeader(true, stack[0].ctx.title);
+    levelLeft(cardId(), 1);
   };
 
   // ── card memory (CARD-MEMORY.md §4) ──
@@ -1550,7 +1582,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   // Ctrl+F opens this card's own search field (MOVABLE-ROWS.md §10.7, fork S3 = 9B).
   // In a release build the key does nothing at all today — the browser accelerators are
   // off (DRAG-DROP.md §6) — so this gives a Windows user the key back.
-  const unsubFind = registerFinder(opts.root, () => {
+  const unsubFind = opts.finder === false ? () => {} : registerFinder(opts.root, () => {
     const pane = curPane;
     const f = cur();
     if (!pane || !f) return;
@@ -2020,6 +2052,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     hold,
     /** How many levels are open (1 = the root). */
     depth: () => stack.length,
+    toRoot,
     /** Drop the multi-select picks (§19). A host action that removes the rows it acted on
      *  calls this, or the count row keeps counting rows that have left the list. */
     dropPicks: (): void => pick.clear(),

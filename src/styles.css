@@ -3312,6 +3312,12 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 /* The pane's own head is gone (2026-09-17): the CARD header carries the level's kind and
    the real Back button, as the Library and Playlists cards do (SEARCH.md). */
 .spane__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* The levels (ARTIST-VIEW.md §10.1): the engine's panes over the results. At the root the
+   engine's pane is bare and the layer lets every press through to the results. A level
+   paints the pane fill, as the Search panes did, so a slide masks the results under it. */
+.search__levels { position: absolute; inset: 0; z-index: 2; }
+.search__levels[data-at-root] { pointer-events: none; }
+.search__levels .coll-pane:not(.coll-pane--bare) { background: var(--spane-bg); }
 
 /* sections */
 .search__sec { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
@@ -3416,10 +3422,6 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__song-title { font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search__song-artist { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* The shelves block is shared with the Library, where it sits in the card grid and needs
-   its own side inset. In a Search pane the body has no inset, so that padding pushed
-   Featured / Your Playlists 8px right of Albums, Top Songs and the rows. */
-.spane .lib-shelves { padding-left: 0; padding-right: 0; }
 
 .search__tile { position: relative; flex: 0 0 auto; width: var(--tile-art); display: flex; flex-direction: column; gap: var(--space-1); cursor: pointer; transition: transform var(--dur-fast) var(--ease-ui); }
 /* The tile badge (PINS.md fork 6A; the family in UI-ARCHITECTURE.md §2a): a small square in the

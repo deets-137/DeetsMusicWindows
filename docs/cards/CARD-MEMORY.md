@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.5
 desk_test: passed 2026-09-19
 sources: [src/card-memory.ts, src/collection-card.ts, src/layout.ts, src/search.ts, src/search-card.ts, scripts/webview-profile.mjs]
-updated: 2026-09-29
+updated: 2026-10-13
 ---
 # Card memory — a card comes back where you left it
 
@@ -130,25 +130,26 @@ Playlists, `g.id` in Radio.
 
 ### 5a. Search
 
-Search has its own pane stack (`search-card.ts` `pushPane` / `popPane`), not the engine. Its
-snapshot has a different shape:
+> **Part:** built · 2026-10-13 (v2, ARTIST-VIEW.md §10.1)
+
+Since 2026-10-13 what a Search result opens is an engine level (media-levels.ts) over the
+results, so the snapshot holds the engine's own `CardSnapshot` beside the results' place:
 
 ```ts
 interface SearchSnapshot {
-  v: 1;
+  v: 2;
   term: string;                // the field text
   scroll: number;              // results scroll
-  panes: { open: PaneOpen; scroll: number }[];
+  levels: CardSnapshot | null; // the engine's levels (null at the results)
 }
-type PaneOpen =
-  | { kind: "album" | "playlist"; id: string; meta: CollectionMeta }   // as built: the hero's facts in one object
-  | { kind: "artist"; id: string }
-  | { kind: "related"; srcKind: "songs" | "albums"; srcId: string; rel: "artists" | "albums"; name: string };
 ```
 
-Each `pushPane` records its `PaneOpen`. A restore runs the search for `term` (a debounced call,
-as a typed term) and opens each pane with no slide. A `related` pane uses the `relatedCache` hop.
-The category filter already persists (`TYPES_KEY`).
+A restore runs the search for `term` (a debounced call, as a typed term), then `engine.restore`
+builds the levels with no slide, through `levels.resolve`: `full-album:` / `full-artist:` by
+catalog id, `apple-playlist:<id>`, `song:<id>` (the library's copy, else a song met this
+session), `writer:<name>`, and the Lib keys. A level with no key yet (a Full album before its
+id resolves) ends the chain there. A v1 snapshot (this card's own pane records) is not read. The
+category filter already persists (`TYPES_KEY`).
 
 **Apple calls on a Search restore:** none within a session — the term and every pane come from
 the §6 caches. After a restart (the disk row on) it is 1 search call plus 1 per pane. Measure it

@@ -2,25 +2,18 @@
 // other menu-item builders (startStationItem, addSongToLibraryItem, addToPlaylistItem):
 // a card spreads these into its menu array and drops nulls with `.filter(Boolean)`.
 //
-// **The rule, and its limit** (restated 2026-09-17 after it was misapplied).
+// **The rule** (one drill system since 2026-10-13, ARTIST-VIEW.md §10.1).
 //
-// The app has TWO drill systems, and which one a verb belongs to depends on whether the
-// target needs an Apple id hop:
+// Every album, artist, playlist, song and writer page is a level of the collection-card
+// engine, built by media-levels.ts, in whichever card hosts it. Two cards host them: the
+// Library, and the Search card (over its results). Which one a verb opens in:
 //
-//  • A CATALOG target (an artist, an album or a playlist we hold only a name for) needs a
-//    `?include=` hop to resolve, and that resolve is memoized in search.ts. Those panes live
-//    in the Search card (its `.spane` stack + fillArtist / fillCollection). Rather than
-//    duplicate that surface per card, a drill from ANYWHERE summons the Search card
-//    (requestCard) and hands it the intent over this bus; the search card runs its own
-//    `drillRelated` (open pane → resolve id → fill). Resolution and caching stay in one
-//    place, and these builders stay dumb: emit intent + summon.
-//
-//  • A LOCAL target — one answered from data the app already holds, at zero Apple calls —
-//    belongs to the collection-card engine instead, which Library, Playlists and Radio all
-//    run on: a stack of `Context` levels with its own hero, rows, Back, slide and card
-//    memory. The Library drills artist, album and genre this way (`LibNav`), and the song
-//    pane too (CREDITS.md §7.6): `drillSong` in a card that has a nav, the Search pane in a
-//    card that does not.
+//  • A card with a nav (`LibNav`: the Library, and a Lib or Full level in either card)
+//    opens the level in place.
+//  • Any other card summons the Search card (requestCard) and hands it the intent over this
+//    bus; the Search card opens the same level there. A CATALOG target that needs a
+//    `?include=` hop (a song's artist, a song's album) resolves inside the level, memoized in
+//    search.ts, so these builders stay dumb: emit intent + summon.
 //
 // So a menu builder here that has a nav in hand should prefer it. `goToItems` in
 // library-card.ts is the reference: it branches on `nav` before it reaches for this bus.

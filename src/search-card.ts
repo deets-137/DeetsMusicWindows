@@ -2,50 +2,37 @@
 // (collections = the engine, queues = the Qcard, searches = this). Blended sectioned
 // results: Artists → Songs → Albums → Playlists → Stations, each a horizontal scroller, divided
 // by bars; an always-on debounced search bar with a category-filter popover; recents
-// as the empty state; drill-in panes riding the same --nav-* motion tokens as the
-// engine (shared idiom, not shared code).
+// as the empty state.
+//
+// What a result opens — an artist, an album, a playlist, a song, a writer — is a level of the
+// collection-card engine, built by media-levels.ts: the same page the Library draws, in the
+// same code (ARTIST-VIEW.md §10.1, his calls 2026-10-12/13). The results page stays this card's
+// own: the engine starts at the first drill, with a bare root over the results, and Back on the
+// first level brings the results back. Search keeps compact rows (never the column table).
 
 import { playTracks, queueTracksNext, queueTracksLater, playStation } from "./player";
 import { addTransientTracks } from "./track-store";
-import { requestOpenPlaylist, playlistTracks } from "./playlists";
-import * as frames from "./frames";
 import { addSquareHTML, isAddSquare } from "./add-square";
-import { reconcile, reconcileAlbum, reconcilePlaylist } from "./favorites";
+import { reconcile } from "./favorites";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { songMenu, albumMenu, artistMenu, playlistMenu, stationMenu, setMenu } from "./media-menu";
 import { makeDropdown } from "./dropdown";
 import { onAlbumPaneRequest, onArtistPaneRequest, onDrillRequest, onPlaylistPaneRequest, onSongPaneRequest, takeAlbumPaneRequest, takeArtistPaneRequest, takeDrillRequest, takePlaylistPaneRequest, takeSongPaneRequest, type AlbumPaneIntent, type ArtistPaneIntent, type DrillIntent, type PlaylistPaneIntent, type SongPaneIntent } from "./go-to";
-import {
-  creditsFor, primeCredits, songsByWriter, fetchCredits, searchAppleForWriter,
-  CREDITS_LABEL, CREDITS_NONE, CREDITS_READING, CREDITS_READ_FAILED,
-  WRITER_REACH, WRITER_SEARCH_NOTE, WRITER_EMPTY, type WriterSong,
-} from "./credits";
-import { onSearchTerm, takeSearchTerm } from "./layout-bus";
+import { onSearchTerm, takeSearchTerm, requestLibraryDrill } from "./layout-bus";
 import { wireListKeys } from "./list-keys";
 import { searchField } from "./search-field";
-import { esc, formatTotal, actionsRowHTML, picksRowHTML, runListAction } from "./collection-card";
-import * as diag from "./diag";
-import { toast } from "./toast";
-import { comingMark, releaseAt, unreleasedHint, unreleasedToast } from "./release";
-import { explicitBadge, heroCover } from "./library-card";
+import { esc, initCollectionCard, type CardSnapshot, type Context } from "./collection-card";
+import { explicitBadge, heroCover, musicCell, songsGrouping } from "./library-card";
+import { mediaLevels } from "./media-levels";
 import {
-  searchCatalog, collectionTracks, artistDetail, materializeTrack, catalogRelated,
-  ALL_TYPES, type NamedRef, type SearchType, type SearchResults, type Artist, type Album, type Playlist,
+  searchCatalog, collectionTracks, materializeTrack,
+  ALL_TYPES, type SearchType, type SearchResults, type Artist, type Album, type Playlist,
 } from "./search";
-import type { Track, Artwork } from "./library";
+import type { Track } from "./library";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { rowDrag } from "./row-drag";
 import { rowPick, picksText } from "./row-pick";
-import {
-  yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML, openArtistLastfm, type YourPlaylists, type CheckProgress,
-} from "./artist-view";
-import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, toggleInfoBox } from "./listeners";
-import { albumInfoHTML } from "./info-box";
-import { setHeroAside } from "./hero-slide";
-import { infoBoxAt, openInfoBoxMenu } from "./info-box-menu";
-import { handOff } from "./handoff";
-import { emit } from "./rules";
-import { levelLeft, ruleGrowComing } from "./card-grow";
+import { ruleGrowComing } from "./card-grow";
 
 const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
@@ -106,27 +93,34 @@ function savePins(pins: Pin[]): void {
   try { localStorage.setItem(PINS_KEY, JSON.stringify(pins)); } catch { /* session-only */ }
 }
 
-/** Card memory (CARD-MEMORY.md §5a): what one pane shows. Search has its own pane stack, so
- *  it keeps its own shape rather than the engine's levels. */
-type PaneOpen =
-  | { kind: "album" | "playlist"; id: string; meta: CollectionMeta }
-  | { kind: "artist"; id: string }
-  | { kind: "related"; srcKind: "songs" | "albums"; srcId: string; rel: "artists" | "albums"; name: string }
-  // The song pane carries the whole Track: the caller already held it, so a restore
-  // needs no id hop and costs no Apple call (CREDITS.md §7).
-  | { kind: "song"; track: Track }
-  | { kind: "writer"; name: string };
+/** Card memory (CARD-MEMORY.md §5a): the term, the results place, and the engine's levels
+ *  (keys and view state, as the Library keeps them). v1 held this card's own pane records,
+ *  before the levels were the engine's (2026-10-13); a v1 snapshot is not read. */
 interface SearchSnapshot {
-  v: 1;
+  v: 2;
   term: string;
   scroll: number;
-  panes: { open: PaneOpen; scroll: number }[];
+  levels: CardSnapshot | null;
 }
 const isSearchSnapshot = (s: unknown): s is SearchSnapshot =>
-  !!s && typeof s === "object" && (s as SearchSnapshot).v === 1 && Array.isArray((s as SearchSnapshot).panes);
+  !!s && typeof s === "object" && (s as SearchSnapshot).v === 2;
 
-/** What a pane's hero knows before its songs land (a drill-in has only a name). */
-interface CollectionMeta { title: string; artwork?: Artwork; artistName?: string; releaseDate?: string; curatorName?: string }
+/** The engine's root while the results show: an empty level, never drawn (`bare`). */
+const BARE_ROOT: Context = {
+  title: "Search",
+  density: false,
+  groupings: [
+    {
+      key: "none",
+      label: "",
+      sorts: [{ key: "none", label: "", type: "str", get: () => undefined }],
+      list: () => [],
+      name: () => "",
+      match: () => false,
+      render: () => "",
+    },
+  ],
+};
 
 export const searchCard: CardDef = {
   id: "search",
@@ -141,6 +135,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
       </button>
       <h2 class="panel__title">Search</h2>
+      <div class="coll-views" data-coll-views hidden></div>
     </header>
     <div class="panel__body search">
       <div class="search__bar">
@@ -159,10 +154,12 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
           <div class="search__filter-pop" role="menu" aria-label="Filter categories" hidden></div>
         </div>
       </div>
-      <div class="search__panes"><div class="spane" data-pos="center"><div class="spane__scroll search__root"></div></div></div>
+      <div class="search__panes">
+        <div class="spane" data-pos="center"><div class="spane__scroll search__root"></div></div>
+        <div class="search__levels coll-body" data-at-root></div>
+      </div>
     </div>`;
 
-  const backEl = host.querySelector<HTMLButtonElement>(".panel__back")!;
   const titleEl = host.querySelector<HTMLElement>(".panel__title")!;
   const input = host.querySelector<HTMLInputElement>(".search__input")!;
   const clearBtn = host.querySelector<HTMLButtonElement>(".search__clear")!;
@@ -170,91 +167,89 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const filterBtn = host.querySelector<HTMLElement>(".search__filter")!;
   const filterPop = host.querySelector<HTMLElement>(".search__filter-pop")!;
   const bar = host.querySelector<HTMLElement>(".search__bar")!;
-  const panes = host.querySelector<HTMLElement>(".search__panes")!;
   const root = host.querySelector<HTMLElement>(".search__root")!;
+  const rootPane = root.closest<HTMLElement>(".spane")!;
+  const levelsHost = host.querySelector<HTMLElement>(".search__levels")!;
 
   let types = loadTypes();
   let results: SearchResults | null = null;
   let lastTerm = "";
   let queryToken = 0;
   const headerCbs = new Set<(h: { title: string; atRoot: boolean }) => void>();
-  const paneStack: HTMLElement[] = []; // drill panes above root
-  // Card memory (CARD-MEMORY.md §5a) + the drill swap (CARD-GROW.md §14.4): what each pane
-  // shows, and — on the pane a grown card's drill opened — the way back to that card.
-  const paneOpen = new WeakMap<HTMLElement, PaneOpen>();
-  const paneReturn = new WeakMap<HTMLElement, () => boolean>();
-  const RETURN_TTL_MS = 5000;
-  let pendingReturn: { cb: () => boolean; at: number } | null = mountOpts?.onReturn ? { cb: mountOpts.onReturn, at: Date.now() } : null;
-  // The card header IS the drill header (1A, 2026-09-17): the level's kind while a pane is
-  // open — the hero under it carries the name — and the base title at the root. The search
-  // field stays live under it (2A), so typing still drops the panes and searches again.
-  const paneLabel = new WeakMap<HTMLElement, string>();
-  const headerTitle = (): string => {
-    const top = paneStack[paneStack.length - 1];
-    return top ? paneLabel.get(top) ?? "Search" : "Search";
-  };
-  const syncHeader = () => {
-    const top = paneStack[paneStack.length - 1];
-    titleEl.textContent = headerTitle();
-    backEl.hidden = !top;
-    backEl.title = top && paneReturn.has(top) && mountOpts?.returnTitle ? `Goes back to ${mountOpts.returnTitle}` : "Goes back one step";
-  };
-  const notifyHeader = () => {
-    syncHeader();
-    headerCbs.forEach((cb) => cb({ title: headerTitle(), atRoot: paneStack.length === 0 }));
-  };
+  let tookRequest = false; // a held request beats card memory (CARD-MEMORY.md §4 rule 1)
 
   // Track lookup for delegated handlers: keyed maps refreshed per render.
   let songsById = new Map<string, Track>();
-  // A drill pane's track list and its queue-origin tag, for a drag from one of its rows.
-  const paneTracks = new WeakMap<HTMLElement, { tracks: Track[]; context: string }>();
-  /** The panes whose row listeners are on (wireTrackList adds them once per pane). */
-  const wiredPanes = new WeakSet<HTMLElement>();
 
-  // Multi-select (row-pick.ts, NEXT-VERSION §19). This card has TWO song surfaces — the
-  // root's Songs results and a drill pane's track list — so the store reads whichever one
-  // is on top. Keyed by the song, since neither list can hold the same song twice.
-  // Songs only: an album, playlist or station tile is a drill or a play, not a pick.
-  let activeList: () => Track[] = () => [];
+  // Multi-select (row-pick.ts, NEXT-VERSION §19) over the root's Songs results. A level's
+  // rows have the engine's own picks. Keyed by the song. Songs only: an album, playlist or
+  // station tile is a drill or a play, not a pick.
   const picks = rowPick<Track>({
     id: (t) => t.catalogId ?? `${t.title} ${t.artistName}`,
-    items: () => activeList(),
+    items: () => results?.songs ?? [],
     onChange: () => paintPicks(),
   });
-  // A pane's own Play / Shuffle row, kept so the count row can give it back.
-  const paneActions = new WeakMap<HTMLElement, string>();
-  let lastPicks = 0; // picks at the last paint — tells a first pick from a later one
 
-  /** The surface the picks belong to: the top drill pane, else the root results. */
-  const pickScope = (): HTMLElement => paneStack[paneStack.length - 1] ?? root;
-
-  /**
-   * Re-mark the rows and re-draw the count, WITHOUT rebuilding a pane (a rebuild would
-   * refetch the collection). The root has no Play / Shuffle row, so its Songs section
-   * title carries the count; a pane swaps its row for the count row and back.
-   */
+  /** Re-mark the rows and re-draw the count: the Songs section title says how many. */
   const paintPicks = () => {
-    const scope = pickScope();
-    picks.mark(scope, "[data-song]", (el) => songsById.get(el.dataset.song ?? ""));
-    picks.mark(scope, "[data-row]", (el) => {
-      const sc = el.closest<HTMLElement>(".spane__scroll");
-      const l = sc ? paneTracks.get(sc) : undefined;
-      return l?.tracks[Number(el.dataset.row)];
-    });
+    picks.mark(root, "[data-song]", (el) => songsById.get(el.dataset.song ?? ""));
     const n = picks.size();
-    const entering = n > 0 && lastPicks === 0;
-    lastPicks = n;
-    const scroll = scope === root ? null : scope.querySelector<HTMLElement>(".spane__scroll");
-    if (scroll) {
-      const bar = scroll.querySelector<HTMLElement>(".lib-actions");
-      const own = paneActions.get(scroll);
-      if (bar && own) bar.outerHTML = n ? picksRowHTML(n, entering) : own;
-      return;
-    }
-    // The root: the Songs section title says how many are picked.
     const title = root.querySelector<HTMLElement>(".search__scroller--songs")?.previousElementSibling;
     if (title) title.textContent = n ? `Songs · ${picksText(n)}` : "Songs";
   };
+
+  // ── the levels (ARTIST-VIEW.md §10.1) ──
+  // What a result opens is an engine level, the same page the Library draws (media-levels.ts).
+  // The engine runs on this card's head — its Back, its title, the Full | Lib chips — over a
+  // bare root: the results page is this card's own, under the levels.
+  let atRoot = true;
+  let instantNext = false; // a card-memory restore: the results step aside with no slide
+  const onLevel = (now: boolean) => {
+    if (now === atRoot) return;
+    atRoot = now;
+    levelsHost.toggleAttribute("data-at-root", now);
+    // The results' picks belong to the results (§19): a drill drops them, as before.
+    if (!now) picks.clear();
+    // The results slide with the level, as one page (the engine's --nav-* motion): out as the
+    // first level comes in, back as the last one leaves. A rule grow or a restore: in place.
+    // After the engine's own steps, so the rule grow is known (RULES.md §10).
+    queueMicrotask(() => {
+      const still = instantNext || (!now && ruleGrowComing(host.dataset.mounted ?? "search"));
+      instantNext = false;
+      if (still) rootPane.style.transition = "none";
+      rootPane.dataset.pos = now ? "center" : "left";
+      if (still) {
+        void rootPane.offsetWidth;
+        rootPane.style.transition = "";
+      }
+    });
+  };
+  const levels = mediaLevels({
+    card: () => engine,
+    songs: songsGrouping,
+    heroCover,
+    cell: musicCell,
+    // A genre is the Library's own view (his call, 2026-10-13): Go to Genre summons it.
+    genre: (name) => requestLibraryDrill({ kind: "genre", name }),
+    playlistsHere: true,
+  });
+  const engine = initCollectionCard({
+    root: host,
+    storeKey: "deets.search.levels",
+    rootContext: () => BARE_ROOT,
+    bare: true,
+    finder: false, // Ctrl+F is the Search field's (SEARCH-FIELDS.md), at every level
+    grown: () => null, // compact rows, never the column table, even grown (his call)
+    resolve: (key) => levels.resolve(key),
+    onReturn: mountOpts?.onReturn,
+    returnTitle: mountOpts?.returnTitle,
+    onHeader: (h) => {
+      onLevel(h.atRoot);
+      headerCbs.forEach((cb) => cb(h));
+    },
+  });
+  /** Open a level from the results or from a request. */
+  const open = (ctx: Context) => engine.drill(ctx);
 
   /** The menu for a picked set of songs (§19). */
   const picksMenu = (ts: Track[], context: string): MenuItem[] =>
@@ -263,12 +258,12 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   // A right-clicked row or tile wears `is-context` (the outline) while its menu is open, as
   // in the Library, Queue and History cards.
   const menuAt = (e: MouseEvent, items: MenuItem[]) => {
-    const el = (e.target as HTMLElement).closest<HTMLElement>(".search__song, .search__row, .search__tile, .search__artist");
+    const el = (e.target as HTMLElement).closest<HTMLElement>(".search__song, .search__tile, .search__artist");
     el?.classList.add("is-context");
     openContextMenu(e.clientX, e.clientY, items, () => el?.classList.remove("is-context"));
   };
-  // The Add-to-Library square on song rows (root Songs grid + drill-pane track lists):
-  // add-square.ts draws it with its state and hears its press.
+  // The Add-to-Library square on the root's song rows: add-square.ts draws it with its state
+  // and hears its press.
   const addBtnHTML = (t: Track): string => addSquareHTML(t, "search__add");
 
   // ── root rendering ──
@@ -326,7 +321,6 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const renderResults = () => {
     if (!results) return renderEmpty();
     songsById = new Map(results.songs.filter((t) => t.catalogId).map((t) => [t.catalogId!, t]));
-    activeList = () => results?.songs ?? [];
     const sections: string[] = [];
     const bodies: Record<SearchType, () => string> = {
       artists: () => results!.artists.map(artistCell).join(""),
@@ -357,7 +351,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     root.innerHTML = sections.length
       ? sections.join("")
       : `<p class="search__prompt">No results for “${esc(lastTerm)}”.</p>`;
-    if (!paneStack.length) paintPicks(); // re-mark what is still picked after a redraw
+    if (atRoot) paintPicks(); // re-mark what is still picked after a redraw
   };
 
   // ── querying ──
@@ -389,7 +383,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   // root results at once. Otherwise a drill pane stays on top and hides the new results
   // rendered into `root` below it. Too short a term shows Recents and cancels what is in flight.
   const toRootFor = (term: string): boolean => {
-    resetToRoot();
+    engine.toRoot();
     if (term.length >= MIN_CHARS) return true;
     queryToken++; // cancel any in-flight response
     bar.classList.remove("search__bar--busy");
@@ -404,7 +398,11 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     delay: "apple",
     clear: clearBtn,
     finder: { root: host },
-    first: () => (paneStack[paneStack.length - 1] ?? root).querySelector<HTMLElement>("[role='button']"),
+    // ↓ from the field: the first result, or the open level's rows.
+    first: () =>
+      atRoot
+        ? root.querySelector<HTMLElement>("[role='button']")
+        : levelsHost.querySelector<HTMLElement>('.coll-pane[data-pos="center"] [data-view]'),
     onTerm: (term) => {
       if (toRootFor(term)) runSearch(term);
     },
@@ -449,102 +447,15 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     if (lastTerm && results) runSearch(lastTerm); // re-query with the narrower/wider set
   });
 
-  // ── drill panes (push/pop on the shared --nav-* tokens) ──
-  const pushPane = (
-    title: string,
-    fill: (body: HTMLElement, setTitle: (t: string) => void) => void | Promise<unknown>,
-    open?: PaneOpen,
-    memory?: { instant?: boolean; scroll?: number },
-  ) => {
-    const pane = document.createElement("div");
-    pane.className = "spane";
-    pane.dataset.pos = "right";
-    pane.innerHTML = `<div class="spane__scroll"></div>`;
-    paneLabel.set(pane, title);
-    panes.appendChild(pane);
-    // setTitle lets a drill-in relabel the pane once the target resolves (fallback
-    // name shown while the id hop is in flight, real name swapped in on arrival).
-    const scroller = pane.querySelector<HTMLElement>(".spane__scroll")!;
-    const filled = fill(scroller, (t) => {
-      paneLabel.set(pane, t);
-      if (paneStack[paneStack.length - 1] === pane) syncHeader();
-    });
-    const below = paneStack[paneStack.length - 1] ?? panes.querySelector<HTMLElement>('.spane[data-pos="center"]');
-    // The rules engine (RULES.md §10): an album or artist pane opened by hand, not by a restore.
-    // It is told BEFORE the slide: when a rule grow is coming, the pane goes in place with no
-    // slide and the grow is the one motion (his call, 2026-09-26). A "related" pane (Go to
-    // Album / Go to Artist from a song, by the id hop) opens an album or an artist too: Home's
-    // song and library-album tiles take this path (it sent no event before 2026-09-26).
-    const opens = open?.kind === "album" || open?.kind === "artist" ? open.kind
-      : open?.kind === "related" ? (open.rel === "albums" ? "album" : "artist") : null;
-    const card = host.dataset.mounted ?? "search";
-    if (!memory?.instant && opens) emit(`${opens}.open`, { card, facts: { cause: "hand" }, depth: paneStack.length + 1 });
-    const inPlace = memory?.instant || (!!opens && ruleGrowComing(card));
-    void pane.offsetWidth; // commit the off-screen position before sliding in
-    if (inPlace) {
-      // A restore puts the pane straight in its place — no slide (CARD-MEMORY.md §4 rule 2),
-      // and so does a rule grow on its way: the grow's clip and row entry are the motion.
-      pane.style.transition = "none";
-      if (below) below.style.transition = "none";
-      requestAnimationFrame(() => {
-        pane.style.transition = "";
-        if (below) below.style.transition = "";
-      });
-    } else {
-      frames.during("slide", 450, "search-push");
-    }
-    pane.dataset.pos = "center";
-    if (below) below.dataset.pos = "left";
-    paneStack.push(pane);
-    if (open) paneOpen.set(pane, open);
-    if (pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS) paneReturn.set(pane, pendingReturn.cb);
-    pendingReturn = null;
-    if (memory?.scroll) void Promise.resolve(filled).then(() => { scroller.scrollTop = memory.scroll!; });
-    notifyHeader(); // the header takes this level's kind, and shows its Back button
-  };
-
-  /** The Back button: the pane a grown card's drill opened hands the Back to the layout, which
-   *  brings the first card back (CARD-GROW.md §14.4). Everything else is a plain pop. */
-  const backPane = () => {
-    const top = paneStack[paneStack.length - 1];
-    const ret = top ? paneReturn.get(top) : undefined;
-    if (top && ret) {
-      paneReturn.delete(top);
-      paneStack.pop(); // out of the snapshot the destroy that follows takes
-      if (ret()) return levelLeft(host.dataset.mounted ?? "search", paneStack.length);
-      paneStack.push(top);
-    }
-    popPane();
-  };
-  const popPane = () => {
-    const pane = paneStack.pop();
-    if (!pane) return;
-    // Back out: the picks belonged to the pane that is leaving, and the surface below
-    // becomes the one they read (§19).
-    picks.clear();
-    const under = paneStack[paneStack.length - 1];
-    const sc = under?.querySelector<HTMLElement>(".spane__scroll");
-    const list = sc ? paneTracks.get(sc) : undefined;
-    activeList = list ? () => released(list.tracks) : () => results?.songs ?? [];
-    const below = paneStack[paneStack.length - 1] ?? panes.querySelector<HTMLElement>(".spane:first-child");
-    frames.during("slide", 450, "search-pop");
-    pane.dataset.pos = "right";
-    if (below) below.dataset.pos = "center";
-    window.setTimeout(() => pane.remove(), 400); // past --nav-dur; cheap cleanup
-    notifyHeader();
-    levelLeft(host.dataset.mounted ?? "search", paneStack.length); // a rule grow ends when Back leaves its pane
-  };
-  /** Drop every drill pane at once, so `root` is the visible pane again. */
-  const resetToRoot = () => { while (paneStack.length) popPane(); };
-
-  // Escape drops the picks; Ctrl+A takes the surface on top. Gated on the last press
-  // inside this card — a row carries no tabindex, so the focus never leaves <body>.
+  // Escape drops the picks; Ctrl+A takes the results' songs. Gated on the last press inside
+  // the results — a row carries no tabindex, so the focus never leaves <body>. A level's rows
+  // have the engine's own keys.
   let touched = false;
-  panes.addEventListener("pointerdown", () => {
+  root.addEventListener("pointerdown", () => {
     touched = true;
   });
   const onDocDown = (e: PointerEvent) => {
-    if (!panes.contains(e.target as Node)) touched = false;
+    if (!root.contains(e.target as Node)) touched = false;
   };
   const onKey = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
@@ -553,7 +464,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       picks.clear();
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a" && touched) {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a" && touched && atRoot) {
       e.preventDefault();
       picks.all();
     }
@@ -561,466 +472,47 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   document.addEventListener("pointerdown", onDocDown);
   document.addEventListener("keydown", onKey);
 
-  // An unreleased song (a pre-release album) is dimmed, has no + and says when it comes out;
-  // a click toasts the same (player.ts playTracks, SEARCH.md §Unreleased songs).
-  const listRow = (t: Track, i: number): string =>
-    `<div class="search__row${t.unreleased ? " is-unreleased" : ""}" data-row="${i}"${t.catalogId ? ` data-cid="${esc(t.catalogId)}"` : ""} role="button" tabindex="0"${t.unreleased ? ` aria-disabled="true" title="${esc(unreleasedHint(t))}"` : ""}>
-      ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
-      <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
-      ${t.unreleased ? "" : addBtnHTML(t)}
-    </div>`;
-  // The picks never hold an unreleased song: Ctrl+A and a Shift range read this list.
-  const released = (ts: Track[]): Track[] => (ts.some((t) => t.unreleased) ? ts.filter((t) => !t.unreleased) : ts);
+  // ── what opens a level ──
+  // A result (below, `root`'s clicks) and a request from another card (go-to.ts): other cards'
+  // "Go to Artist / Album", a Featured playlist, a pinned album, "Song Credits" summon this
+  // card and hand it the intent. Each opens the same level the Library would draw.
 
-  /** A detail pane's track list: tap plays the list from that row (Library semantics). */
-  const wireTrackList = (body: HTMLElement, tracks: Track[], context: string) => {
-    paneTracks.set(body, { tracks, context });
-    // This pane is now the surface the picks read, and its own Play / Shuffle row is kept
-    // so the count row can hand it back (§19).
-    const ownBar = body.querySelector<HTMLElement>(".lib-actions");
-    if (ownBar) paneActions.set(body, ownBar.outerHTML);
-    // Only the pane on top takes the picks: a fetch that lands after Back (or after a newer
-    // drill) must not point Ctrl+A and the count row at a pane that is leaving (2026-09-29).
-    if (body.closest(".spane") === paneStack[paneStack.length - 1]) {
-      activeList = () => released(tracks);
-      picks.clear();
-    }
-    // One pair of listeners per pane, reading the pane's CURRENT list. The Writer pane
-    // repaints in place (the Apple search), and each repaint used to add another pair, so
-    // one row click played two or three times, the first from the old list (2026-09-29).
-    if (wiredPanes.has(body)) return;
-    wiredPanes.add(body);
-    const cur = () => paneTracks.get(body) ?? { tracks, context };
-    const start = (list: Track[], idx: number) => {
-      // playTracks drops the unreleased songs itself; the store never takes them either.
-      const out = released(list);
-      addTransientTracks(out);
-      out.forEach(materializeTrack);
-      playTracks(list, idx, cur().context).catch((err) => console.error("[search] play", err));
-    };
-    body.addEventListener("click", (e) => {
-      const { tracks, context } = cur();
-      // The Play / Shuffle row (NEXT-VERSION §13): this pane's list from the top.
-      const act = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
-      if (act) {
-        e.stopPropagation();
-        // While rows are picked the row is the count row: Play / Shuffle act on them (§19).
-        const list = picks.size() ? picks.picked() : tracks;
-        // The click trail (LOGGING.md §The click trail).
-        diag.log("ui:act", { at: context, do: act.dataset.act ?? "", n: list.length, picked: picks.size() > 0 });
-        runListAction(act.dataset.act ?? "", list, (l, i) => start(l, i));
-        return;
-      }
-      const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");
-      if (!row) return;
-      const picked = tracks[Number(row.dataset.row)];
-      if (picked?.unreleased) {
-        // Not a play and not a pick: say when it comes out (his call 2B, 2026-09-24).
-        diag.log("ui:act", { at: context, do: "unreleased", i: Number(row.dataset.row) });
-        toast({ kind: "warn", text: unreleasedToast(picked) });
-        return;
-      }
-      if (picked && picks.click(e, picked)) return; // Ctrl / Shift → a pick, not a play
-      diag.log("ui:act", { at: context, do: "row", i: Number(row.dataset.row), n: tracks.length });
-      start(tracks, Number(row.dataset.row));
-    });
-    body.addEventListener("contextmenu", (e) => {
-      const row = (e.target as HTMLElement).closest<HTMLElement>("[data-row]");
-      if (!row) return;
-      e.preventDefault();
-      const { tracks, context } = cur();
-      const t = tracks[Number(row.dataset.row)];
-      if (t && picks.size() && picks.isPicked(t)) {
-        menuAt(e, picksMenu(picks.picked(), context));
-        return;
-      }
-      if (t) songMenuAt(e, t);
-    });
-  };
-
-  // Body fillers, split from the open* wrappers so the drill-ins can reuse them:
-  // a drill opens the pane on the FALLBACK name, then fills once the id resolves.
-  // What the hero knows before the tracks land: the result tile's own facts. Anything
-  // missing (a drill-in only has a name) falls back to the first track (CollectionMeta,
-  // at module scope so a pane record can hold it).
-  const heroHTML = (kind: "albums" | "playlists", m: CollectionMeta, tracks: Track[]): string => {
-    const t0 = tracks[0];
-    const cover = heroCover(m.artwork ?? t0?.artwork, m.title);
-    const total = formatTotal(tracks.reduce((n, t) => n + (t.durationMs ?? 0), 0));
-    const out = tracks.filter((t) => !t.unreleased).length;
-    const count =
-      out < tracks.length ? `${out} of ${tracks.length} songs out` : `${tracks.length} song${tracks.length === 1 ? "" : "s"}`;
-    if (kind === "albums") {
-      const artist = m.artistName ?? t0?.artistName ?? "";
-      // A pre-release album reads "Coming 09/25" in place of the year (his call 1A,
-      // 2026-09-24). An unreleased song carries the album's own date (apple.rs).
-      const date = tracks.find((t) => t.unreleased)?.releaseDate ?? m.releaseDate ?? t0?.releaseDate;
-      const at = releaseAt(date);
-      const year = at > Date.now() ? comingMark(new Date(at)) : date?.slice(0, 4);
-      const sub = artist
-        ? `<button class="lib-hero__sub lib-hero__sub--link" type="button" data-hero-artist="${esc(artist)}">${esc(artist)}<span class="lib-hero__chev" aria-hidden="true">›</span></button>`
-        : "";
-      // The Last.fm facts box beside the cover (LISTENERS.md §7): drawn now when its answer is
-      // known this session, else filled by `fillCollection` when the call answers.
-      const box = artist ? albumInfoHTML(albumInfoNow(artist, m.title)) : "";
-      return `<div class="lib-hero lib-hero--aside"><div class="lib-hero__main">${cover}<span class="lib-hero__title">${esc(m.title)}</span>${sub}<span class="lib-hero__meta">${esc([year, count, total].filter(Boolean).join(" · "))}</span></div><div data-artist-info>${box}</div></div>`;
-    }
-    const meta = [count, total, m.curatorName ?? "Apple Music"].filter(Boolean).join(" · ");
-    return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(m.title)}</span><span class="lib-hero__meta">${esc(meta)}</span></div>`;
-  };
-  // `preloaded`: songs a chip flight fetched already (ARTIST-VIEW.md §5) — no second fetch.
-  const fillCollection = (body: HTMLElement, kind: "albums" | "playlists", id: string, meta: CollectionMeta, preloaded?: Track[]) => {
-    body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-    return (preloaded ? Promise.resolve(preloaded) : collectionTracks(kind, id))
-      .then((tracks) => {
-        const what = kind === "albums" ? "the album" : "the playlist";
-        const actions = tracks.length
-          ? actionsRowHTML({ play: `Play ${what} in order`, shuffle: `Shuffle ${what}` })
-          : "";
-        body.innerHTML = heroHTML(kind, meta, tracks) + actions + (tracks.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`);
-        wireTrackList(body, tracks, `search-${kind}:${id}`);
-        // The ♥ state: asked once per install, the first time this hero draws (F1A).
-        if (kind === "albums") reconcileAlbum({ id, seed: tracks.find((t) => t.catalogId)?.catalogId, name: meta.title });
-        else reconcilePlaylist({ kind: "playlists", id, name: meta.title });
-        // Right-click anywhere on the hero: the album's or playlist's own menu, without its
-        // own Go to row (you are there) — CONTEXT-MENUS.md §3a, his call 1A (2026-09-24).
-        // The album's Last.fm facts box (LISTENERS.md §7), when it was not drawn with the hero.
-        if (kind === "albums") {
-          const artist = meta.artistName ?? tracks[0]?.artistName ?? "";
-          const holder = body.querySelector<HTMLElement>("[data-artist-info]");
-          if (artist && holder && !albumInfoNow(artist, meta.title))
-            void albumInfoFor(artist, meta.title).then((i) => {
-              // In place, the cover sliding (hero-slide.ts).
-              const hero = holder.closest<HTMLElement>(".lib-hero");
-              if (body.isConnected && hero) setHeroAside(hero, albumInfoHTML(i));
-            });
-          body.addEventListener("click", (e) => {
-            const t = e.target as HTMLElement;
-            const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
-            if (lfm) return openArtistLastfm(lfm);
-            const fold = t.closest<HTMLElement>("[data-artist-info-toggle]");
-            if (fold) toggleInfoBox(fold);
-          });
-        }
-        body.querySelector<HTMLElement>(".lib-hero")?.addEventListener("contextmenu", (e) => {
-          // A Last.fm facts box: its own small menu (LISTENERS.md §7.1 item 5).
-          const box = infoBoxAt(e.target);
-          if (box) return openInfoBoxMenu(e, box);
-          e.preventDefault();
-          const context = `search-${kind}:${id}`;
-          menuAt(
-            e,
-            kind === "albums"
-              ? albumMenu(
-                  { title: meta.title, artistName: meta.artistName ?? tracks[0]?.artistName, artwork: meta.artwork ?? tracks[0]?.artwork, catalogId: id, known: tracks, catalog: true },
-                  { context, here: true },
-                )
-              : playlistMenu(
-                  { catalogId: id, name: meta.title, artwork: meta.artwork, curatorName: meta.curatorName, canEdit: false, isPublic: true },
-                  () => tracks,
-                  { context, catalog: true, here: true },
-                ),
-          );
-        });
-        // The album hero's artist subtitle → the artist pane, via the album's own relationship.
-        body.querySelector<HTMLElement>("[data-hero-artist]")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          goToArtist("albums", id, (e.currentTarget as HTMLElement).dataset.heroArtist ?? "Artist");
-        });
-      })
-      .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
-  };
-  // The pane header shows the kind; the hero owns the name.
-  const openCollection = (kind: "albums" | "playlists", id: string, meta: CollectionMeta, preloaded?: Track[], memory?: { instant?: boolean; scroll?: number }) =>
-    pushPane(
-      kind === "albums" ? "Album" : "Playlist",
-      (body) => fillCollection(body, kind, id, meta, preloaded),
-      { kind: kind === "albums" ? "album" : "playlist", id, meta },
-      memory,
-    );
-
-  // The artist pane (ARTIST-VIEW.md): a round hero, Albums, Featured Playlists, Your Playlists,
-  // Top Songs. Your Playlists lands after the pane (zero Apple calls; "Check N more" fetches
-  // each unopened Apple playlist once).
-  const fillArtist = (body: HTMLElement, id: string) => {
-      body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-      return artistDetail(id)
-        .then((d) => {
-          let yours: YourPlaylists | undefined;
-          let checking: CheckProgress | null = null;
-          const albums = d.albums
-            .map((a) => tileCell("album", a.catalogId ?? "", a.title, a.releaseDate?.slice(0, 4) ?? "", art(a.artwork?.urlTemplate, 128)))
-            .join("");
-          const genre = d.artist.genres?.[0];
-          body.innerHTML = `
-            <div class="lib-hero lib-hero--aside"><div class="lib-hero__main">${heroCover(d.artist.artwork, d.artist.name, undefined, undefined, true)}<span class="lib-hero__title">${esc(d.artist.name)}</span>${genre ? `<span class="lib-hero__meta">${esc(genre)}</span>` : ""}</div><div data-artist-info>${artistInfoHTML(artistInfoNow(d.artist.name))}</div></div>
-            ${d.topSongs.length ? actionsRowHTML({ play: `Play ${d.artist.name}'s Top Songs from Apple Music, in order`, shuffle: `Shuffle ${d.artist.name}'s Top Songs from Apple Music` }) : ""}
-            ${albums ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${albums}</div>` : ""}
-            <div data-shelves>${artistShelvesHTML(d.featuredPlaylists, yours, checking)}</div>
-            <div class="search__label">Top Songs</div>
-            ${d.topSongs.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`}`;
-          const shelves = body.querySelector<HTMLElement>("[data-shelves]")!;
-          const paintShelves = () => { shelves.innerHTML = artistShelvesHTML(d.featuredPlaylists, yours, checking); };
-          // The Last.fm facts box beside the hero (LISTENERS.md §6): drawn in the first paint
-          // when the answer is known this session, else filled when the call answers.
-          const infoHolder = body.querySelector<HTMLElement>("[data-artist-info]");
-          if (!artistInfoNow(d.artist.name))
-            void artistInfoFor(d.artist.name).then((i) => {
-              // In place, the photo sliding (hero-slide.ts).
-              const hero = infoHolder?.closest<HTMLElement>(".lib-hero");
-              if (hero && body.isConnected) setHeroAside(hero, artistInfoHTML(i));
-            });
-          const loadYours = () =>
-            yourPlaylistsFor(d.artist.name)
-              .then((y) => { yours = y; paintShelves(); })
-              .catch((err) => console.error("[search] your playlists", err));
-          void loadYours();
-          wireTrackList(body, d.topSongs, `search-artist:${id}`);
-          body.addEventListener("click", (e) => {
-            const t = e.target as HTMLElement;
-            const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
-            if (lfm) return openArtistLastfm(lfm);
-            const fold = t.closest<HTMLElement>("[data-artist-info-toggle]");
-            if (fold) return toggleInfoBox(fold);
-            const shelf = t.closest<HTMLElement>("[data-shelf-item]");
-            if (shelf) {
-              const i = Number(shelf.dataset.shelfIdx);
-              const kind = shelf.dataset.shelfItem;
-              if (kind === "featured") {
-                const p = d.featuredPlaylists[i];
-                if (p?.catalogId) openCollection("playlists", p.catalogId, { title: p.name, artwork: p.artwork, curatorName: p.curatorName });
-              } else if (kind === "yours") {
-                const p = yours?.hits[i]?.p;
-                const lid = p?.libraryId;
-                if (p && lid) handOff(shelf, "playlists", () => playlistTracks(p), (ts) => requestOpenPlaylist(lid, ts), p.trackCount);
-              } else if (kind === "check" && yours && !checking) {
-                checking = { done: 0, total: yours.unchecked.length };
-                paintShelves();
-                void checkPlaylists(yours.unchecked, (pr) => { checking = pr; paintShelves(); })
-                  .then(loadYours)
-                  .finally(() => { checking = null; paintShelves(); });
-              }
-              return;
-            }
-            const tile = t.closest<HTMLElement>("[data-album]");
-            if (!tile) return;
-            const al = d.albums.find((a) => a.catalogId === tile.dataset.album);
-            if (al?.catalogId) openCollection("albums", al.catalogId, { title: al.title, artwork: al.artwork, artistName: d.artist.name, releaseDate: al.releaseDate });
-          });
-          // Tiles in a pane live outside `root`, so the root's delegated right-click doesn't
-          // reach them — wire the same menus here (else the native menu shows).
-          body.addEventListener("contextmenu", (e) => {
-            const t = e.target as HTMLElement;
-            // The Last.fm facts box: its own small menu (LISTENERS.md §7.1 item 5).
-            const box = infoBoxAt(t);
-            if (box) return openInfoBoxMenu(e, box);
-            // The hero: the artist's own menu, without Go to Artist (you are there).
-            if (t.closest(".lib-hero")) {
-              e.preventDefault();
-              menuAt(e, artistMenu({ name: d.artist.name, catalogId: id, artwork: d.artist.artwork }, { context: `search-artist:${id}`, here: true }));
-              return;
-            }
-            const shelf = t.closest<HTMLElement>("[data-shelf-item]");
-            if (shelf) {
-              const i = Number(shelf.dataset.shelfIdx);
-              if (shelf.dataset.shelfItem === "featured") {
-                const p = d.featuredPlaylists[i];
-                if (p?.catalogId) { e.preventDefault(); playlistMenuAt(e, p); }
-              } else if (shelf.dataset.shelfItem === "yours") {
-                const p = yours?.hits[i]?.p;
-                if (p) { e.preventDefault(); menuAt(e, playlistMenu(p, () => playlistTracks(p), { context: `playlist:${p.libraryId}` })); }
-              }
-              return;
-            }
-            const tile = t.closest<HTMLElement>("[data-album]");
-            const al = tile?.dataset.album ? d.albums.find((a) => a.catalogId === tile.dataset.album) : undefined;
-            if (!al) return;
-            e.preventDefault();
-            albumMenuAt(e, al, true);
-          });
-        })
-        .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
-  };
-  // The pane header shows the kind; the hero owns the name (as album panes do).
-  const openArtist = (id: string, _name: string, memory?: { instant?: boolean; scroll?: number }) =>
-    pushPane("Artist", (body) => fillArtist(body, id), { kind: "artist", id }, memory);
-
-  // ── the song pane and the writer pane (CREDITS.md §7) ──
-  // A song is the one thing every card lists and no card could open. Its pane answers
-  // "who made this": Apple's writers, then the facts we already hold. Every writer is a
-  // chip, and a chip opens the writer pane — which is the producer-web idea at its
-  // smallest (CREDITS.md §5.2): a name string as a node, answered by a local join.
-
-  const factsHTML = (t: Track): string => {
-    const rows: [string, string][] = [];
-    if (t.albumName) rows.push(["Album", t.albumName]);
-    const genres = (t.genres ?? []).filter((g) => g !== "Music");
-    if (genres.length) rows.push(["Genre", genres.join(", ")]);
-    if (t.releaseDate) rows.push(["Released", t.releaseDate.slice(0, 10)]);
-    const clock = t.durationMs ? `${Math.floor(t.durationMs / 60000)}:${String(Math.round((t.durationMs % 60000) / 1000)).padStart(2, "0")}` : "";
-    if (clock) rows.push(["Length", clock]);
-    if (t.isrc) rows.push(["ISRC", t.isrc]);
-    if (!rows.length) return "";
-    return `<div class="search__label">Details</div><dl class="credit__facts">${rows
-      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
-      .join("")}</dl>`;
-  };
-
-
-  const fillSong = (body: HTMLElement, t: Track) => {
-    // "Reading…" is shown only while WE are the reason there is nothing (CREDITS.md §8):
-    // a song we have never read. Apple having no credits is a settled answer, not a wait.
-    let reading = false;
-    let readFailed = false;
-    const paint = () => {
-      const credit = t.catalogId ? creditsFor(t.catalogId) : undefined;
-      const writers = credit?.names ?? [];
-      const gap = readFailed
-        ? CREDITS_READ_FAILED
-        : reading
-          ? CREDITS_READING
-          : credit?.state === "none"
-            ? CREDITS_NONE
-            : CREDITS_READING; // never read, and the read is about to start
-      body.innerHTML = `
-        <div class="lib-hero">${heroCover(t.artwork, t.title)}<span class="lib-hero__title">${esc(t.title)}</span><span class="lib-hero__sub">${esc(t.artistName)}</span></div>
-        <div class="search__label">${esc(CREDITS_LABEL)}</div>
-        ${writers.length
-          ? `<div class="credit__chips">${writers
-              .map((n) => `<button type="button" class="credit__chip" data-writer="${esc(n)}" title="Other songs by this name">${esc(n)}</button>`)
-              .join("")}</div>`
-          : `<p class="search__prompt">${esc(gap)}</p>`}
-        ${factsHTML(t)}`;
-      body.querySelectorAll<HTMLElement>("[data-writer]").forEach((chip) => {
-        chip.addEventListener("click", () => openWriter(chip.dataset.writer!));
-      });
-    };
-    paint();
-    return primeCredits([t.catalogId]).then(async () => {
-      if (!body.isConnected) return;
-      paint();
-      // Never read: that gap is ours, so close it instead of blaming Apple. One call.
-      if (t.catalogId && !creditsFor(t.catalogId)) {
-        reading = true;
-        paint();
-        try {
-          await fetchCredits([t.catalogId]);
-        } catch {
-          readFailed = true;
-        }
-        reading = false;
-        if (body.isConnected) paint();
-      }
-    });
-  };
-
-  const openSong = (t: Track, memory?: { instant?: boolean; scroll?: number }) =>
-    pushPane("Song", (body) => fillSong(body, t), { kind: "song", track: t }, memory);
-
-  const fillWriter = (body: HTMLElement, name: string) => {
-    body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-    const paint = (songs: WriterSong[], searching: boolean) => {
-      if (!body.isConnected) return;
-      const playable = songs.filter((s) => s.track).map((s) => s.track!);
-      const rest = songs.filter((s) => !s.track);
-      const count = songs.length === 1 ? "1 song" : `${songs.length} songs`;
-      body.innerHTML = `
-        <div class="lib-hero">${heroCover(undefined, name, undefined, undefined, true)}<span class="lib-hero__title">${esc(name)}</span><span class="lib-hero__sub">Writer</span></div>
-        <p class="credit__note">${esc(count)} · ${esc(WRITER_REACH)}</p>
-        ${playable.length ? `<div class="search__label">In your app</div>${playable.map(listRow).join("")}` : ""}
-        ${rest.length
-          ? `<div class="search__label">Also credited</div>${rest
-              .map((s) => `<div class="search__row search__row--flat"><div class="search__song-text"><span class="search__song-title">${esc(s.title)}</span><span class="search__song-artist">${esc(s.artistName)}</span></div></div>`)
-              .join("")}`
-          : ""}
-        ${!songs.length ? `<p class="search__prompt">${esc(WRITER_EMPTY)}</p>` : ""}
-        <div class="search__label">More</div>
-        <button type="button" class="credit__chip" data-apple ${searching ? "disabled" : ""}>${
-          searching ? "Searching…" : `Search Apple Music for “${esc(name)}”`
-        }</button>
-        <p class="credit__note">${esc(WRITER_SEARCH_NOTE)}</p>`;
-      if (playable.length) wireTrackList(body, playable, `writer:${name}`);
-      // The search fills THIS level in place (the user's call 2026-09-17): leaving for the
-      // results would lose the page you asked the question from.
-      body.querySelector<HTMLElement>("[data-apple]")?.addEventListener("click", () => {
-        paint(songs, true);
-        void searchAppleForWriter(name).then((found) => paint(found, false));
-      });
-    };
-    return songsByWriter(name).then((songs) => paint(songs, false));
-  };
-
-  const openWriter = (name: string, memory?: { instant?: boolean; scroll?: number }) =>
-    pushPane("Writer", (body) => fillWriter(body, name), { kind: "writer", name }, memory);
-
-  // ── drill-ins ("Go to Artist" / "Go to Album") ──
-  // Open the target pane immediately on the fallback name (the source row's own
-  // artist/album string), resolve the catalog id via one memoized `include=` hop,
-  // then relabel + fill in place. The resolve is session-cached in search.ts, so a
-  // repeat drill on the same row costs no Apple call.
-  const drillRelated = (
-    kind: "songs" | "albums",
-    id: string,
-    rel: "artists" | "albums",
-    fallbackName: string,
-    fill: (body: HTMLElement, targetId: string, resolvedName: string, ref: NamedRef) => void,
-    memory?: { instant?: boolean; scroll?: number },
-  ) =>
-    pushPane(
-      fallbackName,
-      (body, setTitle) => {
-        body.innerHTML = `<p class="search__prompt">Loading…</p>`;
-        return catalogRelated(kind, id, rel)
-          .then((ref) => {
-            if (!ref) { body.innerHTML = `<p class="search__prompt">Not found.</p>`; return; }
-            // The pane header reads the kind; the hero carries the name.
-            setTitle(rel === "albums" ? "Album" : "Artist");
-            fill(body, ref.id, ref.name || fallbackName, ref);
-          })
-          .catch((e) => { body.innerHTML = `<p class="search__prompt">Failed to load: ${esc(String(e))}</p>`; });
-      },
-      { kind: "related", srcKind: kind, srcId: id, rel, name: fallbackName },
-      memory,
-    );
-  const goToArtist = (kind: "songs" | "albums", id: string, name: string) =>
-    drillRelated(kind, id, "artists", name, fillArtist);
-  const goToAlbum = (songId: string, name: string) =>
-    drillRelated("songs", songId, "albums", name, (body, albumId, resolved, ref) =>
-      fillCollection(body, "albums", albumId, { title: resolved, releaseDate: ref.releaseDate }));
-
-  // Remote drill-ins: other cards' "Go to Artist/Album" summon this card (go-to.ts)
-  // and emit an intent here. Same machinery as an in-card drill — a pane pushes on top
-  // of whatever the search card is currently showing.
-  let tookRequest = false; // a held request beats card memory (CARD-MEMORY.md §4 rule 1)
+  /** A song's or an album's artist, or a song's album, by one memoized hop (DrillIntent). The
+   *  name is the source row's own: shown until Apple answers, never asked of Last.fm. */
   const runDrill = (intent: DrillIntent) => {
     tookRequest = true;
-    if (intent.rel === "artists") goToArtist(intent.srcKind, intent.srcId, intent.name);
-    else goToAlbum(intent.srcId, intent.name);
+    if (intent.rel === "artists")
+      open(
+        levels.fullArtist(
+          { name: intent.name, named: false, albumId: intent.srcKind === "albums" ? intent.srcId : undefined },
+          intent.srcKind === "songs" ? intent.srcId : undefined,
+        ),
+      );
+    else open(levels.fullAlbum({ songId: intent.srcId, name: intent.name }));
   };
   const unsubDrill = onDrillRequest(runDrill);
-  // A Featured Playlists tile on the Library artist view opens its playlist here (ARTIST-VIEW.md §5).
+  // A Featured Playlists tile on the Library artist view, with its songs from the chip flight.
   const runPane = (i: PlaylistPaneIntent) => {
     tookRequest = true;
-    openCollection("playlists", i.id, { title: i.name, artwork: i.artwork, curatorName: i.curatorName }, i.tracks);
+    open(levels.playlist({ id: i.id, name: i.name, artwork: i.artwork, curatorName: i.curatorName, tracks: i.tracks }));
   };
   const unsubPlaylistPane = onPlaylistPaneRequest(runPane);
-  // An album opened by its OWN id, from any card that holds one (go-to.ts): no hop, the
-  // pane fills straight away.
+  // An album by its OWN id, from any card that holds one: no hop.
   const runAlbumPane = (i: AlbumPaneIntent) => {
     tookRequest = true;
-    openCollection("albums", i.id, { title: i.name, artwork: i.artwork, artistName: i.artistName, releaseDate: i.releaseDate });
+    open(levels.fullAlbum({ albumId: i.id, name: i.name, artwork: i.artwork, artist: i.artistName, releaseDate: i.releaseDate }));
   };
   const unsubAlbumPane = onAlbumPaneRequest(runAlbumPane);
-  // An artist opened by its OWN id (a Search artist tile's "Go to Artist", a pinned artist).
+  // An artist by its OWN id (a Search artist tile's "Go to Artist", a pinned artist).
   const runArtistPane = (i: ArtistPaneIntent) => {
     tookRequest = true;
-    openArtist(i.id, i.name);
+    open(levels.fullArtist({ name: i.name, id: i.id }));
   };
   const unsubArtistPane = onArtistPaneRequest(runArtistPane);
-  // "Song Credits" from any card's right-click menu (go-to.ts).
+  // "Song Credits" from any card's right-click menu.
   const runSongPane = (i: SongPaneIntent) => {
     tookRequest = true;
-    openSong(i.track);
+    open(levels.song(i.track));
   };
   const unsubSongPane = onSongPaneRequest(runSongPane);
 
@@ -1083,19 +575,19 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     const artist = t.closest<HTMLElement>("[data-artist]");
     if (artist?.dataset.artist) {
       const a = results?.artists.find((x) => x.catalogId === artist.dataset.artist);
-      openArtist(artist.dataset.artist, a?.name ?? "Artist");
+      open(levels.fullArtist({ name: a?.name ?? "", id: artist.dataset.artist, artwork: a?.artwork }));
       return;
     }
     const album = t.closest<HTMLElement>("[data-album]");
     if (album?.dataset.album) {
       const al = results?.albums.find((x) => x.catalogId === album.dataset.album);
-      openCollection("albums", album.dataset.album, { title: al?.title ?? "Album", artwork: al?.artwork, artistName: al?.artistName, releaseDate: al?.releaseDate });
+      open(levels.fullAlbum({ albumId: album.dataset.album, name: al?.title ?? "Album", artwork: al?.artwork, artist: al?.artistName, releaseDate: al?.releaseDate }));
       return;
     }
     const pl = t.closest<HTMLElement>("[data-playlist]");
     if (pl?.dataset.playlist) {
       const p = results?.playlists.find((x) => x.catalogId === pl.dataset.playlist);
-      openCollection("playlists", pl.dataset.playlist, { title: p?.name ?? "Playlist", artwork: p?.artwork, curatorName: p?.curatorName });
+      open(levels.playlist({ id: pl.dataset.playlist, name: p?.name ?? "Playlist", artwork: p?.artwork, curatorName: p?.curatorName }));
       return;
     }
     const st = t.closest<HTMLElement>("[data-station]");
@@ -1167,11 +659,11 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     }
   });
 
-  // ── drag sources (DRAG-DROP.md §2): songs, albums, playlists, stations — on the root and
-  // in every drill pane. A collection's songs are fetched only at the drop. Artists aren't
-  // song lists. ──
+  // ── drag sources (DRAG-DROP.md §2): songs, albums, playlists, stations on the results. A
+  // collection's songs are fetched only at the drop. Artists aren't song lists. A level's rows
+  // are the engine's own drags. ──
   const drag = rowDrag({
-    root: panes,
+    root: rootPane,
     label: "search",
     rowAt: (target) => {
       if (isAddSquare(target)) return null; // a press on the + adds; it never drags the row
@@ -1186,16 +678,6 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         const many = setPayload(t, "search");
         if (many) return { row: song, index: 0, payload: many };
         return t ? { row: song, index: 0, payload: { source: "search", kind: "song", tracks: () => [t], context: "search" } } : null;
-      }
-      const row = target.closest<HTMLElement>("[data-row]");
-      if (row) {
-        const scroll = row.closest<HTMLElement>(".spane__scroll");
-        const list = scroll ? paneTracks.get(scroll) : undefined;
-        const t = list?.tracks[Number(row.dataset.row)];
-        if (t?.unreleased) return null; // nothing to drop: Apple will not play it yet
-        const many = list ? setPayload(t, list.context) : null;
-        if (many) return { row, index: 0, payload: many };
-        return t && list ? { row, index: 0, payload: { source: "search", kind: "song", tracks: () => [t], context: list.context } } : null;
       }
       const album = target.closest<HTMLElement>("[data-album]");
       if (album?.dataset.album) {
@@ -1223,21 +705,14 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     },
   });
 
-  backEl.addEventListener("click", backPane);
-
   renderEmpty();
-  notifyHeader();
   takeTerm(); // this card was mounted BY a term request
-  // Arrows and the Menu key over the rows and tiles; Escape pops a drill pane (list-keys.ts).
-  // Enter / Space are the rows' own (above).
-  const unwireKeys = wireListKeys(panes, {
+  // Arrows and the Menu key over the results' rows and tiles (list-keys.ts). Enter / Space are
+  // the rows' own (above). A level's rows have the engine's keys, Escape = Back among them.
+  const unwireKeys = wireListKeys(root, {
     rows: "[role='button']",
     activate: false,
-    back: () => {
-      if (!paneStack.length) return false;
-      popPane();
-      return true;
-    },
+    back: () => false,
   });
   // …or BY a drill (CARD-GROW.md §14.5): the intent waits in go-to.ts until this card exists.
   const heldDrill = takeDrillRequest();
@@ -1251,33 +726,16 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const heldSong = takeSongPaneRequest();
   if (heldSong) runSongPane(heldSong);
 
-  /** Card memory (CARD-MEMORY.md §5a): the term, the results place and every pane. */
+  /** Card memory (CARD-MEMORY.md §5a): the term, the results place, and the open levels. */
   const snapshot = (): SearchSnapshot => ({
-    v: 1,
+    v: 2,
     term: input.value,
     scroll: root.scrollTop,
-    panes: paneStack
-      .map((p) => {
-        const open = paneOpen.get(p);
-        return open ? { open, scroll: p.querySelector<HTMLElement>(".spane__scroll")?.scrollTop ?? 0 } : null;
-      })
-      .filter(Boolean) as { open: PaneOpen; scroll: number }[],
+    levels: engine.depth() > 1 ? engine.snapshot() : null,
   });
 
-  const openFrom = (o: PaneOpen, scroll: number) => {
-    const memory = { instant: true, scroll };
-    if (o.kind === "artist") openArtist(o.id, "Artist", memory);
-    else if (o.kind === "song") openSong(o.track, memory);
-    else if (o.kind === "writer") openWriter(o.name, memory);
-    else if (o.kind === "related") drillRelated(o.srcKind, o.srcId, o.rel, o.name, o.rel === "artists" ? fillArtist : (body, albumId, resolved, ref) => fillCollection(body, "albums", albumId, { title: resolved, releaseDate: ref.releaseDate }), memory);
-    else openCollection(o.kind === "album" ? "albums" : "playlists", o.id, o.meta, undefined, memory);
-  };
-
   const restore = (s: unknown) => {
-    if (!isSearchSnapshot(s) || tookRequest || paneStack.length) return;
-    // The way back belongs to the TOP pane a restore opens, not to the first one pushed.
-    const ret = pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS ? pendingReturn.cb : null;
-    pendingReturn = null;
+    if (!isSearchSnapshot(s) || tookRequest || engine.depth() > 1) return;
     if (s.term) {
       input.value = s.term;
       field.sync();
@@ -1285,11 +743,11 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       if (s.term.trim().length >= MIN_CHARS) runSearch(s.term.trim());
     }
     if (s.scroll) root.scrollTop = s.scroll;
-    s.panes.forEach((p) => openFrom(p.open, p.scroll));
-    const top = paneStack[paneStack.length - 1];
-    if (ret && top) {
-      paneReturn.set(top, ret);
-      syncHeader();
+    // The levels come back in place, as the Library's do (CARD-MEMORY.md §4 rule 2); the way
+    // back of a drill swap rides the engine's own (`onReturn`).
+    if (s.levels) {
+      instantNext = true;
+      if (!engine.restore(s.levels)) instantNext = false;
     }
   };
   restore(mountOpts?.memory);
@@ -1303,6 +761,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       document.removeEventListener("pointerdown", onDocDown);
       drag.destroy();
       field.destroy();
+      engine.destroy();
       queryToken++; // orphan any in-flight response
       filterDropdown.destroy(); // drop doc listeners + unregister from the mode fan-out
       unsubDrill(); // stop receiving remote drill intents once unmounted
@@ -1315,7 +774,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     },
     onHeaderChange(cb) {
       headerCbs.add(cb);
-      cb({ title: "Search", atRoot: paneStack.length === 0 });
+      cb({ title: titleEl.textContent ?? "Search", atRoot });
       return () => headerCbs.delete(cb);
     },
   };

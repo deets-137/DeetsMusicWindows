@@ -2,7 +2,7 @@
 status: shipped
 shipped_in: 0.6.0
 desk_test: passed 2026-09-15
-sources: [src/artist-view.ts, src/collection-card.ts, src/library-card.ts, src/search-card.ts]
+sources: [src/artist-view.ts, src/media-levels.ts, src/collection-card.ts, src/library-card.ts, src/search-card.ts]
 updated: 2026-10-13
 ---
 # Artist view — hero, Featured Playlists, Your Playlists
@@ -10,10 +10,12 @@ updated: 2026-10-13
 Designed with the user 2026-09-15, built the same day. Status: **BUILT, desk-tested, shipped (80ac7bb).**
 
 ## Terms
-- **Library artist view** — the view after a click on an artist in the Library card
-  (`library-card.ts` `artistDetail`, a collection-engine context).
-- **Search artist view** — the pane after a click on an artist in the Search card
-  (`search-card.ts` `fillArtist`, plain HTML).
+- **Library artist view** — the view after a click on an artist in the Library card: the Lib
+  level of `artistLevel` in `media-levels.ts` (a collection-engine context; until 2026-10-13
+  `library-card.ts` `artistDetail`).
+- **Search artist view** — the view after a click on an artist in the Search card: the Full
+  level of the same `artistLevel`, since 2026-10-13 (until then `search-card.ts` `fillArtist`,
+  plain HTML). §10.
 - **Hero** — the big cover, title and meta line at the top of a detail view
   (UI-ARCHITECTURE.md §Detail hero).
 - **Shelf** — a labelled horizontal scroller of tiles under the hero.
@@ -330,3 +332,69 @@ No errors in the diag ring; every `library:full` load `failed: false`. The cards
   Most Played lists the most played first. The same sort reads two ways on the two levels.
 - Lucy Park has no Albums shelf in Full or in Search: Apple's artist page sends none for her
   (her releases are EPs and singles). The Lib view shows her 4.
+
+### 10.4 Steps 2–5 as built: the Search card hosts the levels (2026-10-13)
+
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (§10.5, run by Claude on the dev app)
+
+**One change, not four (found in the build, told to him).** Steps 2–5 were planned as four
+commits. They could not stand apart: once the artist pane is an engine level, its Featured tile
+and its songs' Song Credits open a playlist and a song, and an old `.spane` pushed under the
+engine's layer would not show. So steps 2–5 are one change, each page desk-tested on its own.
+
+- `search-card.ts` lost its pane stack (`pushPane`, `fillArtist`, `fillCollection`, `fillSong`,
+  `fillWriter`, `drillRelated`, the pane picks and drags, about 600 lines). It starts the engine
+  on its own head (`initCollectionCard`, `bare: true`, `finder: false`, `grown: () => null`) in
+  the `.search__levels` layer over the results, and opens every page through `mediaLevels`.
+  SEARCH.md §As built (2026-10-13).
+- `collection-card.ts` gained three options: `bare` (an empty, see-through root pane, no
+  toolbar), `finder: false` (Ctrl+F stays the host's), and `toRoot()` (every level closes at
+  once, no slide: a new search).
+- `media-levels.ts` gained `playlist` (Apple's playlist: its own order, curator, the ♥ question,
+  its menu), `song` and `writer` (moved from `library-card.ts`), and `nav` (the Lib rows' drills,
+  now the module's own; the Library's `libNav` is `levels.nav`). `LevelDeps` takes `cell`
+  (`musicCell`), `genre` and `playlistsHere`. The pre-release line is in `albumLevel`.
+- `library-card.ts` `songsGrouping`: a catalog list (`mark`) joins the store before it plays
+  (`addTransientTracks` + `materializeTrack`) and its menus pass `catalog`, as a Search play
+  always did; the Library's Full rows had not.
+- go-to.ts's header rule now says one drill system.
+
+**Decided inside his calls (for him to see):**
+- **The genre question was not a real fork.** No song menu has a Go to Genre row: `drillGenre`
+  is reached only from the Compass, in the Library. The `genre` hook stays for that; in Search
+  it is never reached. Brought to him in error, 2026-10-13.
+- A Full artist opened from a name that may be a whole credit ("A & B": a Go to Artist from
+  another card, an album's artist link) is `named: false`: the name shows until Apple answers,
+  and Last.fm and Your Playlists wait for Apple's own name.
+- A song level's artist link opens the Lib artist when the library holds them, else Apple's page
+  through the song. In Search before, that line was plain text.
+- In Search, a Featured playlist opens in place (`playlistsHere`); in the Library it still opens
+  the Search card after the chip flight (§5).
+- The engine levels inside Search paint `--spane-bg`, as the Search panes did; the dead
+  `.spane .lib-shelves` rule is gone.
+
+### 10.5 Desk test, steps 2–5 (Search; the Library rechecked)
+
+**Run 2026-10-13 (Claude, dev app, Max, Cyber · black-red): all pass.**
+1. Search "thread 27" › THREAD 27 - EP: an Album level in Search — track numbers, ✓ on every
+   song, the facts box, Sort / View, Full | Lib in the card head; no column table though the
+   card grew (the album rule). The results slid out.
+2. Lib on it: your 6 songs, in place in Search. Back: the results, the head "Search", no chips.
+3. Search "lucy park" › the artist: the Full artist (Featured, Your Playlists, Top Songs with ✓).
+4. Its Featured tile: Lucy Park Essentials as a Playlist level in place (18 songs · 48 min ·
+   Apple Music R&B, in the playlist's order). Back: the artist.
+5. Lib on the artist: "4 albums · 10 songs", your songs, in Search.
+6. A row › Song Credits: the Song level (Details, four writer rows) › a writer: the Writer level
+   (4 songs collected). Back, Back: Song, Artist.
+7. From the Queue card, FCUK › Go to Artist: H.LLS's Apple page in Search, the facts box by
+   Apple's name (On tour). Song Credits from the same row: the Song level, two writers.
+8. A new term typed on a level: the levels close at once, the results show, one bare pane left.
+9. Card memory: an album level, then Search swapped with Home from Home's picker: Search came
+   back in the other slot with its term and the album level, the results set aside. Back: the
+   results. The small slot draws the artist with the box folded (Artist info).
+10. The Library: Song Credits from a row opens the song level in place; its artist link opens
+    the Lib artist.
+Layout, terms and slots were put back. The ring held three `t?.closest` errors, all from the
+test's own synthetic Escape sent to `document` (no element): not the app.
+**Not run:** a play from a level row (it would sound on his machine); `joinStore` is read in
+the code only.

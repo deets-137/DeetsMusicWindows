@@ -61,6 +61,13 @@ export function artURL(art: Artwork | undefined, px: number): string | null {
   const s = String(px);
   return art.urlTemplate.replace("{w}", s).replace("{h}", s).replace("{f}", "jpg");
 }
+/** "3:41" for a track length; "" when unknown. */
+export const fmtClock = (ms: number | undefined): string => {
+  if (!ms) return "";
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+
 export const trackId = (t: Track) => t.libraryId ?? t.catalogId ?? `${t.title} ${t.artistName}`;
 
 // The play_stats key is CATALOG-first (`record_play` in library.rs, to match the tracks PK).

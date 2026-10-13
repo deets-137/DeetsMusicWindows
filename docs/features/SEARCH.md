@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-24
-sources: [src/search-card.ts, src/context-menu.ts, src/add-square.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs, src/search.ts, src/release.ts]
-updated: 2026-09-24
+sources: [src/search-card.ts, src/media-levels.ts, src/context-menu.ts, src/add-square.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs, src/search.ts, src/release.ts]
+updated: 2026-10-13
 ---
 # DeetsMusic — Search card (catalog search)
 
@@ -401,3 +401,26 @@ agent get it):
 6. Right-click the album tile › Add to Playlist › a local playlist: two songs go in.
 7. On 2026-09-25 (or later), open the album again with no restart: every row is lit and the hero
    shows the year.
+
+## As built (2026-10-13) — the pages are engine levels
+
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (ARTIST-VIEW.md §10.5, run by Claude)
+
+What a result opens — an artist, an album, a playlist, a song, a writer — is no longer this
+card's own pane. It is a level of the collection-card engine, built by `media-levels.ts`: the
+same page the Library draws, in the same code (ARTIST-VIEW.md §10.1, his calls 2026-10-12/13).
+
+- The results page stays this card's own. The engine starts at the first drill: it runs on the
+  card's head (its Back, its title, the Full | Lib chips in `[data-coll-views]`) over a **bare**
+  root (`CardOptions.bare`), the `.search__levels` layer over the results. The results slide
+  out with the first level and back with the last (the engine's --nav-* motion).
+- Search keeps **compact rows**, never the column table, even grown (`grown: () => null`). An
+  album shows track numbers; a playlist keeps its own order (*Playlist Order*).
+- **Full | Lib** shows on an album and an artist; Lib opens your copy in place, in this card.
+- The search field stays above the levels. A new term closes every level at once
+  (`engine.toRoot()`) and the results show. Ctrl+F stays the field's (`finder: false`).
+- Requests from other cards (go-to.ts: Go to Artist / Album, a pinned album or artist, a
+  Featured playlist, Song Credits) open the same levels here.
+- Card memory: `SearchSnapshot` v2 holds the engine's levels (CARD-MEMORY.md §5a).
+- The pre-release line ("Coming 09/25", "3 of 10 songs out", §Unreleased songs) lives in the
+  shared album builder, so the Library's Full album shows it too.

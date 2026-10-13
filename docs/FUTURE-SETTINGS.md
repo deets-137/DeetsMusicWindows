@@ -997,7 +997,7 @@ catalog-only unless a third mode (below) is built.
 when not — the Library supplies one (`libNav`, closing over the card's `drill` + its
 detail-context builders), Playlists/Rewind pass nothing. The catalog path is the shared
 `go-to.ts` builders (`goToArtistItem`/`goToAlbumItem`) → a drill-intent bus → the Search
-card's `drillRelated`. So the toggle is simply **"does the Library pass its `nav`"**:
+card, which opens the same engine level (since 2026-10-13, ARTIST-VIEW.md §10.1). So the toggle is simply **"does the Library pass its `nav`"**:
 `localStorage` `deets.goTo.target` = `"inPlace" | "search"` (default `"inPlace"`), read where
 the Library builds `libNav` (pass `undefined` for `"search"`). Option (c) is a larger change
 — a new intent that targets the Library card via `requestCard("library")` + a programmatic

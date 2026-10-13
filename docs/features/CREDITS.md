@@ -223,16 +223,22 @@ returns null without a catalog id, so an uploaded track never offers it.
 
 ### 7.2 Two surfaces, one feature
 
-The app has **two drill systems**, and a song belongs to both (go-to.ts, "the rule and its
-limit"):
+> **Part:** built · 2026-10-13 (one drill system, ARTIST-VIEW.md §10.1)
 
-| | Library, Playlists, Radio | Search |
+Until 2026-10-13 the app had two drill systems, and the Search card drew its own song and
+writer panes (the writers as chips). Since then there is one: the song and the writer are
+engine levels in `media-levels.ts` (`songLevel` → `writerLevel`, the writers as rows, his call),
+and both cards that host levels draw the same ones:
+
+| | Library | Search |
 |---|---|---|
-| Engine | the collection-card engine: a stack of `Context` levels | its own `.spane` pane stack |
-| The song level | `songDetail(t)` → `writerDetail(name)`, in place | a `song` and a `writer` pane kind |
-| Reached by | `LibNav.drillSong` | the `requestSongPane` bus |
-| Back | the card's own Back | the pane's Back |
-| Memory | `song:<catalogId>`, `writer:<name>` keys + `resolve` | `PaneOpen` in the snapshot |
+| The song level | `levels.song(t)` → `levels.writer(name)`, in place | the same levels, over the results |
+| Reached by | `LibNav.drillSong` | the `requestSongPane` bus, or `LibNav.drillSong` on a level |
+| Back | the card's own Back | the card's own Back (the engine's) |
+| Memory | `song:<catalogId>`, `writer:<name>` keys + `resolve` | the same keys (a song met off the library is kept for the session) |
+
+The song's artist link opens the Lib artist when the library holds them, else Apple's page
+through the song (one memoized hop).
 
 **Which one a verb uses is decided by the menu, not by the pane.** `goToItems` branches on
 `nav`: a card that drills locally keeps Song Credits local, exactly as it keeps Go to Artist
