@@ -1,13 +1,14 @@
 ---
 status: built
 desk_test: passed 2026-09-24
-sources: [demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
-updated: 2026-09-28
+sources: [demo/boot.ts, demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
+updated: 2026-10-12
 ---
 # DeetsMusic — Web demo
 
-A copy of the real UI that runs in a browser on deets.solutions, with mock tracks. Visitors
-can try the look before they install. It also serves as a portfolio piece.
+A copy of the real UI that runs in a browser on deets.solutions. Since 2026-10-12 its songs
+are the owner's Songs of the Day, with Apple's previews (§15). Visitors can try the look
+before they install. It also serves as a portfolio piece.
 
 > **Status (2026-09-21): BUILT on branch `demo-time`** (this repo, and a local `demo-time` in
 > `../DeetsSolutions`, not pushed). §9 = as built; where it differs from §2–§6, §9 is the code.
@@ -61,6 +62,8 @@ So the seam is the module import, not each call site. In the web build, Vite ali
    Only the look rows show. The other sections are hidden in the web build.
 
 ## 4. The mock catalog
+
+> Since 2026-10-12 the songs are the owner's Songs of the Day, with Apple's covers (§15).
 
 - About 60 tracks over 8 albums and 5 artists, all invented names.
 - Covers: generated with the app's own playlist cover styles (Letters, Mosaic, Note), or free
@@ -274,3 +277,116 @@ The Rewind card is on the slot menus.
   follow the app's own `set_size` and record a surface change (SHOTS.md §5c).
 
 Neither reaches deets.solutions until the next `release:publish` (§9.8).
+
+## 15. The songs are his Songs of the Day (2026-10-12)
+> **Part:** built · 2026-10-12 · desk test open (§15.8)
+
+The invented catalog (§4) is gone. The demo plays the owner's own Songs of the Day: the rows
+of the site's journal feed (`/sotd/songs.json`, DeetsOTD.md §1b) that he posted. Real covers,
+real names, and Apple's 30-second preview when a visitor presses Play.
+
+### 15.1 His calls (2026-10-12)
+| fork | choice |
+|---|---|
+| Where the real songs go | **Everywhere.** No mock catalog stays, the shots runner included. |
+| Sound | **Apple's 30-second preview** on Play. |
+| Where the songs come from | **The live feed**, read when the page loads. |
+| Which songs | **Only his picks** (author "Deets"). No friend's pick and no friend's name. |
+| The Apple link | **A panel beside the frame**: Apple's badge, then the song, artist and album. |
+| What the feed does not fill | **Built from his picks**: playlists, stations, artist pictures, the Diary sample. |
+| A feed that does not load | **A copy built into the demo** at build time. |
+
+Why the panel: Apple lets a developer use a preview "only to promote store content", and a
+sample must sit "proximate to a store badge" (the iTunes Search API terms). Right-click ›
+Copy Link exists in the demo too, but it copies the link; it is not a badge beside the sound.
+
+### 15.2 The feed
+- `demo/catalog.ts` fetches `/sotd/songs.json` (same origin on the site; 4 s limit) and keeps
+  the rows with `author: "Deets"`. The author field goes no further.
+- The song and album ids come from each row's `apple_music_url` (`…/album/<slug>/<album>?i=<song>`),
+  so Copy Link and the panel's badge open the real song. A song picked twice keeps its latest day.
+- The cover URL becomes a template (`…/600x600bb.jpg` → `…/{w}x{h}bb.{f}`), so the app asks
+  Apple's image server for the size it draws.
+- The feed has no artist id. An artist's id is a stable number made from the name, so Copy
+  Link on an artist gives a link that does not open (§15.7).
+- **The copy built in (fork 7A):** `vite.demo.config.ts` makes the module `virtual:sotd-picks`
+  from `../DeetsSolutions/sotd/songs.json`: his rows only, only the fields the demo reads.
+  `demo:build` fails when the file is missing or has no picks of his.
+- **The dev server** (`npm run demo`, and the shots runner) serves `/sotd/songs.json` from the
+  same file, so a dev run reads the feed the same way the site does.
+
+### 15.3 The start
+The catalog waits for the feed (a top-level `await`), and `main.ts` must not run before it.
+`demo/boot.ts` now takes `main.ts`'s place in the page: it loads the shim (which loads the
+catalog), then `main.ts`. `main.ts` starts on `DOMContentLoaded`, which a slow feed lets pass,
+so `boot.ts` sends that event to `window` again when it already passed. The demo build targets
+ES2022 for the `await`.
+
+### 15.4 Sound, the clock, the album light
+- **The preview** plays on an `<audio id="apple-music-player">`, MusicKit's own element id, so
+  the Press record reads its exact clock (VINYL.md) and the Sound graph can route it: Apple's
+  preview server sends `Access-Control-Allow-Origin: *` and the element is `crossorigin`.
+- **The song's length in the player is the preview's (30 s)**, so the bar and the song end
+  agree with what the visitor hears. Lists still show the real length from the feed.
+- `music.volume` reaches the element, so the app's volume, duck and fades work.
+- A browser that refuses the sound pauses the player. A preview that does not load plays the
+  song silent on the old timer.
+- **The album light:** the feed has no palette, so `album_palette` reads a 48 px copy of the
+  cover and runs the rule a user's own picture uses (`paletteFromPixels`, album-slots.ts).
+  Apple's image server allows the read. One read per cover per visit. Stations keep drawn covers.
+
+### 15.5 The Apple Music panel (`../DeetsSolutions/deetsmusic/demo/`)
+- The shim posts `nowplaying` with the song (title, artist, album, `music.apple.com/song/<id>`)
+  on each song change and play state, and once at start with the song the saved queue opens on.
+- `demo.js` fills the panel: Apple's badge (`listen-on-apple-music.svg`, downloaded from
+  Apple's marketing tools, not redrawn), then the title, the artist and the album. The badge
+  links to the song. No song: no panel.
+- It sits beside the frame when the app fits beside it at full size, else it wraps below.
+  Max is wider than the room beside it on most screens, so there the panel is below the frame
+  (he found it there, 2026-10-13). It takes the app's theme and skin, like the frame.
+- The iframe has `allow="autoplay"`. Its alt text is one `[ph]` string in `strings.js`.
+
+### 15.6 What I decided inside his calls (for his review)
+- **Opens on** the newest pick, with the 11 picks before it up next.
+- **Playlists:** one Apple playlist, *Songs of the Day* (every pick, newest first). Three local
+  playlists, one per top genre (*Pop Picks*, *Alternative Picks*, *R&B/Soul Picks*).
+- **Stations:** *Deets Live* (every pick, shuffled), *Fresh Picks* (the last 30 picks),
+  *Throwbacks* (released before 2020). One station per top-5 genre (*Pop Picks* …). A song's
+  own station plays the picks of its genre. Station covers stay drawn.
+- **Artists:** the picture is the cover of their latest pick; the genre is their most-picked one.
+- **The Diary samples** sit on the two albums with the most picks (never the playing one). The
+  notes say nothing about the music: "Every song here was a Song of the Day. Done, and I still
+  come back to it." and "In progress. A score as I go."; the folder is *Favorites*.
+- **Seeded plays** lean on the last 30 picks. **Recently Added** is the day each song was picked.
+- **The New shelf** is albums released this year or last.
+- The visitor's store (`deets.demo.store`) and Diary (`deets.demo.diary`) went to v2, so an old
+  visit with the invented songs starts over.
+- `catalog_heals` got a demo handler (an empty answer); every load warned without it.
+
+### 15.7 Limits, and what is still his
+- **The page's lede** (`strings.js`, his words) says "everything mocked". The songs are real
+  now. The words are his to change.
+- **Artist links** from right-click › Copy Link do not open: the feed has no artist id. Adding
+  `artist_id` to the feed is a DeetsOTD change, which he decided to keep untouched (DeetsOTD.md §7).
+- **Lyrics and writer credits** are empty: the feed has neither.
+- **The shots runner now loads covers and previews from Apple** (no longer "no network"), and its
+  pictures change as he posts picks. Two shot lists still type the old album "Salt & Signal":
+  `docs/guide/shots.json` (`max-full-player`, another session's uncommitted work) and
+  `docs/ops/checks/album-mark.json`. Each needs a new album name.
+- **Opened directly** at `/deetsmusic/demo/app/` (no host page), a preview plays with no badge.
+  The site links only the page with the frame.
+- **On deets.solutions since 2026-10-13** (his call): the site files (`demo.js`, `index.html`,
+  `strings.js`, `styles/main.css`, the badge) and the demo build in `app/`.
+
+### 15.8 Desk test
+1. `npm run demo`. Now Playing opens on the newest Song of the Day, with Apple's cover.
+2. Press Play: the preview sounds; the bar runs to 0:30; the next pick follows.
+3. Volume, Pause, Seek and Next act on the sound. Press › the record turns with it.
+4. Ocean or Glass: the album light takes the cover's colors.
+5. Search an artist from the feed; open an album; right-click › Copy Link opens the song.
+6. Radio: *Deets Live*, *Fresh Picks*, *Throwbacks* and the genre stations play picks.
+7. Diary: two sample entries on real albums.
+8. On the site page (`npm run demo:build`, then the page with `app/` from `dist-web/`): the
+   panel shows the song beside the frame; the badge opens it on Apple Music; a narrow page puts
+   the panel below.
+9. Block `/sotd/songs.json` (DevTools › Network › block): the demo still loads, from the copy.

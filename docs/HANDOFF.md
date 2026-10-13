@@ -112,6 +112,11 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
+**The web demo plays his Songs of the Day (2026-10-12, BUILT, desk test open).** WEB-DEMO.md
+§15; the test is §15.8. Live on deets.solutions since 2026-10-13 (the demo build and the Apple
+Music panel). Still his: the page lede says "everything mocked"; two shot lists type the old
+album "Salt & Signal" (§15.7).
+
 **Artist facts box (2026-10-12, built, desk test open, FOR RELEASE).** In an artist view the
 photo moves left and a box beside it shows four sections: Tags, Listening Stats, On tour,
 Links (one `artist.getInfo` per artist, cached a month). Its own row gates it: Settings ›

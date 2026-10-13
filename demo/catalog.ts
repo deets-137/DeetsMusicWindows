@@ -1,12 +1,18 @@
-// The web demo's mock catalog (docs/features/WEB-DEMO.md §4). Every name is invented. The
-// covers are drawn here as SVG, so the demo carries no real album art and no image files.
+// The web demo's catalog (docs/features/WEB-DEMO.md §15). The songs are the owner's own Songs of
+// the Day: the rows of deets.solutions' journal feed (`/sotd/songs.json`) that he posted (author
+// "Deets"). The feed is read when the page loads, so the demo shows his picks up to today. A copy
+// built into the demo at build time stands in when the feed cannot be read (fork 7A).
 //
-// An artwork template is a data URL with the `{w}{h}{f}` placeholders in its fragment: the
-// app's own `.replace("{w}", …)` fills them in and the image ignores the fragment.
+// Covers and previews are Apple's own (mzstatic, itunes), as the feed gives them. The stations'
+// covers are drawn here as SVG: a station is not in the feed.
+//
+// An artwork template carries the `{w}{h}{f}` placeholders: the app's own `.replace("{w}", …)`
+// fills them in. For a drawn cover the placeholders sit in the data URL's fragment.
 
 import type { Artwork, Track } from "../src/library";
 import type { Album, Artist, Playlist } from "../src/search";
 import type { Station, StationGenre } from "../src/radio";
+import builtIn from "virtual:sotd-picks";
 
 // ── A small seeded random, so every visitor sees the same catalog ──
 function rng(seed: number): () => number {
@@ -20,8 +26,109 @@ function rng(seed: number): () => number {
   };
 }
 
-// ── Covers ──
+/** A stable number from a name (FNV-1a), for the ids the feed does not carry. */
+function hash(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+  return h;
+}
+
+// ── The feed ──
+/** One feed row, the fields the demo reads (DeetsOTD.md §1b). */
+export interface FeedRow {
+  posted_at?: string;
+  date?: string;
+  track_name?: string;
+  artist_name?: string;
+  album?: string;
+  genre?: string;
+  duration_sec?: number;
+  release_date?: string;
+  release_year?: number;
+  author?: string;
+  apple_music_url?: string;
+  preview_url?: string;
+  artwork_url?: string;
+}
+
+const FEED_URL = "/sotd/songs.json";
+const FEED_WAIT_MS = 4000;
+/** Only the owner's picks (his call, 2026-10-12). Nothing else from a row's author is kept. */
+const OWNER = "Deets";
+
+async function readFeed(): Promise<{ rows: FeedRow[]; from: "feed" | "built-in" }> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), FEED_WAIT_MS);
+  try {
+    const res = await fetch(FEED_URL, { cache: "no-cache", signal: ctl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = (await res.json()) as { songs?: FeedRow[] };
+    const rows = (body.songs ?? []).filter((r) => r.author === OWNER);
+    if (!rows.length) throw new Error("no picks in the feed");
+    return { rows, from: "feed" };
+  } catch (err) {
+    console.info("[demo] Songs of the Day feed not read, the built-in copy is used:", String(err));
+    return { rows: builtIn, from: "built-in" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+interface Pick {
+  songId: string;
+  albumId: string;
+  title: string;
+  artist: string;
+  album: string;
+  genre: string;
+  durationMs: number;
+  releaseDate?: string;
+  releaseYear?: number;
+  postedMs: number;
+  preview?: string;
+  art?: string;
+}
+
+/** `…/album/<slug>/<albumId>?i=<songId>&…` → the two ids. */
+const ID_RE = /\/album\/(?:[^/?]*\/)?(\d+)\?(?:[^#]*&)?i=(\d+)/;
+/** Apple's sized cover URL → the template the app fills (`…/600x600bb.jpg` → `…/{w}x{h}bb.{f}`). */
+const artTemplate = (url: string | undefined): string | undefined =>
+  url && /\/\d+x\d+bb\.\w+$/.test(url) ? url.replace(/\/\d+x\d+bb\.\w+$/, "/{w}x{h}bb.{f}") : undefined;
+
+function toPicks(rows: FeedRow[]): Pick[] {
+  const byId = new Map<string, Pick>();
+  for (const r of rows) {
+    const m = ID_RE.exec(r.apple_music_url ?? "");
+    if (!m || !r.track_name || !r.artist_name) continue;
+    const p: Pick = {
+      songId: m[2],
+      albumId: m[1],
+      title: r.track_name,
+      artist: r.artist_name,
+      album: r.album || r.track_name,
+      genre: r.genre || "Music",
+      durationMs: Math.max(1, Number(r.duration_sec) || 180) * 1000,
+      releaseDate: r.release_date || undefined,
+      releaseYear: Number(r.release_year) || undefined,
+      postedMs: Date.parse(r.posted_at ?? r.date ?? "") || 0,
+      preview: r.preview_url || undefined,
+      art: artTemplate(r.artwork_url),
+    };
+    // A song picked twice keeps its latest day.
+    const was = byId.get(p.songId);
+    if (!was || was.postedMs < p.postedMs) byId.set(p.songId, p);
+  }
+  return [...byId.values()].sort((a, b) => a.postedMs - b.postedMs);
+}
+
+const feed = await readFeed();
+const picks = toPicks(feed.rows);
+/** Where the songs came from on this load: the live feed or the copy built in. */
+export const source = feed.from;
+
+// ── Drawn covers (stations, and a song with no cover) ──
 type CoverStyle = "sun" | "waves" | "grid" | "rings" | "blocks" | "rain" | "peaks" | "orb";
+type Colors = [string, string, string, string];
 
 function svgUrl(svg: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}#{w}x{h}.{f}`;
@@ -31,7 +138,7 @@ function art(svg: string, bg: string, text: string[]): Artwork {
   return { urlTemplate: svgUrl(svg), width: 1200, height: 1200, bgColor: bg.replace("#", ""), textColors: text.map((c) => c.replace("#", "")) };
 }
 
-function coverSvg(style: CoverStyle, c: [string, string, string, string], seed: number, label: string): string {
+function coverSvg(style: CoverStyle, c: Colors, seed: number, label: string): string {
   const r = rng(seed);
   const [bg1, bg2, a, b] = c;
   const defs = `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${bg1}"/><stop offset="1" stop-color="${bg2}"/></linearGradient></defs>`;
@@ -97,189 +204,93 @@ function coverSvg(style: CoverStyle, c: [string, string, string, string], seed: 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">${defs}<rect width="600" height="600" fill="url(#g)"/>${body}${text}</svg>`;
 }
 
-function portraitSvg(initials: string, c: [string, string, string, string]): string {
-  const [bg1, bg2, a, b] = c;
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">` +
-    `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${bg1}"/><stop offset="1" stop-color="${bg2}"/></linearGradient></defs>` +
-    `<rect width="600" height="600" fill="url(#g)"/>` +
-    `<circle cx="300" cy="245" r="105" fill="${a}"/><path d="M110 600 C120 420 480 420 490 600Z" fill="${a}"/>` +
-    `<text x="300" y="275" text-anchor="middle" font-family="Georgia, serif" font-size="92" fill="${b}">${initials}</text></svg>`
-  );
+const PALETTES: Colors[] = [
+  ["#e63946", "#1d3557", "#f1faee", "#ffffff"],
+  ["#10002b", "#3c096c", "#9d4edd", "#e0aaff"],
+  ["#606c38", "#283618", "#dda15e", "#fefae0"],
+  ["#0b2545", "#13315c", "#8da9c4", "#eef4ed"],
+  ["#f4a261", "#e76f51", "#ffd166", "#264653"],
+  ["#0d0221", "#2a0845", "#2de2e6", "#ff3864"],
+  ["#22223b", "#4a4e69", "#9a8c98", "#f2e9e4"],
+  ["#2b0f2e", "#5c2751", "#e0a458", "#ffdbb5"],
+];
+const STYLES: CoverStyle[] = ["rings", "orb", "peaks", "waves", "sun", "grid", "rain", "blocks"];
+function drawn(label: string, seed: number): Artwork {
+  const c = PALETTES[seed % PALETTES.length];
+  return art(coverSvg(STYLES[seed % STYLES.length], c, seed, label), c[0], [c[3], c[2]]);
 }
+
+/** Apple's cover: the template, at the largest size the feed's covers come in. */
+const appleArt = (template: string): Artwork => ({ urlTemplate: template, width: 1200, height: 1200 });
 
 // ── The catalog ──
-interface AlbumSpec {
-  title: string;
-  year: number;
-  style: CoverStyle;
-  colors: [string, string, string, string];
-  songs: string[];
-}
-interface ArtistSpec {
-  name: string;
-  genre: string;
-  colors: [string, string, string, string];
-  writers: string[];
-  albums: AlbumSpec[];
-}
-
-const ARTISTS: ArtistSpec[] = [
-  {
-    name: "Harbor Lights",
-    genre: "Indie Pop",
-    colors: ["#1d3557", "#457b9d", "#f1faee", "#e63946"],
-    writers: ["Nell Okafor", "Sam Brightwater"],
-    albums: [
-      {
-        title: "Salt & Signal",
-        year: 2024,
-        style: "waves",
-        colors: ["#0b2545", "#13315c", "#8da9c4", "#eef4ed"],
-        songs: ["Lighthouse Keeper", "Signal Fires", "Undertow", "Postcards from the Pier", "Brine", "Coastline Radio", "Tidal Hearts", "Harbor Lights"],
-      },
-      {
-        title: "Low Tide Radio",
-        year: 2022,
-        style: "sun",
-        colors: ["#f4a261", "#e76f51", "#ffd166", "#264653"],
-        songs: ["Static on the Shore", "Sandbar", "Paper Moon Motel", "Driftwood", "Late Ferry", "Summer Frequency", "Gulls"],
-      },
-    ],
-  },
-  {
-    name: "Mara Quell",
-    genre: "R&B/Soul",
-    colors: ["#3c1642", "#086375", "#1dd3b0", "#affc41"],
-    writers: ["Mara Quell", "Dion Achterberg", "Lulu Farris"],
-    albums: [
-      {
-        title: "Honey Static",
-        year: 2025,
-        style: "orb",
-        colors: ["#2b0f2e", "#5c2751", "#e0a458", "#ffdbb5"],
-        songs: ["Honey Static", "Slow Burn Satellite", "Velvet Rope", "Call Me Back", "Amber", "Two Cups Deep", "Sugarcane", "Gold Hour"],
-      },
-      {
-        title: "After Hours Atlas",
-        year: 2023,
-        style: "rings",
-        colors: ["#10002b", "#240046", "#c77dff", "#e0aaff"],
-        songs: ["Atlas", "4 AM in Lisbon", "Neon Psalm", "Say Less", "Taxi Lights", "Sunrise, Probably"],
-      },
-    ],
-  },
-  {
-    name: "Velvet Arcade",
-    genre: "Electronic",
-    colors: ["#0d0221", "#261447", "#ff3864", "#2de2e6"],
-    writers: ["Ivo Rahn", "Keiko Marsh"],
-    albums: [
-      {
-        title: "Neon Parable",
-        year: 2024,
-        style: "grid",
-        colors: ["#0d0221", "#2a0845", "#2de2e6", "#ff3864"],
-        songs: ["Parable", "Chrome Garden", "Overdrive Hymn", "Pixel Rain", "Afterimage", "Midnight Arcade", "Glass Circuit", "Continue?"],
-      },
-      {
-        title: "Night Drive Almanac",
-        year: 2021,
-        style: "peaks",
-        colors: ["#03071e", "#370617", "#9d0208", "#faa307"],
-        songs: ["Mile Marker 88", "Tail Lights", "Desert Relay", "Motorway Lullaby", "Radio Silence", "Almanac", "Exit Ramp"],
-      },
-    ],
-  },
-  {
-    name: "Juno & the Tidewater",
-    genre: "Folk",
-    colors: ["#606c38", "#283618", "#fefae0", "#dda15e"],
-    writers: ["Juno Hale", "Abe Tidewell"],
-    albums: [
-      {
-        title: "Paper Boats",
-        year: 2023,
-        style: "blocks",
-        colors: ["#fefae0", "#e9edc9", "#bc6c25", "#606c38"],
-        songs: ["Paper Boats", "Kettle Song", "The Long Field", "Cedar & Smoke", "Porch Light", "Wild Mint", "River Letters", "Home by Dark"],
-      },
-    ],
-  },
-  {
-    name: "Koto Rain",
-    genre: "Hip-Hop/Rap",
-    colors: ["#22223b", "#4a4e69", "#c9ada7", "#f2e9e4"],
-    writers: ["Koto Rain", "Benji Ashworth"],
-    albums: [
-      {
-        title: "Rainy Day Ledger",
-        year: 2025,
-        style: "rain",
-        colors: ["#22223b", "#4a4e69", "#9a8c98", "#f2e9e4"],
-        songs: ["Ledger", "Umbrella Money", "Window Seat", "Overcast (Interlude)", "Puddle Jumps", "Grey Skies, Gold Chains", "Drip Feed", "Clear by Morning"],
-      },
-    ],
-  },
-];
-
 export const artists: Artist[] = [];
 export const albums: Album[] = [];
+/** Every pick, oldest first: the order the picks were posted. */
 export const tracks: Track[] = [];
-/** Album catalog id → its songs in order. */
+/** Album catalog id → its picked songs, in the order they were picked. */
 export const albumTracks = new Map<string, Track[]>();
-/** Artist name → its catalog id. */
+/** Artist name → its id. The feed has no artist id: the demo makes a stable one from the name. */
 export const artistIdByName = new Map<string, string>();
 export const artistArt = new Map<string, Artwork>();
+const previews = new Map<string, string>();
+/** Song catalog id → the day it was the Song of the Day (ms). */
+export const pickedAt = new Map<string, number>();
 
 (function build() {
-  let songN = 0;
-  ARTISTS.forEach((ar, ai) => {
-    const artistId = `90000000${ai + 1}`;
-    const initials = ar.name.split(/\s+/).filter((w) => /^[A-Z]/.test(w)).map((w) => w[0]).slice(0, 2).join("");
-    const portrait = art(portraitSvg(initials, ar.colors), ar.colors[0], [ar.colors[3], ar.colors[2]]);
-    artistArt.set(ar.name, portrait);
-    artistIdByName.set(ar.name, artistId);
-    artists.push({ catalogId: artistId, libraryId: `r.${artistId}`, name: ar.name, artwork: portrait, genres: [ar.genre] });
-    ar.albums.forEach((al, li) => {
-      const albumId = `80000000${ai + 1}${li}`;
-      const cover = art(coverSvg(al.style, al.colors, ai * 10 + li + 7, al.title), al.colors[0], [al.colors[3], al.colors[2]]);
-      const r = rng(ai * 100 + li);
-      const album: Album = {
-        catalogId: albumId,
-        libraryId: `l.${albumId}`,
-        title: al.title,
-        artistName: ar.name,
+  const albumById = new Map<string, Album>();
+  const artistGenres = new Map<string, Map<string, number>>();
+  picks.forEach((p, i) => {
+    const cover = p.art ? appleArt(p.art) : drawn(p.album, i);
+    let album = albumById.get(p.albumId);
+    if (!album) {
+      album = {
+        catalogId: p.albumId,
+        libraryId: `l.${p.albumId}`,
+        title: p.album,
+        artistName: p.artist,
         artwork: cover,
-        genres: [ar.genre, "Music"],
-        releaseDate: `${al.year}-0${1 + Math.floor(r() * 9)}-1${Math.floor(r() * 9)}`,
-        trackCount: al.songs.length,
+        genres: [p.genre, "Music"],
+        releaseDate: p.releaseDate,
+        trackCount: 0,
       };
+      albumById.set(p.albumId, album);
       albums.push(album);
-      const list: Track[] = al.songs.map((title, ti) => {
-        songN++;
-        const writers = ar.writers.filter((_, wi) => (ti + wi) % 3 !== 2);
-        return {
-          catalogId: `70000${String(songN).padStart(4, "0")}`,
-          libraryId: `i.demo${String(songN).padStart(4, "0")}`,
-          title,
-          artistName: ar.name,
-          albumName: al.title,
-          durationMs: Math.round((150 + r() * 130) * 1000),
-          trackNumber: ti + 1,
-          discNumber: 1,
-          genres: [ar.genre, "Music"],
-          hasLyrics: true,
-          composer: (writers.length ? writers : ar.writers).join(", "),
-          releaseDate: album.releaseDate,
-          addedRank: songN,
-          artwork: cover,
-        };
-      });
-      albumTracks.set(albumId, list);
-      tracks.push(...list);
-    });
+      albumTracks.set(p.albumId, []);
+    }
+    const list = albumTracks.get(p.albumId)!;
+    const track: Track = {
+      catalogId: p.songId,
+      libraryId: `i.${p.songId}`,
+      title: p.title,
+      artistName: p.artist,
+      albumName: album.title,
+      durationMs: p.durationMs,
+      trackNumber: list.length + 1,
+      discNumber: 1,
+      genres: [p.genre, "Music"],
+      hasLyrics: false,
+      releaseDate: p.releaseDate,
+      addedRank: i + 1,
+      artwork: cover,
+    };
+    list.push(track);
+    album.trackCount = list.length;
+    tracks.push(track);
+    pickedAt.set(p.songId, p.postedMs);
+    if (p.preview) previews.set(p.songId, p.preview);
+    // The artist's picture: the cover of their latest pick (fork 6A).
+    artistArt.set(p.artist, cover);
+    const g = artistGenres.get(p.artist) ?? new Map<string, number>();
+    g.set(p.genre, (g.get(p.genre) ?? 0) + 1);
+    artistGenres.set(p.artist, g);
   });
+  for (const [name, g] of artistGenres) {
+    const id = String(900000000 + (hash(name) % 99999999));
+    artistIdByName.set(name, id);
+    const genre = [...g.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    artists.push({ catalogId: id, libraryId: `r.${id}`, name, artwork: artistArt.get(name), genres: [genre] });
+  }
 })();
 
 const byId = new Map<string, Track>();
@@ -291,71 +302,94 @@ export const trackById = (id: string | undefined | null): Track | undefined => (
 export const albumById = (id: string): Album | undefined => albums.find((a) => a.catalogId === id || a.libraryId === id);
 export const albumByTitle = (title: string | undefined): Album | undefined => albums.find((a) => a.title === title);
 export const artistById = (id: string): Artist | undefined => artists.find((a) => a.catalogId === id || a.libraryId === id);
+/** The song's 30-second preview from Apple, if the feed has one. */
+export const previewOf = (id: string): string | undefined => {
+  const t = byId.get(id);
+  return t ? previews.get(t.catalogId!) : undefined;
+};
+/** The newest picks first. */
+export const newestFirst = (): Track[] => tracks.slice().reverse();
 
-// ── Stations ──
-function stationArt(label: string, colors: [string, string, string, string], style: CoverStyle, seed: number): Artwork {
-  return art(coverSvg(style, colors, seed, label), colors[0], [colors[3]]);
+/** The genres with the most picks, most first. */
+const topGenres: string[] = (() => {
+  const n = new Map<string, number>();
+  for (const t of tracks) {
+    const g = t.genres?.[0];
+    if (g && g !== "Music") n.set(g, (n.get(g) ?? 0) + 1);
+  }
+  return [...n.entries()].sort((a, b) => b[1] - a[1]).map(([g]) => g);
+})();
+const ofGenre = (g: string): Track[] => tracks.filter((t) => t.genres?.[0] === g);
+
+// ── Stations: built from the picks (fork 6A). A station plays from its own pool. ──
+const pools = new Map<string, () => Track[]>();
+function station(id: string, name: string, tagline: string, isLive: boolean, seed: number, pool: () => Track[]): Station {
+  pools.set(id, pool);
+  return { id, name, isLive, tagline, artwork: drawn(name.toUpperCase(), seed) };
 }
+const minPool = (ts: Track[]): Track[] => (ts.length >= 10 ? ts : tracks);
+
 export const stations: Station[] = [
-  { id: "ra.demo-live-1", name: "Deets Live", isLive: true, tagline: "Songs picked by a person, all day", artwork: stationArt("LIVE", ["#e63946", "#1d3557", "#f1faee", "#ffffff"], "rings", 41) },
-  { id: "ra.demo-live-2", name: "Night Shift Radio", isLive: true, tagline: "Late hours, low lights", artwork: stationArt("NIGHT", ["#10002b", "#3c096c", "#9d4edd", "#e0aaff"], "orb", 42) },
-  { id: "ra.demo-live-3", name: "Porch Sessions", isLive: true, tagline: "Acoustic, front step, no hurry", artwork: stationArt("PORCH", ["#606c38", "#283618", "#dda15e", "#fefae0"], "peaks", 43) },
+  station("ra.demo-live-1", "Deets Live", "Every Song of the Day, shuffled", true, 0, () => tracks),
+  station("ra.demo-live-2", "Fresh Picks", "The last month of picks", true, 1, () => minPool(newestFirst().slice(0, 30))),
+  station("ra.demo-live-3", "Throwbacks", "Picks released before 2020", true, 2, () => minPool(tracks.filter((t) => (t.releaseDate ?? "9999") < "2020"))),
 ];
-export const genres: StationGenre[] = [
-  { id: "g.pop", name: "Pop" },
-  { id: "g.rnb", name: "R&B" },
-  { id: "g.electronic", name: "Electronic" },
-  { id: "g.folk", name: "Folk" },
-  { id: "g.hiphop", name: "Hip-Hop" },
-];
+export const genres: StationGenre[] = topGenres.slice(0, 5).map((g) => ({ id: `g.${hash(g)}`, name: g }));
+const genreStationCache = new Map<string, Station[]>();
 export function genreStations(id: string): Station[] {
   const g = genres.find((x) => x.id === id);
   if (!g) return [];
-  const seed = genres.indexOf(g) * 7 + 50;
-  return [1, 2, 3].map((n) => ({
-    id: `ra.demo-${id}-${n}`,
-    name: `${g.name} ${["Essentials", "Rising", "Chill"][n - 1]}`,
-    isLive: false,
-    tagline: ["The songs everyone knows", "New names to follow", "Turned down a little"][n - 1],
-    artwork: stationArt(g.name.toUpperCase(), ARTISTS[(genres.indexOf(g) + n) % ARTISTS.length].colors, (["waves", "blocks", "rain"] as CoverStyle[])[n - 1], seed + n),
-  }));
-}
-export const myStation: Station = { id: "ra.demo-me", name: "Your Station", isLive: false, tagline: "Songs like the ones you play", artwork: stationArt("YOU", ["#ffb703", "#fb8500", "#023047", "#ffffff"], "sun", 60) };
-export const discovery: Station = { id: "ra.q-demo", name: "Discovery Station", isLive: false, tagline: "New to you, picked for you", artwork: stationArt("NEW", ["#2de2e6", "#261447", "#ff3864", "#ffffff"], "grid", 61) };
-
-// ── Apple playlists (the read-only mirror) ──
-function pick(n: number, seed: number): Track[] {
-  const r = rng(seed);
-  const pool = tracks.slice();
-  const out: Track[] = [];
-  while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+  let out = genreStationCache.get(id);
+  if (!out) {
+    const i = genres.indexOf(g);
+    out = [station(`ra.demo-${id}`, `${g.name} Picks`, `Every ${g.name} Song of the Day`, false, 3 + i, () => minPool(ofGenre(g.name)))];
+    genreStationCache.set(id, out);
+  }
   return out;
 }
+export const myStation: Station = station("ra.demo-me", "Your Station", "Songs like the ones you play", false, 4, () => tracks);
+export const discovery: Station = station("ra.q-demo", "Discovery Station", "New to you, picked for you", false, 5, () => tracks);
+/** The songs a station plays from. A song's own station plays the picks of its genre. */
+export function stationPool(id: string): Track[] {
+  const pool = pools.get(id);
+  if (pool) return pool();
+  for (const g of genres) genreStations(g.id);
+  const again = pools.get(id);
+  if (again) return again();
+  const seed = trackById(id.replace(/^ra\.demo-seed-/, ""));
+  return seed ? minPool(ofGenre(seed.genres?.[0] ?? "")) : tracks;
+}
+/** Every station's cover, for the album light (handlers.ts `album_palette`). */
+export const stationArtworks = (): Artwork[] =>
+  [...stations, myStation, discovery, ...genres.flatMap((g) => genreStations(g.id))].map((s) => s.artwork!).filter(Boolean);
+
+// ── Apple playlists (the read-only mirror) ──
+export const SOTD_PLAYLIST = "p.demoSotd";
 export const applePlaylists: { playlist: Playlist; tracks: Track[] }[] = [
   {
-    playlist: { libraryId: "p.demoMorning", name: "Morning Coffee", canEdit: true, isPublic: false, source: "apple", kind: "user", description: "Slow start, warm mug" },
-    tracks: pick(14, 5),
-  },
-  {
-    playlist: { libraryId: "p.demoFocus", catalogId: "pl.demoFocus", name: "Deep Focus", curatorName: "DeetsMusic Demo", canEdit: false, isPublic: true, source: "apple", kind: "catalog", description: "Nothing with words in the way" },
-    tracks: pick(18, 9),
+    playlist: { libraryId: SOTD_PLAYLIST, name: "Songs of the Day", canEdit: true, isPublic: false, source: "apple", kind: "user", description: "One song a day, newest first" },
+    tracks: newestFirst(),
   },
 ];
 for (const p of applePlaylists) {
   p.playlist.trackCount = p.tracks.length;
   p.playlist.coverUrls = [...new Set(p.tracks.map((t) => t.artwork!.urlTemplate))].slice(0, 4);
-  p.playlist.dateAdded = "2026-08-02T10:00:00Z";
-  p.playlist.lastModified = "2026-09-10T10:00:00Z";
+  const first = p.tracks[p.tracks.length - 1];
+  p.playlist.dateAdded = new Date(pickedAt.get(first?.catalogId ?? "") ?? Date.now()).toISOString();
+  p.playlist.lastModified = new Date(pickedAt.get(p.tracks[0]?.catalogId ?? "") ?? Date.now()).toISOString();
 }
 
-/** The local playlists a first visit starts with (ids 1.., `local:{id}`). */
+/** The local playlists a first visit starts with (ids 1.., `local:{id}`): one per top genre. */
 export function seedLocalPlaylists(): { id: number; name: string; description: string | null; trackIds: string[]; cover: string | null; createdAt: number }[] {
   const now = Date.now();
-  return [
-    { id: 1, name: "Road Trip", description: "Windows down", trackIds: pick(16, 21).map((t) => t.catalogId!), cover: null, createdAt: now - 20 * 864e5 },
-    { id: 2, name: "Rainy Sunday", description: null, trackIds: pick(11, 33).map((t) => t.catalogId!), cover: null, createdAt: now - 9 * 864e5 },
-    { id: 3, name: "Gym", description: null, trackIds: pick(12, 47).map((t) => t.catalogId!), cover: null, createdAt: now - 3 * 864e5 },
-  ];
+  return topGenres.slice(0, 3).map((g, i) => ({
+    id: i + 1,
+    name: `${g} Picks`,
+    description: `Every ${g} Song of the Day`,
+    trackIds: ofGenre(g).reverse().map((t) => t.catalogId!),
+    cover: null,
+    createdAt: now - (20 - i * 6) * 864e5,
+  }));
 }
 
 export { rng };

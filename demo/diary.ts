@@ -4,8 +4,10 @@
 // written, a scale change alone keeps the scores, and the export text matches `export_text`.
 //
 // A visitor starts with sample entries (his call, 2026-09-26), so the Diary shows what it is
-// for before they write a word. Honey Static — the song that plays when the demo opens — has
-// no entry, so the playing-album box offers to start one.
+// for before they write a word. Since 2026-10-12 (§15) they sit on two of the owner's real
+// albums: the two with the most picks. The album of the newest pick — the song that plays
+// when the demo opens — is never one, so the playing-album box offers to start one. The notes
+// say nothing about the music itself: the words are the visitor's to write.
 
 import type { Track } from "../src/library";
 import type { Album } from "../src/search";
@@ -39,7 +41,7 @@ interface Folder {
   createdAt: number;
 }
 interface DiaryStore {
-  v: 1;
+  v: 2; // v2 (2026-10-12): the samples sit on the Songs of the Day albums (WEB-DEMO.md §15)
   entries: Entry[];
   folders: Folder[];
   nextId: number;
@@ -60,7 +62,6 @@ const dayOf = (daysAgo: number): string => {
 // ── The sample entries ──
 type SampleSong = [n: number, score: number | null, note: string];
 interface Sample {
-  album: string;
   scaleMax: number;
   score?: number;
   note: string;
@@ -71,43 +72,50 @@ interface Sample {
 }
 const SAMPLES: Sample[] = [
   {
-    album: "Neon Parable",
     scaleMax: 10,
     score: 8.5,
-    note: "A late-night drive of a record. The synths are loud, and the songs still have room to breathe. It ends on a question, and I want to press play again.",
+    note: "Every song here was a Song of the Day. Done, and I still come back to it.",
     daysAgo: 9,
     done: true,
-    folder: "Night drives",
+    folder: "Favorites",
     songs: [
-      [1, 8, "A slow start. The drums come in at 1:10, and then it moves."],
-      [2, 9, "The best hook on the album."],
-      [3, 7.5, ""],
-      [4, 8, "It sounds like rain on a car roof."],
-      [5, 7, ""],
-      [6, 9.5, "My favorite. I played it three times in a row."],
-      [7, 8, ""],
-      [8, 9, "The perfect last song. A real question, not a fade-out."],
+      [1, 9, "The first pick from this album."],
+      [2, 8.5, ""],
+      [3, 8, ""],
+      [4, 9, "On repeat."],
+      [5, 8, ""],
     ],
   },
   {
-    album: "After Hours Atlas",
     scaleMax: 5,
-    note: "The first half so far. Soft and low. Good music for the end of the day.",
+    note: "In progress. A score as I go.",
     daysAgo: 2,
     done: false,
     songs: [
-      [1, 4, "Short, and it sets the mood."],
-      [2, 4.5, "The guitar in the second verse!"],
-      [3, 3.5, ""],
+      [1, 4.5, ""],
+      [2, 4, ""],
+      [3, 4, ""],
     ],
   },
 ];
 
+/** The albums with the most picks, never the album of the newest pick. */
+function sampleAlbums(n: number): Album[] {
+  const newest = cat.newestFirst()[0];
+  return cat.albums
+    .filter((a) => a.title !== newest?.albumName)
+    .map((a) => ({ a, n: cat.albumTracks.get(a.catalogId!)?.length ?? 0 }))
+    .sort((x, y) => y.n - x.n)
+    .slice(0, n)
+    .map((x) => x.a);
+}
+
 function seed(): DiaryStore {
-  const s: DiaryStore = { v: 1, entries: [], folders: [], nextId: 1, nextFolderId: 1 };
+  const s: DiaryStore = { v: 2, entries: [], folders: [], nextId: 1, nextFolderId: 1 };
   const now = Date.now();
-  for (const x of SAMPLES) {
-    const album = cat.albumByTitle(x.album);
+  const picked = sampleAlbums(SAMPLES.length);
+  for (const [i, x] of SAMPLES.entries()) {
+    const album = picked[i];
     if (!album) continue;
     const tracks = cat.albumTracks.get(album.catalogId!) ?? [];
     let folderId: number | undefined;
@@ -146,7 +154,7 @@ function load(): DiaryStore {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as DiaryStore;
-      if (s && s.v === 1) return s;
+      if (s && s.v === 2) return s;
     }
   } catch {
     /* a private window or a bad blob: start from the samples */

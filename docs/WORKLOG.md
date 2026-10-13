@@ -29,6 +29,33 @@ height per frame (a smooth ease both ways), Fill, Full. Decided inside his calls
 §6.2. Desk test: LISTENERS.md §6.3. Open: whether to unite the three artist views (talked
 through with him after the commit).
 
+## 2026-10-12 (demo songs) — the web demo plays his Songs of the Day
+
+His idea: use the Songs of the Day for the demo. His calls: real songs everywhere (the shots
+runner too), Apple's 30-second preview on Play, the live feed read at load, his picks only
+(author "Deets"), a panel beside the frame with Apple's badge, playlists / stations / artist
+pictures / the Diary sample built from his picks, a copy built in for a feed that fails.
+
+Built (WEB-DEMO.md §15): `demo/catalog.ts` reads `/sotd/songs.json` (221 picks, 214 distinct
+songs, 196 albums today); `demo/boot.ts` starts the app after the feed; the fake MusicKit
+plays the preview on `#apple-music-player`; the album light reads each cover's colors in the
+browser; `vite.demo.config.ts` serves the feed in dev and builds the copy in. On the site
+(`../DeetsSolutions`, local, not pushed): the panel in `deetsmusic/demo/` (index.html, demo.js,
+strings.js, the badge SVG from Apple's marketing tools) and its rules in `styles/main.css`.
+
+Checked: `tsc -p demo`, `tsc`, `demo:build` (the copy holds 221 rows, every one his, no other
+name); a shots run (opens on his newest pick, Apple's cover, the preview plays at 2.5 s of 30,
+the Ocean glow takes the cover's red); headless Edge on the site page (the panel beside the
+frame, below it when narrow; the badge link opens the song on music.apple.com). The feed
+changed during the sitting (a new pick, Vénus) and the demo showed it with no rebuild.
+
+Left: his desk test (§15.8); the lede's "everything mocked" (his words); two shot lists that
+type the old album "Salt & Signal" (§15.7); a site push is his call.
+
+2026-10-13: he clicked through the dev demo and the site page. "The panel goes when I play from
+the Diary" was Max: the app is wider than the room beside it, so the panel sits below the frame
+(as built, §15.5). His call: commit, and push the site. The demo build and the panel are live.
+
 ## 2026-10-12 (Artist facts box) — Last.fm's artist facts beside the hero, his design
 
 His ask: "the artist ratio next, what does Last.fm offer?" Probed live: `artist.getInfo`

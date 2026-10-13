@@ -98,7 +98,7 @@ old installs' Guide button opens.
 - `ONBOARDING.md` — the hover-hint ledger (every `title`), right-click coverage, Settings ›
   Tips, the first-run walk (`npm run dev:fresh` to be a first-time user).
 - `QUICK-SETTINGS.md` — the cog's quick panel and the New badges (`NEW_MARKS`).
-- `WEB-DEMO.md` — the real UI in a browser on deets.solutions/demo, with mock tracks.
+- `WEB-DEMO.md` — the real UI in a browser on deets.solutions/demo, with his Songs of the Day and Apple's previews (§15).
 - `RULEZ.md` — the Rulez card (Max only): make your own rules from words; the cascade guards,
   cancel events, the ten routes (§3; all built, §7, §8, §10.2), the album color facts and Live
   Theming (§11), one row per recipe (§14). Next: a design pass on custom rules (§15). The

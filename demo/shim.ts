@@ -9,10 +9,10 @@
 // It also talks to the host page on deets.solutions when the app runs in its frame: a window
 // resize becomes a frame resize, and a look change reaches the frame's box.
 // Cross-origin network calls are refused, so the demo never reaches a live room or friend
-// server.
+// server. Apple's covers and previews load as images and audio, not as fetches.
 
-import { handle, type Host } from "./handlers";
-import { FakeMusicKit } from "./musickit";
+import { handle, queuedSong, type Host } from "./handlers";
+import { FakeMusicKit, onNowPlaying, type NowPlaying } from "./musickit";
 
 type Cb = (payload: unknown) => void;
 
@@ -97,6 +97,16 @@ async function invoke(cmd: string, args: any = {}): Promise<unknown> {
 // ── MusicKit ──
 (window as any).MusicKit = FakeMusicKit;
 document.dispatchEvent(new Event("musickitloaded"));
+
+// The song now playing goes to the host page, which keeps Apple's "Listen on Apple Music"
+// badge for that song beside the frame (WEB-DEMO.md §15.5): Apple's previews may be played
+// only next to a store link.
+// Before the first Play, the panel names the song the saved queue opens on.
+const tellHost = (np: NowPlaying | null) =>
+  post("nowplaying", { song: np && { title: np.title, artist: np.artist, album: np.album, playing: np.playing, url: `https://music.apple.com/song/${np.id}` } });
+onNowPlaying(tellHost);
+const opening = queuedSong();
+if (opening) tellHost({ id: opening.catalogId!, title: opening.title, artist: opening.artistName, album: opening.albumName ?? "", playing: false });
 
 // ── No live servers from a demo ──
 const sameOrigin = (url: string): boolean => {

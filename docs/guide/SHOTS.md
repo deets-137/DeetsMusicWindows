@@ -120,7 +120,7 @@ reported as skipped until §10 steps 3–4.
 **Demo** — everything the demo can show. The runner starts `npm run demo` on a free port
 (probed from the default upward, never a fixed port), opens headless Edge on it with the
 window set to the shot's size, and seeds a clean store first. So every run starts from the
-same state: "Honey Static" in Now Playing, two weeks of seeded plays (WEB-DEMO.md §9.3).
+same state: the newest Song of the Day in Now Playing (it changes as he posts picks, WEB-DEMO.md §15), two weeks of seeded plays (WEB-DEMO.md §9.3).
 Device scale 2, so the pictures stay sharp on a high-DPI page.
 
 **Dev app** — only the parts that stay at the desktop (WEB-DEMO.md §5): the tray and its

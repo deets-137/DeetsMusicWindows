@@ -26,8 +26,8 @@
 //                   row is marked noisy
 //
 // Headless: Edge opens no window and uses a throwaway profile, so nothing on the desktop moves
-// and no real Edge profile or app data is touched. No Apple call and no network: the demo
-// refuses every cross-origin request (WEB-DEMO.md §9.4).
+// and no real Edge profile or app data is touched. No Apple API call: the demo
+// refuses every cross-origin request (WEB-DEMO.md §9.4). Apple's covers and previews do load (images and audio, §15).
 //
 // Steps 2–3 of SHOTS.md §10: pictures and clips from the demo. A clip is an MP4, a poster and
 // a frame strip (one PNG of the motion, for a review by eye). The dev-app source comes later.

@@ -5,6 +5,7 @@
 
 import type { Track } from "../src/library";
 import type { Playlist, SearchResults } from "../src/search";
+import { paletteFromPixels, type AlbumPalette } from "../src/album-slots";
 import * as cat from "./catalog";
 import { diaryHandlers } from "./diary";
 
@@ -29,8 +30,10 @@ interface PlayEventRow {
   completed: boolean;
   context: string | null;
 }
+// v2 (2026-10-12): the songs became the owner's Songs of the Day (WEB-DEMO.md §15). A visitor's
+// v1 store names the old invented songs, so it starts over.
 interface Store {
-  v: 1;
+  v: 2;
   lists: LocalList[];
   nextListId: number;
   folders: { id: number; name: string }[];
@@ -51,8 +54,8 @@ function seedEvents(): { events: PlayEventRow[]; plays: Store["plays"] } {
   const events: PlayEventRow[] = [];
   const plays: Store["plays"] = {};
   const now = Date.now();
-  // Two weeks of listening, a few sittings a day, weighted to a few favourite albums.
-  const favourites = cat.tracks.filter((t) => ["Honey Static", "Neon Parable", "Salt & Signal", "Rainy Day Ledger"].includes(t.albumName ?? ""));
+  // Two weeks of listening, a few sittings a day, weighted to the latest picks.
+  const favourites = cat.newestFirst().slice(0, 30);
   let id = 1;
   for (let day = 14; day >= 1; day--) {
     const sittings = 1 + Math.floor(r() * 3);
@@ -75,10 +78,11 @@ function seedEvents(): { events: PlayEventRow[]; plays: Store["plays"] } {
   return { events, plays };
 }
 
-function seedQueue(): string {
-  const album = cat.albums.find((a) => a.title === "Honey Static")!;
-  const list = cat.albumTracks.get(album.catalogId!)!;
-  const context = `album:${album.catalogId}`;
+/** The demo opens on the newest Song of the Day, with the picks before it up next. */
+function seedQueue(): string | null {
+  const list = cat.newestFirst().slice(0, 12);
+  if (!list.length) return null;
+  const context = `playlist:${cat.SOTD_PLAYLIST}`;
   const entry = (t: Track) => ({ catalogId: t.catalogId, libraryId: t.libraryId, context, origin: "auto" });
   return JSON.stringify({ v: 1, history: [], current: entry(list[0]), upcoming: list.slice(1).map(entry), savedAt: Date.now() });
 }
@@ -96,7 +100,7 @@ function freshStore(): Store {
   }));
   const loved = cat.tracks.filter((_, i) => i % 7 === 2).map((t) => t.catalogId!);
   return {
-    v: 1,
+    v: 2,
     lists,
     nextListId: lists.length + 1,
     folders: [],
@@ -116,7 +120,7 @@ function loadStore(): Store {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const s = JSON.parse(raw) as Store;
-      if (s && s.v === 1) return s;
+      if (s && s.v === 2) return s;
     }
   } catch {
     /* a private window or a bad blob: start fresh */
@@ -135,6 +139,16 @@ function save(): void {
       /* storage full or blocked: the session still works */
     }
   }, 300);
+}
+
+/** The song the saved queue opens on (the app loads it into the player only on Play). */
+export function queuedSong(): Track | undefined {
+  try {
+    const q = store.queue ? (JSON.parse(store.queue) as { current?: { catalogId?: string; libraryId?: string } }) : null;
+    return cat.trackById(q?.current?.catalogId ?? q?.current?.libraryId);
+  } catch {
+    return undefined;
+  }
 }
 
 // ── Shapes ──
@@ -217,6 +231,48 @@ function recentPlayed(): Track[] {
     if (t) out.push(t);
   }
   return out;
+}
+
+/** Albums, the one with the newest pick first, each dated by that pick. */
+function albumsByLatestPick() {
+  return cat.albums
+    .map((a) => {
+      const at = Math.max(...(cat.albumTracks.get(a.catalogId!) ?? []).map((t) => cat.pickedAt.get(t.catalogId!) ?? 0));
+      return { ...a, dateAdded: new Date(at).toISOString(), at };
+    })
+    .sort((x, y) => y.at - x.at)
+    .map(({ at: _at, ...a }) => a);
+}
+
+// ── The album light (WEB-DEMO.md §11, §15.4) ──
+// Apple's covers come with no palette in the feed, so the three colors are read from a small
+// copy of the cover here, by the same rule as a user's own picture (album-slots.ts). Apple's
+// image server allows the cross-origin read. One read per cover per visit.
+const PALETTE_PX = 48;
+const palettes = new Map<string, Promise<AlbumPalette | null>>();
+function coverPalette(template: string): Promise<AlbumPalette | null> {
+  let p = palettes.get(template);
+  if (!p) {
+    p = new Promise((done) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const c = document.createElement("canvas");
+          c.width = c.height = PALETTE_PX;
+          const g = c.getContext("2d", { willReadFrequently: true })!;
+          g.drawImage(img, 0, 0, PALETTE_PX, PALETTE_PX);
+          done(paletteFromPixels(g.getImageData(0, 0, PALETTE_PX, PALETTE_PX).data));
+        } catch {
+          done(null);
+        }
+      };
+      img.onerror = () => done(null);
+      img.src = template.replace("{w}", String(PALETTE_PX)).replace("{h}", String(PALETTE_PX)).replace("{f}", "jpg");
+    });
+    palettes.set(template, p);
+  }
+  return p;
 }
 
 function credit(t: Track | undefined) {
@@ -302,7 +358,8 @@ const H: Record<string, Handler> = {
   library_sync: () => cat.tracks.length,
   seen_tracks: () => [],
   materialize_track: () => null,
-  added_at_map: () => cat.tracks.map((t, i) => [t.catalogId!, Date.now() - (cat.tracks.length - i) * 36e5 * 7]),
+  // A song joined the library the day it was the Song of the Day.
+  added_at_map: () => cat.tracks.map((t) => [t.catalogId!, cat.pickedAt.get(t.catalogId!) ?? Date.now()]),
   library_artist_info: (a) => {
     const name = String(a?.name ?? "");
     const d = artistDetail(cat.artistIdByName.get(name) ?? "");
@@ -310,6 +367,8 @@ const H: Record<string, Handler> = {
     return { catalogId: d.artist.catalogId, artwork: d.artist.artwork, featuredPlaylists: d.featuredPlaylists, topSongs: d.topSongs };
   },
   library_artists_expire: () => null,
+  // No library copies to heal on a web page. Without it, track-store.ts warns on every load.
+  catalog_heals: () => ({ healed: [], none: [] }),
 
   // Catalog
   catalog_search: (a) => search(String(a?.term ?? ""), a?.types ?? null),
@@ -327,9 +386,9 @@ const H: Record<string, Handler> = {
 
   // Home
   recent_played_tracks: () => recentPlayed(),
-  recent_added: () => ({ albums: cat.albums.slice().reverse().map((a, i) => ({ ...a, dateAdded: new Date(Date.now() - i * 3 * 864e5).toISOString() })), playlists: allPlaylists().slice(0, 3) }),
+  recent_added: () => ({ albums: albumsByLatestPick().slice(0, 40), playlists: allPlaylists().slice(0, 3) }),
   artist_photos: () => [...cat.artistArt.entries()],
-  artist_new_releases: () => cat.albums.filter((a) => (a.releaseDate ?? "") >= "2025"),
+  artist_new_releases: () => cat.albums.filter((a) => (a.releaseDate ?? "") >= String(new Date().getFullYear() - 1)),
 
   // Playlists
   playlists_cached: () => allPlaylists(),
@@ -534,14 +593,15 @@ const H: Record<string, Handler> = {
       .filter((t) => (t.composer ?? "").split(/,\s*/).includes(name))
       .map((t) => ({ catalogId: t.catalogId, title: t.title, artistName: t.artistName, mine: store.loved.includes(t.catalogId!) ? 3 : store.plays[t.catalogId!] ? 2 : 1, track: t }));
   },
-  // The album light (WEB-DEMO.md §11): the palette each cover was drawn with, as Apple's
-  // bgColor / textColor1 / textColor2 would give it. The NP aurora, the album text, the tray
-  // and the Ocean glow and neon all read it through album-color.ts, as in the app.
+  // The album light (WEB-DEMO.md §11): the NP aurora, the album text, the tray and the Ocean
+  // glow and neon all read it through album-color.ts, as in the app. A drawn cover (a station)
+  // gives the palette it was drawn with; Apple's cover is read (coverPalette).
   album_palette: ({ coverUrl }: { coverUrl: string }) => {
+    if (!coverUrl) return null;
+    if (/^https:\/\//.test(coverUrl)) return coverPalette(coverUrl);
     const a =
       cat.tracks.find((t) => t.artwork?.urlTemplate === coverUrl)?.artwork ??
-      cat.albums.find((x) => x.artwork?.urlTemplate === coverUrl)?.artwork ??
-      [...cat.stations, cat.myStation, cat.discovery].find((s) => s.artwork?.urlTemplate === coverUrl)?.artwork;
+      cat.stationArtworks().find((s) => s.urlTemplate === coverUrl);
     if (!a?.bgColor) return null;
     const hex = (c?: string) => (c ? `#${c}` : undefined);
     return { bg: hex(a.bgColor), c1: hex(a.textColors?.[0]), c2: hex(a.textColors?.[1]) };
