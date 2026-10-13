@@ -109,491 +109,120 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
-When an item closes, delete it here and write the day in WORKLOG.md.
+The short list of what is not finished, as of 2026-10-13 (pruned for 0.27.0: everything that
+shipped or closed went out; the WORKLOG has each day). Each item names where the detail is.
+When an item closes, delete it here and write the day in WORKLOG.md. Every local branch is
+merged into `main`; everything committed before 0.26.1 (`78e275c`) is on live.
 
-**The web demo plays his Songs of the Day (2026-10-12, BUILT, desk test open).** WEB-DEMO.md
-§15; the test is §15.8. Live on deets.solutions since 2026-10-13 (the demo build and the Apple
-Music panel). Still his: the page lede says "everything mocked"; two shot lists type the old
-album "Salt & Signal" (§15.7).
+### In 0.27.0, desk test open (his call: ship with them open, then his hand test)
 
-**`np_publish` no longer waits on AirPlay (2026-10-13, BUILT, desk test open).** The 6 s
-freeze in a LAN drop (2026-10-12): the sync command sent to a lost HomePod on the UI thread.
-Now one `airplay-np` thread does the sends; `np_publish` only hands the state over (his call).
-Release check 9 now follows calls into other modules and names the old code; it also moved
-`app_quit` and `friend_list` off the UI thread. AIRPLAY.md §13.6 (the desk test is there).
+- **`np_publish` no longer waits on AirPlay** (2026-10-13). One `airplay-np` thread does the
+  now-playing sends; release check 9 crosses modules; `app_quit` and `friend_list` are async.
+  The thread ledger is DEBUGGING.md § Threads (docs:check 30). His desk test: AIRPLAY.md §13.6
+  (play on the HomePod, pull the cable, the window keeps answering).
+- **Listeners badge** (2026-10-12): *N Plays | M Listeners* in the full player, *N Plays* on
+  the Max cover; Settings › Playback › *Show play counts from Last.FM*. LISTENERS.md §4.3.
+- **Unshuffle** (2026-10-12): Shuffle off plays on in order from the playing song. QUEUE.md
+  §Shuffle and unshuffle › Desk test. His to see once: the row's words and the hint.
+- **The uninstall removes Start with Windows** (2026-09-28, in 0.26.x builds already): update
+  over it (the Run value stays), then uninstall (the value is gone). RELEASE.md §3.
+- **Copy editor** (2026-10-12, dev only, does not ship): COPY-EDIT.md §5.
+- **The web demo plays his Songs of the Day** (2026-10-12, live on deets.solutions since
+  2026-10-13): WEB-DEMO.md §15.8. His: the page lede says "everything mocked"; two shot lists
+  type the old album "Salt & Signal" (§15.7).
 
-**Network errors in plain words (2026-10-12, an ask, not designed; every fork his).** A
-network drop showed raw text in a Search artist view: *Failed to load: error sending request
-for url (https://api.music.apple.com/v1/catalog/us/songs/…?include=artists)*. His ask: use the
-error combination to tell the user early, in plain words, so no jargon reaches them. The
-signal: two or more Apple calls fail in a few seconds with `error sending request` (a
-connection failure: DNS, connect or timeout; never an HTTP status), and here the installed
-app's AirPlay lost the HomePod at the same minute (so the fault was the local network). What
-exists: `apple-health.ts` already has the *can't reach Apple Music* warn toast, the fast
-recheck and the resume (TOASTS.md §5); the raw text comes from three `.catch` sites in
-`src/search-card.ts` (`Failed to load: ${String(e)}`), and the playlist sync logs the same
-error only to the console. To design with him: (1) one classifier (Rust or front end) that
-calls a transport error "offline" and hands it to `apple-health` (`check` / `show`); (2) what
-a card shows in place of the raw text (a plain line, a *Try again* button, the view loading
-again by itself when the check passes); (3) whether a burst of these errors raises the toast
-at once or waits for the health check; (4) whether an AirPlay drop counts as a network signal
-too; (5) a sweep for other cards that print `String(e)` to the user. The raw error stays in
-the log. WORKLOG 2026-10-12 (network drop) is the record.
+### On live, his desk tests or watches still open
 
-**Last.fm top tracks and similar artists (an idea, his to design).** The artist and album
-facts boxes are built and desk-tested (2026-10-13, LISTENERS.md §6–§7). The next reads are
-his to design: ideas/LastfmArtist.md holds the calls.
+The agent-runnable ones are one runbook: [ops/DESK-TESTS.md](ops/DESK-TESTS.md).
+- **Playback, watch the live ring:** the dead-next heal (`player:deadNext`, QUEUE.md § The
+  healed song played twice); the music stopped at a song change and the catalog heal
+  (`player:retryCurrent`, `keyRetry`, `recoverSilent`; QUEUE.md); a healed library id's old
+  play counts may stay on the old key (not checked).
+- **Playback, his hand tests:** Next and Previous before the first Play (QUEUE.md); the
+  mid-song stall reload (QUEUE.md §Mid-song stall); the station break-out check (STATIONS.md §1,
+  the test in WORKLOG 2026-10-06).
+- **Rulez:** the review fixes (RULEZ.md §17); the usability fixes §18.3 (step 6, a real
+  headset) and the three-line row §19.4; Paste a rule and Import from a file; rows with no
+  name; the chime on a HomePod (§5.4 step 8); his look at the yes / no condition words (§6.5).
+- **Settings and setup:** Set up the DeetsMusic MCP (MCP-INSTALL.md §9; the words in §8d are
+  his to review); the settings.json repair toast, once (set `"sotdPostMode": "weekly"` in the
+  dev settings.json); Battery saver's unplug test on a laptop (RULES.md §18a).
+- **Data:** the `db: slow` lines after a few days with one library sync (DB-HEALTH.md §2a; they
+  decide the read connection, ideas/WORKERS.md §5.1); the next song's colors one ahead
+  (ALBUM-COLOR.md, data path item 4); the Apple call counter's hourly line (APPLE-CALLS.md §5).
+- **Friends and rooms:** the stress test on live (FRIENDS.md §18.8, ROOMS.md §18.8); Discord's
+  two buttons need a second account to read (FRIENDS.md §8.4 item 3).
+- **Looks:** the Ocean perf check (OCEAN.md §6); the rules engine's open list (RULES.md §18:
+  the tray panel follows a look change, Windows mode, headphones EQ per output); the theme
+  crossfade (UX-COVERUPS.md §6c); the grow timing (CARD-GROW.md §19.1); the Sort / View arrow
+  keys and the A1 re-test (COMPASS.md §5a); the Diary's playing-album box step 1 (DIARY.md
+  §4c); New badges on pills (QUICK-SETTINGS.md §10a.1).
 
-**Our scrobble names (2026-10-12, found, not designed; every fork his).** We scrobble Apple's
-raw names, so his plays land on Last.fm's small pages. LASTFM.md §10.
+### Decided, not built (his next sittings)
 
-**One code path for the Apple pages (2026-10-12, decided, NOT BUILT; his next sitting).** The
-Search card's artist, album and playlist panes duplicate the Library's Full levels in their own
-HTML. His calls: Search runs the engine's Full levels, with its compact rows kept. One pane
-per step, a desk test each. ARTIST-VIEW.md §10.
+- **One code path for the Apple pages** (2026-10-12): Search runs the engine's Full levels,
+  compact rows kept; one pane per step. ARTIST-VIEW.md §10.
+- **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
+  words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
-**Listeners badge (2026-10-12, built, desk test open).** Now Playing wears the song's Last.fm
-counts: *N Plays | M Listeners* beside the title in the full player, *N Plays* on the cover's
-corner in Max; Settings › Playback › *Show play counts from Last.FM* (on). A cut-off title slides on
-hover. Desk test: features/LISTENERS.md §4.3 (7 steps).
+### His to design or decide (asks and ideas, not built)
 
-**Copy editor (2026-10-12, built, desk test open).** A dev-only pencil in the title bar (Alt+E)
-makes the words in every card typeable and saves each into its `.ts` source; Alt+click edits a
-hover hint. Desk test: features/COPY-EDIT.md §5 (8 steps).
+- **Network errors in plain words** (2026-10-12): a transport error in an Apple call shows raw
+  text (`Failed to load: error sending request…`, three `.catch` sites in search-card.ts). Five
+  forks: one classifier into `apple-health`; what a card shows instead; toast at once or after
+  the check; an AirPlay drop as a signal; a sweep for other `String(e)`. WORKLOG 2026-10-12.
+- **Our scrobble names** (2026-10-12): we scrobble Apple's raw names, so plays land on Last.fm's
+  small pages. LASTFM.md §10.
+- **Last.fm top tracks and similar artists:** ideas/LastfmArtist.md holds the calls.
+- **The Rulez design pass on custom rules** (RULEZ.md §15, with §13), or **Layout**
+  (LAYOUT.md), his pick. The graphics fallback rule's place in the engine's order
+  (GRAPHICS-FALLBACK.md §9 item 3).
+- **Friends see your picks and your Diary** (FRIENDS.md §20; never tell a user it exists).
+- **The user guide as a wiki** (DOCS-ORG.md §13.10, guide/marketing.md §1): next, the outline
+  block for each page. Before a public announcement (RELEASE.md §7): screenshots, a GitHub
+  Release, the guide.
+- **Full player:** Mini's player view; a turning copy of the Press record in the flight
+  (fullscreen-player.md §8).
+- **Motion review forks:** the surface-pick motion, the Now Playing song change (SHOTS.md §5e).
+- **Code review leftovers:** check each stored choice value against its options before Backup is
+  built (settings-store.ts); generated types for `invoke<T>`, if ever.
+- **A Diary Done from the CLI or an agent** toasts *Couldn't copy the Diary entry*: the
+  clipboard refuses a window without focus. Skip the copy when the window is behind, or say so
+  in the toast (DESK-TESTS.md A6).
+- **Threads that only sleep:** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` could be Tokio
+  timers (DEBUGGING.md § Threads).
+- **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;
+  ask him what is wrong first); Song of the Day "in the sidebar" (ask which sidebar first).
+- **Designed earlier:** the AirPlay stall and switch timing (AIRPLAY.md §13.2, a crate change);
+  the web demo's album light (WEB-DEMO.md §10); deploy a worker without dropping connections
+  (ideas/WorkerDeploy.md); SUGGEST-LESS.md, SECOND-SEARCH.md, ROOMS.md §19–§20, DeetsOTD.md §9,
+  CREDITS.md §5; DOCS-ORG.md steps 6–8 and its open forks. The DeetsSupport sign-in scheme
+  change (BETA.md §5) is written, uncommitted in `../DeetsSupport`, and HELD by his call.
 
-**Unshuffle (2026-10-12, built, desk test open).** Press the Shuffle square off and the list
-goes on in its order from the playing song; a click with the mode on shuffles the whole list
-but the clicked song; the glyph stays the arrows; the queue blob is v2 (the plan rides
-with it). The desk test is QUEUE.md §Shuffle and unshuffle › Desk test (6 steps). His to see
-once: the row's words (*Shuffle off plays*: In order /
-As shuffled), the hint *Press again to play the list in order*.
+### deetsmeter: the judge (M3), desk test partly run
 
-**Listeners from Last.fm (2026-10-12, read side built, UI next).** `lastfm_listeners` +
-`listen_counts` + `src/listeners.ts` read a song's Last.fm listener count and cache it a month.
-Nothing shows it yet: the row (features/LISTENERS.md §4, his forks §5) is the next sitting. Desk
-test with the row.
+`scripts/compare/`, `tools/deetsmeter/`; music-app-comp.md §17.15–§17.17. Play, scroll, search
+and warm start ran on both apps. Found: our Play / Pause button changes after our sound starts
+(a fix is his call). **The trap for every start scene:** after `--scene start` (warm), ours
+runs inside the Claude package; quit it and start it from the Start menu before changing a
+setting that writes the registry. **Next steps:** (1) after a boot, sign in, open neither app,
+and within 15 min run `node scripts/compare/run.mjs --scene start --cold` (ours needs 3 Press
+passes, Apple 1 more). (2) When the cold runs are done, from a copy started by Explorer: turn
+Start with Windows back On (`deetsmusic settings set startWithWindows on`) and *Change look at*
+back to Sunrise and sunset (`settings set lookSchedule "Sunrise and sunset"`). Until then his
+call holds: *Change look at* is Off, skin Press, theme Black & Red. (3) Then his calls: the seek
+fork (scene 4), the Play / Pause lag, the 300 ms search delay, the "first play after a start"
+row (§17.17), scroll again on a quiet machine with both monitors on.
 
-**Code review: TypeScript and Rust quirks (2026-10-11, built, pushed to `main` and
-`ten-out-of-ten`, his desk tests open).** WORKLOG 2026-10-11 (code review) is the record. Desk
-tests: Rulez › ⋯ › Paste a rule with the real clipboard, and Import from a file (the pasted-draft
-check, `validateDraft`); Rulez rows with no name (the switch whole, the ⋯ in line); and, to
-see it once, the settings.json repair toast (set `"sotdPostMode": "weekly"` in the dev
-settings.json, start the dev app). **His to change:** the repair toast's words
-(`settings-repair.ts`, TOASTS.md §5) and the two new Rulez skip reasons. **Still open, his
-call:** the TypeScript settings store trusts stored choice values (`{ ...DEFAULTS, ...stored }`
-in settings-store.ts) — check each choice key against its options before Backup is built; and
-generated types (ts-rs / specta) for the other `invoke<T>` shapes, if ever (`RustSettings` and
-its drift test cover the settings).
-
-**Set up the DeetsMusic MCP (2026-10-11, built, committed on `ten-out-of-ten`, his desk test
-open).** Settings › Connections connects Claude Desktop (the `.mcpb`), Claude Code, and Codex and
-ChatGPT; `deetsmusic mcp install|status|uninstall`; *last used*; the uninstall hook.
-MCP-INSTALL.md §8d is the as-built record, §9 the desk test (not from a Claude session). The
-words chosen inside his forks are listed in §8d for his review. AGENT-SETUP.md §2 now describes
-the panel, so it must not reach `main` before the release that ships it.
-
-**Workers pass (2026-10-10, built, committed on `ten-out-of-ten`, two desk tests open).**
-The `db: slow` line with its once-a-minute limit (DB-HEALTH.md §2a): restart the runner, use
-the app a few days with one library sync, then read the lines; they decide the read
-connection (ideas/WORKERS.md §5.1). The next song's colors one ahead: ALBUM-COLOR.md data
-path item 4 has the desk test.
-
-**Full player (2026-10-11, built, tested, on for everyone).** The code shipped hidden in 0.26.0
-behind a DevTools flag; the flag is removed for the next release. Midi and Max only.
-features/fullscreen-player.md §13 is the as-built record and lists what was decided inside his
-forks. Open: Mini's player view (his call), a turning copy of the Press record in the flight
-(§8).
-
-**Rulez usability fixes (2026-10-10, built, committed on `ten-out-of-ten`, his desk test open).** The While
-row, The song section, flyout widths, the rule-key words, Clean and Party, the recipe copy:
-RULEZ.md §18. His desk test is §18.3; step 6 (Headphones on a real headset) is the open question.
-**Then the three-line row** (When · If / While · Do, the kind from what is filled; Clear rows;
-Delete with Undo; sentence copy; the sentence as the name; a search field in the word menus):
-RULEZ.md §19, his desk test §19.4.
-
-**deetsmeter: the judge (M3), committed 2026-10-10 (7be3d55) on `ten-out-of-ten`; desk test
-partly run.** `scripts/compare/` (the judge, its rules, two profiles; scenes play, scroll, search,
-start warm and cold), the sensor in `tools/deetsmeter/`, `tests/compare-metrics.test.ts`.
-2026-10-11: ours is on Max with the default cards and the Press skin (his F6 call); its profile
-blocks are filled (committed 80cedb6), and play, scroll, search and warm start ran on both apps
-(music-app-comp.md §17.16). Found: our Play / Pause button changes after our sound starts
-(§17.16), a fix is his call; the desk test is §17.15 (DESK-TESTS.md B21). Open fork: how the
-tool seeks (scene 4). The installed app is on Press now, with the look schedule Off (see the
-next steps for the undo).
-**Cold, first boot (2026-10-11 evening):** Apple's pass is in (`results/cold-apple.jsonl`:
-window 1,013 ms, content 6,378 ms). **Ours was lost:** Windows started it at sign-in. The
-warm start scene had relaunched ours from Claude's shell, so that copy ran inside the Claude
-app's MSIX package, and its Start with Windows Off went to a private hive; the real Run key
-kept `DeetsMusic --tray`. Claude deleted the real entry through a WMI-started `reg delete`
-(the copy running now was started by Explorer, so it is real).
-**The trap, for every start scene:** after `--scene start` (warm), ours runs inside the
-Claude package. Quit it and start it from the Start menu before changing a setting that
-writes the registry (Start with Windows, the deep link).
-**Cold, boot 2:** Apple's second pass is in. Ours came up on Glass (the look schedule's day
-look applies at start), so its pass is kept as a Glass row, out of the Press rows; the judge
-now records the skin of each cold pass (music-app-comp.md §17.16). His call: *Change look at*
-is Off, with skin Press and theme Black & Red, until the cold runs are done.
-**Next steps:** (1) Next boot: sign in, open neither app, and within 15 min run
-`node scripts/compare/run.mjs --scene start --cold` (ours needs 3 Press passes, Apple 1 more).
-(2) When the cold runs are done, from a copy of ours started by Explorer: turn Start with
-Windows back On (`deetsmusic settings set startWithWindows on`) and *Change look at* back to
-Sunrise and sunset (`settings set lookSchedule "Sunrise and sunset"`); each asks in the app.
-The schedule then puts back his Glass / Ocean looks. (3) Then his calls: the seek fork
-(scene 4); the Play / Pause button lag; the 300 ms search delay; the "first play after a
-start" row (designed 2026-10-11 on his ask, music-app-comp.md §17.17: three forks, then
-build; the play scene's 84 ms is a resume, not a first play); scroll again on a quiet machine
-with both monitors on.
-
-**Pick up here (2026-09-28, next session).** In order:
-0. ~~Desk test: Play a web from the song playing~~ — Claude's run 2026-10-01 passed steps 1–8
-   (DESK-TESTS.md §5, the 10-01 run). **Left from that run** (investigated the same day):
-   (a) **a bug, FIXED 2026-10-01, uncommitted (his call: repeats are allowed):** MusicKit's
-   `playLater` keeps only the last copy of an id repeated in one call; each insert is now split
-   so no call repeats an id. Claude's desk tests: alignment passes everywhere, but **a skip
-   (Next, or Previous within 3 s) between two adjacent copies of one song does not start it**
-   (QUEUE.md § Repeats in one insert, the evening run). **The cure is built 2026-10-01, his call:
-   such a skip reloads from the model (`player:copySkip`); uncommitted; Claude's desk test there
-   passed every step.** It touches
-   playback: his hand test before a release. The live
-   log's 58 `misalign` lines are another cause (a library id with no play id) and all predate
-   0.25.2, which banks such ids; (b) the launch: not a regression. A Settings card on screen
-   at launch builds all its open sections' rows before the window shows: +200–250 ms (reload:
-   `ready` 907–1,332 with Settings, 556–600 with Home). `content-visibility` on open sections
-   was tried and measured: no gain, taken out (WORKLOG 2026-10-01). **Built instead (his call):
-   the rows on screen first, the rest after the lift** (SETTINGS.md §3b): window shown median
-   890 → 836 ms; uncommitted, his desk test open; (c) the grow's `--grow-rows-at` stays 0.4 (his call, 2026-10-01); (d) his eye
-   on the strips in `shots/grow-timing/0.25.2/` and
-   `shots/theme-crossfade/0.25.2/`. The re-runnable lists are in [ops/checks/](ops/checks/README.md).
-0b. **Mid-song stall watch** (built 2026-10-03, uncommitted, NOT desk-tested; his picks): a song
-   stuck in `waiting` 8 s in the middle reloads 2 s before the stop. QUEUE.md §Mid-song stall
-   has the desk test. It touches playback: his hand test before a release.
-0c. **The station break-out check** (built 2026-10-06, uncommitted, NOT desk-tested; his pick):
-   after the break-out load, MusicKit's song is compared with the model's and loaded again once
-   on a miss (`player:breakoutMiss`). STATIONS.md §1; the desk test is in WORKLOG 2026-10-06.
-   It touches playback: his hand test before a release.
-0d. **The Rulez review fixes** (built 2026-10-06, uncommitted; Claude's shots check passed, his
-   hand test open): four bugs (Esc, When → Do, flyout field focus, Enter takes the library's
-   spelling), one row per Settings row in a shut fold, recipes at full strength with a
-   Duplicate chip, the row glide. RULEZ.md §17 has the desk test. The Esc change reaches every
-   grown card (CARD-GROW.md, Esc) and the field focus every menu (context-menu.ts).
-0e. **Look at next (2026-10-07, his ask, nothing built, no fork decided): redo the round-result
-   page for DeetsMahjong.** The page after a win ("Deets wins — 3 faan"): the winning hand, the
-   fan line ("Mixed One Suit  3"), the faan total and its +32, one "<name> pays N" line per
-   loser, and the "Next hand" button. He wants it redone. The code is not in this repo: the
-   client is `../DeetsSolutions/mahjong/` (`mahjong.js`, `strings.js`, `engine.js`) and the
-   design notes are `../DeetsSolutions/docs/mahjong.md`. Start by asking him what is wrong with
-   the page today (layout, the hand shown, the pay lines, the flower tile set apart on its own
-   row), then bring him the forks.
-0f. **Look at next (2026-10-07, his ask, nothing built, no fork decided): Song of the Day in the
-   sidebar.** He wants the Song of the Day reachable from a sidebar. Open question: which
-   sidebar. The app has no sidebar today, so first find out whether he means a new strip beside
-   the cards, the tray panel, the Max stage column, or the DeetsSolutions site. The feature
-   itself is `integrations/DeetsOTD.md` (shipped 0.11.0). Bring him the forks before any build
-   (his rule: he decides every fork).
-0a. **The music stopped at a song change + the catalog heal** (built + committed 2026-09-28,
-   Claude ran part of it on the dev app): QUEUE.md §The music stopped at a song change and §A
-   library song Apple sends with no play id. Not reached yet: a healed id in use, "in your
-   library" for it, and the retries (they need a real failed song change, on live after a
-   release). Watch the live ring for `player:retryCurrent`, `keyRetry`, `recoverSilent`.
-   Also open: when Apple gives a library song a catalog id later (Lawn did), its key moves from
-   the library id to the catalog id; its old play counts may stay on the old key. Not checked.
-1. ~~The two §18a forks~~ — his calls 2026-09-27 late night (RULES.md §18a): a hand change
-   sets the whole rule aside (unchanged); a Settings row shows the value in force (built,
-   desk-tested by Claude). His look: the rows under Battery saver or Focus, and their dot.
-2. ~~The blocked desk tests~~ — run 2026-09-27 night (DESK-TESTS.md §5, the night run). Left
-   from it: the A1 focus fix and the `dev:fresh` seed were both fixed and re-tested the same
-   night (committed). Open: the
-   Ocean album light without a GPU (re-benched after the cap: 72 fps at 0, 37–41 at 100), a hint wording for him (OCEAN.md §6).
-3. ~~The Rulez condition block cuts a yes / no fact's words~~ — fixed 2026-09-27 late night
-   with the word rules in RULEZ.md §6.5 (parts, one case rule, a SAYS test). His look: open a
-   rule of yours with a yes / no condition (Charging, Explicit) and read the blanks.
-4. Then the Rulez design pass (RULEZ.md §15) or Layout (LAYOUT.md), his pick.
-
-**Cruisin and Pro (2026-09-28, designed, not built).** Recipes get a Settings section after
-Tips (RULEZ.md §16). A welcome screen before sign-in, *Hop in*, picks Cruisin (the defaults)
-or Pro (his own settings) to pre-set settings. No mode; one gate: the Rulez card is offered only
-under Pro. Every fork is decided but the words and the Pro walk's order
-([HOP-IN.md §5](features/HOP-IN.md)); ready to build when he says go.
-
-**Graphics fallback (built 2026-10-11, desk test passed 2026-10-12).** A driver update left the
-live app on WARP (software drawing) for 3 hours: 100 % of one core in the GPU process, slow clicks
-and hovers. Built: the `graphics` fact (`src/gpu.ts`), a built-in rule owned by Settings › Motion ›
-*If graphics fail* that holds the heavy effects off, a sticky toast [Restart now] [Turn effects on]
-[Later], and a WebView2 `ProcessFailed` watch in Rust (`src-tauri/src/gpu.rs`). The desk test and
-its results are [GRAPHICS-FALLBACK.md §8](features/GRAPHICS-FALLBACK.md); §9 is the as-built record
-and lists the calls made inside his choices. Open with him: the rule's place in the engine's order
-(Battery saver's Reduced wins over its Off, §9 item 3).
-
-**The animation design pass (2026-09-28, branch `visualz`, in progress).** His ask: a full
-visual design pass on motion, with the shots made ready for Claude to review and to help debug.
-Built: clips in the shots runner, the motion set (24 clips × 5 skins, `docs/guide/motion.json`),
-the runner as the window for surface changes, and the debug tools (console record, frame
-telemetry, `probe`, `snap`, `--slow`). [SHOTS.md §5a–§5c](guide/SHOTS.md). Next: Claude reviews
-`shots/motion/0.25.1/` and brings him the motion forks. **Reviewed 2026-09-28** (SHOTS.md §5e).
-Built from it, his calls, uncommitted: the grow timing (rows at 0.4 of the open, a 0.24 s
-collapse, two old collapse faults fixed; desk test CARD-GROW.md §19.1, on `dev:built`, frames
-included), the title menu's `.pop` + `enterRows`, and the theme crossfade for a hand pick
-(an agent keeps the cover; desk test UX-COVERUPS.md §6c.1). Its strips were read later that day:
-the panel now leaves before the snapshot (no Compass ghost) and a hand pick eases out (§6c.2,
-desk test there). The shots runner now explains a gap and runs A/B comparisons (SHOTS.md §5f:
-app marks, stalls vs late frames, a change curve, `--vs`, `--repeat`, `--tag`, a noise gate).
-The motion set's `drill` and `grow`
-clips are fixed. Open forks from the review: the surface-pick motion, the Now Playing song
-change. Nothing of this sitting is committed; his three desk tests come first.
-
-**Next and Previous before the first Play (2026-09-28, built on `visualz`, his hand test
-open).** They did nothing on every launch; now they move the song and stay paused, as Apple
-Music does. The desk test is [QUEUE.md § Next and Previous before the first
-Play](features/QUEUE.md). It touches playback: his hand test before a release.
-
-**The uninstall removes start with Windows (2026-09-28, built, not in a release yet).**
-`NSIS_HOOK_POSTUNINSTALL` (RELEASE.md §3). The desk test there runs on the next real build:
-update over it (the Run value stays), then uninstall (the value is gone).
-
-**Eight more rule keys, Battery saver, Focus (2026-09-27 evening, built, committed in
-`3b433bc`, pushed).** Motion, Fancy Glass, the two Friends switches and Show notices are rule
-keys; the recipe Battery saver holds four of them off while not charging; Focus also stops
-listen-along and keeps notices at Failures; a room-code switch change reaches friends at once.
-Claude's desk test passed (steps 1, 2, 4); the unplug test is his, on a laptop, and two forks
-are his ([RULES.md §18a](architecture/RULES.md)).
-
-**The dead-next heal's double play (2026-09-27 17:10, built, desk test open).** A song
-healed after a failed auto-advance played with no MusicKit index, never grew its window, and
-replayed at its end (twice on live that day). The heal now loads with `stopFirst`, and the
-top-up logs `player:topUpSkip` when it cannot run. Cannot be forced: watch the next
-`player:deadNext` on live ([QUEUE.md](features/QUEUE.md) § The healed song played twice).
-
-**The desk-test run (2026-09-27 evening, by a Claude session; DESK-TESTS.md §5):** *11 pass ·
-1 fail · 5 blocked · 1 skipped · 8 owner-only.* What it leaves:
-- **The fail, A1, is fixed 2026-09-28** (list-keys.ts keeps the focus through a redraw;
-  COMPASS.md §5a). The re-test is §5a steps 8–10, open.
-- **Blocked on your yes:** B3, B12, B13 need `npm run dev:fresh` (it wipes the dev app's
-  sign-in); B15 needs the dev app restarted as `dev:built`. (All run since; B2 passed
-  2026-09-27 late night with the new `webview-eval.mjs --tray`, DESK-TESTS.md §5.)
-- **Two findings, not fixed:** `navigator.clipboard.writeText` refuses a window without focus,
-  so a Diary Done from the CLI or an agent toasts *Couldn't copy the Diary entry* (A6; a fork:
-  skip the copy when the window is behind, or say so in the toast). `deetsmusic diag --flush`
-  exists in the repo's CLI only; the installed 0.25.0 CLI lacks it (B1; the next release
-  carries it).
-- **Not run inside a passing row:** A2 steps 3 and 7 (a short window; a grown card + Escape),
-  A3's Pin, A4's empty log, A6's two drag steps, B5's EQ per output, B11's steps 2–4 (your eye,
-  a hand pick). B9 is your mouse test (RULEZ.md §12).
-- **Yours, untouched:** B6, B7, B10, B16–B20.
-
-**The consistency survey (2026-09-27 evening, docs only).** A read of every shared system
-against its users. Written down: the new-card recipe (SURFACES-AND-CARDS.md §5, with the
-who-adopts-what table), checklist items 0 and 11–14 in CLAUDE.md, and the doc corrections
-(SETTINGS.md's eight missing keys, AGENT.md's no-spec rows, ONBOARDING.md's album and playlist
-menus and ten hints, TOASTS.md's two sites). **Left as found, his to close or leave:**
-- ~~No arrow keys on Rewind, Diary and Rulez rows~~ — **built the same evening, uncommitted**;
-  his desk test is [COMPASS.md §5a](features/COMPASS.md).
-- ~~The OS scrollbar on five scrollers~~ — **corrected the same evening:** the survey's grep
-  read `src/*.ts` only; `.quick__panel`, `.room__panel` and `.compass` carry `app-scroll` in
-  `index.html` and always did. The two real misses, `.set__menu` (a long Settings menu, Sleep
-  at) and `.set__preview` (the App log preview), got the class (uncommitted; his look).
-- ~~The Library's Sort / View pop is a fourth popover~~ — **rebuilt on `makeDropdown` the same
-  night, uncommitted** (his call): a portaled `.pop` panel per kind, re-bound to the live pill
-  on each head render (`wirePops`); hover mode, the arrival and the one dismiss path came with
-  it. `dropdown.ts` `destroy()` now drops the trigger, root and panel listeners too. His desk
-  test is [UI-ARCHITECTURE.md §4a](architecture/UI-ARCHITECTURE.md), under Toolbar.
-- ~~The Friends panel's song row builds Play Now · Go to Album by hand~~ — **on the builder
-  since the same evening, uncommitted** (his call); the desk test is CONTEXT-MENUS.md §8 step 11
-  (two dev apps).
-- ~~Six Settings rows have no agent spec~~ — **corrected and closed the same evening:** the open
-  sizes always had one (`kind: "size"`, the survey's grep missed the key map); Hiding lasts and
-  the room name are left out with a reason in `agent-settings.ts`; the three hover-hint rows
-  were the real miss and have a spec now (AGENT.md § Which settings; uncommitted).
-- ~~`styles.css` holds 68 raw px values in component rules~~ — **routed to tokens the same
-  night** (eleven new skin tokens: `--space-half`, `--caret-size`, `--radius-round`, the search
-  card's four, the scrubber's five, the ocean bob amplitudes, the sand tile, the flyout ring and
-  Account floor). What stays raw is SVG user units (a viewBox origin, the storm's x), each
-  commented as such. `npm run tokens` regenerated TOKENS.md. His look: nothing should have
-  moved a pixel.
-- ~~`docs:check` catches none of the above~~ — **checks 20–26 built the same night**
-  (DOCS-ORG.md §8): settings keys, toast sites, hover hints, scrollers, right-click listeners,
-  boxes placed by hand, list keys. Facts; the first run found 19 more than the survey had.
-- **The open desk tests are one runbook now:** [ops/DESK-TESTS.md](ops/DESK-TESTS.md) — §0 is
-  the prompt for an agent in its own session; 14 rows an agent can run, 6 that are his.
-
-**In flight:** Rulez on `rules-rulez`: **every route is built and Claude's desk tests have
-run, with music** ([RULEZ.md](features/RULEZ.md) §2, §8, §10.2). Route 8's five steps were
-built 2026-09-27 afternoon (§10.2), and the new Settings row is Menus › Go to opens. Committed
-and pushed on `rules-rulez`; not merged into `main`, not released. **His** steps left: his look at the new words and the Go to opens row; Agent
-changes settings = Off (AGENT.md §8 step 8); the chime on a HomePod (RULEZ.md §5.4 step 8).
-*Mark Suggest Less* (route 6) waits for Suggest Less itself. **Added the same afternoon:** the
-facts *Album color* and *The cover is light / dark* (RULEZ.md §11; his open call: where the
-orange / yellow line sits), and the recipe **Live Theming** (§11.1: each cover color picks one of
-the six themes, light or dark by the cover; the color half is his to review). The Album theme, colors from the cover, is documented into Skinz
-(SKINZ.md §12) and waits for the Skinz build. **Then:** a rule moves by hold-then-move (no
-grip) and its row has a hover box (RULEZ.md §12; his hand test is open); the engine rechecks
-only when a seam's fact changed. A recipe is one row with one switch, and opens to its rules
-(RULEZ.md §14, desk-tested). **Built 2026-09-27 evening (`dae117a`, pushed):** a rule's theme change
-crossfades in place (500 ms, no cover), and Live Theming changes the theme once per song (the
-last cover's color stands until the new one lands). His desk test is
-[UX-COVERUPS.md §6c](architecture/UX-COVERUPS.md). **Next for Rulez: a full design pass on custom rules** — how
-recipes and groups show, cases, custom recipes — then he decides (RULEZ.md §15, with §13).
-
-**Next:** Shots — a script that records every feature as a picture or a clip from the web
-demo, for the user guide and a marketing overview. F1–F4 closed and the picture runner built
-2026-09-26 (`node scripts/shots.mjs`); the 6 sample pictures are in
-`shots/0.14.6/`, with New badges hidden and no Rewind notice. Next: clips ([SHOTS.md §10](guide/SHOTS.md) step 3).
-
-**After that:** the telemetry pass's last part, the AirPlay stall and switch timing (AIRPLAY.md
-§13.2, a crate change too).
-
-**On the docket — Friends see your picks and your Diary** (his call 2026-10-01, not designed;
-**he talks it through 2026-10-02**, aiming for a meaningful integration): [FRIENDS.md
-§20](integrations/FRIENDS.md) has today's facts and the questions. The user guide's story (a
-local web of picks and diaries among friends, no algorithm, docs/guide/marketing.md §1) waits
-for it. Today a friend sees only what you play now; Song of the Day goes to a Discord channel;
-the Diary is private.
-
-**The user guide is a wiki** (his calls 2026-10-01): one page per card or workflow, each with a
-walkthrough video, the steps, and FAQs that link to that workflow's open issues. "The workflow
-is the product." [DOCS-ORG.md §13.10](DOCS-ORG.md), folders and positioning in
-[guide/marketing.md](guide/marketing.md) §1. Next: the outline block for each page.
-
-**On the docket — Layout** (designed 2026-09-27, every fork his, not built):
-[LAYOUT.md](features/LAYOUT.md). Two Settings › Window rows set the artist view's order and
-hide its shelves, and set each button on a fixed list (§6) to On / Faded / Hidden. Each part is
-its own rule target. The consistency review is folded in and its forks closed (§11). Its Rulez
-words wait for the custom-rules pass (RULEZ.md §15).
-
-**Desk tests open (every local branch is merged into `main` as of 2026-09-25)**
-- **Go to Album grows, and the grow replaces the slide** (2026-09-26, on `main`, for the next
-  release): [RULES.md §18](architecture/RULES.md), the desk test under "the grow replaces the
-  slide". Also `deetsmusic diag --flush` ([LOGGING.md](ops/LOGGING.md) §Reading it from outside).
-- **The rules engine** (2026-09-26, merged into `main`, **published in 0.25.0**):
-  [RULES.md §18](architecture/RULES.md). Claude ran every step's desk test on the dev app, and
-  the perf comparison with `main` (§18 Performance). The chip is his dots design (§9: green = a
-  rule, red = your pick), and the New badge is now a yellow dot (QUICK-SETTINGS.md §8). Open,
-  **his, now on live**: the tray panel follows a look change; a real `dev:fresh` first run;
-  Windows mode in the look schedule; his Discord profile during a pause; real headphones for EQ
-  per output; a new Diary entry grows; the "changes a user can see" list in §18.
-- **Add a room member as a friend** (2026-09-26, committed on `clode-eval`):
-  [FRIENDS.md §18.8](integrations/FRIENDS.md). Claude ran steps 1–6 on two dev apps: all pass.
-  Step 7 passed later. Released in 0.14.7; the rooms worker is deployed (2026-09-26,
-  `0561f70f`, 41/41 checks live). Open: his stress test on live.
-- **The Diary's playing-album box** (2026-09-26, committed on `clode-eval`, `9c656be`):
-  [DIARY.md §4c](features/DIARY.md). Claude ran steps 2–7: all pass. Open: step 1 and his look.
-- **Room sync + Listen Along fixes** (2026-09-26, his calls, committed and merged to `main`):
-  Listen Along keeps the host playing (FRIENDS.md §16.2 note); settle reads the `<audio>`
-  clock and retries (ROOMS.md §18.8); the Diary box's full album menu (DIARY.md §4c); the menu
-  divider (CONTEXT-MENUS.md §2). Measured by Claude on two dev apps; **his ear test passed**.
-  Open: his stress test on live, after the next release.
-- **New badges on pills, skin-only marks** (2026-09-25, committed on `clode-eval`, `da0181d`):
-  [QUICK-SETTINGS.md §10a.1](features/QUICK-SETTINGS.md) steps 1–5.
-- **The Apple call counter's hourly line** (APPLE-CALLS.md §5 step 1): an hour of normal use,
-  then read `[apple] calls 1h` and the `quit` line. The 429 back-off (steps 2–3) was checked in
-  the dev app, and the pause labels passed his desk test (DEBUGGING.md), both 2026-09-25.
-  Committed on `clode-eval`; not merged, not released.
-- **Diary: Done copies the Export** (built and committed 2026-09-24) — DIARY.md §8 step 11f.
-- The Diary card, schema v14 — DIARY.md §8 passed 2026-09-24 except 11e (CLI / MCP). It needs
-  an installed build with the Diary CLI; beta is paused, so it runs on the installed app
-  (0.14.5 and 0.14.6 both carry the Diary).
-
-**The consistency pass (2026-09-25)** — desk test passed, merged to `main`, and shipped in
-0.14.6. The same release carries the watchdog sleep line, the rejection stack, the
-No MusicKit retry (TOASTS.md §5) and the Cover Wallpaper dim of 15. It holds: the destructive-action
-rule (TOASTS.md §6), `lock_or_recover` (src-tauri/src/lock.rs), empty states with a period,
-**the database thread** (DB-HEALTH.md §2a; 73 commands, check 9 now hard), the scrollbar
-gutter left as is (CLAUDE.md checklist 6a), and **unit tests on Node's own runner**
-(`npm test`, `npm run check`, the pre-push hook).
-- Kept by his call (2026-09-25): every `console.error` writes an ERROR line to the log file,
-  a failure the app already handles included (an Apple 401 on one playlist refresh).
-- ~~Later, not decided: tests for `media-menu.ts` need a stub map~~ — **built 2026-09-27:**
-  `tests/media-menu.test.ts` with its own resolve hook and `tests/stubs/menu-deps.ts` (14
-  tests on the row order of every media type). The old note, for the record: the tests need a stub map in `tests/setup.mjs` (it
-  loads the player and MusicKit). The extension manifest's version is a hard fail in
-  `release-check` since 2026-09-26 (RELEASE.md, the seven version files).
-
-**Designed, not built (2026-09-24)**
-- The telemetry pass's AirPlay part: stall and switch timing, the quieter wire log (AIRPLAY.md
-  §13.2). The other two parts are built (Desk tests open, above).
-- Web demo: the album light more prominent — his ask, 2026-09-24; forks first (WEB-DEMO.md §10).
-
-**Releases and branches**
-- 0.12.0 and 0.12.1 are withdrawn. The first public release
-  was 0.4.3; nothing before it shipped. Every release is in the log at RELEASE.md §0a.
-- **Published: 0.25.0** (2026-09-26, `6526b0d`, straight to live; `main` = `rules-rulez`):
-  the rules engine, Grow on album or artist, the coloured dots. The jump from 0.14.8 is his
-  call. Published without the hand test, his call (RELEASE.md §0a). The sign-in page's assets
-  were not rebuilt: the theme roles only gained tokens (`npm run signin:assets` + a DeetsSupport
-  deploy is his call if he wants it).
-- **Published: 0.14.7** (2026-09-26, `5fe868c`, straight to live; `main` = `clode-eval`): add
-  friends from a room (the rooms worker deployed first, `0561f70f`), Listen Along keeps the
-  host playing, rooms in sync to the millisecond, the Diary's playing-album box, the menu
-  divider, Sort / View arrow keys, New badges on pills, the Apple 429 back-off. The §0b hand
-  test was skipped by his call; his stress test on live is open.
-- **Published: 0.14.6** (2026-09-25, `5f1abb5`, straight to live): the consistency pass (the
-  database thread, `lock_or_recover`, Undo), the watchdog sleep line, the rejection stack, the
-  No MusicKit retry, the AirPlay reconnect (crate 0.4.1), the Cover Wallpaper dim of 15,
-  Adaptive sound hidden. The §0b hand test was skipped by his call; every part was desk-tested
-  in dev.
-- **Published: 0.14.5** (2026-09-25, `1e19a9b`, straight to live: beta-first is paused from
-  this release, RELEASE.md §0): the Diary card, Full | Lib, the Glass canvas (Covers /
-  Picture), unreleased songs dimmed, album and playlist favorites, the queue fix. The §0b hand
-  test was skipped by his call.
-- **Published: 0.14.1** (2026-09-24, `e2d8e3d`; beta `0.14.1-beta.1` first): the installer
-  fix. The 0.14.0 update aborted when an AI app's DeetsMusic CLI held `cli\deetsmusic.exe`:
-  the 32-bit installer's PowerShell read every process path as empty (RELEASE.md §4a).
-  **Seen end to end 2026-09-24:** his PC updated 0.14.0 → 0.14.1 over five running MCP CLIs
-  with no abort ("Update installed fine").
-- **Published: 0.14.0** (2026-09-23, `62d516a`, then `oceanic-schmoves` fast-forwarded into
-  `main`): one right-click menu per media type, Start a Web, the Ocean heavy swell and album
-  light, tray Pin / Start Station. The first release that went beta first:
-  **0.14.0-beta.2** on `deetsmusic-test` the same day. His word: "Desk tests all look good";
-  the §0b hand test of the installed build was skipped by his call.
-- **Published: 0.13.1** (2026-09-22, from `main`, `d86bf00`): Web in the title bar,
-  `player:pause` names who paused, the web demo. The §0b hand test was skipped by his call.
-- **Published: 0.13.0** (2026-09-21, from `main` = `dockin`): the quick panel, the New badges
-  (the title bar cog too, QUICK-SETTINGS.md §11), the search-term right-click, the docs re-org.
-  He tested in dev; desk tests §10.1 and §11.1 were not run as scripts.
-
-- **DeetsMusic Beta** (2026-09-23, in `main` since 0.14.0) — a second installed app on
-  `deetsmusic-test`. Beta-first is **paused** since 0.14.5 (2026-09-24, RELEASE.md §0):
-  releases go straight to live. **0.14.1-beta.1 is the last one published there.** The
-  two spike rows were withdrawn 2026-09-24 (BETA.md §4.3). The DeetsSupport change (sign-in scheme + version order, BETA.md §5) is written, uncommitted in
-  `../DeetsSupport`, and HELD by his call.
-- **Add a room member as a friend** — his ask, 2026-09-23. Designed, forks decided (F1A–F5A:
-  offer on press, ask toast, mint on Add, silent Not now, no setting), not built: FRIENDS.md §18.
-  Needs a rooms-worker deploy (the item below).
-- **Deploy a worker without dropping connections** — his ask, 2026-09-23. Open, not researched:
-  ideas/WorkerDeploy.md. First step is to measure what a rooms deploy really does.
-
-**Desk tests not run**
-- **Ocean perf check** — the right-click menus, the heavy swell, the album light and the beta
-  passed his desk test on 2026-09-23 ("Desk tests all look good") and shipped in 0.14.0. Still
-  open: **the perf check** in OCEAN.md §6 (the album light at 0 and at 100, with music, on
-  `dev:built`, with and without the GPU). The first read on `dev:app` showed about the same
-  weight as before.
-- **Discord's two buttons** (*Play on Apple Music*, *Listen Along*) are proven sent, not proven
-  readable: they are invisible to the account that sets them, so reading them needs a second
-  Discord account (FRIENDS.md §8.4, item 3).
-
-**Designed, not built** (front matter `designed` or `project`, or a part marker)
-- SUGGEST-LESS.md · SECOND-SEARCH.md · MCP-INSTALL.md (forks open) · ROOMS.md §19 (redeploy
-  notices) and §20 (a room with no SQLite rows) · DeetsOTD.md §9 (more webhooks) ·
-  CREDITS.md §5 (the producer web).
-- DOCS-ORG.md steps 6–8 (the sweep skill, release-note grouping, the user guide) and its open
-  forks: F6, R1–R4, U10, T1–T4, X1–X4.
-
-**Before a public announcement** (RELEASE.md §7): screenshots (none exist), a GitHub Release
-with the installer, and the user guide (DOCS-ORG.md §13).
-
-**Keyboard** (COMPASS.md §5): the Sort / View popovers take the arrow keys since 2026-09-26
-(desk test open). The Add to Library square already showed on keyboard focus.
-
-**The 2026-09-17 health check** ran; what it found and its open leads are DEBUGGING.md
-"What the 2026-09-17 health check found".
+**The 2026-09-17 health check:** its open leads are DEBUGGING.md "What the 2026-09-17 health
+check found".
 
 ---
 
 
 ## State of play
 
-**Live: 0.14.6** (2026-09-25, `deetsmusic` channel; the last beta is `0.14.1-beta.1` on `deetsmusic-test`). Every release is in the log at
+**Live: 0.26.1** (2026-10-11, `deetsmusic` channel; 0.27.0 is being prepared; the last beta is `0.14.1-beta.1` on `deetsmusic-test`). Every release is in the log at
 [RELEASE.md §0a](ops/RELEASE.md); what each version added is in
 [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
 [WORKLOG.md](WORKLOG.md). The list below is the long-lived foundation plus dated entries. The

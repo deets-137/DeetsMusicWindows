@@ -12,6 +12,19 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (release prep) — 0.27.0: the version, the notes draft, Open now pruned
+
+His calls: 0.27.0; ship with the open desk tests open (AirPlay §13.6, Listeners §4.3,
+Unshuffle), then his hand test of the installed build; prune Open now; fast-forward `main`;
+draft the notes. §0b reads the release high risk (Rust `airplay.rs` thread, `tray.rs` and
+`friends.rs` commands; `player.ts` / `queue.ts` unshuffle), so no publish without his test.
+Found by git: every Open now item marked "uncommitted" or "not released" (copySkip, the
+break-out check, the boot rows, the grow timing, the uninstall hook, the dead-next heal) is in
+0.26.1 or earlier, and every branch but this one is merged. Open now went from about 480 lines
+to about 110, in four groups. The History click and the Discord badge were tested by him
+(their commits say so). Found while writing the notes: a save writes the whole settings object,
+so the 2026-10-11 skin defaults reach new installs only; the notes say so.
+
 ## 2026-10-13 (support probe) — MusicBrainz coverage of his library
 
 His ask: what coverage MusicBrainz has for his library's artists (the Support link idea).
