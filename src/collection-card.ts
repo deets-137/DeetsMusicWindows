@@ -857,7 +857,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       pane.classList.add("coll-pane--bare");
       return pane;
     }
-    pane.innerHTML = `${f.ctx.toolbarBelow != null ? "" : toolbarHTML(f)}<div class="lib-view" data-view data-list-keys tabindex="0" aria-label="Songs"></div>`;
+    // `data-switch`: a level with a view switch (Full | Lib) keeps the bar's place (styles.css).
+    pane.innerHTML = `${f.ctx.toolbarBelow != null ? "" : toolbarHTML(f)}<div class="lib-view" data-view data-list-keys tabindex="0" aria-label="Songs"${f.ctx.views ? " data-switch" : ""}></div>`;
     const input = pane.querySelector<HTMLInputElement>("[data-search]");
     if (input) input.value = f.query;
     wireSearch(pane);
@@ -986,6 +987,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   // The view chips (`Context.views`) in the head's `[data-coll-views]` slot. Drawn on every
   // header change: a level with no switch empties the slot and hides it.
   const viewsEl = opts.root.querySelector<HTMLElement>("[data-coll-views]");
+  // The half last pressed (FULL-LIB.md §5.2): the pill shows it at once, before the level
+  // switches, so a fast second press always lands on the half you see. `waiting`: its level's
+  // data is not in yet, and the half breathes.
+  let viewTarget: { frame: Frame; key: string; waiting: boolean } | null = null;
   const paintViews = (ctx: Context | null) => {
     if (!viewsEl) return;
     const v = ctx?.views;
@@ -994,14 +999,15 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       viewsEl.innerHTML = "";
       return;
     }
+    const t = viewTarget && viewTarget.frame === cur() && cur().ctx === ctx ? viewTarget : null;
     const fresh = !viewsEl.childElementCount;
     viewsEl.innerHTML = splitPillHTML(
       v.options.map((o) => ({ key: o.key, label: o.label, title: o.title, off: o.off?.() })),
-      v.active,
+      t?.key ?? v.active,
       "Show",
     );
+    if (t?.waiting) viewsEl.querySelector(`[data-split="${t.key}"]`)?.setAttribute("aria-busy", "true");
     if (fresh) enterRows(viewsEl.children);
-    markPending(); // a switch still waiting keeps its breathing half through a repaint
   };
 
   const setHeader = (isTop: boolean, title: string, returns = false, ctx: Context | null = null) => {
@@ -1115,18 +1121,19 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     applyScroll(pane, f);
   };
 
-  // ── the view switch (FULL-LIB.md, "Full | Lib"; his calls 2026-10-13) ──
+  // ── the view switch (FULL-LIB.md §5.1–§5.2, "Full | Lib"; his calls 2026-10-13) ──
   // The same level seen another way. It takes the open level's place, so Back is unchanged and
   // so is the drill swap's way back. Measured before (2026-10-13): the whole pane was rebuilt,
   // so the same hero rose in again, and a Full level drew an empty "Loading…" state, then
   // redrew when Apple answered. Now:
-  //  1. it waits for the new level's data (`Context.ready`) — the pressed half breathes — and
-  //     switches once;
-  //  2. the hero stays: the drawn one is kept (its cover is not loaded again), and only a line
-  //     that changed (the meta, a name) and the facts box change, in place;
-  //  3. the list under the hero (Play, shelves, the bar, the rows) fades out quickly, and the
-  //     new one rises in with the drill's row motion (`enterRows`);
-  //  4. the reader keeps their place: above the rows, the same scroll; in the rows, the top
+  //  1. the pill shows the pressed half at once; the level waits for its data (`Context.ready`,
+  //     the half breathes) and switches once. Each view is built once and kept with the level,
+  //     so toggling back and forth reuses it: no new load, no wait;
+  //  2. what is the same stays: the drawn hero (only a line that changed rises in, the facts
+  //     box changes in place) and a part under it whose markup is the same (Play / Shuffle);
+  //  3. the rest of the list fades out quickly, and the new one rises in (`enterRows`);
+  //  4. a press during the fade calls it back: the old list returns, or the switch retargets;
+  //  5. the reader keeps their place: above the rows, the same scroll; in the rows, the top
   //     of the new rows, under the sticky bar.
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   /** What a view shows under its hero: every part but the hero, one level into the head. */
@@ -1148,31 +1155,41 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     if (!row) return false;
     return row.getBoundingClientRect().top <= view.getBoundingClientRect().top + (stuckOf(view)?.offsetHeight ?? 0) + 1;
   };
-  /** Keep the drawn hero in place of the new one when its cover is the same: only a line that
-   *  changed is swapped (and rises in), and the facts box changes beside the cover. Returns the
-   *  lines that changed, or null when the hero is another one (it is drawn new). */
+  // A drawn element's `title` has become `data-hint` (hint.ts), and the motion leaves its marks
+  // on it (`--pop-i`, `pop-enter`, `is-view-leaving`). So two parts are compared on a copy with
+  // the hints and the marks taken out, and a kept part takes the new hints.
+  const unhinted = (el: HTMLElement): HTMLElement => {
+    const c = el.cloneNode(true) as HTMLElement;
+    for (const n of [c, ...c.querySelectorAll<HTMLElement>("*")]) {
+      n.removeAttribute("title");
+      n.removeAttribute("data-hint");
+      n.style.removeProperty("--pop-i");
+      if (!n.getAttribute("style")) n.removeAttribute("style");
+      n.classList.remove("pop-enter", "is-view-leaving");
+      if (!n.getAttribute("class")) n.removeAttribute("class");
+    }
+    return c;
+  };
+  const same = (a: HTMLElement, b: HTMLElement) => unhinted(a).isEqualNode(unhinted(b));
+  /** `kept` stays in place of `fresh` (the same markup): it takes `fresh`'s hover hints. */
+  const keepPart = (kept: HTMLElement, fresh: HTMLElement) => {
+    const ks = [kept, ...kept.querySelectorAll<HTMLElement>("*")];
+    [fresh, ...fresh.querySelectorAll<HTMLElement>("*")].forEach((n, i) => {
+      const hint = n.getAttribute("title") ?? n.getAttribute("data-hint");
+      if (hint === null || !ks[i]) return;
+      ks[i].removeAttribute("title");
+      ks[i].setAttribute("data-hint", hint);
+    });
+    fresh.replaceWith(kept);
+  };
+  /** Keep the drawn hero in place of the new one when it shows the same picture: only a line
+   *  that changed is swapped (and rises in), and the facts box changes beside the cover.
+   *  Returns the lines that changed, or null when the hero is another one (it is drawn new). */
   const keepHero = (drawn: HTMLElement, fresh: HTMLElement): HTMLElement[] | null => {
     const coverOf = (h: HTMLElement) => h.querySelector<HTMLElement>("[data-hero-cover], .lib-hero__cover");
-    // A drawn element's `title` has become `data-hint` (hint.ts), so markup is compared with
-    // that rename, and a cover by what it shows: the picture, or the placeholder, and its button.
-    const hinted = (el: HTMLElement): HTMLElement => {
-      const c = el.cloneNode(true) as HTMLElement;
-      for (const n of [c, ...c.querySelectorAll<HTMLElement>("[title]")]) {
-        const t = n.getAttribute("title");
-        if (t === null) continue;
-        n.removeAttribute("title");
-        n.setAttribute("data-hint", t);
-      }
-      return c;
-    };
-    const same = (a: HTMLElement, b: HTMLElement) => hinted(a).isEqualNode(hinted(b));
-    const coverKey = (c: HTMLElement) => {
-      const img = c.matches("img") ? c : c.querySelector("img");
-      return `${c.matches("[data-hero-cover]")}|${img ? `${img.className}|${img.getAttribute("src")}` : `${c.className}|${c.textContent}`}`;
-    };
     const oc = coverOf(drawn);
     const nc = coverOf(fresh);
-    if (!oc || !nc || coverKey(oc) !== coverKey(nc)) return null;
+    if (!oc || !nc || !same(oc, nc)) return null;
     const mainOf = (h: HTMLElement) => h.querySelector<HTMLElement>(":scope > .lib-hero__main") ?? h;
     const lines = (h: HTMLElement, cover: HTMLElement) => ([...mainOf(h).children] as HTMLElement[]).filter((c) => !c.contains(cover));
     const was = lines(drawn, oc);
@@ -1191,29 +1208,51 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     }
     const asideParts = (h: HTMLElement) =>
       h.matches(".lib-hero--aside") ? ([...h.children] as HTMLElement[]).filter((c) => !c.matches(".lib-hero__main")) : [];
-    const was2 = asideParts(drawn);
-    const now2 = asideParts(fresh);
-    if (was2.length !== now2.length || was2.some((el, i) => !same(el, now2[i]))) setHeroAside(drawn, now2.map((c) => c.outerHTML).join(""));
+    const wasA = asideParts(drawn);
+    const nowA = asideParts(fresh);
+    if (wasA.length !== nowA.length || wasA.some((el, i) => !same(el, nowA[i]))) setHeroAside(drawn, nowA.map((c) => c.outerHTML).join(""));
     fresh.replaceWith(drawn);
     return changed;
   };
 
-  const swapView = (ctx: Context, endFrames: () => void) => {
+  /** The views of the open level, each built once (a toggle reuses it: no new load). */
+  const viewsOf = new WeakMap<Frame, Map<string, Context>>();
+  const viewsFor = (f: Frame): Map<string, Context> => {
+    let m = viewsOf.get(f);
+    if (!m) {
+      m = new Map(f.ctx.views ? [[f.ctx.views.active, f.ctx]] : []);
+      viewsOf.set(f, m);
+    }
+    return m;
+  };
+  /** The fade on its way: the parts fading, its timer, the switch's frames window. */
+  let fade: { leaving: HTMLElement[]; timer: number; endFrames: () => void } | null = null;
+  const callBackFade = () => {
+    if (!fade) return;
+    window.clearTimeout(fade.timer);
+    fade.leaving.forEach((el) => el.classList.remove("is-view-leaving")); // they fade back in
+    fade.endFrames();
+    fade = null;
+    animating = false;
+  };
+
+  /** The level in place: the new pane, with what is the same carried over from the old one. */
+  const swapView = (f: Frame, pane: HTMLElement, keep: [HTMLElement, HTMLElement][], endFrames: () => void) => {
     const old = cur();
     const oldView = curPane?.querySelector<HTMLElement>("[data-view]") ?? null;
     const oldHero = oldView?.querySelector<HTMLElement>(".lib-hero") ?? null;
     const inRows = oldView ? readingRows(oldView) : false;
     const keepTop = oldView?.scrollTop ?? 0;
-    const f = frameFor(ctx, false);
     f.onBack = old.onBack;
+    viewsOf.set(f, viewsFor(old)); // the level's views go with it
     stack[stack.length - 1] = f;
+    viewTarget = null;
     setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
-    const pane = buildPane(f);
-    pane.dataset.pos = "center";
     const view = pane.querySelector<HTMLElement>("[data-view]");
     const fresh = view?.querySelector<HTMLElement>(".lib-hero") ?? null;
-    // The drawn hero moves into the new pane before the old one leaves the DOM.
+    // What is the same moves into the new pane before the old one leaves the DOM.
     const changed = oldHero && fresh ? keepHero(oldHero, fresh) : null;
+    keep.forEach(([kept, freshPart]) => keepPart(kept, freshPart));
     dropPane(curPane);
     curPane?.remove();
     viewport.appendChild(pane);
@@ -1221,76 +1260,97 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     paneFrame = f;
     wirePops(pane);
     if (view) {
-      // His call: keep your place.
       if (inRows) revealAtTop(view, 0);
       else {
         const w = windowers.get(view);
         if (w) w.scrollTo(keepTop);
         else view.scrollTop = keepTop;
       }
-      enterRows([...(changed ?? (fresh ? [fresh] : [])), ...listParts(view)]);
+      const stays = new Set(keep.map(([kept]) => kept));
+      enterRows([...(changed ?? (fresh ? [fresh] : [])), ...listParts(view).filter((el) => !stays.has(el))]);
     }
     endFrames();
-    diag.log("ui:act", { at: opts.storeKey, do: "view", to: ctx.views?.active ?? "", hero: changed ? "kept" : "new", place: inRows ? "rows" : "kept" });
+    diag.log("ui:act", { at: opts.storeKey, do: "view", to: f.ctx.views?.active ?? "", hero: changed ? "kept" : "new", kept: keep.length, place: inRows ? "rows" : "kept" });
     if (reloadPending && !isDragging()) reload(); // a reload that landed during the switch
   };
 
+  /** Switch to `ctx` now: the new pane is built, what differs fades out, then it is in. */
   const replace = (ctx: Context) => {
     if (animating || stack.length <= 1) return;
     pick.clear();
     closePops();
     const endFrames = frames.begin("view", ctx.views?.active ?? "");
-    const oldView = curPane?.querySelector<HTMLElement>("[data-view]");
-    const leaving = oldView ? listParts(oldView) : [];
-    if (!leaving.length || reducedMotion()) return swapView(ctx, endFrames);
-    // The old list fades out first, quickly; nothing else moves meanwhile.
+    const f = frameFor(ctx, false);
+    const pane = buildPane(f);
+    const oldView = curPane?.querySelector<HTMLElement>("[data-view]") ?? null;
+    const view = pane.querySelector<HTMLElement>("[data-view]");
+    // The leading parts under the hero that are the same (Play / Shuffle) stay; the first one
+    // that differs, and all after it, change.
+    const keep: [HTMLElement, HTMLElement][] = [];
+    if (oldView && view) {
+      const was = listParts(oldView);
+      const now = listParts(view);
+      for (let i = 0; i < Math.min(was.length, now.length) && same(was[i], now[i]); i++) keep.push([was[i], now[i]]);
+    }
+    const stays = new Set(keep.map(([kept]) => kept));
+    const leaving = oldView ? listParts(oldView).filter((el) => !stays.has(el)) : [];
+    if (!leaving.length || reducedMotion()) return swapView(f, pane, keep, endFrames);
+    // The rest of the old list fades out first, quickly; nothing else moves meanwhile.
     animating = true;
     leaving.forEach((el) => el.classList.add("is-view-leaving"));
-    window.setTimeout(() => {
-      animating = false;
-      swapView(ctx, endFrames);
-    }, tokenMs("--view-leave-dur"));
+    fade = {
+      leaving,
+      endFrames,
+      timer: window.setTimeout(() => {
+        fade = null;
+        animating = false;
+        swapView(f, pane, keep, endFrames);
+      }, tokenMs("--view-leave-dur")),
+    };
   };
 
-  // A switch waiting for its level's data: the half pressed, the level it opens, the level it
-  // leaves. Another press, a drill or a Back drops it (the level it leaves is no longer open).
-  let pendingView: { key: string; frame: Frame } | null = null;
-  const markPending = () => {
-    viewsEl?.querySelectorAll<HTMLElement>("[data-split]").forEach((h) => {
-      const busy = !!pendingView && pendingView.frame === cur() && h.dataset.split === pendingView.key;
-      if (busy) h.setAttribute("aria-busy", "true");
-      else h.removeAttribute("aria-busy");
-    });
-  };
-  viewsEl?.addEventListener("click", (e) => {
-    const key = splitPick(e);
-    const f = cur();
+  /** A press on a half: show it at once, then switch when its level is ready. */
+  const requestView = (f: Frame, key: string) => {
     const v = f.ctx.views;
-    if (!key || !v || stack.length <= 1 || key === v.active) return;
-    if (pendingView && pendingView.frame === f && pendingView.key === key) return; // on its way
-    const next = v.to(key);
-    if (!next) return;
-    const ready = next.ready?.();
-    if (!ready) {
-      pendingView = null;
-      markPending();
-      return replace(next);
+    if (!v) return;
+    callBackFade(); // a press during a fade calls it back first
+    if (key === v.active) {
+      // Back to the view that shows: nothing to switch (a wait on its way is dropped).
+      viewTarget = null;
+      paintViews(f.ctx);
+      return;
     }
-    const ticket = { key, frame: f };
-    pendingView = ticket;
-    markPending();
+    const views = viewsFor(f);
+    let next = views.get(key);
+    if (!next) {
+      next = v.to(key) ?? undefined;
+      if (!next) return paintViews(f.ctx);
+      views.set(key, next);
+    }
+    const ready = next.ready?.();
+    const ticket = { frame: f, key, waiting: !!ready };
+    viewTarget = ticket;
+    paintViews(f.ctx);
+    const go = (waited: number | null) => {
+      if (viewTarget !== ticket || cur() !== f) {
+        if (waited !== null) diag.log("view:wait", { to: key, ms: waited, dropped: true });
+        return;
+      }
+      if (waited !== null) diag.log("view:wait", { to: key, ms: waited });
+      ticket.waiting = false;
+      if (animating) return void window.setTimeout(() => go(null), tokenMs("--nav-dur")); // a slide is on its way
+      replace(next!);
+    };
+    if (!ready) return go(null);
     const t0 = performance.now();
     void ready
       .catch(() => {}) // a failed read is the level's own to show (its empty text)
-      .then(() => {
-        if (pendingView !== ticket) return;
-        pendingView = null;
-        markPending();
-        const waited = Math.round(performance.now() - t0);
-        if (cur() !== f) return diag.log("view:wait", { to: key, ms: waited, dropped: true });
-        diag.log("view:wait", { to: key, ms: waited });
-        replace(next);
-      });
+      .then(() => go(Math.round(performance.now() - t0)));
+  };
+  viewsEl?.addEventListener("click", (e) => {
+    const key = splitPick(e);
+    if (!key || stack.length <= 1) return;
+    requestView(cur(), key);
   });
 
   const back = () => {

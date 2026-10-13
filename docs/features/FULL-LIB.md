@@ -158,6 +158,38 @@ the local reads). Scroll 120 px stays 120 px; from the rows' end it lands on the
 row. Search's album: hero kept both ways. `[perf] frames view`: 244 Hz, worst frame 8 ms (the
 swap's own frame, dev build).
 
+### 5.2 Rapid presses, Play / Shuffle, the scrollbar (2026-10-13)
+
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (below, run by Claude on the dev app)
+
+**His note** (on Ambiguous Desire (Deluxe), 2 songs in Lib, 20 in Full): clicking Full and Lib
+rapidly jittered; Play and Shuffle re-rendered in the same place; the scrollbar jumped in.
+**Read in the code and the log:** a press during the 100 ms fade was dropped (`animating`), and
+the pill still showed the old half until the switch landed, so a fast second press went
+nowhere or late; Play / Shuffle was in the list that fades and rises; Lib (2 songs) did not
+scroll and Full (20) did, so the 8 px bar came and went and moved the rows and the centered
+hero sideways.
+
+- **The pill shows the pressed half at once** (`viewTarget`, painted by `paintViews`); the
+  level follows. A press during the fade calls it back (`callBackFade`: the old list fades back
+  in) or retargets it. A press on the half that shows drops a wait on its way.
+- **Each view is built once and kept with the level** (`viewsOf`, carried from frame to frame):
+  toggling reuses it — no new load, no wait (every `view:wait` 0 ms in the test).
+- **What is the same stays**: the hero, and the leading parts under it whose markup is the same
+  — Play / Shuffle, a grown card's column header (`kept` in the `ui:act` line). A kept part
+  takes the new hover hints (an artist's Play hint names its list). Parts compare with the
+  hints and the motion's marks (`--pop-i`, `pop-enter`) taken out.
+- **The bar's place is kept on a Full | Lib level** (his call: reserve it there only):
+  `.lib-view[data-switch] { scrollbar-gutter: stable }`. A short list there shows the 8 px strip;
+  every other list is as before (CLAUDE.md checklist 6a).
+
+**Desk test 2026-10-13 (Claude, dev app):** Ambiguous Desire, grown: six presses 60 ms apart —
+the pill followed every press, the page ended on the last one; five presses 170 ms apart — five
+switches landed, `hero:kept kept:2`; the view width (690 px) and the hero's x (377 px) never
+changed, sampled every 16 ms. The Library root list keeps `scrollbar-gutter: auto`. Lucy Park:
+presses 60 and 200 ms apart, the last press wins, `hero:kept kept:1`, waits 0 ms, the width and
+the hero still.
+
 ## 6. Decisions made inside the owner's forks (for review)
 
 1. The control is the shared **split pill** (header-action family, the room pill's cut): the
