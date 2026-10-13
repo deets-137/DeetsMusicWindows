@@ -12,6 +12,19 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (db: slow read) — the read connection does not move the launch
+
+His ask: read the `db: slow` lines, then (his pick) check whether the launch waits on them
+before any build. The live log (61 lines, 5 launches, 1 full sync): small launch reads waited
+50–107 ms behind `library_tracks` and ran 0–1 ms; the full sync made no long waits (worst 91
+ms). Four cold `dev:built -- --hidden` launches: the queue restore lands 62–78 ms before the
+library mark, though its reads end with `seen_tracks` on the database thread; so the library's
+own reply gates `ready` (654–727 ms library, 699–804 ms ready). The read connection would not
+move it. Result in ideas/WORKERS.md §5.1; nothing in the app changed. A stop bug in the scratch
+runner: the debug exe runs with a relative command line (`target\debug\deetsmusic.exe
+--tray`), so a match on `DeetsMusic\src-tauri` in the command line misses it and cargo then
+cannot replace the exe (`Access is denied`). Match on `ExecutablePath`.
+
 ## 2026-10-13 (facts box slide) — the drill no longer flickers when the box lands
 
 His report: when the artist or album facts box appears, the drill flickers and the cover jumps

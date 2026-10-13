@@ -2,7 +2,7 @@
 status: idea
 desk_test: none
 sources: [src-tauri/src/db_thread.rs, src-tauri/src/lib.rs, src-tauri/src/library.rs, src-tauri/src/presence.rs, src-tauri/src/lastfm.rs, src-tauri/src/airplay.rs, src-tauri/src/apple.rs, src-tauri/src/apple_calls.rs, src-tauri/src/lock.rs, src/home.ts, src/album-color.ts, vite.config.ts]
-updated: 2026-10-10
+updated: 2026-10-13
 ---
 # Workers and queues in Rust
 
@@ -151,6 +151,45 @@ rest of that minute is one `×N more` summary with the worst times (DB-HEALTH.md
 Read it after a few days of use:
 `grep "db: slow"` on the log file. If `waited` never prints, this lever is not real and
 stops here. If `ran` is long on reads during a sync, the read connection helps them too.
+
+> **Part:** read · 2026-10-13. **Result: real, but not on the launch's path. Stopped here (his
+> plan: check first, build only if `ready` waits on it).**
+
+**The installed app's log, 2026-10-11 to 10-13** (61 lines; 5 launches, 1 full sync of 4,025
+songs):
+- Almost every line is a launch. `library_tracks` runs first (55–87 ms), and about 12 small
+  launch reads wait behind it (`queue_state_get`, `catalog_heals`, `pins_list`,
+  `favorites_*`, `row_order_all`, `play_counts` …): **waited 50–107 ms, ran 0–1 ms.** They
+  wait in the queue, not on the sync.
+- During the full sync (18:13:28 → 18:13:47), the worst read waited 91 ms and ran 22 ms.
+  The "up to seconds" of the expected gain did not show.
+- Three reads are slow alone: `playlists_song_index` ran 57 and 89 ms, `play_events_since`
+  ran 87 ms. Nothing waited on them in this log.
+
+**Does the window wait on it?** Four cold launches of `dev:built -- --hidden` (plus one
+before a stop bug in the scratch runner), the `[perf] launch` line and the dev log:
+
+| Launch | queue | library | ready | `library_tracks` ran | `queue_state_get` waited |
+|---|---:|---:|---:|---:|---:|
+| 1 | 599 | 661 | 699 | 82 | 117 |
+| 2 | 655 | 727 | 804 | 97 | 128 |
+| 3 | 600 | 678 | 724 | 85 | 107 |
+| 4 | 576 | 654 | 715 | 91 | 116 |
+
+(ms from navigation start; the job times from the log.) `ready` waits for the queue restore
+and the library store (boot-cover.ts `runBootCover`). The library store waits for
+`library_tracks` and `seen_tracks`. On the database thread, `seen_tracks`, `catalog_heals` and
+`queue_state_get` end in the same millisecond, about 40 ms after `library_tracks`. Yet the
+queue restore, which needs two of them, lands **62–78 ms before** the library mark. So the
+library's own reply (the job, then its 4,000 rows over IPC and into the store) gates `ready`,
+not the reads behind it. That job is already the thread's first job (`waited 0`,
+boot-prefetch.ts). A read connection would not move `ready`. It would end Home's launch reads
+(`play_events_since`, `added_at_map`, `artist_photos`, `play_counts`) about 100 ms sooner, but
+they land long before the lift ends (~1,650 ms), so no one sees it.
+
+**What would move `ready`:** a smaller or faster library reply (the job is 82–97 ms in the debug
+build, 55–87 ms on the installed release), not more connections. The Launch 7 target
+(DEBUGGING.md § Launch) is not met for that reason. This is not designed.
 
 ### 5.2 Pipeline the library sync
 `library.rs` fetches a page of 100, then writes it, then fetches the next. A first full pass

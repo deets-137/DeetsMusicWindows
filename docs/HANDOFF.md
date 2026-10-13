@@ -125,9 +125,9 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   (`player:retryCurrent`, `keyRetry`, `recoverSilent`; QUEUE.md); a healed library id's old
   play counts may stay on the old key (not checked). None of these fired on live from
   2026-10-08 to 2026-10-13.
-- **Data:** the `db: slow` lines (61 on live, 2026-10-11 to 10-13) are ready to read
-  (DB-HEALTH.md §2a; they decide the read connection, ideas/WORKERS.md §5.1); the next song's
-  colors one ahead (ALBUM-COLOR.md, data path item 4).
+- **Data:** the next song's colors one ahead (ALBUM-COLOR.md, data path item 4). The `db: slow`
+  lines were read on 2026-10-13: the read connection is real but not on the launch's path, so
+  it stopped there (ideas/WORKERS.md §5.1). What gates `ready` is the library reply itself.
 - **deetsmeter's cold start** (below).
 
 ### Decided, not built (his next sittings)
