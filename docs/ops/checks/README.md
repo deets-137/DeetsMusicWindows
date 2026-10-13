@@ -1,8 +1,8 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/shots.mjs, scripts/webview-eval.mjs, docs/ops/checks/drop.mjs]
-updated: 2026-10-01
+sources: [scripts/shots.mjs, scripts/webview-eval.mjs, docs/ops/checks/drop.mjs, docs/ops/checks/mb-support-probe.mjs]
+updated: 2026-10-13
 ---
 # Checks — the archive of re-runnable test scripts
 
@@ -41,6 +41,7 @@ version apart; `--vs "--token=value"` runs a variant beside the first (SHOTS.md 
 | [grow-timing.json](grow-timing.json) | shots list | A grow in Midi (and the old order, `--grow-rows-at: 1`, as a baseline), a wide, a tall and a Fill grow in Max, each with Escape; 5 skins | [CARD-GROW.md §19.1](../../cards/CARD-GROW.md) | 2026-10-01 |
 | [theme-crossfade.json](theme-crossfade.json) | shots list | A hand theme pick from the Compass and from the title menu (the panel leaves, then the fade); a skin pick keeps the cover; 5 skins | [UX-COVERUPS.md §6c.1, §6c.2](../../architecture/UX-COVERUPS.md) | 2026-10-01 |
 | [album-mark.json](album-mark.json) | shots list | A grown album: the mark column in the Lib view (♥ presses, menu Favorite) and the Full view (✓ → ♥ → ✓), the # column under its header (a probe), the ♥ column kept on Library Songs, Add to Library off; Max, Press | [CARD-GROW.md §9b](../../cards/CARD-GROW.md) | 2026-10-01 |
+| [mb-support-probe.mjs](mb-support-probe.mjs) | probe script | MusicBrainz (and Wikidata) coverage of the library's artists: the match by Apple artist URL, then by name + one album; the Support links by type; top 50 / top 200 / the rest. Reads the app's database read-only; no app needed | [SupportArtist.md §5](../../ideas/SupportArtist.md) | 2026-10-13 |
 | [drop.mjs](drop.mjs) | drive script | `net <s>`: the webview offline and the Apple check held out for s seconds, on one CDP socket. `battery on\|off`: the page's `BatteryManager.charging` and a `chargingchange`. Prints the ring lines the drop caused | DESK-TESTS.md §1 (a network drop, held; unplug on a desktop) | 2026-10-01 |
 
 **drop.mjs, how to use it.** A network cut does nothing to a song MusicKit has buffered, so seek

@@ -12,6 +12,17 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (support probe) — MusicBrainz coverage of his library
+
+His ask: what coverage MusicBrainz has for his library's artists (the Support link idea).
+First he asked if Bandcamp has an API. It does not: no public lookup, only a seller API for an
+account's own sales. Ran SupportArtist.md §5 steps 1–4 on his installed app's database (read-only):
+49 % of 1,711 artist names have a Support link, 72 % of his top 50; Bandcamp 20 %, crowdfunding
+or Patreon 0.3 %. MB stores the Apple URL with no slug and a varying country. Its Patreon type is
+`patronage`. Wikidata adds 2 points. Results: SupportArtist.md §5a. The script is kept as
+`docs/ops/checks/mb-support-probe.mjs`. Nothing in the app changed. Step 5 (a second sample) is
+not run.
+
 ## 2026-10-13 (np_publish) — the AirPlay sends leave the UI thread
 
 His ask: the `np_publish` freeze (2026-10-12, network drop) and a precedented fix. Traced:

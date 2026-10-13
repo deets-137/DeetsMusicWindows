@@ -1,8 +1,8 @@
 ---
 status: idea
 desk_test: none
-sources: [src/artist-view.ts, src-tauri/src/apple.rs, docs/ideas/DeetsRecommends.md, docs/integrations/ROOMS.md]
-updated: 2026-10-12
+sources: [src/artist-view.ts, docs/ops/checks/mb-support-probe.mjs, src-tauri/src/apple.rs, docs/ideas/DeetsRecommends.md, docs/integrations/ROOMS.md]
+updated: 2026-10-13
 ---
 # Support an artist — a link to where the money reaches them
 
@@ -55,8 +55,8 @@ holds (the type names as MB uses them, to be confirmed by the probe, §5):
 
 | MB relationship type | What it points at | Use |
 |---|---|---|
-| `crowdfunding` | Kickstarter, IndieGoGo, Ko-fi, Buy Me a Coffee… | Support, first |
-| `patreon` | the Patreon page (its own type beside `crowdfunding`) | Support, first |
+| `crowdfunding` | Kickstarter, IndieGoGo, Ko-fi, Buy Me a Coffee… (none in his library, §5a) | Support, first |
+| `patronage` | the Patreon page (the probe found this name, not `patreon`, §5a) | Support, first |
 | `bandcamp` | the Bandcamp artist page | Support, second |
 | `official homepage` | the artist's own site | Support, third |
 | `purchase for download` / `purchase for mail-order` | a store page | not shown (fork §8.3) |
@@ -170,6 +170,55 @@ export (LOCAL-DATA.md: the read-only SQL copy) and the MusicBrainz API, kept in
    drawn. A chip that shows on 15 % of artists is designed differently from one on 70 %.
 6. Rate: 1 call/s, so 3,895 rows of songs collapse to a few hundred artists and the probe runs
    in minutes. Nothing is written to the app's database by the probe.
+
+### 5a. Results — his library, 2026-10-13
+
+Run by Claude on his installed app's database (read-only), with
+[`docs/ops/checks/mb-support-probe.mjs`](../ops/checks/mb-support-probe.mjs). Steps 1–4 are
+done. Step 5 (a second sample outside his library) is not run.
+
+**The library:** 4,023 library songs, 1,711 artist names. 1,308 names (76 %) have an Apple
+artist id in `artist_catalog`. 601 names (35 %) are a collaboration ("A & B", "A, B",
+"A feat. B").
+
+**How MB stores the Apple URL:** `https://music.apple.com/<country>/artist/<id>`. The slug is
+removed; the country is what the editor pasted. Of the matches: `us` 600, `gb` 430, `au` 47,
+`fr` 38, `ca` 36, `de` 21, then 17 more countries with 13 or fewer. So path 1 must try more than
+one country. The URL endpoint takes up to 100 `resource=` values in one call: 1,308 ids × 35
+countries took 409 calls (about 8 min). In the app, one artist is one call with all its country
+forms.
+
+| | All 1,711 | Top 50 by plays | Top 200 | The other 1,511 |
+|---|---|---|---|---|
+| Matched by the Apple URL (path 1) | 922 (54 %) | 39 (78 %) | 140 (70 %) | 782 (52 %) |
+| Matched by name + album (path 2) | 176 (10 %) | 5 (10 %) | 23 (12 %) | 153 (10 %) |
+| Unmatched | 613 (36 %) | 6 (12 %) | 37 (19 %) | 576 (38 %) |
+| **Any Support link** | **840 (49 %)** | **36 (72 %)** | **133 (67 %)** | 705 (47 %) |
+| Crowdfunding or Patreon | 5 (0.3 %) | 0 | 0 | 5 |
+| Bandcamp | 346 (20 %) | 15 (30 %) | 56 (28 %) | 290 (19 %) |
+| Official site only | 492 (29 %) | 21 (42 %) | 77 (39 %) | 415 (27 %) |
+| Matched, no Support link | 260 (15 %) | 8 (16 %) | 30 (15 %) | 230 (15 %) |
+
+What the numbers say:
+
+- **Crowdfunding is nearly empty.** No `crowdfunding` relationship at all, and 6 `patronage`
+  relationships (5 of them Patreon) across 1,098 matched artists. The first link in the
+  §8.1 order is almost never there. In practice the Support link is Bandcamp or the official site.
+- **Path 1 is safe.** 3 of 922 matches point at more than one MB artist.
+- **Path 2 is strict.** 158 more names had a strong name hit (score ≥ 90) but no album title in
+  common, so the probe did not count them. Some of them are real matches with a different album
+  title ("Deluxe", a single's name).
+- **Most misses are collaborations.** 426 of the 613 unmatched names are collaboration names.
+  For 269 of them the first credited artist is also a library artist on its own; 249 of those
+  are matched and 175 have a Support link. §7's rule "a song by two artists shows the first
+  credited" recovers these. 161 misses are a single artist with an Apple id. They are mostly
+  small and new acts that MB does not have (Chioma, Tash, Thandii, DRIIA…).
+- **Wikidata adds little.** It knows 538 of the Apple ids (31 %). It adds Bandcamp for 18
+  artists and Patreon for 1 beyond MB, and the "any Support" share goes from 49 % to 51 %.
+  MB alone is enough.
+- **Link types MB gives beside the four in §3:** `purchase for download` 2,213, `soundcloud`
+  706, `purchase for mail-order` 139, `ticketing` 73. These are for fork §8.3 or a later fork.
+  None is a Support link today.
 
 ## 6. The UI — his (2026-10-13)
 
