@@ -3,8 +3,9 @@
 // then the older plays under a "Previously" label, newest first. It survives a restart
 // (it read the session log until 2026-09-15). Repeats are real — a song heard three
 // times shows three rows (the log is append-only, unlike the deduped Previous
-// back-chain). Rows are read-only; right-click offers Play Now / Play Next / Add to
-// Queue via the handle-level player ops (Next/Later are gapless).
+// back-chain). A click plays a row and queues the older rows after it (2026-10-12);
+// right-click offers Play Now / Play Next / Add to Queue via the handle-level player ops
+// (Next/Later are gapless).
 //
 // Names come from the track store, not from the event: every played track that is not
 // in your library is materialized as a `seen` row, and those load into the store at
@@ -14,6 +15,7 @@
 import { wireListKeys } from "./list-keys";
 import "./styles/qcard.css";
 import { invoke } from "@tauri-apps/api/core";
+import * as diag from "./diag";
 import * as queue from "./queue";
 import { playContext, enqueueNext, enqueueLater } from "./player";
 import { onTracksChange, trackById } from "./track-store";
@@ -154,7 +156,7 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         const artist = rt?.artistName ?? "";
         const sub = day ? (artist ? `${artist} · ${day}` : day) : artist;
         const meta = `<div class="qrow__meta">${p.skipped ? SKIP_MARK : ""}<span class="qrow__time">${esc(clock(p.ts))}</span></div>`;
-        return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), false, meta, addSquareHTML(rt), rt?.catalogId ?? "");
+        return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), true, meta, addSquareHTML(rt), rt?.catalogId ?? "");
       })
       .join("");
     const more =
@@ -208,13 +210,25 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     });
   };
 
-  // A history row has never done anything on a plain click, and still doesn't. Ctrl and
-  // Shift pick it; a plain click drops the picks, so the list returns to normal (§19).
+  // A plain click (or Enter) plays that play and queues every row below it, older first in
+  // the order the card shows them — your history played backwards (his call, 2026-10-12).
+  // The whole held view goes in (all KEEP rows, not only the LIST_CAP drawn ones), repeats
+  // and skips included, so the queue is the list you see; the rows above the click are the
+  // lookback Previous climbs back into. Ctrl and Shift pick instead, and a plain click drops
+  // the picks (§19).
   body.addEventListener("click", (e) => {
+    if (drag.consumeClick()) return; // this click was the tail of a drag
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");
     const entry = el ? view[Number(el.dataset.idx)] : undefined;
-    if (entry) pick.click(e, entry);
-    else pick.clear();
+    if (!entry) {
+      pick.clear();
+      return;
+    }
+    if (pick.click(e, entry)) return;
+    const i = view.indexOf(entry);
+    const hs = view.map((p) => ({ catalogId: p.handle.catalogId, libraryId: p.handle.libraryId, context: "history" }));
+    diag.log("ui:act", { at: "history", do: "row", i, n: hs.length });
+    void playContext(hs, i).catch((x) => console.error("[history] play from row", x));
   });
   body.addEventListener("contextmenu", (e) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-idx]");
@@ -283,8 +297,8 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   render(); // the empty hero, until the first read lands (one local SQLite call)
   void loadAll();
 
-  // Which card Ctrl+A acts on: the last press inside this one. A row carries no tabindex,
-  // so the focus stays on <body> and a `contains(activeElement)` test would never pass.
+  // Which card Ctrl+A acts on: the last press inside this one. The hero carries no tabindex,
+  // so a press there leaves the focus on <body> and a `contains(activeElement)` test fails.
   let touched = false;
   body.addEventListener("pointerdown", () => {
     touched = true;
