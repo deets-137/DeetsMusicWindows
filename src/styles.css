@@ -4725,8 +4725,13 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .split-pill__half[aria-pressed="true"] { background: var(--picked); cursor: default; filter: none; }
 .split-pill__half[aria-disabled="true"] { opacity: var(--split-pill-dim); cursor: default; filter: none; }
 .split-pill__half:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
+/* A Full | Lib switch waiting for Apple's page: the pressed half breathes (FULL-LIB.md §5). */
+.split-pill__half[aria-busy="true"] { cursor: progress; animation: search-pulse var(--split-pill-busy-dur) ease-in-out infinite; }
+/* …then the list under the hero fades out before the new one rises in (collection-card.ts). */
+.is-view-leaving { opacity: 0; transition: opacity var(--view-leave-dur) var(--ease-ui); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   .split-pill__half { transition: none; }
+  .split-pill__half[aria-busy="true"] { animation: none; }
 }
 /* The Full view's rows: a song you have wears the ✓ at rest (fork 4A); the + still waits for
    the hover. In a grown card's columns the square rides the end of the title cell. An

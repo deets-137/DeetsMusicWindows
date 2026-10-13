@@ -289,10 +289,15 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       views: d.views,
     };
     askLfm();
-    if (d.load) void d.load().finally(() => {
-      askLfm();
-      card().reload();
-    });
+    if (d.load) {
+      const loaded = d.load();
+      // A Full | Lib switch waits for it, so the level arrives once, full (FULL-LIB.md §5).
+      ctx.ready = () => loaded;
+      void loaded.finally(() => {
+        askLfm();
+        card().reload(ctx);
+      });
+    }
     return ctx;
   }
 
@@ -406,14 +411,15 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       return yourPlaylistsFor(n)
         .then((y) => {
           yours = y;
-          card().reload();
+          card().reload(ctx);
         })
         .catch((e) => console.error("[levels] your playlists", e));
     };
+    let yoursLoaded: Promise<unknown> = Promise.resolve();
     const askYours = () => {
       if (!d.named() || yoursFor) return;
       yoursFor = d.name();
-      void loadYours();
+      yoursLoaded = loadYours();
     };
 
     // Newest first, as the Search pane lists them; an album with no date goes last.
@@ -483,15 +489,15 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
           if (p && lid) handOff(el, "playlists", () => playlistTracks(p), (ts) => requestOpenPlaylist(lid, ts), p.trackCount);
         } else if (kind === "check" && yours && !checking) {
           checking = { done: 0, total: yours.unchecked.length };
-          card().reload();
+          card().reload(ctx);
           void checkPlaylists(yours.unchecked, (pr) => {
             checking = pr;
-            card().reload();
+            card().reload(ctx);
           })
             .then(loadYours)
             .finally(() => {
               checking = null;
-              card().reload();
+              card().reload(ctx);
             });
         }
       },
@@ -519,17 +525,23 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     };
     askLfm();
     askYours();
-    void playCounts()
+    const playsLoaded = playCounts()
       .then((m) => {
         plays = m;
-        card().reload();
+        card().reload(ctx);
       })
       .catch((e) => console.error("[levels] play counts", e));
-    void d.load().finally(() => {
+    const loaded = d.load();
+    void loaded.finally(() => {
       askLfm();
       askYours();
-      card().reload();
+      card().reload(ctx);
     });
+    // A Full | Lib switch waits for the page and for the local reads that would redraw it just
+    // after (the play counts, Your Playlists), so the level arrives once, full (FULL-LIB.md §5).
+    // The Last.fm box is not waited for: it slides in beside the photo when it lands.
+    const settled = Promise.all([playsLoaded, loaded.finally(() => yoursLoaded)]);
+    ctx.ready = () => settled;
     return ctx;
   }
 
@@ -684,7 +696,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       key: () => (id ? `full-album:${id}` : undefined),
       name,
       artist: artistName,
-      artwork: () => songs?.[0]?.artwork ?? src.artwork,
+      // The cover it opened with first (the Lib one): a Full | Lib switch keeps the same hero.
+      artwork: () => src.artwork ?? songs?.[0]?.artwork,
       releaseDate: () => rows().find((t) => t.releaseDate)?.releaseDate ?? src.releaseDate,
       songs: rows,
       ready: () => songs !== null,
@@ -736,7 +749,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       key: () => (id ? `full-artist:${id}` : undefined),
       name,
       named: () => !!d || (!!src.name && src.named !== false),
-      artwork: () => d?.artist.artwork ?? src.artwork,
+      // The photo it opened with first (the Lib one): a Full | Lib switch keeps the same hero.
+      artwork: () => src.artwork ?? d?.artist.artwork,
       meta: () => d?.artist.genres?.[0],
       hasMenu: () => !!id,
       subject: () => ({ name: name(), catalogId: id, artwork: d?.artist.artwork ?? src.artwork, songs: top(), inLibrary: inLibrary(name()) }),
@@ -868,7 +882,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
           failed = "Couldn't read the playlist from Apple Music.";
           console.error("[levels] apple playlist", e);
         })
-        .finally(() => card().reload());
+        .finally(() => card().reload(ctx));
     return ctx;
   }
 

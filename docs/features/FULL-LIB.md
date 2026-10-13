@@ -115,6 +115,49 @@ An album with an unreleased song is not cached, so each open asks Apple again (a
   Changed the same day from two panel chips (the owner's fork A, 2026-09-24): both "Full |
   Lib" controls sit in a card head, so both are the header-action family and one primitive.
 
+### 5.1 The switch, smoothed (2026-10-13)
+
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (below, run by Claude on the dev app)
+
+**His note:** the switch between Full and Lib jittered and jumped. **Measured first** (a probe
+over the open pane, every 16 ms): `replace` rebuilt the whole pane, so the same hero rose in
+again (`enterRows` ran on it); a Full level drew an empty state first — the hero 23 px shorter
+(no meta line), no rows — and redrew when Apple answered (0.4 s for an album, over 3 s for a
+cold artist), the rows popping in with no motion; a cached switch was a hard cut; and on the
+artist, the play counts and Your Playlists landed just after the switch and redrew the rows,
+cutting their rise short at 190 ms.
+
+**His calls (2026-10-13), all three as recommended:**
+1. **Stay, then switch once.** The pressed half breathes (`aria-busy`, the Search busy dot's
+   pulse) until the new level's data is in (`Context.ready`: an album's songs; an artist's page
+   plus the local play counts and Your Playlists). Then the page switches once, full. Cached:
+   at once. The Last.fm box is not waited for (it slides in beside the cover when it lands).
+2. **Fade out, rise in.** The hero stays — the drawn one is kept (`keepHero`, its cover never
+   loads again); a line that changed (the meta, a name) is swapped and rises in, and the facts
+   box changes in place (`setHeroAside`). The list under it (Play, shelves, the bar, the rows)
+   fades out (`--view-leave-dur` = `--dur-fast`), then the new one rises in (`enterRows`).
+3. **Keep your place.** Above the rows: the same scroll. Down in the rows: the first new row,
+   under the sticky bar.
+
+**As built:** `collection-card.ts` `replace` → `swapView`, `keepHero`, `listParts`,
+`readingRows`, `pendingView` / `markPending`; `Context.ready`; `CollectionCardHandle.reload(ctx)`
+(a level not on screen is not redrawn — a Full level waiting to open redrew the Lib one for
+nothing). `media-levels.ts` sets `ready`, passes its level to `reload`, and a Full level shows
+the cover it opened with first (the Lib one), so the hero matches. A hero compares by its
+picture and its button; its lines by markup with `title` read as `data-hint` (hint.ts renames
+it once drawn — the artist's cover button never matched before this). Tokens:
+`--split-pill-busy-dur`, `--view-leave-dur`. Logs: `view:wait` (to, ms, dropped), and `ui:act`
+`do: "view"` now says `hero: kept|new` and `place: kept|rows`; `[perf] frames view`.
+Reduced motion: no fade, no breath, no rise.
+
+**Desk test 2026-10-13 (Claude, dev app):** The Fool, Lib → Full: the chip breathed 285 ms,
+the list faded about 95 ms, 8 rows rose in; the hero was the same element throughout, its
+height steady. Full → Lib the same, starting at once. Lucy Park both ways: hero kept (it was
+rebuilt before the `data-hint` fix), the rise ran to its end (cut at 190 ms before the wait for
+the local reads). Scroll 120 px stays 120 px; from the rows' end it lands on the first new
+row. Search's album: hero kept both ways. `[perf] frames view`: 244 Hz, worst frame 8 ms (the
+swap's own frame, dev build).
+
 ## 6. Decisions made inside the owner's forks (for review)
 
 1. The control is the shared **split pill** (header-action family, the room pill's cut): the

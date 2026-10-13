@@ -203,6 +203,9 @@ export interface Context {
    *  docs/features/FULL-LIB.md). A pick REPLACES this level with the context `to` returns, so
    *  Back still goes to where the drill came from. Needs a `[data-coll-views]` slot in the head. */
   views?: ViewSwitch;
+  /** The level's own data on its way (Apple's page): a view switch to this level waits for it,
+   *  so the level arrives once, full — no empty state, no second redraw (his call, 2026-10-13). */
+  ready?: () => Promise<unknown>;
   defaults?: { grouping?: string; density?: Density; sortKey?: string; sortDir?: SortDir };
   emptyText?: string; // shown when the (unfiltered) list is empty, e.g. a fresh playlist's invite
   /** The pane takes dropped songs (an open playlist, DRAG-DROP.md §3). The action gets the
@@ -431,7 +434,9 @@ export interface CollectionCardHandle {
   drill(ctx: Context): void;
   /** Put `ctx` in place of the open level (not the root): no new Back step (FULL-LIB.md). */
   replace(ctx: Context): void;
-  reload(): void;
+  /** Draw the open level again. With `ctx`: only when that level is the open one (a level
+   *  still waiting to open, a Full | Lib switch on its way, draws when it opens). */
+  reload(ctx?: Context): void;
   /** `ctx`'s Last.fm box has landed: put its `hero().aside` into the drawn hero in place, the
    *  cover sliding (hero-slide.ts), with no redraw of the card. A level not on screen draws it
    *  when it comes back. */
@@ -996,6 +1001,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       "Show",
     );
     if (fresh) enterRows(viewsEl.children);
+    markPending(); // a switch still waiting keeps its breathing half through a repaint
   };
 
   const setHeader = (isTop: boolean, title: string, returns = false, ctx: Context | null = null) => {
@@ -1109,35 +1115,182 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     applyScroll(pane, f);
   };
 
-  // A view chip (FULL-LIB.md): the same level seen another way. It takes the open level's
-  // place, so Back is unchanged and so is the drill swap's way back. No slide: the head, the
-  // chips and the place in the card stay; the new body comes in through `enterRows`.
-  const replace = (ctx: Context) => {
-    if (animating || stack.length <= 1) return;
-    pick.clear();
+  // ── the view switch (FULL-LIB.md, "Full | Lib"; his calls 2026-10-13) ──
+  // The same level seen another way. It takes the open level's place, so Back is unchanged and
+  // so is the drill swap's way back. Measured before (2026-10-13): the whole pane was rebuilt,
+  // so the same hero rose in again, and a Full level drew an empty "Loading…" state, then
+  // redrew when Apple answered. Now:
+  //  1. it waits for the new level's data (`Context.ready`) — the pressed half breathes — and
+  //     switches once;
+  //  2. the hero stays: the drawn one is kept (its cover is not loaded again), and only a line
+  //     that changed (the meta, a name) and the facts box change, in place;
+  //  3. the list under the hero (Play, shelves, the bar, the rows) fades out quickly, and the
+  //     new one rises in with the drill's row motion (`enterRows`);
+  //  4. the reader keeps their place: above the rows, the same scroll; in the rows, the top
+  //     of the new rows, under the sticky bar.
+  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** What a view shows under its hero: every part but the hero, one level into the head. */
+  const listParts = (view: HTMLElement): HTMLElement[] => {
+    const out: HTMLElement[] = [];
+    for (const el of [...view.children] as HTMLElement[]) {
+      if (el.matches(".lib-hero")) continue;
+      if (el.querySelector(".lib-hero")) {
+        for (const c of [...el.children] as HTMLElement[]) if (!c.matches(".lib-hero")) out.push(c);
+        continue;
+      }
+      out.push(el);
+    }
+    return out;
+  };
+  /** The reader is down in the rows: the first drawn row starts at or above the stuck bar. */
+  const readingRows = (view: HTMLElement): boolean => {
+    const row = view.querySelector<HTMLElement>("[data-idx]");
+    if (!row) return false;
+    return row.getBoundingClientRect().top <= view.getBoundingClientRect().top + (stuckOf(view)?.offsetHeight ?? 0) + 1;
+  };
+  /** Keep the drawn hero in place of the new one when its cover is the same: only a line that
+   *  changed is swapped (and rises in), and the facts box changes beside the cover. Returns the
+   *  lines that changed, or null when the hero is another one (it is drawn new). */
+  const keepHero = (drawn: HTMLElement, fresh: HTMLElement): HTMLElement[] | null => {
+    const coverOf = (h: HTMLElement) => h.querySelector<HTMLElement>("[data-hero-cover], .lib-hero__cover");
+    // A drawn element's `title` has become `data-hint` (hint.ts), so markup is compared with
+    // that rename, and a cover by what it shows: the picture, or the placeholder, and its button.
+    const hinted = (el: HTMLElement): HTMLElement => {
+      const c = el.cloneNode(true) as HTMLElement;
+      for (const n of [c, ...c.querySelectorAll<HTMLElement>("[title]")]) {
+        const t = n.getAttribute("title");
+        if (t === null) continue;
+        n.removeAttribute("title");
+        n.setAttribute("data-hint", t);
+      }
+      return c;
+    };
+    const same = (a: HTMLElement, b: HTMLElement) => hinted(a).isEqualNode(hinted(b));
+    const coverKey = (c: HTMLElement) => {
+      const img = c.matches("img") ? c : c.querySelector("img");
+      return `${c.matches("[data-hero-cover]")}|${img ? `${img.className}|${img.getAttribute("src")}` : `${c.className}|${c.textContent}`}`;
+    };
+    const oc = coverOf(drawn);
+    const nc = coverOf(fresh);
+    if (!oc || !nc || coverKey(oc) !== coverKey(nc)) return null;
+    const mainOf = (h: HTMLElement) => h.querySelector<HTMLElement>(":scope > .lib-hero__main") ?? h;
+    const lines = (h: HTMLElement, cover: HTMLElement) => ([...mainOf(h).children] as HTMLElement[]).filter((c) => !c.contains(cover));
+    const was = lines(drawn, oc);
+    const now = lines(fresh, nc);
+    const changed: HTMLElement[] = [];
+    if (was.length === now.length) {
+      was.forEach((el, i) => {
+        if (same(el, now[i])) return;
+        el.replaceWith(now[i]);
+        changed.push(now[i]);
+      });
+    } else {
+      was.forEach((el) => el.remove());
+      mainOf(drawn).append(...now);
+      changed.push(...now);
+    }
+    const asideParts = (h: HTMLElement) =>
+      h.matches(".lib-hero--aside") ? ([...h.children] as HTMLElement[]).filter((c) => !c.matches(".lib-hero__main")) : [];
+    const was2 = asideParts(drawn);
+    const now2 = asideParts(fresh);
+    if (was2.length !== now2.length || was2.some((el, i) => !same(el, now2[i]))) setHeroAside(drawn, now2.map((c) => c.outerHTML).join(""));
+    fresh.replaceWith(drawn);
+    return changed;
+  };
+
+  const swapView = (ctx: Context, endFrames: () => void) => {
     const old = cur();
+    const oldView = curPane?.querySelector<HTMLElement>("[data-view]") ?? null;
+    const oldHero = oldView?.querySelector<HTMLElement>(".lib-hero") ?? null;
+    const inRows = oldView ? readingRows(oldView) : false;
+    const keepTop = oldView?.scrollTop ?? 0;
     const f = frameFor(ctx, false);
     f.onBack = old.onBack;
     stack[stack.length - 1] = f;
     setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
-    dropPane(curPane);
-    curPane?.remove();
     const pane = buildPane(f);
     pane.dataset.pos = "center";
+    const view = pane.querySelector<HTMLElement>("[data-view]");
+    const fresh = view?.querySelector<HTMLElement>(".lib-hero") ?? null;
+    // The drawn hero moves into the new pane before the old one leaves the DOM.
+    const changed = oldHero && fresh ? keepHero(oldHero, fresh) : null;
+    dropPane(curPane);
+    curPane?.remove();
     viewport.appendChild(pane);
     curPane = pane;
     paneFrame = f;
-    applyScroll(pane, f);
-    const view = pane.querySelector<HTMLElement>("[data-view]");
-    if (view) enterRows(view.children);
-    diag.log("ui:act", { at: opts.storeKey, do: "view", to: ctx.views?.active ?? "" });
+    wirePops(pane);
+    if (view) {
+      // His call: keep your place.
+      if (inRows) revealAtTop(view, 0);
+      else {
+        const w = windowers.get(view);
+        if (w) w.scrollTo(keepTop);
+        else view.scrollTop = keepTop;
+      }
+      enterRows([...(changed ?? (fresh ? [fresh] : [])), ...listParts(view)]);
+    }
+    endFrames();
+    diag.log("ui:act", { at: opts.storeKey, do: "view", to: ctx.views?.active ?? "", hero: changed ? "kept" : "new", place: inRows ? "rows" : "kept" });
+    if (reloadPending && !isDragging()) reload(); // a reload that landed during the switch
+  };
+
+  const replace = (ctx: Context) => {
+    if (animating || stack.length <= 1) return;
+    pick.clear();
+    closePops();
+    const endFrames = frames.begin("view", ctx.views?.active ?? "");
+    const oldView = curPane?.querySelector<HTMLElement>("[data-view]");
+    const leaving = oldView ? listParts(oldView) : [];
+    if (!leaving.length || reducedMotion()) return swapView(ctx, endFrames);
+    // The old list fades out first, quickly; nothing else moves meanwhile.
+    animating = true;
+    leaving.forEach((el) => el.classList.add("is-view-leaving"));
+    window.setTimeout(() => {
+      animating = false;
+      swapView(ctx, endFrames);
+    }, tokenMs("--view-leave-dur"));
+  };
+
+  // A switch waiting for its level's data: the half pressed, the level it opens, the level it
+  // leaves. Another press, a drill or a Back drops it (the level it leaves is no longer open).
+  let pendingView: { key: string; frame: Frame } | null = null;
+  const markPending = () => {
+    viewsEl?.querySelectorAll<HTMLElement>("[data-split]").forEach((h) => {
+      const busy = !!pendingView && pendingView.frame === cur() && h.dataset.split === pendingView.key;
+      if (busy) h.setAttribute("aria-busy", "true");
+      else h.removeAttribute("aria-busy");
+    });
   };
   viewsEl?.addEventListener("click", (e) => {
     const key = splitPick(e);
-    const v = cur().ctx.views;
+    const f = cur();
+    const v = f.ctx.views;
     if (!key || !v || stack.length <= 1 || key === v.active) return;
+    if (pendingView && pendingView.frame === f && pendingView.key === key) return; // on its way
     const next = v.to(key);
-    if (next) replace(next);
+    if (!next) return;
+    const ready = next.ready?.();
+    if (!ready) {
+      pendingView = null;
+      markPending();
+      return replace(next);
+    }
+    const ticket = { key, frame: f };
+    pendingView = ticket;
+    markPending();
+    const t0 = performance.now();
+    void ready
+      .catch(() => {}) // a failed read is the level's own to show (its empty text)
+      .then(() => {
+        if (pendingView !== ticket) return;
+        pendingView = null;
+        markPending();
+        const waited = Math.round(performance.now() - t0);
+        if (cur() !== f) return diag.log("view:wait", { to: key, ms: waited, dropped: true });
+        diag.log("view:wait", { to: key, ms: waited });
+        replace(next);
+      });
   });
 
   const back = () => {
@@ -2042,7 +2195,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       drill(ctx);
     },
     replace,
-    reload,
+    reload: (ctx?: Context) => {
+      if (ctx && cur().ctx !== ctx) return;
+      reload();
+    },
     heroAside,
     /** Card memory: where the card is now (CARD-MEMORY.md §2). */
     snapshot,

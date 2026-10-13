@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 596 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 598 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -852,6 +852,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--split-pill-fs` | `var(--action-text-fs)` | — |  |
 | `--split-pill-weight` | `var(--action-text-weight)` | — |  |
 | `--split-pill-dim` | `0.6` | — | = .panel__action[disabled] |
+| `--split-pill-busy-dur` | `var(--search-pulse-dur)` | — | The Full \| Lib switch (FULL-LIB.md §5, his calls 2026-10-13): the pressed half breathes while Apple's page is on its way (the Search busy dot's breath), and the list under the hero fades out at the micro-motion speed before the new one rises in (enterRows). |
+| `--view-leave-dur` | `var(--dur-fast)` | — |  |
 | `--set-locked-dim` | `var(--split-pill-dim)` | — | a Settings toggle that cannot change now (Settings › Cards' last three) |
 
 ### spacing scale
