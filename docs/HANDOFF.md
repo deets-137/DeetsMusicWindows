@@ -112,12 +112,12 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-09-27. Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md.
 
-**Artist facts box (2026-10-12, built, desk test open, NOT FOR RELEASE yet).** In an artist
-view the photo moves left and a box beside it shows Last.fm's tags, an On tour marker, the
-artist's plays and listeners (one `artist.getInfo` per artist, cached a month; the same
-Playback row gates it). His call: the song badge ships, the box waits. It is on in the dev
-build and off in a release unless `localStorage["deets.dev.artistBox"] = "on"` (LISTENERS.md
-§6, which also lists what to undo when it ships). Desk test: features/LISTENERS.md §6.3 (8 steps). Top tracks and similar artists: he designs
+**Artist facts box (2026-10-12, built, desk test open, FOR RELEASE).** In an artist view the
+photo moves left and a box beside it shows four sections: Tags, Listening Stats, On tour,
+Links (one `artist.getInfo` per artist, cached a month). Its own row gates it: Settings ›
+Playback › *Show artist info on the artist's page* (default On); the DevTools flag is gone.
+On a narrow card it folds under an *Artist Info* line, closed by default, the last choice kept
+(LISTENERS.md §6). Desk test: features/LISTENERS.md §6.3 (8 steps). Top tracks and similar artists: he designs
 the UI tomorrow, ideas/LastfmArtist.md holds the calls.
 
 **Listeners badge (2026-10-12, built, desk test open).** Now Playing wears the song's Last.fm

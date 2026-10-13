@@ -166,10 +166,11 @@ hidden right slot is not on screen, so it still comes into the left slot.
 Settings › Window will set the order of the four parts under the hero, and hide any of them.
 One order for Library and Search. A rule can change it by condition. [LAYOUT.md](LAYOUT.md) §3.1.
 
-## 9. The Last.fm facts box beside the hero (built 2026-10-12, not for release yet)
+## 9. The Last.fm facts box beside the hero (built 2026-10-12)
 
-> **Part:** built · 2026-10-12 · desk test open · behind a DevTools flag (dev build on;
-> release: `localStorage["deets.dev.artistBox"] = "on"`), LISTENERS.md §6
+> **Part:** built · 2026-10-12 · desk test open · for release, behind its own Settings row
+> (*Show artist info on the artist's page*); on a narrow card it folds under *Artist Info*.
+> LISTENERS.md §6
 
 His design: in both artist views the round photo moves to the left and a box sits on its
 right, Last.fm's tags and an *On tour* marker in one column, the artist's plays and listeners

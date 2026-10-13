@@ -65,27 +65,14 @@ export interface ArtistInfo {
 const heldArtists = new Map<string, Promise<ArtistInfo | null>>();
 
 /**
- * The artist facts box is not for release yet (his call, 2026-10-12): it shows in the dev
- * build, and in a release only with `localStorage["deets.dev.artistBox"] = "on"` set in
- * DevTools, then a reload. Off, no artist call is made. The song badge is not gated.
- */
-const ARTIST_BOX_ON = (() => {
-  if (import.meta.env.DEV) return true;
-  try {
-    return localStorage.getItem("deets.dev.artistBox") === "on";
-  } catch {
-    return false;
-  }
-})();
-
-/**
- * The Last.fm facts for an artist, by name. `null` when the box is gated off (above), the row
- * *Show play counts from Last.FM* is off (no call is made), this build has no key, or Last.fm
- * could not be reached. Shared per name, like `listenersFor`.
+ * The Last.fm facts for an artist, by name. `null` when the row *Show artist info on the
+ * artist's page* (`showArtistInfo`) is off (no call is made), this build has no key, or
+ * Last.fm could not be reached. Shared per name, like `listenersFor`. Its own row since
+ * 2026-10-12 (his call), when the DevTools flag `deets.dev.artistBox` was removed.
  */
 export function artistInfoFor(name: string): Promise<ArtistInfo | null> {
   const key = name.trim().toLowerCase();
-  if (!ARTIST_BOX_ON || !key || !setting("showListeners")) return Promise.resolve(null);
+  if (!key || !setting("showArtistInfo")) return Promise.resolve(null);
   let p = heldArtists.get(key);
   if (!p) {
     p = invoke<ArtistInfo | null>("lastfm_artist_info", { name: name.trim() }).catch(() => {
@@ -95,6 +82,33 @@ export function artistInfoFor(name: string): Promise<ArtistInfo | null> {
     heldArtists.set(key, p);
   }
   return p;
+}
+
+/** The artist facts box on a narrow card: open or folded under its *Artist Info* line. The
+ *  last choice is kept for the next artist and across restarts (his call, 2026-10-12);
+ *  closed by default. A per-viewer convenience, so localStorage, not a setting. */
+const ARTIST_OPEN_KEY = "deets.artistInfo.open";
+export function artistInfoOpen(): boolean {
+  try {
+    return localStorage.getItem(ARTIST_OPEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** The *Artist Info* line was clicked: open or fold the box, and remember it. Handled in each
+ *  artist view's click listener (collection-card.ts, search-card.ts). */
+export function toggleArtistInfo(btn: HTMLElement): void {
+  const wrap = btn.closest<HTMLElement>(".artist-info-wrap");
+  if (!wrap) return;
+  const open = wrap.dataset.open !== "1";
+  wrap.dataset.open = open ? "1" : "0";
+  btn.setAttribute("aria-expanded", String(open));
+  try {
+    localStorage.setItem(ARTIST_OPEN_KEY, open ? "1" : "0");
+  } catch {
+    /* not kept: the box still opens now */
+  }
 }
 
 /** 1234 → "1.2K", 4 567 890 → "4.6M"; under a thousand as is. For the row, when it exists. */

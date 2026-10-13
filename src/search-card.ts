@@ -39,7 +39,7 @@ import { rowPick, picksText } from "./row-pick";
 import {
   yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML, openArtistLastfm, type YourPlaylists, type CheckProgress,
 } from "./artist-view";
-import { artistInfoFor } from "./listeners";
+import { artistInfoFor, toggleArtistInfo } from "./listeners";
 import { handOff } from "./handoff";
 import { emit } from "./rules";
 import { levelLeft, ruleGrowComing } from "./card-grow";
@@ -749,6 +749,8 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
             const t = e.target as HTMLElement;
             const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
             if (lfm) return openArtistLastfm(lfm);
+            const fold = t.closest<HTMLElement>("[data-artist-info-toggle]");
+            if (fold) return toggleArtistInfo(fold);
             const shelf = t.closest<HTMLElement>("[data-shelf-item]");
             if (shelf) {
               const i = Number(shelf.dataset.shelfIdx);

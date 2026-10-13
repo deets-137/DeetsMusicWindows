@@ -194,6 +194,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Motion", row: "graphicsfallback" }, // If graphics fail, built 2026-10-11 (GRAPHICS-FALLBACK.md)
   { section: "Playback", row: "shuffleoff" }, // Shuffle off plays, unshuffle, built 2026-10-12 (QUEUE.md §Shuffle and unshuffle)
   { section: "Playback", row: "listeners" }, // Show play counts from Last.FM, built 2026-10-12 (LISTENERS.md §4)
+  { section: "Playback", row: "artistinfo" }, // Show artist info on the artist's page, built 2026-10-12 (LISTENERS.md §6)
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -417,7 +418,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Layout for Max, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "pinNewAct"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "pinNewAct"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1495,6 +1496,8 @@ function mountSettings(
         storeToggle("historyday", "Show the day in History", "historyShowDay", () => "Each row says Today, Yesterday or the date, next to the artist"),
         // The Last.fm counts badge (LISTENERS.md §4; his calls 2026-10-12: Playback, on by default).
         storeToggle("listeners", "Show play counts from Last.FM", "showListeners", () => "Now Playing shows how many plays and listeners a song has on Last.fm. Off: Last.fm is not asked"),
+        // The artist facts box (LISTENERS.md §6; his calls 2026-10-12: its own row, on by default).
+        storeToggle("artistinfo", "Show artist info on the artist's page", "showArtistInfo", () => "The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked"),
       ],
     },
     {

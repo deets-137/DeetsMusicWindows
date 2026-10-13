@@ -13,6 +13,7 @@
 
 import { handleUnpin } from "./pins";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { toggleArtistInfo } from "./listeners";
 import * as frames from "./frames";
 import { wireListKeys } from "./list-keys";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
@@ -1652,7 +1653,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
 
     // Sort/View popover controls are handled in onPopClick (the pop lives on <body>).
 
-    // The Last.fm counts in an artist hero's facts box → the artist's Last.fm page
+    // The Artist Info line over the facts box on a narrow card: open or fold it (LISTENERS.md §6).
+    const fold = t.closest<HTMLElement>("[data-artist-info-toggle]");
+    if (fold) return toggleArtistInfo(fold);
+    // The Last.fm link in an artist hero's facts box (its Links section) → the artist's Last.fm page
     // (LISTENERS.md §6). Opened here, not through artist-view.ts: that module imports this one.
     const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
     if (lfm) {

@@ -19,7 +19,8 @@ import type { Artwork, Track } from "./library";
 import type { CollectionCardHandle, Context, Grouping, SortSpec, ViewOption } from "./collection-card";
 import type { LibNav, SongOpts } from "./library-card";
 import { catalogRelated, collectionTracks, artistDetail, type ArtistDetail } from "./search";
-import { libraryArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, type YourPlaylists, type CheckProgress } from "./artist-view";
+import { libraryArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML, type YourPlaylists, type CheckProgress } from "./artist-view";
+import { artistInfoFor, type ArtistInfo } from "./listeners";
 import { creditIndex } from "./artist-credit";
 import { tracks } from "./track-store";
 import { albumMenu, artistMenu, playlistMenu } from "./media-menu";
@@ -229,6 +230,15 @@ export function fullViews(deps: FullDeps): FullViews {
       }
     })();
     const name = () => d?.artist.name ?? src.name;
+    // The Last.fm facts box beside the hero (LISTENERS.md §6), as the Lib level draws it: it
+    // was missing here until 2026-10-12 (his find). Asked by the name at once; one call per
+    // artist, cached a month; nothing until it answers, nothing with the row off.
+    let lfm: ArtistInfo | null = null;
+    void artistInfoFor(src.name).then((i) => {
+      if (!i || i.state !== "have") return;
+      lfm = i;
+      reload();
+    });
     // Newest first, as the Lib view and the Search pane list them.
     let albumList: ArtistDetail["albums"] = [];
     const albumsShelf = (): string => {
@@ -260,6 +270,7 @@ export function fullViews(deps: FullDeps): FullViews {
         cover: deps.heroCover(d?.artist.artwork ?? src.artwork, name(), undefined, undefined, true),
         title: name(),
         meta: d?.artist.genres?.[0],
+        aside: artistInfoHTML(lfm),
         menu: id
           ? () => artistMenu({ name: name(), catalogId: id, artwork: d?.artist.artwork ?? src.artwork, songs: top(), inLibrary: inLibrary(name()) }, { context: `search-artist:${id}`, here: true })
           : undefined,

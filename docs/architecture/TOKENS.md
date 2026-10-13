@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 589 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 591 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -639,6 +639,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--hero-artist-radius` | `50%` | — | an artist hero's photo (ARTIST-VIEW.md §1) |
 | `--artist-info-gap` | `var(--space-5)` | — | The Last.fm facts box beside an artist hero (LISTENERS.md §6). — the photo column ↔ the box |
 | `--artist-info-col-gap` | `var(--space-4)` | — | the box's two columns |
+| `--artist-info-row-gap` | `var(--space-4)` | — | the box's two rows of sections |
+| `--artist-info-fold-dur` | `240ms` | — | the box grows open under its Artist Info line (a narrow card) |
 | `--artist-info-pad` | `var(--space-3)` | — |  |
 | `--artist-info-radius` | `var(--radius-control)` | — |  |
 | `--artist-info-tags-w` | `200px` | — | the tag chips wrap inside this |

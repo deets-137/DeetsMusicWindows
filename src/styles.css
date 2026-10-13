@@ -2880,20 +2880,81 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .lib-grid .lib-hero { grid-column: 1 / -1; }
 /* An artist hero with the Last.fm facts box beside it (LISTENERS.md §6; his design,
    2026-10-12): the photo column moves left, the box sits on its right; on a card too narrow
-   for both the box wraps under the column. With no box (no answer yet, the row off) the hero
+   for both the box folds under an Artist Info line below the column (the container query
+   below). With no box (no answer yet, the row off) the hero
    is the centered column it was. */
-.lib-hero--aside { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--artist-info-gap); }
+.lib-hero--aside { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: var(--artist-info-gap); }
 .lib-hero__main { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--hero-gap); min-width: 0; }
+/* The box fills the row beside the photo column: a 2×2 grid of sections (his sketch,
+   2026-10-12). It stretches to the photo column's height and the two rows share it evenly
+   (his ask: fill the space), so each section's header sits at the top of its half. Each
+   section is a shelf-style header over its facts; the right column is right-aligned. A
+   section that is missing (no tags, not on tour) leaves its cell empty, so the others keep
+   their corners. */
+/* The wrap is the flex item beside the photo column: the Artist Info line, then the fold
+   that holds the box. Wide (the default): the line is hidden and the fold is always open, so
+   the box stands beside the photo. The Search view's holder steps aside (display: contents)
+   so the wrap is the hero's flex item there too. */
+.lib-hero--aside { container-type: inline-size; }
+.lib-hero--aside > [data-artist-info] { display: contents; }
+.artist-info-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.artist-info__fold, .artist-info__fold-in { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.artist-info__toggle { display: none; }
+/* Narrow (his call, 2026-10-12): the box does not sit under the photo at full size. It folds
+   under one Artist Info line in the shelf header's voice, closed by default; a click grows it
+   open (the fold's rows go 0fr → 1fr) and the caret turns. The last choice is remembered
+   (listeners.ts `artistInfoOpen`). The width is where the photo column and a box with two
+   columns stop fitting side by side. */
+@container (max-width: 560px) { /* raw: a container query cannot read a custom property */
+  .artist-info-wrap { flex-basis: 100%; }
+  .artist-info__toggle {
+    display: flex; align-items: center; gap: var(--space-1); align-self: flex-start;
+    appearance: none; background: none; border: none; padding: 0; margin: 0;
+    color: var(--subtext); cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-ui);
+  }
+  .artist-info__toggle:hover, .artist-info__toggle:hover .artist-info__h { color: var(--text); }
+  .artist-info__toggle:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+  .artist-info__toggle::after {
+    content: "›"; display: inline-block; font-size: var(--fs-text); line-height: 1;
+    transition: transform var(--artist-info-fold-dur) var(--ease-ui);
+  }
+  .artist-info-wrap[data-open="1"] .artist-info__toggle::after { transform: rotate(90deg); }
+  .artist-info__fold {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows var(--artist-info-fold-dur) var(--ease-ui);
+  }
+  .artist-info-wrap[data-open="1"] .artist-info__fold { grid-template-rows: 1fr; }
+  .artist-info__fold-in {
+    min-height: 0; overflow: hidden; opacity: 0;
+    transition: opacity var(--artist-info-fold-dur) var(--ease-ui), padding-top var(--artist-info-fold-dur) var(--ease-ui);
+  }
+  .artist-info-wrap[data-open="1"] .artist-info__fold-in { opacity: 1; padding-top: var(--space-2); }
+  .artist-info-wrap .artist-info { grid-template-rows: auto auto; } /* its own height, not shared halves */
+}
+@media (prefers-reduced-motion: reduce) {
+  .artist-info__fold, .artist-info__fold-in, .artist-info__toggle::after { transition: none; }
+}
 .artist-info {
-  display: grid; grid-template-columns: auto auto; align-items: start;
-  gap: var(--artist-info-col-gap);
+  flex: 1 1 auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1fr 1fr; align-items: start;
+  grid-template-areas: "tags stats" "tour links";
+  gap: var(--artist-info-row-gap) var(--artist-info-col-gap);
   padding: var(--artist-info-pad);
   background: var(--surface);
   border: 1px solid var(--panel-border);
   border-radius: var(--artist-info-radius);
   text-align: left; min-width: 0; max-width: 100%;
 }
-.artist-info__col { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+/* The photo column centers itself in the taller row, so the name stays under the photo. */
+.lib-hero--aside > .lib-hero__main { justify-content: center; }
+.artist-info__sec { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; }
+.artist-info__sec--tags  { grid-area: tags; }
+.artist-info__sec--stats { grid-area: stats; }
+.artist-info__sec--tour  { grid-area: tour; }
+.artist-info__sec--links { grid-area: links; }
+.artist-info__sec--stats, .artist-info__sec--links { align-items: flex-end; text-align: right; }
+.artist-info-wrap .artist-info__h { margin: 0; white-space: nowrap; } /* the shelf label's voice (.search__label), its gap from the section's */
 .artist-info__tags { display: flex; flex-wrap: wrap; gap: var(--space-1); max-width: var(--artist-info-tags-w); }
 /* A tag is a chip of the web panel's family (.web__chip): the one chip idiom in the app. */
 .artist-info__tag {
@@ -2905,16 +2966,20 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 }
 .artist-info__tour { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-subtext); font-weight: var(--fw-title); color: var(--title); }
 .artist-info__dot { width: var(--artist-info-dot); height: var(--artist-info-dot); border-radius: 50%; background: var(--title); }
-/* The counts: a bare button, two lines, the number in the title's type. */
+/* The counts: two lines, the number in the title's type, right-aligned with their header. */
 .artist-info__counts {
-  appearance: none; background: none; border: none; padding: 0; margin: 0;
-  font: inherit; font-size: var(--fs-subtext); color: var(--subtext); text-align: left;
-  display: flex; flex-direction: column; gap: var(--space-1);
-  cursor: pointer; white-space: nowrap;
-  transition: color var(--dur-fast) var(--ease-ui);
+  font-size: var(--fs-subtext); color: var(--subtext);
+  display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1);
+  white-space: nowrap;
 }
-.artist-info__counts:hover { color: var(--text); }
-.artist-info__counts:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* The Last.fm link: a bare text button in the title ink. */
+.artist-info__link {
+  appearance: none; background: none; border: none; padding: 0; margin: 0;
+  font: inherit; font-size: var(--fs-subtext); font-weight: var(--fw-title); color: var(--title);
+  cursor: pointer; white-space: nowrap;
+}
+.artist-info__link:hover { text-decoration: underline; }
+.artist-info__link:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .artist-info__count { display: flex; align-items: baseline; gap: var(--space-1); }
 .artist-info__count b { font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text); color: var(--title); }
 /* Play / Shuffle (NEXT-VERSION §13): two half-width buttons under the hero (or at the top of
@@ -3231,7 +3296,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 /* sections */
 .search__sec { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
 .search__sec:last-child { border-bottom: none; }
-.search__sec-title, .search__label {
+.search__sec-title, .search__label, .artist-info__h {
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
   color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em;
   margin: 0 0 var(--space-1);

@@ -12,6 +12,23 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-12 (artist info sections) — the facts box as four sections, a fold, its own row
+
+His sketch: bold boxes are section headers, small boxes the facts. Built as a 2×2 grid, his
+answers: **Tags** · **Listening Stats** (plays, listeners, right-aligned) on top; **On tour**
+· **Links** (*Last.fm ↗*, the counts are plain text now) below; headers in the shelf label's
+voice. His ask after a look: the box stretches to the photo column's height, the rows share
+it. Then: on a narrow card the box no longer drops under the photo at full size; it folds under
+one *ARTIST INFO ›* line (closed by default, the last choice kept in localStorage, a 240 ms
+grow), and is always open on a wide card (a container query, ≤ 560 px). Its own row: Settings ›
+Playback › *Show artist info on the artist's page* (`showArtistInfo`, On, independent of the
+badge's row). **The DevTools flag is gone: the box ships in the next release.** His find: the
+box was missing from the Library's **Full** artist level (`library-full.ts`), a third artist
+view; fixed. Checked in the dev app by screenshot: wide, narrow closed / open, the fold's
+height per frame (a smooth ease both ways), Fill, Full. Decided inside his calls: LISTENERS.md
+§6.2. Desk test: LISTENERS.md §6.3. Open: whether to unite the three artist views (talked
+through with him after the commit).
+
 ## 2026-10-12 (Artist facts box) — Last.fm's artist facts beside the hero, his design
 
 His ask: "the artist ratio next, what does Last.fm offer?" Probed live: `artist.getInfo`
