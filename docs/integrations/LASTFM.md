@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-16
 sources: [scripts/release-check.mjs, src-tauri/src/lastfm.rs, src/stats.ts, src/lastfm.ts, src/settings-card.ts, src/agent-settings.ts]
-updated: 2026-09-17
+updated: 2026-10-13
 ---
 # Last.fm scrobbling
 
@@ -210,3 +210,17 @@ Before it: fill in `lastfm.json`, then restart `dev:app` (build.rs runs again).
 10. Click Last.fm while connected: it reads "Not connected"; `lastfm-session.json` is gone.
 11. Remove DeetsMusic at last.fm/settings/applications, then play a song past half. One toast
     says to connect again; the row says the plays wait. Connect: the waiting row sends.
+
+## 10. The names we scrobble (found 2026-10-12, open, not designed)
+
+> **Part:** idea · 2026-10-12 · every fork his.
+
+We send Apple's raw names: `meta_of` in `lastfm.rs` takes the track's `artist_name` and
+`album_name` as they are, for `track.updateNowPlaying` and the scrobble flush. Last.fm keeps one
+page per exact name and merges none, and most scrobbles come from Spotify's form (the main
+artist, no ` - EP` / ` - Single`). So his plays land on the small pages: *GUERILLAZ - Single*
+under *H.LLS & Lucy Park* has 49 listeners; *GUERILLAZ* under *H.LLS* has 20,434
+(LISTENERS.md §7.0). His call (2026-10-12): a separate fix from the album box, designed later.
+The forks to bring him: which parts to clean (the album suffix, the album artist via
+`albumArtist`, the track artist); whether a user can turn it off; the songs already sent stay
+as they are (Last.fm offers no rename through the API).

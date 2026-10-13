@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts]
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 # Listeners — how rare a song is, from Last.fm
 
@@ -229,4 +229,63 @@ convenience no agent needs).
 6. Settings › Playback › *Show artist info on the artist's page* (wears the N) off, open an
    artist: no box, no call. *Show play counts from Last.FM* off alone: the box still shows.
 7. An artist Last.fm does not know: the plain centered hero, one log line with `none`.
-8. Right-click the box: the hero's artist menu, as anywhere on the hero.
+8. Right-click the box: the hero's artist menu, as anywhere on the hero. (To change: §7.1
+   item 5 gives the box a small menu of its own.)
+
+## 7. The album facts box (designed, not built)
+
+> **Part:** designed · 2026-10-13 · every fork below is his; not a go to build.
+
+His ask (2026-10-12): the artist box's data and style, per album. The same box beside the
+album cover in the album hero, the same 2×2 grid, the same fold on a narrow card.
+
+### 7.0 What `album.getInfo` gives (probed live 2026-10-12)
+
+Listeners and plays; up to five tags (often with the release year: Essex Honey *2025, soul,
+rnb, dream pop, art pop*); the album's Last.fm `url`; an `mbid` for well-known albums; the
+track list (name, duration, rank; no per-song plays); a `wiki` (a summary of ~670 characters
+and its date) for well-known albums only. No on-tour equivalent. A small release often has no
+tags and no wiki: Lucy Park's *THREAD 27* has neither.
+
+**Names.** Last.fm keeps one page per exact (artist, album) text a scrobbler sends and merges
+none of them. `autocorrect` fixes artist spellings only. Most scrobbles come from Spotify,
+which sends the main artist only and no ` - EP` / ` - Single`, so that page is the big one:
+
+| Apple's album | Apple's form | No suffix | Main artist, no suffix |
+|---|---|---|---|
+| *GUERILLAZ - Single* (H.LLS & Lucy Park) | 49 listeners | 628 | **20,434** (H.LLS) |
+| *THREAD 27 - EP* (Lucy Park) | 31 | **616** | the same |
+
+`track.getInfo` names the album with Apple's suffix (*THREAD 27 - EP*), the small page, so it
+does not help; an `mbid` works but small releases have none.
+
+### 7.1 His calls (2026-10-12)
+
+1. **Sections:** Tags (top left) · Listening Stats (top right) · **About** (bottom left: the
+   wiki summary in place of On tour) · Links (bottom right: the album's Last.fm page).
+2. **Tags as Last.fm gives them**, the year tags kept.
+3. **The page:** Spotify's form first (the album artist's main name, the title without
+   Apple's ` - EP` / ` - Single`); only when that is not found (error 6), Apple's exact
+   names. Usually one call; the answer cached a month, as the artist's.
+4. **Its own Settings row**, beside the artist's ("Show album info on the album's page").
+5. **Right-click inside a box opens a small menu of its own:** *Hide artist info* (or *Hide
+   album info*), which turns its row off, and *Open Last.fm*. This applies to the artist box
+   too. The rest of the hero keeps the hero's menu.
+6. **Scrobble names are a separate fix** (LASTFM.md §10), not part of this work.
+
+### 7.2 To bring him before the build
+
+- The words of the About section: my lean is the first two sentences of the summary, the
+  HTML stripped (Last.fm ends it with a *Read more on Last.fm* link; the Links section already
+  points to the page that credits the wiki).
+- The main-artist rule: the text before the first ` & `, `, ` or ` feat. ` in the album
+  artist (*H.LLS & Lucy Park* → *H.LLS*).
+- What *Hide …* says after it acts (a toast with Undo, or nothing) and the menu's row order.
+
+### 7.3 Where it goes
+
+The album hero has the same three code paths as the artist's: Library › Lib
+(`library-card.ts` `albumDetail`), Library › Full (`library-full.ts`), and the Search album
+pane (`search-card.ts` `fillCollection`). Lib and Full take `Hero.aside` already. The Search
+pane gets it for free when it runs the engine (ARTIST-VIEW.md §10), so build after that, or
+with it.
