@@ -1,7 +1,7 @@
 ---
 status: built
-desk_test: open
-sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts]
+desk_test: passed 2026-10-13
+sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts]
 updated: 2026-10-13
 ---
 # Listeners — how rare a song is, from Last.fm
@@ -231,6 +231,75 @@ convenience no agent needs).
 7. An artist Last.fm does not know: the plain centered hero, one log line with `none`.
 8. Right-click inside the box: its own menu, *Open Last.fm* · *Hide artist info* (since
    2026-10-13, §7.1 item 5). Right-click elsewhere on the hero: the hero's artist menu.
+
+## 6b. The box lands with a slide (artist and album)
+
+> **Part:** built · 2026-10-13, desk test passed 2026-10-13 (his review on the dev app, §6b.3)
+
+His report (2026-10-13): when the box appears, the drill view flickers, and the cover or photo
+jumps to the left. **The cause:** the Library views (the Lib and Full levels) redrew the whole
+card to add the box. An answer that came during the drill's slide waited for the slide's end
+(`reload` holds while `animating`), so every row and cover drew again just after the slide
+stopped: the flicker. The hero went from a centered column to the row layout in one frame: the
+jump. The Search panes filled their holder in place (no flicker), but they jumped the same way.
+
+### 6b.1 His calls (2026-10-13)
+
+- The hero draws centered. When the facts land, the cover column slides left and the box
+  fades in beside it.
+- When the box's row goes off while the view is open, the box leaves and the cover slides back
+  to the center.
+- Under reduced motion, the cover starts on the left.
+
+### 6b.2 As built
+
+- `src/hero-slide.ts` `setHeroAside(hero, html)` changes the hero's own nodes only, never the
+  card. It measures the cover column, puts the box in, and slides the column from where it
+  was (a FLIP, `Element.animate`). It also moves the hero's height, so the rows below follow
+  instead of jumping. The box fades in, starting at 30 % of the slide. Leaving: the box fades
+  out (`--pop-out`), then the column slides back.
+- `CollectionCardHandle.heroAside(ctx)` (collection-card.ts) replaces the three `card.reload()`
+  calls (library-card.ts artist and album, library-full.ts artist and album). An answer during
+  the drill slide waits for the slide's end, so the drill arrives and then the cover moves. A
+  hero that changed in another way since its draw (the photo landed) takes the plain redraw,
+  as before. A level that is not on screen draws the box when it comes back.
+- The Search panes call `setHeroAside` in place of setting `innerHTML` on the holder.
+- The row going off (Settings › Playback, or the box's *Hide* menu) is watched in
+  hero-slide.ts: each open box of that kind leaves with the motion above, and its HTML is kept
+  beside its hero. Undo, or the row on again, brings it back the same way. The menu no longer
+  sets `hidden`.
+- Reduced motion: `artistInfoHTML` / `albumInfoHTML` draw an empty held place
+  (`data-info-pending`) while the answer is on its way. The cover is on the left from the
+  first paint, and the facts appear in the place with no motion. To tell "on its way" from
+  "no answer", `artistInfoNow` / `albumInfoNow` now return `undefined` for the first and
+  `null` for the second.
+- Tokens: `--artist-info-slide` = `--nav-dur`, `--artist-info-slide-ease` = `--nav-ease` (each
+  skin's drill tempo). `.lib-hero.is-sliding` clips during the move. `[perf] frames info-box`
+  times each slide.
+
+Decided inside his calls (for his review): the drill's tempo for the slide; the box's fade
+starts at 30 % of the slide; the box fades out before the cover moves back; under reduced
+motion, an answer of "nothing" (or a failed call) snaps the cover back to the center.
+**Known gap:** under reduced motion, if Last.fm cannot be reached, the empty place stays on the
+left until the view draws again.
+
+### 6b.3 Desk test
+
+1. Restart the app (the session's answers are cleared). Library › an artist you have not
+   opened today: the drill slides in with the photo centered, then the photo slides left and
+   the box fades in. The rows and covers below do not flash.
+2. The same for an album (Library › an album), and for Search › an artist and an album, and
+   Library › an artist › **Full**.
+3. Open the same artist again: the box is in the first paint, and nothing moves.
+4. Midi (a narrow card): the *ARTIST INFO ›* line fades in under the column, and the rows
+   move down smoothly with it.
+5. With an artist open, Settings › Playback › *Show artist info on the artist's page* off: the
+   box fades out and the photo slides back to the center. On again: it slides back in. The
+   box's right-click › *Hide artist info*, then the toast's Undo: the same two motions.
+6. Each skin: the slide moves at the skin's drill tempo (Cyber fast, Ocean slow).
+7. Windows › Accessibility › Animation effects off, restart: open an artist you have not
+   opened since the restart. The photo is on the left from the first paint, and the facts
+   appear with no motion. An album that Last.fm does not know: the cover snaps to the center.
 
 ## 7. The album facts box
 

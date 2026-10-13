@@ -16,6 +16,7 @@
 import { esc } from "./collection-card";
 import { fmtCount, infoBoxOpen, type AlbumInfo, type ArtistInfo } from "./listeners";
 import { wikiSentences } from "./lastfm-names";
+import { setting } from "./settings-store";
 
 export const ARTIST_INFO_HINTS = {
   tags: "What Last.fm listeners call this artist",
@@ -79,7 +80,22 @@ function boxHTML(kind: "artist" | "album", url: string | undefined, h: Hints, se
   );
 }
 
+/** Under reduced motion, a box that is still on its way holds its place, empty, so the cover
+ *  starts on the left and nothing moves when the facts land (his call, 2026-10-13). With motion
+ *  the hero draws centered and the box slides in (hero-slide.ts). */
+function pendingBoxHTML(kind: "artist" | "album"): string {
+  if (!setting(kind === "artist" ? "showArtistInfo" : "showAlbumInfo")) return "";
+  let still = false;
+  try {
+    still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    /* motion on */
+  }
+  return still ? `<div class="artist-info-wrap" data-info-box="${kind}" data-info-pending aria-hidden="true"></div>` : "";
+}
+
 export function artistInfoHTML(i: ArtistInfo | null | undefined): string {
+  if (i === undefined) return pendingBoxHTML("artist"); // still on its way
   if (!i || i.state !== "have") return "";
   const h = ARTIST_INFO_HINTS;
   const tour = i.onTour
@@ -89,6 +105,7 @@ export function artistInfoHTML(i: ArtistInfo | null | undefined): string {
 }
 
 export function albumInfoHTML(i: AlbumInfo | null | undefined): string {
+  if (i === undefined) return pendingBoxHTML("album"); // still on its way
   if (!i || i.state !== "have") return "";
   const h = ALBUM_INFO_HINTS;
   const text = i.wiki ? wikiSentences(i.wiki, ABOUT_SENTENCES) : "";

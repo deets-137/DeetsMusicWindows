@@ -662,13 +662,11 @@ export const libraryCard: CardDef = {
     const albumDetail = (a: AlbumGroup, highlight?: Track): Context => {
       const list = () => tracks().filter((t) => albumKey(t) === a.key);
       // The Last.fm facts box beside the cover (LISTENERS.md §7): drawn in the first paint
-      // when its answer is known this session, else the card draws again when it lands.
+      // when its answer is known this session, else it slides in beside the cover when it
+      // lands, in place (hero-slide.ts).
       const lfmArtist = a.artist || list()[0]?.artistName || "";
-      if (lfmArtist && !albumInfoNow(lfmArtist, a.name))
-        void albumInfoFor(lfmArtist, a.name).then((i) => {
-          if (i?.state === "have") card.reload();
-        });
-      return {
+      if (lfmArtist && !albumInfoNow(lfmArtist, a.name)) void albumInfoFor(lfmArtist, a.name).then(() => card.heroAside(ctx));
+      const ctx: Context = {
         title: a.name,
         key: `album:${a.key}`, // card memory (CARD-MEMORY.md §5)
         headerLabel: "Album",
@@ -715,6 +713,7 @@ export const libraryCard: CardDef = {
           },
         },
       };
+      return ctx;
     };
 
     // artist detail (ARTIST-VIEW.md): the Search artist pane's order — a round hero, then the
@@ -796,13 +795,13 @@ export const libraryCard: CardDef = {
         .catch((e) => console.error("[library] artist info", e));
       // The Last.fm facts box beside the hero (LISTENERS.md §6): one call per artist, cached
       // a month; nothing until it answers, and nothing with the row off. Known this session:
-      // drawn in the first paint, so the hero does not jump.
-      let lfm: ArtistInfo | null = artistInfoNow(a.name);
+      // drawn in the first paint. Else the hero draws centered and the box slides in when it
+      // lands, in place (hero-slide.ts; a card redraw here was the flicker, 2026-10-13).
+      let lfm: ArtistInfo | null | undefined = artistInfoNow(a.name);
       if (!lfm)
         void artistInfoFor(a.name).then((i) => {
-          if (!i || i.state !== "have") return;
           lfm = i;
-          card.reload();
+          card.heroAside(ctx);
         });
       const loadYours = () =>
         yourPlaylistsFor(a.name)
@@ -812,7 +811,7 @@ export const libraryCard: CardDef = {
           })
           .catch((e) => console.error("[library] your playlists", e));
       void loadYours();
-      return {
+      const ctx: Context = {
         title: a.name,
         key: `artist:${a.name}`, // card memory (CARD-MEMORY.md §5)
         headerLabel: "Artist",
@@ -914,6 +913,7 @@ export const libraryCard: CardDef = {
           to: (k) => (k === "full" ? full.artist({ name: a.name, id: info?.catalogId, artwork: info?.artwork }) : null),
         },
       };
+      return ctx;
     };
 
     // In-place drill nav for the library's menus: "Go to Artist/Album" pushes the same

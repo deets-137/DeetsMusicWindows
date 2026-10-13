@@ -117,9 +117,8 @@ export function fullViews(deps: FullDeps): FullViews {
       const [who, what] = lfmNames();
       if (lfmAsked || !who || !what || albumInfoNow(who, what)) return;
       lfmAsked = true;
-      void albumInfoFor(who, what).then((i) => {
-        if (i?.state === "have") reload();
-      });
+      // It slides in beside the cover when it lands, in place (hero-slide.ts).
+      void albumInfoFor(who, what).then(() => deps.card().heroAside(ctx));
     };
     askLfm();
     void (async () => {
@@ -140,7 +139,7 @@ export function fullViews(deps: FullDeps): FullViews {
         reload();
       }
     })();
-    return {
+    const ctx: Context = {
       get title() {
         return name();
       },
@@ -185,6 +184,7 @@ export function fullViews(deps: FullDeps): FullViews {
         to: (k) => (k === "lib" ? lib() : null),
       },
     };
+    return ctx;
   }
 
   function artist(src: ArtistSource, seedSong?: string): Context {
@@ -249,13 +249,13 @@ export function fullViews(deps: FullDeps): FullViews {
     const name = () => d?.artist.name ?? src.name;
     // The Last.fm facts box beside the hero (LISTENERS.md §6), as the Lib level draws it: it
     // was missing here until 2026-10-12 (his find). Asked by the name at once; one call per
-    // artist, cached a month; nothing until it answers, nothing with the row off.
-    let lfm: ArtistInfo | null = artistInfoNow(src.name);
+    // artist, cached a month; nothing until it answers, nothing with the row off. It slides in
+    // beside the photo when it lands, in place (hero-slide.ts).
+    let lfm: ArtistInfo | null | undefined = artistInfoNow(src.name);
     if (!lfm)
       void artistInfoFor(src.name).then((i) => {
-        if (!i || i.state !== "have") return;
         lfm = i;
-        reload();
+        deps.card().heroAside(ctx);
       });
     // Newest first, as the Lib view and the Search pane list them.
     let albumList: ArtistDetail["albums"] = [];
@@ -275,7 +275,7 @@ export function fullViews(deps: FullDeps): FullViews {
         .join("");
       return tiles ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${tiles}</div>` : "";
     };
-    return {
+    const ctx: Context = {
       get title() {
         return name();
       },
@@ -361,6 +361,7 @@ export function fullViews(deps: FullDeps): FullViews {
         to: (k) => (k === "lib" ? deps.libArtist(name()) : null),
       },
     };
+    return ctx;
   }
 
   const resolve = (key: string): Context | null => {

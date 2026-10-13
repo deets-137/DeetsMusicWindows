@@ -114,49 +114,21 @@ shipped or closed went out; the WORKLOG has each day). Each item names where the
 When an item closes, delete it here and write the day in WORKLOG.md. Every local branch is
 merged into `main`; everything committed before 0.26.1 (`78e275c`) is on live.
 
-### In 0.27.0, desk test open (his call: ship with them open, then his hand test)
+### Open on live: text to fix, watches, data to read
 
-- **`np_publish` no longer waits on AirPlay** (2026-10-13). One `airplay-np` thread does the
-  now-playing sends; release check 9 crosses modules; `app_quit` and `friend_list` are async.
-  The thread ledger is DEBUGGING.md § Threads (docs:check 30). His desk test: AIRPLAY.md §13.6
-  (play on the HomePod, pull the cable, the window keeps answering).
-- **Listeners badge** (2026-10-12): *N Plays | M Listeners* in the full player, *N Plays* on
-  the Max cover; Settings › Playback › *Show play counts from Last.FM*. LISTENERS.md §4.3.
-- **Unshuffle** (2026-10-12): Shuffle off plays on in order from the playing song. QUEUE.md
-  §Shuffle and unshuffle › Desk test. His to see once: the row's words and the hint.
-- **The uninstall removes Start with Windows** (2026-09-28, in 0.26.x builds already): update
-  over it (the Run value stays), then uninstall (the value is gone). RELEASE.md §3.
-- **Copy editor** (2026-10-12, dev only, does not ship): COPY-EDIT.md §5.
-- **The web demo plays his Songs of the Day** (2026-10-12, live on deets.solutions since
-  2026-10-13): WEB-DEMO.md §15.8. His: the page lede says "everything mocked"; two shot lists
-  type the old album "Salt & Signal" (§15.7).
-
-### On live, his desk tests or watches still open
-
-The agent-runnable ones are one runbook: [ops/DESK-TESTS.md](ops/DESK-TESTS.md).
+Every hand and desk test listed here before closed on 2026-10-13 (his report, WORKLOG
+2026-10-13 *desk tests closed*; the rows are DESK-TESTS.md §5). What is left:
+- **The web demo** (WEB-DEMO.md §15.7): the page lede says "everything mocked"; two shot lists
+  type the old album "Salt & Signal".
 - **Playback, watch the live ring:** the dead-next heal (`player:deadNext`, QUEUE.md § The
   healed song played twice); the music stopped at a song change and the catalog heal
   (`player:retryCurrent`, `keyRetry`, `recoverSilent`; QUEUE.md); a healed library id's old
-  play counts may stay on the old key (not checked).
-- **Playback, his hand tests:** Next and Previous before the first Play (QUEUE.md); the
-  mid-song stall reload (QUEUE.md §Mid-song stall); the station break-out check (STATIONS.md §1,
-  the test in WORKLOG 2026-10-06).
-- **Rulez:** the review fixes (RULEZ.md §17); the usability fixes §18.3 (step 6, a real
-  headset) and the three-line row §19.4; Paste a rule and Import from a file; rows with no
-  name; the chime on a HomePod (§5.4 step 8); his look at the yes / no condition words (§6.5).
-- **Settings and setup:** Set up the DeetsMusic MCP (MCP-INSTALL.md §9; the words in §8d are
-  his to review); the settings.json repair toast, once (set `"sotdPostMode": "weekly"` in the
-  dev settings.json); Battery saver's unplug test on a laptop (RULES.md §18a).
-- **Data:** the `db: slow` lines after a few days with one library sync (DB-HEALTH.md §2a; they
-  decide the read connection, ideas/WORKERS.md §5.1); the next song's colors one ahead
-  (ALBUM-COLOR.md, data path item 4); the Apple call counter's hourly line (APPLE-CALLS.md §5).
-- **Friends and rooms:** the stress test on live (FRIENDS.md §18.8, ROOMS.md §18.8); Discord's
-  two buttons need a second account to read (FRIENDS.md §8.4 item 3).
-- **Looks:** the Ocean perf check (OCEAN.md §6); the rules engine's open list (RULES.md §18:
-  the tray panel follows a look change, Windows mode, headphones EQ per output); the theme
-  crossfade (UX-COVERUPS.md §6c); the grow timing (CARD-GROW.md §19.1); the Sort / View arrow
-  keys and the A1 re-test (COMPASS.md §5a); the Diary's playing-album box step 1 (DIARY.md
-  §4c); New badges on pills (QUICK-SETTINGS.md §10a.1).
+  play counts may stay on the old key (not checked). None of these fired on live from
+  2026-10-08 to 2026-10-13.
+- **Data:** the `db: slow` lines (61 on live, 2026-10-11 to 10-13) are ready to read
+  (DB-HEALTH.md §2a; they decide the read connection, ideas/WORKERS.md §5.1); the next song's
+  colors one ahead (ALBUM-COLOR.md, data path item 4).
+- **deetsmeter's cold start** (below).
 
 ### Decided, not built (his next sittings)
 
@@ -184,6 +156,8 @@ The agent-runnable ones are one runbook: [ops/DESK-TESTS.md](ops/DESK-TESTS.md).
 - **Full player:** Mini's player view; a turning copy of the Press record in the flight
   (fullscreen-player.md §8).
 - **Motion review forks:** the surface-pick motion, the Now Playing song change (SHOTS.md §5e).
+- **Ocean on WARP** (OCEAN.md §6, B15): 27–34 fps with no GPU; a word in the *Animate
+  backgrounds* hint then, or not.
 - **Code review leftovers:** check each stored choice value against its options before Backup is
   built (settings-store.ts); generated types for `invoke<T>`, if ever.
 - **A Diary Done from the CLI or an agent** toasts *Couldn't copy the Diary entry*: the

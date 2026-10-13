@@ -27,10 +27,10 @@ export function openInfoBoxMenu(e: MouseEvent, box: HTMLElement): void {
   items.push({
     label: album ? "Hide album info" : "Hide artist info",
     run: () => {
-      // The row goes off for good (no more calls); this box leaves the page now, and comes
-      // back in place on Undo. Other open views drop theirs on their next draw.
+      // The row goes off for good (no more calls). Every open box of this kind fades out and
+      // its cover slides back to the center, and comes back the same way on Undo (hero-slide.ts
+      // watches the row).
       setSetting(key, false);
-      box.hidden = true;
       diag.log("info-box:hide", { kind: album ? "album" : "artist" });
       toast({
         kind: "info",
@@ -38,10 +38,7 @@ export function openInfoBoxMenu(e: MouseEvent, box: HTMLElement): void {
         actions: [
           {
             label: "Undo",
-            run: () => {
-              setSetting(key, true);
-              box.hidden = false;
-            },
+            run: () => setSetting(key, true),
           },
         ],
       });

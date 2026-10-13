@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-13
 sources: [src/copy-edit.ts, scripts/copy-edit-plugin.mjs, vite.config.ts, src/main.ts]
 updated: 2026-10-12
 ---

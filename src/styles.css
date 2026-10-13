@@ -2896,6 +2896,9 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    the box stands beside the photo. The Search view's holder steps aside (display: contents)
    so the wrap is the hero's flex item there too. */
 .lib-hero--aside { container-type: inline-size; }
+/* The box landing or leaving (hero-slide.ts): the hero's height moves with the cover, and
+   clips while it does, so the box's first frame never spills over the rows below. */
+.lib-hero.is-sliding { overflow: clip; }
 .lib-hero--aside > [data-artist-info] { display: contents; }
 /* Basis 0: the box takes the row's free width and never wraps on its own content (a long
    About line would otherwise push it under the cover); the narrow rule below decides the wrap. */

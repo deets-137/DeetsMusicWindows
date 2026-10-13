@@ -124,9 +124,11 @@ export function artistInfoFor(name: string): Promise<ArtistInfo | null> {
   return artists.ask(key, () => invoke<ArtistInfo | null>("lastfm_artist_info", { name: name.trim() }));
 }
 
-/** The artist's facts if they have landed already this session, for the first paint. */
-export function artistInfoNow(name: string): ArtistInfo | null {
-  return setting("showArtistInfo") ? (artists.now(artistKey(name)) ?? null) : null;
+/** The artist's facts if they have landed already this session, for the first paint.
+ *  `undefined` while the answer is still on its way (the box holds its place under reduced
+ *  motion, info-box.ts); `null` for no answer and with the row off. */
+export function artistInfoNow(name: string): ArtistInfo | null | undefined {
+  return setting("showArtistInfo") ? artists.now(artistKey(name)) : null;
 }
 
 /**
@@ -143,9 +145,10 @@ export function albumInfoFor(artist: string, album: string): Promise<AlbumInfo |
   );
 }
 
-/** The album's facts if they have landed already this session, for the first paint. */
-export function albumInfoNow(artist: string, album: string): AlbumInfo | null {
-  return setting("showAlbumInfo") ? (albums.now(albumKey(artist, album)) ?? null) : null;
+/** The album's facts if they have landed already this session, for the first paint;
+ *  `undefined` and `null` as `artistInfoNow` has them. */
+export function albumInfoNow(artist: string, album: string): AlbumInfo | null | undefined {
+  return setting("showAlbumInfo") ? albums.now(albumKey(artist, album)) : null;
 }
 
 /** A facts box on a narrow card: open or folded under its *Artist Info* / *Album Info* line.

@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-13
 sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules-facts.ts, src/album-slots.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts, src/rules-window.ts, src/go-to.ts, src/media-menu.ts, src/rules-recipes.ts]
 updated: 2026-10-10
 ---

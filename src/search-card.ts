@@ -41,6 +41,7 @@ import {
 } from "./artist-view";
 import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, toggleInfoBox } from "./listeners";
 import { albumInfoHTML } from "./info-box";
+import { setHeroAside } from "./hero-slide";
 import { infoBoxAt, openInfoBoxMenu } from "./info-box-menu";
 import { handOff } from "./handoff";
 import { emit } from "./rules";
@@ -689,7 +690,9 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
           const holder = body.querySelector<HTMLElement>("[data-artist-info]");
           if (artist && holder && !albumInfoNow(artist, meta.title))
             void albumInfoFor(artist, meta.title).then((i) => {
-              if (body.isConnected) holder.innerHTML = albumInfoHTML(i);
+              // In place, the cover sliding (hero-slide.ts).
+              const hero = holder.closest<HTMLElement>(".lib-hero");
+              if (body.isConnected && hero) setHeroAside(hero, albumInfoHTML(i));
             });
           body.addEventListener("click", (e) => {
             const t = e.target as HTMLElement;
@@ -763,7 +766,9 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
           const infoHolder = body.querySelector<HTMLElement>("[data-artist-info]");
           if (!artistInfoNow(d.artist.name))
             void artistInfoFor(d.artist.name).then((i) => {
-              if (infoHolder && body.isConnected) infoHolder.innerHTML = artistInfoHTML(i);
+              // In place, the photo sliding (hero-slide.ts).
+              const hero = infoHolder?.closest<HTMLElement>(".lib-hero");
+              if (hero && body.isConnected) setHeroAside(hero, artistInfoHTML(i));
             });
           const loadYours = () =>
             yourPlaylistsFor(d.artist.name)

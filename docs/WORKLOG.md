@@ -12,6 +12,28 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (facts box slide) — the drill no longer flickers when the box lands
+
+His report: when the artist or album facts box appears, the drill flickers and the cover jumps
+left. Cause: the Library views redrew the whole card for the box, and an answer that came during
+the drill slide redrew it at the slide's end; the hero changed layout in one frame. His calls:
+centered, then a slide; the row turned off slides back; reduced motion starts on the left. Built
+as LISTENERS.md §6b (`src/hero-slide.ts`, `heroAside` on the card). tsc, vite build, 224 tests,
+docs:check pass. He reviewed it on the dev app (all settings reset to the defaults first,
+through Settings › Reset › Everything and Row order): it passed, committed on `main`.
+
+## 2026-10-13 (desk tests closed) — his hand tests, and the Open now list
+
+His report: every owner hand test in Open now is done, none failed (the list is DESK-TESTS.md
+§5, *His report of 2026-10-13*). Claude checked the live log where it can: the Apple call
+counter's hourly line runs on 0.27.0; the MCP setup connected Claude Desktop and Codex on
+2026-10-12; no `deadNext`, `retryCurrent`, `keyRetry` or `recoverSilent` since 2026-10-08, so
+those stay watches. Found in the record: Next and Previous before the first Play passed on
+2026-10-01, and B2, B6, B12, B13, B15 and A1b had passed on 2026-09-27; HANDOFF still listed
+them. LISTENERS.md, COPY-EDIT.md, RULEZ.md and MCP-INSTALL.md move to `desk_test: passed
+2026-10-13`. Open now keeps the web demo's text, the watches, the `db: slow` read and
+deetsmeter's cold start. The Ocean WARP hint word moved to his calls.
+
 ## 2026-10-13 (release prep) — 0.27.0: the version, the notes draft, Open now pruned
 
 His calls: 0.27.0; ship with the open desk tests open (AirPlay §13.6, Listeners §4.3,

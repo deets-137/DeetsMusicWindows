@@ -28,6 +28,7 @@ import { isShuffleOn, shuffledPlay } from "./player";
 import { setting } from "./settings-store";
 import { enterRows } from "./pop";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
+import { setHeroAside } from "./hero-slide";
 import { splitPillHTML, splitPick } from "./split-pill";
 import { esc } from "./dom";
 import { tokenMs } from "./boot-cover";
@@ -425,6 +426,10 @@ export interface CollectionCardHandle {
   /** Put `ctx` in place of the open level (not the root): no new Back step (FULL-LIB.md). */
   replace(ctx: Context): void;
   reload(): void;
+  /** `ctx`'s Last.fm box has landed: put its `hero().aside` into the drawn hero in place, the
+   *  cover sliding (hero-slide.ts), with no redraw of the card. A level not on screen draws it
+   *  when it comes back. */
+  heroAside(ctx: Context): void;
   /** Card memory: where the card is now (CARD-MEMORY.md §2). Null from a card whose
    *  host has no body to mount into — there is no place to remember. */
   snapshot(): CardSnapshot | null;
@@ -448,6 +453,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   if (!bodyHost)
     return {
       reload: () => {},
+      heroAside: (_ctx: Context) => {},
       drill: (_ctx: Context) => {},
       replace: (_ctx: Context) => {},
       destroy: () => {},
@@ -483,6 +489,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   // per view: the last head block (toolbarBelow) — `top` is its hero + shelves markup, `html`
   // the whole block as mounted — so a render that changes neither keeps the live head
   const heads = new WeakMap<HTMLElement, { top: string; html: string }>();
+  // The hero each view last drew, and its aside: `heroAside` changes the box alone only when
+  // nothing else in the hero has changed since.
+  const heroDrawn = new WeakMap<HTMLElement, { html: string; aside: string }>();
   const dropWindower = (pane: HTMLElement | null) => {
     const v = pane?.querySelector<HTMLElement>("[data-view]");
     if (!v) return;
@@ -871,7 +880,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     else delete view.dataset.cols; // no attribute at rest (CARD-GROW.md §0)
     const actions = actionsHTML(g, items.length, nPicked, entering);
     const shelves = f.ctx.shelves?.() ?? "";
-    const top = heroHTML(f.ctx.hero?.()) + (f.ctx.shelvesFirst ? shelves + actions : actions + shelves) + (f.ctx.toolbarBelow != null ? "" : colsHead);
+    const heroData = f.ctx.hero?.();
+    const heroStr = heroHTML(heroData);
+    heroDrawn.set(view, { html: heroStr, aside: heroData?.aside ?? "" });
+    const top = heroStr + (f.ctx.shelvesFirst ? shelves + actions : actions + shelves) + (f.ctx.toolbarBelow != null ? "" : colsHead);
     // toolbarBelow: after them comes a bar — the section label + the toolbar — right above the
     // rows it acts on. The bar is its own child of the scroll view (not inside the head), so
     // it can stick to the top once the hero and shelves scroll away (a sticky box stops at
@@ -1033,6 +1045,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       endFrames();
       onDone?.();
       if (reloadPending && !isDragging()) reload(); // a reload that landed mid-slide
+      // A box that landed mid-slide slides in now: the drill arrives, then the cover moves.
+      const box = asidePending;
+      asidePending = null;
+      if (box) heroAside(box);
     };
     const durStr = getComputedStyle(incoming).transitionDuration;
     const durMs = (parseFloat(durStr) || 0) * (durStr.includes("ms") ? 1 : 1000);
@@ -1920,6 +1936,35 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     else v2.scrollTop = 0;
   };
 
+  // A level's Last.fm box landed (LISTENERS.md §6b): into its drawn hero alone, never a redraw.
+  // The redraw re-made every row and cover just after the drill's slide: the flicker
+  // (2026-10-13). Mid-slide it waits for the slide's end, so the drill arrives, then the cover
+  // moves. When something else in the hero changed since its draw (the photo landed), the
+  // plain redraw, as before.
+  let asidePending: Context | null = null;
+  function heroAside(ctx: Context) {
+    if (!curPane || cur().ctx !== ctx) return; // not on screen: the level draws it when it comes back
+    if (animating || isDragging()) {
+      asidePending = ctx;
+      return;
+    }
+    const view = curPane.querySelector<HTMLElement>("[data-view]");
+    const hero = view?.querySelector<HTMLElement>(".lib-hero");
+    const drawn = view ? heroDrawn.get(view) : undefined;
+    const h = ctx.hero?.();
+    if (!view || !hero || !drawn || !h) return reload();
+    // The answer is in: a place still held for it (reduced motion) is let go.
+    const aside = h.aside?.includes("data-info-pending") ? "" : (h.aside ?? "");
+    if (aside === drawn.aside) return;
+    if (heroHTML({ ...h, aside: drawn.aside || undefined }) !== drawn.html) return reload();
+    const html = heroHTML({ ...h, aside: aside || undefined });
+    // A kept head compares its hero on the next draw: it holds the new one now.
+    const head = heads.get(view);
+    if (head) heads.set(view, { top: head.top.replace(drawn.html, () => html), html: head.html.replace(drawn.html, () => html) });
+    heroDrawn.set(view, { html, aside });
+    setHeroAside(hero, aside);
+  }
+
   // Refresh data without losing the user's place. Live grouping closures pick up
   // new data; we just re-render the visible pane (deeper frames re-render on back).
   function reload() {
@@ -1966,6 +2011,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     },
     replace,
     reload,
+    heroAside,
     /** Card memory: where the card is now (CARD-MEMORY.md §2). */
     snapshot,
     /** Card memory: build a snapshot's levels once the card's own data is ready. */

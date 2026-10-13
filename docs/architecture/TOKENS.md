@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 594 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 596 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -641,6 +641,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--artist-info-col-gap` | `var(--space-4)` | — | the box's two columns |
 | `--artist-info-row-gap` | `var(--space-4)` | — | the box's two rows of sections |
 | `--artist-info-fold-dur` | `240ms` | — | the box grows open under its Artist Info line (a narrow card) |
+| `--artist-info-slide` | `var(--nav-dur)` | — | the cover column slides aside when the box lands (hero-slide.ts): the drill's own tempo, so the drill arrives, then the cover moves in its step |
+| `--artist-info-slide-ease` | `var(--nav-ease)` | — |  |
 | `--artist-info-about-lines` | `4` | — | the album's About: the wiki's two sentences clamp to this many lines, in a block that tall (his call 2026-10-13: 4) |
 | `--artist-info-about-lh` | `1.4` | — | its line height (unitless) |
 | `--artist-info-row-min` | `100px` | — | a narrow box's row: a header and the About's lines, so every box draws one size |

@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-13
 sources: [crates/mcp-install/src/lib.rs, src-tauri/src/mcp_install.rs, src/mcp-panel.ts, cli/src/main.rs, mcpb/server/index.js, mcpb/manifest.json, scripts/mcpb-pack.mjs, src-tauri/nsis/hooks.nsh]
 updated: 2026-10-11
 ---
