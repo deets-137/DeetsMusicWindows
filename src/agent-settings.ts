@@ -311,6 +311,7 @@ const SPECS: Spec[] = [
   storeToggle("Playback", "historyShowDay", "Show the day in History"),
   storeToggle("Playback", "showListeners", "Show play counts from Last.FM"),
   storeToggle("Playback", "showArtistInfo", "Show artist info on the artist's page"),
+  storeToggle("Playback", "showAlbumInfo", "Show album info on the album's page"),
   // ── AirPlay (AIRPLAY.md §7) ──
   {
     key: "airplaySend", label: "Send to speaker", section: "AirPlay", kind: "choice",

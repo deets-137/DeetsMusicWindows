@@ -13,7 +13,8 @@
 
 import { handleUnpin } from "./pins";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { toggleArtistInfo } from "./listeners";
+import { toggleInfoBox } from "./listeners";
+import { infoBoxAt, openInfoBoxMenu } from "./info-box-menu";
 import * as frames from "./frames";
 import { wireListKeys } from "./list-keys";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
@@ -1653,9 +1654,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
 
     // Sort/View popover controls are handled in onPopClick (the pop lives on <body>).
 
-    // The Artist Info line over the facts box on a narrow card: open or fold it (LISTENERS.md §6).
+    // The Artist Info / Album Info line over a facts box on a narrow card: open or fold it (LISTENERS.md §6, §7).
     const fold = t.closest<HTMLElement>("[data-artist-info-toggle]");
-    if (fold) return toggleArtistInfo(fold);
+    if (fold) return toggleInfoBox(fold);
     // The Last.fm link in an artist hero's facts box (its Links section) → the artist's Last.fm page
     // (LISTENERS.md §6). Opened here, not through artist-view.ts: that module imports this one.
     const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
@@ -1771,6 +1772,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const t = e.target as HTMLElement;
     const pane = t.closest<HTMLElement>(".coll-pane");
     if (!pane || pane !== curPane || animating) return;
+    // A Last.fm facts box beside the hero: its own small menu (LISTENERS.md §7.1 item 5).
+    const box = infoBoxAt(t);
+    if (box) return openInfoBoxMenu(e, box);
     // The hero: its own media menu anywhere on it (his call 1A, 2026-09-24). A hero without
     // one keeps the old rule: a right-click on the cover button opens the cover menu.
     if (t.closest(".lib-hero")) {

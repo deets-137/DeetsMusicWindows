@@ -2897,7 +2897,9 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    so the wrap is the hero's flex item there too. */
 .lib-hero--aside { container-type: inline-size; }
 .lib-hero--aside > [data-artist-info] { display: contents; }
-.artist-info-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+/* Basis 0: the box takes the row's free width and never wraps on its own content (a long
+   About line would otherwise push it under the cover); the narrow rule below decides the wrap. */
+.artist-info-wrap { flex: 1 1 0; display: flex; flex-direction: column; min-width: 0; }
 .artist-info__fold, .artist-info__fold-in { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
 .artist-info__toggle { display: none; }
 /* Narrow (his call, 2026-10-12): the box does not sit under the photo at full size. It folds
@@ -2930,7 +2932,10 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
     transition: opacity var(--artist-info-fold-dur) var(--ease-ui), padding-top var(--artist-info-fold-dur) var(--ease-ui);
   }
   .artist-info-wrap[data-open="1"] .artist-info__fold-in { opacity: 1; padding-top: var(--space-2); }
-  .artist-info-wrap .artist-info { grid-template-rows: auto auto; } /* its own height, not shared halves */
+  /* Its own height, not shared halves; each row at least the height that holds a header and
+     the About's lines, so an artist's box and an album's, a long summary and none, draw one
+     size (his ask, 2026-10-13: consistently sized boxes). */
+  .artist-info-wrap .artist-info { grid-template-rows: minmax(var(--artist-info-row-min), auto) minmax(var(--artist-info-row-min), auto); }
 }
 @media (prefers-reduced-motion: reduce) {
   .artist-info__fold, .artist-info__fold-in, .artist-info__toggle::after { transition: none; }
@@ -2953,6 +2958,18 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .artist-info__sec--stats { grid-area: stats; }
 .artist-info__sec--tour  { grid-area: tour; }
 .artist-info__sec--links { grid-area: links; }
+.artist-info__sec--about { grid-area: tour; } /* the album's bottom-left cell, where the artist's On tour sits */
+/* The album's About (LISTENERS.md §7): the wiki's first two sentences, clamped to a fixed
+   number of lines in a block of that fixed height, so a short summary and a long one draw the
+   same box and nothing moves when it lands (his ask, 2026-10-13). */
+.artist-info__about {
+  margin: 0; font-size: var(--fs-subtext); color: var(--text);
+  line-height: var(--artist-info-about-lh);
+  height: calc(var(--artist-info-about-lh) * var(--artist-info-about-lines) * 1em);
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--artist-info-about-lines); line-clamp: var(--artist-info-about-lines);
+  overflow: hidden;
+}
 .artist-info__sec--stats, .artist-info__sec--links { align-items: flex-end; text-align: right; }
 .artist-info-wrap .artist-info__h { margin: 0; white-space: nowrap; } /* the shelf label's voice (.search__label), its gap from the section's */
 .artist-info__tags { display: flex; flex-wrap: wrap; gap: var(--space-1); max-width: var(--artist-info-tags-w); }

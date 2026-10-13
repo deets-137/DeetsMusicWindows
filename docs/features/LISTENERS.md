@@ -229,12 +229,12 @@ convenience no agent needs).
 6. Settings › Playback › *Show artist info on the artist's page* (wears the N) off, open an
    artist: no box, no call. *Show play counts from Last.FM* off alone: the box still shows.
 7. An artist Last.fm does not know: the plain centered hero, one log line with `none`.
-8. Right-click the box: the hero's artist menu, as anywhere on the hero. (To change: §7.1
-   item 5 gives the box a small menu of its own.)
+8. Right-click inside the box: its own menu, *Open Last.fm* · *Hide artist info* (since
+   2026-10-13, §7.1 item 5). Right-click elsewhere on the hero: the hero's artist menu.
 
-## 7. The album facts box (designed, not built)
+## 7. The album facts box
 
-> **Part:** designed · 2026-10-13 · every fork below is his; not a go to build.
+> **Part:** built · 2026-10-13 · desk test open (§7.5). The as-built record is §7.3.
 
 His ask (2026-10-12): the artist box's data and style, per album. The same box beside the
 album cover in the album hero, the same 2×2 grid, the same fold on a narrow card.
@@ -273,19 +273,56 @@ does not help; an `mbid` works but small releases have none.
    too. The rest of the hero keeps the hero's menu.
 6. **Scrobble names are a separate fix** (LASTFM.md §10), not part of this work.
 
-### 7.2 To bring him before the build
+### 7.2 His calls before the build (2026-10-13)
 
-- The words of the About section: my lean is the first two sentences of the summary, the
-  HTML stripped (Last.fm ends it with a *Read more on Last.fm* link; the Links section already
-  points to the page that credits the wiki).
-- The main-artist rule: the text before the first ` & `, `, ` or ` feat. ` in the album
-  artist (*H.LLS & Lucy Park* → *H.LLS*).
-- What *Hide …* says after it acts (a toast with Undo, or nothing) and the menu's row order.
+- **About:** the first two sentences of the summary, the HTML and Last.fm's *Read more* link
+  stripped. **No jitter, and boxes of one size.**
+- **The main artist:** the text before the first ` & `, `, `, ` x ` or ` feat. ` (Web
+  Scrobbler's `removeAdditionalArtists` idea): *H.LLS & Lucy Park* → *H.LLS*.
+- **After Hide:** a toast with Undo.
+- **All three album views now**, the Search pane too (the unify, ARTIST-VIEW.md §10, takes
+  its holder away later).
 
-### 7.3 Where it goes
+### 7.3 As built (2026-10-13)
 
-The album hero has the same three code paths as the artist's: Library › Lib
-(`library-card.ts` `albumDetail`), Library › Full (`library-full.ts`), and the Search album
-pane (`search-card.ts` `fillCollection`). Lib and Full take `Hero.aside` already. The Search
-pane gets it for free when it runs the engine (ARTIST-VIEW.md §10), so build after that, or
-with it.
+> **Part:** built · 2026-10-13 · desk test open (§7.5)
+
+| Piece | Where | What |
+|---|---|---|
+| The table | `album_info` (`lastfm::init_tables`) | `album` (Apple's artist and album, lower case, joined by U+001F) · `state` · `listeners` · `playcount` · `tags` (JSON) · `wiki` (the summary as sent) · `url` · `fetched_at` |
+| The command | `lastfm_album_info(artist, album, forms)` in `lastfm.rs` | cache first; else `album.getInfo` per form in order until one is found (error 6 → the next form); none found → cached `none`; a network failure caches nothing. Log line `lastfm: album info for <artist> / <album>: have (…, as <form>)` |
+| The names | `albumForms`, `mainArtist`, `stripReleaseSuffix` in `src/lastfm-names.ts` | pure, `tests/lastfm-names.test.ts`. Spotify's form, then Apple's; one form when they match |
+| The About | `wikiSentences` / `wikiText` in `lastfm-names.ts` | the *Read more on Last.fm* link and every tag removed, entities decoded, the first two sentences |
+| The reader | `albumInfoFor` / `albumInfoNow` in `listeners.ts` | gated by `showAlbumInfo`; one ask per album; `…Now` returns an answer that has landed this session, so a view drawn again draws its box in the FIRST paint (the artist's got the same, `artistInfoNow`) |
+| The markup | `albumInfoHTML` in `src/info-box.ts` (with the artist's, moved there) | the same wrap, fold and grid; `.artist-info__sec--about` sits in the bottom-left cell; the fold line reads *Album Info* |
+| The views | `library-card.ts` `albumDetail` and `library-full.ts` `album()` through `Hero.aside`; `search-card.ts` `heroHTML` (albums) + `fillCollection` into a `[data-artist-info]` holder | the Lib and Full levels ask by the same Apple names, so they share one answer |
+| One size | `.artist-info__about` (a fixed block of `--artist-info-about-lines` × `--artist-info-about-lh`, clamped); on a narrow card each row is at least `--artist-info-row-min` | a long summary and a short one, an artist's box and an album's, draw one size |
+| The menu | `src/info-box-menu.ts` (`infoBoxAt`, `openInfoBoxMenu`), called first in the hero's right-click in collection-card.ts and both Search panes | *Open Last.fm* · *Hide artist info* / *Hide album info*; Hide turns the row off, hides the box, and toasts with Undo (TOASTS.md §5) |
+| The row | Settings › Playback › *Show album info on the album's page* (`showAlbumInfo`, on) | a New mark; the agent's `settings` reaches it |
+
+### 7.4 Decided inside his calls (for his review)
+
+The row's default **On**, as the artist's; its words and hint. The About's hint. A line
+height of 1.4 and a 100 px narrow row. (The About's line count is his: 3 at first, **4** on
+2026-10-13, after the Essex Honey look cut its second sentence.) *Open Last.fm* first and
+*Hide …* last in the box menu; the toast's words. One open / folded memory for both boxes. The
+Diary's album hero gets no box (your notes, not a store page). The Full album asks by the
+names the level opened with, so it shares the Lib level's answer. Only the very first open of
+a name can still move the hero (the box arrives after Last.fm answers); every later open
+draws it at once.
+
+### 7.5 Desk test
+
+1. Library › an album that Last.fm knows well (*Essex Honey*): the cover moves left; the box
+   shows Tags, Listening Stats, About (two sentences, four lines at most), Links.
+2. An EP or a single (*THREAD 27 - EP*): the counts are the plain name's (hundreds of
+   listeners, not tens). The log line ends with `as Lucy Park / THREAD 27`.
+3. A small album with no wiki: no About; the box keeps its size on a narrow card.
+4. Press **Full**, then **Lib**: the box stays, drawn at once, with no new log line.
+5. Search › an album: the same box. Midi: the *ALBUM INFO ›* line, closed or open as the
+   artist's line was last left.
+6. Right-click inside a box: *Open Last.fm* · *Hide album info*. Hide: the box goes, a toast
+   with Undo; Undo brings it back in place. Settings › Playback shows the row off after Hide.
+   Right-click elsewhere on the hero: the album's own menu, as before.
+7. Settings › Playback › *Show album info on the album's page* (wears the N) off: no box, no
+   album call.

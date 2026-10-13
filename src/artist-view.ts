@@ -10,64 +10,17 @@ import { tracks as libraryTracks } from "./track-store";
 import { playlistsCached, playlistSongIndex, playlistTracks, songs } from "./playlists";
 import { esc } from "./collection-card";
 import { mosaicHTML } from "./mosaic";
-import { artistInfoOpen, fmtCount, type ArtistInfo } from "./listeners";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-// ── the Last.fm facts box beside the hero (LISTENERS.md §6; his design, 2026-10-12) ──────
-// A 2×2 grid of sections, each a shelf-style header over its facts (his sketch, 2026-10-12):
-// Tags (top left), Listening Stats (top right: plays and listeners), On tour (bottom left,
-// only while Last.fm says so), Links (bottom right: the artist's Last.fm page). The right
-// column is right-aligned. Both artist views draw it with the hero; the Library one through
-// `Hero.aside`, the Search one into its `[data-artist-info]` holder. Nothing shows until
-// Last.fm answers "have", and nothing with the row *Show artist info on the artist's page*
-// off. On a narrow card the box folds under one *Artist Info* line (his call, 2026-10-12):
-// closed by default, the last open / closed choice remembered (`artistInfoOpen` in
-// listeners.ts); on a wide card it is always open and the line is hidden (styles.css, a
-// container query on the hero). The hints are ONBOARDING.md §1.
-export const ARTIST_INFO_HINTS = {
-  tags: "What Last.fm listeners call this artist",
-  tour: "On tour now, says Last.fm",
-  counts: "Plays and listeners of this artist on Last.fm",
-  lastfm: "Opens the artist's page on Last.fm",
-  toggle: "Shows or hides Last.fm's facts about this artist",
-} as const;
-/** How many tags the box shows: Last.fm's call gives five. */
-const ARTIST_TAGS_MAX = 5;
+// ── the Last.fm facts box beside the hero (LISTENERS.md §6) ──────────────────────
+// The markup lives in info-box.ts with the album's box (§7); re-exported here for the
+// artist views that already import it from this module.
+export { artistInfoHTML, ARTIST_INFO_HINTS } from "./info-box";
 
-/** The counts button was clicked: the artist's Last.fm page, when the answer carried one. */
+/** The Last.fm link in a box was clicked: the artist's or album's Last.fm page. */
 export function openArtistLastfm(btn: HTMLElement): void {
   const url = btn.dataset.url;
   if (url) void openUrl(url);
-}
-
-export function artistInfoHTML(i: ArtistInfo | null | undefined): string {
-  if (!i || i.state !== "have") return "";
-  const tags = i.tags
-    .slice(0, ARTIST_TAGS_MAX)
-    .map((t) => `<span class="artist-info__tag" title="${ARTIST_INFO_HINTS.tags}">${esc(t)}</span>`)
-    .join("");
-  const sec = (where: string, head: string, body: string) =>
-    `<div class="artist-info__sec artist-info__sec--${where}"><div class="artist-info__h">${head}</div>${body}</div>`;
-  const tagsSec = tags ? sec("tags", "Tags", `<div class="artist-info__tags">${tags}</div>`) : "";
-  const stats = sec(
-    "stats",
-    "Listening Stats",
-    `<div class="artist-info__counts" title="${ARTIST_INFO_HINTS.counts}">` +
-      `<span class="artist-info__count"><b>${fmtCount(i.playcount)}</b>Plays</span>` +
-      `<span class="artist-info__count"><b>${fmtCount(i.listeners)}</b>Listeners</span></div>`,
-  );
-  const tour = i.onTour
-    ? sec("tour", "On tour", `<span class="artist-info__tour" title="${ARTIST_INFO_HINTS.tour}"><span class="artist-info__dot" aria-hidden="true"></span>Touring now</span>`)
-    : "";
-  const links = i.url
-    ? sec("links", "Links", `<button class="artist-info__link" type="button" data-artist-lastfm data-url="${esc(i.url)}" title="${ARTIST_INFO_HINTS.lastfm}">Last.fm ↗</button>`)
-    : "";
-  const open = artistInfoOpen();
-  return (
-    `<div class="artist-info-wrap" data-open="${open ? 1 : 0}">` +
-    `<button class="artist-info__toggle" type="button" data-artist-info-toggle aria-expanded="${open}" title="${ARTIST_INFO_HINTS.toggle}"><span class="artist-info__h">Artist Info</span></button>` +
-    `<div class="artist-info__fold"><div class="artist-info__fold-in"><div class="artist-info">${tagsSec}${stats}${tour}${links}</div></div></div></div>`
-  );
 }
 
 // ── the Library artist's catalog facts (§4) ─────────────────────────────────────

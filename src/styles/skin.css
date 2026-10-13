@@ -643,6 +643,9 @@
   --artist-info-col-gap: var(--space-4);       /* the box's two columns */
   --artist-info-row-gap: var(--space-4);       /* the box's two rows of sections */
   --artist-info-fold-dur: 240ms;               /* the box grows open under its Artist Info line (a narrow card) */
+  --artist-info-about-lines: 4;                /* the album's About: the wiki's two sentences clamp to this many lines, in a block that tall (his call 2026-10-13: 4) */
+  --artist-info-about-lh:  1.4;                /* its line height (unitless) */
+  --artist-info-row-min:   100px;              /* a narrow box's row: a header and the About's lines, so every box draws one size */
   --artist-info-pad:     var(--space-3);
   --artist-info-radius:  var(--radius-control);
   --artist-info-tags-w:  200px;                /* the tag chips wrap inside this */

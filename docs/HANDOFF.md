@@ -130,11 +130,12 @@ test).** The Search card's artist, album and playlist panes duplicate the Librar
 in their own HTML. His calls: Search runs the engine's Full levels, with its compact rows kept.
 One pane per step, a desk test each. ARTIST-VIEW.md §10.
 
-**Album facts box (2026-10-13, designed, NOT BUILT).** The artist box's sections per album:
-Tags, Listening Stats, About (the wiki), Links; its own row; a small right-click menu (Hide,
-Open Last.fm) on both boxes. The Last.fm page is read in Spotify's form first (main artist, no
-` - EP`). Build after or with the Apple-pages unify. LISTENERS.md §7 (§7.2: three small forks
-left). Related, separate: our scrobbles send Apple's raw names (LASTFM.md §10).
+**Album facts box (2026-10-13, BUILT, desk test open).** The artist box's
+sections per album: Tags, Listening Stats, About (the wiki's two sentences), Links; its own
+row (`showAlbumInfo`); a small right-click menu (Open Last.fm, Hide + Undo) on both boxes. In
+all three album views (Lib, Full, the Search pane). The Last.fm page is read in Spotify's form
+first (main artist, no ` - EP`). LISTENERS.md §7.3 as built, §7.5 the desk test. Related,
+separate: our scrobbles send Apple's raw names (LASTFM.md §10).
 
 **Listeners badge (2026-10-12, built, desk test open).** Now Playing wears the song's Last.fm
 counts: *N Plays | M Listeners* beside the title in the full player, *N Plays* on the cover's

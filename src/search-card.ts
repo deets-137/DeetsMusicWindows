@@ -39,7 +39,9 @@ import { rowPick, picksText } from "./row-pick";
 import {
   yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML, openArtistLastfm, type YourPlaylists, type CheckProgress,
 } from "./artist-view";
-import { artistInfoFor, toggleArtistInfo } from "./listeners";
+import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, toggleInfoBox } from "./listeners";
+import { albumInfoHTML } from "./info-box";
+import { infoBoxAt, openInfoBoxMenu } from "./info-box-menu";
 import { handOff } from "./handoff";
 import { emit } from "./rules";
 import { levelLeft, ruleGrowComing } from "./card-grow";
@@ -657,7 +659,10 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       const sub = artist
         ? `<button class="lib-hero__sub lib-hero__sub--link" type="button" data-hero-artist="${esc(artist)}">${esc(artist)}<span class="lib-hero__chev" aria-hidden="true">›</span></button>`
         : "";
-      return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(m.title)}</span>${sub}<span class="lib-hero__meta">${esc([year, count, total].filter(Boolean).join(" · "))}</span></div>`;
+      // The Last.fm facts box beside the cover (LISTENERS.md §7): drawn now when its answer is
+      // known this session, else filled by `fillCollection` when the call answers.
+      const box = artist ? albumInfoHTML(albumInfoNow(artist, m.title)) : "";
+      return `<div class="lib-hero lib-hero--aside"><div class="lib-hero__main">${cover}<span class="lib-hero__title">${esc(m.title)}</span>${sub}<span class="lib-hero__meta">${esc([year, count, total].filter(Boolean).join(" · "))}</span></div><div data-artist-info>${box}</div></div>`;
     }
     const meta = [count, total, m.curatorName ?? "Apple Music"].filter(Boolean).join(" · ");
     return `<div class="lib-hero">${cover}<span class="lib-hero__title">${esc(m.title)}</span><span class="lib-hero__meta">${esc(meta)}</span></div>`;
@@ -678,7 +683,26 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         else reconcilePlaylist({ kind: "playlists", id, name: meta.title });
         // Right-click anywhere on the hero: the album's or playlist's own menu, without its
         // own Go to row (you are there) — CONTEXT-MENUS.md §3a, his call 1A (2026-09-24).
+        // The album's Last.fm facts box (LISTENERS.md §7), when it was not drawn with the hero.
+        if (kind === "albums") {
+          const artist = meta.artistName ?? tracks[0]?.artistName ?? "";
+          const holder = body.querySelector<HTMLElement>("[data-artist-info]");
+          if (artist && holder && !albumInfoNow(artist, meta.title))
+            void albumInfoFor(artist, meta.title).then((i) => {
+              if (body.isConnected) holder.innerHTML = albumInfoHTML(i);
+            });
+          body.addEventListener("click", (e) => {
+            const t = e.target as HTMLElement;
+            const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
+            if (lfm) return openArtistLastfm(lfm);
+            const fold = t.closest<HTMLElement>("[data-artist-info-toggle]");
+            if (fold) toggleInfoBox(fold);
+          });
+        }
         body.querySelector<HTMLElement>(".lib-hero")?.addEventListener("contextmenu", (e) => {
+          // A Last.fm facts box: its own small menu (LISTENERS.md §7.1 item 5).
+          const box = infoBoxAt(e.target);
+          if (box) return openInfoBoxMenu(e, box);
           e.preventDefault();
           const context = `search-${kind}:${id}`;
           menuAt(
@@ -726,7 +750,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
             .join("");
           const genre = d.artist.genres?.[0];
           body.innerHTML = `
-            <div class="lib-hero lib-hero--aside"><div class="lib-hero__main">${heroCover(d.artist.artwork, d.artist.name, undefined, undefined, true)}<span class="lib-hero__title">${esc(d.artist.name)}</span>${genre ? `<span class="lib-hero__meta">${esc(genre)}</span>` : ""}</div><div data-artist-info></div></div>
+            <div class="lib-hero lib-hero--aside"><div class="lib-hero__main">${heroCover(d.artist.artwork, d.artist.name, undefined, undefined, true)}<span class="lib-hero__title">${esc(d.artist.name)}</span>${genre ? `<span class="lib-hero__meta">${esc(genre)}</span>` : ""}</div><div data-artist-info>${artistInfoHTML(artistInfoNow(d.artist.name))}</div></div>
             ${d.topSongs.length ? actionsRowHTML({ play: `Play ${d.artist.name}'s Top Songs from Apple Music, in order`, shuffle: `Shuffle ${d.artist.name}'s Top Songs from Apple Music` }) : ""}
             ${albums ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${albums}</div>` : ""}
             <div data-shelves>${artistShelvesHTML(d.featuredPlaylists, yours, checking)}</div>
@@ -734,11 +758,13 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
             ${d.topSongs.map(listRow).join("") || `<p class="search__prompt">No songs.</p>`}`;
           const shelves = body.querySelector<HTMLElement>("[data-shelves]")!;
           const paintShelves = () => { shelves.innerHTML = artistShelvesHTML(d.featuredPlaylists, yours, checking); };
-          // The Last.fm facts box beside the hero (LISTENERS.md §6), filled when the call answers.
+          // The Last.fm facts box beside the hero (LISTENERS.md §6): drawn in the first paint
+          // when the answer is known this session, else filled when the call answers.
           const infoHolder = body.querySelector<HTMLElement>("[data-artist-info]");
-          void artistInfoFor(d.artist.name).then((i) => {
-            if (infoHolder && body.isConnected) infoHolder.innerHTML = artistInfoHTML(i);
-          });
+          if (!artistInfoNow(d.artist.name))
+            void artistInfoFor(d.artist.name).then((i) => {
+              if (infoHolder && body.isConnected) infoHolder.innerHTML = artistInfoHTML(i);
+            });
           const loadYours = () =>
             yourPlaylistsFor(d.artist.name)
               .then((y) => { yours = y; paintShelves(); })
@@ -750,7 +776,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
             const lfm = t.closest<HTMLElement>("[data-artist-lastfm]");
             if (lfm) return openArtistLastfm(lfm);
             const fold = t.closest<HTMLElement>("[data-artist-info-toggle]");
-            if (fold) return toggleArtistInfo(fold);
+            if (fold) return toggleInfoBox(fold);
             const shelf = t.closest<HTMLElement>("[data-shelf-item]");
             if (shelf) {
               const i = Number(shelf.dataset.shelfIdx);
@@ -780,6 +806,9 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
           // reach them — wire the same menus here (else the native menu shows).
           body.addEventListener("contextmenu", (e) => {
             const t = e.target as HTMLElement;
+            // The Last.fm facts box: its own small menu (LISTENERS.md §7.1 item 5).
+            const box = infoBoxAt(t);
+            if (box) return openInfoBoxMenu(e, box);
             // The hero: the artist's own menu, without Go to Artist (you are there).
             if (t.closest(".lib-hero")) {
               e.preventDefault();

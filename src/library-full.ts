@@ -20,7 +20,8 @@ import type { CollectionCardHandle, Context, Grouping, SortSpec, ViewOption } fr
 import type { LibNav, SongOpts } from "./library-card";
 import { catalogRelated, collectionTracks, artistDetail, type ArtistDetail } from "./search";
 import { libraryArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML, type YourPlaylists, type CheckProgress } from "./artist-view";
-import { artistInfoFor, type ArtistInfo } from "./listeners";
+import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, type ArtistInfo } from "./listeners";
+import { albumInfoHTML } from "./info-box";
 import { creditIndex } from "./artist-credit";
 import { tracks } from "./track-store";
 import { albumMenu, artistMenu, playlistMenu } from "./media-menu";
@@ -104,6 +105,23 @@ export function fullViews(deps: FullDeps): FullViews {
     const rows = () => songs ?? [];
     const group = () =>
       (grouping ??= deps.songs(rows, { hideCover: true, numbered: true, context: `search-albums:${id ?? ""}`, nav, mark: true }));
+    const name = () => songs?.[0]?.albumName ?? src.name;
+    const artistName = () => songs?.[0]?.artistName ?? src.artist ?? "";
+    const lib = () => (songs ? deps.libAlbum(songs, src.libKey) : src.libKey ? deps.libAlbum([], src.libKey) : null);
+    // The Last.fm facts box beside the cover (LISTENERS.md §7), as the Lib level draws it. Asked
+    // by the names the level opened with (the Lib level's own, so its answer is shared), else
+    // by the songs' once they land. Known this session: drawn in the first paint.
+    const lfmNames = (): [string, string] => [src.artist || artistName(), src.name || name()];
+    let lfmAsked = false;
+    const askLfm = () => {
+      const [who, what] = lfmNames();
+      if (lfmAsked || !who || !what || albumInfoNow(who, what)) return;
+      lfmAsked = true;
+      void albumInfoFor(who, what).then((i) => {
+        if (i?.state === "have") reload();
+      });
+    };
+    askLfm();
     void (async () => {
       try {
         if (!id && src.songId) id = (await catalogRelated("songs", src.songId, "albums"))?.id;
@@ -113,6 +131,7 @@ export function fullViews(deps: FullDeps): FullViews {
         }
         grouping = null; // the queue tag carries the id
         songs = await collectionTracks("albums", id);
+        askLfm();
       } catch (e) {
         failed = "Couldn't read the album from Apple Music.";
         console.error("[library] full album", e);
@@ -121,9 +140,6 @@ export function fullViews(deps: FullDeps): FullViews {
         reload();
       }
     })();
-    const name = () => songs?.[0]?.albumName ?? src.name;
-    const artistName = () => songs?.[0]?.artistName ?? src.artist ?? "";
-    const lib = () => (songs ? deps.libAlbum(songs, src.libKey) : src.libKey ? deps.libAlbum([], src.libKey) : null);
     return {
       get title() {
         return name();
@@ -145,6 +161,7 @@ export function fullViews(deps: FullDeps): FullViews {
           // The artist in the Full view too: Apple's page, through the album's own relationship.
           sub: who ? { text: who, run: () => deps.card().drill(artist({ name: who, albumId: id })) } : undefined,
           meta: songs ? [year, `${ts.length} song${ts.length === 1 ? "" : "s"}`, total].filter(Boolean).join(" · ") : undefined,
+          aside: albumInfoHTML(albumInfoNow(...lfmNames())),
           menu: id
             ? () =>
                 albumMenu(
@@ -233,12 +250,13 @@ export function fullViews(deps: FullDeps): FullViews {
     // The Last.fm facts box beside the hero (LISTENERS.md §6), as the Lib level draws it: it
     // was missing here until 2026-10-12 (his find). Asked by the name at once; one call per
     // artist, cached a month; nothing until it answers, nothing with the row off.
-    let lfm: ArtistInfo | null = null;
-    void artistInfoFor(src.name).then((i) => {
-      if (!i || i.state !== "have") return;
-      lfm = i;
-      reload();
-    });
+    let lfm: ArtistInfo | null = artistInfoNow(src.name);
+    if (!lfm)
+      void artistInfoFor(src.name).then((i) => {
+        if (!i || i.state !== "have") return;
+        lfm = i;
+        reload();
+      });
     // Newest first, as the Lib view and the Search pane list them.
     let albumList: ArtistDetail["albums"] = [];
     const albumsShelf = (): string => {

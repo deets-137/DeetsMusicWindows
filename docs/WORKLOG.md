@@ -12,6 +12,28 @@ updated: 2026-10-12
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (album info) — the album facts box, the box menu, the Last.fm name forms
+
+His ask: the artist box's data and style per album. Probed `album.getInfo` live: tags,
+plays, listeners, a wiki for well-known albums, no on-tour. Found that Last.fm keeps one page
+per exact name and merges none: Apple's *GUERILLAZ - Single* (H.LLS & Lucy Park) has 49
+listeners, Spotify's form (*H.LLS*, *GUERILLAZ*) 20,434. Read what other scrobblers do (scrap
+and AirScrobble strip " - Single" / " - EP"; Web Scrobbler's metadata-filter drops extra
+artists) and Last.fm's API terms (credit and link back, cache by the headers, non-commercial
+use only: a paid tier needs their commercial agreement). His calls: About from the wiki (two
+sentences, no jitter, one box size), Spotify's form then Apple's, its own row, a small menu of
+the box's own with Hide + Undo, year tags kept, all three album views now. Built: `album_info`
+and `lastfm_album_info` (forms tried in order), `src/lastfm-names.ts` + 8 tests,
+`albumInfoFor` / `…Now` (a known answer draws in the first paint, the artist's too),
+`src/info-box.ts` (both boxes' markup), `src/info-box-menu.ts`, the About's fixed block and a
+narrow row minimum. A fix on the way: a long About line wrapped the box under the cover (the
+wrap now takes `flex-basis: 0`). Seen in the dev app: *THREAD 27 - EP* reads 616 listeners
+(`as Lucy Park / THREAD 27`), *Essex Honey* shows all four sections beside the cover, the box
+menu and the hero menu. Not seen: the Search album pane (no Search card on screen). Checks:
+`npm run check`. LISTENERS.md §7.3–§7.5. His look at it: the About to 4 lines (it cut Essex
+Honey's second sentence at 3); the narrow row minimum to 100 px with it. Committed. Next
+sitting (his): unite the album and artist views (ARTIST-VIEW.md §10).
+
 ## 2026-10-12 (artist info sections) — the facts box as four sections, a fold, its own row
 
 His sketch: bold boxes are section headers, small boxes the facts. Built as a 2×2 grid, his

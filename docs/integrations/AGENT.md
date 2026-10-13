@@ -370,6 +370,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - **Playback › Show artist info on the artist's page** (2026-10-12, LISTENERS.md §6):
   `showArtistInfo` (On | Off, default On). On: an artist's page shows Last.fm's tags, plays and
   listeners, On tour and a link beside the photo. Off: no Last.fm artist call is made.
+- **Playback › Show album info on the album's page** (2026-10-13, LISTENERS.md §7):
+  `showAlbumInfo` (On | Off, default On). On: an album's page shows Last.fm's tags, plays and
+  listeners, the wiki's first two sentences and a link beside the cover. Off: no Last.fm album
+  call is made.
 - **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).
   What happens to the scores already on a Diary entry when its scale changes. **Grow on open**:
   `diaryGrow` (New entries | Every entry | Never). An agent has no

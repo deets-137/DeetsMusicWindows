@@ -303,6 +303,7 @@ under Cyber the whole section is gone.
 | Show the day in History | Each History row says Today, Yesterday or the date | on / **off** |
 | Show play counts from Last.FM | Now Playing wears a badge with the song's Last.fm plays and listeners: both in the full player, plays on the Max card. A click opens the song's Last.fm page. Off: Last.fm is not asked | **on** / off |
 | Show artist info on the artist's page | An artist's page shows a box beside the photo: Last.fm's tags, the artist's plays and listeners, On tour, and a Last.fm link. On a narrow card the box folds under an *Artist Info* line. Off: Last.fm is not asked | **on** / off |
+| Show album info on the album's page | An album's page shows a box beside the cover: Last.fm's tags, the album's plays and listeners, the first two sentences of its Last.fm wiki (About), and a Last.fm link. On a narrow card the box folds under an *Album Info* line. A right-click on the box can turn this off. Off: Last.fm is not asked | **on** / off |
 
 ### Sound
 

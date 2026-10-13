@@ -757,6 +757,16 @@ pub fn init_tables(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
             on_tour     INTEGER,
             url         TEXT,
             fetched_at  INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS album_info (
+            album       TEXT PRIMARY KEY,
+            state       TEXT NOT NULL,
+            listeners   INTEGER,
+            playcount   INTEGER,
+            tags        TEXT,
+            wiki        TEXT,
+            url         TEXT,
+            fetched_at  INTEGER NOT NULL
         );",
     )
 }
@@ -927,23 +937,27 @@ fn store_artist(conn: &rusqlite::Connection, key: &str, a: &ArtistInfo) {
     );
 }
 
-/// `artist.getInfo` with `autocorrect=1`. Last.fm gives `tags.tag` as an array, or as one
-/// object when there is a single tag; both are read.
+/// Last.fm's `tags.tag` on an artist or an album: an array, or one object when there is a
+/// single tag; both are read.
+fn tags_of(v: &serde_json::Value) -> Vec<String> {
+    let tag_name = |t: &serde_json::Value| t.get("name").and_then(|n| n.as_str()).map(str::to_string);
+    match v.get("tags").and_then(|t| t.get("tag")) {
+        Some(serde_json::Value::Array(list)) => list.iter().filter_map(tag_name).collect(),
+        Some(one @ serde_json::Value::Object(_)) => tag_name(one).into_iter().collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// `artist.getInfo` with `autocorrect=1`.
 async fn fetch_artist(name: &str) -> Result<ArtistInfo, CallError> {
     let json = call("artist.getInfo", vec![("artist".into(), name.into()), ("autocorrect".into(), "1".into())]).await?;
     let a = &json["artist"];
     let stats = &a["stats"];
-    let tag_name = |t: &serde_json::Value| t.get("name").and_then(|n| n.as_str()).map(str::to_string);
-    let tags: Vec<String> = match a.get("tags").and_then(|t| t.get("tag")) {
-        Some(serde_json::Value::Array(list)) => list.iter().filter_map(tag_name).collect(),
-        Some(one @ serde_json::Value::Object(_)) => tag_name(one).into_iter().collect(),
-        _ => Vec::new(),
-    };
     Ok(ArtistInfo {
         state: "have",
         listeners: stats.get("listeners").and_then(as_int).unwrap_or(0),
         playcount: stats.get("playcount").and_then(as_int).unwrap_or(0),
-        tags,
+        tags: tags_of(a),
         on_tour: a.get("ontour").and_then(as_int).unwrap_or(0) != 0,
         url: a.get("url").and_then(|u| u.as_str()).map(str::to_string),
         fetched_at: now_ms(),
@@ -985,6 +999,152 @@ pub async fn lastfm_artist_info(name: String, app: AppHandle) -> Result<Option<A
     let stored = info.clone();
     crate::db_thread::run(&app, move |db| {
         store_artist(&db.lock(), &key, &stored);
+        Ok(())
+    })
+    .await?;
+    Ok(Some(info))
+}
+
+// ── album facts (LISTENERS.md §7) ───────────────────────────────────────────
+//
+// `album.getInfo`: the album's listeners and plays, its tags, its page and Last.fm's wiki
+// summary. Last.fm keeps one page per exact (artist, album) text and merges none, so the
+// renderer hands over the name FORMS to try in order (listeners.ts `albumForms`: Spotify's
+// form first, the main artist and no " - EP", then Apple's exact names; his call 2026-10-13).
+// The first form Last.fm knows wins. Cached a month in `album_info`, keyed by Apple's own
+// pair in lower case, so the forms are asked once per album.
+
+/// One album's Last.fm facts, as the renderer sees them.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlbumInfo {
+    /// "have" — Last.fm knows the album under one of the forms. "none" — under none of them.
+    pub state: &'static str,
+    pub listeners: i64,
+    pub playcount: i64,
+    /// Last.fm's top tags for the album, as given (the year tags kept, his call).
+    pub tags: Vec<String>,
+    /// The wiki summary as Last.fm sends it (HTML, with its "Read more" link); the renderer
+    /// takes the first two sentences of its text. None when the album has no wiki.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wiki: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    pub fetched_at: i64,
+}
+
+fn album_key(artist: &str, album: &str) -> String {
+    format!("{}\u{1f}{}", artist.trim().to_lowercase(), album.trim().to_lowercase())
+}
+
+fn cached_album(conn: &rusqlite::Connection, key: &str) -> Option<AlbumInfo> {
+    conn.query_row(
+        "SELECT state, listeners, playcount, tags, wiki, url, fetched_at FROM album_info WHERE album = ?1",
+        [key],
+        |r| {
+            let state: String = r.get(0)?;
+            let tags: Option<String> = r.get(3)?;
+            Ok(AlbumInfo {
+                state: if state == "have" { "have" } else { "none" },
+                listeners: r.get::<_, Option<i64>>(1)?.unwrap_or(0),
+                playcount: r.get::<_, Option<i64>>(2)?.unwrap_or(0),
+                tags: tags.and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default(),
+                wiki: r.get(4)?,
+                url: r.get(5)?,
+                fetched_at: r.get(6)?,
+            })
+        },
+    )
+    .ok()
+}
+
+fn store_album(conn: &rusqlite::Connection, key: &str, a: &AlbumInfo) {
+    let tags = serde_json::to_string(&a.tags).unwrap_or_else(|_| "[]".into());
+    let _ = conn.execute(
+        "INSERT OR REPLACE INTO album_info(album, state, listeners, playcount, tags, wiki, url, fetched_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![key, a.state, a.listeners, a.playcount, tags, a.wiki, a.url, a.fetched_at],
+    );
+}
+
+/// `album.getInfo` for one (artist, album) form. `autocorrect` fixes artist spellings only.
+async fn fetch_album(artist: &str, album: &str) -> Result<AlbumInfo, CallError> {
+    let json = call(
+        "album.getInfo",
+        vec![("artist".into(), artist.into()), ("album".into(), album.into()), ("autocorrect".into(), "1".into())],
+    )
+    .await?;
+    let a = &json["album"];
+    let wiki = a
+        .get("wiki")
+        .and_then(|w| w.get("summary"))
+        .and_then(|s| s.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    Ok(AlbumInfo {
+        state: "have",
+        listeners: a.get("listeners").and_then(as_int).unwrap_or(0),
+        playcount: a.get("playcount").and_then(as_int).unwrap_or(0),
+        tags: tags_of(a),
+        wiki,
+        url: a.get("url").and_then(|u| u.as_str()).map(str::to_string),
+        fetched_at: now_ms(),
+    })
+}
+
+/// The Last.fm facts for one album. `artist` / `album` are Apple's names (the cache key);
+/// `forms` are the (artist, album) pairs to ask, in order. Cache first; then one call per
+/// form until Last.fm knows one (usually the first). `Ok(None)`: no key, or nothing to ask.
+/// A network failure is an `Err` and caches nothing.
+#[tauri::command]
+pub async fn lastfm_album_info(artist: String, album: String, forms: Vec<(String, String)>, app: AppHandle) -> Result<Option<AlbumInfo>, String> {
+    let key = album_key(&artist, &album);
+    let forms: Vec<(String, String)> = forms
+        .into_iter()
+        .map(|(a, b)| (a.trim().to_string(), b.trim().to_string()))
+        .filter(|(a, b)| !a.is_empty() && !b.is_empty())
+        .collect();
+    if API_KEY.is_none() || forms.is_empty() {
+        return Ok(None);
+    }
+    let k = key.clone();
+    let hit = crate::db_thread::run(&app, move |db| Ok(cached_album(&db.lock(), &k))).await?;
+    if let Some(a) = hit {
+        if now_ms() - a.fetched_at < LISTENERS_TTL_MS {
+            return Ok(Some(a));
+        }
+    }
+    let mut info = AlbumInfo { state: "none", listeners: 0, playcount: 0, tags: Vec::new(), wiki: None, url: None, fetched_at: now_ms() };
+    let mut matched = String::new();
+    for (a, b) in &forms {
+        match fetch_album(a, b).await {
+            Ok(found) => {
+                info = found;
+                matched = format!("{a} / {b}");
+                break;
+            }
+            // Album not found under this form: try the next.
+            Err(CallError::Api(6, _)) => continue,
+            Err(e) => {
+                crate::log::warn(&format!("lastfm: album info for {key} failed ({e})"));
+                return Err(e.to_string());
+            }
+        }
+    }
+    crate::log::info(&format!(
+        "lastfm: album info for {}: {} ({} listeners, {} plays, {} tags{}{})",
+        key.replace('\u{1f}', " / "),
+        info.state,
+        info.listeners,
+        info.playcount,
+        info.tags.len(),
+        if info.wiki.is_some() { ", wiki" } else { "" },
+        if matched.is_empty() { String::new() } else { format!(", as {matched}") }
+    ));
+    let stored = info.clone();
+    crate::db_thread::run(&app, move |db| {
+        store_album(&db.lock(), &key, &stored);
         Ok(())
     })
     .await?;

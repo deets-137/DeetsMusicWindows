@@ -39,7 +39,8 @@ import {
   libraryArtistInfo, expireArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML,
   playCounts, type LibraryArtistInfo, type YourPlaylists, type CheckProgress, type PlayCount,
 } from "./artist-view";
-import { artistInfoFor, type ArtistInfo } from "./listeners";
+import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, type ArtistInfo } from "./listeners";
+import { albumInfoHTML } from "./info-box";
 import { handOff } from "./handoff";
 import { collectionTracks } from "./search";
 import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
@@ -660,6 +661,13 @@ export const libraryCard: CardDef = {
     // album detail: track number order feels right for an album, so default to it
     const albumDetail = (a: AlbumGroup, highlight?: Track): Context => {
       const list = () => tracks().filter((t) => albumKey(t) === a.key);
+      // The Last.fm facts box beside the cover (LISTENERS.md §7): drawn in the first paint
+      // when its answer is known this session, else the card draws again when it lands.
+      const lfmArtist = a.artist || list()[0]?.artistName || "";
+      if (lfmArtist && !albumInfoNow(lfmArtist, a.name))
+        void albumInfoFor(lfmArtist, a.name).then((i) => {
+          if (i?.state === "have") card.reload();
+        });
       return {
         title: a.name,
         key: `album:${a.key}`, // card memory (CARD-MEMORY.md §5)
@@ -682,6 +690,7 @@ export const libraryCard: CardDef = {
             // Right-click anywhere on the hero: the album's own menu, without Go to Album
             // (you are there) — CONTEXT-MENUS.md §3a.
             menu: () => albumMenu(libAlbum(albumOrder(list())), { context: `album:${a.key}`, nav: libNav, here: true }),
+            aside: lfmArtist ? albumInfoHTML(albumInfoNow(lfmArtist, a.name)) : undefined,
           };
         },
         density: true,
@@ -786,13 +795,15 @@ export const libraryCard: CardDef = {
         })
         .catch((e) => console.error("[library] artist info", e));
       // The Last.fm facts box beside the hero (LISTENERS.md §6): one call per artist, cached
-      // a month; nothing until it answers, and nothing with the row off.
-      let lfm: ArtistInfo | null = null;
-      void artistInfoFor(a.name).then((i) => {
-        if (!i || i.state !== "have") return;
-        lfm = i;
-        card.reload();
-      });
+      // a month; nothing until it answers, and nothing with the row off. Known this session:
+      // drawn in the first paint, so the hero does not jump.
+      let lfm: ArtistInfo | null = artistInfoNow(a.name);
+      if (!lfm)
+        void artistInfoFor(a.name).then((i) => {
+          if (!i || i.state !== "have") return;
+          lfm = i;
+          card.reload();
+        });
       const loadYours = () =>
         yourPlaylistsFor(a.name)
           .then((y) => {
