@@ -177,3 +177,23 @@ right, Last.fm's tags and an *On tour* marker in one column, the artist's plays 
 in the other. The hero takes an `aside` (`Hero.aside`, `heroHTML`) and becomes a wrapping row.
 The data, the cache, the markup and the desk test are [LISTENERS.md §6](LISTENERS.md). Top
 tracks and similar artists, the next two reads, are an idea he designs: ideas/LastfmArtist.md.
+
+## 10. One code path for the Apple pages (decided 2026-10-12, not built)
+
+> **Part:** designed · 2026-10-12
+
+There are three artist views. Library › Lib (`library-card.ts`) and Library › Full
+(`library-full.ts`) are collection-card engine levels. The Search artist pane (`search-card.ts`
+`fillArtist`) is its own HTML, and it reads the **same** `artistDetail(id)` as Full. The Search
+album and playlist panes (`fillCollection`) duplicate the Full album the same way. A feature
+added to one copy is missed in another: the facts box was missing from Full (his find,
+2026-10-12).
+
+**His calls (2026-10-12):** the Search card's Apple panes run the engine's Full levels, one
+code path for every Apple page; Search keeps its **compact rows** (the engine draws a compact
+list in Search, not the Library table). Not a go to build: it starts after the facts box desk
+test (LISTENERS.md §6.3), one step at a time with a desk test each: the artist pane, then the
+album pane, then the playlist pane. What must hand over to the engine: the pane stack and Back,
+the picks and their count row, the chip flights, *Check N more*, the hero menus, card memory.
+The forks inside each step (what the compact row shows, which toolbar Search keeps) are his, to
+bring him before that step.

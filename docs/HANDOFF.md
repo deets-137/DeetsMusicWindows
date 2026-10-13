@@ -120,6 +120,11 @@ On a narrow card it folds under an *Artist Info* line, closed by default, the la
 (LISTENERS.md §6). Desk test: features/LISTENERS.md §6.3 (8 steps). Top tracks and similar artists: he designs
 the UI tomorrow, ideas/LastfmArtist.md holds the calls.
 
+**One code path for the Apple pages (2026-10-12, decided, NOT BUILT; after the box's desk
+test).** The Search card's artist, album and playlist panes duplicate the Library's Full levels
+in their own HTML. His calls: Search runs the engine's Full levels, with its compact rows kept.
+One pane per step, a desk test each. ARTIST-VIEW.md §10.
+
 **Listeners badge (2026-10-12, built, desk test open).** Now Playing wears the song's Last.fm
 counts: *N Plays | M Listeners* beside the title in the full player, *N Plays* on the cover's
 corner in Max; Settings › Playback › *Show play counts from Last.FM* (on). A cut-off title slides on
