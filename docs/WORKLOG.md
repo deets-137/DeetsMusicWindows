@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,32 @@ updated: 2026-10-12
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-13 (one code path) — every album, artist, playlist, song and writer page is one engine level
+
+His ask: unify the artist and album drilldowns across the cards (ARTIST-VIEW.md §10, decided
+2026-10-12). Built in this sitting and desk-tested by Claude on the dev app, then by him; four
+commits, pushed together.
+- **c90d66b** — `media-levels.ts` (replaces `library-full.ts`): one `albumLevel` and one
+  `artistLevel`, each fed by a Lib source and a Full source; `library-model.ts` holds the shared
+  album helpers. Full gains the cover button, Most Played (summed over every library copy of a
+  song — found in the desk test: OUTLINE single vs EP), the lit song, the ♥ question.
+- **9b83c3f** — the Search card's pages are engine levels (`bare` root over the results,
+  `finder: false`, `toRoot()`); Apple's playlist level; the song and writer levels moved out of
+  the Library (writers as rows). Steps 2–5 were planned as commits each; they could not stand
+  apart, and his word after: one change, one commit.
+- **e159e3e** — Full | Lib switch, his note "jitter / jumps": measured first; now it waits for
+  the level's data (`Context.ready`), keeps the hero, fades the list and lets the new one rise,
+  keeps the place. FULL-LIB.md §5.1.
+- **216a6e7** — his second note (rapid presses, Play / Shuffle re-rendering, the scrollbar): the
+  pill shows the press at once, a press during the fade calls it back, views are built once and
+  kept, identical parts stay, a Full | Lib level keeps the bar's place (his call, those levels
+  only). FULL-LIB.md §5.2.
+- A question brought to him in error: Go to Genre from a Lib row in Search — no menu has that
+  row (ARTIST-VIEW.md §10.4).
+- Left: the sort direction carries over on a sort pick, so a Lib artist's Most Played lists the
+  least played first (his fork, §10.3); a play from a Search level row was not run in the desk
+  test (it would sound on his machine).
 
 ## 2026-10-13 (db: slow read) — the read connection does not move the launch
 

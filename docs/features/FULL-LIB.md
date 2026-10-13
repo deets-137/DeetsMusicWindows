@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-13
 sources: [src/media-levels.ts, src/library-model.ts, src/library-card.ts, src/collection-card.ts, src/add-square.ts, src/styles.css, src/styles/skin.css]
 updated: 2026-10-13
 ---
@@ -117,7 +117,7 @@ An album with an unreleased song is not cached, so each open asks Apple again (a
 
 ### 5.1 The switch, smoothed (2026-10-13)
 
-> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (below, run by Claude on the dev app)
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (Claude on the dev app, then his)
 
 **His note:** the switch between Full and Lib jittered and jumped. **Measured first** (a probe
 over the open pane, every 16 ms): `replace` rebuilt the whole pane, so the same hero rose in
@@ -160,7 +160,7 @@ swap's own frame, dev build).
 
 ### 5.2 Rapid presses, Play / Shuffle, the scrollbar (2026-10-13)
 
-> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (below, run by Claude on the dev app)
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (Claude on the dev app, then his)
 
 **His note** (on Ambiguous Desire (Deluxe), 2 songs in Lib, 20 in Full): clicking Full and Lib
 rapidly jittered; Play and Shuffle re-rendered in the same place; the scrollbar jumped in.
@@ -204,7 +204,7 @@ the hero still.
 8. The Library ⟳ square stays to the right of the pill.
 9. Queue tags reuse Search's (§5), so Home's album tiles work for plays from here.
 
-## 7. Desk test (open)
+## 7. Desk test (passed 2026-10-13, his)
 
 1. Library › Albums › an album you own part of. Press **Full**: every song shows, yours with a
    ✓, the others with a + on hover. The header still says "Album". Back goes to Albums.

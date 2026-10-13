@@ -1,7 +1,7 @@
 ---
 status: shipped
 shipped_in: 0.6.0
-desk_test: passed 2026-09-15
+desk_test: passed 2026-10-13
 sources: [src/artist-view.ts, src/media-levels.ts, src/collection-card.ts, src/library-card.ts, src/search-card.ts]
 updated: 2026-10-13
 ---
@@ -180,9 +180,9 @@ in the other. The hero takes an `aside` (`Hero.aside`, `heroHTML`) and becomes a
 The data, the cache, the markup and the desk test are [LISTENERS.md §6](LISTENERS.md). Top
 tracks and similar artists, the next two reads, are an idea he designs: ideas/LastfmArtist.md.
 
-## 10. One code path for the Apple pages (decided 2026-10-12, not built)
+## 10. One code path for the Apple pages (decided 2026-10-12, built 2026-10-13)
 
-> **Part:** designed · 2026-10-12
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (his) — the design below; as built §10.2, §10.4
 
 There are three artist views. Library › Lib (`library-card.ts`) and Library › Full
 (`library-full.ts`) are collection-card engine levels. The Search artist pane (`search-card.ts`
@@ -202,7 +202,7 @@ bring him before that step.
 
 ### 10.1 His calls (2026-10-13)
 
-> **Part:** designed · 2026-10-13
+> **Part:** built · 2026-10-13
 
 The facts box desk test passed on 2026-10-13, so the gate is open. It is still not a go: the
 facts box and `hero-slide.ts` work is committed first, and the build waits for his word.
@@ -263,7 +263,7 @@ stops the run.
 
 ### 10.2 Step 1 as built: one builder per page (2026-10-13)
 
-> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (§10.3, run by Claude on the dev app)
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (§10.3, Claude on the dev app, then his)
 
 - `src/media-levels.ts` replaces `library-full.ts`. `mediaLevels(deps)` returns the four
   levels (`libAlbum`, `libArtist`, `fullAlbum`, `fullArtist`) and their `resolve`. Inside, one
@@ -335,7 +335,7 @@ No errors in the diag ring; every `library:full` load `failed: false`. The cards
 
 ### 10.4 Steps 2–5 as built: the Search card hosts the levels (2026-10-13)
 
-> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (§10.5, run by Claude on the dev app)
+> **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (§10.5, Claude on the dev app, then his)
 
 **One change, not four (found in the build, told to him).** Steps 2–5 were planned as four
 commits. They could not stand apart: once the artist pane is an engine level, its Featured tile

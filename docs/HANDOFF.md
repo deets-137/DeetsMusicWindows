@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 # DeetsMusic — Handoff
 
@@ -132,8 +132,6 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 
 ### Decided, not built (his next sittings)
 
-- **One code path for the Apple pages** (2026-10-12): Search runs the engine's Full levels,
-  compact rows kept; one pane per step. ARTIST-VIEW.md §10.
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
