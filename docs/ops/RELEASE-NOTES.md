@@ -32,6 +32,39 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.27.0 — 2026-10-13
+
+**Facts about the artist and the album.** An artist's page shows a box from Last.fm beside the
+photo: the tags, the plays and listeners, whether the artist is on tour, and a link. An album's
+page shows the same box beside the cover, with two sentences about the album. Right-click a box
+to open Last.fm or to hide it. Settings › Playback › *Show artist info on the artist's page* and
+*Show album info on the album's page*.
+
+**How many people play this song.** Now Playing shows the song's plays and listeners on
+Last.fm. Settings › Playback › *Show play counts from Last.FM*.
+
+**Shuffle off goes back to the list's order.** Press Shuffle off and the music goes on in the
+list's order from the song that plays. Settings › Playback › *Shuffle off plays* keeps the
+shuffled order if you prefer it.
+
+**History plays from where you click.** Click a song in History and it plays, with the songs
+you heard before it queued after it.
+
+**When the graphics fail, the app stays quick.** If Windows starts to draw the app without the
+graphics card (after a driver update, for example), the heavy effects turn off and a notice
+offers a restart. Settings › Motion › *If graphics fail*.
+
+**Every search box works the same way.** The × clears it, Escape clears it and then closes it,
+Ctrl+F finds it, and the Down arrow goes to the first result.
+
+**New looks for a new install.** A new install starts with Ocean as the night look, the record
+turning in Press, Ocean's cards a little clear with its album light on, and one album cover
+behind the cards in Glass. An install you have now keeps its settings.
+
+**Fixes.** The window no longer stops for a few seconds when the network drops while you play
+on an AirPlay speaker. Quit no longer waits on a speaker that is gone. Discord shows the
+DeetsMusic icon on the cover's corner.
+
 ## 0.26.1 — 2026-10-11
 
 **The full player.** Now Playing grows so the cover is as large as the window allows, with the
