@@ -34,7 +34,7 @@ import { refreshPlayerState } from "./player";
 import { setFullArtPx, stageArtPx } from "./queue-rows";
 import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, type Box, type RowsPlace } from "./full-player-layout";
 import {
-  canFill, clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, type Slot,
+  clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, stageGapShared, type Slot,
 } from "./card-grow";
 
 interface Opts {
@@ -728,8 +728,10 @@ type Side = "left" | "right" | "up" | "down";
 const BAR_SIDE: Record<Side, string> = { right: "left", left: "right", down: "top", up: "bottom" };
 let zones: HTMLElement[] = [];
 
-/** Strips act: the flag, Midi or Max, "Grow cards from edges" on, and no card grown. */
-const zonesOn = (): boolean => fullPlayerAvailable() && setting("cardGrow") && !grownState();
+/** Strips act: Midi or Max, "Grow cards from edges" on, and Now Playing not under the Queue's
+ *  grow. Another card grown does not stop them: the open collapses it first (his ask,
+ *  2026-10-14: a Fill on the Library hid the way in). */
+const zonesOn = (): boolean => fullPlayerAvailable() && setting("cardGrow") && grownState()?.slot !== "queue";
 
 function reachOf(side: Side): "half" | "full" | "edge" | null {
   const s = surfaceNow();
@@ -742,11 +744,12 @@ function reachOf(side: Side): "half" | "full" | "edge" | null {
   }
   if (s === "max") {
     if (side === "left") return full ? "full" : "edge";
-    // Half the gap beside the stage when a Fill strip takes the other half (four-card Max); the
-    // whole gap when no Fill strip is there (Layout for Max: 2 or 1 cards, MAX-CARDS.md §4.4).
-    if (side === "right") return full ? "edge" : canFill() ? "half" : "full";
+    // Half the gap beside the stage when a card's strip takes the other half (the Fill strips of
+    // four-card Max, or a grown card's collapse strip); the whole gap when none is there.
+    if (side === "right") return full ? "edge" : stageGapShared() ? "half" : "full";
     // The top and the bottom of the resting card open it too (his ask, 2026-10-11). The bottom
-    // gap is the Queue's as well (its grow up over Now Playing): each takes half of it.
+    // gap is the Queue's as well (its grow up over Now Playing): each takes half of it, also
+    // while another card is grown (both strips act then, 2026-10-14).
     if (side === "up") return full ? null : "full";
     if (side === "down") return full ? null : "half";
   }

@@ -769,8 +769,8 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
   if (isStage(slot)) {
     if (slot !== "queue" || side !== "up" || currentSurface() !== "max") return null;
     if (state?.slot === "queue") return { dir: "up", act: "collapse", reach: "full" };
-    if (state) return null; // another card is grown: its own zones are the only live ones
-    // The WHOLE gap when nothing else claims it (a 6 px target would be needlessly hard to
+    // Another card grown does not stop it: growCard ends that grow first, with no motion (his
+    // ask, 2026-10-14, as for Now Playing's strips). The WHOLE gap when nothing else claims it (a 6 px target would be needlessly hard to
     // hit); half of it while Now Playing's own bottom strip (the full player) takes the other
     // half (2026-10-11).
     return { dir: "up", act: "grow", reach: npRightLive() ? "half" : "full" };
@@ -791,9 +791,17 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
   if (!canFill() && !(mine && currentSurface() === "max")) return null;
   if (state && !mine) return null; // while one card is grown, only its own outer zones act
   // The gap beside the stage is shared with Now Playing's full-player strip: split at its
-  // middle line, as a gap between two cards is (features/fullscreen-player.md §10.3).
-  const shared = side === "left" && !state && npRightLive();
+  // middle line, as a gap between two cards is (features/fullscreen-player.md §10.3). A grown
+  // card's collapse strip shares it too: Now Playing's strip acts while a card is grown.
+  const shared = side === "left" && npRightLive();
   return { dir: "full", act: mine ? "collapse" : "grow", reach: b === "edge" ? "edge" : shared ? "half" : "full" };
+}
+
+/** Is a content card's strip live in the gap beside the stage (Max)? Now Playing's right
+ *  strip then takes only its half of the gap (full-player.ts). */
+export function stageGapShared(): boolean {
+  if (!opts || currentSurface() !== "max") return false;
+  return opts.slots().some((s) => !isStage(s) && isLive(s) && beyond(s, "left") === "outer" && !!zoneAction(s, "left"));
 }
 
 /** Give a host its four strips (called with the Grow button, after the card's markup lands). */

@@ -299,7 +299,9 @@ dead) and right (the window edge, 7 px). Each grows or closes Now Playing; the s
 does not change the result (Midi grows down, Max opens over the four cards).
 
 Rules that follow from the existing ones (not forks): the bar shape is the skin's own
-`--grow-zone-bar-*`; while another card is grown, Now Playing's strips are hidden, and while
+`--grow-zone-bar-*`; while another card is grown, Now Playing's strips are hidden (changed
+2026-10-14, his call: they act and the open collapses the grow first, §13 › *While another
+card is grown*), and while
 Now Playing is full, every other strip is hidden; the Queue's top strip in Max is hidden while
 Now Playing is full (the Queue is already full height); Mini has no strips (its player view
 is the full player).
@@ -655,8 +657,49 @@ bar (`styles/toast.css`).
   layout remounts the slots: `initFullPlayer` registers its `maxCards` listener first.
 - In Max, Now Playing spans `1 / 2 / -1 / -1` and the Queue `1 / 1 / -1 / 2`, so the spans fit
   4, 2 or 1 content cards.
-- Now Playing's right strip takes half the gap beside the stage when a Fill strip shares it
-  (four-card Max), and the whole gap when not (`canFill()` false: 2 or 1 cards).
+- Now Playing's right strip takes half the gap beside the stage when a card's strip shares it
+  (four-card Max), and the whole gap when not (2 or 1 cards). Since 2026-10-14 the test is
+  `stageGapShared()` in `card-grow.ts`: is any content card's strip live in that gap.
+
+**While another card is grown (his call, 2026-10-14).** He grew the Library to Fill in Max on
+live (0.27.0), and the Now Playing card's edges did nothing: §10.2 hid its strips while
+another card was grown. His words: "let them act so it feels more intuitive". Now:
+
+- Now Playing's strips act while a content card is grown, in Midi and Max. A click collapses
+  the grow with no motion, then the full player opens with its own motion. This is the path
+  the rule action and the Compass row already took (`openFullPlayer`: one motion at a time).
+- A pinned grow collapses too: the strip is a deliberate press on Now Playing, and Pin only
+  guards against a click outside.
+- The strips stay off while the **Queue** is grown: it lies over Now Playing.
+- **The gap beside the stage (Max).** A grown card whose left edge meets the stage keeps its
+  collapse strip there, but at `half` reach: the 6 px beside the cards collapses the grow, the
+  6 px beside Now Playing opens the player (the §10.3 split, one rule for every shared gap).
+  When the grown card is not beside the stage, Now Playing's right strip takes the whole gap.
+- **The bottom gap (Max).** The Queue's top strip acts while another card is grown too (his
+  ask, the same day): a click ends that grow with no motion and grows the Queue up
+  (`growCard` already ends another slot's grow first). So the gap stays split: the half
+  beside Now Playing opens the player, the half beside the Queue grows the Queue.
+- Code: `zonesOn` and `reachOf` in `full-player.ts`; `zoneAction` (the `shared` test) and
+  `stageGapShared` in `card-grow.ts`.
+
+Desk test (his, on the dev app):
+
+1. Max, four cards. Fill the Library from its edge. Hover the gap between Now Playing and the
+   Library: the half beside Now Playing shows the bar on Now Playing, the half beside the
+   Library shows the bar on the Library. Click the Now Playing half: the Library snaps back,
+   the full player opens. Escape closes it.
+2. Fill the Library again. Click the Library half of the gap: the Library collapses.
+3. Fill the bottom-right card (not beside the stage). Click anywhere in the gap right of Now
+   Playing: the full player opens.
+4. Grow a card sideways or up (not Fill). Click Now Playing's top or bottom edge: the grow
+   ends, the player opens.
+5. Pin a grown card (*Collapse on outside click* on, then Pin). Click Now Playing's edge: the
+   player opens.
+6. Grow the Queue up over Now Playing: no Now Playing strip shows.
+7. Fill the Library. Click the Queue's half of the gap between Now Playing and the Queue: the
+   Library snaps back, the Queue grows up. Fill the Library again and click the Now Playing
+   half: the player opens.
+8. Midi: grow a content card. Click Now Playing's bottom edge: the player opens.
 
 **Not built.** Everything in §12.7, the Mini player view, an agent route.
 
