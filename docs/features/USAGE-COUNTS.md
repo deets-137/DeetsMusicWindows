@@ -1,5 +1,6 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md]
 updated: 2026-10-13

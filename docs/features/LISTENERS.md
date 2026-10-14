@@ -1,5 +1,6 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts]
 updated: 2026-10-14

@@ -1,5 +1,6 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.27.0
 desk_test: passed 2026-10-12
 sources: [src/search-field.ts, src/library-albums.ts, src/search-card.ts, src/radio.ts, src/collection-card.ts, src/settings-card.ts, src/diary-card.ts, src/web.ts, src/compass.ts, src/find-key.ts, src/list-keys.ts, src/split-pill.ts, src/styles.css]
 updated: 2026-10-12

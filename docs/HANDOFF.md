@@ -112,13 +112,8 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-10-14 (pruned for 0.27.0: everything that
 shipped or closed went out; the WORKLOG has each day). Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md. Every working branch is
-merged into `main` (`unlucky-thirteenth` is level with it); everything committed before 0.26.1
-(`78e275c`) is on live.
-
-**0.27.0 is built, not published** (`e6bffef`, 2026-10-13; the channel still answers 0.26.1 on
-2026-10-14). He runs it, installed by hand. Committed after it, for the release after: Presentation
-mode, the Full | Lib switch, Rooms on the web (app side) and usage counts. RELEASE-NOTES.md's
-"Next release" entry holds only usage counts so far.
+merged into `main` (`unlucky-thirteenth` is level with it); everything committed up to the
+0.27.0 release commit (`dffa80e`, 2026-10-14) is on live.
 
 ### Open on live: text to fix, watches, data to read
 
@@ -146,18 +141,16 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 
 ### Built, waiting on a release or a desk test
 
-- **Usage counts** (USAGE-COUNTS.md): built, desk test passed 2026-10-13 (the cron's
-  in-window delete not seen in a run). The worker, its D1 tables and the owner page
-  deets.solutions/deetsmusic/admin/ went LIVE 2026-10-14 (DeetsSupport `52a2f1e`, DeetsSolutions
-  `ba2f111`). The README › Privacy paragraph and the release-note line are written. Next: the
-  app release that sends the counts. §11 the as-built record.
+- **Usage counts** (USAGE-COUNTS.md): shipped in 0.27.0 (2026-10-14). Watch the first weekly
+  reports arrive on deets.solutions/deetsmusic/admin/; the cron's in-window delete is still not
+  seen in a run. §11 the as-built record.
 - **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test open (§10.5).
   Not built: the site page (part H, a DeetsSolutions session); the worker change is not deployed
   (§10.6).
 
 ### His to design or decide (asks and ideas, not built)
 
-- **Presentation mode** (PresentationMode.md, on `main`): built, his desk test passed
+- **Presentation mode** (PresentationMode.md): shipped in 0.27.0, his desk test passed
   2026-10-13 (§9.3). The view's picture is his to draw, the goal marker is paused, and a live
   stream from Last.fm is his idea for later. §7a, §7b.
 
@@ -224,8 +217,7 @@ check found".
 
 ## State of play
 
-**Live: 0.26.1** (2026-10-11, `deetsmusic` channel). **0.27.0** is built and installed by hand
-on his PC, not published (Open now). The last beta is `0.14.1-beta.1` on `deetsmusic-test`.
+**Live: 0.27.0** (2026-10-14, `deetsmusic` channel). The last beta is `0.14.1-beta.1` on `deetsmusic-test`.
 Every release is in the log at [RELEASE.md §0a](ops/RELEASE.md); what each version added is
 in [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
 [WORKLOG.md](WORKLOG.md). Each feature doc's front matter names the release it shipped in.

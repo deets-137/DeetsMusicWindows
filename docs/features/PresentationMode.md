@@ -1,5 +1,6 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src/present.ts, src/info-box.ts, src/listeners.ts, src-tauri/src/lastfm.rs, src/card-grow.ts, src/collection-card.ts, src/media-levels.ts, src/full-player.ts, docs/features/LISTENERS.md, docs/cards/CARD-GROW.md, docs/integrations/ROOMS.md, docs/integrations/FRIENDS.md]
 updated: 2026-10-13

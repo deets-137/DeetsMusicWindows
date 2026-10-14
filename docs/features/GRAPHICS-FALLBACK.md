@@ -1,5 +1,6 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.27.0
 desk_test: passed 2026-10-12
 sources: [src/gpu.ts, src/gpu-probe.ts, src/frames.ts, src/rules-eval.ts, src/rules.ts, src/rulez-words.ts, src/rulez-card.ts, src/settings-store.ts, src/settings-card.ts, src/agent-settings.ts, src/main.ts, src-tauri/src/gpu.rs, src-tauri/src/lib.rs]
 updated: 2026-10-11

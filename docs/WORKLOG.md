@@ -12,6 +12,20 @@ updated: 2026-10-14
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-14 (release) — 0.27.0 published
+
+His ask: merge into `main`, clean up the docs, release and publish; "I've thoroughly desk
+tested so we can push straight to release / publishing." The 0.27.0 build of 2026-10-13
+(`e6bffef`) was never published, so it was cut again from `dffa80e` with everything after it.
+- RELEASE-NOTES.md: the "Next release" entry (usage counts) joined 0.27.0, dated 2026-10-14,
+  with Presentation mode, the Last.fm counts on station songs, the Full | Lib switch, the full
+  player's strips while a card is grown and the Max close jump. Rooms on the web is not named:
+  its site page is not built.
+- `unlucky-thirteenth` fast-forwarded into `main`. `npm run check` passed before the push.
+- Front matter to `shipped` / 0.27.0: USAGE-COUNTS, PresentationMode, LISTENERS,
+  GRAPHICS-FALLBACK, SEARCH-FIELDS. HANDOFF (live 0.27.0, Open now), marketing.md §10, the
+  RELEASE.md §0a row.
+
 ## 2026-10-14 (docs cleanup) — stale state across the docs; the archive
 
 His ask: a docs cleanup, top level first, then each folder, for staleness and errors; a doc no

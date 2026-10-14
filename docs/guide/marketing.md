@@ -192,10 +192,11 @@ The forks still open from the 2026-10-01 talk:
 - Suggest Less: designed; no release note names it. Check before any use.
 - Skinz (edit theme colors), Hop in (welcome screen), the Layout rows, a second Search card,
   Backup, Local radio: designed, not built.
-- In 0.27.0, built but not published on 2026-10-14: the Last.fm facts boxes on the artist and
-  album pages, the listener counts on Now Playing, unshuffle, one behavior for every search
-  box, the graphics fallback. Built after 0.27.0: usage counts, Presentation mode, Rooms on the
-  web (app side). Claim none of these until a release carries them.
+- Shipped in 0.27.0 (2026-10-14), not yet in the table above: the Last.fm facts boxes on the
+  artist and album pages, the listener counts on Now Playing, Presentation mode (its picture is
+  a placeholder, his to design), unshuffle, one behavior for every search box, the graphics
+  fallback, usage counts. Rooms on the web: the app side only; the site page is not built.
+  Claim it only when the site page is live.
 - Everything in `docs/ideas/`.
 
 ## 11. Shots that exist today (0.25.1)
