@@ -39,6 +39,19 @@ import {
   type RoomMember,
   type RoomState,
 } from "./room";
+import { WEB_ROOMS } from "./platform";
+import { isConnected, requestSignIn } from "./apple";
+
+/**
+ * The web port's panel (docs/features/WebRooms.md §5, §7.1): the same panel with less. No Friends
+ * part (his call W3), no Permissions fold and no Remove (no listener management on the web),
+ * a room started here is open to everyone (his call R), and the Apple Music sign-in sits at
+ * the top, because a browser has no Settings › Account to do it in.
+ */
+const WEB_TITLE = "DeetsMusic Rooms";
+const OPEN_TO_ALL: GuestControls = { playPause: "everyone", skip: "everyone", seek: "everyone", add: "everyone", changeQueue: "everyone" };
+/** The web's Apple sign-in, read when the panel draws and after a sign-in (web/listen.ts). */
+let webSignedIn = false;
 
 /** The name over the panel. It says **Friends**, because that is what you open it for
  *  (his call, 2026-09-20); the rooms half is a section inside it. */
@@ -120,7 +133,7 @@ export function initRoomPanel(): void {
       // Opening the panel is the moment Friends is wanted, so it is one of the three doors
       // that mints a friend code (FRIENDS.md §16.5). It writes one small file and makes no
       // network call; the panel repaints through onFriendsChange when the code arrives.
-      void ensureIdentity();
+      if (!WEB_ROOMS) void ensureIdentity(); // no friend code on the web (his call W3)
       render(roomState());
       keepInWindow(root, panel!); // a narrow window must not push the panel off the edge
       // A shut fold is display:none: it would take the class and never hear the
@@ -255,11 +268,22 @@ function render(state: RoomState): void {
 
   panel.append(head(state, inRoom));
   panel.append(buildStage(state, inRoom));
+  if (WEB_ROOMS && !webSignedIn) panel.append(signInRow());
   // Your name first, and REQUIRED (his call, 2026-09-20). It is not a room setting: it is
   // what a friend's box and a room's member list BOTH call you, so it sits above the two
   // halves rather than inside one of them — and nothing that publishes it works until it
   // is filled in.
   panel.append(nameRow(state));
+
+  if (WEB_ROOMS) {
+    // One part, no fold: the rooms half is the whole panel on the web.
+    const body = el("div", "room__part-body");
+    if (inRoom) renderInRoom(state, body);
+    else renderOutOfRoom(state, body);
+    panel.append(body);
+    requestAnimationFrame(measureGutters);
+    return;
+  }
 
   const friends = part("friends", "Friends", "The people you added, and what they are playing");
   // The Friends part's "In a room together?" line shows while somebody here is not your
@@ -461,7 +485,7 @@ function figure(): string {
 /** The head: the title at the left, one action at the right (the Sound panel's shape). */
 function head(state: RoomState, inRoom: boolean): HTMLElement {
   const h = el("div", "room__head");
-  h.append(el("span", "room__title", TITLE));
+  h.append(el("span", "room__title", WEB_ROOMS ? WEB_TITLE : TITLE));
   const end = el("div", "room__head-end");
   if (inRoom) {
     const leave = chip(
@@ -481,8 +505,24 @@ function head(state: RoomState, inRoom: boolean): HTMLElement {
 }
 
 /** Is there a name to publish? Everything that puts you in front of somebody else needs
- *  one, so this gates Start a room, Join and Add a friend. */
-const haveName = (): boolean => roomName().length > 0;
+ *  one, so this gates Start a room, Join and Add a friend. On the web the Apple sign-in
+ *  gates them too: a room you cannot hear is no use (WebRooms.md §3 rule 1). */
+const haveName = (): boolean => roomName().length > 0 && (!WEB_ROOMS || webSignedIn);
+
+/** The web's first row while signed out: MusicKit's own Apple sign-in (web/listen.ts). */
+function signInRow(): HTMLElement {
+  const b = chip("Sign in", "Signs in to Apple Music in Apple's own window. Each listener plays the songs with their own subscription", "room__chip--wide");
+  b.addEventListener("click", () => requestSignIn());
+  return row("Apple Music", b, "room__row--name");
+}
+
+/** The web port: read the sign-in again, and redraw an open panel (web/listen.ts calls it
+ *  on load and after `authorize()`). */
+export async function refreshWebSignIn(): Promise<void> {
+  if (!WEB_ROOMS) return;
+  webSignedIn = await isConnected();
+  if (panel && !panel.hidden) render(roomState());
+}
 
 /**
  * *Your name*, at the top and required. Shown in a room as well as out of one: a friend's
@@ -501,14 +541,14 @@ function nameRow(state: RoomState): HTMLElement {
   nameField.value = roomName();
   nameField.placeholder = "Type a name";
   nameField.required = true;
-  nameField.toggleAttribute("data-empty", !haveName());
+  nameField.toggleAttribute("data-empty", !roomName());
   // `input`, not `change`: the gated buttons unlock on the first letter rather than when
   // the field happens to lose focus. It must NOT re-render — a rebuilt field loses the
   // caret half way through a name.
   nameField.addEventListener("input", () => {
     setRoomName(nameField.value);
     const have = haveName();
-    nameField.toggleAttribute("data-empty", !have);
+    nameField.toggleAttribute("data-empty", !roomName());
     for (const b of gated) b.disabled = !have || b.dataset.busy === "1";
   });
   return row("Your name", nameField, "room__row--name");
@@ -523,7 +563,8 @@ const gated: HTMLButtonElement[] = [];
 function gateOnName(button: HTMLButtonElement, busy = false): HTMLButtonElement {
   button.dataset.busy = busy ? "1" : "0";
   button.disabled = busy || !haveName();
-  if (!haveName()) button.title = `${button.title}. Type your name first`;
+  if (WEB_ROOMS && !webSignedIn) button.title = `${button.title}. Sign in to Apple Music first`;
+  else if (!haveName()) button.title = `${button.title}. Type your name first`;
   gated.push(button);
   return button;
 }
@@ -534,10 +575,12 @@ function renderOutOfRoom(state: RoomState, into: HTMLElement): void {
   // Your name moved to the top of the panel (his call, 2026-09-20) — it is not a room
   // setting, and Friends needs it too.
   const start = gateOnName(
-    chip("Start a room", "Makes a room from what you play now and shows its code", "room__chip--wide"),
+    WEB_ROOMS
+      ? chip("Start a room", "Makes a room and shows its code. Anyone with the code can play, skip and add songs", "room__chip--wide")
+      : chip("Start a room", "Makes a room from what you play now and shows its code", "room__chip--wide"),
     busy,
   );
-  start.addEventListener("click", () => void startRoom());
+  start.addEventListener("click", () => void startRoom(WEB_ROOMS ? OPEN_TO_ALL : undefined));
   into.append(start);
 
   // No "or join one" divider: Start a room and Join are one section now, DeetsRooms.
@@ -572,7 +615,12 @@ function renderInRoom(state: RoomState, into: HTMLElement): void {
   const copies = el("div", "room__row room__row--copies");
   const copyCode = chip("Copy code", "Copies the room code");
   copyCode.addEventListener("click", () => copy(formatCode(state.code), "Room code copied."));
-  const copyLink = chip("Copy invite link", "Copies a link that opens DeetsMusic and joins this room");
+  const copyLink = chip(
+    "Copy invite link",
+    WEB_ROOMS
+      ? "Copies a link to this room. It opens DeetsMusic, or lets a friend listen in a browser"
+      : "Copies a link that opens DeetsMusic and joins this room",
+  );
   copyLink.addEventListener("click", () => copy(inviteLink(), "Invite link copied."));
   copies.append(copyCode, copyLink);
   into.append(copies);
@@ -591,9 +639,16 @@ function renderInRoom(state: RoomState, into: HTMLElement): void {
     // at the end (FRIENDS.md §18).
     const end = el("span", "room__member-end");
     if (member.isHost) end.append(el("span", "room__tag", "Host"));
-    const friendly = friendControl(member);
+    // A member on deets.solutions (WebRooms.md §3 rule 6): the host can see who listens from
+    // a browser, and Remove works on them as on anyone.
+    if (member.client === "web") {
+      const web = el("span", "room__tag", "Web");
+      web.title = `${member.name} listens in a browser on deets.solutions`;
+      end.append(web);
+    }
+    const friendly = WEB_ROOMS ? null : friendControl(member);
     if (friendly) end.append(friendly);
-    if (!member.isHost && state.isHost) {
+    if (!member.isHost && state.isHost && !WEB_ROOMS) {
       // An icon square, not a word chip (his call, 2026-09-26): beside Add friend, two chips
       // that look alike put a friendly press and a destructive one side by side.
       const remove = el("button", "panel__action room__remove");
@@ -610,8 +665,9 @@ function renderInRoom(state: RoomState, into: HTMLElement): void {
   into.append(list);
 
   // The host's controls, in one fold (§8, §16.7). The Sound panel's fold: a row with a
-  // turning caret, and the rows in a tinted box under it.
-  if (!state.isHost) return;
+  // turning caret, and the rows in a tinted box under it. Not on the web: a web room is open
+  // to everyone (his call R).
+  if (!state.isHost || WEB_ROOMS) return;
   const body = el("div", "room__fold");
   body.hidden = !permsOpen;
   body.append(el("div", "room__section room__section--first", "Guests may"));

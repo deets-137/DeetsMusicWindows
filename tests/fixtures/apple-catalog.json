@@ -1,0 +1,110 @@
+{
+  "_about": "Apple catalog resources, in the shape /v1/catalog returns them. Both normalizers read this file: Rust (apple.rs, test web_twin_fixture) and TypeScript (web/apple-catalog.ts, tests/web-catalog.test.ts). Both must produce apple-catalog.expected.json. docs/features/WebRooms.md §9.3 C.",
+  "songs": [
+    {
+      "id": "1440857781",
+      "type": "songs",
+      "attributes": {
+        "albumName": "Currents",
+        "artistName": "Tame Impala",
+        "artwork": { "width": 3000, "height": 3000, "url": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/aa/cover.jpg/{w}x{h}bb.jpg", "bgColor": "0a0c13", "textColor1": "f4c39b", "textColor2": "e7a07c", "textColor3": "c79f84", "textColor4": "bc8467" },
+        "composerName": "Kevin Parker",
+        "contentRating": "explicit",
+        "discNumber": 1,
+        "durationInMillis": 467587,
+        "genreNames": ["Alternative", "Music"],
+        "hasLyrics": true,
+        "isrc": "AUUM71500160",
+        "name": "Let It Happen",
+        "playParams": { "id": "1440857781", "kind": "song" },
+        "previews": [{ "url": "https://audio-ssl.itunes.apple.com/preview.m4a" }],
+        "releaseDate": "2015-03-10",
+        "trackNumber": 1,
+        "url": "https://music.apple.com/us/album/let-it-happen/1440857771?i=1440857781"
+      }
+    },
+    {
+      "id": "1790000001",
+      "type": "songs",
+      "attributes": {
+        "albumName": "Soon",
+        "artistName": "An Artist",
+        "artwork": { "width": 1400, "height": 1400, "url": "https://example.invalid/{w}x{h}.jpg" },
+        "durationInMillis": 201000,
+        "genreNames": [],
+        "hasLyrics": false,
+        "name": "Not Out Yet",
+        "trackNumber": 2
+      }
+    }
+  ],
+  "albums": [
+    {
+      "id": "1440857771",
+      "type": "albums",
+      "attributes": {
+        "artistName": "Tame Impala",
+        "artwork": { "width": 3000, "height": 3000, "url": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/aa/cover.jpg/{w}x{h}bb.jpg", "bgColor": "0a0c13" },
+        "genreNames": ["Alternative", "Music"],
+        "name": "Currents",
+        "releaseDate": "2015-07-17",
+        "trackCount": 13
+      }
+    },
+    {
+      "id": "1790000000",
+      "type": "albums",
+      "attributes": { "artistName": "An Artist", "name": "Soon" }
+    }
+  ],
+  "artists": [
+    {
+      "id": "450965139",
+      "type": "artists",
+      "attributes": {
+        "artwork": { "width": 2400, "height": 2400, "url": "https://is1-ssl.mzstatic.com/image/thumb/artist.jpg/{w}x{h}bb.jpg" },
+        "genreNames": ["Alternative"],
+        "name": "Tame Impala"
+      }
+    },
+    {
+      "id": "1",
+      "type": "artists",
+      "attributes": { "name": "No Genres" }
+    }
+  ],
+  "playlists": [
+    {
+      "id": "pl.u-abc",
+      "type": "playlists",
+      "attributes": {
+        "artwork": { "width": 1080, "height": 1080, "url": "https://example.invalid/pl/{w}x{h}.jpg" },
+        "curatorName": "Apple Music Alternative",
+        "description": { "standard": "The long text.", "short": "Short." },
+        "lastModifiedDate": "2026-10-10T07:00:00Z",
+        "name": "Alt Ctrl",
+        "playParams": { "id": "pl.u-abc", "kind": "playlist", "globalId": "pl.u-global" }
+      }
+    }
+  ],
+  "stations": [
+    {
+      "id": "ra.978194965",
+      "type": "stations",
+      "attributes": {
+        "artwork": { "width": 1000, "height": 1000, "url": "https://example.invalid/st/{w}x{h}.jpg" },
+        "contentRating": "explicit",
+        "editorialNotes": { "standard": "Long notes.", "short": "Live from LA." },
+        "isLive": true,
+        "name": "Apple Music 1",
+        "playParams": { "id": "ra.978194965", "kind": "radioStation" },
+        "url": "https://music.apple.com/us/station/apple-music-1/ra.978194965"
+      }
+    },
+    {
+      "id": "ra.1",
+      "type": "stations",
+      "attributes": { "name": "Bare", "editorialNotes": { "standard": "Only standard." } }
+    }
+  ]
+}

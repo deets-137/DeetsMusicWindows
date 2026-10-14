@@ -2852,3 +2852,36 @@ fn album_from_library(v: &serde_json::Value) -> Album {
         date_added: a["dateAdded"].as_str().map(String::from),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The web build has a TypeScript twin of the catalog normalizers (web/apple-catalog.ts,
+    /// docs/features/WebRooms.md §9.3 C). Both read the same Apple sample and must give the same
+    /// model; tests/web-catalog.test.ts checks the TypeScript side against the same file.
+    /// `UPDATE_WEB_FIXTURE=1 cargo test web_twin_fixture` rewrites the expected file from Rust,
+    /// after a deliberate change here; then the TypeScript twin must be changed to match.
+    #[test]
+    fn web_twin_fixture() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/fixtures");
+        let raw: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("apple-catalog.json")).unwrap()).unwrap();
+        let list = |key: &str| raw[key].as_array().cloned().unwrap_or_default();
+        let to = |v: serde_json::Result<serde_json::Value>| v.unwrap();
+        let got = serde_json::json!({
+            "songs": list("songs").iter().map(|v| to(serde_json::to_value(track_from_catalog_song(v)))).collect::<Vec<_>>(),
+            "albums": list("albums").iter().map(|v| to(serde_json::to_value(album_from_catalog(v)))).collect::<Vec<_>>(),
+            "artists": list("artists").iter().map(|v| to(serde_json::to_value(artist_from_catalog(v)))).collect::<Vec<_>>(),
+            "playlists": list("playlists").iter().map(|v| to(serde_json::to_value(playlist_from_catalog(v)))).collect::<Vec<_>>(),
+            "stations": list("stations").iter().map(|v| to(serde_json::to_value(station_from_catalog(v)))).collect::<Vec<_>>(),
+        });
+        let expected_path = dir.join("apple-catalog.expected.json");
+        if std::env::var("UPDATE_WEB_FIXTURE").is_ok() {
+            std::fs::write(&expected_path, serde_json::to_string_pretty(&got).unwrap() + "\n").unwrap();
+        }
+        let expected: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&expected_path).unwrap()).unwrap();
+        assert_eq!(got, expected, "the Rust normalizers no longer match apple-catalog.expected.json");
+    }
+}

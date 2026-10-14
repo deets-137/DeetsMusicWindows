@@ -34,6 +34,7 @@ import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart, skipTo
 import { resumePoint } from "./resume-point";
 import { idleSkip } from "./idle-skip";
 import { launchMark } from "./launch-perf";
+import { WEB_ROOMS } from "./platform";
 
 declare global {
   interface Window {
@@ -329,6 +330,9 @@ function observeEme(): void {
  * the exact key it reads. This is THE thing to watch in the console on first run.
  */
 async function injectUserToken(): Promise<void> {
+  // A browser signs in with MusicKit's own authorize() (web/listen.ts), and MusicKit keeps
+  // that token itself: there is nothing to put in (WebRooms.md §9.3 D).
+  if (WEB_ROOMS) return;
   const mut = await invoke<string | null>("apple_user_token");
   if (!mut) {
     console.warn("[player] no captured MUT — connect Apple Music in Settings first");

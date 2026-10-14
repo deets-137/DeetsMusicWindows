@@ -32,6 +32,8 @@ import { rowPick, picksText } from "./row-pick";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { rowDrag, isDragging, onDragEnd } from "./row-drag";
+import { WEB_ROOMS } from "./platform";
+import { onRoomChange, roomState, type RoomState } from "./room";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
 const SPAN_MS = 14 * 86_400_000; // how far back the card reads at mount (user's call)
@@ -152,10 +154,11 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       .map((p, i) => {
         const rt = trackById(p.handle.catalogId) ?? trackById(p.handle.libraryId);
         // The subtitle carries the day only while the row is on (the card keeps its shape).
-        const day = showDay ? dayLabel(p.ts) : "";
+        const day = showDay && p.ts ? dayLabel(p.ts) : "";
         const artist = rt?.artistName ?? "";
         const sub = day ? (artist ? `${artist} · ${day}` : day) : artist;
-        const meta = `<div class="qrow__meta">${p.skipped ? SKIP_MARK : ""}<span class="qrow__time">${esc(clock(p.ts))}</span></div>`;
+        // A room's history carries no play time (ts 0, the web): the row has no clock.
+        const meta = p.ts ? `<div class="qrow__meta">${p.skipped ? SKIP_MARK : ""}<span class="qrow__time">${esc(clock(p.ts))}</span></div>` : "";
         return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), true, meta, addSquareHTML(rt), rt?.catalogId ?? "");
       })
       .join("");
@@ -287,15 +290,24 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     render();
   };
 
+  // The web port (WebRooms.md §9.3 E, his call H): there is no play log on the web, so the
+  // card lists what the ROOM played, from the worker's last 50, newest first. The rows, the
+  // menus and the keys are the same; a row has no clock, because the room keeps no play time.
+  const fromRoom = (s: RoomState) => {
+    view = [...s.history].reverse().map((e) => ({ handle: { catalogId: e.catalogId, context: `room:${s.code}` }, ts: 0, skipped: false }));
+    render();
+  };
+
   // Re-render when the track store (re)loads (entries resolve instead of showing
   // "Unknown"), when the durable log is written, and when the day row is switched.
   const unsubTracks = onTracksChange(render, "history");
-  const unsubLog = onPlayEvent(() => void loadTail());
+  const unsubLog = WEB_ROOMS ? onRoomChange(fromRoom) : onPlayEvent(() => void loadTail());
   const unsubSettings = onSettingsChange((k) => {
     if (k === "historyShowDay") render();
   });
   render(); // the empty hero, until the first read lands (one local SQLite call)
-  void loadAll();
+  if (WEB_ROOMS) fromRoom(roomState());
+  else void loadAll();
 
   // Which card Ctrl+A acts on: the last press inside this one. The hero carries no tabindex,
   // so a press there leaves the focus on <body> and a `contains(activeElement)` test fails.

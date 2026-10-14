@@ -33,6 +33,7 @@ import { explicitBadge } from "./library-card";
 import type { CardDef } from "./cards";
 import { rowDrag, registerDropTarget } from "./row-drag";
 import { dropToPlay } from "./drop-actions";
+import { WEB_ROOMS } from "./platform";
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
 // The cover placeholder: the ♪ glyph in a one-line box (styles.css .np__art-glyph).
@@ -358,7 +359,8 @@ export const nowPlayingCard: CardDef = {
       addBtn.title = state === "added" ? "In your library" : "Add to Library";
     };
     const refreshAdd = () => {
-      if (!libraryAddEnabled()) return setAdd("hidden"); // the toggle is the only thing that removes it
+      // The toggle is the only thing that removes it; on the web there is no library (WebRooms.md §9.3 F).
+      if (WEB_ROOMS || !libraryAddEnabled()) return setAdd("hidden");
       const t = currentTrack();
       if (!t?.catalogId) return setAdd("idle"); // nothing playing / no catalog id: greyed, in place
       if (adding) return setAdd("busy");
@@ -412,7 +414,7 @@ export const nowPlayingCard: CardDef = {
     };
     const refreshListen = () => {
       const t = lastState?.station?.live ? undefined : currentTrack();
-      const key = setting("showListeners") && t ? (t.catalogId ?? t.libraryId ?? "") : "";
+      const key = setting("showListeners") && !WEB_ROOMS && t ? (t.catalogId ?? t.libraryId ?? "") : "";
       if (key === listenKey) return;
       listenKey = key;
       paintListen(null);
@@ -439,7 +441,7 @@ export const nowPlayingCard: CardDef = {
     const favBtn = host.querySelector<HTMLButtonElement>("#np-fav");
     const refreshFav = () => {
       if (!favBtn) return;
-      favBtn.hidden = !libraryAddEnabled(); // same consent as the "+"; only the toggle removes it
+      favBtn.hidden = WEB_ROOMS || !libraryAddEnabled(); // same consent as the "+"; only the toggle removes it
       const t = currentTrack();
       if (!favoriteOffered(t)) { // nothing playing / no catalog id: greyed, in place
         favBtn.disabled = true;
@@ -474,7 +476,8 @@ export const nowPlayingCard: CardDef = {
     let unsubVolume = () => {};
     let airplay: AirplayMount | null = null;
     const airplaySquare = host.querySelector<HTMLElement>("#np-airplay");
-    if (airplaySquare) airplay = mountAirplay(airplaySquare);
+    if (airplaySquare && WEB_ROOMS) airplaySquare.hidden = true; // a browser sends no AirPlay
+    else if (airplaySquare) airplay = mountAirplay(airplaySquare);
     if (volMute && volScrub) {
       const volSlider = makeSlider(volScrub, {
         axis: "x",
@@ -526,6 +529,8 @@ export const nowPlayingCard: CardDef = {
     host.querySelector<HTMLElement>("#np-summon")?.addEventListener("click", () => requestCard("queue"));
     // Search square (NEXT-VERSION §5): same bus, the Search card.
     host.querySelector<HTMLElement>("#np-search")?.addEventListener("click", () => requestCard("search"));
+    // The web port shows all four cards at once and has no slots to summon into (WebRooms.md §9.3 B).
+    if (WEB_ROOMS) for (const id of ["#np-summon", "#np-search"]) host.querySelector<HTMLElement>(id)?.remove();
 
     // Right-click the song identity (cover / title / artist) → drill or seed from the
     // CURRENT track. Mirrors the Queue now-hero menu, but always reachable since NP is

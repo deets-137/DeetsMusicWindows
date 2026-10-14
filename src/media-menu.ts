@@ -43,11 +43,17 @@ import { albumKey, pid } from "./rewind";
 import { picksText } from "./row-pick";
 import { setting } from "./settings-store";
 import { errorOf } from "./dom";
+import { WEB_ROOMS } from "./platform";
 
 type Row = MenuItem | null | undefined | false;
 
 /** Join the groups in their fixed order and drop the rows that do not apply. */
 const join = (...groups: Row[][]): MenuItem[] => groups.flat().filter(Boolean) as MenuItem[];
+
+/** Rows that need the desktop app: a library, playlists, ♥, pins, the Diary, Song of the Day,
+ *  stations, the playlist web, the credits store. The rooms port on the web leaves them out
+ *  (docs/features/WebRooms.md §9.3 F); play, queue, Go to and Copy Link stay. */
+const desk = (...rows: Row[]): Row[] => (WEB_ROOMS ? [] : rows);
 
 const err = errorOf("menu");
 
@@ -146,7 +152,7 @@ function songGoTo(t: Track | undefined, cid: string | undefined, nav?: LibNav): 
   );
   // A nav means this card drills locally, so Song Credits stays here too (go-to.ts).
   const credits: Row = nav && t ? (t.catalogId ? { label: "Song Credits", run: () => nav.drillSong(t) } : null) : songCreditsItem(t);
-  return [artist, album, credits];
+  return [artist, album, ...desk(credits)];
 }
 
 /** One song's menu. `t` may be undefined only where a row is still resolving (Queue,
@@ -166,20 +172,19 @@ export function songMenu(t: Track | undefined, w: SongWhere): MenuItem[] {
   return join(
     w.lead ?? [],
     play,
-    [t ? addToPlaylistItem(() => [t]) : null],
+    desk(t ? addToPlaylistItem(() => [t]) : null),
     songGoTo(t, cid, w.nav),
     [
-      startStationItem("songs", cid),
-      startWebItem(() => (t ? { kind: "song", track: t } : null), !!t?.catalogId),
+      ...desk(startStationItem("songs", cid), startWebItem(() => (t ? { kind: "song", track: t } : null), !!t?.catalogId)),
       copySongLinkItem(cid),
     ],
-    [
+    desk(
       t ? addSongToLibraryItem(t) : null,
       favoriteItem(t),
       t ? markItem([t], w.context) : null,
       // A song row pins the song, wherever it sits — inside an album view too (fork 3A).
       ...(t ? pinRows(songKey(t), "song", t) : []),
-    ],
+    ),
     w.own ?? [],
     w.away ?? [],
   );
@@ -276,14 +281,14 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
   });
   return join(
     playRows(load, w.context, { catalog: a.catalog, shuffle: true }),
-    [addToPlaylistItem(load)],
+    desk(addToPlaylistItem(load)),
     [goArtist, goAlbum],
     [
       // An album has no station of its own (Apple seeds stations from songs and artists).
-      startWebItem(webSeed, !!(a.catalogId || seed?.catalogId)),
+      ...desk(startWebItem(webSeed, !!(a.catalogId || seed?.catalogId))),
       a.catalogId ? copyAlbumLinkItem(a.catalogId) : copyAlbumLinkFromSongItem(seed?.catalogId),
     ],
-    [
+    desk(
       a.catalogId ? addAlbumToLibraryItem(a.catalogId, () => Promise.resolve(load())) : addAlbumFromSongsItem(a.known),
       // The Diary (DIARY.md §2, his call 5C): opens the album's entry, making it the first time.
       !w.inDiary && {
@@ -302,7 +307,7 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
       // ♥ (his call F2A, 2026-09-24): every album menu; the state is what the mirror knows.
       albumFavoriteItem({ id: a.catalogId ?? undefined, seed: seed?.catalogId, name: a.title }),
       ...albumPinRows(a),
-    ],
+    ),
     w.own ?? [],
     w.away ?? [],
   );
@@ -363,17 +368,19 @@ export function artistMenu(a: ArtistSubject, w: ArtistWhere): MenuItem[] {
   }
   return join(
     load ? playRows(load, w.context, { catalog }) : [],
-    [load ? addToPlaylistItem(load) : null],
+    desk(load ? addToPlaylistItem(load) : null),
     [go],
     [
-      a.catalogId ? startStationItem("artists", a.catalogId) : startArtistStationItem(a.name, seedIds),
-      startWebItem(
-        () => resolveId().then((id): WebSeed | null => (id ? { kind: "artist", artist: { name: a.name, catalogId: id, artwork: a.artwork } } : null)),
-        !!(a.catalogId || seedId),
+      ...desk(
+        a.catalogId ? startStationItem("artists", a.catalogId) : startArtistStationItem(a.name, seedIds),
+        startWebItem(
+          () => resolveId().then((id): WebSeed | null => (id ? { kind: "artist", artist: { name: a.name, catalogId: id, artwork: a.artwork } } : null)),
+          !!(a.catalogId || seedId),
+        ),
       ),
       copyArtistLinkItem(a.catalogId, seedId ? resolveId : undefined),
     ],
-    pinRows(`artist:${a.name}`, "artist", { name: a.name, artwork: a.artwork, catalogId: a.catalogId }),
+    desk(...pinRows(`artist:${a.name}`, "artist", { name: a.name, artwork: a.artwork, catalogId: a.catalogId })),
     w.own ?? [],
     w.away ?? [],
   );
@@ -406,15 +413,15 @@ export function playlistMenu(p: Playlist, load: () => Track[] | Promise<Track[]>
   return join(
     w.lead ?? [],
     playRows(load, w.context, { catalog: w.catalog, shuffle: true }),
-    [addToPlaylistItem(load, p.libraryId)], // a playlist can't bulk-add to itself
+    desk(addToPlaylistItem(load, p.libraryId)), // a playlist can't bulk-add to itself
     [open],
     [copyPlaylistLinkItem(p)],
-    [
+    desk(
       addPlaylistToLibraryItem(p),
       playlistFavoriteItem(playlistFav(p)),
       // One of Apple's (Search) keeps a snapshot, so its pinned tile draws (pins.ts).
       ...pinRows(`playlist:${pid(p)}`, "playlist", p.libraryId ? undefined : p),
-    ],
+    ),
     w.own ?? [],
     w.away ?? [],
   );
@@ -434,7 +441,7 @@ export function stationMenu(s: Station, w: StationWhere): MenuItem[] {
       { label: "Add to Queue", run: () => void queueStationAfter(s).catch(err("queue station")) },
     ],
     [copyStationLinkItem(s.url)],
-    [pinItem(`station:${s.id}`, "station", s)],
+    desk(pinItem(`station:${s.id}`, "station", s)),
     w.own ?? [],
     w.away ?? [],
   );
@@ -511,7 +518,7 @@ export function setMenu(load: () => Track[] | Promise<Track[]>, n: number, noun:
 export function listMenu(load: () => Track[] | Promise<Track[]>, w: SetWhere & { label?: string }): MenuItem[] {
   return join(
     w.play ?? playRows(load, w.context, { catalog: w.catalog, label: w.label }),
-    [addToPlaylistItem(load, w.exclude)],
+    desk(addToPlaylistItem(load, w.exclude)),
     w.own ?? [],
     w.away ?? [],
   );

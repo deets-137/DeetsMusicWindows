@@ -26,8 +26,13 @@ import { explicitBadge, heroCover, musicCell, songsGrouping } from "./library-ca
 import { mediaLevels } from "./media-levels";
 import {
   searchCatalog, collectionTracks, materializeTrack,
-  ALL_TYPES, type SearchType, type SearchResults, type Artist, type Album, type Playlist,
+  ALL_TYPES as EVERY_TYPE, type SearchType, type SearchResults, type Artist, type Album, type Playlist,
 } from "./search";
+import { WEB_ROOMS } from "./platform";
+
+/** The categories this card offers. The web port has no stations: a station leaves a room
+ *  (ROOMS.md §10), and a room is all the web port is for (WebRooms.md §9.3 F). */
+const ALL_TYPES: SearchType[] = WEB_ROOMS ? EVERY_TYPE.filter((t) => t !== "stations") : EVERY_TYPE;
 import type { Track } from "./library";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { rowDrag } from "./row-drag";

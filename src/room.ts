@@ -39,6 +39,7 @@ import { toast } from "./toast";
 import { busy, busyOver, causeOf } from "./busy";
 import * as diag from "./diag";
 import { plainError } from "./plain-error";
+import { WEB_ROOMS } from "./platform";
 
 // ── the wire (mirrors DeetsMusicRooms/src/protocol.js, its own repo) ─────────
 
@@ -94,6 +95,8 @@ export interface RoomMember {
   joinedAt: number;
   /** Their room tag, when they have a friend code (FRIENDS.md §18.5). An older app sends none. */
   tag?: string;
+  /** "web" for a member listening on deets.solutions (WebRooms.md §4); absent = the app. */
+  client?: string;
 }
 
 /** A member offered you their friend code (FRIENDS.md §18). The worker sends it to you alone. */
@@ -115,6 +118,9 @@ export interface RoomState {
   members: RoomMember[];
   current: RoomEntry | null;
   upcoming: RoomEntry[];
+  /** What the room played, oldest first: the worker keeps the last 50 (ROOMS.md §5.2). The
+   *  web History card reads it (WebRooms.md §9.3 E). */
+  history: RoomEntry[];
   playing: boolean;
   /** Set while this app stopped listening but the room plays on (§8, §12.3). */
   stopped: boolean;
@@ -132,10 +138,35 @@ const OFF: RoomState = {
   members: [],
   current: null,
   upcoming: [],
+  history: [],
   playing: false,
   stopped: false,
   error: "",
 };
+
+/**
+ * A web host's room code and host token, kept in the TAB's sessionStorage (WebRooms.md §3
+ * rule 8): a reload comes back as the host inside the worker's 60 s grace window, and a closed
+ * tab forgets it, so the room ends 60 s later as when an app host quits. The app keeps the
+ * token in memory only, as before.
+ */
+const WEB_HOST_KEY = "deets.room.host";
+function keepWebHost(code: string, token: string): void {
+  if (!WEB_ROOMS) return;
+  try {
+    sessionStorage.setItem(WEB_HOST_KEY, JSON.stringify({ code, token }));
+  } catch {
+    /* storage refused: a reload then ends the room, as closing the tab does */
+  }
+}
+function forgetWebHost(): void {
+  if (!WEB_ROOMS) return;
+  try {
+    sessionStorage.removeItem(WEB_HOST_KEY);
+  } catch {
+    /* nothing kept */
+  }
+}
 
 // ── module state ─────────────────────────────────────────────────────────────
 
@@ -264,6 +295,7 @@ export async function startRoom(controls?: GuestControls, opts?: { keepPlaying?:
     const made = (await response.json()) as { code?: string; hostToken?: string };
     if (!made.code || !made.hostToken) throw new Error("the rooms server sent no code");
     hostToken = made.hostToken;
+    keepWebHost(made.code, made.hostToken);
     diag.log("room:start", { code: made.code });
     // The room takes the host's current song and Up Next (§7). READ THEM FIRST: `connect`
     // resolves on the first state message, and that message's `writeModel` has already
@@ -311,6 +343,28 @@ export async function joinRoom(rawCode: string): Promise<void> {
   } catch (e) {
     fail("Couldn't join that room.", e);
   }
+}
+
+/**
+ * The web port after a reload: back into the room this tab hosts, with its host token, so
+ * the room is not lost to a reload (WebRooms.md §3 rule 8). True when there was one.
+ */
+export function resumeWebHost(): boolean {
+  if (!WEB_ROOMS || inRoom()) return false;
+  let kept: { code?: string; token?: string } | null = null;
+  try {
+    kept = JSON.parse(sessionStorage.getItem(WEB_HOST_KEY) ?? "null");
+  } catch {
+    kept = null;
+  }
+  const code = kept?.code && normalizeCode(kept.code);
+  if (!code || !kept?.token) return false;
+  hostToken = kept.token;
+  state = { ...OFF, phase: "joining", code };
+  emit();
+  diag.log("room:resume-host", { code });
+  connect(code, true).catch((e) => fail("Couldn't get back into your room.", e));
+  return true;
 }
 
 /** Leave (a guest) or end it (the host, §7). The app's own queue comes back (§9.4). */
@@ -376,6 +430,8 @@ async function connect(code: string, asHost: boolean): Promise<void> {
         name: roomName() || (asHost ? "Host" : "Listener"),
         ...(hostToken ? { hostToken } : {}),
         ...(tag ? { tag } : {}),
+        // The app's member list marks a web member (WebRooms.md §4). An older worker ignores it.
+        ...(WEB_ROOMS ? { client: "web" } : {}),
       });
     });
     ws.addEventListener("message", (event) => {
@@ -525,6 +581,7 @@ function teardown(why: string): void {
   }
   socket = null;
   hostToken = "";
+  forgetWebHost();
   playingEntryId = "";
   stopped = false;
   keepPlayingUntil = 0;
@@ -570,6 +627,7 @@ function applyState(message: any): void {
     members: message.members ?? [],
     current: transport.current,
     upcoming,
+    history: (message.queue?.history ?? []) as RoomEntry[],
     playing: transport.playing,
     error: "",
   };
@@ -577,6 +635,9 @@ function applyState(message: any): void {
     setRoomBridge(bridge);
     diag.log("room:in", { code: state.code, host: state.isHost });
   }
+  // A late joiner never had the room's earlier songs as current or upcoming, so their names
+  // come from the entries themselves, as the queue's do (the web History card reads them).
+  if (state.history.length) addTransientTracks(state.history.map(trackOf));
   writeModel(transport.current, upcoming);
   emit();
   void follow(transport);
@@ -824,7 +885,9 @@ export function removeMember(memberId: string): void {
 }
 
 /** The invite link the panel copies (§1). */
-export const inviteLink = (): string => `deetsmusic://room?code=${state.code}`;
+/** The app's link opens the app. The web port's is the rooms worker's /j/ page, which offers
+ *  the app AND "Listen in your browser" (WebRooms.md §1). */
+export const inviteLink = (): string => (WEB_ROOMS ? `${baseUrl()}/j/${state.code}` : `deetsmusic://room?code=${state.code}`);
 
 // ── the bridge player.ts calls (§10) ─────────────────────────────────────────
 
