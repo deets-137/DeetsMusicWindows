@@ -75,6 +75,11 @@ updated: 2026-10-14
   header (60 s) it reads "Try again in a minute." Decided inside his call: while one is on
   screen, a second failed click does not show another.
 
+> **2026-10-13:** the counter also feeds the weekly health report of usage counts: calls by
+> group and status class, and the 429 back-off arms, as numbers only (`usage.rs`,
+> [USAGE-COUNTS.md](../features/USAGE-COUNTS.md) §3.3). So the owner sees Apple's replies across
+> installs, not only on this PC.
+
 ## 4. Later (⬜ C)
 
 - MusicKit's requests in the release build: a small release copy of `perf.ts`'s resource-timing

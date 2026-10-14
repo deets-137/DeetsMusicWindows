@@ -39,7 +39,7 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 
 | Step | Command | What it does | Needs |
 |---|---|---|---|
-| 1 | set the version, write the notes | the same version in the seven files (§1: four are checked, three are not), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. Publish copies that entry to the update offer and the website, and refuses to run without it | — |
+| 1 | set the version, write the notes | the same version in the seven files (§1: all seven are checked), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. Publish copies that entry to the update offer and the website, and refuses to run without it | — |
 | 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build` (signs `DeetsMusic.exe`, NSIS plugins, uninstaller, installer; writes the updater `.sig`) → `release-check` → archive | both secrets below, the signing tools (§6.9) |
 | 3 | install + test | the installed build, by hand, from `installers/` | — |
 | 4 | `npm run release:publish` | uploads installer + `.sig` to R2 and adds the row to the channel index; installs start to update. Then builds the web demo and commits + pushes it to `../DeetsSolutions` master, which deploys the site (WEB-DEMO.md §9.8) | `../DeetsSupport` checkout, wrangler login; `../DeetsSolutions` on master |
@@ -54,6 +54,7 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 | Azure client secret (`Deets Release Signing`) | Credential Manager `DeetsMusicAzureSigning`. **Expires 2027-03-14** | `release.mjs` → `sign.mjs` | Make a new one in a minute; runbook §6.9 |
 | Artifact Signing dlib + `metadata.json` | `%LOCALAPPDATA%\DeetsTools\artifact-signing\` | `sign.mjs` | Download again (§6.9) |
 | Build key (one line) | `Documents\Deets' Secrets\deetsmusic-build-key.txt` | `build.rs` → the exe → `X-Deets-Build` on the mint and report intake; the Worker's `BUILD_KEYS` secret | Lost = make a new one and add it to `BUILD_KEYS` (a list) before the next release; leaked = nothing, it was always readable from the exe (§7a) |
+| Last.fm API key + secret | `DocumentsDeets' Secretslastfm.json` | `build.rs` → the exe (`DEETS_LASTFM_KEY` / `_SECRET`); `release-check` fails a build without it | Lost = make a new API account at Last.fm; leaked = readable from the exe anyway, like the build key |
 | Cloudflare account (Worker, R2) | wrangler login in `../DeetsSupport` | `release:publish`, the update route | Secure it first in any key incident (§6.6) |
 
 **Why two signatures.** A stolen updater key alone cannot push an update: the attacker also needs
@@ -173,7 +174,7 @@ npm run release     # secrets → cli:build → sign cli → tauri build (signed
    `signCommand` from a temporary `--config` file and signs `DeetsMusic.exe`, the NSIS plugin DLLs,
    the uninstaller and the installer. With the updater env vars it then writes the updater `.sig`
    (after the Authenticode signature — tested §6.9). ~3 min cold, ~1 min warm. Output:
-   `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (+ `.sig`, ~7 MB).
+   `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (+ `.sig`, ~9 MB in 0.26).
 4. **`scripts/release-check.mjs`** — the gate (§1a): no repo paths in the exe, versions agree,
    **no dev telemetry in the shipped JS** (check 5, 2026-09-16: `frames.ts` / `perf.ts` /
    `vinyl.ts` ride `TELEMETRY` in `src/telemetry-on.ts`, which `VITE_PERF=1` turns ON so a
@@ -283,6 +284,7 @@ The archive earns its keep because `src-tauri/target/` is the only other copy, a
 | `DeetsMusic.exe` | `src-tauri` release build | The app. `mainBinaryName` in `tauri.conf.json` — without it the exe takes the Cargo package name. |
 | `cli\deetsmusic.exe` | `cli/dist/` via `bundle.resources` | The agent CLI + MCP server ([AGENT.md](../integrations/AGENT.md)). |
 | `extension\` | `extension/` via `bundle.resources` | Unpacked MV3 source + `install.html` ([EXTENSION.md](../integrations/EXTENSION.md) §6). |
+| `mcpb\deetsmusic.mcpb` | `mcpb/dist/` via `bundle.resources` | The Claude Desktop extension that *Set up the DeetsMusic MCP* installs ([MCP-INSTALL.md](../integrations/MCP-INSTALL.md), 0.26.0). |
 | `uninstall.exe` | NSIS | Also registered under Installed apps. |
 
 Every exe above (and the setup exe) carries an Authenticode signature from *Aditya Sundaram*,
@@ -291,7 +293,9 @@ from the first release after 0.4.3. Check one with **Properties › Digital Sign
 
 Install root is `%LOCALAPPDATA%\DeetsMusic` (`installMode: currentUser`). User data lives
 elsewhere and survives: `%APPDATA%\com.deetsmusic.app` holds `deetsmusic.db`,
-`user-token.txt`, `settings.json`, `deetsmusic.log`.
+`user-token.txt`, `settings.json`, `deetsmusic.log`, `developer-token.json`, the user's own
+pictures and sounds (`files\`), and the Friends and Song of the Day files
+(DATA-ARCHITECTURE.md §8).
 
 ## 3. The NSIS hooks
 
@@ -371,9 +375,10 @@ then offers the extension walkthrough.
 - **`npm run tauri dev` and the installed app share `%APPDATA%\com.deetsmusic.app`** (same
   identifier). Anything a dev run writes to `settings.json` the installed build reads. Use
   `npm run dev:app` (own identifier) when testing anything that seeds a one-shot state.
-- **Secrets**: an installed build looks in `%APPDATA%\com.deetsmusic.app\secrets\` first and
-  falls back to the compile-time repo path. Copy `src-tauri/secrets/` there to make the install
-  self-contained — see `src-tauri/secrets/README.md`.
+- **Secrets**: a release build reads no local MusicKit key. It takes its developer token from
+  the mint, as a stranger's install does (§1a, §7; `apple.rs`, "debug builds only", since
+  2026-09-13). Only a debug build reads `apple.json` + the `.p8`, from the app data dir or the
+  repo.
 - **An install closed a running dev build too** (seen 2026-09-14, an updater install of
   0.4.2-t2): Tauri's installer closed processes by the name `DeetsMusic.exe`, and Windows
   matches `target\debug\deetsmusic.exe` without case. **Fixed 2026-09-23 (§4a)**: the installer
@@ -633,7 +638,7 @@ stored with `\n` line endings whatever the checkout uses:
 - `--withdraw <v> --reason "<text>"` stores `withdrawn_reason` beside `withdrawn: true`. The
   reason is shown on the public page, so it is written in plain words for a user.
 - `--notes-only <v>` refreshes one row's `notes` from RELEASE-NOTES.md without re-uploading
-  the installer. Today a typo fix needs `--replace`, which uploads ~6 MB again.
+  the installer. (Before it, a typo fix needed `--replace`, which uploads the installer again.)
 - **A publish to `deetsmusic` stops when RELEASE-NOTES.md has no entry for the version**
   (added 2026-09-16). Before that, the script wrote `notes: ""` without a warning. 0.6.3 and
   0.7.0 went live that way, and their rows on the website were empty until `--notes-only`
@@ -681,7 +686,9 @@ stored with `\n` line endings whatever the checkout uses:
 ### 6.9 Authenticode — Azure Artifact Signing (set up 2026-09-14/15)
 
 > Status: **working, tested 2026-09-15** (0.4.4-t1 → t2 on `deetsmusic-test`). The next real
-> `npm run release` ships signed. Open: what the first-run prompt shows (last "Test first" item).
+> `npm run release` ships signed (every release since 0.5.0). The first-run prompt was checked
+> 2026-09-15 (the last "Test first" item): Edge names the publisher and still warns until the
+> download reputation builds.
 
 **Terms.** *Authenticode* is the Windows signature that puts a publisher name on an exe. It is
 separate from the updater key (§6.6). *Artifact Signing* is Azure's service for it (formerly
@@ -839,9 +846,13 @@ What it does buy, which is enough:
 - **Tokens expire**, so a leaked one dies without revoking the key.
 - **A kill switch, rate limits and usage visibility**, all changeable without a new release.
 
-It also stays clean on privacy: the Worker only mints developer tokens. Sign-in remains the
-local loopback flow and the **music-user token never leaves the machine**, so the Worker sees
-no user data at all. Say that plainly wherever the app is published.
+It also stays clean on privacy: the mint only mints developer tokens. The **music-user token
+never passes through the Worker**: the hosted sign-in page hands it to the app by a deep link
+(DATA-ARCHITECTURE.md §2a), and the loopback page stays on this PC. Say that plainly wherever
+the app is published. (Read 2026-10-14: the same Worker has two other routes that do carry
+something from the app, each the user's to turn off: anonymous usage counts with no ID,
+[USAGE-COUNTS.md](../features/USAGE-COUNTS.md), and a bug report the user sends from Settings ›
+Bugs. The README › Privacy paragraph says both.)
 
 ### The one implementation constraint
 

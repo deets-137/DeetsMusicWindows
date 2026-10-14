@@ -57,7 +57,18 @@ update channel (it answers 0.26.1: 0.27.0 is built, not published).
 - **The cards folder:** CARD-GROW (Max's four layouts, where the later rows live, the rule
   builder built as Rulez, §19's desk test 1–4 passed), CARD-MEMORY (Diary and Rulez in the
   table; Rewind the gap), CARD-SWAP (Max cells can differ; the flush sites), STAGE-COLUMN (the
-  compact preset 960 × 750, the 750 floor, outside click off by default, the full player). Not read line by line: the long bodies of DEBUGGING,
+  compact preset 960 × 750, the 750 floor, outside click off by default, the full player).
+  Committed `0f067df` (my paths only; another session's `card-grow.ts` / `full-player.ts` work
+  was in the tree).
+- **The ops folder:** RELEASE (all seven version files are checked; the Last.fm key in the
+  secrets table; the `.mcpb` ships; a release reads no local MusicKit key; the user data
+  folder's contents; §6.9's open item closed; §7's privacy line now names usage counts and bug
+  reports), HANDOFF's version bullet, LOGGING (the App log row; the health counts), DB-HEALTH and
+  APPLE-CALLS (both now feed the weekly health report), DEBUGGING (Press composited since
+  2026-10-11, the launch desk test passed, the report form built). BETA and DESK-TESTS were done
+  in the morning. Left for him: README › Privacy says "No listening history leaves your PC",
+  but Last.fm, Friends, Discord and rooms share the song playing; RELEASE-NOTES' "Next release"
+  holds only usage counts, though Presentation mode and the Full | Lib rework are committed since. Not read line by line: the long bodies of DEBUGGING,
   QUEUE, ROOMS, DeetsOTD and the feature docs past their status blocks.
 
 ## 2026-10-14 (unlucky-thirteenth) — usage counts: committed, and the owner box on the site

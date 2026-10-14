@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 # DeetsMusic — Debugging tools
 
@@ -507,8 +507,10 @@ on or off with injected CSS; the token form is not re-measured yet:
    Glass, Cyber, Ocean Sand and Ocean Soft differ by ≤ 0.08 / 255 mean. No position shift.
    **Press differed (max 70 / 255):** Press cards are opaque, so the list text there uses colour
    (subpixel) smoothing. On its own layer the text falls back to grey smoothing, which is a visible
-   softening (fringe chroma 102 → 36). **That is why the rule is a skin token**, and Press stays
-   `auto`. Press scroll was already 240 fps.
+   softening (fringe chroma 102 → 36). **That is why the rule is a skin token**, and Press stayed
+   `auto` then (scroll was already 240 fps). On 2026-10-11 his call turned it on for Press and
+   Vanilla after the Library list measured 24–56 % dropped frames there; the softer text is the
+   known trade.
 
 **Left to do before handing it over:**
 - Restart `dev:built` (the token form needs a new bundle) and repeat checks 1–2 with the token.
@@ -919,7 +921,7 @@ host 11 MB (read with the §Which memory number to quote snippet).
 
 ## Launch — the 2026-09-29 launch pass
 
-> **Part:** built · 2026-09-29 · desk test open (below)
+> **Part:** built · 2026-09-29 · desk test passed 2026-10-13 (his eye, steps 1–6; DESK-TESTS.md §5)
 
 **Terms.** *nav* = the main page's navigation start (`performance.timeOrigin`). *Shown* = the
 return of `main_ready`: Rust shows the window inside that command. *The lift* = the cover's fade
@@ -1772,8 +1774,8 @@ out. `deetsmusic diag --tag player:pause` shows `songEnd` × 3, the Next as `son
   no artwork for a moment (VINYL.md §5).
 - See HANDOFF "Known gotchas" for the canonical list.
 
-## Future: in-app "Report a problem"
-`diag.report()` is intentionally the payload. The remaining piece is a Settings row that
-bundles `report()` + environment (app version, theme/skin, connection status, last
-error) and lets the user copy / save / send it — so a bug report arrives already
-actionable. Not built yet; the capture (above) is.
+## In-app "Report a problem" (built 2026-09-14)
+`diag.report()` is the payload. The Settings row is built: Settings › Bugs has the report form
+(a bug or a suggestion, the area, the text, *Attach log*), My reports, and the App log
+([LOGGING.md](LOGGING.md) §The report form). A report goes to `support.deets.solutions` with the
+app version; the user sees the exact text before it sends.

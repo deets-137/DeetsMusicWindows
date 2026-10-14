@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: none
 sources: [src/diag.ts, src-tauri/src/log.rs, src-tauri/src/bridge.rs, src-tauri/src/report.rs, src-tauri/src/watchdog.rs]
-updated: 2026-09-25
+updated: 2026-10-14
 ---
 # Logging — the rolling log file
 
@@ -160,8 +160,8 @@ leaves a trace.
 
 ## Settings
 
-One row: **Open log folder**, via `tauri-plugin-opener` — already a
-dependency. The user must be able to read the file before anything is
+One row: **App log** in Settings › Bugs, with **Open folder** and **Copy** (the first build had
+**Open log folder**, via `tauri-plugin-opener`). The user must be able to read the file before anything is
 sent anywhere. Label and hint copy are Aditya's, per the settings row
 style.
 
@@ -409,6 +409,13 @@ deliberately slack — a slow frame, a big sort or a cold paint must never write
 
 The gate that stops the cause reaching a build at all is `release-check` check 9
 (RELEASE.md §1). The watchdog is the second layer, for a stall the gate cannot see.
+
+## Health counts for usage reports (BUILT 2026-10-13)
+
+Every `WARN` and `ERROR` line also bumps a count of its level and its area (the tag before the
+colon), never its text (`log.rs`, USAGE-COUNTS.md §3.3). The weekly health report sends those
+counts as numbers while *Send usage counts* is on. The file itself leaves the PC only in a bug
+report.
 
 ## Apple calls (BUILT 2026-09-25)
 

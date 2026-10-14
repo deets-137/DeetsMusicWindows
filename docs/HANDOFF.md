@@ -75,7 +75,7 @@ npm run release:publish  # after testing the installed build: R2 upload + update
 ```
 
 Produces `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` + `.sig`
-(~7 MB) and copies both into `installers/` (gitignored; pre-release versions go to
+(~9 MB) and copies both into `installers/` (gitignored; pre-release versions go to
 `installers/dev/`). Installs per-user to `%LOCALAPPDATA%\DeetsMusic` with **no admin prompt**.
 A release needs two Credential Manager entries (`DeetsMusicUpdaterKey`,
 `DeetsMusicAzureSigning`), the updater key file, and the signing tools in
@@ -86,10 +86,10 @@ Things that bite:
 - **Use `npm run release`, not `tauri build`.** Only `release` runs `cli:build` first, which
   stages `cli/dist/deetsmusic.exe`. `tauri build` alone ships the **previous** CLI, silently.
 - **The version lives in SEVEN files** — the list is [RELEASE.md §1](ops/RELEASE.md).
-  `release-check` compares four of them (`package.json`, `src-tauri/tauri.conf.json`,
-  `src-tauri/Cargo.toml`, `cli/Cargo.toml`) and fails *after* the bundle is built and signed.
-  Nothing checks the other three (`extension/manifest.json` and both `Cargo.lock` files), so
-  bump them by hand in the same commit.
+  `release-check` compares five (`package.json`, `src-tauri/tauri.conf.json`,
+  `src-tauri/Cargo.toml`, `cli/Cargo.toml`, `extension/manifest.json`) and fails *after* the
+  bundle is built and signed; `docs:check` check 5 covers both `Cargo.lock` files. Bump the
+  manifest by hand and run `cargo check` in `cli/` before the version commit.
 - **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
   file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
   0.1.3 `PREINSTALL`/`PREUNINSTALL` hooks stop the CLI first (RELEASE.md §3).

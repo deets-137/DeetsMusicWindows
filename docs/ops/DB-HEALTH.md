@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.10.0
 desk_test: none
 sources: [src-tauri/src/dbhealth.rs, src-tauri/src/db_open.rs, src-tauri/src/library.rs, src-tauri/src/db_thread.rs, src/stats.ts]
-updated: 2026-10-10
+updated: 2026-10-14
 ---
 # DeetsMusic — is the database still writable?
 
@@ -172,7 +172,9 @@ with `queued` / `sent` / `failed` states, a restart-safe backlog and one retry t
 the other way about. A network call fails transiently and a disk does not.
 
 **Revisit this when the numbers say so.** If `writesFailed` or `canaryFails` is ever above
-zero on a real machine, that is the evidence this decision was missing.
+zero on a real machine, that is the evidence this decision was missing. Since 2026-10-13 the
+weekly health report of usage counts carries the failed-write count from every install that
+sends counts (`usage.rs`, USAGE-COUNTS.md §3.3), so "a real machine" is no longer only this PC.
 
 ## 6. Desk test
 
