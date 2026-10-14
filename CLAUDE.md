@@ -203,7 +203,12 @@ skin, the full-size trigger; HE designs the UI, never write that picture for him
 only; §9 the forks. `SupportArtist.md` — an idea (2026-10-12): a "Support" link on the artist
 view to the artist's crowdfunding page, Bandcamp and official site (his call), from MusicBrainz
 URL relationships at zero Apple calls; §4 the Apple terms read (one risk, his call); §5 the
-library probe that comes before HIS UI; §8 the forks.
+library probe that comes before HIS UI; §8 the forks. `WebRooms.md` — an idea (2026-10-13): a
+friend on a Mac joins an app room by its code and listens in a browser on deets.solutions
+(their own subscription, no preview tier). Every fork his, closed (§7.1): the site's Radio tab is
+rebuilt as a web port of Search, Queue, History and Now Playing (1:1) on the rooms worker; no
+YouTube, no Match Desk, no friends; the Radio token reused; a web room is open to everyone; the
+old DeetsRadio worker goes offline (§6.1). Reopens ROOMS.md §13.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

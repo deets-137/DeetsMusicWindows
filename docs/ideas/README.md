@@ -49,6 +49,11 @@ the app can do any of these things.
   a probe of the owner's library before he designs the UI (§5, §6); the forks (§8).
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
   its first part was built (the stats cell grows over the card in Max).
+- [WebRooms.md](WebRooms.md) — an idea (2026-10-13): a friend on a Mac joins an app room by its
+  code and listens in a browser on deets.solutions, with their own Apple Music subscription.
+  Every fork is his and closed (§7.1): the site's Radio tab becomes a web port of Search, Queue,
+  History and Now Playing on the rooms worker, with no YouTube and no Match Desk; a web visitor
+  may start an open room; the old DeetsRadio worker goes offline (§6.1).
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).
