@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.14.0
 desk_test: passed 2026-09-24
 sources: [src/media-menu.ts, src/context-menu.ts, src/web.ts, src/copy-link.ts, src/go-to.ts, src/pins.ts, src/np-bus.ts, src/tray.ts]
-updated: 2026-09-27
+updated: 2026-10-14
 ---
 # DeetsMusic — Right-click menus
 
@@ -274,7 +274,7 @@ module with a listener that neither this doc nor ONBOARDING.md §2 names (2026-0
 | Module | The right-click | Opens |
 |---|---|---|
 | `browser-defaults.ts` | anywhere | blocks the browser's own menu, except in a text field |
-| `collection-card.ts` | a row, a tile, the hero | the row's media menu through its card's builder call; the hero's `menu` (§3a) |
+| `collection-card.ts` | a row, a tile, the hero, a Last.fm facts box | the row's media menu through its card's builder call; the hero's `menu` (§3a); the facts box's own small menu (LISTENERS.md §7.1) |
 | `history-card.ts` · `qcard.ts` · `rewind-card.ts` · `home-card.ts` · `search-card.ts` | a row, a tile, the now hero, a picked set | the media menu of the item's kind, with the card's own rows (§5) |
 | `now-playing-card.ts` | the cover, the title block | the song menu without the Play group (§3.1) |
 | `diary-card.ts` | an entry tile, a song row, a folder header | the album menu with the entry's rows (DIARY.md §2); the song menu; Rename · Delete Folder |
@@ -284,6 +284,9 @@ module with a listener that neither this doc nor ONBOARDING.md §2 names (2026-0
 | `card-grow.ts` | a card's title, the Grow button | Grow ▸ · Fill · Pin · Collapse (CARD-GROW.md) |
 | `tray.ts` | the song in the tray panel | the tray song menu (§3.1, fork 6A) |
 | `web.ts` | the Temp \| N days button | no menu: steps the days back (PLAYLIST-WEB.md §10) |
+| `layout.ts` | a card name in the slot picker | Hide from picker (HIDE-CARDS.md) — not a media menu |
+| `list-keys.ts` | none: the Menu key and Shift+F10 on a row | sends a `contextmenu` to the row, so the keys open the row's own menu |
+| `copy-edit.ts` | dev only, while the copy editor is on | swallows the right-click on a word being edited (COPY-EDIT.md); never in a release |
 
 ## 6. The forks, closed 2026-09-23
 

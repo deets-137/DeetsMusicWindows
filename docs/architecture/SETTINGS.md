@@ -2,7 +2,7 @@
 status: foundation
 desk_test: none
 sources: [src/settings-store.ts, src/settings-card.ts, src/styles/settings.css, src/agent-settings.ts]
-updated: 2026-10-12
+updated: 2026-10-14
 ---
 # DeetsMusic — Settings: the machinery
 
@@ -54,7 +54,8 @@ updated: 2026-10-12
   condition holds (§3 *Skin rows and range rows*). It is a normal registry card
   (`CardId "settings"`), so it can also be picked from any slot's title picker.
 - **Rule: a control lives in exactly one place.** Nothing is duplicated between the menu
-  and the card; the AirPlay dropdown (when built) keeps only live actions.
+  and the card; the AirPlay *Play on* panel keeps only live actions. (Sound and Sleep are the
+  one exception, §3a.)
 
 ## 2. The store — `deets.settings`
 
@@ -92,10 +93,12 @@ Every row of the card, with the key behind it. The controls that are settings bu
 title-bar panel instead are §3a. Labels are one short active statement; a choice row reads as a sentence completed by the
 chosen pill. Hints ride the row as a hover tooltip only. Default first.
 
-**The sections (twenty-one, since the regroup of 2026-09-18 and Song of the Day the same day).**
-Tips · Window · Look schedule · Motion · Skin settings · Menus, hints and notices · Home ·
-Playback · Sound · Sleep · AirPlay · Apple Music · Last.fm · Playlists · Rewind ·
-**Song of the Day** · Connections · Updates · Reset · Bugs · About.
+**The sections (twenty-six, read from `settings-card.ts` on 2026-10-14).**
+Tips · Window · Cards · Look schedule · Motion · Skin settings · Menus, hints and notices · Home ·
+Playback · Sound · Sleep · AirPlay · Apple Music · Last.fm · Sharing · Friends · Discord ·
+Playlists · Rewind · Diary · Song of the Day · Connections · Updates · Reset · Bugs · About.
+The regroup of 2026-09-18 made twenty-one; Sharing, Friends and Discord came 2026-09-20, Diary
+2026-09-24, Cards 2026-10-10. A user can reorder them (below).
 Look and feel was one fold until that day; `RESET_GROUPS` had treated it as four for months and
 the card now agrees. **Window keeps one fold** and names its three groups with a `.set__sub-head`
 sub-heading — *Window*, *Window sizes*, *Growing and drilling* — because nine of its rows are
@@ -155,7 +158,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Look schedule | Menu pick lasts — pills *Until next change* / *For good* | `lookHold` | **next** / always | `look-schedule.ts` `noteHandPick` (main.ts Theme/Skin clicks) |
 | Motion | Animate look changes (Theme and skin changes play the launch animation. Off: they change at once) — also the launch fade | `appearanceMotion` | on / off | `appearance.ts` (`withAppearanceTransition`, the launch cover's veil → wait → lift, UX-COVERUPS.md §6a) and `boot-cover.ts`; OS reduced motion still snaps · a **rule key** ([RULES.md §18a](RULES.md)) |
 | Motion | Animate card swaps (Cards move to their new places in the skin's own motion. Off: they change at once) — default **on** (was off until 2026-09-16) | `cardSwapMotion` | on / off | `card-swap.ts` from `layout.ts` `setSlot` (picker swap, summon, replace); skin tokens `--swap-*`; OS reduced motion still snaps; [CARD-SWAP.md](../cards/CARD-SWAP.md) · a **rule key** ([RULES.md §18a](RULES.md)) |
-| Motion | Fancy scrubber (Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle) — toggle (2026-09-16) | `fancyScrubber` | **on** / off | `data-fancy-scrub` on `<html>`; a performance eval decides whether it stays on by default · a **rule key** ([RULES.md §18a](RULES.md)) |
+| Motion | Fancy scrubber (Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle) — toggle (2026-09-16) | `fancyScrubber` | **on** / off | `data-fancy-scrub` on `<html>`; its loops are stepped at `--ambient-fps` (DEBUGGING.md, the ambient loops) · a **rule key** ([RULES.md §18a](RULES.md)) |
 | Motion | Animate backgrounds (The moving Ocean, Glass, and Cyber backgrounds. Reduced: fewer updates, less CPU. Off: they hold still) | `backgroundMotion` | on / reduced / off | `ambient.ts` → `data-bg-motion` on `<html>`: reduced sets `--ambient-fps: 15` (skin.css), off pauses the loops and hides the storm (styles.css); OS reduced motion still wins · a **rule key** ([RULES.md §18a](RULES.md)) |
 | Motion | If graphics fail (When the graphics card stops, turn off heavy effects until DeetsMusic restarts) — choice (2026-10-11) | `graphicsFallback` | **save** (Save + tell) / tell (Tell only) / off | a row that makes a built-in rule (`row:graphicsFallback`, `rules-eval.ts`): while the `graphics` fact is `software`, Fancy Glass, the three Animate rows and a Covers / Picture canvas are held off; `gpu.ts` reads the renderer and shows the toast; [GRAPHICS-FALLBACK.md](../features/GRAPHICS-FALLBACK.md) |
 | Skin settings | Card opacity (Ocean only. How solid the sunken cards are. Lower: the sea shows through) — slider 0–100% (2026-09-23); shows only while Ocean is the skin | `oceanCardOpacity` | **80** / 0–100 (100 until 2026-10-11) | `skin-settings.ts` → `--ocean-card-opacity` on `<html>` → Ocean `--panel` at that percent. OCEAN.md |
@@ -186,7 +189,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Playback | Previous behavior for mid-list songs (§4) — *The list* / *Played songs* | `previousReach` | lookback / heard | `queue.ts` `setContext` (heard = no parked lookback) |
 | Playback | Restore on launch (2026-09-12) — *Last song* / *Up Next* / *Nothing* | `restoreQueue` | song / queue / off | `queue-persist.ts` (blob in the cache db's `meta`; song = Now Playing paused + Up Next + Previous, queue = song parked atop Up Next, Now Playing idle) |
 | Playback | Play a web when a list ends (A web of songs like the album or song that ended plays next, and is deleted after 1 day. Off: the list waits at its first song) — toggle (2026-09-29) | `listEndWeb` | **on** / off | `player.ts` `afterListEnd` + `web.ts` `webAtListEnd` — [QUEUE.md §The end of a list](../features/QUEUE.md), [PLAYLIST-WEB.md §12](../features/PLAYLIST-WEB.md) |
-| Playback | Button is perma-shuffle (NEXT-VERSION §14, 2026-09-15) — toggle: the Shuffle button is a mode; off = it shuffles Up Next once | `shuffleStays` | **on** / off | `player.ts` `toggleShuffle` / `isShuffleOn`; the mode's state is `shuffleMode` (no row; Reset › Playback clears it), repeat's is `repeatMode` (no row, NEXT-VERSION §12) |
+| Playback | Shuffle button stays on (NEXT-VERSION §14, 2026-09-15; *Button is perma-shuffle* until the 2026-09-18 wording pass) — toggle: the Shuffle button is a mode; off = it shuffles Up Next once | `shuffleStays` | **on** / off | `player.ts` `toggleShuffle` / `isShuffleOn`; the mode's state is `shuffleMode` (no row; Reset › Playback clears it), repeat's is `repeatMode` (no row, NEXT-VERSION §12) |
 | Playback | Shuffle off plays (2026-10-12) — *In order* / *As shuffled*: a press that turns the mode off makes Up Next the list in its order from the playing song (unshuffle), or leaves it | `shuffleOff` | **order** / keep | `player.ts` `shuffleOff` → `queue.ts` `unshuffle` ([QUEUE.md §Shuffle and unshuffle](../features/QUEUE.md)) |
 | Playback | Shuffle keeps picks (§5a) — *First* / *In place* / *Mixed* | `shuffleManual` | top / hold / mix | `queue.ts` `shuffleUpcoming` |
 | Playback | Stream quality (Auto follows your network speed; High is 256 kbps and Low is 64 kbps, from the next song) — *Auto* / *High* / *Low* (2026-09-16) | `streamQuality` | **auto** / high / low | `player.ts` `applyStreamQuality`: sets `music.bitrate` after configure, on a change, and (Auto) on Chromium's `navigator.connection` change, with a 0.5 / 1 Mbps gap. [AUDIO-QUALITY.md](../features/AUDIO-QUALITY.md) §4.1 |
@@ -258,14 +261,10 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | About | Send usage counts (Sends counts once a day and once a week: no ID, no songs, no place) — toggle (2026-10-13) | `usageReports` | **on** / off | `usage.ts` `initUsage` — the day count, the weekly settings and health reports, each at its own random moment, sent by `usage_send` (usage.rs); off drops a planned report at once. A consent gate: an agent may turn it off, never on; no Reset group holds it ([USAGE-COUNTS.md](../features/USAGE-COUNTS.md)) |
 | About | What is sent (The last report of each kind and the next one, exactly as they leave) — *Show* | — | — | `usage.ts` `whatIsSent` in a panel on the menu shell (`wireUsagePanel`) |
 
-**The fifteen sections, in order** (regrouped 2026-09-14; Home joined 2026-09-15, Tips
-2026-09-15, AirPlay and Last.fm 2026-09-16): Tips · Window · Look and feel · Home · Playback ·
-AirPlay · Apple Music · Last.fm · Playlists · Rewind · Connections · Updates · Reset · Bugs ·
-About. **Tips and About start open**; every other section starts folded, and a fold persists by
-section title (`deets.settings.folds`), so a renamed section starts folded once.
-
-**There is no Sound section** — the Sound panel owns those rows (§3a) — but Settings › Reset
-does carry a *Sound* group. That mismatch is known and open.
+**Tips and About start open**; every other section starts folded, and a fold persists by
+section title (`deets.settings.folds`), so a renamed section starts folded once. (The list of
+fifteen sections from 2026-09-14 and its "no Sound section" note were replaced by the
+sections list at the top of §3.)
 
 A choice row with more than `SPLIT_MAX` (3) options draws as a dropdown instead of pills;
 `menu: true` forces the dropdown at three or fewer, for labels too long to sit side by side
@@ -425,6 +424,34 @@ Never deferred: a card that card memory reopens scrolled down, a search, a row r
 4. `[perf] launch` lines on three `dev:built` launches with Settings on screen: `ready` near the
    same launch with Home in that slot.
 
+## 3c. The quick panel shows the same rows
+
+The title bar's cog opens the **quick panel** ([QUICK-SETTINGS.md](../features/QUICK-SETTINGS.md)): a
+row of squares, each holding one or more of the card's sections. It is not a second set of
+settings. `quick-panel.ts` mounts the card's own rows through `mountSettingsParts`
+(settings-card.ts), so a row there and the same row in the card are one control; a change in
+either redraws the other through `onSettingsChange`. The map is `PARTS` in `quick-panel.ts`
+(QUICK-SETTINGS.md §3 is the table):
+
+| Square | Sections |
+|---|---|
+| Apple Music | the Account row, Apple Music, AirPlay |
+| Discord | Discord, and Sharing's *Share activity on Discord* row only |
+| Window | Window, Cards |
+| Look (the brush) | Look schedule, Skin settings (when this skin has rows), Motion |
+| Help (the helipad) | Menus, hints and notices, Playback |
+| Connections (the robot) | Connections |
+| Fun things (the net) | Song of the Day, Friends |
+| Updates and bugs (the beetle) | Updates, Bugs |
+| Reset (the ring) | Reset |
+| The cog | *All settings*: the full card |
+
+**Only in the card** (read 2026-10-14): Tips (the panel has a line that points to them), Home,
+Sound and Sleep (their title-bar panels hold them too, §3a), Last.fm, Sharing's other rows,
+Playlists, Rewind, Diary, About. **A new section** is either added to `PARTS` or left out on
+purpose; that is the owner's call (a placement fork). Its rows' N badges show in both places
+(QUICK-SETTINGS.md §10).
+
 ## 4. The Rewind gate
 
 The Rewind card is **hidden from the pickers until it has something to show**:
@@ -454,4 +481,12 @@ with the swap motion; the other surface's saved layout drops it too.
    gate or Rust owns it.
 5. Agents ([AGENT.md §6](../integrations/AGENT.md)): add the row to `SPECS` in `src/agent-settings.ts`, with the
    card's label, section and choices. A consent gate (like Add to Library) takes
-   `offOnly: true`; a value agents must never change takes `readOnly: true`.
+   `offOnly: true`; a value agents must never change takes `readOnly: true`. docs:check 20
+   fails a key with no spec.
+6. Usage counts: put the key on `REPORTED` or `NOT_REPORTED` in `src/usage-keys.ts`, then
+   `npm run usage:keys` (USAGE-COUNTS.md §4). `tests/usage-keys.test.ts` fails a toggle or
+   choice on neither list.
+7. A new row or section gets one line in `NEW_MARKS` (`settings-card.ts`), so it wears the N
+   badge (QUICK-SETTINGS.md §10). A new section also needs a place in the quick panel, or none (§3c):
+   bring him that choice.
+8. A value a rule may set is a rule key, read with `effective` (RULES.md §19).

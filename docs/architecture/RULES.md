@@ -352,6 +352,7 @@ an async round trip, and the level would paint small and then jump.
 | Sleep › Sleep every day (`sleepSchedule`, `sleepAt`) | `sleep.arm` → sleep at the clock time or sunset. The wind down and play out stay in sleep.ts | Moment |
 | Menus › **Go to opens** (`goToTarget`, new 2026-09-27, RULEZ.md §10.1) | *Search* / *Library*: `goto.artist` and `goto.album` → `openIn`. *Where it fits*: none (the Library in place, other cards in Search) | Moment |
 | Playback › Shuffle with nothing currently playing behavior (`shuffleIdle`, 2026-09-27) | *Library*: `shuffle.press` if `loaded` is false → `shuffleLibrary`. *Nothing*: none. player.ts has no idle branch of its own | Moment |
+| Motion › **If graphics fail** (`graphicsFallback`, 2026-10-11, [GRAPHICS-FALLBACK.md](../features/GRAPHICS-FALLBACK.md)) | *Save + tell*: while `graphics` = software → Fancy Glass, the three Animate rows and a Covers / Picture canvas held off. *Tell only*, *Off*: none | State |
 
 The rows keep their keys, values, defaults, agent specs, hints and Reset. Nothing migrates
 except theme and skin (§7a).

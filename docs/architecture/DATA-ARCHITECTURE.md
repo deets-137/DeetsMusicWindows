@@ -2,7 +2,7 @@
 status: foundation
 desk_test: none
 sources: [src/stats.ts, src-tauri/src/heal.rs, src-tauri/src/library.rs, src/track-store.ts]
-updated: 2026-09-29
+updated: 2026-10-14
 ---
 # DeetsMusic — Data Architecture
 
@@ -27,6 +27,11 @@ model — never a raw Apple (or future Spotify) shape.** Normalization lives in 
                                lib.rs        wiring: state, DB open, command registry
 ```
 
+The diagram is the first slice (2026-06). `src-tauri/src/` now holds about 45 modules (the
+file map is HANDOFF.md › File map); the shape is the same: each feature's commands live in
+its own `.rs` file, and every command that takes the database runs on the database thread
+(§5).
+
 - **Rust owns** secrets, network calls, normalization, and the cache.
 - **Frontend** calls commands, renders our model, and listens for sync events.
 - Adding **Spotify** later = a new provider impl + adapter in Rust; **zero UI change** for the
@@ -39,10 +44,11 @@ model — never a raw Apple (or future Spotify) shape.** Normalization lives in 
 
 > Two tokens, two different problems. The **developer token** is minted from the MusicKit
 > `.p8` and identifies the *app*; the **music-user token (MUT)** comes from the flow below and
-> identifies the *listener*. This section is about the MUT. The developer token is about to
-> move off the client entirely — a MusicKit key needs a paid Apple membership, so a public
-> build cannot carry one. See [RELEASE.md](../ops/RELEASE.md) §7 for the Cloudflare Worker that
-> mints it and the cache that keeps `developer_token()` synchronous.
+> identifies the *listener*. This section is about the MUT. **The developer token is off the
+> client:** a release build never signs one. It takes it from the mint on the DeetsSupport
+> Worker and caches it in `developer-token.json`; only a debug build with a local `apple.json`
+> + `.p8` signs its own (`apple.rs`, "Developer token: the cache, the dev seam and the mint").
+> See [RELEASE.md](../ops/RELEASE.md) §7.
 
 The in-app webview **cannot open OAuth popups** (a known Tauri/WebView2 limitation,
 [tauri#14263](https://github.com/tauri-apps/tauri/issues/14263)), and MusicKit's
@@ -50,7 +56,8 @@ The in-app webview **cannot open OAuth popups** (a known Tauri/WebView2 limitati
 **user's real browser** instead, which is also our permanent approach.
 
 Flow (`apple_begin_auth`):
-1. Rust signs an Apple **developer token** (ES256 JWT from the `.p8`, ~150-day exp).
+1. Rust gets an Apple **developer token**: from the mint in a release build, signed from the
+   local `.p8` in a debug build (above).
 2. Rust starts a **one-shot loopback HTTP server** on `127.0.0.1`, on the first free
    fixed port of 47831–47833 (the `origin` claim needs exact ports), and
    opens the user's default browser at it (via `tauri-plugin-opener` —
@@ -66,13 +73,15 @@ Flow (`apple_begin_auth`):
   5-min timeout. (Was an ephemeral port until 2026-09-13; see `AUTH_PORTS` in apple.rs.)
 - **Nonce**: Rust embeds a random nonce in the page; the callback must echo it, so a
   stray local page/process can't inject a token. Page and callback are same-origin.
-- **MUT never reaches the renderer** — it lives in Rust memory + a gitignored file.
-  The `.p8` never leaves Rust at all.
-- **Production TODO:** move the MUT from `secrets/user-token.txt` (plaintext) to the
-  **Windows Credential Manager** (keychain). That's the one ship-blocker here.
+- **The MUT reaches the renderer for one path only:** `player.ts` asks Rust for it and gives
+  it to MusicKit JS, which must have it to play (HANDOFF.md › Key decisions). No other page
+  code reads it. The `.p8` never leaves Rust at all.
+- **Not done:** the MUT is a plaintext file. Encrypting it with DPAPI is designed in
+  [ideas/SECRETS-AND-CSP.md](../ideas/SECRETS-AND-CSP.md), not built.
 
-The MUT is persisted to `src-tauri/secrets/user-token.txt` and reloaded on startup
-(`load_persisted_user_token`), so sign-in survives restarts.
+The MUT is persisted to `<app_data_dir>/user-token.txt` (`safe_file::write_atomic`) and
+reloaded on startup (`load_persisted_user_token`; an older copy in `src-tauri/secrets/` is read
+as a legacy fallback), so sign-in survives restarts.
 
 ### 2a. Hosted sign-in page + deep link (decided 2026-09-13, built the same day)
 
@@ -147,7 +156,7 @@ from the plan below, each for a reason found while building:
 | 2 | Page look | Themed | At Worker deploy, copy `src/styles/{palette,themes,skin,fonts}.css` + the two Liberation Serif fonts into the Worker. The page reads `theme`/`skin` from the query. An unknown value falls back to `lilac`/`press`. **Risk:** the copy is stale when the app adds a theme, so the copy step belongs in the release checklist. |
 | 3 | Return trigger | Automatic link + **Return to DeetsMusic** button | After the Apple popup closes, the page can lose user activation. Chrome can then block the automatic link without a message. The button always works. |
 | 4 | Dev build | Own scheme `deetsmusic-dev://` | The scheme is one HKCU registry entry that points to one exe. If `dev:app` registered `deetsmusic://`, it would take the scheme from the installed app. The page accepts only the two values `s=deetsmusic` and `s=deetsmusic-dev`. |
-| 5 | Loopback page after ship | Keep for one release as a fallback | The app shows a link: "Browser page didn't load? Use local sign-in". This covers a Worker outage or a blocked domain. Remove it in the next release if nothing uses it. |
+| 5 | Loopback page after ship | Keep for one release as a fallback (still in the app on 2026-10-14: the automatic fallback and the Account row's link) | The app shows a link: "Browser page didn't load? Use local sign-in". This covers a Worker outage or a blocked domain. Remove it in the next release if nothing uses it. |
 
 **Security**
 - **Any web page can open a `deetsmusic://` link.** Without the nonce, a hostile page could
@@ -190,8 +199,9 @@ from the plan below, each for a reason found while building:
 - The **icon** is a setting: MusicKit reads `app.icon` from `configure()` (passed on as
   `iconURL`), else `<link rel="apple-music-app-icon">`, else `apple-touch-icon-precomposed`.
   Our pages set none, so Apple shows a blank placeholder. With the hosted page, serve the DM
-  icon (`app-icon.png`) over HTTPS from the Worker and pass it as `app.icon`. Not built; an
-  icon from a `127.0.0.1` page was never tried (Apple's page is HTTPS and may block it).
+  icon (`app-icon.png`) over HTTPS from the Worker and pass it as `app.icon`. **Built:** the
+  hosted page serves `/signin/icon.png` and passes it as `app.icon` (`signin.js` in
+  DeetsSupport). An icon from a `127.0.0.1` page was never tried.
 
 **RESOLVED — "Edge drops the link" was a dev-environment artifact (2026-09-13).** In the
 first desk test Edge never opened `deetsmusic-dev://…` (no dialog; the console says *"the
@@ -255,8 +265,9 @@ vs **catalog**, so:
   play later. Don't drop it.
 - **`Page<T>`** = `{ items, total, nextOffset }` — the paging contract.
 
-`Album`/`Artist` are defined but **not yet wired** as synced entities (the Library card
-*derives* them from songs — see below). `Playlist` **is wired** (2026-07-02): the Apple
+`Album`/`Artist` are not synced as entities (the Library card *derives* them from songs — see
+below). Catalog facts about them are cached on demand: `artist_catalog` (an artist's catalog
+id and photo), `album_palette`, `artist_info` / `album_info` (Last.fm's facts boxes). `Playlist` **is wired** (2026-07-02): the Apple
 mirror + local store in `playlists.rs` ([PLAYLISTS.md](../features/PLAYLISTS.md)); local rows ride a
 synthetic `local:{rowid}` library id, and their `created_at` serializes into
 `date_added` (RFC3339, chrono) so one comparator sorts both sources. Artists are
@@ -274,27 +285,34 @@ Serde uses `camelCase`, so the TS interfaces in `library.ts` match field-for-fie
 
 ## 4. Provider trait + Apple adapter
 
-`provider.rs` defines `MusicProvider` (currently just `songs_page`). `apple.rs`'s
+`provider.rs` defines `MusicProvider` (it began with only `songs_page`). `apple.rs`'s
 `AppleProvider { dev, user, client }` implements it: it GETs
 `/v1/me/library/songs?limit&offset`, maps each resource via
 `track_from_library_song`, and returns a `Page<Track>` (reads `meta.total` + `next`).
 
 The trait has since grown `playlists_page` / `playlist_tracks_page` (the Apple mirror
-read-in, [PLAYLISTS.md](../features/PLAYLISTS.md)) and the Search/enrichment catalog paths; it will
-keep growing (`albums_page`, …) as we extend.
+read-in, [PLAYLISTS.md](../features/PLAYLISTS.md)) and `search`. Most catalog reads (enrichment, the
+artist and album pages, stations) are plain `apple.rs` commands outside the trait.
 
 ---
 
 ## 5. Cache + sync (`library.rs`)
 
 **Store:** SQLite (`rusqlite`, bundled) at `<app_data_dir>/deetsmusic.db`, opened in
-`lib.rs` setup and held as managed `Db(Mutex<Connection>)`.
+`lib.rs` setup and held as managed `Db(Mutex<Connection>)`. Take it with `Db::lock`, which
+recovers a poisoned lock ([DB-HEALTH.md](../ops/DB-HEALTH.md)). Since 2026-09-25 every command
+that takes the lock runs on **the database thread** (`db_thread.rs`): one queue, first in,
+first out, off the UI thread; a slow job logs `db: slow …`. The schema is at v18
+(`meta.schema_version`); each `migrate_vN` in `library.rs` is one step.
 
 ```sql
-tracks(library_id TEXT PRIMARY KEY, sort_key TEXT, json TEXT)  -- + idx_tracks_sort
+tracks(track_id TEXT PRIMARY KEY, source TEXT DEFAULT 'library', sort_key TEXT, json TEXT)
 ```
 Each row stores the full `Track` as JSON plus a `sort_key` (`lower(title)lower(artist)`)
-for ordered, paged reads. Upserts are one transaction.
+for ordered, paged reads. `track_id` is catalog-first (`catalogId ?? libraryId`); `source` is
+`library` or `seen` (a catalog song played but not in the library). Upserts are one
+transaction. Every other feature keeps its own tables in the same file (pins, playlists, the
+Diary, favorites, the web, the caches); each feature doc names its own.
 
 **Add times** (2026-09-15, [HOME.md §3](../features/HOME.md)):
 ```sql
@@ -507,12 +525,16 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 `npm run dev:app` — the identifier is the only thing that config changes, which is what keeps
 a dev build off the installed build's cache, settings and WebView2 profile.
 
-**`settings.json` (`settings.rs`)** is the handful of choices Rust must know *before* the
-webview is up, so they can't live in localStorage: `minimizeToTray` (the × policy runs before
-any JS could answer), `readWindowsMedia` (the tray panel's GSMTC fallback), `bridgeToken` (the
-extension's shared secret), and `windowPos` (where the real window sat, so the tray flyout can
-be put back — [TRAY.md](../features/TRAY.md) §5). Every field has a default, so a missing or stale file
-never blocks startup. Everything else — theme, skin, layout, surface — stays in localStorage.
+**`settings.json` (`settings.rs`)** holds the choices Rust must know *before* the webview is
+up, or that Rust acts on alone, so they can't live in localStorage: `minimizeToTray` (the ×
+policy runs before any JS could answer), `readWindowsMedia` (the tray panel's GSMTC fallback),
+`bridgeToken` (the extension's shared secret), `windowPos` (where the real window sat —
+[TRAY.md](../features/TRAY.md) §5), the agent gates (`agentControl`, `agentHistory`, `agentDiary`), the
+AirPlay memory (last speaker, volumes and delay per speaker, the capture), Last.fm's two
+switches, Song of the Day's posting, and `autostartSeeded`. The full list is `SettingsData`;
+its one front-end shape is `src/rust-settings.ts`. It is written with `safe_file::write_atomic`
+and read field by field, so one bad value resets that field only. Everything else — theme,
+skin, layout, surface — is the settings store in localStorage ([SETTINGS.md](SETTINGS.md)).
 
 **Path resolution:** `secrets_dir()` prefers `<app_data_dir>/secrets/` and falls back to the
 compile-time `CARGO_MANIFEST_DIR`, so an installed build can be made self-contained by copying

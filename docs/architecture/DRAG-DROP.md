@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-14
 sources: [src/row-drag.ts, src/row-pick.ts]
-updated: 2026-09-17
+updated: 2026-10-14
 ---
 # DeetsMusic — Drag and drop between cards
 
@@ -69,7 +69,8 @@ lazy `tracks()` that runs only at the drop (so a Search album costs no fetch unt
 | Radio · Search | a **station** row / tile (2026-09-15) | none — `kind: "station"`, `station` set, `play` = `playStation`. The Queue card makes it the station return (`queueStationAfter`: plays once the queue runs dry, the Qcard row says *Will resume after*); Now Playing plays it now; playlists and the Library refuse it (the *can't drop* ghost) |
 
 **Not sources:** Radio genres (not song lists), folder and shelf headers, the Up Next
-station row. One item per drag (there is no multi-select in the app).
+station row. (The plan said "one item per drag": since 2026-09-15 a picked set drags as one
+payload, §7.)
 
 ---
 
@@ -208,3 +209,13 @@ the pointer.
 - A drop that finds every song already in the library says so (`info`).
 - The accelerator-keys switch is `cfg(not(debug_assertions))`: it can only be tested in an
   installed build.
+
+### 7a. Added since (read 2026-10-14)
+
+- **Sources:** Home tiles (`home-card.ts`, pinned and shelf tiles); Diary entry tiles
+  (`diary-card.ts`).
+- **A target:** the **Diary card** takes an album (from any card but the Diary itself) and
+  opens its entry, making it the first time ([DIARY.md](../features/DIARY.md) §2).
+- The registry is used by `collection-card.ts`, `library-card.ts`, `qcard.ts`,
+  `now-playing-card.ts` and `diary-card.ts`; a new target or source follows the checklist
+  item 12 in `CLAUDE.md` (`row-drag.ts` + `drop-actions.ts`).

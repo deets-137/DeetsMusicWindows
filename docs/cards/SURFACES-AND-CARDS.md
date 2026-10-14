@@ -300,7 +300,8 @@ test and one line in CLAUDE.md.
 | Rulez | own rows | ✓ (2026-09-27) | · | ✓ | ✓ | ✓ |
 | Settings | own rows | Ctrl+F | · | ✓ sections | · | ✓ |
 
-The gaps are the owner's to close or leave; they are listed in HANDOFF.md › Open now.
+The gaps are the owner's to close or leave; they are listed in HANDOFF.md › Open now. Read
+again 2026-10-14: the one gap is still Rewind's memory (`rewind-card.ts` returns no `snapshot()`).
 
 ---
 

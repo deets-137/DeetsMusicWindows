@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.0
 desk_test: passed 2026-09-19
 sources: [src/card-grow.ts, src/add-square.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
-updated: 2026-10-01
+updated: 2026-10-14
 ---
 # DeetsMusic — growing a card
 
@@ -75,7 +75,10 @@ is a bug in the build, not a design change.
 | Midi | the gap between `left` and `right` | none | Grow left / right (the card covers the full content row) |
 | Mini | none | none | — |
 
-The stage column (Now Playing + Queue) never grows and is never covered.
+The stage column (Now Playing + Queue) never grows and is never covered (the Queue grows up
+over Now Playing, STAGE-COLUMN.md §7). **Since 0.26.0 Max has four layouts** (*Layout for Max*:
+4 cards, 2 columns, 2 rows, 1 card): the zones and the Grow words follow the layout, and a
+layout with one card has nothing to grow over ([MAX-CARDS.md](../features/MAX-CARDS.md) §4.4).
 
 ## 3. Edge zones (fork 1A, 2B)
 
@@ -212,7 +215,9 @@ builds again at that size.
 | `cardGrowOutside` | Collapse on outside click | On / Off | Off (since 2026-10-01) | His call, 2026-10-01: a grown card stays open while you work beside it (the Queue, a menu); Esc, the edge zones or Collapse close it. Settings before custom rules: the default, not a rule, gives this. It was On ("a grow is temporary; Pin covers the case where you want it to stay"). An install that stored `true` keeps it: new installs only, no one-time switch (his call). |
 | `cardGrowPick` | Grown card on a new pick | Keeps size / Collapses | Keep | Decided 6A. |
 
-Each key gets a spec in `agent-settings.ts` and a line in AGENT.md. Each row gets a hint in
+The later grow and drill rows are in their own sections: *Keep view when grown* (§13a),
+*Card on drill* and *Bring a card already open* (§14–§15), *Grow on album or artist* (§18).
+SETTINGS.md §3 is the live list. Each key gets a spec in `agent-settings.ts` and a line in AGENT.md. Each row gets a hint in
 the ONBOARDING.md ledger.
 
 **No memory (fork 9, C1).** A grow ends with the app. Pin holds a card for the session only.
@@ -903,12 +908,15 @@ AGENT.md, and a hint in the ONBOARDING.md ledger.
 
 ### 18.6 The rule builder (later)
 
+> **Part:** built · 2026-09-27 — as the Rulez card ([RULEZ.md](../features/RULEZ.md)): a Grow rule can
+> name a card. The text below is the plan.
+
 The same stored list, shown as editable rows: "When I [open an album ▾] in [Library ▾],
 [Fill ▾]". A row per card lets one trigger do different things in different cards (Library
 Fills on an album, Search only Grows). The fixed rows of §18.5 are the rules with `card: "*"`.
 Nothing is built until the fixed rows are desk-tested.
 
-## 19. The grow timing pass (2026-09-28, BUILT, desk test open)
+## 19. The grow timing pass (2026-09-28, BUILT; desk test steps 1–4 passed, 5 not run)
 
 > **Part:** built · 2026-09-28
 
@@ -937,6 +945,9 @@ it and it flows better"); no snap and no jitter ("everything must look intention
   `npm run dev:built`, below.
 
 ### 19.1 Desk test
+
+Steps 1–3 passed on Claude's shots run, 2026-10-01; step 4 passed, his, 2026-10-13 (`--grow-rows-at`
+stays 0.4); step 5 (reduced motion) not run (DESK-TESTS.md §5).
 
 1. `npm run dev:built`, Midi, Glass. Grow the left card from its edge bar. The rows start to
    come in while the edge is still slowing down; the card is never empty and still.

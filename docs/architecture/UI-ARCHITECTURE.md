@@ -2,7 +2,7 @@
 status: foundation
 desk_test: none
 sources: [src/skin-settings.ts, src/skin.ts, src/main.ts, src/library-card.ts, src/styles.css, src/hint.ts]
-updated: 2026-09-27
+updated: 2026-10-14
 ---
 # DeetsMusic — UI Architecture
 
@@ -131,7 +131,7 @@ same lesson the pre-build checklist already carries for primitives.
 
 - **SCRUBBERS (2026-09-16, NEXT-VERSION §21).** Every `.scrub` handle has two layers. The
   *plain* handle is a `--title` box masked by the skin's `--scrubber-handle` SVG (Press block,
-  Ocean lens swell, Glass ring, Cyber bolt). With **Settings › Look and feel › Fancy
+  Ocean lens swell, Glass ring, Cyber bolt). With **Settings › Motion › Fancy
   scrubber** on (`data-fancy-scrub="on"` on `<html>`, default on), the skin's own playhead
   draws over it in `styles.css` §Fancy scrubbers: the **Press I-beam** (a stroke with a bar
   top and bottom; thickens under the hand and takes the `--ink-2` plate shadow), the **Ocean
@@ -144,7 +144,8 @@ same lesson the pre-build checklist already carries for primitives.
   it. Loops move transform, opacity and, for the bolt, a drop-shadow only. Tokens:
   `--scrub-nib-w / -hover-w / -flag`, `--scrub-bob-dur`, `--scrub-sheen-dur`,
   `--scrub-lens-scale`, `--scrub-breathe-dur`. The title-bar volume bar has no handle by
-  design. A performance eval on `dev:built` is the next step.
+  design. The loops were measured and stepped at `--ambient-fps` (DEBUGGING.md, the ambient
+  loops).
 - **Transport motion:** `--sh-cross-dur` / `--sh-cross-gap` (Shuffle's press run: the two
   arrows swing apart to parallel and re-cross) and `--rp-loop-dur` (Repeat's one full turn on
   the press that lands on *one*). Motion is skin, so a skin can slow, quicken or flatten both
@@ -251,7 +252,7 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   rather than floating above it. Mono body sizes down a step (14 → 13px) with extra leading,
   since Plex Mono runs wide at the 480px midi width. Anton (title, one weight — `--fw-title`
   drops to 400) + IBM Plex Mono (body). **Retired the `desk` skin** it replaced; a saved
-  `desk` id migrates via `RETIRED` in `skin.ts`.
+  `desk` id migrates via `RETIRED_SKINS` in `src/look-ids.ts`.
 - **`ocean`** — deep/abyssal: sunken recessed cards (`color-mix`, Card opacity) over a heavy
   **swell** in perspective with a glow of the album's color from the deep (the ocean layer,
   below; [OCEAN.md](../features/OCEAN.md)), a sink/rise nav, Cinzel (title) + Spectral (body). Optional **sand card edges** with a width slider (§Sand edges; off by default).
@@ -278,7 +279,7 @@ fast and hard-eased at both ends), Ocean sinks (`translateY`), Glass fades/scale
   [FUTURE-SETTINGS §13](../FUTURE-SETTINGS.md) (skin-specific). Pairs best with dark themes
   (moonlight / black-yellow / black-red), where the bolts read as light.
   **Named Retro-Future until 2026-09-17** (CyberStorm before that); saved `retro-future` and
-  `cyberstorm` ids migrate via `RETIRED` in `skin.ts`, the pre-paints, `settings-store.ts` (day/night
+  `cyberstorm` ids migrate via `RETIRED_SKINS` in `src/look-ids.ts`, the pre-paints, `settings-store.ts` (day/night
   skin) and the extension. DeetsSolutions and the hosted sign-in (DeetsSupport `signin.js`) were renamed the same day.
 
 ### Ambient layers: the cost rules (2026-09-13)
@@ -327,11 +328,13 @@ Under `prefers-reduced-motion` the ocean stays *visible* and merely stops (unlik
 which hides: a motionless sea is still a sea, a half-drawn bolt reads as a bug).
 
 ### Skin-only settings (2026-09-15)
-A skin can expose its own knobs as Settings rows. They sit in Settings › Look and feel and
-show **only while that skin is active**. Today: Ocean's *Draw card edges* + *Sand width*
-(§Sand edges), Glass's *Canvas glow*, *Dim canvas*, *Backlight*, *Tint cards* (§Glass's
-sliders), and Press's *Record player*, *Show record on*, *Spin speed*, *Show record plate* (§Press's record
-player). This supersedes the "future skin options surface" in FUTURE-SETTINGS §12–13.
+A skin can expose its own knobs as Settings rows. They sit in **Settings › Skin settings** (Look
+and feel until the 2026-09-18 regroup) and show **only while that skin is active**. Today:
+Ocean's *Card opacity*, *Album light*, *Draw card edges* + *Sand width* (§Sand edges); Glass's
+*Canvas* and the rows it shows (*Tiles*, *Picture*, *Diffusion*, *Aurora color*,
+[COVER-WALLPAPER.md](../features/COVER-WALLPAPER.md)), *Fancy Glass*, then *Canvas glow*, *Dim canvas*,
+*Backlight*, *Tint cards* (§Glass's sliders); and Press's *Record player*, *Show record on*,
+*Spin speed*, *Show record plate* (§Press's record player). The live list is SETTINGS.md §3. This supersedes the "future skin options surface" in FUTURE-SETTINGS §12–13.
 
 **The path of one value:** the store (`settings-store.ts`) → `src/skin-settings.ts` writes it
 onto `<html>` (a choice as a `data-` attribute, a 0–100 slider as a custom property) → the
@@ -361,14 +364,14 @@ before the first paint, so a card never flashes the default look.
    entry (`key: ["--prop", unit]`); `previewSkin` and the launch/change wiring then cover it.
 3. `skin.css` — the base token (inert) and the skin's read with its fallback. A 0–100 value is
    mapped in CSS (`calc(var(--prop, 50) / 50)`, a min…max range, a cap), never in TS.
-4. `settings-card.ts` — the row in Look and feel with `when: () => currentSkin() === "x"`
+4. `settings-card.ts` — the row in Skin settings with `when: () => currentSkin() === "x"`
    (add `&& setting(…)` for a row that depends on another). A range row passes
    `preview: (v) => previewSkin(key, v)`. Label style: DEETS settings-label rules.
 5. Docs — a row in SETTINGS.md §3, the key in AGENT.md (*Values* and the skin-only list), and
    the skin's section in this doc.
 
 ### Sand edges (Ocean, 2026-09-15)
-Settings › Look and feel › **Draw card edges** (`oceanEdges`: **soft** / sand; Soft is the skin's own look). The row shows
+Settings › Skin settings › **Draw card edges** (`oceanEdges`: **soft** / sand; Soft is the skin's own look). The row shows
 only while Ocean is the skin (the settings card's `when` rule + `onSkinChange` in `skin.ts`).
 `src/skin-settings.ts` sets `data-ocean-edges` on `<html>`. The idea: a dark beach — the
 card's edge breaks into grains of sand over the swell.
@@ -394,9 +397,9 @@ card's edge breaks into grains of sand over the swell.
   waves"), then a smooth transparent fade; both dropped. Saved `waves` / `fade` migrate to `soft`.
 
 ### Glass's sliders (2026-09-15)
-Settings › Look and feel › **Canvas glow**, **Dim canvas**, **Backlight**, **Tint cards**
+Settings › Skin settings › **Canvas glow**, **Dim canvas**, **Backlight**, **Tint cards**
 (`glassCanvasGlow` / `glassCanvasDim` / `glassBacklight` / `glassTint`, 0–100, range rows shown
-only under Glass). The goal: radiant
+only under Glass with Fancy Glass on; off, they hold the locked 65 / 85 / 40 / 10). The goal: radiant
 cards over a deep background. `src/skin-settings.ts` writes `--glass-backlight`, `--glass-tint`
 (a %), `--glass-canvas`, and `--glass-canvas-dim` as inline custom properties on `<html>`, at launch and on change; a
 slider drag previews them without a store write. The Glass block reads them in one
@@ -404,7 +407,7 @@ slider drag previews them without a store write. The Glass block reads them in o
 - **Canvas glow:** `--glass-glow: calc(var(--glass-canvas, 50) / 50)` multiplies every
   `--aurora-*` color stop (`min(100%, 50% * var(--glass-glow))`): 0 = a plain deep canvas,
   100 = double. The cards do not change.
-- **Dim canvas** (`glassCanvasDim`, default 0): `.app-body::after` (last child, z 0: over the
+- **Dim canvas** (`glassCanvasDim`, default 10): `.app-body::after` (last child, z 0: over the
   aurora, under the bento) paints black at `--canvas-dim` = 0–0.9. The cards' frost samples
   that dim too, so `--panel-backdrop` adds `brightness(calc(1 / (1 - var(--glass-dim))))`,
   which multiplies it back out: only the space between the cards darkens. The card halo is
@@ -421,8 +424,8 @@ Other skins never read these properties. Menus keep their own 90% `--menu-surfac
 cards (blur) slider was built first and dropped the same day; the blur is a fixed 14px again.
 
 ### Press's record player (2026-09-15)
-Settings › Look and feel › **Record player** (Spin / Still / Off), **Show record on**, **Spin speed**
-(33⅓ / 45 / 78 rpm), **Show record plate**. The cover box (`.np__art`, in the Now Playing card and the tray panel) holds its art in a
+Settings › Skin settings › **Record player** (Spin / Still / Off), **Show record on**, **Spin speed**
+(16⅔ / 33⅓ / 45 / 78 rpm; 16⅔ the default since 2026-10-11), **Show record plate**. The cover box (`.np__art`, in the Now Playing card and the tray panel) holds its art in a
 slot from `src/vinyl.ts`: a plate that never turns, the art that turns (one Web Animation, the
 compositor's), and a sheen that never turns. The place decides the look: skin.css sets
 `--vinyl-stage` / `--vinyl-strip` / `--vinyl-tray` (1 or 0) from the rows; styles.css hands one to
@@ -430,7 +433,7 @@ compositor's), and a sheen that never turns. The place decides the look: skin.cs
 draws the old square cover (`transform: none !important` beats the animation). The cover box is a
 size container so the record is a centered square of `100cqmin`. Geometry, ink and slide timing
 are `--vinyl-*` tokens (base inert, Press values). The angle follows the song, each disc starts and
-ends upright at any of the three speeds, and a song change slides the discs as Web Animations — [VINYL.md](../features/VINYL.md), with its
+ends upright at any of the four speeds, and a song change slides the discs as Web Animations — [VINYL.md](../features/VINYL.md), with its
 dev telemetry (`[perf] vinyl …`, `__vinyl.sample`) in §8.
 
 ### The storm layer (opt-in decorative strokes)
@@ -463,8 +466,8 @@ as a bug).
 Add a `[data-skin="yourname"] { … }` block in `skin.css` overriding only the tokens
 you change. Switch with `data-skin` on `<html>`. **No color belongs here** — point a
 slot at a theme role or `color-mix` a role; never a raw hex. Bundle any new fonts in
-`fonts.css` (SIL OFL, like Liberation). Add the name to `SkinName` in `src/skin.ts`
-and a `.flyout__item` to the Skin row in `index.html`.
+`fonts.css` (SIL OFL, like Liberation). Add the name to `SkinName` in `src/look-ids.ts`
+and a `.flyout__item` (`data-skin-choice`) to the Skin row in `index.html`.
 
 ---
 
@@ -473,11 +476,12 @@ and a `.flyout__item` to the Skin row in `index.html`.
 The OS frame is disabled (`decorations: false` in `tauri.conf.json`) and we draw
 our own chrome.
 
-- **Surfaces:** mini-player · **midi-player** (480×864, current scaffold) · full window.
+- **Surfaces:** Mini · Midi · Max, one window ([SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) §4).
 - **Titlebar** (`.titlebar` in `index.html`): app title (left) + a right cluster
-  (`.chrome-right`) holding the **sleep timer** clock (NEXT-VERSION §17), the **volume
-  pill** (it grows in place on hover and scrubs there, NEXT-VERSION §20 — no flyout since
-  2026-09-16) and the traffic lights in Windows' order (minimize, maximize, close).
+  (`.chrome-right`) holding, in order, the **Web** button, the **Room**, **Sound** and **sleep
+  timer** panels (NEXT-VERSION §17), the **volume pill** (it grows in place on hover and scrubs
+  there, NEXT-VERSION §20 — no flyout since 2026-09-16; its AirPlay square opens *Play on*) and
+  the traffic lights in Windows' order (minimize, maximize, close).
 - **Drag (since 2026-10-11):** the `<header>` carries `data-tauri-drag-region="deep"`, so a
   press anywhere in the bar moves the window: the gaps, the side padding and the strips
   above and below the icons. Tauri's `drag.js` (2.11) blocks the drag on a button, a link,
@@ -545,9 +549,8 @@ The content area is a **bento grid** of **panels**. Three altitudes:
   `.panel__action`), `queue`, `playlists`, `search`, `history`. The midi bento has an **anchored**
   Now Playing slot + **two swappable content slots** whose **title is a card picker** — see
   [SURFACES-AND-CARDS.md](SURFACES-AND-CARDS.md) and **§4a** for the collection-card controls.
-- **Screen** — a composition of cards in the grid (`data-screen="home"`). Future *surfaces*
-  (mini/midi/max) will gate the whole bento off a `data-surface` attribute (the card system's
-  Phase 3 seam).
+- **Screen** — a composition of cards in the grid (`data-screen="home"`). The *surfaces*
+  (mini/midi/max) gate the whole bento off the `data-surface` attribute on `<html>`.
 
 **Layout is slot/span-based:** the bento is a 2-col grid of `.panel` hosts
 (`data-slot="np|left|right"`); `data-span="wide"` spans both columns. The home is `auto / 1fr`
@@ -582,8 +585,8 @@ the volume slider uses `axis: "y"` → `setVolume`. `setValue(frac)` lets extern
 (live playback progress) drive the fill and is a no-op while the user is dragging.
 
 **Volume pill** (`.vol` in `.chrome-right`): a level-meter capsule the height of a
-traffic light that drops a flyout on hover (with a 150 ms close-grace; click also
-toggles it, like the settings menu). The pill's fill is a **tinted `--title`** wash
+traffic light. Since 2026-09-16 it grows in place on hover and scrubs there (*Shrink volume
+bar*, SETTINGS.md §3); the flyout described next is the first build, kept as the record. The pill's fill is a **tinted `--title`** wash
 (`color-mix` at `--vol-fill-strength`, a skin token) sweeping under a constant `Vol.`
 label — the translucency preserves the surface's light/dark polarity, so the label
 stays legible over both filled and empty halves in every theme. The flyout holds a
@@ -595,8 +598,8 @@ play, so `setVolume` stores early and pushes the level on init). See
 [DATA-ARCHITECTURE.md](DATA-ARCHITECTURE.md) for the player module.
 
 ### 4a. The collection card (navigable browser engine)
-`src/collection-card.ts` is a **reusable, context-aware browser** that the Library
-card drives today and the Playlists card will reuse. The card markup is just chrome
+`src/collection-card.ts` is a **reusable, context-aware browser**. The Library, Playlists and
+Search cards ride it (Search's pages are built by `media-levels.ts`). The card markup is just chrome
 + a mount point: a `.panel__head` (with a `.panel__back` chevron + `.panel__title` +
 optional `.panel__action`) and an empty `.coll-body`. The engine renders everything
 inside `.coll-body` and is fed a **root context** (`src/library-card.ts` builds the
@@ -699,10 +702,9 @@ themes/skins apply; the trade is it can't overflow the window edges, so position
 **clamped to the live viewport** (`clientWidth/Height`, never the fixed 480×864 —
 correct under resize / fullscreen / miniplayer) and it closes on outside-press / Escape /
 outside-scroll / resize (scrolls **inside** the menu — a long flyout — don't dismiss).
-Library wires it on **Songs** and **Albums** (Play Now · Play Next · Add to Queue ·
-Add to Playlist ▸ — see [DATA-ARCHITECTURE](DATA-ARCHITECTURE.md) / [QUEUE.md](../features/QUEUE.md) /
-[PLAYLISTS.md](../features/PLAYLISTS.md) for the action sides); Artists declare no `menu`, so they
-fall through. The right-clicked row carries `.is-context` (same outline as
+What a menu holds comes from one builder per media type in `src/media-menu.ts` since 0.14.0
+([CONTEXT-MENUS.md](CONTEXT-MENUS.md)): a grouping's `menu(item)` passes its card's own rows to it, so
+songs, albums, artists, playlists and stations read the same in every card. The right-clicked row carries `.is-context` (same outline as
 `.is-selected`) while its menu is open.
 
 **Navigation = a push/pop pane stack.** `.coll-body` holds a clipping
@@ -878,9 +880,10 @@ base), the name in the title face, an optional subtitle and a muted meta line
 The contract is `Context.hero?: () => Hero` (`{ cover, title, sub?, meta? }`), a function so
 async facts (a playlist's tracks landing, then `card.reload()`) fill the meta line on the
 next render. `heroCover()` in `library-card.ts` builds the cover slot (real cover, the 2×2
-mosaic, or ♪) at 2× the token size. The Search card's catalog album / playlist panes render
-the same `.lib-hero` markup themselves (they don't use the engine); the artist subtitle
-there hops via the album's own `artists` relationship.
+mosaic, or ♪) at 2× the token size. The Search card's catalog album, artist and playlist pages are
+engine levels too since 2026-10-13, built by `media-levels.ts` (one album builder and one
+artist builder for Lib and Full); the artist subtitle there hops via the album's own `artists`
+relationship.
 
 **Artist views (2026-09-15, [ARTIST-VIEW.md](../features/ARTIST-VIEW.md))** also open on a hero: a round
 photo (`heroCover(…, round)`, `--hero-artist-radius`), the name, and counts (Library) or the
@@ -893,7 +896,7 @@ the windower keeps a hero whose HTML is unchanged.
 
 ### 4b. The Queue card (Qcard) & drag-to-reorder
 The Qcard (`src/qcard.ts`) is a small **standalone** renderer (not the collection-card
-engine) in the Playlists slot — Now Playing + Up Next, re-rendered (`body.innerHTML = …`)
+engine): in any slot in Midi, anchored under Now Playing in Max — Now Playing + Up Next, re-rendered (`body.innerHTML = …`)
 on every queue/track/state change. Up Next rows support left-click/Enter to jump, a
 right-click menu, and **drag-to-reorder**.
 
@@ -930,6 +933,11 @@ they require explicit permissions in `src-tauri/capabilities/default.json`
 ## 4c. Splitting `styles.css` — considered, not decided (2026-09-27)
 
 > **Part:** project · 2026-09-27 · the owner's call
+>
+> **Read again 2026-10-14:** no split happened. `styles.css` is 4,934 lines; beside it are the
+> same eight feature sheets as below and the four token and font sheets. A check 27 was
+> built in another shape: a feature sheet may restyle a class the base sheet declares only when
+> `SHEET_REDECLARES` in `docs-check.mjs` names it with a reason. The fork below is still his.
 
 **What is there.** `styles.css` is 4,357 lines in 45 top-level sections, loaded by
 `index.html` and `tray.html`. Eight feature sheets sit beside it in `src/styles/` and each is
@@ -976,13 +984,13 @@ biggest section (the Library / collection engine) as a trial.
 
 ---
 
-## 5. Front-end ↔ back-end seam (for later)
+## 5. Front-end ↔ back-end seam
 
-The UI is built against **mock data / a stub player interface** so it has no Apple
-dependency yet. Playback wires in later behind a thin `player` interface
-(play/pause/seek/nowPlaying/queue…) — swapping the stub for MusicKit JS should not
-touch any view. Keep that boundary clean: views call the interface, never MusicKit
-directly.
+The UI was first built against mock data and a stub player. Playback is now MusicKit JS behind
+`src/player.ts`, and the boundary held: views call `player.ts` (play, pause, seek, the queue,
+`onPlayerState`), and no other module touches MusicKit (read 2026-10-14: `player.ts` is the only
+file that configures or gets the MusicKit instance). Keep it that way. The web demo and the
+rooms web port swap the Tauri side under the same views (`web/`, WEB-DEMO.md, WebRooms.md).
 
 ---
 
@@ -998,17 +1006,18 @@ src/styles/palette.css  Tier 1 — raw paints
 src/styles/themes.css   Tier 2 — color roles per theme
 src/styles/skin.css     Tier 3 — [data-skin] base + press/ocean/glass/cyber deltas (type/geometry/motion)
 src/styles/fonts/       bundled font files (Liberation TTFs + NOTICE; skin WOFF2s)
-src/main.ts             window controls, settings menu, account, menu-mode; calls initLook/initLayout()
+src/main.ts             window controls, title menu, account, menu-mode; calls initLook/initLayout()
 src/cards.ts            card registry + CardDef/CardInstance (the mountable-card contract)
-src/layout.ts           midi layout: anchored Now Playing + 2 swappable slots + title-menu picker
+src/layout.ts           the layout per surface: anchored cards + swappable slots + the title pickers
 src/now-playing-card.ts Now Playing transport card (extracted from main.ts)
 src/playlists-card.ts   Playlists card — overview → detail on the engine; New Playlist (+),
                         remove-track, empty-only delete (PLAYLISTS.md)
 src/dropdown.ts         dropdown primitive + menu-mode fan-out (setDropdownMode, destroy)
 src/hint.ts             hover-hint primitive — adopts every `title` into one themed box,
                         plus the two-line song/artist hint on list rows (ONBOARDING.md §1a)
-src/theme.ts            theme switch + localStorage persistence (RETIRED id migration, OS-preference default)
-src/skin.ts             skin switch + localStorage persistence (mirror of theme.ts)
+src/theme.ts            theme switch (the value is the settings store's `theme`, RULES.md §7a)
+src/skin.ts             skin switch (the store's `skin`; mirror of theme.ts)
+src/look-ids.ts         theme / skin ids, the RETIRED maps, the first-launch pair
 src/storm.ts            storm-layer position re-roll (Cyber bolts; inert otherwise)
 src/apple.ts            Apple Music auth bridge (connect/disconnect/status)
 src/library.ts          cache reads + sync trigger + sync-event subscription + types
@@ -1016,7 +1025,7 @@ src/collection-card.ts  reusable navigable browser engine (contexts, groupings,
                         Sort/View/Search toolbar, push/pop pane-slide nav)
 src/library-card.ts     Library's contexts/groupings (Songs/Albums/Artists +
                         album & artist drill-in); wires data load + sync; calls the engine
-src-tauri/tauri.conf.json          frameless window @ 480×864
+src-tauri/tauri.conf.json          frameless window (opens at Midi's 495×670; sizes per surface in the store)
 src-tauri/capabilities/default.json  window-control permissions
 ```
 

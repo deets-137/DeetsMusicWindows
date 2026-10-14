@@ -3,11 +3,13 @@ status: shipped
 shipped_in: 0.9.5
 desk_test: passed 2026-09-19
 sources: [src/card-memory.ts, src/collection-card.ts, src/layout.ts, src/search.ts, src/search-card.ts, scripts/webview-profile.mjs]
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 # Card memory — a card comes back where you left it
 
 Designed 2026-09-17. **BUILT the same day** (§11 = as built). Forks decided the same day (§10).
+
+Rewind's scroll is the one gap left (SURFACES-AND-CARDS.md §5; HANDOFF.md › Open now).
 
 Files: `src/card-memory.ts` (the map, the disk row, the plain-card scroll helpers) ·
 `src/collection-card.ts` (keys, `snapshot` / `restore` / `hold`, the Back return) ·
@@ -124,6 +126,8 @@ The engine adds `snapshot()` and `restore(s)` to its return value.
 | Settings | root only: scroll. Open sections already persist (`FOLDS_KEY`) | — | at once |
 | Queue | nothing. It follows the playing song | — | — |
 | Rewind | nothing (its pick already persists in `STORE_KEY`) | — | — |
+| Diary (added since) | the open entry: `{ entry: <id> }` | the entry by id | the entries have loaded |
+| Rulez (added since) | the view, the open rule, the settings fold: `{ view, open, settings }` | — | at once |
 
 The keys are the ids those cards already use: `albumKey(t)` in the Library, `pid(p)` in
 Playlists, `g.id` in Radio.

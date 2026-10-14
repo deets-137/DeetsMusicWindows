@@ -186,7 +186,11 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   clipboard refuses a window without focus. Skip the copy when the window is behind, or say so
   in the toast (DESK-TESTS.md A6).
 - **Two update ideas** (2026-09-16, from the archived NEXT-VERSION.md): resume the song after
-  an update's restart; install an update at the end of a song. Not designed.
+  an update's restart (today it comes back paused at its place, `queue-persist.ts` →
+  `setResumeAt`, since 2026-09-14; playing on by itself is the open part); install an update at
+  the end of a song. Not designed.
+- **Rewind has no card memory:** it opens at the top after a swap or a restart; the one gap
+  in the card-systems table (SURFACES-AND-CARDS.md §5). Close it or leave it.
 - **Threads that only sleep:** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` could be Tokio
   timers (DEBUGGING.md § Threads).
 - **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;

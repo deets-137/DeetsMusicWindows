@@ -146,8 +146,16 @@ The slider, and **Mute**. Mini and Midi show it as a small pill; in Max, Setting
 
 ## The Settings card
 
-Twenty sections. **Tips** and **About** start open; the rest start folded.
+Twenty-six sections (read 2026-10-14). **Tips** and **About** start open; the rest start folded.
+Hold a section header to move it (Settings › Reset › *Row order* puts them back).
 Open one at a row with the Compass, or from the **[Settings]** button on a notice.
+
+**The quick panel.** The cog in the title bar opens a smaller panel with the common sections
+behind nine squares: Apple Music (with AirPlay and the sign-in), Discord, Window (with Cards),
+the look (Look schedule, Skin settings, Motion), help (Menus, hints and notices, Playback),
+Connections, the fun things (Song of the Day, Friends), Updates and Bugs, and Reset. The rows
+there are the same controls as here. The cog square opens all of Settings
+([QUICK-SETTINGS.md](../features/QUICK-SETTINGS.md)).
 
 Two sections name their groups with a sub-heading instead of splitting: **Window** (*Window* ·
 *Window sizes* · *Growing and drilling*) and **Sound** (*Equalizer* · *Adaptive sound*).
@@ -364,6 +372,30 @@ behind both. The dial and the three live ends are only in the panel.
 | Scrobble plays | Sends each song to your Last.fm profile once you hear half of it, or 4 minutes | on / off |
 | Show now playing | Your Last.fm profile shows the song while it plays | on / off |
 
+### Sharing
+Who can see what you play. A status line under the rows says what is shared now.
+
+| Control | What it does | Choices |
+|---|---|---|
+| Share activity on DeetsMusic | The friends you added see the song, the artist and the cover while you listen. Only people whose code you added, and who added yours | **on** / off |
+| Share activity on Discord | Your Discord profile reads "Listening to DeetsMusic" with the song under it. Needs the Discord app open on this PC, and its Activity Privacy switch on | on / **off** |
+| Pause sharing for an hour | Stops every sharing row above at once, then turns them back on by itself. Your settings are kept. The row counts down; the button becomes **Resume** | Pause / Resume |
+
+### Friends
+
+| Control | What it does | Choices |
+|---|---|---|
+| Let friends listen along | A friend presses your box and hears what you hear, in a room only they can listen in; they cannot skip, seek or change the queue. You get one notice when somebody joins | **on** / off |
+| Put my room code on my box | While you host a room, your friends' boxes carry its code so they can join it. The code is the only gate on a room | on / **off** |
+| Your key | The key behind your friend code. Copy it to keep the same code on another PC. Anybody who has it can be you | **Copy my key** · **Paste a key** |
+
+### Discord
+
+| Control | What it does | Choices |
+|---|---|---|
+| Connect a Discord SOTD channel | One channel's webhook, used by Song of the Day. Anyone who has the link can post there. Paste the webhook link, then **Check**; then *Post as*, the name the posts carry | not connected |
+| Let my profile invite people to my room | While you host a listening room, your Discord card carries a Listen Along button. The button holds the room code, so anyone who sees your profile can join | on / **off** |
+
 ### Playlists
 
 | Control | What it does | Choices |
@@ -396,6 +428,20 @@ behind both. The dial and the three live ends are only in the panel.
 |---|---|---|
 | Rescale scores | When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5. **Ask** shows a notice with Rescale and Keep numbers | **Ask** / Always / Never |
 | Grow on open | The Diary grows over the card beside it when an album opens: taller in Max, wider in Midi. Back collapses it | **New entries** / Every entry / Never |
+
+### Song of the Day
+Mark one song a day ([DeetsOTD.md](../integrations/DeetsOTD.md)).
+
+| Control | What it does | Choices |
+|---|---|---|
+| Song of the Day | Mark one song a day. With no outlet set up it stays on this PC and posts nothing | **on** / Off |
+| Suggest today's pick | Puts the song you played most today at the head of the Home shelf. You still choose | on / **off** |
+| Day starts at | A song marked before this hour counts for the day before | Midnight / **5 AM** |
+| Picks per day | At the limit, Mark becomes Replace Today's Pick | **1** / 2 / No limit |
+| Post my picks | When a marked song goes out to the outlets you turned on | **Ask each time** / Right away / At a set time |
+| Post at | Shown on *At a set time*. The time the day's picks go out; it always falls inside the day they belong to | **8 PM** |
+| Where picks go | The one outlet a pick goes to. Set it up in Settings › Discord | the outlet |
+| What has left this PC | Every post, newest first, with a Copy square | — |
 
 ### Connections
 

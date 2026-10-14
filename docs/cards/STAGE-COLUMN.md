@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.5
 desk_test: passed 2026-09-19
 sources: []
-updated: 2026-09-19
+updated: 2026-10-14
 ---
 # The stage column (Max)
 
@@ -202,12 +202,13 @@ to spare and centres with about 41 px above and below. Width 1100 leaves the two
 332 px of content each.
 
 The "Max opens at" menu (Settings › Window) keeps its own three presets, so they moved with the
-default: **960 × 700** (compact — the cover shrinks there, still square), **1100 × 950** (the
+default: **960 × 750** (compact; 960 × 700 until the 750 px floor of §4.5 — the cover shrinks there, still square), **1100 × 950** (the
 default) and **1400 × 1000** (wide, and still inside a 1080p work area). 1920 × 1080 is the
 usability standard this is sized against, not the owner's own 3440 × 1392 screen.
 
-Max's **minimum** height stays 670. A user who drags the window smaller keeps the 2.5 rows and
-gets a smaller (still square) cover. Only new installs see the new default; a saved size wins.
+Max's **minimum** height is 750 (`surface.ts`; it was 670 when this section was written, §4.5
+raised it). A user who drags the window smaller keeps the 2.5 rows and gets a smaller (still
+square) cover, down to the floor; below 745 the window becomes Midi (§4.5). Only new installs see the new default; a saved size wins.
 
 ## 6. The artwork we ask for
 
@@ -231,12 +232,18 @@ Now Playing** and nowhere else.
 - Covering Now Playing hides the whole player: transport, scrubber and the stage volume row.
   That is deliberate (the owner's call: "person wouldn't open it if they didn't want to edit
   queue"). The ways back are the same four as any grow — the zone again, the Grow button, Esc,
-  or a click outside — and Space still plays and pauses through Compass.
+  or a click outside while *Collapse on outside click* is on (off by default since 2026-10-01) —
+  and Space still plays and pauses through Compass.
 - The Press record keeps turning behind the hidden card. Pausing it would need a re-sync on
   resume, which is exactly where VINYL.md's clock drift comes from, and a hidden composited
   animation costs no paint.
 - `Ctrl+Space` → `grow queue` → "Vertical" works, and so do `deetsmusic grow --card Queue` and
   the agent's `/grow` route: the card-host lookup now answers for the anchored Queue in Max.
+
+**The full player (0.26.1).** A click on the edge of Now Playing beside the cards grows Now
+Playing over the whole window, so the cover is as large as the window allows
+([fullscreen-player.md](../features/fullscreen-player.md)). The stage column's rules above hold
+whenever the full player is shut.
 
 ## 8. Desk test — PASSED 2026-09-19
 

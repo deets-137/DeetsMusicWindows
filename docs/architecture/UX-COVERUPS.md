@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/player.ts, src/perf.ts, src/boot-cover.ts, src/appearance.ts, src/look.ts, src/rules-facts.ts]
-updated: 2026-09-28
+updated: 2026-10-14
 ---
 # UX Cover-ups — latency & jank ledger
 
@@ -230,7 +230,7 @@ and surface back to back. Check `[perf] frames appearance` in the dev log for ea
 
 ## 6c. A rule's theme change — **the colors change in place, no cover** (designed 2026-09-27)
 
-> **Part:** built · 2026-09-27 · his desk test open (end of this section)
+> **Part:** built · 2026-09-27 · his desk test passed 2026-10-13 (DESK-TESTS.md §5: B11, Fade 6c)
 
 **Why:** Live Theming (RULEZ.md §11.1), and later the Album theme (SKINZ.md §12), change the
 theme on every song. Under §6a each song fades the cards out and raises them again. A theme
@@ -308,7 +308,7 @@ menu still ran the cover (veil → wait → lift).
 
 ### 6c.1 Hand picks join the crossfade (2026-09-28)
 
-> **Part:** built · 2026-09-28 · his desk test open
+> **Part:** built · 2026-09-28 · his desk test passed 2026-10-13 (DESK-TESTS.md §5: B11)
 
 **His calls (2026-09-28, the motion review, SHOTS.md §5e):** a theme you pick by hand (the
 title menu, Settings, the Compass, Reset) crossfades too. This reverses the first call above
@@ -341,7 +341,7 @@ other skins dropped 3–7. (1) and (2) are fixed in §6c.2.
 
 ### 6c.2 The panel leaves first; a hand pick moves at once (2026-09-28)
 
-> **Part:** built · 2026-09-28 · his desk test open
+> **Part:** built · 2026-09-28 · his desk test passed 2026-10-13 (DESK-TESTS.md §5: B11)
 
 **His calls (2026-09-28, after the strips of §6c.1):** the menu or the Compass that made the pick
 closes with its own short exit BEFORE the snapshot, so only the colors fade. A pick you make by

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.0
 desk_test: passed 2026-09-15
 sources: [src/handoff.ts, src/layout.ts]
-updated: 2026-09-18
+updated: 2026-10-14
 ---
 # Card swap motion — designed and built 2026-09-15
 
@@ -23,7 +23,8 @@ motion only.
 - **Summon**: the Now Playing queue button brings the Queue card to the least recently
   used slot. If the Queue card is in the other slot, this is a swap.
 - **Replace**: a card that is not on screen takes a slot. The old card leaves.
-- **Recompose**: a surface flip between compositions (midi/mini ↔ max).
+- **Recompose**: a swap of whole compositions: a surface flip (midi/mini ↔ max) or a change of
+  *Layout for Max*.
 
 ## Scope
 Swap, summon and replace animate. **Recompose does not** (user's call): the window also
@@ -37,7 +38,9 @@ collection-card pane slide, the queue drag, the theme/skin switch animation.
    the list's scroll position and paints canvases blank. The `.panel` host is a fixed grid
    cell, so the new card's panel plays from the slot its card left.
 2. **Travel only, no scale between slots.** Every content slot on a surface is the same
-   size (midi: two equal columns; max: a 2×2 grid of equal cells).
+   size (midi: two equal columns; max: a 2×2 grid of equal cells). Since 0.26.0 Max has other
+   layouts (MAX-CARDS.md), where two slots can differ in size; the swap still only travels,
+   and the new panel has its own slot's size from the first frame.
 3. **The shape is skin tokens** (the `--nav-at-*` pattern): one set of keyframes, each skin
    supplies the values. JS measures only the pixel offset.
 4. **Timing aliases the nav tokens**: `--swap-dur: var(--nav-dur)`,
@@ -83,8 +86,8 @@ the user asked for a skew out and a skew in, which added the out step below.
 - **Out step.** `layout.ts` `setSlot` passes the remount to `playOut(els, run, detail)`. With
   `--swap-out-dur` > 0 the leaving panels get `swap-out`; `run` waits for `card-swap-out` to
   end (a timer at the duration + 100 ms backs it up). Otherwise `run` runs at once.
-  `flushSwapOut()` runs a waiting remount now: at the start of every `setSlot`, and before a
-  surface recompose or the Rewind rebuild, so the layout they read is current.
+  `flushSwapOut()` runs a waiting remount now: at the start of every `setSlot`, before a
+  recompose, and before a drill in place, so the layout they read is current.
 - **In step.** `run` remounts, then calls `playSwap(moves, detail)`.
   The first move is the picked slot; it gets `swap-top` and passes over the other card.
 - `card-swap.ts` sets `--swap-dx` / `--swap-dy` on the panel (old slot − new slot) and adds

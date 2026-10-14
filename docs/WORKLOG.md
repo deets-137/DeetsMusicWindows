@@ -40,7 +40,24 @@ update channel (it answers 0.26.1: 0.27.0 is built, not published).
   0.26.1; what 0.27.0 holds), SHOTS.md.
 - **The top-level `AGENT-SETUP.md` stub deleted** (his word: no one runs 0.12.2 or older); its
   check 19 line left `SHIPPED_LINKS` with the reason. WORKLOG entries are never corrected.
-  `ideas/DeetsWeather.md` stays an idea (his call). Not read line by line: the long bodies of DEBUGGING,
+  `ideas/DeetsWeather.md` stays an idea (his call). Committed `e53c65e`.
+- **Then the architecture folder, read in depth** (uncommitted): DATA-ARCHITECTURE (the mint,
+  where the MUT lives and that it reaches MusicKit, the database thread, schema v18, the
+  catalog-first `tracks` key, every `settings.json` field, the sign-in icon built), SETTINGS (26
+  sections, the old fifteen-section note, steps 6–8 of adding a setting), SETTINGS-INVENTORY
+  (Sharing, Friends, Discord and Song of the Day had no section), UI-ARCHITECTURE (Skin settings,
+  `look-ids.ts`, 16⅔ rpm, the title bar, Search on the engine, the front-end seam, the styles
+  split still his fork), CONTEXT-MENUS (three listeners off the table), DRAG-DROP (later sources
+  and the Diary target), RULES (the graphics fallback row), UX-COVERUPS (6c passed), the Rewind
+  memory gap to Open now. Found: "resume after an update restart" is built as a paused resume
+  (2026-09-14); HANDOFF now says so. TOKENS.md was fresh.
+- **The quick panel in the settings docs** (his question): SETTINGS.md §3c (the squares, the
+  sections each holds, what is only in the card, a new section's place is his call; a step in
+  §5) and a paragraph in SETTINGS-INVENTORY. QUICK-SETTINGS.md §3 already matched `PARTS`.
+- **The cards folder:** CARD-GROW (Max's four layouts, where the later rows live, the rule
+  builder built as Rulez, §19's desk test 1–4 passed), CARD-MEMORY (Diary and Rulez in the
+  table; Rewind the gap), CARD-SWAP (Max cells can differ; the flush sites), STAGE-COLUMN (the
+  compact preset 960 × 750, the 750 floor, outside click off by default, the full player). Not read line by line: the long bodies of DEBUGGING,
   QUEUE, ROOMS, DeetsOTD and the feature docs past their status blocks.
 
 ## 2026-10-14 (unlucky-thirteenth) — usage counts: committed, and the owner box on the site
