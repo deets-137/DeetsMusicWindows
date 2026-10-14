@@ -1,23 +1,27 @@
 ---
-status: built
-desk_test: open
+status: shipped
+shipped_in: 0.25.0
+desk_test: passed 2026-09-26
 sources: [src/rules-eval.ts, src/rules.ts, src/rule-chip.ts, src/look.ts, src/look-ids.ts, src/settings-store.ts, src/card-grow.ts, src/look-schedule.ts, src/sleep.ts, src/sound.ts, src/presence.ts, src/friends.ts, src/layout.ts, src/collection-card.ts, src/search-card.ts, src/diary-card.ts, src/quick-panel.ts, src/playlists-card.ts, src/rules-recipes.ts, src/agent-rules-shape.ts]
-updated: 2026-09-29
+updated: 2026-10-14
 ---
 # DeetsMusic — the rules engine
 
 **Designed 2026-09-26 with the owner; built the same day on branch `rules-rulez` (§17 steps
 1–11, all committed). §18 is the as-built record: where it differs from §1–§17, §18 is the
-code. The chip's look (§9) is still his to design; the build uses a bolt and a hand.**
+code. The chip's look (§9) is still his to design; the build uses a bolt and a hand.
+Shipped in 0.25.0 (2026-09-26; Claude desk-tested every step on the dev app, RELEASE.md §0a).
+The rules editor is the Rulez card, shipped in 0.25.1 (§20, [RULEZ.md](../features/RULEZ.md));
+agents reach the rules through the MCP `rules` tool.**
 
 A rule tells the app what to do when something happens, or while something is true. The
 engine sits under the Settings rows: a row's value makes a built-in rule, and the engine runs
-it. The user does not write rules yet. When the rules editor comes, it shows the same rules.
+it. The Rulez card (§20) shows the same rules, and the user writes their own there.
 The first actions are card grows ([CARD-GROW.md §18](../cards/CARD-GROW.md)). Other actions
 set settings (theme, skin, the EQ preset, sharing), keep the window on top, summon a card, and
 arm the sleep timer.
 
-Files (planned): `src/rules-eval.ts` (pure: the types, the evaluator, the built-in rules made
+Files: `src/rules-eval.ts` (pure: the types, the evaluator, the built-in rules made
 from settings; covered by `npm test`) · `src/rules.ts` (the registry, `emit`, the state loop,
 the log) · `src/rule-chip.ts` (the chip) · `src/settings-store.ts` (the overlay, §7) · the
 trigger sites (§10).
@@ -354,8 +358,9 @@ except theme and skin (§7a).
 
 ## 14. What waits
 
-- The rules editor, the agent's rules verb, the text form.
-- Facts for later: `genre`, `room`, `from`, `cause`, `slot`, battery, a metered network.
+- The text form. (The rules editor and the agent's rules verb are built: §20, AGENT.md.)
+- Facts for later: `room`, `slot`. (Built since: `from`, `cause`, `genre`, `battery`,
+  `charging`, `online`, `dataSaver` and more; the list is `FactId` in `src/rules-eval.ts`.)
 - Rows not converted: Weekly Replay (an Apple action), Card on drill, Headphone crossfeed (hidden).
 
 ## 15. Open

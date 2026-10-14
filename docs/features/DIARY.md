@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.14.5
 desk_test: open
 sources: [src/diary-card.ts, src/diary.ts, src/styles/diary.css, src-tauri/src/diary.rs, src/layout-bus.ts, src/media-menu.ts]
-updated: 2026-09-26
+updated: 2026-10-14
 ---
 # DeetsMusic — the Diary card
 
@@ -334,7 +335,10 @@ you type a new one or rescale.
 
 > **Part:** every step passed his desk test on 2026-09-24 except **11e (the CLI and the MCP)**.
 > 11e is run on the installed beta, after the next `release -- --beta` and a fresh install
-> (his call). `desk_test` stays `open` until then.
+> (his call). `desk_test` stays `open` until then. **2026-10-14:** beta-first is paused, so the
+> installed live build stands in. 11e part 1 passed on his live app on 2026-09-26 (with *Agents
+> use the Diary* off, `diary list` is refused with the right text), and the open-entry redraw
+> passed on the dev app on 2026-09-27 (DESK-TESTS.md B16). Open: the rest of 11e with the row on.
 
 1. Put the Diary card in a slot. It shows the + cover and "Pick an album, listen, and write about
    each song."

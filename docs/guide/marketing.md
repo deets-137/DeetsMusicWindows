@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: [docs/guide/SHOTS.md, docs/guide/shots.json, docs/guide/motion.json, docs/ops/RELEASE-NOTES.md]
-updated: 2026-10-01
+updated: 2026-10-14
 ---
 # DeetsMusic — the marketing outline (tech spec)
 
@@ -16,7 +16,7 @@ updated: 2026-10-01
 - **Source** — `demo` (the web build with invented tracks) or `dev` (the real app: the owner's
   library and real album art, local only, F2).
 - **Shipped** — in a published installer. Every line in §2–§9 is shipped (RELEASE-NOTES.md, up
-  to 0.25.2). §10 lists what is not, so no video claims it.
+  to 0.26.1; read again 2026-10-14). §10 lists what is not, so no video claims it.
 
 ## 1. Direction (the owner's)
 
@@ -92,7 +92,7 @@ The forks still open from the 2026-10-01 talk:
 |---|---|---|---|
 | A native Windows 11 app for Apple Music | Tauri v2 + WebView2; Rust back end; TypeScript front end with no framework | — | — |
 | Full songs, not previews | MusicKit JS in WebView2, Apple's DRM path, in use since 2026-07 | — | — |
-| Small installer | 8.6 MB (0.25.1) | — | — |
+| Small installer | 9.2 MB (0.26.1) | — | — |
 | Signed, and it updates itself | Authenticode signing; the built-in updater reads the release channel | — | dev |
 | Few calls to Apple | A call counter and a 429 back-off (`apple_calls.rs`); a local SQLite cache of the library; most features make zero calls | — | — |
 | Fast to sound | Our part of click → sound is about 10 ms; the rest is MusicKit (DEBUGGING.md) | — | — |
@@ -105,7 +105,9 @@ The forks still open from the 2026-10-01 talk:
 | Four surfaces from one webview | Mini 385×550, Player 405×675, Midi 495×670, Max 1100×950; the surface follows the window size | `surface-midi-to-max`, `surface-drag-grow`, `surface-drag-shrink`, `max-overview` | demo |
 | Cards in slots, any card in any slot | A card registry; swap, summon and replace motion in each skin's own shape | `clip-card-swap`, `card-replace`, `max-swap` | demo |
 | Grow a card over its neighbor; Fill in Max | Drag the edge bar, or Escape to collapse | `grow` | demo |
-| Max: a stage column and a 2×2 card grid | A square cover and Now Playing stay fixed; the Queue takes the free height | `max-overview` | demo |
+| Max: a stage column and a card grid | A square cover and Now Playing stay fixed; the Queue takes the free height. *Layout for Max*: 4 cards, 2 columns, 2 rows or 1 card, each with its own cards (0.26.0) | `max-overview` | demo |
+| The full player | Now Playing grows so the cover is as large as the window allows, with the controls and the Queue around it; Midi and Max; from an edge of Now Playing, Compass or a rule (0.26.1) | — | demo |
+| Hide the cards you do not use | Settings › Cards takes a card out of the picker; the feature keeps working (0.26.0) | — | demo |
 | A card comes back where you left it | Card memory: the view, the scroll, the drill | — | demo |
 | Drag and drop between cards | Songs, albums and playlists drop on the Queue, Playlists and other cards | — | demo |
 | A right-click menu for each media type | One menu builder for song, album, artist, playlist, station | `context-menu` | demo |
@@ -123,7 +125,8 @@ The forks still open from the 2026-10-01 talk:
 | Full \| Lib | Apple's whole album or artist page in place of your songs, in the same card | — | demo |
 | Search the Apple Music catalog | Songs, albums, playlists, stations; right-click queue actions | — | demo |
 | Stations | Apple live, personal and genre stations; Start Station on any song or artist | — | demo |
-| Queue | The Queue card is the truth and MusicKit follows it; shuffle and repeat; Play and Shuffle on any collection | `next-song`, `play` | demo |
+| Queue | The Queue card is the truth and MusicKit follows it; shuffle and repeat; Play and Shuffle on any collection; the same song can sit in the queue more than once (0.25.4) | `next-song`, `play` | demo |
+| Music keeps going | When an album or playlist ends, a short web of songs like it plays next (0.25.4); a song whose stream stalls loads again from just before where it stopped | — | demo |
 | Pins | Pin a playlist, station, album, artist or song; each pin has its own click verb (Play, Shuffle, Open) | — | demo |
 | Add to Library and ♥ | From every card a song shows in | — | demo |
 | Sleep timer | A dial, chips, a wind-down of the volume, an every-day schedule | — | demo |
@@ -179,6 +182,7 @@ The forks still open from the 2026-10-01 talk:
 | Last.fm | Scrobbles and now playing | — | dev |
 | Browser extension | On YouTube or YouTube Music, finds the song on Apple Music; + adds it to your library | — | dev |
 | Agent control | A `deetsmusic` CLI and an MCP server with 21 tools (search, play, queue, playlists, Diary, rules …); Settings › Connections › Agent control | — | dev |
+| Connect an AI app in one click | Settings › Connections › *Set up the DeetsMusic MCP* finds Claude Desktop, Claude Code and Codex and connects each (0.26.0) | — | dev |
 | Bug reports in the app | Settings › Bugs sends a report with the log | — | dev |
 
 ## 10. Do not claim (not shipped, or hidden)
@@ -186,14 +190,18 @@ The forks still open from the 2026-10-01 talk:
 - Spotify: parked (PROVIDERS.md).
 - Adaptive sound: hidden behind a DevTools flag since 2026-09-25 (SOUND.md §11a).
 - Suggest Less: designed; no release note names it. Check before any use.
-- Skinz (edit theme colors), Hop in (welcome screen), the Layout rows, a second Search card, one
-  search field, the graphics fallback, usage counts: designed, not built.
+- Skinz (edit theme colors), Hop in (welcome screen), the Layout rows, a second Search card,
+  Backup, Local radio: designed, not built.
+- In 0.27.0, built but not published on 2026-10-14: the Last.fm facts boxes on the artist and
+  album pages, the listener counts on Now Playing, unshuffle, one behavior for every search
+  box, the graphics fallback. Built after 0.27.0: usage counts, Presentation mode, Rooms on the
+  web (app side). Claim none of these until a release carries them.
 - Everything in `docs/ideas/`.
 
 ## 11. Shots that exist today (0.25.1)
 
-- `shots.json`: `midi-home`, `max-overview`, `compass-open`, `clip-compass-arrive`,
-  `clip-card-swap`. One look each (Moonlight × Glass).
+- `shots.json`: `midi-home`, `max-overview`, `max-full-player` (2026-10-13), `compass-open`,
+  `clip-compass-arrive`, `clip-card-swap`. One look each (Moonlight × Glass).
 - `motion.json`: 24 clips × 5 skins. They were made to debug motion; each clip is one gesture,
   3–8 s, no sound.
 - No shot for §6, most of §4–§5, §8, or §9. The dev-app source (SHOTS.md §10 step 4) is not

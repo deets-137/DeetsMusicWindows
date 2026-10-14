@@ -471,7 +471,8 @@ pub fn agent_setup_text(client: String, app: tauri::AppHandle) -> String {
 pub fn agent_open_guide(app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     app.opener()
-        // Moved from docs/AGENT-SETUP.md on 2026-09-21; a stub there still serves installs up to 0.12.2.
+        // Moved from the top of docs/ on 2026-09-21. The stub for installs up to 0.12.2 was deleted
+        // on 2026-10-14 (none in use).
         .open_url("https://github.com/deets-137/DeetsMusicWindows/blob/main/docs/integrations/AGENT-SETUP.md", None::<String>)
         .map_err(|e| e.to_string())
 }

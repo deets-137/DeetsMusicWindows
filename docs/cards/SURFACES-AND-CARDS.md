@@ -8,7 +8,7 @@ sources: [docs/architecture/SURFACES-AND-CARDS.md]
 
 > **Generated copy** of [../architecture/SURFACES-AND-CARDS.md](../architecture/SURFACES-AND-CARDS.md), the one true copy. Edit that file, then run `npm run docs:copies`.
 
-> How the midi-player composes **swappable cards**, and how one webview will serve three
+> How the midi-player composes **swappable cards**, and how one webview serves three
 > **surfaces** (mini / midi / max). Read this before touching `src/main.ts` boot, the bento
 > markup in `index.html`, or any card's mount path. Siblings:
 > [UI-ARCHITECTURE](../architecture/UI-ARCHITECTURE.md) (tokens + collection-card engine),
@@ -155,7 +155,14 @@ without adding a separate control to the panel header.
 
 ---
 
-## 4. Surface system (seam only, this build)
+## 4. Surface system
+
+> **2026-10-14:** this section was written when only midi was composed ("seam only, this
+> build"). All three surfaces have their own composition now: max is the stage column plus a
+> card grid (Build order step 4; *Layout for Max*, [MAX-CARDS.md](../features/MAX-CARDS.md);
+> [STAGE-COLUMN.md](STAGE-COLUMN.md)), and mini has its Mini | Player views (below).
+> The bands and the auto-flip are built (`surfaceAutoFlip`, FUTURE-SETTINGS §8). The
+> "intended shapes" bullet keeps the plan of 2026-09-08 as a record.
 
 ### What each surface is *for* (the thesis, not just the size)
 The three surfaces are an **engagement ladder** — each has a distinct job, which is what should

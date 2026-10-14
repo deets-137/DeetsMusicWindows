@@ -223,7 +223,7 @@ plus **kind auto-clusters** so the unfiled pile self-organizes. Both render as
 
 Three entry points. The first two are on the `src/context-menu.ts` primitive — **both BUILT
 2026-07-02**; the third is multi-select — **BUILT 2026-09-15**
-([NEXT-VERSION §19](../NEXT-VERSION.md)): Ctrl+click and Shift+click pick song rows, then either
+([NEXT-VERSION §19](../archive/NEXT-VERSION.md)): Ctrl+click and Shift+click pick song rows, then either
 drag the set onto a playlist (or into an open one), or right-click it and take
 *Add to Playlist ▸ New Playlist…*, which makes the list and fills it in one gesture. It works
 in every list in the app — the Library (songs, and album and artist tiles), the Playlists

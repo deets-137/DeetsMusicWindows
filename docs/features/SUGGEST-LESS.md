@@ -40,7 +40,7 @@ The code moved under this design for four weeks. The changes, checked 2026-10-12
 
 | Question | Answer |
 |---|---|
-| A call that lists all −1 songs? | **No.** For ♥ Apple has the generated Favorite Songs playlist ([NEXT-VERSION.md §3](../NEXT-VERSION.md)); for −1 there is nothing like it. |
+| A call that lists all −1 songs? | **No.** For ♥ Apple has the generated Favorite Songs playlist ([NEXT-VERSION.md §3](../archive/NEXT-VERSION.md)); for −1 there is nothing like it. |
 | Read a rating | `GET /v1/me/ratings/songs?ids=…`, 100 ids per call. The reply carries `attributes.value` 1 or −1; an id with no rating is left out (404 when none has one). |
 | We already make that call | `favorites_reconcile` ([favorites.rs](../../src-tauri/src/favorites.rs)) reads the value and keeps only `1`. **A −1 falls into `unloved` today.** Keeping it costs 0 calls. |
 | Who calls it today | Search hits and playlist rows (`reconcile` in [favorites.ts](../../src/favorites.ts)). **Library songs are never asked.** |

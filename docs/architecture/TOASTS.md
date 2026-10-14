@@ -3,13 +3,14 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-20
 sources: [src/toast.ts, src/styles/toast.css]
-updated: 2026-10-03
+updated: 2026-10-14
 ---
 # DeetsMusic — Toasts
 
 > Built 2026-09-13 (branch `claude/deetsmusic-toast-impl-rfw6ch`). **The sticky queue's desk
 > test (§4a.7) PASSED 2026-09-20** — the owner ran it with the three other features of that
-> day and confirmed all of them. The 2026-09-13 primitive's own first desk test — the test script is [DEBUGGING.md §Toasts](../ops/DEBUGGING.md#toasts). Code:
+> day and confirmed all of them. The 2026-09-13 primitive was desk-tested and shipped in 0.4.3;
+its test script is [DEBUGGING.md §Toasts](../ops/DEBUGGING.md#toasts). Code:
 > `src/toast.ts` (the primitive), `src/styles/toast.css` (the host + strip), the `toasts`
 > key in `settings-store.ts`, the "Show notices" row in `settings-card.ts`. Design
 > history and the candidate ledger: [FUTURE-SETTINGS §18](../FUTURE-SETTINGS.md).

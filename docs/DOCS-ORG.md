@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: [scripts/publish-update.mjs, src/toast.ts, src-tauri/src/playlists.rs, src/settings-card.ts, scripts/webview-eval.mjs]
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 # DeetsMusic — Docs organization
 
@@ -218,6 +218,7 @@ The values of `status`, defined once (S1 and S2 added the last four, the owner, 
 | `foundation` | the engine the features run on (§5.2) |
 | `sop` | a standard operating procedure: how the work is done (§5.2) |
 | `guide` | written for the user (§5.2, §13) |
+| `archived` | no longer needed; kept as a record in `docs/archive/` (§5.3) |
 
 ### 5.1 Part markers — a doc with more than one state (S3, the owner, 2026-09-21)
 
@@ -269,6 +270,16 @@ doc stale" is a guess.
 The human-readable `> **Status …**` block that every doc already has **stays**. Front matter
 is for the script. The block is for the reader. Check 9 makes sure the two agree, so there
 is no third copy of the truth — there is one truth in two shapes, and a test.
+
+### 5.3 The archive (the owner, 2026-10-14)
+
+A doc that no one needs any more moves to `docs/archive/` with
+`node scripts/docs-move.mjs NAME=archive`, and its status becomes `archived`. It keeps its
+`shipped_in` and its history. Nothing is deleted. Before the move, every item in it that is
+still open goes to its feature doc or to HANDOFF.md › Open now, so the archive holds no open
+work. The checker treats an archived doc as a record: the names of files it mentions and its
+`sources` may be gone (check 2, check 4), and every doc in `archive/` must say `archived`, and
+the other way round (check 11).
 
 ---
 
@@ -424,7 +435,9 @@ tree. The repo has a `.claude/` already, with only `settings.local.json` in it.
 ## 11. Build order
 
 Each step is its own sitting and its own commit. Steps 1 and 2 are mechanical and reversible.
-Nothing here is started.
+Steps 1–5 are done; 6–8 are not started (read 2026-10-14: no `.claude/skills/docs-sweep/`, no
+`line` field in `publish-update.mjs`, the guide is at §13.10's outline). The checker grew
+checks 18–30 since step 2 (§8).
 
 1. **Front matter on all 66 docs.** No moves. This step makes every later step checkable,
    and it is the only step that touches every file. **DONE 2026-09-21 (§11.1a).**

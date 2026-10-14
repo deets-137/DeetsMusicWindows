@@ -1,13 +1,14 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.26.0
 desk_test: passed 2026-10-12
 sources: [src/layout.ts, src/layout-rules.ts, src/card-grow.ts, src/full-player.ts, src/styles.css, index.html, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/rulez-words.ts, src/rulez-logs.ts, src/compass.ts, src/appearance.ts, src/boot-cover.ts, src/rulez-card.ts, src/surface.ts]
-updated: 2026-10-11
+updated: 2026-10-14
 ---
 # DeetsMusic — Max cards: one, two or four content cards in Max
 
 > **Status (2026-10-11):** the idea came from the owner. He closed the forks the same day (§1).
-> Built the same day on `ten-out-of-ten`, on top of the full player (468b657), uncommitted.
+> Built the same day on `ten-out-of-ten`, on top of the full player (468b657); shipped in 0.26.0.
 > §11 is the as-built record. The desk test (§7) passed: the owner ran it (his report,
 > 2026-10-12). The shots pass is §7a. Every fork is closed (§9).
 

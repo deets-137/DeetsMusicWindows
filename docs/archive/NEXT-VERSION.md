@@ -1,13 +1,19 @@
 ---
-status: sop
+status: archived
 desk_test: none
 sources: [src/styles.css, src/search-card.ts, src/now-playing-card.ts, src/styles/skin.css, src/row-pick.ts, src-tauri/src/playlists.rs]
-updated: 2026-10-12
+updated: 2026-10-14
 ---
 # DeetsMusic — Next version (feature notes)
 
+> **Archived 2026-10-14.** Every batch here is built and shipped (0.4.3 to 0.7.0; the §14
+> unshuffle part is in 0.27.0, built, not published). It was the backlog of 2026-09-11 to 2026-09-16; it is kept as the record of
+> those decisions. The open work left the doc: the fancy-scrubber cost was measured and the
+> loops stepped (DEBUGGING.md, the ambient loops), and the two update ideas went to HANDOFF.md ›
+> Open now. What is open now is always HANDOFF.md › Open now.
+
 > Aditya's feature notes for the version after 0.2.2, captured 2026-09-11. This file is
-> the **feature** backlog. It is not [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md), which holds
+> the **feature** backlog. It is not [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md), which holds
 > deferred *toggles* for behavior that already ships.
 >
 > Each entry: what it means, what the code has today, the real forks (the options the code
@@ -17,7 +23,7 @@ updated: 2026-10-12
 > and desk-verified 2026-09-12** (user: "look good"). Same day, on top: the extras in §9;
 > the surface-change motion (fork B) was built, judged janky, and walked back (§10).
 > **State on 2026-09-16: every section through §21 is built and shipped (0.7.0).** Open work: the fancy-scrubber performance eval (§21), and the two update ideas (resume after an update restart; install at the song's end). **2026-09-15: the listening-loop review added §12–§17** (repeat, Play/Shuffle on a collection, shuffle mode, Home, durable History, sleep timer). The toast
-> primitive is built ([TOASTS.md](architecture/TOASTS.md), 2026-09-13) with the Add-to-Library notice;
+> primitive is built ([TOASTS.md](../architecture/TOASTS.md), 2026-09-13) with the Add-to-Library notice;
 > the playlist-cover notice (§2) waits on the cover flow itself.
 
 | # | Feature | Cost to Apple | Needs new schema |
@@ -38,9 +44,9 @@ updated: 2026-10-12
 **What it means.** Keep a search term at the top of the Search card, above the recents.
 
 **What the code has.** The Search card keeps a recents ring in `localStorage` under
-`deets.search.recents` ([search-card.ts:25](../src/search-card.ts:25)). Before a query the
+`deets.search.recents` ([search-card.ts:25](../../src/search-card.ts:25)). Before a query the
 body shows a **Recent** label and the rows; a tap re-runs the term
-([search-card.ts:116](../src/search-card.ts:116)). Everything is front-end. There are no
+([search-card.ts:116](../../src/search-card.ts:116)). Everything is front-end. There are no
 pins today.
 
 **The shape.** A second key (`deets.search.pins`) and a **Pinned** block above **Recent**.
@@ -73,10 +79,10 @@ A pinned term never falls out of the ring.
 **What it means.** A local playlist gets a cover instead of the ♪ placeholder.
 
 **What the code has.** `local_playlists` has **no artwork column**
-([playlists.rs:28](../src-tauri/src/playlists.rs:28)). The card renders `p.artwork` through
-`musicCell` ([playlists-card.ts:393](../src/playlists-card.ts:393)), so a local playlist
+([playlists.rs:28](../../src-tauri/src/playlists.rs:28)). The card renders `p.artwork` through
+`musicCell` ([playlists-card.ts:393](../../src/playlists-card.ts:393)), so a local playlist
 shows the placeholder. Apple mirror playlists carry their own artwork when Apple sends one
-(it is **often absent** — [PLAYLISTS.md §2](features/PLAYLISTS.md)). "Mosaic-cover rendering
+(it is **often absent** — [PLAYLISTS.md §2](../features/PLAYLISTS.md)). "Mosaic-cover rendering
 specifics" is already an open item in PLAYLISTS.md.
 
 **Forks.**
@@ -99,7 +105,7 @@ the schema and can ship alone.
    `ALTER TABLE … ADD COLUMN` on the existing `migrate_v2` pattern in `library.rs`). Local only:
    the public Apple API has no way to set a playlist cover (create takes name and description
    only), so an exported playlist keeps whatever Apple generates. A one-time notice that
-   says so is parked with the toast work ([FUTURE-SETTINGS §18](FUTURE-SETTINGS.md)).
+   says so is parked with the toast work ([FUTURE-SETTINGS §18](../FUTURE-SETTINGS.md)).
 2. **Apple's own artwork** on a mirror playlist, when Apple sends one (already stored).
 3. **The derived 2×2 mosaic** from the first four distinct album covers. Fewer than four:
    one cover. Empty: the ♪ placeholder. Rendered in `musicCell` from cached art URLs.
@@ -122,14 +128,14 @@ artwork, ahead of the mosaic (2026-09-14; PLAYLISTS.md §6).
 **What it means.** Apple's **Favorite** (the ♥ / love `+1`).
 
 **What the code has.** Nothing. There is no `favorite` in `src/` or `src-tauri/src/`.
-It is fully scoped as **step 5b** in [FAVORITES.md](features/FAVORITES.md), parked by your own call
+It is fully scoped as **step 5b** in [FAVORITES.md](../features/FAVORITES.md), parked by your own call
 after Add-to-Library shipped. The scope there: ♥ is a ratings `PUT +1`, love only; there is
 no 👎 and no ratings system.
 
 **The fork that matters — the two halves are separate features.**
 - **(a) Write the ♥.** A ♥ square on Now Playing (next to `#np-add`) plus a right-click item
   across Library / Search / Queue. Needs a **local favorites mirror** table so the ♥ can show
-  filled state without a read call per song ([FAVORITES.md](features/FAVORITES.md) §Local favorites mirror).
+  filled state without a read call per song ([FAVORITES.md](../features/FAVORITES.md) §Local favorites mirror).
 - **(b) Read Apple's "Favorite Songs".** Apple generates a *Favorite Songs* playlist from
   those loves. Showing it in the Playlists card is a different job: a mirror playlist to
   fetch, not a button to build.
@@ -137,7 +143,7 @@ no 👎 and no ratings system.
 Say which half "integration" means, or say both and we sequence (a) then (b).
 
 **Also.** ♥ feeds Apple's recommendations, so it improves Stations
-([FAVORITES.md](features/FAVORITES.md) §Ties to Stations).
+([FAVORITES.md](../features/FAVORITES.md) §Ties to Stations).
 
 **Decisions (2026-09-12). Both halves, sequenced (a) then (b).**
 - **What Apple gives us.** Write: `PUT /v1/me/ratings/songs/{id}` value `1` sets Favorite;
@@ -172,10 +178,10 @@ Say which half "integration" means, or say both and we sequence (a) then (b).
 
 **What the code has.** All the data. `play_events` logs every play with `started_ts`,
 `ms_listened` and `context`, live since 2026-07-01
-([DEETS-REWIND.md](features/DEETS-REWIND.md) §5a). [rewind.ts](../src/rewind.ts) already ranks
+([DEETS-REWIND.md](../features/DEETS-REWIND.md) §5a). [rewind.ts](../../src/rewind.ts) already ranks
 **Songs × Past Week** by minutes listened — that is the Rewind card's default view. The
 playlist store is local-first and its writes cost zero Apple calls
-([PLAYLISTS.md](features/PLAYLISTS.md) §7). Folders exist, so the playlists can be filed together.
+([PLAYLISTS.md](../features/PLAYLISTS.md) §7). Folders exist, so the playlists can be filed together.
 
 **So this is a generator, not new plumbing:** take the existing Past-Week ranking, make a
 local playlist from the top N.
@@ -221,12 +227,12 @@ or fill it out with the next-best songs.
 
 **What the code has.** Now Playing's right cluster holds two squares: **+** (Add to Library,
 `#np-add`) and the **queue summon** (`#np-summon`), which calls `requestCard("queue")`
-([now-playing-card.ts:71](../src/now-playing-card.ts:71)). The summon bus
-([layout-bus.ts](../src/layout-bus.ts)) can bring in **any** card, not only the Queue. The
+([now-playing-card.ts:71](../../src/now-playing-card.ts:71)). The summon bus
+([layout-bus.ts](../../src/layout-bus.ts)) can bring in **any** card, not only the Queue. The
 row already drops the two side buttons to a second row when the width is too small
-([now-playing-card.ts:257](../src/now-playing-card.ts:257)) — so a third square is not free.
+([now-playing-card.ts:257](../../src/now-playing-card.ts:257)) — so a third square is not free.
 A card picker also already exists as the card's own title menu
-([SURFACES-AND-CARDS.md](architecture/SURFACES-AND-CARDS.md) §3).
+([SURFACES-AND-CARDS.md](../architecture/SURFACES-AND-CARDS.md) §3).
 
 **Forks.**
 - **(a) One more square: Search.** Cheapest. It matches the queue summon exactly. But the
@@ -245,7 +251,7 @@ A card picker also already exists as the card's own title menu
 - **Keyboard shortcuts, fixed set.** No global shortcuts exist today, so these are free:
   `Ctrl+K` Search · `Ctrl+Q` Queue · `Ctrl+L` Library · `Ctrl+P` Playlists · `Ctrl+,` Settings.
   Ignored while a text field has focus.
-- **Deferred to [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md):** rebinding the shortcuts, and
+- **Deferred to [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md):** rebinding the shortcuts, and
   choosing the order and content of the Now Playing squares.
 
 **Cost.** Zero Apple calls.
@@ -260,7 +266,7 @@ A card picker also already exists as the card's own title menu
 it snaps.
 
 **What the code has.** A switch sets one attribute on `<html>`
-([theme.ts:38](../src/theme.ts:38), [skin.ts:32](../src/skin.ts:32)). A theme changes only
+([theme.ts:38](../../src/theme.ts:38), [skin.ts:32](../../src/skin.ts:32)). A theme changes only
 colors. A skin also changes fonts, sizes, radii, gradients, the Ocean and storm SVG layers,
 and the Glass blur. Most of these cannot be animated with CSS transitions (the theme roles
 are not `@property`-registered; gradients, `font-family` and `display` do not interpolate).
@@ -273,7 +279,7 @@ state. Transition types (`:active-view-transition-type(theme | skin)`) tell the 
 > the launch animation: the cover fades in over the old look, the look changes under it, and
 > the cards rise. Each skin tunes the rise with `--boot-*` tokens. The View Transition, the
 > `--appearance-*` tokens and the five skin entrances below are removed. See
-> [UX-COVERUPS.md §6a](architecture/UX-COVERUPS.md).
+> [UX-COVERUPS.md §6a](../architecture/UX-COVERUPS.md).
 
 **Decisions.**
 - **(A) Look — theme and skin animate differently.** A theme switch is a color crossfade. A
@@ -286,7 +292,7 @@ state. Transition types (`:active-view-transition-type(theme | skin)`) tell the 
 - **(B) Origin — full-window crossfade.** A circular reveal from the settings button is a
   possible later polish.
 - **(C) Tray panel and extension popup — snap.** The tray panel is usually hidden, and its
-  `fit()` resizes the window ([tray.ts:349](../src/tray.ts:349)).
+  `fit()` resizes the window ([tray.ts:349](../../src/tray.ts:349)).
 - **(D) Reduced motion — snap.** Under `prefers-reduced-motion: reduce` there is no
   animation at all, same as today. (This is stricter than the album crossfade, which stays.)
 
@@ -297,11 +303,11 @@ state. Transition types (`:active-view-transition-type(theme | skin)`) tell the 
 | Window | Animate look changes (Theme and skin switches fade into each other. Off: they change at once) | `appearanceMotion` | on / off | the transition helper |
 
 The OS reduced-motion preference overrides the row: it snaps even when the row is on. Add
-the row to [SETTINGS.md §3](architecture/SETTINGS.md) when this ships.
+the row to [SETTINGS.md §3](../architecture/SETTINGS.md) when this ships.
 
 **Build notes.**
 - One helper (e.g. `withAppearanceTransition(kind, fn)`), called from the click handlers in
-  [main.ts:68](../src/main.ts:68) and any Settings-card picker. Not from `initTheme()` /
+  [main.ts:68](../../src/main.ts:68) and any Settings-card picker. Not from `initTheme()` /
   `initSkin()` — startup stays instant.
 - It snaps (calls `fn` directly) when the row is off, reduced motion is on, or the API is
   missing.
@@ -328,18 +334,18 @@ covers the artist, album and times are almost invisible.
 
 **Why the text is faint today.** The Glass panel is part-transparent, and under it the album
 aurora mixes the cover colors at `--album-aurora-strength: 52%`
-([skin.css:427](../src/styles/skin.css:427)). A bright cover makes the backdrop light. The
+([skin.css:427](../../src/styles/skin.css:427)). A bright cover makes the backdrop light. The
 text keeps the theme roles: the title uses `--title`, the artist, album and times use
-`--subtext` ([styles.css:1452](../src/styles.css:1452)). `--subtext` is a mid grey for a dark
+`--subtext` ([styles.css:1452](../../src/styles.css:1452)). `--subtext` is a mid grey for a dark
 panel, so it falls well below 4.5:1 there. The aurora rotates, so the backdrop under the text
 also changes over time.
 
 **What the code has.** Apple's palette comes with every cover and is already cached — zero
 new calls. Rust keeps `bgColor` and `textColor1–4`
-([apple.rs:817](../src-tauri/src/apple.rs:817)); `album_palette` (enrich.rs) returns
-`bg`/`c1`/`c2`; [album-color.ts](../src/album-color.ts) sets them as inline roles
+([apple.rs:817](../../src-tauri/src/apple.rs:817)); `album_palette` (enrich.rs) returns
+`bg`/`c1`/`c2`; [album-color.ts](../../src/album-color.ts) sets them as inline roles
 `--album-bg/-c1/-c2` on the `.np` card, with an `@property` crossfade
-([styles.css:1280](../src/styles.css:1280)). See [ALBUM-COLOR.md](features/ALBUM-COLOR.md).
+([styles.css:1280](../../src/styles.css:1280)). See [ALBUM-COLOR.md](../features/ALBUM-COLOR.md).
 Apple's text colors are readable on **`bgColor`**, not on our backdrop (theme surface +
 frost + aurora), so they always need the check below.
 
@@ -389,10 +395,10 @@ JS. It runs once per album change — cheap.
 **What it means.** In Glass the AirPlay **Play on** panel is too see-through: the card under
 it (its title, search bar, rows) shows through the rows of speakers.
 
-**What the code has.** The panel (`.ap`, [styles.css:294](../src/styles.css:294)) uses the
+**What the code has.** The panel (`.ap`, [styles.css:294](../../src/styles.css:294)) uses the
 same recipe as the right-click menu and the Search category popover: `--menu-surface` +
 `--menu-backdrop`. In Glass `--menu-surface` is 65% of the theme surface over transparent
-with a 16px blur ([skin.css:433](../src/styles/skin.css:433)); every other skin uses the
+with a 16px blur ([skin.css:433](../../src/styles/skin.css:433)); every other skin uses the
 opaque surface. The panel is portaled to `<body>`, so it frosts whatever card it hangs over.
 Nothing is broken; 65% is the design value and it is too thin for a list of names.
 
@@ -583,7 +589,7 @@ and a Repeat-all lap is shuffled too. Agent: `shuffle` presses the button, `shuf
 > a click while the mode is on shuffles the WHOLE list but the clicked song (3A); a list's
 > Shuffle hands the list over in order from a random song, so the plan keeps the order; the
 > plan rides the queue blob (v2); the glyph stays the arrows (a helix was tried and dropped). The record is
-> [QUEUE.md §Shuffle and unshuffle](features/QUEUE.md).
+> [QUEUE.md §Shuffle and unshuffle](../features/QUEUE.md).
 
 **2026-09-16 — the "on" state was invisible, and a press had no answer.** Two faults, both fixed:
 
@@ -644,7 +650,7 @@ Each shelf is one sideways-scrolling row of twelve tiles, stacked down the card 
 view's shelves), so all three are on screen at once. Settings › Home holds *Hiding lasts* and *Hidden tiles › Clear*. New in Rust: the `added_at`
 table + `added_at_map` — the true add clock for anything added through DeetsMusic from now
 on. Whether Home is the fresh-install default slot waits for the default-cards talk.
-**The whole record, with every fork: [HOME.md](features/HOME.md).**
+**The whole record, with every fork: [HOME.md](../features/HOME.md).**
 
 ## 16. A durable History card — BUILT 2026-09-15
 
@@ -782,7 +788,7 @@ NP 405 × 675, Midi 495 × 670, Max 1100 × 820. NP never flips surface on a res
 jitter needed no CSS: NP's 404-px floor, plus the `61b1ae1` ResizeObserver fix, settled it.
 Two bugs turned up on the way — Play / Shuffle drew on an empty list, and a skin switch
 scrolled a card's head out of view. Commits `18de3a7` + `5a52852`; the whole record, with the
-shipped numbers, is [FUTURE-SETTINGS.md §8a](FUTURE-SETTINGS.md).
+shipped numbers, is [FUTURE-SETTINGS.md §8a](../FUTURE-SETTINGS.md).
 
 ## 19. Multi-select rows, and the playlist creation flow — BUILT 2026-09-15
 
@@ -947,7 +953,7 @@ gone — which also removes the top frame suspect.
 On every `.scrub`: the seek bar, the max stage volume, the Settings ranges. **Not** the
 title-bar volume bar (user's call: its clean fill stays). Gates: `data-playing` on `<html>`
 (new, main.ts), `data-dragging` / `data-released` on the slider (new, slider.ts), reduced
-motion. The full map is [UI-ARCHITECTURE.md §3 SCRUBBERS](architecture/UI-ARCHITECTURE.md).
+motion. The full map is [UI-ARCHITECTURE.md §3 SCRUBBERS](../architecture/UI-ARCHITECTURE.md).
 
 **Performance eval (next session).** Measure on `npm run dev:built` per CLAUDE.md's graphics
 rules: frames ÷ ms with a skin's loop running against Fancy scrubber off. The Glass lens is
@@ -960,5 +966,5 @@ release it. Glass: the lens over the album art. Settings › Fancy scrubber off:
 handles, no motion. Pause: every loop stops. The title-bar bar: no handle.
 
 ## See also
-- [FUTURE-SETTINGS.md](FUTURE-SETTINGS.md) — deferred toggles (not features).
-- [HANDOFF.md](HANDOFF.md) §Not built yet — the older not-built list.
+- [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md) — deferred toggles (not features).
+- [HANDOFF.md](../HANDOFF.md) §Not built yet — the older not-built list.

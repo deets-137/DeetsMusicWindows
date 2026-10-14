@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: [scripts/shots.mjs, src/marks.ts, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts]
-updated: 2026-10-11
+updated: 2026-10-14
 ---
 # DeetsMusic — Shots: pictures and clips of each feature
 
@@ -10,9 +10,9 @@ A script records every feature of the app as a picture or a short clip. The user
 (DOCS-ORG.md §13) and a marketing overview use the same shots. The script runs again before
 each release, so no picture shows an old app.
 
-> **State (2026-09-28, branch `visualz`):** §10 steps 2 and 3 BUILT. The runner takes demo
-> pictures and clips (§5a). `shots.json` holds three pictures and two sample clips (the
-> Compass, the Midi card swap). `motion.json` is the motion set: 24 clips in the 5 skins (17
+> **State (2026-09-28, branch `visualz`, merged into `main`):** §10 steps 2 and 3 BUILT. The runner takes demo
+> pictures and clips (§5a). `shots.json` holds four pictures (the Max full player since
+> 2026-10-13, for the website's Demos box) and two sample clips (the Compass, the Midi card swap). `motion.json` is the motion set: 24 clips in the 5 skins (17
 > gestures and 7 surface changes, where the runner is the window, §5c), with a console record
 > and the app's frame telemetry per clip (§5b). It is the input to the animation design pass
 > and a visual debugging tool (his framing, 2026-09-28). F1–F4 closed (§1); U10 open.

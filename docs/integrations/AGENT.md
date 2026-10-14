@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-14
 sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts, src/agent-rules.ts, src/agent-rules-shape.ts, cli/src/main.rs]
-updated: 2026-10-12
+updated: 2026-10-14
 ---
 # Agent / CLI control — `deetsmusic`
 
@@ -27,7 +27,7 @@ the queue and history. It rides the **same loopback bridge the browser extension
 `<app_data>/settings.json` as `Authorization: Bearer …`. No new server, port, or trust
 surface. Plain `deets` is reserved for other things; this is `deetsmusic`.
 
-**Two MCP profiles (2026-09-14).** `deetsmusic mcp` serves all 18 tools, for Claude-class
+**Two MCP profiles (2026-09-14).** `deetsmusic mcp` serves all 21 tools (2026-10-14), for Claude-class
 clients. `deetsmusic mcp --small` serves 10, for small tool-calling models (LFM2.5, Gemma
 4B-class): flat string / enum arguments, and no argument whose meaning depends on the action.
 Both use **prefixed ids everywhere** and a two-step flow — search (or list stations) first,
@@ -638,7 +638,7 @@ removed after the run.
   [UX-COVERUPS.md §6b](../architecture/UX-COVERUPS.md).
 - Installer PATH entry (NSIS hook).
 - **Connect AI apps for the user** — `deetsmusic mcp install` + a Settings panel over one shared
-  crate: [MCP-INSTALL.md](MCP-INSTALL.md) (designed 2026-09-16, forks open).
+  crate: [MCP-INSTALL.md](MCP-INSTALL.md). BUILT, shipped in 0.26.0, desk test passed 2026-10-13.
 - A small-model test of `mcp --small` (LM Studio / Ollama) with the AGENT-SETUP §3 phrases.
 - Durable history (`play_events` + the track store) as a second history source.
 - `artist:` ids for `play` (artist top songs) — search returns them, play doesn't take them yet.

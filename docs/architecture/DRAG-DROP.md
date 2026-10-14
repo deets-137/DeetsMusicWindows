@@ -165,7 +165,7 @@ toasts behind each target), `browser-defaults.ts` (§6 page half), `queue.insert
 `playlist_insert_tracks`), `library-add.addDroppedToLibrary`, `webview2-com` in Cargo.toml.
 
 **A picked set drags as one thing** (multi-select, `src/row-pick.ts`,
-[NEXT-VERSION §19](../NEXT-VERSION.md)). The drop side needed no change at all: `DragPayload`
+[NEXT-VERSION §19](../archive/NEXT-VERSION.md)). The drop side needed no change at all: `DragPayload`
 already carried `tracks()` and `count`, because an album tile always dragged many songs. Two
 rules: a drag that starts on a picked row is always a **copy**, never a reorder (a block of
 rows has no single new position), and the ghost's count badge, which used to be for

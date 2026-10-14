@@ -7,7 +7,7 @@
 //   4. front matter present and valid   the fields and values of DOCS-ORG.md §5
 //   5. versions agree                   the seven version files; every shipped_in is a real,
 //                                       published release no newer than the current version
-//  11. nothing in ideas/ is above `idea`
+//  11. nothing in ideas/ is above `idea`; archive/ holds the archived docs and only them
 //  18. every generated copy (docs-copies.mjs) matches its original — added with step 3
 //  19. every docs path a shipped app opens still exists (SHIPPED_LINKS) — added 2026-09-21
 // Checks 6-10 (the suspicions) wait for the first report (§11 step 2).
@@ -35,7 +35,7 @@ import { COPIES, render as renderCopy } from "./docs-copies.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const GRACE_END = "2026-09-28"; // F5: the release check fails on facts from this date
 
-const STATUS = ["shipped", "built", "designed", "project", "parked", "idea", "foundation", "sop", "guide"];
+const STATUS = ["shipped", "built", "designed", "project", "parked", "idea", "foundation", "sop", "guide", "archived"];
 const KEYS = ["status", "shipped_in", "desk_test", "sources", "updated", "generated"];
 // Until release tags exist (DOCS-ORG §14, T2), the withdrawn versions are named here.
 const WITHDRAWN = ["0.12.0", "0.12.1"];
@@ -47,10 +47,12 @@ const OTHER_REPO = /^(\.\.\/(?!src|docs|scripts|extension|cli|crates|README|CLAU
 // Another repo named in prose: any Deets* name but this app's own, or the website.
 const NAMES_REPO = /\bDeets(?!Music\b)[A-Z][A-Za-z]+|\bdeets\.solutions\b|\bdeets-137\//;
 const RETIRED = { "VALUES.md": "LESSONS.md" };
-const PLANS = ["project", "designed", "idea"];
+// An archived doc (DOCS-ORG.md §5.3) is a record: like a plan, it may name files that are gone.
+const PLANS = ["project", "designed", "idea", "archived"];
 // Check 19: every docs path an installed build opens. Append only; never remove a line.
 const SHIPPED_LINKS = [
-  "docs/AGENT-SETUP.md", // the Guide button (settings.rs) up to 0.12.2
+  // "docs/AGENT-SETUP.md" (the Guide button up to 0.12.2) left 2026-10-14: no install that old is
+  // in use (the owner), so its stub was deleted.
   "docs/integrations/AGENT-SETUP.md", // the Guide button from 0.13.0
 ];
 // Checks 20–26 (2026-09-27, the consistency survey): the code against its ledgers. Each one
@@ -183,15 +185,16 @@ export function check() {
     for (const k of Object.keys(fm)) if (!KEYS.includes(k)) fail(4, file, 1, `unknown key "${k}"`);
     if (!STATUS.includes(fm.status)) fail(4, file, 1, `status "${fm.status ?? ""}" is not one of ${STATUS.join(" ")}`);
     if (fm.status === "shipped" && !fm.shipped_in) fail(4, file, 1, "status shipped needs shipped_in");
-    if (fm.shipped_in && fm.status !== "shipped") fail(4, file, 1, `shipped_in with status ${fm.status}`);
+    if (fm.shipped_in && fm.status !== "shipped" && fm.status !== "archived") fail(4, file, 1, `shipped_in with status ${fm.status}`);
     if (!/^(none|open|passed \d{4}-\d{2}-\d{2})$/.test(fm.desk_test ?? "")) fail(4, file, 1, `desk_test "${fm.desk_test ?? ""}" — none, open or passed <date>`);
     if (!fm.generated && !/^\d{4}-\d{2}-\d{2}$/.test(fm.updated ?? "")) fail(4, file, 1, `updated "${fm.updated ?? ""}" is not a date`);
     const src = /^\[(.*)\]$/.exec(fm.sources ?? "");
     if (!src) fail(4, file, 1, "sources is not a [list]");
-    else for (const s of src[1].split(",").map((x) => x.trim()).filter(Boolean)) {
+    else if (fm.status !== "archived") for (const s of src[1].split(",").map((x) => x.trim()).filter(Boolean)) {
       if (!existsSync(join(ROOT, s))) fail(4, file, 1, `source ${s} does not exist`);
     }
     if (file.startsWith("docs/ideas/") && fm.status !== "idea") fail(11, file, 1, `in ideas/ with status ${fm.status} — move it out of ideas/`);
+    if (file.startsWith("docs/archive/") !== (fm.status === "archived")) fail(11, file, 1, `status ${fm.status} — archived docs, and only they, live in docs/archive/`);
   }
 
   // 5. Versions.
@@ -231,6 +234,7 @@ export function check() {
   // 19. Doc paths a shipped app opens (a button's GitHub link) still exist. An installed build
   //     keeps its link for good, so a move needs a stub at the old path (`moved_to`, check 4).
   //     SHIPPED_LINKS is append-only: a link the code no longer holds is still in old installs.
+  //     A line leaves only on the owner's word that no install that old is in use.
   const linked = new Map();
   for (const f of files.filter((f) => /^(src|src-tauri\/src|cli\/src|extension)\/.*\.(ts|js|rs|html|json)$/.test(f))) {
     for (const m of read(f).matchAll(/github\.com\/deets-137\/DeetsMusicWindows\/blob\/[\w.-]+\/(docs\/[\w./-]+\.md)/g)) linked.set(m[1], f);

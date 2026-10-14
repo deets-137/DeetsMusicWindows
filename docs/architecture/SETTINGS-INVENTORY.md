@@ -2,7 +2,7 @@
 status: guide
 desk_test: none
 sources: []
-updated: 2026-10-12
+updated: 2026-10-14
 ---
 # Every control in DeetsMusic
 
@@ -439,6 +439,10 @@ A suggestion never carries the log.
 
 ### About
 The version, the Apple trademark notice, and what the app contacts.
+- **Send usage counts** — **On** · Off. Sends anonymous counts once a day and once a week: how
+  many installs are active, the version, the settings picked, and the errors. No ID, no songs,
+  no place. A notice tells a user before the first report. *What is sent* › **Show** shows each
+  report exactly ([USAGE-COUNTS.md](../features/USAGE-COUNTS.md)). Built, in the release after 0.27.0.
 
 ---
 

@@ -1,8 +1,9 @@
 ---
-status: built
-desk_test: open
+status: shipped
+shipped_in: 0.14.7
+desk_test: passed 2026-10-13
 sources: [src-tauri/src/apple.rs, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src/apple-health.ts, src-tauri/src/heal.rs, src-tauri/src/library.rs, src/track-store.ts]
-updated: 2026-09-29
+updated: 2026-10-14
 ---
 # Apple calls — the counter and the 429 back-off
 

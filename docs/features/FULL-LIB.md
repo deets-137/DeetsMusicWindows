@@ -1,12 +1,14 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.14.5
 desk_test: passed 2026-10-13
 sources: [src/media-levels.ts, src/library-model.ts, src/library-card.ts, src/collection-card.ts, src/add-square.ts, src/styles.css, src/styles/skin.css]
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 # DeetsMusic — Full | Lib: Apple's whole page from a Library drill
 
-**Designed and BUILT 2026-09-24.** The owner's forks: 1A, 2A, 3A, 4A (with the Add square's
+**Designed and BUILT 2026-09-24; shipped in 0.14.5.** The 2026-10-13 rework of the switch
+(one engine level per page, the data first, the hero kept) is committed after 0.27.0. The owner's forks: 1A, 2A, 3A, 4A (with the Add square's
 + and ✓), and the labels "Full | Lib". The desk test is §7.
 
 ## 1. Terms

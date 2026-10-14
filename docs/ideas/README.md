@@ -2,7 +2,7 @@
 status: idea
 desk_test: none
 sources: []
-updated: 2026-09-17
+updated: 2026-10-14
 ---
 # Ideas — not built
 
@@ -47,10 +47,14 @@ the app can do any of these things.
   view to the artist's crowdfunding page, Bandcamp and official site, from MusicBrainz URL
   relationships (zero Apple calls). Kickstarter itself set aside (§2); the Apple terms read (§4);
   a probe of the owner's library before he designs the UI (§5, §6); the forks (§8).
+- [SiteOceanLive.md](SiteOceanLive.md) — an idea (2026-10-13): the site's Ocean glow takes the
+  color of the song playing now (the visitor's, through the extension; or the owner's, through
+  Last.fm); §4 the forks.
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
   its first part was built (the stats cell grows over the card in Max).
 - [WebRooms.md](../features/WebRooms.md) — moved to features/ on 2026-10-13, when its app side
   was built (the rooms web port: a friend on a Mac listens in a browser).
 
-When one of these is built, move its doc back to `docs/` and link it from
-[HANDOFF.md](../HANDOFF.md).
+When one of these is built, move its doc to its area folder with
+`node scripts/docs-move.mjs NAME=features` (or another area), set its status, and link it
+from [HANDOFF.md](../HANDOFF.md). An idea that is dropped goes to `docs/archive/` (DOCS-ORG.md §5.3).

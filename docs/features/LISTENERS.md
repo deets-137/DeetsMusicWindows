@@ -2,12 +2,12 @@
 status: built
 desk_test: passed 2026-10-13
 sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts]
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 # Listeners — how rare a song is, from Last.fm
 
 > **Built 2026-10-12.** The read side (§3) and the badge on Now Playing (§4, his design) are
-> built; the desk test (§4.3) is open. §4 is the as-built record: where it disagrees with §1–§3,
+> built, in 0.27.0; the desk test (§4.3) passed 2026-10-13. §4 is the as-built record: where it disagrees with §1–§3,
 > it is the code.
 
 **Terms**

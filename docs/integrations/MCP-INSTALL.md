@@ -1,12 +1,13 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.26.0
 desk_test: passed 2026-10-13
 sources: [crates/mcp-install/src/lib.rs, src-tauri/src/mcp_install.rs, src/mcp-panel.ts, cli/src/main.rs, mcpb/server/index.js, mcpb/manifest.json, scripts/mcpb-pack.mjs, src-tauri/nsis/hooks.nsh]
-updated: 2026-10-11
+updated: 2026-10-14
 ---
 # DeetsMusic — connect AI apps (`mcp_install`)
 
-> **Designed 2026-09-16. All forks decided 2026-10-11 (§8a–§8c). BUILT 2026-10-11; §8d is the as-built record, §9 the desk test (open).** The user asked for a Rust module that
+> **Designed 2026-09-16. All forks decided 2026-10-11 (§8a–§8c). BUILT 2026-10-11, shipped in 0.26.0; §8d is the as-built record, §9 the desk test (passed 2026-10-13, his).** The user asked for a Rust module that
 > does the MCP setup for the user, a `deetsmusic mcp install` command that lets the user pick
 > the AI app, and detection of the popular apps. A note from a Claude chat added a Settings screen
 > that calls the same module, restart help, status and removal, a fallback for apps we do not detect,

@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 # DeetsMusic — Handoff
 
@@ -109,10 +109,16 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-The short list of what is not finished, as of 2026-10-13 (pruned for 0.27.0: everything that
+The short list of what is not finished, as of 2026-10-14 (pruned for 0.27.0: everything that
 shipped or closed went out; the WORKLOG has each day). Each item names where the detail is.
-When an item closes, delete it here and write the day in WORKLOG.md. Every local branch is
-merged into `main`; everything committed before 0.26.1 (`78e275c`) is on live.
+When an item closes, delete it here and write the day in WORKLOG.md. Every working branch is
+merged into `main` (`unlucky-thirteenth` is level with it); everything committed before 0.26.1
+(`78e275c`) is on live.
+
+**0.27.0 is built, not published** (`e6bffef`, 2026-10-13; the channel still answers 0.26.1 on
+2026-10-14). He runs it, installed by hand. Committed after it, for the release after: Presentation
+mode, the Full | Lib switch, Rooms on the web (app side) and usage counts. RELEASE-NOTES.md's
+"Next release" entry holds only usage counts so far.
 
 ### Open on live: text to fix, watches, data to read
 
@@ -135,19 +141,25 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
-- **Usage counts** (2026-10-13, committed on `unlucky-thirteenth`): steps 1–4 built
-  (the worker in `../DeetsSupport`, the Rust counts and send, the pure rules, the Settings
-  rows and the notice). Desk test passed 2026-10-13 (USAGE-COUNTS.md §10; the cron's in-window delete not seen in a run). The owner page deets.solutions/deetsmusic/admin/
-  is built (2026-10-14, his strings). The README › Privacy
-  paragraph and the release-note line ("Next release") are written. Next: an app release that sends the counts. The worker, its
-  D1 tables and the admin page went LIVE 2026-10-14 (DeetsSupport 52a2f1e, DeetsSolutions ba2f111). §11 the as-built record.
+- **Suggest Less and proactive skips** (SUGGEST-LESS.md): checked against the code and every
+  fork closed 2026-10-12; not built.
+
+### Built, waiting on a release or a desk test
+
+- **Usage counts** (USAGE-COUNTS.md): built, desk test passed 2026-10-13 (the cron's
+  in-window delete not seen in a run). The worker, its D1 tables and the owner page
+  deets.solutions/deetsmusic/admin/ went LIVE 2026-10-14 (DeetsSupport `52a2f1e`, DeetsSolutions
+  `ba2f111`). The README › Privacy paragraph and the release-note line are written. Next: the
+  app release that sends the counts. §11 the as-built record.
+- **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test open (§10.5).
+  Not built: the site page (part H, a DeetsSolutions session); the worker change is not deployed
+  (§10.6).
 
 ### His to design or decide (asks and ideas, not built)
 
-- **Presentation mode** (2026-10-13, branch `unlucky-thirteenth`, not merged): built and
-  desk-tested by Claude in Max; the view's picture is his to draw, the goal marker is paused,
-  and a live stream from Last.fm is his idea for later. Not run: Midi, reduced motion, a roll
-  after a re-read. PresentationMode.md §7a, §7b, §9.
+- **Presentation mode** (PresentationMode.md, on `main`): built, his desk test passed
+  2026-10-13 (§9.3). The view's picture is his to draw, the goal marker is paused, and a live
+  stream from Last.fm is his idea for later. §7a, §7b.
 
 - **Network errors in plain words** (2026-10-12): a transport error in an Apple call shows raw
   text (`Failed to load: error sending request…`, three `.catch` sites in search-card.ts). Five
@@ -173,13 +185,15 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 - **A Diary Done from the CLI or an agent** toasts *Couldn't copy the Diary entry*: the
   clipboard refuses a window without focus. Skip the copy when the window is behind, or say so
   in the toast (DESK-TESTS.md A6).
+- **Two update ideas** (2026-09-16, from the archived NEXT-VERSION.md): resume the song after
+  an update's restart; install an update at the end of a song. Not designed.
 - **Threads that only sleep:** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` could be Tokio
   timers (DEBUGGING.md § Threads).
 - **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;
   ask him what is wrong first); Song of the Day "in the sidebar" (ask which sidebar first).
 - **Designed earlier:** the AirPlay stall and switch timing (AIRPLAY.md §13.2, a crate change);
   the web demo's album light (WEB-DEMO.md §10); deploy a worker without dropping connections
-  (ideas/WorkerDeploy.md); SUGGEST-LESS.md, SECOND-SEARCH.md, ROOMS.md §19–§20, DeetsOTD.md §9,
+  (ideas/WorkerDeploy.md); SECOND-SEARCH.md, ROOMS.md §19–§20, DeetsOTD.md §9,
   CREDITS.md §5; DOCS-ORG.md steps 6–8 and its open forks. The DeetsSupport sign-in scheme
   change (BETA.md §5) is written, uncommitted in `../DeetsSupport`, and HELD by his call.
 
@@ -206,24 +220,13 @@ check found".
 
 ## State of play
 
-**Live: 0.26.1** (2026-10-11, `deetsmusic` channel; 0.27.0 is being prepared; the last beta is `0.14.1-beta.1` on `deetsmusic-test`). Every release is in the log at
-[RELEASE.md §0a](ops/RELEASE.md); what each version added is in
-[RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
-[WORKLOG.md](WORKLOG.md). The list below is the long-lived foundation plus dated entries. The
-releases from 0.6.2 to 0.9.0, in short:
-- **0.9.0** — card grow (Grow / Fill, [CARD-GROW.md](cards/CARD-GROW.md)), song and album web seeds and
-  temporary web playlists ([PLAYLIST-WEB.md](features/PLAYLIST-WEB.md) §9–§10), the Add to Library square
-  on song rows, Retro-Future renamed Cyber, Last.fm `LINK_BACK = false`.
-- **0.8.0** — Sound (EQ + DeetsAdaptiveSound, [SOUND.md](features/SOUND.md)), Last.fm scrobbling
-  ([LASTFM.md](integrations/LASTFM.md)), the playlist web, Stream quality, Fancy Glass and composited card
-  lists, library reads and read-only SQL for AI apps ([LOCAL-DATA.md](integrations/LOCAL-DATA.md)), the
-  AirPlay capture's sinc resampler (crate `rev` 4989dfb).
-- **0.7.0** — the sleep timer, the volume pill that grows in place, fancy scrubbers, the
-  hover-hint pass, the graphics ruler (NEXT-VERSION §17, §20, §21).
-- **0.6.3** — multi-select rows everywhere (NEXT-VERSION §19). A picked set of playlists also
-  **deletes** (the local ones, PLAYLISTS.md §10.3; 2026-09-17).
-- **0.6.2** — per-view open sizes (FUTURE-SETTINGS §8a), the AirPlay speaker claim on crate 0.3.0
-  (AIRPLAY.md §11 — one-directional: we write claims, we do not read them).
+**Live: 0.26.1** (2026-10-11, `deetsmusic` channel). **0.27.0** is built and installed by hand
+on his PC, not published (Open now). The last beta is `0.14.1-beta.1` on `deetsmusic-test`.
+Every release is in the log at [RELEASE.md §0a](ops/RELEASE.md); what each version added is
+in [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
+[WORKLOG.md](WORKLOG.md). Each feature doc's front matter names the release it shipped in.
+The list below is the long-lived foundation plus dated entries from 2026-09; it is not kept
+complete.
 
 ### Built ✅
 - **Frameless chrome**: custom titlebar, drag region, traffic lights wired to min/max/close.
@@ -233,8 +236,8 @@ releases from 0.6.2 to 0.9.0, in short:
   and the Account row. A first launch with
   no saved choice follows the OS light/dark preference, landing on Press × Lilac or
   Cyber × Black & Red; retired ids (`fairy`/`glade`/`hornet`/`viper`/`desk`/`cyberstorm`/`retro-future`)
-  migrate via the `RETIRED` maps in `theme.ts` / `skin.ts` and the pre-paint script in
-  `index.html` — keep all three in sync.
+  migrate via the `RETIRED_*` maps in `src/look-ids.ts` and the pre-paint scripts in
+  `index.html` and `tray.html` — keep all three in sync (and DeetsSolutions' `js/controls.js`).
 - **Skins**: `vanilla` (borderless + editorial underline; hidden from the picker since
   2026-09-10, block kept as the base), `press` (riso print shop —
   square trim, halftone stock, offset `--ink-2` plate), `ocean` (recessed cards + SVG wave
@@ -244,8 +247,9 @@ releases from 0.6.2 to 0.9.0, in short:
 - **Card + slot system** (`cards.ts`, `layout.ts`; [SURFACES-AND-CARDS.md](architecture/SURFACES-AND-CARDS.md)):
   every card is a mountable registry module. Midi bento = anchored **Now Playing** + **two
   swappable content slots**, each slot's **title is a card picker** (persisted, root-only).
-  **Surface seam** (`data-surface` mini/midi/max) exists with size-band resize + per-surface
-  remembered sizes; mini/max inherit the midi layout until composed.
+  **Surface seam** (`data-surface` mini/midi/max) with size-band resize + per-surface
+  remembered sizes. Mini has its own Mini | Player views; Max has the stage column and its own
+  card grid (*Layout for Max*, [MAX-CARDS.md](features/MAX-CARDS.md)).
 - **Apple auth**: loopback browser sign-in (themed page), MUT persisted across restarts.
 - **Playback** (the load-bearing DRM risk is dead — full-song plays in WebView2): `player.ts`
   configures MusicKit JS in the webview, injects the captured MUT directly (no `authorize()`
@@ -334,14 +338,14 @@ releases from 0.6.2 to 0.9.0, in short:
   Tested end to end with a signed t1 → t2 update on the test channel.
 - **2026-09-13 — toasts** ([TOASTS.md](architecture/TOASTS.md)): the primitive, the `toasts` tier
   setting, and the ten call sites above. Desk-tested and shipped; every later call site is a row in TOASTS.md §5.
-- **2026-09-12 — the NEXT-VERSION batch, all desk-verified** ([NEXT-VERSION.md](NEXT-VERSION.md)):
+- **2026-09-12 — the NEXT-VERSION batch, all desk-verified** ([NEXT-VERSION.md](archive/NEXT-VERSION.md)):
   search pins · playlist covers (user / Apple / mosaic; schema v3 `cover`) · ♥ favorites
   (`favorites.rs` + `favorites.ts`, seeded from Apple's Favorite Songs; the Library ♥
   filter) · weekly Replay (`replay.ts`, three Playback rows) · Search square + Ctrl
   shortcuts · theme/skin View Transitions (`appearance.ts`) · album-colored NP text with
   the contrast guard (Glass) · Glass menus at 90% · explicit badge. Surface-change motion
-  (fork B) was tried and walked back the same day (NEXT-VERSION §10). **Next talk: the
-  playlist creation flow** (NEXT-VERSION §11).
+  (fork B) was tried and walked back the same day (NEXT-VERSION §10). The playlist creation
+  flow closed 2026-09-15 (NEXT-VERSION §19). The doc is archived; every batch in it shipped.
 
 - **2026-09-17 — the Max stage column** ([STAGE-COLUMN.md](cards/STAGE-COLUMN.md)). The album cover is
   locked to a square and is never cropped (`100cqw` on the cover inside an inline-size `.np`, so
@@ -370,14 +374,17 @@ releases from 0.6.2 to 0.9.0, in short:
   to the enrichment doctrine with a §14-style opt-out) *and* it needs new schema (artist cache
   table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
-- **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — documented, not built.
+- **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — built 2026-09-27 as a Rulez
+  recipe (off by default); the starred pool of what to play is not built.
 - **Off the roadmap:** ratings / 👎 (the ♥ favorites shipped instead, 2026-09-12).
 - **The agent's "Later" list** ([AGENT.md §7](integrations/AGENT.md)): the installer PATH entry,
-  connect AI apps ([MCP-INSTALL.md](integrations/MCP-INSTALL.md), forks open), `artist:` ids for
-  `play`, durable history as a second history source, a small-model test of `mcp --small`.
+  `artist:` ids for `play`, durable history as a second history source, a small-model test of
+  `mcp --small`.
 - **Designed, not built:** Suggest Less ([SUGGEST-LESS.md](features/SUGGEST-LESS.md)), a second
-  Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)). Ideas with no schedule:
-  [ideas/](ideas/README.md).
+  Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)), Hop in ([HOP-IN.md](features/HOP-IN.md)),
+  Layout ([LAYOUT.md](features/LAYOUT.md)), Skinz ([SKINZ.md](features/SKINZ.md)), Backup
+  ([BACKUP.md](features/BACKUP.md)), Local radio ([LOCAL-RADIO.md](features/LOCAL-RADIO.md)),
+  Threads ([THREADS.md](integrations/THREADS.md)). Ideas with no schedule: [ideas/](ideas/README.md).
 - Built since this list was written, so no longer here (2026-09-22 sweep): playlist refresh and
   movable rows (0.12.2), the sticky toast queue (TOASTS.md §4a), the keyboard pass with Space
   (COMPASS.md §5), listening rooms (0.10.0), Friends (0.12.2), the AirPlay speaker-only send and
@@ -419,8 +426,8 @@ b59e575, shipped in 0.8.0; the checks below are still open:
   still aurora and locked sliders 65 / 85 / 40 / 10, or the live blur and the sliders. Shipped
   in 0.8.0; no desk-test result is on record. SETTINGS.md row; numbers in DEBUGGING.md §Fancy
   Glass and the Ocean swell.
-- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Cyber; Press and Vanilla since 2026-10-11, not shipped yet): shipped in
-  0.8.0, half checked. What is done and what is left: DEBUGGING.md §The composited-scroller pass.
+- 🟨 **Composited card lists** (`--scroller-layer`, Ocean / Glass / Cyber since 0.8.0; Press and
+  Vanilla since 0.26.0): half checked. What is done and what is left: DEBUGGING.md §The composited-scroller pass.
 - ⬜ **Swell:** measure Animate backgrounds › Reduced under `--gpu=off`, then maybe a hint line.
 - ⬜ Found on the way, older than these changes: a very fast wheel spin (≈ 15,000 px/s) shows
   blank rows in the windowed Library for a few frames (collection-window.ts fills its buffer only

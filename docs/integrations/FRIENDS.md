@@ -3,13 +3,13 @@ status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
 sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts, src/friend-pin.ts]
-updated: 2026-10-12
+updated: 2026-10-14
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
 > **Status (2026-09-22): DONE. The owner ran the §17 desk test and confirmed it on 2026-09-22, and the
-> `/j/` route (step 7) is deployed.** The only item left is the Discord buttons' second-account check
-> (§8.4 item 3).
+> `/j/` route (step 7) is deployed.** The last item, the Discord buttons' second-account check
+> (§8.4 item 3), passed on live 2026-10-13 (his; DESK-TESTS.md B19).
 >
 > **Status (2026-09-20): EVERY step is now BUILT. §16 is as built; §17 is the desk test, NOT RUN.**
 > Step 6 (Rich Presence) was built and desk-tested earlier the same day — §8.4a has the three

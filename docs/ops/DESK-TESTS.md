@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/webview-eval.mjs, scripts/dev-app.mjs, src/diag.ts]
-updated: 2026-10-01
+updated: 2026-10-14
 ---
 # Desk tests — the runbook for an agent
 
@@ -118,6 +118,11 @@ Terms:
    now is corrected in place for each row that closes.
 
 ## 3. The list
+
+> **State on 2026-10-14: three rows are open.** **B20** (a watch on live; it cannot be forced),
+> **B21** (deetsmeter's cold start, HANDOFF.md › Open now) and **B22** (Rooms on the web). Every
+> other row passed: the runs of 2026-09-27 to 2026-10-12 and his report of 2026-10-13 (§5). The
+> rows stay as a record and for a regression run; a new open test is a new row.
 
 Order: the uncommitted work first (a fail there stops a commit), then the released work.
 

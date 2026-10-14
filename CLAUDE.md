@@ -32,9 +32,13 @@ part marker under its heading: `> **Part:** designed · 2026-09-17`. Where a doc
   `cards/SURFACES-AND-CARDS.md` by `npm run docs:copies` from the `architecture/` one.
 - A new doc gets front matter (DOCS-ORG.md §5) and one line below.
 
-**`docs/`** — `DESIGN.md` product intent · `NEXT-VERSION.md` the feature backlog ·
-`FUTURE-SETTINGS.md` behaviors hard-coded now, to expose later · `AGENT-SETUP.md` a stub that
-old installs' Guide button opens.
+**`docs/`** — `DESIGN.md` product intent and the v1 scope ·
+`FUTURE-SETTINGS.md` behaviors hard-coded now, to expose later. What is open now is
+HANDOFF.md › Open now; there is no separate backlog doc.
+
+**`docs/archive/`** — docs no longer needed, kept as a record (`status: archived`, DOCS-ORG.md
+§5.3). Move one there with `node scripts/docs-move.mjs NAME=archive`; its open items go to
+HANDOFF first. `NEXT-VERSION.md` — the 2026-09 feature batches, all shipped.
 
 **`docs/architecture/`** — the engine
 - `UI-ARCHITECTURE.md` — the token / theme / skin tiers and the collection-card engine.
@@ -125,7 +129,7 @@ old installs' Guide button opens.
   the README › Privacy paragraph and the release-note line written 2026-10-14. Next: a release.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
-  The Album theme (colors from the cover, §12) is built with it; its forks are open.
+  Not built. The Album theme (colors from the cover, §12) is to be built with it; its forks are open.
 - `MAX-CARDS.md` — BUILT 2026-10-11, desk test passed 2026-10-12 (§7): Settings › Window › *Layout for Max*
   (4 cards · 2 columns · 2 rows · 1 card), the `maxCards` key and rule key. The geometry is
   pure in `layout-rules.ts`. §11 is the as-built record. A separate onboarding route will offer it (§9.1, not designed).
@@ -142,9 +146,10 @@ old installs' Guide button opens.
 - `COPY-EDIT.md` — BUILT 2026-10-12, desk test passed 2026-10-13 (§5): the dev-only copy editor. A pencil in
   the title bar (Alt+E) makes the words on screen typeable and saves each one into its `.ts`
   source; Alt+click edits a hover hint; the reload is held so the music plays on.
-- `LISTENERS.md` — DESIGNED 2026-10-12, read side BUILT: a song's Last.fm listener count (its
-  "rarity"); `track.getInfo` cached a month in `listen_counts`, `lastfm_listeners`,
-  `src/listeners.ts`. The UI row is next (§4; his forks §5). Genius has no play data (§1).
+- `LISTENERS.md` — BUILT 2026-10-12 (in 0.27.0), desk test passed 2026-10-13: a song's Last.fm
+  listener count (its "rarity"); `track.getInfo` cached a month in `listen_counts`,
+  `lastfm_listeners`, `src/listeners.ts`; the badge on Now Playing (§4, his design). Genius has
+  no play data (§1).
 - `LOCAL-RADIO.md` — DESIGNED 2026-10-13, not built: web stations from Radio Browser in the
   Radio card (a Local shelf by the user's city, search for any station), played through a Rust
   loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms

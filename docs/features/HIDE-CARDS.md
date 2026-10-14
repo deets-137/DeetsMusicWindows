@@ -1,12 +1,13 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.26.0
 desk_test: passed 2026-10-10
 sources: [src/layout.ts, src/layout-rules.ts, src/cards.ts, src/compass.ts, src/settings-card.ts, src/settings-store.ts, src/agent-settings.ts, src/quick-panel.ts, src/stats.ts, src/toast.ts, src/context-menu.ts, vite.demo.config.ts]
-updated: 2026-10-10
+updated: 2026-10-14
 ---
 # Hide cards — choose the cards the picker offers
 
-> **Built 2026-10-10, not released; the desk test (§9) PASSED 2026-10-10 (his run).** The owner closed every fork on
+> **Built 2026-10-10, shipped in 0.26.0; the desk test (§9) PASSED 2026-10-10 (his run).** The owner closed every fork on
 > 2026-10-10 (§2, §6). §7 was the build scope; §8 is the as-built record, and where it
 > disagrees with §7, §8 is the code.
 

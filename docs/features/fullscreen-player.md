@@ -1,14 +1,15 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.26.1
 desk_test: passed 2026-10-11
 sources: [src/full-player.ts, src/full-player-layout.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-11
+updated: 2026-10-14
 ---
 # Full player — grow the Now Playing card
 
 > **An idea, opened 2026-10-01; every fork decided 2026-10-02 (§6, §7) and 2026-10-10 (§10.3,
 > §11). Built 2026-10-11 (§13); on for everyone since 2026-10-11, the DevTools flag
-> removed.** The owner asked for a discussion doc: the visual idea first, the
+> removed; shipped in 0.26.1.** The owner asked for a discussion doc: the visual idea first, the
 > technology after. Every fork in §5 is his. The numbers in §3 come from the tokens in the
 > code today.
 >

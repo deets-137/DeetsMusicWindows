@@ -2,13 +2,15 @@
 status: built
 desk_test: open
 sources: [src-tauri/src/beta.rs, src-tauri/tauri.beta.conf.json, src-tauri/icons-beta/, scripts/beta-icon.ps1, scripts/release.mjs, scripts/release-check.mjs, scripts/archive-installer.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/nsis/hooks.nsh, cli/src/main.rs]
-updated: 2026-09-24
+updated: 2026-10-14
 ---
 # DeetsMusic Beta — a second app beside the full one
 
 > **Part:** built · 2026-09-23. Decided and built the same day, on `oceanic-schmoves`. Its first job
-> is to test Ocean. Not yet done: the spike rows withdrawn (§4.3), the first beta build, the desk
-> test (§8), and the DeetsSupport deploy (§5, held by the owner).
+> was to test Ocean. Betas `0.14.0-beta.2` and `0.14.1-beta.1` went out on `deetsmusic-test`;
+> **beta-first is paused since 2026-09-24** (0.14.5 on): releases go straight to live
+> (RELEASE.md §0a). Not done: the spike rows withdrawn (§4.3), the desk test (§8), and the
+> DeetsSupport deploy (§5, held by the owner).
 
 **Terms.**
 - **Full app** — the installed DeetsMusic that users have. Identifier `com.deetsmusic.app`.

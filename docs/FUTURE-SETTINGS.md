@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/player.ts, src/stats.ts, src/playlists-card.ts, src/queue.ts, src/layout.ts, src/surface.ts]
-updated: 2026-10-12
+updated: 2026-10-14
 ---
 # DeetsMusic — Future Settings (deferred toggles)
 
@@ -96,6 +96,10 @@ queue the rest of the song results — is this same setting family: e.g.
 
 **Current default (hardcoded):** Play Now · Move to Top · Move to Bottom · Remove.
 
+> **2026-10-14:** since 0.14.0 an Up Next row's menu is the song menu from `media-menu.ts`, with
+> the Queue card's own rows (Move to Top, Move to Bottom) and Remove as its take-away row; the
+> row order is [CONTEXT-MENUS.md](architecture/CONTEXT-MENUS.md). The setting below is not built.
+
 **What the future setting changes.** Let the user choose which of these appear, reorder
 them, and opt into extras as they land (e.g. Add to Library, Go to Album / Artist, Add to
 Playlist). Likely a small checklist/reorder UI rather than a single toggle.
@@ -182,7 +186,7 @@ rebuild). This is a *one-time reorder action*, **not** the P6 persistent shuffle
 - Wiring: `deets.shuffle.idle` = `"library" | "noop"` (default `"library"`), read in
   `player.shuffleQueue`.
 
-**The persistent shuffle MODE landed 2026-09-15** ([NEXT-VERSION §14](NEXT-VERSION.md)):
+**The persistent shuffle MODE landed 2026-09-15** ([NEXT-VERSION §14](archive/NEXT-VERSION.md)):
 the button is the toggle (Settings › Playback › *Button is perma-shuffle*, default on; off = this
 one-shot). The answers to the two questions above: un-shuffling **leaves** the shuffled
 order (Spotify); toggling it on mid-playback **reshuffles the live `auto` tail** (this
@@ -1159,6 +1163,11 @@ No Apple calls. Files: `settings-store.ts`, `settings-card.ts`, `agent-settings.
 ---
 
 ## 25. Graphics cost — settings for the heavy features (2026-09-16, to measure first)
+> **Part:** built · 2026-10-11 — read 2026-10-14: the rows on this axis now are *Fancy Glass*
+> (`glassFancy`), *Animate backgrounds* (`backgroundMotion`) and *If graphics fail*
+> (`graphicsFallback`, [GRAPHICS-FALLBACK.md](features/GRAPHICS-FALLBACK.md), in 0.27.0: on
+> WARP a built-in rule turns the heavy effects off). The composited scroller covers Press and
+> Vanilla too since 0.26.0. "What the code has" below is the 2026-09-16 record.
 
 **What it means.** Some of what makes the app beautiful is expensive to draw. On a machine
 without a dedicated card those features are the difference between smooth and not. Give the

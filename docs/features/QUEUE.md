@@ -911,7 +911,7 @@ plays the song on screen.
 ## The session play log (the Previous chain's honest twin)
 
 > **2026-09-15: the History card no longer reads this log.** It reads the durable
-> `play_events` table, so it survives a restart ([NEXT-VERSION §16](../NEXT-VERSION.md)). The
+> `play_events` table, so it survives a restart ([NEXT-VERSION §16](../archive/NEXT-VERSION.md)). The
 > session log below still exists and is still append-only; nothing renders it today.
 
 `history[]` serves **Previous** — it's deduped and mutated (setContext rebuilds, `previous()`

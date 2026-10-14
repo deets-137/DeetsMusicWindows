@@ -2,11 +2,11 @@
 status: foundation
 desk_test: none
 sources: [src/surface.ts, src/main.ts, src/layout-bus.ts, src/layout.ts, src/cards.ts]
-updated: 2026-09-27
+updated: 2026-10-14
 ---
 # DeetsMusic — Surfaces & the Card System
 
-> How the midi-player composes **swappable cards**, and how one webview will serve three
+> How the midi-player composes **swappable cards**, and how one webview serves three
 > **surfaces** (mini / midi / max). Read this before touching `src/main.ts` boot, the bento
 > markup in `index.html`, or any card's mount path. Siblings:
 > [UI-ARCHITECTURE](UI-ARCHITECTURE.md) (tokens + collection-card engine),
@@ -153,7 +153,14 @@ without adding a separate control to the panel header.
 
 ---
 
-## 4. Surface system (seam only, this build)
+## 4. Surface system
+
+> **2026-10-14:** this section was written when only midi was composed ("seam only, this
+> build"). All three surfaces have their own composition now: max is the stage column plus a
+> card grid (Build order step 4; *Layout for Max*, [MAX-CARDS.md](../features/MAX-CARDS.md);
+> [STAGE-COLUMN.md](../cards/STAGE-COLUMN.md)), and mini has its Mini | Player views (below).
+> The bands and the auto-flip are built (`surfaceAutoFlip`, FUTURE-SETTINGS §8). The
+> "intended shapes" bullet keeps the plan of 2026-09-08 as a record.
 
 ### What each surface is *for* (the thesis, not just the size)
 The three surfaces are an **engagement ladder** — each has a distinct job, which is what should

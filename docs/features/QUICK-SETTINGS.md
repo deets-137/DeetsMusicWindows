@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.13.0
 desk_test: passed 2026-09-24
 sources: [src/quick-panel.ts]
-updated: 2026-10-10
+updated: 2026-10-14
 ---
 # Quick settings — the cog's panel
 

@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-13
+updated: 2026-10-14
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,37 @@ updated: 2026-10-13
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-14 (docs cleanup) — stale state across the docs; the archive
+
+His ask: a docs cleanup, top level first, then each folder, for staleness and errors; a doc no
+longer needed moves to `docs/archive/`. No agents. Read against the code, git and the live
+update channel (it answers 0.26.1: 0.27.0 is built, not published).
+
+- **The archive** (his call): `docs/archive/`, status `archived` (DOCS-ORG.md §5.3); the checker
+  takes it (an archived doc may name gone files; check 11 holds the folder and the status
+  together). **NEXT-VERSION.md archived**: every batch shipped. Its two open update ideas went
+  to HANDOFF › Open now; its fancy-scrubber eval was already measured (DEBUGGING.md).
+- **Top level:** DESIGN.md (three surfaces, the DRM risk closed in the body too, the agenda
+  marked decided with each doc, 21 MCP tools, the right-click menus' arrow keys open);
+  HANDOFF.md (0.27.0's state, Presentation mode on `main` and passed, Rooms on the web and
+  Suggest Less listed, the 0.6–0.9 release list cut, `look-ids.ts`, Max's own composition,
+  Play on launch built as a recipe); DOCS-ORG.md §11 (steps 6–8 still not started);
+  FUTURE-SETTINGS §2 and §25 notes; CLAUDE.md (no backlog doc, the archive line, Listeners, Skinz).
+- **Front matter to `shipped`:** RULES (0.25.0, desk test passed 2026-09-26), RULEZ (0.25.1),
+  DIARY and FULL-LIB (0.14.5), QUICK-SETTINGS (0.13.0), HIDE-CARDS, MAX-CARDS, MCP-INSTALL
+  (0.26.0), fullscreen-player (0.26.1), APPLE-CALLS (0.14.7, B14 passed 2026-10-13).
+- **Bodies:** RULES (the editor and the agent verb built; facts list), SURFACES-AND-CARDS §4
+  (no longer "seam only"; copy regenerated), TOASTS (a broken sentence), SETTINGS-INVENTORY
+  (*Send usage counts*), AGENT.md (21 tools, MCP install built), AGENT-SETUP (play history, the
+  Diary, Songs of the Day), FRIENDS and MCP-INSTALL (desk tests passed), LISTENERS, BETA
+  (betas went out; beta-first paused), DIARY (11e's state), DESK-TESTS (three rows open: B20,
+  B21, B22), RELEASE §0a (0.14.8 in order), ideas/README (SiteOceanLive), marketing.md (to
+  0.26.1; what 0.27.0 holds), SHOTS.md.
+- **The top-level `AGENT-SETUP.md` stub deleted** (his word: no one runs 0.12.2 or older); its
+  check 19 line left `SHIPPED_LINKS` with the reason. WORKLOG entries are never corrected.
+  `ideas/DeetsWeather.md` stays an idea (his call). Not read line by line: the long bodies of DEBUGGING,
+  QUEUE, ROOMS, DeetsOTD and the feature docs past their status blocks.
 
 ## 2026-10-14 (unlucky-thirteenth) — usage counts: committed, and the owner box on the site
 
@@ -3602,7 +3633,7 @@ the report is still owed before new Sound features.
 **2026-09-15 — the listening-loop review: the transport pass is next.** A review of the daily
 listening loop (repeat, shuffle, playing a whole album, the queue's end, the keyboard) found
 the platform sound and the loop thin. Scoped with forks in
-**[NEXT-VERSION.md §12–§17](NEXT-VERSION.md)**, in this order:
+**[NEXT-VERSION.md §12–§17](archive/NEXT-VERSION.md)**, in this order:
 1. ✅ **Repeat button** (off / all / one) — §12, **BUILT 2026-09-15, shipped in 0.6.x**:
    after Shuffle, one cycling square, MusicKit `repeatMode` for *one*, a model lap for *all*
    with one buffering gap per lap, hidden in radio mode, persisted without a Settings row,
@@ -3703,7 +3734,7 @@ separate Made Here section (§10.9). Idea raised: drag songs from any card into 
 
 **2026-09-14 — Playlist covers + Export to Apple Music: BUILT, desk-tested, shipped in 0.4.1** (branch
 `optimus-deets`). The hero cover of a local playlist is a button (Choose Image… / Remove
-Cover / Export ▸) and a file drop target ([NEXT-VERSION.md §2](NEXT-VERSION.md)). Export ▸
+Cover / Export ▸) and a file drop target ([NEXT-VERSION.md §2](archive/NEXT-VERSION.md)). Export ▸
 makes an Apple copy or adds new songs to it, and asks before a write Apple can't fully copy
 ([PLAYLISTS.md §6](features/PLAYLISTS.md)). Settings › Apple Music › **Export playlists** (default on).
 Settings › Show notices lost **Off**; a toast that asks always shows ([TOASTS.md §4](architecture/TOASTS.md)).
@@ -3848,7 +3879,7 @@ the focus; Enter / Space on the Search card's rows; **Ctrl+Space, the Compass** 
 reaches every card, setting, transport verb and library item; and, later the same day, the
 **list keys** (`src/list-keys.ts`, COMPASS.md §5): Tab into any list, arrows, Home / End,
 Enter, the Menu key, Escape = Back, in every card. Still open: hover-only controls (the Search
-Add-to-Library square) only show on `:focus-visible`; the Sort / View popovers take no arrows. The fixed shortcut set is in [NEXT-VERSION.md](NEXT-VERSION.md)
+Add-to-Library square) only show on `:focus-visible`; the Sort / View popovers take no arrows. The fixed shortcut set is in [NEXT-VERSION.md](archive/NEXT-VERSION.md)
 (`Ctrl+K` Search and friends).
 
 **2026-09-11 — the Worker grew into a support back end.** The mint is now one route on
