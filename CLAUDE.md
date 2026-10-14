@@ -142,6 +142,10 @@ old installs' Guide button opens.
 - `LISTENERS.md` — DESIGNED 2026-10-12, read side BUILT: a song's Last.fm listener count (its
   "rarity"); `track.getInfo` cached a month in `listen_counts`, `lastfm_listeners`,
   `src/listeners.ts`. The UI row is next (§4; his forks §5). Genius has no play data (§1).
+- `LOCAL-RADIO.md` — DESIGNED 2026-10-13, not built: web stations from Radio Browser in the
+  Radio card (a Local shelf by the user's city, search for any station), played through a Rust
+  loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms
+  (§11), the probes before a build (§13), the open forks (§14).
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.

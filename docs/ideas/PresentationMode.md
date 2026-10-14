@@ -52,6 +52,16 @@ caches these counts. How often they refresh (an hour? a day?) is not known yet: 
 answers it (§7 step 1). So a counter that ticks while the album plays **cannot come from the
 global count alone.** The ticking numbers come from somewhere else (§3).
 
+**A third read, 18:08 the same day (~16 h later), the numbers had moved:**
+
+| Read | Plays | Listeners |
+|---|---|---|
+| *NICOLE KIDMAN* | 2,665,764 (+53,585, ~3,300 an hour) | 235,512 (+3,665) |
+| *Inventing* | 266,851 (+42, ~2.6 an hour) | 49,328 (+2) |
+
+So the count moves in jumps when Last.fm refreshes, not by the scrobble. A threshold (a round
+number) is crossed in hours for a hit and in weeks for a small album.
+
 Last.fm has no public "who is listening to this album now" call. `user.getRecentTracks` shows
 one named user's now-playing song, and only for a user name you already know.
 
@@ -118,6 +128,23 @@ He picks which, and draws where.
    single), to see if B's bars tell a story or sit flat.
 3. **His library.** How many of his albums have a Last.fm page at all (the box shows `none`
    for some; the `album_info` table has the count today).
+
+## 7a. His calls (2026-10-13, the "coffee shop TV" talk)
+
+His picture: DeetsMusic on a TV in a coffee shop, a listening party where a group watches a
+number cross a threshold.
+
+1. **Terms first: a party on personal accounts** (at home, friends, a Room, any TV). That stays
+   inside Apple's personal, non-commercial terms and Last.fm's non-commercial API terms. **The
+   café product is documented, not pursued:** a business needs a licensed business music
+   service and a commercial Last.fm agreement. He may pursue it through the proper channels if
+   it is worth it. Do not build for a commercial venue until he says those are in place.
+2. **The number is Last.fm's** (source A in §3), not our own count: "what does our app know;
+   Last.fm has insight into millions of users." It moves when Last.fm refreshes (§2), so the
+   view says when it last moved. The probe in §7 step 1 gives the period.
+3. **The view is the card grow** (§1) for now, not a full-window TV mode.
+
+This closes §8 fork 1 (A, with B / C / D not chosen now) and fork 4 (the card's Fill).
 
 ## 8. Forks (all his)
 

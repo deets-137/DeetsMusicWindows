@@ -382,8 +382,9 @@ export const nowPlayingCard: CardDef = {
     refreshAdd();
 
     // The Last.fm counts badge (LISTENERS.md §4). One ask per song change while the row is on;
-    // listeners.ts holds the promise and Rust the month's cache. A station, a song with no id,
-    // a song Last.fm does not know, or the row off: no badge. A click opens the song's page.
+    // listeners.ts holds the promise and Rust the month's cache. A station's songs get it too
+    // (his call, 2026-10-13); a live broadcast, a song with no id, a song Last.fm does not
+    // know, or the row off: no badge. A click opens the song's page.
     // The cover badge is appended AFTER the record player mounts: mountVinyl empties the cover
     // box (vinyl.ts `box.replaceChildren()`), so a badge in the template would be gone. The
     // record's slots are placed before the station chip and stay under the badge (z-index).
@@ -410,7 +411,7 @@ export const nowPlayingCard: CardDef = {
       }
     };
     const refreshListen = () => {
-      const t = lastState?.station ? undefined : currentTrack();
+      const t = lastState?.station?.live ? undefined : currentTrack();
       const key = setting("showListeners") && t ? (t.catalogId ?? t.libraryId ?? "") : "";
       if (key === listenKey) return;
       listenKey = key;

@@ -77,7 +77,8 @@ Playing, in the place he drew.
 |---|---|---|
 | The full player (Midi and Max) | **N Plays** over **M Listeners**, two lines (his call) | at the right of the title block, spanning its three lines, inside the band. The same place in both layouts of the band: when the controls share the band, the badge sits above the ♥ and + squares |
 | The Max card (the stage, not full) | **N Plays** | on the cover's bottom-right corner, inset by `--np-listen-inset` |
-| Mini, Midi's strip, a station, a song with no id, a song Last.fm does not know | nothing | |
+| A station's song (his call, 2026-10-13; it was "nothing" until then) | the same as any song | the same places. The station chip (`.np__station`, a band over the cover's bottom edge on hover) passes under the cover badge |
+| Mini, Midi's strip, a live broadcast, a song with no id, a song Last.fm does not know | nothing | |
 
 - **Plays** is Last.fm's all-time scrobble count for the song across all users, not this
   app's play count. **Listeners** is the distinct users who scrobbled it at least once (§0).
@@ -133,7 +134,8 @@ scroll is quick (it took the slide's own time, and the title stayed cut on the l
 3. Midi, the strip: no badge. Open the full player from Midi: the badge beside the title.
 4. Next song: the badge goes, then the new counts come. Log: one `lastfm: listeners for …`
    line per new song; a song heard twice this month writes none.
-5. A station: no badge. A long title in the full player: rest the pointer on it, it slides to
+5. A station (2026-10-13): each song gets its badge, and the next song gets new counts. A live
+   broadcast: no badge. A long title in the full player: rest the pointer on it, it slides to
    its end after a beat; move away, it slides back.
 6. Settings › Playback › *Show play counts from Last.FM* off: the badge goes at once; Next: no log line.
    On again: the badge comes back for the song playing.
