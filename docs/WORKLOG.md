@@ -12,6 +12,30 @@ updated: 2026-10-13
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (unlucky-thirteenth) — Rooms on the web: the app side built
+
+His ask: a friend on a Mac tunes in to an app room from deets.solutions. Designed, then scoped,
+then built the same sitting; [WebRooms.md](features/WebRooms.md) (moved out of ideas/). His calls:
+§7.1 (in by the code only; the site's Radio tab rebuilt as a web port of Search, Queue, History
+and Now Playing 1:1; no YouTube, Match Desk, friends or listener management; the Radio token
+reused; History = the room's; a web room open to everyone; the old DeetsRadio worker offline
+later) and §9.7 (keep the site-shell; "DeetsMusic Rooms"; phones not now). No sign-in probe (his
+call): the Radio tab already proves it.
+
+**Built (§10):** `web/` (the Tauri stand-in shared with the demo, the entry, a real web back end
+with a TypeScript twin of the Rust catalog normalizers held to one fixture by a Rust and a TS
+test), `src/platform.ts` (`WEB_ROOMS`) read in the menus, Now Playing, Search, the room and the
+Room panel; History from the room's own list; `npm run listen` / `listen:build`. The worker
+(`../DeetsMusicRooms`): the `client` field, deets.solutions as an origin, the /j/ page's
+**Listen in your browser**; 43/43 checks on `wrangler dev`, NOT deployed. **In the app** a member
+row now shows a **Web** tag. Checked by Claude in Edge against the live worker (§10.4): search,
+a web-hosted room, adds, Skip into History, a reload back in as host, the web menus, End room.
+Not checked: sound and sign-in (his Apple ID). Desk test: §10.5 (DESK-TESTS B22).
+
+**Left (§10.6):** the site page and site-shell (part H, a DeetsSolutions session), the publish
+step, the worker deploy, the old worker offline. Shared the checkout with the usage-counts
+session; the two touched different files (`ONBOARDING.md` §1 rows by agreement).
+
 ## 2026-10-13 (unlucky-thirteenth) — usage counts: the open forks closed
 
 Docs only, nothing built. [USAGE-COUNTS.md](features/USAGE-COUNTS.md) §9 had 8 open items. Under

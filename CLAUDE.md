@@ -155,6 +155,13 @@ old installs' Guide button opens.
   accounts (the café product documented only), Last.fm's number, the card grow; the goal
   marker paused. HE designs the picture.
 
+- `WebRooms.md` — app side BUILT 2026-10-13, desk test open (§10.5): the rooms web port. A
+  friend on a Mac joins a room by its code and listens in a browser on deets.solutions with
+  their own Apple Music subscription (no preview tier). The app's Search, Queue, History and
+  Now Playing cards on a Tauri stand-in (`web/`, `npm run listen`), `src/platform.ts`'s
+  `WEB_ROOMS` flag, a TypeScript twin of the Rust catalog normalizers held to one fixture.
+  His calls §7.1, §9.7. Not built: the site page (part H) and the publish; the worker change
+  is not deployed (§10.6). A new `invoke()` in a shared file needs a line in `web/handlers.ts`.
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
 - `AGENT-SETUP.md` — the user's guide to control the app from an AI app or a terminal.
@@ -207,12 +214,7 @@ view to the artist's crowdfunding page, Bandcamp and official site (his call), f
 URL relationships at zero Apple calls; §4 the Apple terms read (one risk, his call); §5 the
 library probe that comes before HIS UI; §8 the forks. `SiteOceanLive.md` — an idea
 (2026-10-13): the site's Ocean glow takes the color of the song playing now (the visitor's,
-through the extension; or his, through Last.fm); §4 the forks. `WebRooms.md` — an idea (2026-10-13): a
-friend on a Mac joins an app room by its code and listens in a browser on deets.solutions
-(their own subscription, no preview tier). Every fork his, closed (§7.1): the site's Radio tab is
-rebuilt as a web port of Search, Queue, History and Now Playing (1:1) on the rooms worker; no
-YouTube, no Match Desk, no friends; the Radio token reused; a web room is open to everyone; the
-old DeetsRadio worker goes offline (§6.1). Reopens ROOMS.md §13.
+through the extension; or his, through Last.fm); §4 the forks.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

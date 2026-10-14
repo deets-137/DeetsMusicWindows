@@ -1,15 +1,18 @@
 ---
-status: idea
-desk_test: none
-sources: [docs/integrations/ROOMS.md, docs/integrations/FRIENDS.md, docs/features/WEB-DEMO.md, src/room.ts, src/qcard.ts, src/search-card.ts, src/history-card.ts, src-tauri/src/apple.rs, ../DeetsSolutions/docs/radio.md, ../DeetsSolutions/docs/youtube.md, ../DeetsSolutions/radio/dev-token.js, src/player.ts, src/cards.ts, src/media-menu.ts, demo/shim.ts, vite.demo.config.ts]
+status: built
+desk_test: open
+sources: [web/app.ts, web/listen.ts, web/handlers.ts, web/apple-catalog.ts, web/tauri-shim.ts, vite.listen.config.ts, src/platform.ts, src/room.ts, src/room-panel.ts, src/history-card.ts, src/media-menu.ts, src/now-playing-card.ts, src/search-card.ts, src/player.ts, src-tauri/src/apple.rs, tests/web-catalog.test.ts, tests/web-commands.test.ts, docs/integrations/ROOMS.md, docs/integrations/FRIENDS.md, docs/features/WEB-DEMO.md, ../DeetsSolutions/docs/radio.md, ../DeetsSolutions/radio/dev-token.js]
 updated: 2026-10-13
 ---
 # Rooms on the web — a friend on a Mac tunes in from deets.solutions
 
-> **An idea, opened 2026-10-13** from the owner's ask: "have the rooms implementation on
+> **Opened 2026-10-13** from the owner's ask: "have the rooms implementation on
 > DeetsSolutions be an extension of the friends listening on the app. If 2 friends on the app
-> invite another friend who's on Mac, they can tune in on the website." Nothing is built. Do not
-> tell a user the app does this.
+> invite another friend who's on Mac, they can tune in on the website."
+>
+> **Status (2026-10-13): the app side is BUILT (§10), desk test open (§10.5).** The site page
+> (part H) and the publish step are not built, and the worker change is not deployed, so no
+> visitor can use it yet. Do not tell a user the app does this.
 >
 > **His calls, the same day (§7):** in by the room code only; the site's Radio tab is rebuilt as
 > a web port of four app cards (Search, Queue, History, and Now Playing 1:1 in place of the tab's
@@ -431,12 +434,12 @@ proven shape, and the second normalizer (C), which the fixture test guards.
 
 | # | Question | His call |
 |---|---|---|
-| S | Does the room keep playing while the visitor browses the rest of the site? | **Yes: keep the site-shell.** The old Radio tab loads the other site pages in a frame over the room page, so the room never unloads (radio.md "The site-shell"). The port keeps that. |
+| S | Does the room keep playing while the visitor browses the rest of the site? | **Yes: keep the site-shell.** The old Radio tab loads the other site pages in a frame over the room page, so the room never unloads (../DeetsSolutions/docs/radio.md "The site-shell"). The port keeps that. |
 | N | The name on the site | **"DeetsMusic Rooms"** on the menu link and the page. The URL stays `/radio/`, so old links work. |
 | P | Phones | **Not now** ("let's not worry about it"). No phone layout, no phone probe, no phone desk test. |
 
 What each call adds to the work:
-- **S:** the dock layout (radio.md "The site-shell": the square player over a tabbed Queue |
+- **S:** the dock layout (../DeetsSolutions/docs/radio.md "The site-shell": the square player over a tabbed Queue |
   Search | History column, and the bottom strip under 66rem) is rebuilt around the app's four
   cards. The port is the top page and the site's pages go in a frame over it, as in the Radio
   tab today (§9.3 D). Part H (§9.3) gains
@@ -449,3 +452,106 @@ What each call adds to the work:
   later as its own design.
 
 There are no open forks.
+
+## 10. As built (2026-10-13)
+
+> **Part:** built · 2026-10-13. His word: "go ahead and build" (the same day). Parts A–G and J of
+> §9.3 are built in this repo and in `../DeetsMusicRooms`. **Not built: H (the site page and the
+> site-shell, in `../DeetsSolutions`) and I (the publish step).** The worker change is NOT
+> deployed. Where this section and §9 differ, this section is the code.
+
+### 10.1 The files
+
+| Part | Files | What it is |
+|---|---|---|
+| A. the shared Tauri stand-in | `web/tauri-shim.ts` (new); `demo/shim.ts` (uses it) | `installTauri(handler)`: the two globals, the callback table, the events. The demo keeps its fake MusicKit and its network guard. |
+| B. the entry and build | `web/listen.ts`, `web/app.ts`, `web/tsconfig.json`, `vite.listen.config.ts` (new); `package.json` (`listen`, `listen:build`); `.gitignore` (`dist-listen`) | `listen.ts` installs the stand-in, THEN loads `app.ts` (boot-prefetch.ts calls Rust at import time). `app.ts` starts the look, the skin layers, the hint box, the track store and the Room panel, and mounts the four cards into the page's slots. |
+| C. the web back end | `web/handlers.ts`, `web/apple-catalog.ts` (new) | The catalog commands call `api.music.apple.com` with the Radio tab's token; `apple-catalog.ts` is the TypeScript twin of the Rust normalizers. |
+| C. the twin's guard | `tests/fixtures/apple-catalog.json`, `tests/fixtures/apple-catalog.expected.json`, `tests/web-catalog.test.ts` (new); `src-tauri/src/apple.rs` (test `web_twin_fixture`) | Rust writes the expected file (`UPDATE_WEB_FIXTURE=1 cargo test web_twin_fixture`); both sides must match it. |
+| D. sign-in | `src/player.ts` (`injectUserToken` returns at once on the web); `web/app.ts` (`signIn`) | MusicKit's own `authorize()`, fired by `deets:sign-in` from the panel's Sign in or the signed-out toast. |
+| E. History from the room | `src/room.ts` (`RoomState.history`, the names of a late joiner's earlier songs); `src/history-card.ts` | The web card reads the room's last 50, newest first, with no clock column. |
+| F. the web flag | `src/platform.ts` (new, `WEB_ROOMS`); `src/media-menu.ts` (`desk()`); `src/now-playing-card.ts`; `src/search-card.ts`; `src/room.ts`; `src/room-panel.ts` | §10.2. |
+| G. the worker | `../DeetsMusicRooms`: `src/room.js` (the `client` field), `src/index.js` (the /j/ page's **Listen in your browser**), `wrangler.jsonc` (`ALLOWED_ORIGINS` + `https://deets.solutions`), `scripts/check.mjs` (two new checks) | 43 of 43 checks pass on a local `wrangler dev`. Not deployed: the owner's call. |
+| J. the command guard | `tests/web-commands.test.ts` (new); `web/handlers.ts` (`HANDLED`, `NULL_ON_PURPOSE`) | Every `invoke("…")` in the closure of `web/app.ts` has a real answer or a written reason. |
+
+### 10.2 What the web flag changes (and nothing else)
+
+- **Menus** (`media-menu.ts`): `desk()` leaves out Add to Playlist, Start Station, Start a web,
+  Song Credits, Add to Library, ♥, the Song of the Day mark, Pin / Unpin and Add to Diary. Play
+  Now, Shuffle, Play Next, Add to Queue, Go to Artist / Album / Playlist and Copy Link stay.
+- **Now Playing**: no Add to Library square, no ♥, no AirPlay square, no Last.fm badge, no
+  Queue and Search summon squares (all four cards are on screen).
+- **Search**: no Stations category (a station leaves a room).
+- **Room**: the `join` message carries `client: "web"`; a web host's code and token are kept
+  in `sessionStorage` (`deets.room.host`) and `resumeWebHost()` goes back in after a reload;
+  the invite link is the worker's `/j/` page.
+- **Room panel**: titled "DeetsMusic Rooms"; Apple Music › Sign in at the top while signed out;
+  Start a room and Join wait for the sign-in AND a name; Start a room sends all five controls
+  as `everyone`; no Friends part, no Permissions fold, no Remove, no Add friend. **In the app**
+  (not only the web) a member row shows a **Web** tag for a member with `client: "web"`.
+
+### 10.3 Decided inside his calls (for his review)
+
+1. **The page is the app's own Max layout** with two cards beside the stage (`data-max-cards="2cols"`):
+   Now Playing over the Queue on the left, Search and History beside them. The title bar holds
+   the name "DeetsMusic Rooms" and the Room item only.
+2. **The Room panel is the app's, with less**, not a new panel. The Apple sign-in sits in it as
+   the first row, because the web has no Settings › Account.
+3. **Start a room and Join wait for the Apple sign-in** as well as the name: a room you cannot
+   hear is no use (§3 rule 1).
+4. **A `?code=` link opens the panel with the code filled in**; the listener presses Join. It
+   never joins on its own (the app's deep link asks first, too).
+5. **The dev server takes 8787, else 8788**, the only two localhost ports the token's `origin`
+   claim allows, and refuses to start when both are taken.
+6. **The web History has no clock column**: the room keeps no play times. The day row
+   (*Show the day*) has nothing to show there either.
+7. **The landing page's new button** says "Listen in your browser", and its note gains one
+   sentence: "On a Mac, listen in your browser."
+
+### 10.4 Checked (2026-10-13, Claude, in Edge on this PC)
+
+On `npm run listen` against the LIVE rooms worker (it already allows any localhost origin):
+the page draws the four cards in the app's look; a catalog search returns songs, albums,
+artists and playlists and no stations; the Room panel shows Sign in, the name, Start a room and
+Join; a room started from the page is open to everyone and the panel has no Permissions or
+Remove; two songs added through the player's own Add to Queue went into the room and the Queue
+card showed them; Skip moved the first into History; a reload came back as the host of the same
+room with its History; the song, album and artist menus hold only the web rows; End room
+cleared the tab's host token. NOT checked: sound and the sign-in (they need an Apple ID, which
+is his to type), and Safari.
+
+Also: `npm test` (249 tests), `npx tsc --noEmit` and `-p demo` and `-p web`, `npx vite build`,
+`npm run demo:build`, `npm run listen:build`, `cargo test web_twin_fixture`, `npm run docs:check`.
+
+### 10.5 Desk test (his)
+
+On this PC (Chrome or Edge), with `npm run listen` running:
+1. Open the address it prints (`http://localhost:8787/`). Open the Room item (top right).
+   Press **Sign in** and sign in to Apple Music in Apple's window. The row goes; Start a room
+   and Join unlock once your name is typed.
+2. Search a song, right-click it, **Play Next**. With no room yet the song plays from Search,
+   with sound, in the browser.
+3. **Start a room** on the page. Copy the code. In the desktop dev app (`npm run dev:app`), join
+   that code. The app's member list shows your web name with a **Web** tag.
+4. Play, Pause, Skip and Seek on either side: both follow. Add a song from the app; the web Queue
+   shows it. A song that ends moves into the web History.
+5. Reload the page: it comes back into the room as host. Close the tab: about a minute later the
+   app says the room ended.
+6. The other way: start a room in the app, open `http://localhost:8787/?code=<CODE>`; the panel
+   opens with the code; press Join.
+
+On a Mac (Safari): the same steps 1–4 once the site page is live (part H), against
+deets.solutions.
+
+### 10.6 Next
+
+1. **Part H, the site** (`../DeetsSolutions`): `radio/index.html` becomes the port's page with the
+   site header; the site-shell (§9.7 S) rebuilt around the four cards; "DeetsMusic Rooms" on the
+   menu link; the old Radio files, YouTube and the Match Desk out (§6). A DeetsSolutions
+   session picks it up from `../DeetsSolutions/docs/rooms-web.md` (opened 2026-10-14), which
+   holds the page as it is today and two forks found there: how the app's look and the site's
+   look share one page (they use the same token names), and his entry field.
+2. **Part I, publishing**: a `listen:publish` like `demo:publish`, into `../DeetsSolutions/radio/app/`.
+3. **The worker deploy** (G), his call. Until then the live worker refuses `https://deets.solutions`
+   as an origin and drops the `client` field (an app then shows no Web tag).
+4. §6.1, the old DeetsRadio worker goes offline.

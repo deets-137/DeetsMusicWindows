@@ -92,6 +92,11 @@ nothing about authoring changed when the box did.
 | Friends panel › DeetsRooms | Permissions (the fold) | Shows what a guest may do: play, skip, seek, add songs and reorder Up Next | room-panel.ts |
 | Friends panel › DeetsRooms | each guest-control pill | what the control hands over ("Guests may start the music and stop it for everyone. Off: a guest's Pause stops only their own app") | room-panel.ts |
 | Friends panel › DeetsRooms | Leave room · End room | Leaves the room / Ends the room for everyone. Your own queue comes back | room-panel.ts |
+| Friends panel › DeetsRooms | a member row's **Web** tag (2026-10-13) | {Name} listens in a browser on deets.solutions | room-panel.ts (features/WebRooms.md §3) |
+| Web port: the title bar | the Room item (three figures) | Start a room, or join one with a code | vite.listen.config.ts (features/WebRooms.md §9) |
+| Web port: the Room panel | Apple Music › **Sign in** | Signs in to Apple Music in Apple's own window. Each listener plays the songs with their own subscription | room-panel.ts (features/WebRooms.md §9.3 D) |
+| Web port: the Room panel | Start a room | Makes a room and shows its code. Anyone with the code can play, skip and add songs → signed out: "…Sign in to Apple Music first" | room-panel.ts (his call R) |
+| Web port: the Room panel | Copy invite link | Copies a link to this room. It opens DeetsMusic, or lets a friend listen in a browser | room-panel.ts |
 | Compass bar | a Settings row | the row's own hint (settings-card.ts, through `settingsRows()`) | compass.ts |
 | Compass bar | a theme, skin or surface row | the title menu button's own hint | compass.ts |
 | Compass bar | Open · Play (a song, album, artist or playlist row) | Enter · Ctrl+Enter | compass.ts |
