@@ -137,6 +137,11 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 
 ### His to design or decide (asks and ideas, not built)
 
+- **Presentation mode** (2026-10-13, branch `unlucky-thirteenth`, not merged): built and
+  desk-tested by Claude in Max; the view's picture is his to draw, the goal marker is paused,
+  and a live stream from Last.fm is his idea for later. Not run: Midi, reduced motion, a roll
+  after a re-read. PresentationMode.md §7a, §7b, §9.
+
 - **Network errors in plain words** (2026-10-12): a transport error in an Apple call shows raw
   text (`Failed to load: error sending request…`, three `.catch` sites in search-card.ts). Five
   forks: one classifier into `apple-health`; what a card shows instead; toast at once or after

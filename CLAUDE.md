@@ -147,6 +147,12 @@ old installs' Guide button opens.
   loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms
   (§11), the probes before a build (§13), the open forks (§14).
 
+- `PresentationMode.md` — BUILT 2026-10-13, desk test open (§9): in Max, a click on a facts
+  box's Listening Stats fills Max with the card and grows the stats over it, Last.fm's counts
+  in large type, re-read every 5 min (`src/present.ts`). His calls §7a: a party on personal
+  accounts (the café product documented only), Last.fm's number, the card grow; the goal
+  marker paused. HE designs the picture.
+
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
 - `AGENT-SETUP.md` — the user's guide to control the app from an AI app or a terminal.
@@ -197,10 +203,7 @@ skin, the full-size trigger; HE designs the UI, never write that picture for him
 only; §9 the forks. `SupportArtist.md` — an idea (2026-10-12): a "Support" link on the artist
 view to the artist's crowdfunding page, Bandcamp and official site (his call), from MusicBrainz
 URL relationships at zero Apple calls; §4 the Apple terms read (one risk, his call); §5 the
-library probe that comes before HIS UI; §8 the forks. `PresentationMode.md` — an idea
-(2026-10-13): a click on the facts box's Listening Stats grows it over the whole card, an album
-listening party; Last.fm's counts did not move in 95 s (§2, cached, not live), so the moving
-numbers come from per-song bars, your own plays and the Room (§3); HE designs the picture; §8 the forks.
+library probe that comes before HIS UI; §8 the forks.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

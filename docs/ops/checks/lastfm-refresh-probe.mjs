@@ -1,4 +1,4 @@
-// Last.fm refresh probe (docs/ideas/PresentationMode.md §7 step 1).
+// Last.fm refresh probe (docs/features/PresentationMode.md §7 step 1).
 // Reads the top 3 songs of chart.getTopTracks and a set of albums every <interval> seconds for
 // <minutes>, and prints a line each time a count moves. It answers how often Last.fm refreshes
 // the public Plays / Listeners counts: the label under a presented number ("updated N min ago").

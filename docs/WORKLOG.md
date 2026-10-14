@@ -12,6 +12,26 @@ updated: 2026-10-13
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (unlucky-thirteenth) — presentation mode: the stats cell grows over the card
+
+His picture: DeetsMusic on a TV for a listening party; a group watches a number cross a
+threshold. Branch `unlucky-thirteenth`, pushed.
+- **His calls** (PresentationMode.md §7a): a party on personal accounts (a café would need a
+  business music service and a commercial Last.fm agreement; documented, not pursued);
+  Last.fm's number, not our own; the card grow, not a full-window TV mode; albums and artists;
+  Max only; the goal marker paused (it tracks Plays when it comes back). His idea, §7b: a live
+  stream from Last.fm for a release-night party.
+- **Probes:** a 16 h re-read showed the counts move in batches (§2);
+  `docs/ops/checks/lastfm-refresh-probe.mjs` reads them every minute (an hour's run, no move in
+  its first 15 minutes).
+- **Built** (§9): `src/present.ts`; the stats cell is `[data-present]`; `max_age_ms` on the two
+  Last.fm facts commands for the 5-minute re-read; the doc moved from ideas/ to features/.
+- **Desk test, Claude on the dev app:** album and artist, from a card at rest and from one a rule
+  had grown; Escape and the shrink square; the outside click obeys his setting. Not run: Midi,
+  reduced motion, a roll after a re-read (Last.fm did not move). Opening together with the grow
+  dropped 7–30 % of frames on `dev:app` (not the honest build).
+- Also committed: the other session's station badge (LISTENERS.md §4) and LOCAL-RADIO.md.
+
 ## 2026-10-13 (one code path) — every album, artist, playlist, song and writer page is one engine level
 
 His ask: unify the artist and album drilldowns across the cards (ARTIST-VIEW.md §10, decided

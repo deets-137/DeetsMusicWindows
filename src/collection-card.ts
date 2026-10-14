@@ -15,6 +15,8 @@ import { handleUnpin } from "./pins";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { toggleInfoBox } from "./listeners";
 import { infoBoxAt, openInfoBoxMenu } from "./info-box-menu";
+import { openPresent } from "./present";
+import { currentSurface } from "./surface";
 import * as frames from "./frames";
 import { wireListKeys } from "./list-keys";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
@@ -1925,6 +1927,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       if (lfm.dataset.url) void openUrl(lfm.dataset.url);
       return;
     }
+    // The box's Listening Stats cell, in Max: presentation mode (present.ts, PresentationMode.md).
+    const stats = t.closest<HTMLElement>("[data-present]");
+    if (stats && currentSurface() === "max") return void openPresent(stats);
     // the hero's tappable subtitle (an album's artist) → its own drill
     if (t.closest("[data-hero-sub]")) {
       cur().ctx.hero?.()?.sub?.run?.();

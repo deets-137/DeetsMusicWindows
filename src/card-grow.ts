@@ -112,6 +112,16 @@ const subs = new Set<(s: GrowState | null) => void>();
 
 /** The grow now, or null. */
 export const grownState = (): GrowState | null => state;
+/** The content slot whose card holds `el`, or null (presentation mode, present.ts). */
+export function slotHolding(el: Element): Slot | null {
+  if (!opts) return null;
+  for (const [slot, host] of Object.entries(opts.hosts) as [Slot, HTMLElement | null][]) {
+    if (host?.contains(el) && !isStage(slot)) return slot;
+  }
+  return null;
+}
+/** The card host of `slot` (its `.panel`), or null. */
+export const hostOf = (slot: Slot): HTMLElement | null => opts?.hosts[slot] ?? null;
 /** True while `slot` sits under a grown card. */
 export const isCovered = (slot: Slot): boolean => !!state && state.covered.includes(slot);
 /** Be told when a grow starts or ends (the layout and the cards re-read their state). */

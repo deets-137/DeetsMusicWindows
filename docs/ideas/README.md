@@ -47,9 +47,8 @@ the app can do any of these things.
   view to the artist's crowdfunding page, Bandcamp and official site, from MusicBrainz URL
   relationships (zero Apple calls). Kickstarter itself set aside (§2); the Apple terms read (§4);
   a probe of the owner's library before he designs the UI (§5, §6); the forks (§8).
-- [PresentationMode.md](PresentationMode.md) — an idea (2026-10-13): a click on the facts
-  box's Listening Stats grows it over the whole card, an album listening party. Last.fm's
-  counts are cached, not live (§2, probed); the sources of moving numbers (§3); the forks (§8).
+- [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
+  its first part was built (the stats cell grows over the card in Max).
 
 When one of these is built, move its doc back to `docs/` and link it from
 [HANDOFF.md](../HANDOFF.md).

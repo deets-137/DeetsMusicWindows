@@ -275,7 +275,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
           // Right-click anywhere on the hero: the album's own menu, without Go to Album
           // (you are there) — CONTEXT-MENUS.md §3a.
           menu: d.hasMenu() ? d.menu : undefined,
-          aside: lw && la ? albumInfoHTML(albumInfoNow(lw, la)) : undefined,
+          aside: lw && la ? albumInfoHTML(albumInfoNow(lw, la), lw, la) : undefined,
         };
       },
       get groupings() {
@@ -461,7 +461,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
           menu,
           title: d.name(),
           meta: d.meta(),
-          aside: artistInfoHTML(lfm),
+          aside: artistInfoHTML(lfm, lfmFor || d.name()),
         };
       },
       shelves: () => (d.ready() ? artistShelvesHTML(d.featured(), yours, checking, albumsShelf()) : ""),

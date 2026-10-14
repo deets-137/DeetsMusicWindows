@@ -104,6 +104,11 @@ function asker<T>() {
       return p;
     },
     now: (key: string): T | null | undefined => known.get(key),
+    /** A fresh answer (presentation mode's re-read) replaces the kept one. */
+    keep(key: string, v: T): void {
+      known.set(key, v);
+      held.set(key, Promise.resolve(v));
+    },
   };
 }
 
@@ -149,6 +154,28 @@ export function albumInfoFor(artist: string, album: string): Promise<AlbumInfo |
  *  `undefined` and `null` as `artistInfoNow` has them. */
 export function albumInfoNow(artist: string, album: string): AlbumInfo | null | undefined {
   return setting("showAlbumInfo") ? albums.now(albumKey(artist, album)) : null;
+}
+
+/**
+ * A fresh read for presentation mode (PresentationMode.md): Last.fm is asked when the stored
+ * answer is older than `maxAgeMs` (Rust floors it at a minute), and the new answer replaces the
+ * kept one, so the box shows it too. `null` with the row off, no key, or no answer.
+ */
+export async function artistInfoFresh(name: string, maxAgeMs: number): Promise<ArtistInfo | null> {
+  const key = artistKey(name);
+  if (!key || !setting("showArtistInfo")) return null;
+  const v = await invoke<ArtistInfo | null>("lastfm_artist_info", { name: name.trim(), maxAgeMs }).catch(() => null);
+  if (v) artists.keep(key, v);
+  return v;
+}
+
+/** The album's fresh read, as `artistInfoFresh`. */
+export async function albumInfoFresh(artist: string, album: string, maxAgeMs: number): Promise<AlbumInfo | null> {
+  const forms = albumForms(artist, album);
+  if (!forms.length || !setting("showAlbumInfo")) return null;
+  const v = await invoke<AlbumInfo | null>("lastfm_album_info", { artist: artist.trim(), album: album.trim(), forms, maxAgeMs }).catch(() => null);
+  if (v) albums.keep(albumKey(artist, album), v);
+  return v;
 }
 
 /** A facts box on a narrow card: open or folded under its *Artist Info* / *Album Info* line.

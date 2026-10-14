@@ -1,17 +1,17 @@
 ---
-status: idea
-desk_test: none
-sources: [src/info-box.ts, src/listeners.ts, src-tauri/src/lastfm.rs, src/card-grow.ts, src/full-player.ts, docs/features/LISTENERS.md, docs/cards/CARD-GROW.md, docs/integrations/ROOMS.md, docs/integrations/FRIENDS.md]
+status: built
+desk_test: open
+sources: [src/present.ts, src/info-box.ts, src/listeners.ts, src-tauri/src/lastfm.rs, src/card-grow.ts, src/collection-card.ts, src/media-levels.ts, src/full-player.ts, docs/features/LISTENERS.md, docs/cards/CARD-GROW.md, docs/integrations/ROOMS.md, docs/integrations/FRIENDS.md]
 updated: 2026-10-13
 ---
 # Presentation mode — the listening stats take over the card
 
-> **An idea, opened 2026-10-13** from the owner's ask, drawn on a screenshot of the album view
+> **Opened 2026-10-13** from the owner's ask, drawn on a screenshot of the album view
 > (*Inventing - Single*, Matilda Mann; the *Listening Stats* cell of the album facts box
 > circled): "clicking on an album or artist's listening stats makes it take over the entire
 > card and grows it significantly; imagine an album listening party with live data from
-> Last.fm." Nothing is decided and nothing is built. Every fork in §8 is his. He designs the
-> picture. Do not tell a user the app does this.
+> Last.fm." **His calls are §7a; the first part is BUILT (§9, the as-built record; desk test
+> open).** He designs the picture: the view's layout is a placeholder.
 
 ## 0. Terms
 
@@ -146,6 +146,35 @@ number cross a threshold.
 
 This closes §8 fork 1 (A, with B / C / D not chosen now) and fork 4 (the card's Fill).
 
+**His calls before the build (2026-10-13, the same talk):**
+
+4. **No goal marker for now.** The threshold bar from the mock (a goal, its progress, "N to go")
+   is an idea, not built. When it comes back, it tracks **Plays** (his call), which move about
+   50 to 1,000 times faster than Listeners, so a crossing can happen during a party.
+5. **Albums and artists both** (§8 fork 2 closed).
+6. **Max only** (§8 fork 5 closed). Midi and Mini: the cell stays plain text.
+
+## 7b. An idea: a live stream from Last.fm for a release-night party
+
+> **Part:** idea · 2026-10-13 (his). Not designed, not asked of Last.fm.
+
+His idea: work with Last.fm to set up a WebSocket (or another push stream) of real live data,
+for a party on the night an album comes out. A song gets most of its listens in its first
+couple of nights, so release night is when a live count moves most and means most.
+
+What we know today:
+- The public API has no live call and no push. The counts it gives move in batches (§2): in
+  the probes, nothing moved in 95 s or in the first 15 minutes of an hour's watch, but the top
+  song had +53,585 plays over 16 hours.
+- Last.fm sees each scrobble as it comes in, so a per-album or per-artist count of scrobbles
+  in the last minute exists on their side.
+- Our API key is under Last.fm's non-commercial terms. A stream would be a new arrangement
+  with Last.fm: an ask through their business or API contact, not a change in the app.
+
+What it would need from us, when the time comes: a socket client beside the re-read
+(`present.ts`), a "live" mark on the view, and the goal marker (§7a item 4, on Plays) as the
+moment the group watches. The Room (§3 D) could share the one stream with every member.
+
 ## 8. Forks (all his)
 
 1. **Live, which kind.** A only (honest, slow) · A + B + C (one user, no server) · add D
@@ -163,3 +192,44 @@ This closes §8 fork 1 (A, with B / C / D not chosen now) and fork 4 (the card's
    (docs/guide/motion.json).
 8. **A setting.** Its own row in Settings › Playback beside the two box rows, or it rides
    *Show album info* / *Show artist info*.
+
+## 9. As built (2026-10-13)
+
+> **Part:** built · 2026-10-13 · desk test open (§9.3)
+
+### 9.1 How it is built
+
+| Piece | Where | What |
+|---|---|---|
+| The trigger | `[data-present]` on the stats cell (`statsSec`, info-box.ts); the click in collection-card.ts | Max only. The box wrap carries the names it was asked by (`data-artist`, `data-album`), passed from media-levels.ts. The cell takes the hover brightness of a clickable hero cover |
+| The grow | `fillCard(slot, "present")` (card-grow.ts) | the card fills Max; Now Playing and the Queue stay. A card already grown keeps its grow. `slotHolding` / `hostOf` (new exports) find the card's slot and panel |
+| The view | `src/present.ts` `openPresent` | a `.present` layer over the whole panel: *Listening Stats* (the shelf label), the album · artist (or the artist), Plays and Listeners in full digits at `--present-num` (it follows the card's width), the age line |
+| The motion | a clip from the cell's box to the card's, on `--grow-dur` / `--grow-ease`; the words fade in after `--present-in-delay` | the grow's own idiom; the way back clips into the cell on `--grow-collapse-dur`, then the grow collapses. Reduced motion: no clip, no fade. `[perf] frames present` |
+| The re-read | `artistInfoFresh` / `albumInfoFresh` (listeners.ts) → `max_age_ms` on `lastfm_artist_info` / `lastfm_album_info` | on open and every 5 min while open; a stored answer under 4 min old is not asked again; Rust floors the age at 1 min (`MIN_MAX_AGE_MS`). The answer replaces the cached one, so the box shows it too |
+| A count that moved | `roll` | counts up to the new value over `--present-roll-dur` (1.2 s); a snap under reduced motion |
+| The age line | `ageText` | *Checked with Last.fm N min ago*, from the answer's `fetchedAt`; redrawn every 30 s |
+| Ways out | Esc (taken before the grow's own Esc), the shrink square, anything that ends the grow (an outside click), a surface change | |
+| Log lines | `present:open` · `present:read` (each re-read, with the counts) · `present:moved` (the deltas) · `present:close` | the ring (diag) |
+| Hints | `PRESENT_HINTS`; the stats cell's hint gained "In Max, click to show them large" | ONBOARDING.md §1 |
+
+### 9.2 Decided inside his calls (for his review)
+
+The trigger is the click only (no box-menu row, no Compass verb, no rule; §8 fork 3 still
+open). No Settings row: it rides the box rows (§8 fork 8). Not remembered: a restart brings the
+card back at rest (§8 fork 6). The clip on the grow's curve (§8 fork 7). Full digits, not
+48K. The 5-minute re-read and the 4-minute age. The words of the age line and the two hints.
+The view's look: the facts box's fill and rim, the shrink square of the grow, the name in the
+title type. **The layout is a placeholder for his picture.**
+
+### 9.3 Desk test
+
+1. Max, Library › an album with a facts box. Hover the Listening Stats cell: the hint, and
+   the cell brightens. Click it: the card fills Max; the stats grow out of the cell over the
+   card; Now Playing and the Queue stay.
+2. The numbers are in full digits. Under them, *Checked with Last.fm just now* (or N min ago).
+3. Esc: the view goes back into the cell, then the card goes back to its place. The same with
+   the shrink square, and with a click on Now Playing (the grow's outside click).
+4. The same for an artist (Library › an artist), and in Search › an album.
+5. Midi: the cell is plain text, and a click does nothing.
+6. Leave it open over 5 minutes: one `present:read` line in the ring per re-read; when Last.fm
+   has moved, the number rolls up and a `present:moved` line shows the change.

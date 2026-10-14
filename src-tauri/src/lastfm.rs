@@ -737,6 +737,15 @@ async fn run_flush(app: &AppHandle) {
 /// How long a cached count stands before the next read asks Last.fm again. Listener counts
 /// move slowly; a month keeps a library of a few thousand songs at a few calls a day.
 const LISTENERS_TTL_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+/// The shortest age a caller may ask for (`max_age_ms`): presentation mode re-reads the counts
+/// while it is open (PresentationMode.md), and this floor keeps a bug from asking Last.fm in a
+/// loop.
+const MIN_MAX_AGE_MS: i64 = 60 * 1000;
+
+/// The age a cached row may have for this ask: the month, or the caller's shorter one.
+fn max_age(asked: Option<i64>) -> i64 {
+    asked.map_or(LISTENERS_TTL_MS, |a| a.clamp(MIN_MAX_AGE_MS, LISTENERS_TTL_MS))
+}
 
 pub fn init_tables(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
@@ -966,9 +975,9 @@ async fn fetch_artist(name: &str) -> Result<ArtistInfo, CallError> {
 
 /// The Last.fm facts for one artist. Cache first; one call when the row is missing or older
 /// than a month. `Ok(None)`: no key in this build, or no name. A network failure is an `Err`
-/// and caches nothing.
+/// and caches nothing. `max_age_ms`: a shorter age for the cached row (presentation mode).
 #[tauri::command]
-pub async fn lastfm_artist_info(name: String, app: AppHandle) -> Result<Option<ArtistInfo>, String> {
+pub async fn lastfm_artist_info(name: String, max_age_ms: Option<i64>, app: AppHandle) -> Result<Option<ArtistInfo>, String> {
     let key = artist_key(&name);
     if API_KEY.is_none() || key.is_empty() {
         return Ok(None);
@@ -976,7 +985,7 @@ pub async fn lastfm_artist_info(name: String, app: AppHandle) -> Result<Option<A
     let k = key.clone();
     let hit = crate::db_thread::run(&app, move |db| Ok(cached_artist(&db.lock(), &k))).await?;
     if let Some(a) = hit {
-        if now_ms() - a.fetched_at < LISTENERS_TTL_MS {
+        if now_ms() - a.fetched_at < max_age(max_age_ms) {
             return Ok(Some(a));
         }
     }
@@ -1096,9 +1105,16 @@ async fn fetch_album(artist: &str, album: &str) -> Result<AlbumInfo, CallError> 
 /// The Last.fm facts for one album. `artist` / `album` are Apple's names (the cache key);
 /// `forms` are the (artist, album) pairs to ask, in order. Cache first; then one call per
 /// form until Last.fm knows one (usually the first). `Ok(None)`: no key, or nothing to ask.
-/// A network failure is an `Err` and caches nothing.
+/// A network failure is an `Err` and caches nothing. `max_age_ms`: a shorter age for the
+/// cached row (presentation mode).
 #[tauri::command]
-pub async fn lastfm_album_info(artist: String, album: String, forms: Vec<(String, String)>, app: AppHandle) -> Result<Option<AlbumInfo>, String> {
+pub async fn lastfm_album_info(
+    artist: String,
+    album: String,
+    forms: Vec<(String, String)>,
+    max_age_ms: Option<i64>,
+    app: AppHandle,
+) -> Result<Option<AlbumInfo>, String> {
     let key = album_key(&artist, &album);
     let forms: Vec<(String, String)> = forms
         .into_iter()
@@ -1111,7 +1127,7 @@ pub async fn lastfm_album_info(artist: String, album: String, forms: Vec<(String
     let k = key.clone();
     let hit = crate::db_thread::run(&app, move |db| Ok(cached_album(&db.lock(), &k))).await?;
     if let Some(a) = hit {
-        if now_ms() - a.fetched_at < LISTENERS_TTL_MS {
+        if now_ms() - a.fetched_at < max_age(max_age_ms) {
             return Ok(Some(a));
         }
     }

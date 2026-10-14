@@ -21,7 +21,7 @@ import { setting } from "./settings-store";
 export const ARTIST_INFO_HINTS = {
   tags: "What Last.fm listeners call this artist",
   tour: "On tour now, says Last.fm",
-  counts: "Plays and listeners of this artist on Last.fm",
+  counts: "Plays and listeners of this artist on Last.fm. In Max, click to show them large",
   lastfm: "Opens the artist's page on Last.fm",
   toggle: "Shows or hides Last.fm's facts about this artist",
 } as const;
@@ -29,7 +29,7 @@ export const ARTIST_INFO_HINTS = {
 export const ALBUM_INFO_HINTS = {
   tags: "What Last.fm listeners call this album",
   about: "From the album's wiki on Last.fm",
-  counts: "Plays and listeners of this album on Last.fm",
+  counts: "Plays and listeners of this album on Last.fm. In Max, click to show them large",
   lastfm: "Opens the album's page on Last.fm",
   toggle: "Shows or hides Last.fm's facts about this album",
 } as const;
@@ -52,11 +52,13 @@ function tagsSec(tags: string[], h: Hints): string {
   return chips ? sec("tags", "Tags", `<div class="artist-info__tags">${chips}</div>`) : "";
 }
 
+/** The stats cell. In Max a click on it presents the counts over the whole card
+ *  (`data-present`, present.ts; PresentationMode.md); elsewhere it is plain text. */
 function statsSec(plays: number, listeners: number, h: Hints): string {
   return sec(
     "stats",
     "Listening Stats",
-    `<div class="artist-info__counts" title="${h.counts}">` +
+    `<div class="artist-info__counts" data-present title="${h.counts}">` +
       `<span class="artist-info__count"><b>${fmtCount(plays)}</b>Plays</span>` +
       `<span class="artist-info__count"><b>${fmtCount(listeners)}</b>Listeners</span></div>`,
   );
@@ -68,13 +70,18 @@ function linksSec(url: string | undefined, h: Hints): string {
     : "";
 }
 
+/** The names a box was asked by: presentation mode re-reads the counts under them. */
+type Names = { artist: string; album?: string };
+
 /** The wrap: the fold line, the fold, the box. `kind` names the box for its line, its menu
- *  and its Settings row; `url` rides along for the menu's *Open Last.fm*. */
-function boxHTML(kind: "artist" | "album", url: string | undefined, h: Hints, sections: string): string {
+ *  and its Settings row; `url` rides along for the menu's *Open Last.fm*; `names` for
+ *  presentation mode. */
+function boxHTML(kind: "artist" | "album", url: string | undefined, h: Hints, sections: string, names?: Names): string {
   const open = infoBoxOpen();
   const line = kind === "artist" ? "Artist Info" : "Album Info";
+  const named = names ? ` data-artist="${esc(names.artist)}"${names.album ? ` data-album="${esc(names.album)}"` : ""}` : "";
   return (
-    `<div class="artist-info-wrap" data-open="${open ? 1 : 0}" data-info-box="${kind}"${url ? ` data-url="${esc(url)}"` : ""}>` +
+    `<div class="artist-info-wrap" data-open="${open ? 1 : 0}" data-info-box="${kind}"${url ? ` data-url="${esc(url)}"` : ""}${named}>` +
     `<button class="artist-info__toggle" type="button" data-artist-info-toggle aria-expanded="${open}" title="${h.toggle}"><span class="artist-info__h">${line}</span></button>` +
     `<div class="artist-info__fold"><div class="artist-info__fold-in"><div class="artist-info artist-info--${kind}">${sections}</div></div></div></div>`
   );
@@ -94,17 +101,17 @@ function pendingBoxHTML(kind: "artist" | "album"): string {
   return still ? `<div class="artist-info-wrap" data-info-box="${kind}" data-info-pending aria-hidden="true"></div>` : "";
 }
 
-export function artistInfoHTML(i: ArtistInfo | null | undefined): string {
+export function artistInfoHTML(i: ArtistInfo | null | undefined, name?: string): string {
   if (i === undefined) return pendingBoxHTML("artist"); // still on its way
   if (!i || i.state !== "have") return "";
   const h = ARTIST_INFO_HINTS;
   const tour = i.onTour
     ? sec("tour", "On tour", `<span class="artist-info__tour" title="${h.tour}"><span class="artist-info__dot" aria-hidden="true"></span>Touring now</span>`)
     : "";
-  return boxHTML("artist", i.url, h, tagsSec(i.tags, h) + statsSec(i.playcount, i.listeners, h) + tour + linksSec(i.url, h));
+  return boxHTML("artist", i.url, h, tagsSec(i.tags, h) + statsSec(i.playcount, i.listeners, h) + tour + linksSec(i.url, h), name ? { artist: name } : undefined);
 }
 
-export function albumInfoHTML(i: AlbumInfo | null | undefined): string {
+export function albumInfoHTML(i: AlbumInfo | null | undefined, artist?: string, album?: string): string {
   if (i === undefined) return pendingBoxHTML("album"); // still on its way
   if (!i || i.state !== "have") return "";
   const h = ALBUM_INFO_HINTS;
@@ -112,5 +119,6 @@ export function albumInfoHTML(i: AlbumInfo | null | undefined): string {
   // The About text is clamped to a fixed number of lines in a box of a fixed height, so a
   // long summary and a short one draw the same box (his ask, 2026-10-13).
   const about = text ? sec("about", "About", `<p class="artist-info__about" title="${h.about}">${esc(text)}</p>`) : "";
-  return boxHTML("album", i.url, h, tagsSec(i.tags, h) + statsSec(i.playcount, i.listeners, h) + about + linksSec(i.url, h));
+  const names = artist && album ? { artist, album } : undefined;
+  return boxHTML("album", i.url, h, tagsSec(i.tags, h) + statsSec(i.playcount, i.listeners, h) + about + linksSec(i.url, h), names);
 }

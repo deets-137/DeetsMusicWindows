@@ -3002,6 +3002,41 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .artist-info__link:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .artist-info__count { display: flex; align-items: baseline; gap: var(--space-1); }
 .artist-info__count b { font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text); color: var(--title); }
+/* Presentation mode (present.ts, PresentationMode.md): in Max the stats cell is a press. */
+[data-surface="max"] .artist-info__counts[data-present] { cursor: pointer; }
+[data-surface="max"] .artist-info__counts[data-present]:hover { filter: brightness(var(--hero-cover-hover)); }
+/* The view: the facts box's family (its fill, rim and voice) grown over the whole card. */
+.present {
+  position: absolute; inset: 0; z-index: 5;
+  container-type: size;
+  display: flex; flex-direction: column; gap: var(--present-gap);
+  padding: var(--present-pad);
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: inherit;
+  overflow: hidden;
+}
+.present > * { opacity: 0; transition: opacity var(--dur-med) var(--ease-ui) var(--present-in-delay); }
+.present.is-in > * { opacity: 1; }
+.present__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.present__title { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.present__title .search__label { margin: 0; }
+.present__name {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-title); color: var(--title);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.present__by { color: var(--subtext); }
+.present__counts { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-content: center; gap: var(--present-gap) var(--present-count-gap); }
+.present__count { display: flex; flex-direction: column; gap: var(--space-1); }
+.present__count b {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--present-num); line-height: 1;
+  color: var(--title); font-variant-numeric: tabular-nums;
+}
+.present__count span { font-size: var(--fs-text); color: var(--subtext); }
+.present__age { font-size: var(--fs-subtext); color: var(--subtext); }
+@media (prefers-reduced-motion: reduce) {
+  .present > * { transition: none; }
+}
 /* Play / Shuffle (NEXT-VERSION §13): two half-width buttons under the hero (or at the top of
    a song list with no hero). Play is filled with the title ink, Shuffle is the pill outline. */
 .lib-actions { display: flex; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); min-width: 0; }
