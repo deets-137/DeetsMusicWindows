@@ -253,6 +253,17 @@ An owner-only page at `support.deets.solutions/admin/usage`, behind the existing
 Every number shows as it is (§2 rule 6). The cross-check is computed in the worker over the
 stored rows (up to 13 months), and the page never gets the raw rows. The page is built with the feature (§1.6).
 
+> **Part:** LIVE · 2026-10-14 (the worker, its D1 tables and the page). Where it disagrees with the lines above, this is the code.
+
+**As built.** Not a page on the worker: its own owner page, deets.solutions/deetsmusic/admin/
+(his calls, 2026-10-14: build it on his owner pages, then a separate admin page; moderation stays
+inline on the boards). Owner mode on the DeetsMusic page links to it. The worker answers
+`GET /admin/usage` JSON and the page draws it (DeetsSolutions `docs/support.md`, "The admin
+page"). Pickers for channel and week; the four headline counts; 60 days of daily installs;
+the week's version mix; one setting's shares; the cross-check of two settings over the chosen
+week (one row per install); and **every** health metric (his call, 2026-10-14), per version or
+all. His strings (approved 2026-10-14). `?mock` shows it with made-up counts.
+
 ## 7. How the user is told
 
 - **A new install:** one line on the Hop in screen, under the Cruisin / Pro pick, with the
@@ -341,8 +352,8 @@ The dev app sends only to a local worker, so the whole chain runs on this PC.
 ## 11. As built (2026-10-13)
 
 > **Part:** built · 2026-10-13 (steps 1–4 of the scope: the worker, the Rust side, the pure
-> rules, the front end. The admin page (DeetsSolutions) and the README / release-note lines are
-> not built.)
+> rules, the front end. The admin page (DeetsSolutions, §6) and the README / release-note lines
+> followed on 2026-10-14.)
 
 Where this record and the design above disagree, this record is the code.
 

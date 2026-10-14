@@ -32,6 +32,13 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## Next release (the version is set at release time)
+
+**Usage counts.** DeetsMusic now sends anonymous counts: how many installs are active, which
+versions they run, which settings they pick, and how many errors they hit. No report carries an
+ID, your songs or where you are. A notice tells you before the first one. Turn it off in
+Settings › About › *Send usage counts*; *What is sent* shows each report exactly.
+
 ## 0.27.0 — 2026-10-13
 
 **Facts about the artist and the album.** An artist's page shows a box from Last.fm beside the

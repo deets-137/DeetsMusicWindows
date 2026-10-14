@@ -119,7 +119,19 @@ DeetsMusic builds only ([docs/ops/RELEASE.md](docs/ops/RELEASE.md) §7a).
 - **Your playlists.** Playlists you make in DeetsMusic are stored on this PC only. A new
   PC or a reinstalled Windows starts without them. To keep a copy, use Apple Music ▸
   Export to Apple Music on the playlist.
-- **Nothing else.** No analytics, no listening history leaves your PC.
+- **Usage counts.** While Settings › About › *Send usage counts* is on, the app sends three
+  small reports to `support.deets.solutions`, each at its own random moment:
+  - once a day, the app version, and whether this is its first count of the week or month;
+  - once a week, your on/off and choice settings (never a slider, a time, a name, or
+    anything you typed);
+  - once a week, how many errors the log counted, by area, and how Apple's replies went,
+    as numbers only.
+
+  No report carries an ID. The server stores no IP address, no songs and nothing about
+  where you are, and deletes everything after 13 months. The app tells you once before the
+  first report. *What is sent*, in the same place, shows each report exactly as it leaves.
+  Turn the row off and nothing is sent.
+- **Nothing else.** No listening history leaves your PC.
 
 ## Trademarks
 

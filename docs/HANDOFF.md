@@ -137,9 +137,10 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 
 - **Usage counts** (2026-10-13, committed on `unlucky-thirteenth`): steps 1–4 built
   (the worker in `../DeetsSupport`, the Rust counts and send, the pure rules, the Settings
-  rows and the notice). Desk test passed 2026-10-13 (USAGE-COUNTS.md §10; the cron's in-window delete not seen in a run). Next: the admin page in
-  DeetsSolutions, the README › Privacy paragraph and the release-note line; then his worker
-  deploy and the D1 migration (`migrations/2026-10-13-usage.sql`). §11 the as-built record.
+  rows and the notice). Desk test passed 2026-10-13 (USAGE-COUNTS.md §10; the cron's in-window delete not seen in a run). The owner page deets.solutions/deetsmusic/admin/
+  is built (2026-10-14, his strings). The README › Privacy
+  paragraph and the release-note line ("Next release") are written. Next: an app release that sends the counts. The worker, its
+  D1 tables and the admin page went LIVE 2026-10-14 (DeetsSupport 52a2f1e, DeetsSolutions ba2f111). §11 the as-built record.
 
 ### His to design or decide (asks and ideas, not built)
 

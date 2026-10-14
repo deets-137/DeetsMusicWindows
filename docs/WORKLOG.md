@@ -12,6 +12,38 @@ updated: 2026-10-13
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-14 (unlucky-thirteenth) — usage counts: committed, and the owner box on the site
+
+Committed with a temporary index, my paths and hunks only: DeetsMusic `fc50b93` (30 files),
+DeetsSupport `52a2f1e`; nothing pushed or deployed. A mockup widget of the admin page, then
+**his calls:** build it on his owner pages, show every health metric. Built in DeetsSolutions
+(uncommitted): an owner-only `#usage` box on deets.solutions/deetsmusic/ after Status
+(`deetsmusic.js` beside the owner mode, `index.html`, `strings.js` all `[ph]`, `main.css`,
+`mockUsage` in `mock.js`). Checked on `?mock` in Chrome: the box shows for the owner, 58 health
+rows, the channel pick reloads, no console errors. The site's look is his to judge
+(DeetsSolutions CLAUDE.md › Workflow). USAGE-COUNTS.md §6 has the as-built part; the site's
+`docs/support.md` › "The admin page".
+
+**Then his call: a separate admin page.** "All the admin stuff" was a fork (moderation is woven
+into the boards); his pick: only the usage numbers move. `deetsmusic/admin/` (`index.html`,
+`admin.js`, self-contained: its own helpers and pill kit), gated on `GET /admin/me`, `noindex`;
+the DeetsMusic page lost the box and gained an owner-only **Admin** link in the page bar.
+Checked in Chrome: `?mock` shows the numbers, no mock shows "for the owner only", the link shows
+in owner mode, no console errors. The site now has 18 pages with the pre-paint script (its docs
+say 15).
+
+**Then his go: "remove the ph", deploy, push.** The strings lost `[ph]` (his approval). The D1
+migration on the live `deets-support` (two tables, one index), then `wrangler deploy` from a
+clean worktree of DeetsSupport `52a2f1e`, so the uncommitted `signin.js` /
+`update.js` (not this session's, not the web-rooms session's; whose is unknown) stayed out (a probe showed they were never live). Version `fa00306b`; `/admin/usage`
+answers 403 to a stranger, the mint and the boards answer as before. DeetsSolutions `ba2f111`
+pushed (with the web-rooms session's docs commit `2b98fe7` under it; told that session); the
+admin page served in ~20 s. The numbers fill once an app release sends them.
+
+**Then the README › Privacy paragraph** (*Usage counts*, replacing "No analytics") **and the
+release-note line**, first in a new "Next release" entry (the version is his call at release;
+`publish-update.mjs` reads only versioned headings, so the entry waits for its number).
+
 ## 2026-10-13 (unlucky-thirteenth) — Rooms on the web: the app side built
 
 His ask: a friend on a Mac tunes in to an app room from deets.solutions. Designed, then scoped,

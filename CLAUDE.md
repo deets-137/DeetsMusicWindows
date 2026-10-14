@@ -117,11 +117,12 @@ old installs' Guide button opens.
   Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaced
   `rewindCard`); the picker only, the feature keeps working; right-click a name in the picker
   › Hide from picker. §8 is the as-built record. It is also Hop in's Rulez gate (§6.2).
-- `USAGE-COUNTS.md` — BUILT 2026-10-13 (app + worker, not deployed), desk test passed 2026-10-13 (§10):
+- `USAGE-COUNTS.md` — BUILT 2026-10-13, desk test passed (§10); the worker, its D1 tables and the admin page LIVE 2026-10-14:
   anonymous active-install counts, a weekly settings row and weekly health counts (log errors,
   Apple calls) to DeetsSupport. No ID, no IP, an allow-list (`src/usage-keys.ts`, copied to the
   worker by `npm run usage:keys`), real numbers, 13 months. §2 the privacy rules; §1 his calls;
-  §11 the as-built record. The admin page (DeetsSolutions) and the README paragraph are next.
+  §11 the as-built record. The owner page deets.solutions/deetsmusic/admin/ built 2026-10-14 (§6);
+  the README › Privacy paragraph and the release-note line written 2026-10-14. Next: a release.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   The Album theme (colors from the cover, §12) is built with it; its forks are open.
@@ -154,7 +155,6 @@ old installs' Guide button opens.
   in large type, re-read every 5 min (`src/present.ts`). His calls §7a: a party on personal
   accounts (the café product documented only), Last.fm's number, the card grow; the goal
   marker paused. HE designs the picture.
-
 - `WebRooms.md` — app side BUILT 2026-10-13, desk test open (§10.5): the rooms web port. A
   friend on a Mac joins a room by its code and listens in a browser on deets.solutions with
   their own Apple Music subscription (no preview tier). The app's Search, Queue, History and
@@ -162,6 +162,7 @@ old installs' Guide button opens.
   `WEB_ROOMS` flag, a TypeScript twin of the Rust catalog normalizers held to one fixture.
   His calls §7.1, §9.7. Not built: the site page (part H) and the publish; the worker change
   is not deployed (§10.6). A new `invoke()` in a shared file needs a line in `web/handlers.ts`.
+
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
 - `AGENT-SETUP.md` — the user's guide to control the app from an AI app or a terminal.
