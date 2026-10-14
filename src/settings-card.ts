@@ -51,6 +51,7 @@ import * as frames from "./frames";
 import { enterRows } from "./pop";
 import { mcpPanel, type McpPanel } from "./mcp-panel";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
+import { whatIsSent } from "./usage";
 import { rowDrag } from "./row-drag";
 import { searchField, fieldClearHTML } from "./search-field";
 import { sharePauseLeft, pauseSharingForAnHour } from "./presence";
@@ -196,6 +197,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playback", row: "listeners" }, // Show play counts from Last.FM, built 2026-10-12 (LISTENERS.md §4)
   { section: "Playback", row: "artistinfo" }, // Show artist info on the artist's page, built 2026-10-12 (LISTENERS.md §6)
   { section: "Playback", row: "albuminfo" }, // Show album info on the album's page, built 2026-10-13 (LISTENERS.md §7)
+  { section: "About", row: "usage" }, // Send usage counts, built 2026-10-13 (USAGE-COUNTS.md)
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -2252,7 +2254,16 @@ function mountSettings(
     {
       // Trademark + non-affiliation notice (RELEASE.md §7, Apple's third-party guidelines).
       title: "About",
-      rows: [],
+      rows: [
+        // Usage counts (USAGE-COUNTS.md): the switch, and the exact JSON of each report (§2 rule 8).
+        storeToggle("usage", "Send usage counts", "usageReports", () => "Sends counts once a day and once a week: no ID, no songs, no place."),
+        {
+          kind: "split", id: "usagesent", label: "What is sent",
+          hint: () => "The last report of each kind and the next one, exactly as they leave",
+          // The panel's dropdown takes this half's click (wireUsagePanel), so `run` never fires.
+          halves: [{ type: "action", label: "Show", run: () => {} }],
+        },
+      ],
       defaultOpen: true,
       tail: () =>
         `<div class="set__status" id="set-about-version">${esc(versionLabel())}</div>` +
@@ -2260,8 +2271,8 @@ function mountSettings(
         `DeetsMusic is not affiliated with or endorsed by Apple.</div>` +
         `<div class="set__status">The log stays on this PC unless you send a bug with Attach log on. ` +
         `The app contacts Apple, music-api.deets.solutions for its access key and updates, and ` +
-        `support.deets.solutions when you send a report. It sends no listening history, ` +
-        `unless you connect Last.fm: then the songs you hear go to Last.fm.</div>`,
+        `support.deets.solutions when you send a report, and for the usage counts while they are on. ` +
+        `It sends no listening history, unless you connect Last.fm: then the songs you hear go to Last.fm.</div>`,
     },
   ];
 
@@ -2390,6 +2401,56 @@ function mountSettings(
       });
       menus.push({ dd, panel, obs });
     });
+    wireUsagePanel();
+  };
+  // ── About › What is sent (USAGE-COUNTS.md §2 rule 8): a panel on the menu halves' shell,
+  //    portaled the same way, holding each report's exact JSON in the bug form's preview box. ──
+  const wireUsagePanel = () => {
+    const trigger = body.querySelector<HTMLElement>('[data-row="usagesent"][data-half="0"]');
+    if (!trigger) return;
+    trigger.setAttribute("aria-haspopup", "dialog");
+    trigger.setAttribute("aria-expanded", "false");
+    const panel = document.createElement("div");
+    panel.className = "set__menu set__usage app-scroll pop";
+    panel.hidden = true;
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "What is sent");
+    panel.dataset.frames = "usage";
+    document.body.appendChild(panel);
+    const place = () => {
+      if (panel.hidden) return;
+      const r = trigger.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      const gap = parseFloat(getComputedStyle(panel).marginTop) || 0;
+      const w = panel.offsetWidth;
+      const h = panel.offsetHeight;
+      const above = r.bottom + gap + h > vh && r.top > vh - r.bottom;
+      panel.toggleAttribute("data-above", above);
+      panel.style.left = `${Math.max(gap, Math.min(r.right - w, vw - w - gap))}px`;
+      panel.style.top = `${above ? Math.max(0, r.top - h - 2 * gap) : r.bottom}px`;
+    };
+    const obs = new MutationObserver(place);
+    obs.observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+    const json = (v: unknown) => `<pre class="set__preview">${esc(JSON.stringify(v, null, 2))}</pre>`;
+    const fill = async () => {
+      panel.innerHTML = `<div class="set__status">Reading…</div>`;
+      const kinds = await whatIsSent();
+      const off = !setting("usageReports");
+      panel.innerHTML =
+        (off ? `<div class="set__status">Usage counts are off. Nothing is sent.</div>` : "") +
+        kinds
+          .map((k) =>
+            `<div class="set__usage-kind">${esc(k.title)}</div>` +
+            `<div class="set__status">Next${k.note ? `: ${esc(k.note)}` : ""}</div>${json(k.next)}` +
+            (k.last ? `<div class="set__status">Last sent ${esc(k.last.day)} (UTC)</div>${json(k.last.body)}` : `<div class="set__status">Not sent yet.</div>`),
+          )
+          .join("");
+      place();
+      enterRows([...panel.children]);
+    };
+    const dd = makeDropdown({ root: trigger.parentElement!, trigger, panel, onOpen: () => void fill() });
+    menus.push({ dd, panel, obs });
   };
   // ── range rows: rebuilt on every render; a drag previews, the release writes the store ──
   const rangeOf = (el: HTMLElement): RangeRow | undefined => {

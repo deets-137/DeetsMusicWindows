@@ -36,6 +36,7 @@ mod smtc;
 mod sotd;
 mod tray;
 mod update;
+mod usage;
 mod wallpaper;
 mod user_files;
 mod watchdog;
@@ -606,6 +607,8 @@ pub fn run() {
             report::report_refresh,
             report::report_close,
             report::report_clear,
+            usage::usage_health,
+            usage::usage_send,
         ]))
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

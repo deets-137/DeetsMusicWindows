@@ -374,6 +374,8 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `showAlbumInfo` (On | Off, default On). On: an album's page shows Last.fm's tags, plays and
   listeners, the wiki's first two sentences and a link beside the cover. Off: no Last.fm album
   call is made.
+- **About › Send usage counts** (2026-10-13, USAGE-COUNTS.md): `usageReports` (On | Off,
+  default On). A consent gate: an agent may turn it off, never on. Off: no usage report is sent.
 - **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).
   What happens to the scores already on a Diary entry when its scale changes. **Grow on open**:
   `diaryGrow` (New entries | Every entry | Never). An agent has no

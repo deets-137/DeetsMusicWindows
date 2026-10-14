@@ -302,6 +302,7 @@ Summary: *8 pass · 2 partial · 1 fail (adjacent copies) · 2 noisy.* A slip du
 | Uninstall Run value | 2026-10-13 | pass (his) | RELEASE.md §3: the update keeps it, the uninstall removes it |
 | Copy edit §5 | 2026-10-13 | pass (his) | |
 | Presentation mode §9.3 | 2026-10-13 | pass (his) | |
+| Usage counts §10 | 2026-10-13 | pass (his eye: the notice, the panel; Claude: steps 2, 3, 5, 6, 7) | Step 8 half: the cron's in-window delete not seen in a run |
 | Stall reload, break-out | 2026-10-13 | pass (his) | QUEUE.md §Mid-song stall; STATIONS.md §1 |
 | B9, B10, Rulez | 2026-10-13 | pass (his) | The review fixes (§17), §18.3 step 6 with a real headset, the three-line row (§19.4), Paste a rule and Import, rows with no name, the HomePod chime, the yes / no words, the mouse hold-then-move |
 | MCP-INSTALL §8d, §9 | 2026-10-13 | pass (his) | The live log has `mcp-install: connect claude-desktop` and `connect codex` (2026-10-12) |

@@ -159,6 +159,7 @@ nothing about authoring changed when the box did.
 | Settings › Playback (2026-10-12) | Show play counts from Last.FM | Now Playing shows how many plays and listeners a song has on Last.fm. Off: Last.fm is not asked | settings-card.ts |
 | Settings › Playback (2026-10-12) | Show artist info on the artist's page | The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked | settings-card.ts |
 | Settings › Playback (2026-10-13) | Show album info on the album's page | The album's page shows Last.fm's tags, plays and listeners, a few words about it, and a link. Off: Last.fm is not asked | settings-card.ts |
+| Settings › About (2026-10-13) | Send usage counts · What is sent | Sends counts once a day and once a week: no ID, no songs, no place · The last report of each kind and the next one, exactly as they leave | settings-card.ts |
 | Now Playing | Previous · Play/Pause · Next | Plays the song before this one · Play / Pause (follows state) · Plays the next song | now-playing-card.ts |
 | Now Playing | ♥ · + | Favorite / Unfavorite · Add to Library / In your library (follow state) | now-playing-card.ts |
 | Now Playing | Mute · AirPlay (stage row) | as the title bar | now-playing-card.ts |

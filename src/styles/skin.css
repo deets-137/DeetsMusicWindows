@@ -538,6 +538,8 @@
   --set-flash-dur:   1600ms;         /* a row opened from a toast: its highlight fades over this */
   --set-textarea-min-h: 96px;        /* Bugs › the details field: about five lines */
   --set-preview-max-h:  180px;       /* Bugs › the log text a report sends; longer scrolls */
+  --set-usage-w:        320px;       /* About › What is sent: room for a JSON line */
+  --set-usage-max-h:    420px;       /* three reports; longer scrolls */
   /* Rulez (RULEZ.md §6). A blank in the sentence is the Library's Sort / View pill family (a
      dropdown trigger in a card). Aliases only. */
   --rulez-cell-radius: var(--lib-pill-radius);

@@ -66,6 +66,7 @@ import { initRulesFiles } from "./rules-files";
 import { initRulesFacts } from "./rules-facts";
 import { initRulesWindow } from "./rules-window";
 import { initGpu } from "./gpu";
+import { initUsage } from "./usage";
 import { appleBackingOff } from "./apple-health";
 import { ruleChip } from "./rule-chip";
 import { launchMark } from "./launch-perf";
@@ -602,6 +603,7 @@ window.addEventListener("DOMContentLoaded", () => {
   later.push(["initRulesFiles", () => initRulesFiles()]); // RULEZ.md §5: your own pictures and sounds in a rule; loads the file list (and the old wallpaper, once)
   later.push(["initRulesWindow", () => initRulesWindow()]); // RULEZ.md §10.1: the window's width and height, one recheck per settled resize
   later.push(["initGpu", () => initGpu()]); // GRAPHICS-FALLBACK.md: the `graphics` fact, the toast, the GPU-process watch
+  later.push(["initUsage", () => initUsage()]); // USAGE-COUNTS.md: the notice once, then each report at its own random moment
   window.addEventListener("deets:boot-done", () => boot("emitAppOpen", () => emitAppOpen()), { once: true });
 
   // ── Volume: the titlebar pill (NEXT-VERSION §20). A level meter when small; on hover it

@@ -117,9 +117,11 @@ old installs' Guide button opens.
   Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaced
   `rewindCard`); the picker only, the feature keeps working; right-click a name in the picker
   › Hide from picker. §8 is the as-built record. It is also Hop in's Rulez gate (§6.2).
-- `USAGE-COUNTS.md` — DESIGNED, not built (2026-09-29): anonymous active-install counts, a
-  weekly settings row and weekly health counts (log errors, Apple calls) to DeetsSupport. No ID,
-  no IP, an allow-list, groups under 5 hidden. §2 is the privacy rules; §9 the open forks.
+- `USAGE-COUNTS.md` — BUILT 2026-10-13 (app + worker, not deployed), desk test passed 2026-10-13 (§10):
+  anonymous active-install counts, a weekly settings row and weekly health counts (log errors,
+  Apple calls) to DeetsSupport. No ID, no IP, an allow-list (`src/usage-keys.ts`, copied to the
+  worker by `npm run usage:keys`), real numbers, 13 months. §2 the privacy rules; §1 his calls;
+  §11 the as-built record. The admin page (DeetsSolutions) and the README paragraph are next.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   The Album theme (colors from the cover, §12) is built with it; its forks are open.
@@ -203,7 +205,9 @@ skin, the full-size trigger; HE designs the UI, never write that picture for him
 only; §9 the forks. `SupportArtist.md` — an idea (2026-10-12): a "Support" link on the artist
 view to the artist's crowdfunding page, Bandcamp and official site (his call), from MusicBrainz
 URL relationships at zero Apple calls; §4 the Apple terms read (one risk, his call); §5 the
-library probe that comes before HIS UI; §8 the forks. `WebRooms.md` — an idea (2026-10-13): a
+library probe that comes before HIS UI; §8 the forks. `SiteOceanLive.md` — an idea
+(2026-10-13): the site's Ocean glow takes the color of the song playing now (the visitor's,
+through the extension; or his, through Last.fm); §4 the forks. `WebRooms.md` — an idea (2026-10-13): a
 friend on a Mac joins an app room by its code and listens in a browser on deets.solutions
 (their own subscription, no preview tier). Every fork his, closed (§7.1): the site's Radio tab is
 rebuilt as a web port of Search, Queue, History and Now Playing (1:1) on the rooms worker; no

@@ -58,6 +58,7 @@ fn now_ms() -> i64 {
 /// `area` is the write, in one or two words ("play", "scrobble", "credits").
 pub fn note_fail(area: &str, err: &str) {
     WRITES_FAILED.fetch_add(1, Ordering::Relaxed);
+    crate::usage::note_db_fail();
     LAST_FAIL_AT.store(now_ms(), Ordering::Relaxed);
     if let Ok(mut last) = LAST_ERROR.lock() {
         *last = Some(format!("{area}: {err}"));

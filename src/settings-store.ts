@@ -277,6 +277,11 @@ export interface Settings {
   /** An album's page shows the Last.fm facts box beside the cover: tags, plays and listeners,
    *  the wiki's first sentences, the Last.fm link (LISTENERS.md §7). Off: no album call. */
   showAlbumInfo: boolean;
+  /** Settings › About › *Send usage counts* (USAGE-COUNTS.md): a day count, a weekly
+   *  settings report and a weekly health report to DeetsSupport, with no ID. Off: nothing is
+   *  sent, at once, and a report waiting for its moment is dropped (§2 rule 9). A consent
+   *  gate: an agent may turn it off, never on; Reset never touches it. */
+  usageReports: boolean;
   /** A drop on the Now Playing card: play it and keep Up Next after it, or replace Up Next
    *  as Play Now does (DRAG-DROP.md §3). */
   dropPlayQueue: "keep" | "replace";
@@ -557,6 +562,7 @@ export const DEFAULTS: Settings = {
   showListeners: true, // his call 2026-10-12: the badge shows for everyone; one Last.fm call per song, cached a month
   showArtistInfo: true, // his call 2026-10-12: on for everyone, its own row (not the badge's); one Last.fm call per artist, cached a month
   showAlbumInfo: true, // 2026-10-13: its own row (his call), on like the artist's; one or two Last.fm calls per album, cached a month
+  usageReports: true, // his call 2026-09-29: on by default with a clear off switch; nothing leaves before the user was told (USAGE-COUNTS.md §1, §7)
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue

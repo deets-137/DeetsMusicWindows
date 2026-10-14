@@ -24,6 +24,7 @@ import { applySurface, currentSurface, MIN_SIZES, SIZE_KEYS, type SurfaceName, t
 import { THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import { withAppearanceTransition } from "./appearance";
 import { presetOptions, selectPreset } from "./sound";
+import { settingValue } from "./usage-rules";
 
 type Opt = { value: string; label: string };
 type Reply = Record<string, unknown>;
@@ -452,9 +453,27 @@ const SPECS: Spec[] = [
   }),
   // ── Updates ──
   storeChoice("Updates", "updateMode", "Get updates", [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }]),
+  // ── About: usage counts (USAGE-COUNTS.md); a consent gate, so an agent may only turn it off ──
+  storeToggle("About", "usageReports", "Send usage counts", { offOnly: true }),
 ];
 
 const SECTIONS = [...new Set(SPECS.map((s) => s.section))];
+
+/** The weekly settings report (USAGE-COUNTS.md §3.2): the allow-listed keys only, each as its
+ *  option's value (`settingValue`). A spec that is not a toggle or a choice is never read. */
+export async function reportedSettings(keys: readonly string[]): Promise<Record<string, string>> {
+  const want = new Set(keys);
+  const out: Record<string, string> = {};
+  for (const s of SPECS) {
+    if (!want.has(s.key) || (s.kind !== "toggle" && s.kind !== "choice")) continue;
+    try {
+      out[s.key] = settingValue(s.kind, (s.options ?? []).map((o) => o.value), String(await s.get()));
+    } catch {
+      // A value Rust could not give now (the Last.fm switches before the first read): left out.
+    }
+  }
+  return out;
+}
 
 const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 

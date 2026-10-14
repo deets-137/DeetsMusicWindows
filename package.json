@@ -24,6 +24,7 @@
     "check": "tsc --noEmit && npm test && npm run docs:check && cargo check --manifest-path src-tauri/Cargo.toml && cargo test --quiet --manifest-path src-tauri/Cargo.toml && cargo test --quiet --manifest-path crates/mcp-install/Cargo.toml",
     "prepare": "git config core.hooksPath .githooks",
     "signin:assets": "node scripts/signin-assets.mjs",
+    "usage:keys": "node --import ./tests/setup.mjs scripts/usage-keys.mjs",
     "dev:perf": "node scripts/dev-app.mjs --perf",
     "dev:built": "node scripts/dev-app.mjs --built",
     "dev:fresh": "node scripts/dev-app.mjs --fresh",

@@ -89,6 +89,7 @@ pub fn start(app: &AppHandle) {
             if quiet >= STALL_AFTER.as_millis() as u64 {
                 if !told {
                     told = true;
+                    crate::usage::note_freeze();
                     crate::log::warn(&format!("ui: the window stopped answering {:.1} s ago{}", quiet as f64 / 1000.0, blame()));
                 }
             } else if told {

@@ -231,6 +231,10 @@ pub fn log_open_folder(app: tauri::AppHandle) -> Result<(), String> {
 
 fn write(level: &str, msg: &str) {
     let msg = scrub(msg);
+    // The week's health counts: the level and the area only, never the text (USAGE-COUNTS.md §3.3).
+    if level != "INFO " {
+        crate::usage::note_log(level, &msg);
+    }
     let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
     let line = format!("{ts}  {level} {msg}");
 

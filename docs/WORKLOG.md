@@ -12,6 +12,39 @@ updated: 2026-10-13
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-13 (unlucky-thirteenth) — usage counts: the open forks closed
+
+Docs only, nothing built. [USAGE-COUNTS.md](features/USAGE-COUNTS.md) §9 had 8 open items. Under
+the fork test, the words and the allow-list are drafts, five had one option left, and one was a
+real fork. **His call:** no small-group limit, real numbers ("we can use real numbers. Will be
+posting it to reddit first"). The five that follow (§1.6–§1.10): the admin page with the
+feature; Beta to its own bucket, dev to a local worker only; health as counters; the update
+notice gates the first send. Expiry: I proposed settings rows 4 weeks then folded into counters;
+**his call: 13 months for rows too**, same as the counters, no fold. **The allow-list (his call):** every toggle and choice spec, the account and sharing
+toggles included ("this data is only available to me and is not truly PII. Imagine there are
+thousands of users"); no sliders, times, sizes or `sunShift`; the EQ preset as a built-in name
+or "custom" (§4). Still open: the words (the draft in §9).
+
+**Later the same sitting: built, steps 1–4 (his go, "with the draft").** The worker
+(`../DeetsSupport` `src/usage.js`, the migration, `USAGE_RL`, `KILL_USAGE`; checked on
+`wrangler dev` with real requests), `src-tauri/src/usage.rs` with hooks in log, apple_calls,
+watchdog and dbhealth, `src/usage-rules.ts` and `src/usage-keys.ts` (tested; the worker's copy
+by `npm run usage:keys`), `src/usage.ts`, and Settings › About (*Send usage counts*, *What is
+sent*). The as-built record is USAGE-COUNTS.md §11, with what I decided inside his choices; the
+desk test is §10. Not run end to end in the dev app: a dev app from this checkout was already
+running (not mine), so the new Rust could not build. Also: the idea doc
+[SiteOceanLive.md](ideas/SiteOceanLive.md) (his idea: the site's Ocean takes the color of the
+song playing now). tsc, vite build, npm test (247), cargo check, the usage cargo tests and
+docs:check pass.
+
+**Desk test passed, same night** (USAGE-COUNTS.md §10, the results table). His eye: the notice and
+the What is sent panel. Claude, on the dev app hidden against a local worker: the day count
+(three rows, the same-day skip), the settings report (128 keys, tokens only; the 9 Adaptive
+sound keys are absent because their specs are hidden), off means off (a click on the row), the
+health report under the finished week, the forced 429 in the counts. The cron's in-window
+delete was not seen in a run. Cleanup lesson: TaskStop on `npx wrangler dev` leaves its node
+parent alive, and it restarts `workerd`; stop it by command line.
+
 ## 2026-10-13 (unlucky-thirteenth) — presentation mode: the stats cell grows over the card
 
 His picture: DeetsMusic on a TV for a listening party; a group watches a number cross a

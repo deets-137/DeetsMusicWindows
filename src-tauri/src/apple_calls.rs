@@ -43,8 +43,8 @@ static APP: std::sync::OnceLock<AppHandle> = std::sync::OnceLock::new();
 
 // ── A: the counter (§2) ───────────────────────────────────────────────────────
 
-const GROUPS: [&str; 6] = ["library", "me", "catalog", "search", "write", "probe"];
-const CLASSES: [&str; 8] = ["2xx", "401", "403", "404", "429", "4xx", "5xx", "net"];
+pub const GROUPS: [&str; 6] = ["library", "me", "catalog", "search", "write", "probe"];
+pub const CLASSES: [&str; 8] = ["2xx", "401", "403", "404", "429", "4xx", "5xx", "net"];
 type Table = [[u32; CLASSES.len()]; GROUPS.len()];
 
 struct Counts {
@@ -96,9 +96,12 @@ fn class_of(status: Option<u16>) -> usize {
 /// two requests.
 pub fn count(kind: Kind, url: &str, status: Option<u16>) {
     let (g, c) = (group_of(kind, url), class_of(status));
-    let mut t = COUNTS.lock_or_recover();
-    t.hour[g][c] += 1;
-    t.total[g][c] += 1;
+    {
+        let mut t = COUNTS.lock_or_recover();
+        t.hour[g][c] += 1;
+        t.total[g][c] += 1;
+    }
+    crate::usage::note_apple(g, c); // the week's health counts (USAGE-COUNTS.md §3.3)
 }
 
 /// `library 12 · catalog 40 (404 ×1) · … · 429 0`, groups with no call left out.
@@ -128,6 +131,8 @@ fn summary(t: &Table) -> (String, u32) {
 
 /// Write the hour's line if the hour had any call, then start a new hour. `why`: "1h" or "quit".
 pub fn report(why: &str) {
+    // The usage week file folds in on the same beat: hourly and at quit (USAGE-COUNTS.md §3.3).
+    crate::usage::fold();
     let (hour, total, calls) = {
         let mut t = COUNTS.lock_or_recover();
         let (hour, calls) = summary(&t.hour);
@@ -195,6 +200,7 @@ pub fn on_429(url: &str, retry_after_header: Option<&str>) {
     crate::log::warn(&format!("apple: back-off arm {}s ({path})", wait.as_secs()));
     diag(serde_json::json!({ "tag": "apple:backoffArm", "s": wait.as_secs(), "path": path, "job": current_job() }));
     if armed {
+        crate::usage::note_backoff();
         *SKIPPED.lock_or_recover() = Some(HashSet::new());
         watch_for_end();
     }

@@ -258,6 +258,12 @@
   word-break: break-all;
 }
 .set__link { color: var(--title); user-select: text; word-break: break-all; }
+/* About › What is sent (USAGE-COUNTS.md §2 rule 8): the menu panel's shell (.set__menu),
+   wider, holding status lines and the report form's preview box (.set__preview) per report.
+   The panel scrolls, so a box inside it does not. */
+.set__usage { width: var(--set-usage-w); max-width: calc(100vw - 2 * var(--space-2)); max-height: var(--set-usage-max-h); }
+.set__usage .set__preview { max-height: none; }
+.set__usage-kind { padding: var(--space-2) var(--space-2) 0; font-size: var(--fs-body); color: var(--title); }
 /* My reports: one bordered group, so the heading reads as belonging to the rows under it.
    The heading takes the shelf-header voice (.ctx-menu__label) and the card headers'
    refresh square (.panel__action), with a hairline under it. */

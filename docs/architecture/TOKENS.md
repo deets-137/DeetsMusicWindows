@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 48 |
 | Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 598 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 606 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -545,6 +545,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--set-flash-dur` | `1600ms` | — | a row opened from a toast: its highlight fades over this |
 | `--set-textarea-min-h` | `96px` | — | Bugs › the details field: about five lines |
 | `--set-preview-max-h` | `180px` | — | Bugs › the log text a report sends; longer scrolls |
+| `--set-usage-w` | `320px` | — | About › What is sent: room for a JSON line |
+| `--set-usage-max-h` | `420px` | — | three reports; longer scrolls |
 | `--rulez-cell-radius` | `var(--lib-pill-radius)` | — | Rulez (RULEZ.md §6). A blank in the sentence is the Library's Sort / View pill family (a dropdown trigger in a card). Aliases only. |
 | `--rulez-cell-pad` | `var(--space-1) var(--space-2)` | — |  |
 | `--rulez-row-h` | `var(--set-row-h)` | — |  |
@@ -650,6 +652,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--artist-info-radius` | `var(--radius-control)` | — |  |
 | `--artist-info-tags-w` | `200px` | — | the tag chips wrap inside this |
 | `--artist-info-dot` | `6px` | — | the on-tour marker |
+| `--present-pad` | `var(--space-5)` | — | Presentation mode (present.ts, PresentationMode.md): the stats cell grown over the card. — the view's inset from the card's edge |
+| `--present-gap` | `var(--space-5)` | — | the head ↔ the counts ↔ the age line |
+| `--present-count-gap` | `calc(var(--space-5) * 2)` | — | Plays ↔ Listeners |
+| `--present-num` | `clamp(40px, 11cqi, 128px)` | — | the counts: they follow the card's width (cqi) |
+| `--present-roll-dur` | `1.2s` | — | a count that moved rolls up to its new value |
+| `--present-in-delay` | `calc(var(--grow-dur) * 0.4)` | — | the words fade in once the clip is mostly open (--grow-rows-at's fraction) |
 | `--lib-stuck-h` | `0px` | — | the height of a list's stuck header (.lib-view-bar / .lib-cols), its scroll-padding-top; the engine sets the measured value on each view, this is a list with none |
 | `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
 | `--sticky-bar-backdrop` | `var(--panel-backdrop)` | ocean, glass, cyber | the card's own frost (Glass); a see-through skin without one adds a blur |
