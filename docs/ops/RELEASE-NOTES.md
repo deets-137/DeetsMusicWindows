@@ -32,23 +32,25 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
-## Next release (the version is set at release time)
+## 0.27.0 — 2026-10-14
 
 **Usage counts.** DeetsMusic now sends anonymous counts: how many installs are active, which
 versions they run, which settings they pick, and how many errors they hit. No report carries an
 ID, your songs or where you are. A notice tells you before the first one. Turn it off in
 Settings › About › *Send usage counts*; *What is sent* shows each report exactly.
 
-## 0.27.0 — 2026-10-13
-
 **Facts about the artist and the album.** An artist's page shows a box from Last.fm beside the
 photo: the tags, the plays and listeners, whether the artist is on tour, and a link. An album's
 page shows the same box beside the cover, with two sentences about the album. Right-click a box
 to open Last.fm or to hide it. Settings › Playback › *Show artist info on the artist's page* and
-*Show album info on the album's page*.
+*Show album info on the album's page*. In Max, click the Listening Stats in the box and the
+counts fill the window in large type.
 
 **How many people play this song.** Now Playing shows the song's plays and listeners on
-Last.fm. Settings › Playback › *Show play counts from Last.FM*.
+Last.fm, for station songs too. Settings › Playback › *Show play counts from Last.FM*.
+
+**Full | Lib switches smoothly.** The page keeps its top and your place, and the new list rises
+in when its songs are ready. Quick presses land, and the last one wins.
 
 **Shuffle off goes back to the list's order.** Press Shuffle off and the music goes on in the
 list's order from the song that plays. Settings › Playback › *Shuffle off plays* keeps the
@@ -69,7 +71,8 @@ turning in Press, Ocean's cards a little clear with its album light on, and one 
 behind the cards in Glass. An install you have now keeps its settings.
 
 **Fixes.** The window no longer stops for a few seconds when the network drops while you play
-on an AirPlay speaker. Quit no longer waits on a speaker that is gone. Discord shows the
+on an AirPlay speaker. Quit no longer waits on a speaker that is gone. The full player's
+controls work while a card is grown, and closing Max no longer ends with a jump. Discord shows the
 DeetsMusic icon on the cover's corner.
 
 ## 0.26.1 — 2026-10-11
