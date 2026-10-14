@@ -59,6 +59,12 @@ global count alone.** The ticking numbers come from somewhere else (§3).
 | *NICOLE KIDMAN* | 2,665,764 (+53,585, ~3,300 an hour) | 235,512 (+3,665) |
 | *Inventing* | 266,851 (+42, ~2.6 an hour) | 49,328 (+2) |
 
+**The hour's watch, 18:13 to 19:14 the same day** (`docs/ops/checks/lastfm-refresh-probe.mjs`,
+a read every minute, 59 of 60 reads answered): **not one count moved**, for the top 3 chart
+songs (the top song gains ~3,300 plays an hour), *Inventing* or *THREAD 27*. So Last.fm
+refreshes the public counts less often than once an hour; between the 02:11 and 18:08 reads it
+did refresh at least once. A daily batch is the likely shape; a run over a day would pin it.
+
 So the count moves in jumps when Last.fm refreshes, not by the scrobble. A threshold (a round
 number) is crossed in hours for a hit and in weeks for a small album.
 
@@ -164,7 +170,7 @@ couple of nights, so release night is when a live count moves most and means mos
 
 What we know today:
 - The public API has no live call and no push. The counts it gives move in batches (§2): in
-  the probes, nothing moved in 95 s or in the first 15 minutes of an hour's watch, but the top
+  the probes, nothing moved in 95 s or in a whole hour's watch, but the top
   song had +53,585 plays over 16 hours.
 - Last.fm sees each scrobble as it comes in, so a per-album or per-artist count of scrobbles
   in the last minute exists on their side.

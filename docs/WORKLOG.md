@@ -22,8 +22,8 @@ threshold. Branch `unlucky-thirteenth`, pushed.
   Max only; the goal marker paused (it tracks Plays when it comes back). His idea, §7b: a live
   stream from Last.fm for a release-night party.
 - **Probes:** a 16 h re-read showed the counts move in batches (§2);
-  `docs/ops/checks/lastfm-refresh-probe.mjs` reads them every minute (an hour's run, no move in
-  its first 15 minutes).
+  `docs/ops/checks/lastfm-refresh-probe.mjs` reads them every minute (an hour's run: no count
+  moved, so Last.fm refreshes less often than hourly).
 - **Built** (§9): `src/present.ts`; the stats cell is `[data-present]`; `max_age_ms` on the two
   Last.fm facts commands for the 5-minute re-read; the doc moved from ideas/ to features/.
 - **Desk test, Claude on the dev app:** album and artist, from a card at rest and from one a rule
