@@ -4697,14 +4697,13 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 }
 /* The rows' box is not a box here, so the open's hide and fade go on its parts. */
 :root[data-player="full"] .panel.is-player-rebuild[data-np-rows="below"] .np__center > * { opacity: 0; }
-:root[data-player="full"] .panel.is-player-rows[data-np-rows="below"] .np__center > * { animation: grow-body-in var(--grow-body-fade) var(--ease-ui) both; }
 
 
 /* The motion (full-player.ts): the rows and the band are gone at once while the clip opens or
-   closes, then fade in with the rows entering (enterRows). */
+   closes, then fade in with the rows entering (enterBand, a Web Animation: a CSS one here
+   restarted when the measure flipped data-np-rows, 2026-10-14). */
 .panel.is-player-rebuild .np__center,
 .panel.is-player-rebuild .np__close { opacity: 0; }
-.panel.is-player-rows .np__center { animation: grow-body-in var(--grow-body-fade) var(--ease-ui) both; }
 /* The cover's flight copy: over the cards, under the menus; placed and scaled by JS. */
 .np__fly {
   position: fixed;
@@ -4715,9 +4714,6 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   max-width: none;
   pointer-events: none;
   transform-origin: 0 0;
-}
-@media (prefers-reduced-motion: reduce) {
-  .panel.is-player-rows .np__center { animation: none; }
 }
 
 /* ── The drill swap's slide (layout.ts, docs/cards/CARD-GROW.md §14.6) ──────────────

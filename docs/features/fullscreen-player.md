@@ -701,5 +701,20 @@ Desk test (his, on the dev app):
    half: the player opens.
 8. Midi: grow a content card. Click Now Playing's bottom edge: the player opens.
 
+**The flash after the open (his report, 2026-10-14, Glass and Press).** About 60 ms after the
+open landed, the title block and the controls went out and faded in again. Cause: the first
+`refit` after the open calls `layoutNow`, which sets `data-np-rows` to "over" for one measure
+and back. The rows' fade was a CSS animation on a rule that names `[data-np-rows="below"]`, so
+the flip stopped it and the flip back started it again from 0 (the class stayed on ~370 ms,
+far past the 90 ms fade). Only *below* showed it; *over* faded the rows' box on a rule with no
+attribute. Fix: `enterBand` fades with a Web Animation (`--grow-body-fade`, `--ease-ui`), which
+no style change can restart; the `is-player-rows` class and its CSS are gone. Side effect: in
+*below* the parts now also take the `enterRows` rise, as in *over* (the CSS fade used to replace
+it). Checked with `shots/scratch/endflash.json`: every skin, Max and Midi, the open and the
+close, with a per-frame opacity probe that lists a part that was fully shown and then fell
+under 0.9. With the fix it lists only the resting rows that hide as the open starts. On the old
+code it also lists all five parts falling to 0 at ~480–540 ms (Cyber, Press), so the probe
+catches the bug.
+
 **Not built.** Everything in §12.7, the Mini player view, an agent route.
 

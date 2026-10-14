@@ -470,15 +470,23 @@ const flyAnim = (fly: HTMLElement, from: Box, to: Box, dur: number, ease: string
   return fly.animate(frames, { duration: dur, easing: ease, fill: "both" });
 };
 
-/** The rows on the band (and the band itself) come in. */
+/** The rows on the band (and the band itself) come in. The fade is a Web Animation, not a CSS
+ *  class: layoutNow flips `data-np-rows` to "over" to measure the controls, and a CSS animation
+ *  on a rule that names the attribute stops on the flip and starts again from 0 on the flip
+ *  back. That was the flash ~60 ms after the open landed, in *below* (2026-10-14). */
 function enterBand(panel: HTMLElement): void {
   const center = panel.querySelector<HTMLElement>(".np__center");
   panel.classList.remove("is-player-rebuild");
   if (!center) return;
-  panel.classList.add("is-player-rows");
+  // In *below* the rows' box is `display: contents` (it cannot fade): its parts fade.
+  const below = root.dataset.player === "full" && panel.dataset.npRows === "below";
+  const dur = reduced() ? 0 : tokenMs("--grow-body-fade");
+  if (dur > 0) {
+    const easing = getComputedStyle(panel).getPropertyValue("--ease-ui").trim() || "ease";
+    (below ? [...center.children] : [center]).forEach((el) => el.animate([{ opacity: 0 }], { duration: dur, easing }));
+  }
   const rows = [...center.children].filter((el) => (el as HTMLElement).offsetParent !== null);
   enterRows(rows, rows.length);
-  window.setTimeout(() => panel.classList.remove("is-player-rows"), tokenMs("--pop-in") + rows.length * tokenMs("--pop-stagger") + 60);
 }
 
 function emit(): void {
@@ -620,7 +628,7 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
     artPx = 0;
     setFullArtPx(0);
     refreshPlayerState(); // the cover goes back to the rest file (already in the cache)
-    panel?.classList.remove("is-player-rebuild", "is-player-rows", "is-rows-sliding");
+    panel?.classList.remove("is-player-rebuild", "is-rows-sliding");
     if (panel) delete panel.dataset.frames;
     diag.log("player", { on: false, cause, surface: surface ?? currentSurface(), motion: !!m });
     if (my === gen) busy = false;
