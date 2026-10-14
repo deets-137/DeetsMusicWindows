@@ -211,8 +211,9 @@ The calls above have no open forks. The excavation's three are in §9.7, also cl
 ## 8. Before a build
 
 1. Re-read Apple's DPLA §3.3.6.D (ROOMS.md §12.4 says to, after a few months).
-2. A probe: MusicKit JS `authorize()` and full-song playback in Safari for macOS from the
-   deets.solutions origin. The Radio tab did this in Chrome. (§9.6 step 1 adds the iframe case.)
+2. ~~A probe of `authorize()` and full songs from the deets.solutions origin.~~ **Not needed (his
+   call, 2026-10-13):** the Radio tab already signs in and plays full songs from that origin, and
+   it works today. The port builds on that. §9.3 D keeps the port in the same shape.
 3. The site's `_headers` bug (the site's HANDOFF.md, 2026-09-15): a page cached four hours old
    could speak an old protocol. Fix it first, or the version gate (§3 rule 11) covers it.
 4. ROOMS.md §13 gets a pointer here, and the site's HANDOFF.md replaces its 2026-09-16 "PARKED"
@@ -329,7 +330,14 @@ Each web member spends their own calls. There is no shared cache, so the Apple c
 cannot open in WebView2, so the app puts the token in by hand (`injectUserToken`,
 `player.ts:324`). A browser can call `authorize()`, and should. One web branch in `initPlayer`:
 configure, then `authorize()` on the visitor's press, in place of `injectUserToken`. Sign-out is
-`unauthorize()`. The probe (§9.6 step 1) decides whether this works inside an iframe (§9.7 S).
+`unauthorize()`.
+
+**The port keeps the shape the Radio tab proved (no probe, his call 2026-10-13).** In the Radio
+tab, MusicKit runs in the top page, `/radio/` itself, and the site-shell puts the OTHER site pages
+in a frame over it. The port does the same: its build is the `/radio/` page, not a frame inside a
+host page as the demo is (WEB-DEMO.md §9.5). So `authorize()` and playback run where they already
+work. The cost: the app's styles and the site's header share one page, so the port's styles are
+scoped to its own root element, and the site header on that page is the site's own markup.
 
 **E. History from the room** (`src/room.ts`, `src/history-card.ts`, about 60 lines). Two gaps:
 - `room.ts` does not keep the room's history today. The worker sends `queue.history` (the last 50)
@@ -360,11 +368,11 @@ field on the socket attachment and in the member view. One deploy, the owner's c
 **H. The site** (`../DeetsSolutions`). Out: `radio/radio.js` (2,451), `radio/apple.js` (442),
 `radio/transport.js` (191), `radio/transport-mock.js` (585), `radio/youtube.js` (619),
 `radio/yt-key.js`, and the radio rules in `styles/main.css` (about 313 lines) plus a few in
-`chrome.css` and `skin.css`. That is about 4,900 lines out. In: a host page `radio/index.html`
-in the demo's shape (the site header, a frame holding `radio/app/index.html`, the "Listen on
-Apple Music" badge that Apple's terms ask for beside a song), a trimmed `radio/strings.js`, and
-the built port in `radio/app/`. `radio/dev-token.js` and its nightly job stay. The site menu link
-(`index.html:91`, "DeetsRadio") stays or is renamed (§9.7 N).
+`chrome.css` and `skin.css`. That is about 4,900 lines out. In: `radio/index.html` as the port's own page (the site header
+markup, then the port's root element; no frame around the port, §9.3 D), the site-shell code
+(§9.7 S), a trimmed `radio/strings.js`, and the port's built files in `radio/app/`.
+`radio/dev-token.js` and its nightly job stay. The site menu link (`index.html:91`) reads
+"DeetsMusic Rooms" (§9.7 N).
 
 **I. Publishing.** The port is published like the demo: `release:publish` on the live channel
 builds it and copies it into `../DeetsSolutions/radio/app/` (WEB-DEMO.md §9.8 has the guards).
@@ -399,14 +407,13 @@ today. No Rust module changes. The Rust side gains one test: the normalizer fixt
 | J. tests | `tests/`, a Rust test | ~150 new |
 
 **Size: about 1,950 new or changed lines in three repos, and about 4,900 lines removed.**
-The risk is not in the size. It is in two places: the sign-in (D), which only a browser probe can
-answer, and the second normalizer (C), which the fixture test guards.
+The risk is not in the size. It is in two places: the sign-in (D), which keeps the Radio tab's
+proven shape, and the second normalizer (C), which the fixture test guards.
 
 ### 9.6 Build order
 
-1. **Probes, before any code:** `authorize()` and full songs in Safari for macOS and Chrome, from
-   the deets.solutions origin, on a plain page AND inside a same-origin iframe (fork S depends on
-   it). The deets.solutions origin claim on `dev-token.js` covers the probe page.
+1. ~~Probes.~~ Not needed (his call, 2026-10-13): the Radio tab's sign-in and playback work
+   today, and the port keeps their shape (§9.3 D).
 2. A: split the shim. The demo's shots pass unchanged.
 3. B: the entry with the four cards on all-`null` handlers. This shows what breaks before any
    handler is real.
@@ -431,8 +438,8 @@ answer, and the second normalizer (C), which the fixture test guards.
 What each call adds to the work:
 - **S:** the dock layout (radio.md "The site-shell": the square player over a tabbed Queue |
   Search | History column, and the bottom strip under 66rem) is rebuilt around the app's four
-  cards. The port sits in one frame and the site's pages in another, over the same page. The probe
-  (§9.6 step 1) must show that `authorize()` and playback work in that frame. Part H (§9.3) gains
+  cards. The port is the top page and the site's pages go in a frame over it, as in the Radio
+  tab today (§9.3 D). Part H (§9.3) gains
   the shell code, about 250 more lines, so the site's new lines are about 500.
 - **N:** the site menu link (`index.html:91`), the page title, `radio/strings.js`, and the site
   docs say "DeetsMusic Rooms". In this repo, the invite link page's new button says

@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-13
 sources: [src/present.ts, src/info-box.ts, src/listeners.ts, src-tauri/src/lastfm.rs, src/card-grow.ts, src/collection-card.ts, src/media-levels.ts, src/full-player.ts, docs/features/LISTENERS.md, docs/cards/CARD-GROW.md, docs/integrations/ROOMS.md, docs/integrations/FRIENDS.md]
 updated: 2026-10-13
 ---
@@ -11,7 +11,7 @@ updated: 2026-10-13
 > circled): "clicking on an album or artist's listening stats makes it take over the entire
 > card and grows it significantly; imagine an album listening party with live data from
 > Last.fm." **His calls are §7a; the first part is BUILT (§9, the as-built record; desk test
-> open).** He designs the picture: the view's layout is a placeholder.
+> passed 2026-10-13, his).** He designs the picture: the view's layout is a placeholder.
 
 ## 0. Terms
 

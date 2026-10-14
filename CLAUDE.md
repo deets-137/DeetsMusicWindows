@@ -136,7 +136,7 @@ old installs' Guide button opens.
   cloud copy on Cloudflare R2 through a worker: Sign in with Apple, the worker holds the key
   for now (his calls, §9.3). R3 to R6 open. §9.4 Apple's CloudKit private database as an option
   beside R2 (fork R0, open; an iCloud sign-in test in WebView2 decides it).
-- `COPY-EDIT.md` — BUILT 2026-10-12, desk test open (§5): the dev-only copy editor. A pencil in
+- `COPY-EDIT.md` — BUILT 2026-10-12, desk test passed 2026-10-13 (§5): the dev-only copy editor. A pencil in
   the title bar (Alt+E) makes the words on screen typeable and saves each one into its `.ts`
   source; Alt+click edits a hover hint; the reload is held so the music plays on.
 - `LISTENERS.md` — DESIGNED 2026-10-12, read side BUILT: a song's Last.fm listener count (its
@@ -147,7 +147,7 @@ old installs' Guide button opens.
   loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms
   (§11), the probes before a build (§13), the open forks (§14).
 
-- `PresentationMode.md` — BUILT 2026-10-13, desk test open (§9): in Max, a click on a facts
+- `PresentationMode.md` — BUILT 2026-10-13, desk test passed 2026-10-13 (§9.3, his): in Max, a click on a facts
   box's Listening Stats fills Max with the card and grows the stats over it, Last.fm's counts
   in large type, re-read every 5 min (`src/present.ts`). His calls §7a: a party on personal
   accounts (the café product documented only), Last.fm's number, the card grow; the goal
