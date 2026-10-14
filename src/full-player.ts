@@ -483,7 +483,9 @@ function enterBand(panel: HTMLElement): void {
   const dur = reduced() ? 0 : tokenMs("--grow-body-fade");
   if (dur > 0) {
     const easing = getComputedStyle(panel).getPropertyValue("--ease-ui").trim() || "ease";
-    (below ? [...center.children] : [center]).forEach((el) => el.animate([{ opacity: 0 }], { duration: dur, easing }));
+    // `offset: 0` makes it the FROM frame (the end is the part's own opacity). A lone keyframe
+    // with no offset is the TO frame: the rows faded out and snapped back (2026-10-14).
+    (below ? [...center.children] : [center]).forEach((el) => el.animate([{ opacity: 0, offset: 0 }], { duration: dur, easing }));
   }
   const rows = [...center.children].filter((el) => (el as HTMLElement).offsetParent !== null);
   enterRows(rows, rows.length);

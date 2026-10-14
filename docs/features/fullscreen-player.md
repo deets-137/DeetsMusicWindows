@@ -716,5 +716,13 @@ under 0.9. With the fix it lists only the resting rows that hide as the open sta
 code it also lists all five parts falling to 0 at ~480–540 ms (Cyber, Press), so the probe
 catches the bug.
 
+**The fix's own bug (found the same day, corrected).** The first version passed one keyframe,
+`[{ opacity: 0 }]`. A lone keyframe with no offset is the END frame, so the rows faded OUT over
+90 ms and snapped back to full: still a flash. The probe above missed it, because the fade-out
+ran on from the open's hide and read as one dip. The keyframe is now `{ opacity: 0, offset: 0 }`
+(the from frame; the end is the part's own opacity). A per-frame trace shows 0 → 1 over the
+fade, and the motion set's monitor (a flash, a jitter and a one-frame snap check, every skin)
+shows one dip per open and per close.
+
 **Not built.** Everything in §12.7, the Mini player view, an agent route.
 
