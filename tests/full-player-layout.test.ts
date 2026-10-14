@@ -43,6 +43,16 @@ test("Max opens from a zero-width line on the full box's left edge (§9.2.2)", (
   assert.deepEqual(fullClipFrom(rest, full, "max"), { left: 364, right: 364, top: 52, bottom: 808 });
 });
 
+test("2026-10-14: the Max line stays zero wide after the clip's pad", () => {
+  const rest = { left: 12, top: 52, right: 352, bottom: 500 };
+  const full = { left: 364, top: 52, right: 1088, bottom: 808 };
+  const pad = 24;
+  const box = fullClipFrom(rest, full, "max", pad);
+  // clipBetween shows box.left - pad … box.right + pad: one x, the full box's left edge.
+  assert.equal(box.left - pad, full.left);
+  assert.equal(box.right + pad, full.left);
+});
+
 test("Midi opens from the strip, held inside the full box", () => {
   const rest = { left: 11, top: 52, right: 484, bottom: 200 };
   const full = { left: 12, top: 52, right: 483, bottom: 658 };

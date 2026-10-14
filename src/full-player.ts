@@ -470,6 +470,52 @@ const flyAnim = (fly: HTMLElement, from: Box, to: Box, dur: number, ease: string
   return fly.animate(frames, { duration: dur, easing: ease, fill: "both" });
 };
 
+/** A still copy of Now Playing in its resting layout, in its resting box (Max). The card changes
+ *  column there, so its resting place in column 1 stood empty while the Queue grew up over it
+ *  (the open) or shrank down off it (the close), and the card popped into it at the end of the
+ *  close; Glass showed the empty place as bright wallpaper (his report, 2026-10-14). The copy
+ *  fills the place under the Queue for the length of the motion. Its cover is hidden (the flight
+ *  carries the picture). Call it while the resting layout is on; `placeStill` puts it on screen. */
+function restCopy(panel: HTMLElement): HTMLElement | null {
+  const bento = opts?.bento;
+  if (!bento || surfaceNow() !== "max") return null;
+  const r = rect(panel);
+  const b = rect(bento);
+  const copy = panel.cloneNode(true) as HTMLElement;
+  // Off the slot, so no full-player rule and no slot code reaches it; `.np-still` takes the one
+  // resting rule it needs (styles.css).
+  copy.removeAttribute("data-slot");
+  copy.removeAttribute("data-np-rows");
+  copy.removeAttribute("data-frames");
+  copy.removeAttribute("id");
+  copy.classList.remove("is-player-rebuild", "is-rows-sliding");
+  copy.classList.add("np-still");
+  copy.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+  copy.querySelectorAll(".grow-zone, .np__close").forEach((el) => el.remove());
+  copy.inert = true;
+  copy.setAttribute("aria-hidden", "true");
+  copy.style.left = `${r.left - b.left - bento.clientLeft}px`;
+  copy.style.top = `${r.top - b.top - bento.clientTop}px`;
+  copy.style.width = `${r.width}px`;
+  copy.style.height = `${r.height}px`;
+  return copy;
+}
+let still: HTMLElement | null = null;
+/** Put the copy on screen, under the Queue (which grows over it or shrinks off it). */
+function placeStill(copy: HTMLElement | null): void {
+  dropStill();
+  if (!copy || !opts) return;
+  still = copy;
+  opts.bento.appendChild(copy);
+  opts.hosts.queue?.style.setProperty("z-index", "1");
+}
+function dropStill(): void {
+  if (!still) return;
+  still.remove();
+  still = null;
+  opts?.hosts.queue?.style.removeProperty("z-index");
+}
+
 /** The rows on the band (and the band itself) come in. The fade is a Web Animation, not a CSS
  *  class: layoutNow flips `data-np-rows` to "over" to measure the controls, and a CSS animation
  *  on a rule that names the attribute stops on the flip and starts again from 0 on the flip
@@ -483,6 +529,10 @@ function enterBand(panel: HTMLElement): void {
   const dur = reduced() ? 0 : tokenMs("--grow-body-fade");
   if (dur > 0) {
     const easing = getComputedStyle(panel).getPropertyValue("--ease-ui").trim() || "ease";
+    // The close square sits outside the rows but hides with them; it fades with them too, or it
+    // popped in at once beside the fade (the motion monitor, 2026-10-14).
+    const close = panel.querySelector<HTMLElement>(".np__close");
+    if (close?.offsetParent) close.animate([{ opacity: 0, offset: 0 }], { duration: dur, easing });
     // `offset: 0` makes it the FROM frame (the end is the part's own opacity). A lone keyframe
     // with no offset is the TO frame: the rows faded out and snapped back (2026-10-14).
     (below ? [...center.children] : [center]).forEach((el) => el.animate([{ opacity: 0, offset: 0 }], { duration: dur, easing }));
@@ -513,6 +563,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
     const fromArt = rect(art);
     const queue = queueHost();
     const fromQueue = queue ? rect(queue) : null;
+    const restStill = m && queue ? restCopy(panel) : null; // Max: the resting place stays filled
     const row1 = surface === "midi" ? from.height : undefined;
     // Measure the full layout once, with no paint between: the rows' place, then the cover box.
     apply(true, undefined, row1);
@@ -555,8 +606,9 @@ export async function openFullPlayer(cause: string): Promise<void> {
     const endFrames = frames.begin("player", `${surface} open`);
     const fly = makeFlight(art, toArt, big);
     if (fly) art.style.visibility = "hidden";
+    placeStill(restStill);
     const anims: Animation[] = [
-      panel.animate([{ clipPath: clipBetween(fullClipFrom(from, to, surface), to, pad, radius) }, { clipPath: clipOpen(pad, radius) }], {
+      panel.animate([{ clipPath: clipBetween(fullClipFrom(from, to, surface, pad), to, pad, radius) }, { clipPath: clipOpen(pad, radius) }], {
         duration: m.dur, easing: m.ease, fill: "both",
       }),
     ];
@@ -581,6 +633,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
     anims.forEach((a) => a.cancel());
     fly?.remove();
     art.style.visibility = "";
+    if (my === gen) dropStill(); // a close that took over owns the copy now
     endFrames();
     delete panel.dataset.frames;
     if (full && my === gen) {
@@ -613,6 +666,7 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   panel?.getAnimations().forEach((a) => a.cancel());
   opts?.hosts.queue?.getAnimations().forEach((a) => a.cancel());
   document.querySelectorAll(".np__fly").forEach((f) => f.remove());
+  dropStill();
   if (art) art.style.visibility = "";
   // The History column and a rows slide end at once: the close measures the layout without them.
   dropHistory();
@@ -651,6 +705,7 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   const rest = rect(panel);
   const restArt = rect(art);
   const restQueue = queue ? rect(queue) : null;
+  const restStill = queue ? restCopy(panel) : null; // Max: the resting place fills as the Queue goes
   apply(true, place, row1 ? parseFloat(row1) : undefined);
 
   // The rows and the band go first (§9.4.2).
@@ -673,8 +728,9 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   const endFrames = frames.begin("player", `${surface} close`);
   const fly = makeFlight(art, toArt, null);
   if (fly) art.style.visibility = "hidden";
+  placeStill(restStill);
   const anims: Animation[] = [
-    panel.animate([{ clipPath: clipOpen(pad, radius) }, { clipPath: clipBetween(fullClipFrom(rest, to, surface), to, pad, radius) }], {
+    panel.animate([{ clipPath: clipOpen(pad, radius) }, { clipPath: clipBetween(fullClipFrom(rest, to, surface, pad), to, pad, radius) }], {
       duration: m.collapseDur, easing: m.ease, fill: "both",
     }),
   ];
@@ -693,7 +749,14 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   art.style.visibility = "";
   covered.forEach((h) => h.classList.remove("is-uncovering"));
   endFrames();
-  enterBand(panel); // the rows come in at their rest place
+  if (still) {
+    // The copy already shows the resting rows in this place: the real card takes over in the
+    // same frame, with no fade (a fade here would dim rows that were on screen).
+    dropStill();
+    panel.classList.remove("is-player-rebuild");
+  } else {
+    enterBand(panel); // the rows come in at their rest place
+  }
 }
 
 export function toggleFullPlayer(cause: string): void {

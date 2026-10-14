@@ -724,5 +724,25 @@ ran on from the open's hide and read as one dip. The keyframe is now `{ opacity:
 fade, and the motion set's monitor (a flash, a jitter and a one-frame snap check, every skin)
 shows one dip per open and per close.
 
+**The jump at the end of the Max close (his report, 2026-10-14, Glass).** Two causes, both in
+the Max motion of §9.4.3:
+1. *The empty resting place.* Now Playing changes column in Max. While the Queue shrank down
+   off column 1 (the close) or grew up over it (the open), the card's resting place above the
+   Queue held nothing, and the card popped into it at the end of the close. Glass showed the
+   empty place as the bright, unfrosted cover wallpaper. Fix: `restCopy` in `full-player.ts`
+   clones the card in its resting layout (off its slot, `.np-still`, inert, its cover hidden
+   because the flight carries the picture) into its resting box, under the Queue (the Queue
+   rides `z-index: 1` for the motion). The Queue now grows over a card and shrinks off one. At
+   the end of the close the real card takes the place in the same frame with no fade (the copy
+   already showed its rows), and the copy goes. A close during the open drops the open's copy.
+2. *The last sliver.* The Max clip opens from "a zero-width line", but `clipBetween` opens every
+   edge past the box by `--grow-clip-pad`, so the line was a 2 × pad strip of the full card. The
+   close ended on it and it vanished in one frame (the open started on it). `fullClipFrom` now
+   takes the pad and pulls the line's edges in by it (tested, `full-player-layout.test.ts`).
+
+Midi has neither: its resting strip is inside the full box. Checked in the frames (Glass,
+Press) and with the monitor in every skin; the new baseline is §2a of the checks archive
+([../ops/checks/README.md](../ops/checks/README.md)).
+
 **Not built.** Everything in §12.7, the Mini player view, an agent route.
 

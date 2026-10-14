@@ -87,6 +87,19 @@ let showing = false;
 /** Pressed under the pointer: stays quiet until the pointer moves off it. A press answers
  *  the question the hint was there to answer, so re-showing it reads as a twitch. */
 let pressed: HTMLElement | null = null;
+/** Where the last press was. Until the pointer moves STILL_PX from there, no hint arms: a press
+ *  can swap what sits under a still pointer (a drill, a re-rendered list), and the new row's
+ *  hint used to show at once inside the warm window, so the box blinked off and on with the
+ *  pointer at rest (the motion monitor, 2026-10-14). */
+let pressAt: { x: number; y: number } | null = null;
+const STILL_PX = 3;
+/** The pointer is still where it pressed. The first move away clears the press. */
+const stillSincePress = (x: number, y: number): boolean => {
+  if (!pressAt) return false;
+  if (Math.hypot(x - pressAt.x, y - pressAt.y) < STILL_PX) return true;
+  pressAt = null;
+  return false;
+};
 
 function ensureBox(): HTMLElement {
   if (box) return box;
@@ -289,6 +302,13 @@ export function initHints(): void {
 
   document.addEventListener("pointerover", (e) => {
     if (e.pointerType === "touch") return; // nothing rests on a touch screen
+    if (stillSincePress(e.clientX, e.clientY)) return; // a press swapped what is under it
+    enter(e.target as Element | null, e.clientX);
+  });
+  // The first real move after a press: no `pointerover` comes if the pointer stays inside the
+  // element it now rests on, so the hint for that element arms here (its usual wait applies).
+  document.addEventListener("pointermove", (e) => {
+    if (!pressAt || e.pointerType === "touch" || stillSincePress(e.clientX, e.clientY)) return;
     enter(e.target as Element | null, e.clientX);
   });
   // A press is intent; the hint has said what it had to say, and must not come back
@@ -297,6 +317,7 @@ export function initHints(): void {
     "pointerdown",
     (e) => {
       pressed = resolve(e.target as Element | null)?.el ?? null;
+      pressAt = e.pointerType === "touch" ? null : { x: e.clientX, y: e.clientY };
       hide();
     },
     true,

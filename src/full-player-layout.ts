@@ -34,9 +34,12 @@ export function fullArtPx(boxCssPx: number, dpr: number, base: number): number {
 
 /** The box the open's clip starts from (§9.2.2). Midi: the strip, which is inside the full
  *  box. Max: the rest box is in the stage column, OUTSIDE the full box, so the card opens from
- *  a zero-width line on the full box's left edge (the gap beside the stage). */
-export function fullClipFrom(rest: Box, full: Box, surface: "midi" | "max"): Box {
-  if (surface === "max") return { left: full.left, right: full.left, top: full.top, bottom: full.bottom };
+ *  a zero-width line on the full box's left edge (the gap beside the stage). `pad` is the clip's
+ *  own pad (clipBetween opens every edge past the box by it, for the shadow): the line's edges
+ *  are pulled in by it, so the line is zero wide ON SCREEN. Without that, the close ended on a
+ *  2 × pad strip of the full card that vanished in one frame (2026-10-14). */
+export function fullClipFrom(rest: Box, full: Box, surface: "midi" | "max", pad = 0): Box {
+  if (surface === "max") return { left: full.left + pad, right: full.left - pad, top: full.top, bottom: full.bottom };
   // The strip, held inside the full box (a launch lift or a rounding can leave it a pixel out).
   return {
     left: Math.max(rest.left, full.left),

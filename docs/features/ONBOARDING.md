@@ -301,6 +301,9 @@ control within 400 ms of a hint closing shows the next one at once (`WARM_MS`).
 toast (90), below a menu or picker (100). A control **inside** a pop panel, menu, flyout or picker gets `.hint--over` (z 105), so its own panel does not cover its hint (2026-09-16, the web panel). It hangs under the anchor, centred on the pointer's
 x, and flips above when there is no room below. It hides on press, scroll, resize, Escape, and
 when its row is re-rendered away; a pressed control stays quiet until the pointer moves off it.
+After any press, no hint arms until the pointer moves 3 px (`STILL_PX`): a press can swap what
+sits under a still pointer (a drill opens a playlist), and that new row's hint used to show at
+once in the warm window, so the box blinked off and on (2026-10-14, the motion monitor).
 Touch pointers get nothing. Focus shows it only on `:focus-visible`, so it follows the keyboard
 and not the mouse. Under reduced motion it appears without the rise. Where an element had a
 `title` and no accessible name of its own, adoption promotes the hint to `aria-label`, so
