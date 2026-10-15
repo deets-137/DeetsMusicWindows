@@ -311,3 +311,16 @@ display name.
 - **The build.** The `.ico` and the PNG set get made from his hand-drawn sizes with
   nearest-neighbor scaling. `npx tauri icon` likely smooths pixel art; check its output before
   using it. The Beta icon (`icons-beta/`) needs its own variant (open).
+- **As built (2026-10-15, branch `icons-fifteen`, his calls):** he kept his canvas: 32 and up
+  are the whole 32 canvas ×1, ×2, ×4, ×8, ×16, ×32 (`app-icon.png`). 16 is his hand-drawn 16;
+  20 is that 16 centered; 24 is the head 1:1 centered; 48 is the 24 ×2 (Claude's calls inside
+  his pick: 32 → 48 is not a whole number). The `.ico` holds 16, 20, 24, 32, 48, 64, 256, each
+  read back pixel for pixel. Not yet redrawn: `icons-beta/`, the `Square*Logo` files (the
+  Store set, unused by NSIS), `icon.icns`, the extension, the MCP bundle, the sign-in page,
+  the site.
+- **Why `app_icon.rs` (2026-10-15):** Tauri gives a window ONE picture, the first `.ico`
+  frame, and Windows scaled his 16 up to the 24 px taskbar button: a blur. Now each window
+  loads the exe's icon resource (id 32512) at the exact size per scale (small = SM_CXSMICON,
+  big = 24 px × scale, the taskbar's size) and sends `WM_SETICON`, again on a scale change;
+  the tray takes the `.ico` frame of the small-icon size at the system scale. Checked on his
+  taskbar at 100 %: the 24 frame shows 1:1.

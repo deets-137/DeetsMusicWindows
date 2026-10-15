@@ -321,7 +321,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     app.manage(TrayState(Mutex::new(Inner::default())));
     restore_window_pos(app);
     TrayIconBuilder::with_id("main")
-        .icon(app.default_window_icon().expect("window icon").clone())
+        .icon(crate::app_icon::tray_image().unwrap_or_else(|| app.default_window_icon().expect("window icon").clone()))
         .tooltip("DeetsMusic")
         .show_menu_on_left_click(false)
         .on_menu_event(|app, ev| match ev.id().as_ref() {
@@ -389,6 +389,8 @@ pub fn on_window_event(win: &tauri::Window, ev: &WindowEvent) {
                 app.exit(0);
             }
         }
+        // A move to a monitor at another scale: reload the icon frames for it.
+        (_, WindowEvent::ScaleFactorChanged { .. }) => crate::app_icon::set_window(win),
         _ => {}
     }
 }

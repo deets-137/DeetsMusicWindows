@@ -73,6 +73,9 @@ ed25519-dalek = { version = "2", default-features = false, features = ["std", "f
 # The friend code is SHA-256(public key) in Crockford base32. Already in the tree through
 # the digest family; naming it here makes it a direct dependency rather than a lucky one.
 sha2 = "0.10"
+# The tray's frame of icons/icon.ico (app_icon.rs). Already in the tree through Tauri's build;
+# no new download.
+ico = "0.5"
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;
@@ -115,5 +118,9 @@ features = [
   # MessageBoxW: the one native box when the library file will not open (db_open.rs,
   # docs/ops/DB-HEALTH.md §7). A feature of the crate the app already has; no new download.
   "Win32_UI_WindowsAndMessaging",
+  # Each window and the tray get their own frame of the app icon (app_icon.rs): the module
+  # handle for LoadImageW, and the window's scale. Features of the crate the app already has.
+  "Win32_System_LibraryLoader",
+  "Win32_UI_HiDpi",
 ]
 

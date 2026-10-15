@@ -1,4 +1,5 @@
 mod airplay;
+mod app_icon;
 mod audio_out;
 mod apple;
 mod apple_calls;
@@ -291,6 +292,7 @@ pub fn run() {
             // Sound (SOUND.md §2.2): the Windows output, its form factor and volume.
             audio_out::setup(app.handle());
             tray::setup(app.handle())?;
+            app_icon::set_all(app.handle());
 
             // A login launch (`--tray`, the Run-key command) starts in the tray.
             if std::env::args().any(|a| a == "--tray") {

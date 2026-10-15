@@ -873,6 +873,7 @@ dependencies = [
  "futures",
  "getrandom 0.2.17",
  "httpdate",
+ "ico",
  "jsonwebtoken",
  "mcp-install",
  "md-5",
