@@ -67,7 +67,7 @@ nothing about authoring changed when the box did.
 | Home | the Refresh button in the header | Builds the shelves again, and asks Apple Music what you played and added elsewhere | home-card.ts |
 | Song Credits | the *credited* mark on a writer with no track held | Credited, but DeetsMusic holds no track for it yet | credits.ts `FLAT_MARK` |
 | Compass | a Tab-walked pill (a kind chip, a two-answer row) · the Open / alt halves | Tab moves between these · Enter · Ctrl+Enter | compass.ts |
-| Settings › Connections | Install the browser extension (the action row) | Opens the install page in your browser | settings-card.ts `ext-install` |
+| Settings › Connections | Extension install guide (experimental) (the action row) | Opens the install page in your browser. The extension is experimental | settings-card.ts `ext-install` |
 | Settings › Connections (2026-10-11) | Set up the DeetsMusic MCP | Pick your AI app below and press Connect, then ask it to play something in a new chat | settings-card.ts (MCP-INSTALL.md §8b) |
 | Settings › Connections (2026-10-11) | Set up the DeetsMusic MCP › Refresh | Looks again for AI apps on this PC | settings-card.ts |
 | Settings › Connections (2026-10-11) | an app line (Claude Desktop, Claude Code, Codex and ChatGPT) | The entry's command or why its file cannot be read, then “Called DeetsMusic since it started” or “Not used since DeetsMusic started” | mcp-panel.ts |

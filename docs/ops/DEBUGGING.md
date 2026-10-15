@@ -1610,6 +1610,7 @@ name shows in a debugger and in a crash dump.
 | `apple.rs:tokio_sleep_1s` | none | 1 s | A one-second wait between two token checks |
 | `tray.rs:reveal_fallback` | none | 3 s | Shows the window if the page never said it was ready |
 | `update.rs:airplay_shutdown_bounded` | none | up to 3 s | Stops AirPlay before an install or a quit; the caller waits 3 s at most |
+| `velo.rs:download` | none | one update download | The Velopack spike only (`--features velopack`): passes the download's progress to the status (VELOPACK.md §8) |
 | `lib.rs:app_restart` | none | 200 ms | Lets the command's answer go out, then restarts the app |
 | `beta.rs:request_pull` | none | 400 ms | The same, for the Beta's data pull (BETA.md) |
 | `mosaic.ts:mosaic-worker.ts` | Web Worker | from the first mosaic | Draws a playlist's mosaic cover (PLAYLISTS.md §11) |

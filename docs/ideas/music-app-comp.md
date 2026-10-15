@@ -1,7 +1,7 @@
 ---
 status: idea
 desk_test: open
-sources: [scripts/compare/run.mjs, scripts/compare/metrics.mjs, tools/deetsmeter/src/audio.rs, tools/deetsmeter/src/main.rs, tools/deetsmeter/src/screen.rs, tools/deetsmeter/src/run.rs, tools/deetsmeter/src/calibrate.rs, scripts/bench.mjs, scripts/heaviness-sample.ps1, scripts/boot-log.mjs, scripts/perf-report.mjs, scripts/archive-installer.mjs, scripts/webview-profile.mjs, scripts/shots.mjs, src/perf.ts, src/frames.ts, src/launch-perf.ts, src/telemetry-on.ts]
+sources: [scripts/compare/run.mjs, scripts/compare/metrics.mjs, tools/deetsmeter/src/audio.rs, tools/deetsmeter/src/main.rs, tools/deetsmeter/src/screen.rs, tools/deetsmeter/src/run.rs, tools/deetsmeter/src/calibrate.rs, scripts/bench.mjs, scripts/heaviness-sample.ps1, scripts/boot-log.mjs, scripts/perf-report.mjs, scripts/webview-profile.mjs, scripts/shots.mjs, src/perf.ts, src/frames.ts, src/launch-perf.ts, src/telemetry-on.ts]
 updated: 2026-10-11
 ---
 # DeetsMusic against the Apple Music app for Windows — metrics and methods

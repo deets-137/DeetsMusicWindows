@@ -117,6 +117,13 @@ The popup's source badge says which path fired (`YouTube · credits` / `YouTube`
 
 ## 6. Install + packaging
 
+> **Since Velopack (2026-10-15, his call F2 C):** the extension is **experimental and reached
+> from Settings only** ("even I don't use the extension anymore"). It ships in the package as
+> `%LOCALAPPDATA%\DeetsMusic\current\extension\` (a fixed path across updates, so a loaded
+> unpacked extension keeps working); the installer asks nothing, and the `extension-connected`
+> mark is no longer written. The Settings row reads *Extension install guide (experimental)*.
+> The NSIS text below is the record up to 0.27.
+
 - The extension ships **inside the NSIS installer** as `$INSTDIR\extension\` (Tauri
   `bundle.resources`). `src-tauri/nsis/hooks.nsh` (`NSIS_HOOK_POSTINSTALL`) asks
   *"Also set up the DeetsMusic browser extension?"* and opens `extension/install.html`.

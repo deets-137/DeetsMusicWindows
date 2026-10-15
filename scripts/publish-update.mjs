@@ -1,10 +1,10 @@
-// `npm run release:publish` — put the archived installer on an update channel
-// (docs/ops/RELEASE.md §6.7). Publishing is what makes installs update: run it only after the
-// installed build passed its checks.
+// `npm run release:publish` — put the packed version on an update channel
+// (docs/ops/RELEASE.md §6.7, docs/ops/VELOPACK.md §5.4). Publishing is what makes installs update:
+// run it only after the installed build passed its checks.
 //
 //   npm run release:publish                              package.json's version → "deetsmusic"
 //   npm run release:publish -- --channel deetsmusic-test  a test build (§6.8)
-//   npm run release:publish -- --beta                    DeetsMusic Beta (BETA.md §4): installers/beta → deetsmusic-test
+//   npm run release:publish -- --beta                    DeetsMusic Beta (BETA.md §4) → deetsmusic-test
 //   npm run release:publish -- --replace                 overwrite an entry already in the index
 //   npm run release:publish -- --withdraw 0.5.1          hide a release; the Worker stops offering it
 //   npm run release:publish -- --withdraw 0.5.1 --reason "…"   …and say why, on the website
@@ -15,14 +15,24 @@
 // withdrawn releases keep their notes, and `history` rows (versions from before the updater,
 // with no installer or .sig) carry notes and a date only. The updater never sees either.
 //
-// Uploads installers/DeetsMusic_<v>_x64-setup.exe to R2 (deetsmusic-releases/<channel>/), then
-// rewrites <channel>/index.json with { version, group, notes, pub_date, size, signature, file }.
-// `group` is package.json `deetsmusic.updateGroup` (§6.5); `notes` is the version's entry in
-// docs/ops/RELEASE-NOTES.md, up to its first subsection. Wrangler runs from ../DeetsSupport, whose
-// account owns the bucket.
-import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+// Velopack (since 0.28, VELOPACK.md §5.4). From installers/velopack/<Id>-<channel>/ to R2
+// (deetsmusic-releases/<channel>/vp/), in this order, so an install never reads a feed that
+// names a package not yet uploaded:
+//   1. the version's full package and its delta (when there is one);
+//   2. Setup.exe as <Id>-<version>-Setup.exe (the website's download for that version);
+//   3. rollback/<version>/releases.<channel>.json + .sig: a feed with only this version's full
+//      package, the target of a rollback to it (§6.5);
+//   4. releases.<channel>.json + .sig: the feed every install reads, without withdrawn versions.
+// Every feed is signed here with the updater key (the password from Credential Manager,
+// DeetsMusicUpdaterKey); every install checks it (velo.rs). Then <channel>/index.json gets
+// { version, group, notes, pub_date, size, file, setup, velopack: true } for the website and the
+// rollback list. `group` is package.json `deetsmusic.updateGroup` (§6.5); `notes` is the version's
+// entry in docs/ops/RELEASE-NOTES.md, up to its first subsection. Wrangler runs from
+// ../DeetsSupport, whose account owns the bucket. The rows before 0.28 (NSIS installers) stay as
+// they are, for the website's history.
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -97,6 +107,56 @@ function releaseNotes(version) {
   return (end === -1 ? body : body.slice(0, end)).trim();
 }
 
+// ── Velopack (VELOPACK.md §5.4) ──
+const PACK = BETA ? "DeetsMusicBeta" : "DeetsMusic";
+const OUT = join(root, "installers", "velopack", `${PACK}-${channel}`);
+const FEED = `releases.${channel}.json`;
+
+function put(key, file, type) {
+  const r = wrangler(["r2", "object", "put", `${BUCKET}/${channel}/vp/${key}`, "--file", file, "--content-type", type, "--remote"]);
+  if (r.status !== 0) die(`upload of ${key} failed`);
+}
+
+let signEnv = null;
+/** Sign a file with the updater key (writes <file>.sig), as release.mjs does. */
+function sign(file) {
+  if (!signEnv) {
+    const keyFile = process.env.DEETSMUSIC_UPDATER_KEY || join(homedir(), "Documents", "Deets' Secrets", "deetsmusic-updater.key");
+    if (!existsSync(keyFile)) die(`no updater key at ${keyFile} (RELEASE.md §6.6)`);
+    const password = execFileSync(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", join(root, "scripts", "cred-read.ps1"), "-Target", "DeetsMusicUpdaterKey"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
+    );
+    signEnv = { ...process.env, TAURI_SIGNING_PRIVATE_KEY: readFileSync(keyFile, "utf8").trim(), TAURI_SIGNING_PRIVATE_KEY_PASSWORD: password };
+  }
+  rmSync(`${file}.sig`, { force: true });
+  const r = spawnSync(`npx tauri signer sign "${file}"`, { cwd: root, shell: true, stdio: ["ignore", "ignore", "inherit"], env: signEnv });
+  if (r.status !== 0 || !existsSync(`${file}.sig`)) die(`could not sign ${file}`);
+}
+
+/** Write, sign and upload a feed of `assets` under `key` (the feed first, then its .sig). */
+function putFeed(key, assets) {
+  const tmp = join(tmpdir(), `deetsmusic-${process.pid}-${FEED}`);
+  writeFileSync(tmp, JSON.stringify({ Assets: assets }));
+  try {
+    sign(tmp);
+    put(key, tmp, "application/json");
+    put(`${key}.sig`, `${tmp}.sig`, "text/plain");
+  } finally {
+    rmSync(tmp, { force: true });
+    rmSync(`${tmp}.sig`, { force: true });
+  }
+}
+
+/** The local feed (vpk keeps every version packed in OUT) minus the withdrawn versions. */
+function liveAssets(index) {
+  const local = join(OUT, FEED);
+  if (!existsSync(local)) die(`no ${local} (run npm run release${BETA ? " -- --beta" : ""} first)`);
+  const gone = new Set(index.releases.filter((r) => r.withdrawn).map((r) => r.version));
+  return (JSON.parse(readFileSync(local, "utf8")).Assets ?? []).filter((a) => !gone.has(a.Version));
+}
+
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const index = readIndex();
 
@@ -107,6 +167,8 @@ if (withdraw !== null) {
   if (!entry) die(`${withdraw} is not in ${channel}/index.json`);
   entry.withdrawn = true;
   if (reason) entry.withdrawn_reason = reason;
+  // A Velopack version leaves the signed feed too: the Worker cannot change a signed file.
+  if (entry.velopack) putFeed(FEED, liveAssets(index));
   writeIndex(index);
   console.log(`[publish] ${withdraw} withdrawn from ${channel}${reason ? " (with a reason)" : ""}`);
   process.exit(0);
@@ -146,14 +208,10 @@ if (history) {
 const version = pkg.version;
 const group = pkg.deetsmusic?.updateGroup;
 if (!Number.isInteger(group)) die("package.json deetsmusic.updateGroup must be an integer (RELEASE.md §6.5)");
-const file = `DeetsMusic_${version}_x64-setup.exe`;
-// archive-installer.mjs's rule. A beta is always a -beta.N version, and a -beta.N version is
-// always a beta: the real channel never takes one, and --beta never takes anything else.
+// A beta is always a -beta.N version, and a -beta.N version is always a beta: the real channel
+// never takes one, and --beta never takes anything else.
 const betaVersion = /-beta\.\d+$/.test(version);
 if (BETA !== betaVersion) die(BETA ? `--beta needs a beta version like 0.14.0-beta.1 (package.json has ${version})` : `${version} is a beta version: publish it with --beta`);
-const sub = BETA ? "installers/beta" : version.includes("-") ? "installers/dev" : "installers";
-const exe = join(root, sub, file);
-if (!existsSync(exe) || !existsSync(`${exe}.sig`)) die(`need ${sub}/${file} and its .sig (run npm run release first)`);
 // A missing entry used to publish `notes: ""`, and 0.6.3 and 0.7.0 went live with a blank row
 // on the website and in the update offer. The test channel's spike builds carry no notes.
 if (channel === "deetsmusic" && !releaseNotes(version)) {
@@ -163,18 +221,29 @@ if (index.releases.some((r) => r.version === version && !r.history) && !replace)
   die(`${version} is already in ${channel}/index.json (pass --replace to overwrite)`);
 }
 
-const up = wrangler(["r2", "object", "put", `${BUCKET}/${channel}/${file}`, "--file", exe, "--content-type", "application/octet-stream", "--remote"]);
-if (up.status !== 0) die("installer upload failed");
+const local = JSON.parse(readFileSync(join(OUT, FEED), "utf8")).Assets ?? [];
+const mine = local.filter((a) => a.Version === version);
+const full = mine.find((a) => a.Type === "Full");
+if (!full) die(`the local feed has no full package for ${version} (run npm run release${BETA ? " -- --beta" : ""})`);
+const setupLocal = join(OUT, `${PACK}-${channel}-Setup.exe`);
+const setup = `${PACK}-${version}-Setup.exe`;
+if (!existsSync(setupLocal)) die(`no ${setupLocal}`);
+
+for (const a of mine) put(a.FileName, join(OUT, a.FileName), "application/octet-stream"); // 1
+put(setup, setupLocal, "application/octet-stream"); // 2
+putFeed(`rollback/${version}/${FEED}`, [full]); // 3
 
 const entry = {
   version,
   group,
   notes: releaseNotes(version),
   pub_date: new Date().toISOString(),
-  size: statSync(exe).size,
-  signature: readFileSync(`${exe}.sig`, "utf8").trim(),
-  file,
+  size: full.Size,
+  file: full.FileName,
+  setup,
+  velopack: true,
 };
+putFeed(FEED, liveAssets({ releases: [...index.releases.filter((r) => r.version !== version), entry] })); // 4
 index.releases = [...index.releases.filter((r) => r.version !== version), entry];
 writeIndex(index);
 console.log(`[publish] ${version} (group ${group}, ${(entry.size / 1024 / 1024).toFixed(1)} MB) is live on ${channel}`);

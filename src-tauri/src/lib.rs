@@ -38,6 +38,7 @@ mod sotd;
 mod tray;
 mod update;
 mod usage;
+mod velo;
 mod wallpaper;
 mod user_files;
 mod watchdog;
@@ -45,6 +46,11 @@ mod web;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Velopack's hook starts (`--veloapp-*`) do their work and exit here, before anything
+    // else starts, and a downloaded update is applied before the app opens (docs/ops/VELOPACK.md
+    // §5.1). In a dev build there is no install, and this returns at once.
+    velo::startup();
+
     // DeetsMusic Beta only: take the full app's data on the first start or after a pull
     // (beta.rs, docs/ops/BETA.md §2). Before the Builder, because Tauri opens the config
     // windows — and their localStorage — before the setup hook runs.
@@ -80,13 +86,10 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(single_instance)
-        // Registers the scheme (the installer for a release, `register()` below for a
-        // debug build). Link delivery itself is the single-instance callback above.
+        // Registers the scheme (`register_all()` on every release start, `register()` below
+        // for a debug build). Link delivery itself is the single-instance callback above.
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
-        // The updater (RELEASE.md §6): transport, signature check, install. update.rs adds
-        // the rules — one download at a time, the size cap, rollback, no install in dev.
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(apple::AppleState::default())
         .manage(update::UpdateState::default())
         .manage(bridge::Hub::default())
@@ -602,6 +605,7 @@ pub fn run() {
             update::update_check,
             update::update_download,
             update::update_install,
+            update::update_discard,
             update::update_versions,
             report::report_log,
             report::report_send,

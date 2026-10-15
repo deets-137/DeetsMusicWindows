@@ -1,10 +1,18 @@
 ---
 status: built
 desk_test: open
-sources: [src-tauri/src/beta.rs, src-tauri/tauri.beta.conf.json, src-tauri/icons-beta/, scripts/beta-icon.ps1, scripts/release.mjs, scripts/release-check.mjs, scripts/archive-installer.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/nsis/hooks.nsh, cli/src/main.rs]
-updated: 2026-10-14
+sources: [src-tauri/src/beta.rs, src-tauri/tauri.beta.conf.json, src-tauri/icons-beta/, scripts/beta-icon.ps1, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/src/velo.rs, cli/src/main.rs]
+updated: 2026-10-15
 ---
 # DeetsMusic Beta — a second app beside the full one
+
+> **Part:** built · 2026-10-15 — **the beta is the test ground for Velopack** (his call,
+> 2026-10-15; VELOPACK.md). `npm run release -- --beta` packs it as `DeetsMusicBeta` on
+> `deetsmusic-test` into `installers/velopack/DeetsMusicBeta-deetsmusic-test/`; it installs to
+> `%LOCALAPPDATA%\DeetsMusicBeta\current\`. Uninstall the NSIS beta (`%LOCALAPPDATA%\DeetsMusic
+> Beta\uninstall.exe`) first: two apps with one identifier share one data folder and one
+> single-instance lock. The full app moves after the beta has passed. The NSIS text below is the
+> record up to 0.27.
 
 > **Part:** built · 2026-09-23. Decided and built the same day, on `oceanic-schmoves`. Its first job
 > was to test Ocean. Betas `0.14.0-beta.2` and `0.14.1-beta.1` went out on `deetsmusic-test`;

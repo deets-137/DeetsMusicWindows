@@ -1,30 +1,37 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/sign.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/archive-installer.mjs, scripts/cli-dist.mjs]
-updated: 2026-10-14
+sources: [scripts/sign.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/src/velo.rs]
+updated: 2026-10-15
 ---
 # Release, install, uninstall
 
+> **Velopack replaces NSIS and tauri-plugin-updater (built 2026-10-15 on `velopack-spike`, not
+> yet released; the beta goes first).** The design, the spike and its as-built record are
+> [VELOPACK.md](VELOPACK.md). In this doc, §0, §1, §2, §6 intro and the secrets are current;
+> §3, §4, §4a and §5 describe the NSIS installer up to 0.27, kept as the record. Where they
+> disagree, VELOPACK.md is the code.
+>
 > Status (2026-09-15): **installer, updater and Authenticode signing are all live and tested.**
 > 0.4.3 is the first release on the update channel (§6). Signing was tested with 0.4.4-t1 → t2
 > on the test channel (§6.9); 0.5.0 was the first signed real release.
 > Code: `package.json` (`release`, `release:check`, `release:publish`), `scripts/release.mjs`,
-> `scripts/sign.mjs`, `scripts/release-check.mjs`, `scripts/archive-installer.mjs`,
-> `scripts/publish-update.mjs`, `scripts/cli-dist.mjs`, `scripts/cred-read.ps1`,
-> `scripts/cred-write.ps1`, `src-tauri/nsis/hooks.nsh`, `src-tauri/tauri.conf.json` (`bundle`,
-> `plugins.updater`), `src-tauri/src/update.rs`, `src/updater.ts`, `DeetsSupport/src/update.js`.
+> `scripts/sign.mjs`, `scripts/release-check.mjs`, `scripts/publish-update.mjs`,
+> `scripts/cli-dist.mjs`, `scripts/cred-read.ps1`, `scripts/cred-write.ps1`,
+> `src-tauri/src/velo.rs`, `src-tauri/src/update.rs`, `src/updater.ts`, `DeetsSupport/src/update.js`.
 
-House pattern, shared with DeetsAirplay / DeetsRGB: a hand-built **NSIS** installer, per-user,
-no admin prompt. Each shipped setup exe is kept in a local `installers/` archive. Unlike those
-apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed (§6.9).
+Since 0.28: a **Velopack** package, per-user, no admin prompt, no wizard. `vpk pack` keeps every
+version in `installers/velopack/<Id>-<channel>/` (gitignored), which is also the base of each
+delta. DeetsMusic updates itself (§6) and every exe is Authenticode-signed (§6.9). Up to 0.27 it
+was the house pattern shared with DeetsAirplay / DeetsRGB: a hand-built NSIS installer.
 
 ## 0. The release pipeline at a glance (2026-09-15)
 
 **Terms.**
 - **Updater key** — a minisign key pair made by `tauri signer`. Its public half is compiled into
-  every install (`plugins.updater.pubkey`). The updater refuses any download whose `.sig` does
-  not match it. It protects **updates** (§6.6).
+  every install (`PUBKEY` in velo.rs; `plugins.updater.pubkey` up to 0.27). Since Velopack it
+  signs the **feed**, and the feed holds each package's SHA-256: an install refuses a feed whose
+  `.sig` does not match (VELOPACK.md §4). It protects **updates** (§6.6).
 - **Authenticode signature** — the Windows signature that puts a publisher name on an exe. It
   comes from Azure Artifact Signing. It protects **first installs and trust in Windows** (§6.9).
 - **Channel** — `deetsmusic` (real installs) or `deetsmusic-test` (DeetsMusic Beta since
@@ -40,17 +47,17 @@ apps, DeetsMusic updates itself (§6) and its installers are Authenticode-signed
 | Step | Command | What it does | Needs |
 |---|---|---|---|
 | 1 | set the version, write the notes | the same version in the seven files (§1: all seven are checked), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. Publish copies that entry to the update offer and the website, and refuses to run without it | — |
-| 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build` (signs `DeetsMusic.exe`, NSIS plugins, uninstaller, installer; writes the updater `.sig`) → `release-check` → archive | both secrets below, the signing tools (§6.9) |
-| 3 | install + test | the installed build, by hand, from `installers/` | — |
-| 4 | `npm run release:publish` | uploads installer + `.sig` to R2 and adds the row to the channel index; installs start to update. Then builds the web demo and commits + pushes it to `../DeetsSolutions` master, which deploys the site (WEB-DEMO.md §9.8) | `../DeetsSupport` checkout, wrangler login; `../DeetsSolutions` on master |
+| 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build --no-bundle` → stage the exe and its resources → `vpk pack` (signs every exe through `sign.mjs`; writes the full package, the delta, Setup.exe and the feed) → sign the feed with the updater key → `release-check` | both secrets below, the signing tools (§6.9), `vpk` at the crate's version (`dotnet tool install -g vpk --version 1.2.161`) |
+| 3 | install + test | `installers/velopack/<Id>-<channel>/<Id>-<channel>-Setup.exe`, by hand. **From Claude's shell, start it through WMI** (VELOPACK.md §8a: the MSIX container) | — |
+| 4 | `npm run release:publish` | uploads the packages, Setup.exe, the version's rollback feed and then the feed to R2 `<channel>/vp/`, each feed signed; adds the row to the channel index; installs start to update. Then builds the web demo and commits + pushes it to `../DeetsSolutions` master, which deploys the site (WEB-DEMO.md §9.8) | `../DeetsSupport` checkout, wrangler login; the updater key; `../DeetsSolutions` on master |
 | 0 | `npm run release -- --beta` then `npm run release:publish -- --beta` | DeetsMusic Beta on `deetsmusic-test`, before step 1 ([BETA.md](BETA.md) §4.1) | the same as step 2 |
 
 **The secrets and keys:**
 
 | Item | Where | Used by | If lost / leaked |
 |---|---|---|---|
-| Updater private key (encrypted file) | `Documents\Deets' Secrets\deetsmusic-updater.key` + an off-PC copy | `release.mjs` → `tauri build` | Lost = no install can update again; runbooks §6.6 |
-| Updater key password | Credential Manager `DeetsMusicUpdaterKey` + iCloud Passwords | `release.mjs` | §6.6 |
+| Updater private key (encrypted file) | `Documents\Deets' Secrets\deetsmusic-updater.key` + an off-PC copy | `release.mjs` and `publish-update.mjs` → `tauri signer sign` (the feeds) | Lost = no install can update again; runbooks §6.6 |
+| Updater key password | Credential Manager `DeetsMusicUpdaterKey` + iCloud Passwords | `release.mjs`, `publish-update.mjs` | §6.6 |
 | Azure client secret (`Deets Release Signing`) | Credential Manager `DeetsMusicAzureSigning`. **Expires 2027-03-14** | `release.mjs` → `sign.mjs` | Make a new one in a minute; runbook §6.9 |
 | Artifact Signing dlib + `metadata.json` | `%LOCALAPPDATA%\DeetsTools\artifact-signing\` | `sign.mjs` | Download again (§6.9) |
 | Build key (one line) | `Documents\Deets' Secrets\deetsmusic-build-key.txt` | `build.rs` → the exe → `X-Deets-Build` on the mint and report intake; the Worker's `BUILD_KEYS` secret | Lost = make a new one and add it to `BUILD_KEYS` (a list) before the next release; leaked = nothing, it was always readable from the exe (§7a) |
@@ -141,8 +148,8 @@ What the log taught:
 
 | File | Checked by | If it is stale |
 |---|---|---|
-| `package.json` | `release-check`, `archive-installer.mjs` | the archive step fails, loudly |
-| `src-tauri/tauri.conf.json` | `release-check` | Tauri names the installer from it, so the archive step fails |
+| `package.json` | `release-check` | `vpk pack --packVersion` reads it; caught |
+| `src-tauri/tauri.conf.json` | `release-check` | the app's own version (Settings, the update check) reads it; caught |
 | `src-tauri/Cargo.toml` | `release-check` | caught |
 | `cli/Cargo.toml` | `release-check` | caught. It is what `deetsmusic --version` and the MCP server info report |
 | `extension/manifest.json` | `release-check` (a hard fail since 2026-09-26; a beta build skips it), `docs:check` check 5 | the browser extension keeps reporting the old version |
@@ -154,15 +161,24 @@ manifest by hand, and run `cargo check` in `cli/` (and let the app's own build t
 `src-tauri/Cargo.lock`) before the version commit, so the locks are in it rather than in the
 next one.
 
-A mismatch among the checked four fails the archive step with a message that says to check
-them all — deliberately, because the alternative is an installer that silently never gets
-archived.
+A mismatch among the checked four fails `release-check` with the four listed.
 
 ```bash
-npm run release     # secrets → cli:build → sign cli → tauri build (signed) → release-check → archive
+npm run release     # secrets → cli:build → sign cli → tauri build --no-bundle → stage → vpk pack (signs) → sign the feed → release-check
 ```
 
-`scripts/release.mjs` runs the stages, and the order matters:
+`scripts/release.mjs` runs the stages, and the order matters. **Since Velopack (2026-10-15)
+steps 3 and 5 below are replaced** — the record of them stays for the NSIS builds up to 0.27:
+- **3′. `tauri build --no-bundle`** (`bundle.active` is false): the exe only; tauri-build still
+  copies `bundle.resources` next to it. The stage folder `src-tauri/target/velopack-stage/` gets
+  the exe and every resource (the beta's map drops the full CLI).
+- **4′. `vpk pack`** into `installers/velopack/<Id>-<channel>/`, with `--signTemplate` calling
+  `sign.mjs` on every exe (the app, the CLI, `Update.exe`, Setup.exe), `--releaseNotes` from
+  RELEASE-NOTES.md, `--framework webview2`, `--shortcuts StartMenuRoot`. The previous full
+  package in that folder makes the delta, so the folder is kept (it is the archive). `vpk` must
+  be the velopack crate's version; release.mjs checks.
+- **4″. Sign the feed** `releases.<channel>.json` with the updater key (`tauri signer sign`).
+- **5′. `release-check`** reads the Velopack output (checks 3, 4, 11 rewritten 2026-10-15).
 
 0. **Read the secrets first** — the updater key file and password (§6.6) and the Azure client
    secret (§6.9). A missing one fails here, before the slow build.
@@ -280,25 +296,35 @@ The archive earns its keep because `src-tauri/target/` is the only other copy, a
 
 ## 2. What ships inside
 
+Since Velopack the app files sit in `current\` under the install root; `current\` is the same
+path for every version (VELOPACK.md §3).
+
 | Path after install | Source | Notes |
 |---|---|---|
-| `DeetsMusic.exe` | `src-tauri` release build | The app. `mainBinaryName` in `tauri.conf.json` — without it the exe takes the Cargo package name. |
-| `cli\deetsmusic.exe` | `cli/dist/` via `bundle.resources` | The agent CLI + MCP server ([AGENT.md](../integrations/AGENT.md)). |
-| `extension\` | `extension/` via `bundle.resources` | Unpacked MV3 source + `install.html` ([EXTENSION.md](../integrations/EXTENSION.md) §6). |
-| `mcpb\deetsmusic.mcpb` | `mcpb/dist/` via `bundle.resources` | The Claude Desktop extension that *Set up the DeetsMusic MCP* installs ([MCP-INSTALL.md](../integrations/MCP-INSTALL.md), 0.26.0). |
-| `uninstall.exe` | NSIS | Also registered under Installed apps. |
+| `current\DeetsMusic.exe` | `src-tauri` release build | The app. `mainBinaryName` in `tauri.conf.json` — without it the exe takes the Cargo package name. |
+| `current\cli\deetsmusic.exe` | `cli/dist/` via `bundle.resources` | The agent CLI + MCP server ([AGENT.md](../integrations/AGENT.md)). |
+| `current\extension\` | `extension/` via `bundle.resources` | Unpacked MV3 source + `install.html` ([EXTENSION.md](../integrations/EXTENSION.md) §6). Experimental since 2026-10-15. |
+| `current\mcpb\deetsmusic.mcpb` | `mcpb/dist/` via `bundle.resources` | The Claude Desktop extension that *Set up the DeetsMusic MCP* installs ([MCP-INSTALL.md](../integrations/MCP-INSTALL.md), 0.26.0). |
+| `Update.exe` | Velopack | Applies updates, and is the uninstaller Installed apps runs (`Update.exe --uninstall`). |
+| `DeetsMusic.exe` (root) | Velopack | A stub that starts `current\DeetsMusic.exe`. |
+| `packages\` | Velopack | The current full package and a downloaded update waiting for the next start. |
 
 Every exe above (and the setup exe) carries an Authenticode signature from *Aditya Sundaram*,
 from the first release after 0.4.3. Check one with **Properties › Digital Signatures**, or
 `Get-AuthenticodeSignature`.
 
-Install root is `%LOCALAPPDATA%\DeetsMusic` (`installMode: currentUser`). User data lives
+Install root is `%LOCALAPPDATA%\DeetsMusic` (per user; NSIS's `installMode: currentUser` up to
+0.27, the same root). Velopack's log is `%LOCALAPPDATA%\velopack\velopack_DeetsMusic.log`. User data lives
 elsewhere and survives: `%APPDATA%\com.deetsmusic.app` holds `deetsmusic.db`,
 `user-token.txt`, `settings.json`, `deetsmusic.log`, `developer-token.json`, the user's own
 pictures and sounds (`files\`), and the Friends and Song of the Day files
 (DATA-ARCHITECTURE.md §8).
 
 ## 3. The NSIS hooks
+
+> **Part:** archived · 2026-10-15 — up to 0.27. `hooks.nsh` is deleted; its work moved to
+> Velopack's hooks in `velo.rs` (VELOPACK.md §6): the CLI stop, the MCP removal and the
+> start-with-Windows removal. The extension question is gone (his call F2 C).
 
 `src-tauri/nsis/hooks.nsh` supplies four macros that Tauri splices into the generated
 installer:
@@ -359,6 +385,13 @@ PowerShell's own `-Command "…"` string.
 
 ## 4. Install
 
+**Since Velopack:** run `installers/velopack/DeetsMusic-deetsmusic/DeetsMusic-deetsmusic-Setup.exe`
+(the website serves it as `DeetsMusic-<version>-Setup.exe`). No wizard, no admin prompt: it
+unpacks for about 1–2 s, adds the Start Menu entry and the Installed apps entry, and opens the
+app. No extension question (his call F2 C). From Claude's shell, start it through WMI
+(`Win32_Process.Create`), or it lands in Claude's MSIX container (VELOPACK.md §8a). The rest of
+this section is the NSIS installer up to 0.27.
+
 ```bash
 installers/DeetsMusic_<version>_x64-setup.exe
 ```
@@ -388,6 +421,11 @@ then offers the extension walkthrough.
   guard, and use `npm run dev:app` to separate them.
 
 ### 4a. What an install, an update and an uninstall stop (2026-09-23)
+
+**Since Velopack (2026-10-15)** the rule is the same (by full path inside this install, never by
+name) and the code is `velo.rs` `stop_clis`, run by the app before an update and by the
+uninstall hook; `Update.exe` also stops what runs inside the install root, by path (VELOPACK.md
+§8a S4). The text below is the NSIS record.
 
 **The rule: by full path inside `$INSTDIR`, never by name.** Several related processes run on
 this PC at once: the full app, DeetsMusic Beta ([BETA.md](BETA.md)), the dev build, and a
@@ -447,6 +485,14 @@ install the beta again over itself: only the beta closes, and it starts again.
 
 ## 5. Uninstall
 
+**Since Velopack:** Settings → Installed apps → DeetsMusic → Uninstall, which runs
+`"%LOCALAPPDATA%\DeetsMusic\Update.exe" --uninstall` (add `--silent` for no UI). It has no
+questions. The app's before-uninstall hook (`velo.rs`) removes our MCP entry from the AI apps,
+stops the CLIs and removes the start-with-Windows value; Velopack stops what runs in the folder
+and deletes it, the shortcut and the Installed apps entry (tested 1.3 s, VELOPACK.md §8a S8).
+The NSIS uninstaller's *Delete app data* box has no Velopack twin: the row that replaces it is
+a draft for him (VELOPACK.md §11). Up to 0.27:
+
 ```bash
 "$LOCALAPPDATA/DeetsMusic/uninstall.exe"        # add /S for no prompts
 ```
@@ -469,6 +515,17 @@ uninstaller is still on disk and can be re-run, or the folder deleted directly.
 
 ## 6. The updater
 
+> **Since Velopack (built 2026-10-15, VELOPACK.md):** `npm run release` signs every exe
+> (Authenticode) and the feed (the updater key) → `release:publish` puts the packages, Setup.exe,
+> the version's rollback feed and the feed in R2 `<channel>/vp/` and a row in `index.json` →
+> the app's `SignedSource` (velo.rs) reads `GET music-api.deets.solutions/update/<channel>/vp/releases.<channel>.json`
+> and its `.sig`, checks the signature, then Velopack downloads the delta (or the full package)
+> and checks its SHA-256 → *Restart now* hands the swap to `Update.exe` (~2.4 s); *Later* means
+> the next start applies it (his call F1 A). §6.2–§6.5's rules hold (one download, the size cap,
+> rollback inside the group, Skip, `minVersion`); §6.3's "Later re-offers at the next launch" and
+> §6.4's "held in memory" are the NSIS record. Skip deletes a downloaded package
+> (`update_discard`). A dev build has no install and does not check.
+>
 > Status: **built on branch `yupdates` 2026-09-14, spike passed (§6.8), shipped in 0.4.3** — the
 > first release on the `deetsmusic` channel. Re-tested with signed installers 2026-09-15 (§6.9).
 > Decisions below are the user's. Code: `src-tauri/src/update.rs`, `src/updater.ts`,

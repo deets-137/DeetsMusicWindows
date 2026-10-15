@@ -14,11 +14,6 @@
     "resources": {
       "../cli/dist/deetsmusic.exe": null,
       "../cli/dist/deetsmusic-beta.exe": "cli/deetsmusic-beta.exe"
-    },
-    "windows": {
-      "nsis": {
-        "installerIcon": "icons-beta/icon.ico"
-      }
     }
   },
   "plugins": {

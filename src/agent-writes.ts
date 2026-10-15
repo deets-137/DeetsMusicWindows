@@ -15,7 +15,7 @@
 import type { Track } from "./library";
 import type { Playlist } from "./search";
 import { toast, noticeOff, onToast } from "./toast";
-import { setting, setSetting } from "./settings-store";
+import { setting } from "./settings-store";
 import * as queue from "./queue";
 import { resolveEntry } from "./queue-rows";
 import { jumpToUpcoming, reconcileUpcoming, removeFromQueue } from "./player";
@@ -29,7 +29,7 @@ import {
 import { makeNew, sendNew, getNew, EXPORT_NOTICE_KEY } from "./playlist-export";
 import { libraryAddEnabled, addToLibrary, alreadyInLibrary, ADD_NOTICE_KEY } from "./library-add";
 import { setLoved } from "./favorites";
-import { checkForUpdate, download, offerRestart, olderVersions, rollbackTo, updateStatus, type UpdateStatus } from "./updater";
+import { checkForUpdate, download, offerRestart, olderVersions, rollbackTo, skipVersion, updateStatus, type UpdateStatus } from "./updater";
 import { invoke } from "@tauri-apps/api/core";
 import { settingsList, settingsWrite } from "./agent-settings";
 import { rulesGet, rulesWrite } from "./agent-rules";
@@ -467,11 +467,11 @@ async function update(payload: any): Promise<Reply> {
           kind: "info",
           sticky: true,
           text: `An agent wants to ${what}.`,
-          actions: [{ label: "Allow", run: () => setSetting("updateSkip", v) }, { label: "Not now" }],
+          actions: [{ label: "Allow", run: () => void skipVersion(v) }, { label: "Not now" }],
         });
         return waiting(`DeetsMusic asked the user to allow this. Tell them to answer the question in DeetsMusic; it applies when they press Allow, so don't send it again.`);
       }
-      setSetting("updateSkip", v);
+      void skipVersion(v);
       said(v ? `An agent skipped DeetsMusic ${v}.` : "An agent cleared the skipped update.");
       return done(v ? `Skipping ${v}.` : "No version is skipped.");
     }

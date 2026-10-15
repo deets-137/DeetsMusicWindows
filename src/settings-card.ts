@@ -1984,7 +1984,7 @@ function mountSettings(
       count: 6,
       tail: `<div class="set__status" id="set-agent-status">…</div>
         <div class="set__status" id="set-ext-status">Extension bridge off</div>
-        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser"><span class="set__label">Extension install guide</span></button>`,
+        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser. The extension is experimental"><span class="set__label">Extension install guide (experimental)</span></button>`,
       rows: [
         {
           kind: "split", id: "agent", label: "Agent control",

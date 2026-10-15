@@ -29,9 +29,11 @@
 // 10. The docs checker (DOCS-ORG.md §8): links, mentions, section pointers, front matter,
 //     versions, ideas/. Added 2026-09-21. It WARNS until docs-check.mjs GRACE_END (a week,
 //     F5), then a failing fact fails the release.
-// 11. The installer stops processes by PATH inside its own folder, never by name (RELEASE.md
-//     §4a). Added 2026-09-23: Tauri's own close matched `DeetsMusic.exe` without case, so it also
+// 11. The app stops processes by PATH inside its own folder, never by name (RELEASE.md §4a).
+//     Added 2026-09-23: Tauri's NSIS close matched `DeetsMusic.exe` without case, so it also
 //     closed the dev build and every `deetsmusic` CLI, the MCP servers of open AI apps included.
+//     Since Velopack (2026-10-15) the stop is velo.rs's `stop_clis`.
+// Checks 3, 4 and 11 read Velopack's output since 2026-10-15 (docs/ops/VELOPACK.md).
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -93,36 +95,51 @@ if (new Set(Object.values(versions)).size !== 1) {
   failures.push("version files disagree:\n" + Object.entries(versions).map(([f, v]) => `      ${f}: ${v}`).join("\n"));
 }
 
-// ── 3. The pin and the updater (RELEASE.md §6.8) ──────────────────────────────────────
-// A pinned taskbar button points at %LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe. An update keeps
-// the pin only while the product name, the exe name and the per-user install stay the same.
+// ── 3. The pin and the updater (VELOPACK.md §3, §4) ───────────────────────────────────
+// A pinned taskbar button points at %LOCALAPPDATA%\<packId>\current\<exe>. An update keeps the
+// pin only while the product name (the packId comes from it) and the exe name stay the same.
 // The beta's are fixed the same way ("DeetsMusic Beta" / DeetsMusicBeta, BETA.md §3).
+// The feed must be signed, and the app must carry the key that checks it.
 const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
-const installMode = conf.bundle?.windows?.nsis?.installMode;
 const product = BETA ? betaConf.productName : conf.productName;
 const binary = BETA ? betaConf.mainBinaryName : conf.mainBinaryName;
 const [wantProduct, wantBinary] = BETA ? ["DeetsMusic Beta", "DeetsMusicBeta"] : ["DeetsMusic", "DeetsMusic"];
-if (product !== wantProduct || binary !== wantBinary || installMode !== "currentUser") {
-  failures.push(
-    `productName / mainBinaryName / installMode changed (${product} / ${binary} / ${installMode}): ` +
-      "every pinned taskbar button would break on the update",
-  );
+if (product !== wantProduct || binary !== wantBinary) {
+  failures.push(`productName / mainBinaryName changed (${product} / ${binary}): every pinned taskbar button would break on the update`);
 }
-if (!conf.plugins?.updater?.pubkey) failures.push("plugins.updater.pubkey is empty: no install could verify an update");
-const setup = join(root, "src-tauri", "target", "release", "bundle", "nsis", `${PRODUCT}_${versions["package.json"]}_x64-setup.exe`);
-if (existsSync(setup) && !existsSync(`${setup}.sig`)) {
-  failures.push("the installer has no .sig next to it (build with npm run release, which signs it)");
+const velo = readFileSync(join(root, "src-tauri", "src", "velo.rs"), "utf8");
+if (!/pub const PUBKEY: &str = "[A-Za-z0-9+/=]{40,}";/.test(velo)) failures.push("velo.rs has no PUBKEY: no install could verify an update");
+const CHANNEL = BETA ? "deetsmusic-test" : process.env.DEETSMUSIC_UPDATE_CHANNEL || "deetsmusic";
+const PACK = PRODUCT.replace(/\s+/g, "");
+const vpOut = join(root, "installers", "velopack", `${PACK}-${CHANNEL}`);
+const setup = join(vpOut, `${PACK}-${CHANNEL}-Setup.exe`);
+const feedFile = join(vpOut, `releases.${CHANNEL}.json`);
+if (!existsSync(setup)) failures.push(`no Setup.exe at ${setup} (vpk pack did not run)`);
+if (!existsSync(feedFile) || !existsSync(`${feedFile}.sig`)) {
+  failures.push(`the feed or its .sig is missing in ${vpOut} (build with npm run release, which signs it)`);
+} else {
+  const assets = JSON.parse(readFileSync(feedFile, "utf8")).Assets ?? [];
+  if (!assets.some((a) => a.Version === versions["package.json"] && a.Type === "Full")) {
+    failures.push(`the feed has no full package for ${versions["package.json"]}`);
+  }
+  if (assets.some((a) => !a.SHA256)) failures.push("a feed entry has no SHA-256: every install would refuse the feed (velo.rs check_feed)");
 }
 
 // ── 4. Authenticode (RELEASE.md §6.9) ─────────────────────────────────────────────────
 // A valid, timestamped signature from the publisher on the files we can read here. The name must
-// match bundle.publisher, which the installer shows in Installed apps.
-// Not target\release\DeetsMusic.exe: tauri build signs a patched copy for the installer, then
-// puts the unsigned original back (seen 2026-09-15, the exe rewritten after the setup exe). The
-// installed exe is checked after an install instead (RELEASE.md §6.9).
+// match bundle.publisher, which Velopack shows in Installed apps (--packAuthors). vpk signs COPIES,
+// not the stage folder (found 2026-10-15), so the app exe and Squirrel.exe (installed as
+// Update.exe) are read out of this version's full package.
+const fullPkg = join(vpOut, `${PACK}-${versions["package.json"]}-${CHANNEL}-full.nupkg`);
+const pkgExes = existsSync(fullPkg) ? [`lib/app/${EXE_NAME}.exe`, "lib/app/Squirrel.exe"] : [];
 const signed = [join(root, "cli", "dist", BETA ? "deetsmusic-beta.exe" : "deetsmusic.exe"), setup].filter((f) => existsSync(f));
 if (signed.length) {
-  const ps = `$ErrorActionPreference='Stop'; @(${signed.map((f) => `'${f.replaceAll("'", "''")}'`).join(",")}) | ForEach-Object { $s = Get-AuthenticodeSignature -LiteralPath $_; [pscustomobject]@{ file = $_; status = [string]$s.Status; subject = [string]$s.SignerCertificate.Subject; stamped = [bool]$s.TimeStamperCertificate } } | ConvertTo-Json -Compress`;
+  const q = (s) => `'${s.replaceAll("'", "''")}'`;
+  const fromPkg = pkgExes.length
+    ? `Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [System.IO.Compression.ZipFile]::OpenRead(${q(fullPkg)}); $files = @(); foreach ($n in @(${pkgExes.map(q).join(",")})) { $e = $z.Entries | Where-Object { $_.FullName -eq $n }; if (-not $e) { throw "the package has no $n" }; $t = Join-Path $env:TEMP ('release-check-' + [IO.Path]::GetFileName($n)); [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, $t, $true); $files += $t }; $z.Dispose(); `
+    : "$files = @(); ";
+  const ps = `$ErrorActionPreference='Stop'; ${fromPkg}@(${signed.map(q).join(",")}) + $files | ForEach-Object { $s = Get-AuthenticodeSignature -LiteralPath $_; [pscustomobject]@{ file = $_; status = [string]$s.Status; subject = [string]$s.SignerCertificate.Subject; stamped = [bool]$s.TimeStamperCertificate } } | ConvertTo-Json -Compress`;
+  if (!pkgExes.length) failures.push(`no full package at ${fullPkg}: the app exe inside it is not checked`);
   const out = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8" });
   for (const s of [JSON.parse(out)].flat()) {
     const cn = /CN=([^,]+)/.exec(s.subject)?.[1];
@@ -345,34 +362,15 @@ let docsNote = "docs check clean";
   }
 }
 
-// ── 11. The installer stops processes by PATH only (RELEASE.md §4a) ───────────────────
-// hooks.nsh replaces Tauri's CheckIfAppIsRunning (a match by process NAME, without case, that
-// closed the dev build and every `deetsmusic` CLI on the PC). The replacement only works while
-// the template still defines and inserts a macro of that name, so this reads the installer
-// script the build just generated. A Tauri upgrade that renames it fails here, not on a user's PC.
+// ── 11. The app stops processes by PATH only (RELEASE.md §4a) ─────────────────────────
+// velo.rs's `stop_clis` (before an update and an uninstall) matches the full exe path under the
+// install's own cli\ folder. A match by name would also close the dev build and the other app's
+// CLI, the MCP servers of open AI apps included (the 2026-09-23 NSIS bug).
 {
-  const nsisDir = join(root, "src-tauri", "target", "release", "nsis", "x64");
-  const hooks = readFileSync(join(root, "src-tauri", "nsis", "hooks.nsh"), "utf8");
-  const code = hooks.split("\n").filter((l) => !l.trim().startsWith(";")).join("\n");
-  if (!/!macroundef CheckIfAppIsRunning/.test(code)) failures.push("hooks.nsh no longer replaces CheckIfAppIsRunning: the installer would close processes by name again (RELEASE.md §4a)");
-  if (/KillProcess|taskkill/i.test(code)) failures.push("hooks.nsh stops a process by name (KillProcess / taskkill): match by path inside $INSTDIR (RELEASE.md §4a)");
-  // The installer's PowerShell is 32-bit: Get-Process's `.Path` is empty for a 64-bit process, so
-  // a match on it matches nothing (the 0.14.0 update abort, 2026-09-24). The path comes from WMI.
-  if (/Get-Process|\$\$_\.Path\b/.test(code)) failures.push("hooks.nsh reads a process path through Get-Process: empty in the installer's 32-bit PowerShell. Use Get-CimInstance Win32_Process ExecutablePath (RELEASE.md §4a)");
-  for (const m of code.matchAll(/Stop-Process/g)) {
-    const line = code.slice(code.lastIndexOf("\n", m.index) + 1, code.indexOf("\n", m.index));
-    if (!line.includes("$$env:DEETS_PATH")) failures.push(`hooks.nsh has a Stop-Process not filtered by DEETS_PATH: ${line.trim().slice(0, 120)}`);
-  }
-  const nsi = existsSync(join(nsisDir, "installer.nsi")) ? readFileSync(join(nsisDir, "installer.nsi"), "utf8") : "";
-  const utils = existsSync(join(nsisDir, "utils.nsh")) ? readFileSync(join(nsisDir, "utils.nsh"), "utf8") : "";
-  if (!nsi) failures.push(`no generated installer script at ${nsisDir} (run tauri build first)`);
-  else {
-    const hooksAt = nsi.indexOf("hooks.nsh");
-    const utilsAt = nsi.indexOf('!include "utils.nsh"');
-    if (!/!macro CheckIfAppIsRunning\b/.test(utils)) failures.push("Tauri's utils.nsh no longer defines CheckIfAppIsRunning: check what the new template uses to close the app, and replace THAT in hooks.nsh");
-    if (!/!insertmacro CheckIfAppIsRunning\b/.test(nsi)) failures.push("Tauri's installer.nsi no longer inserts CheckIfAppIsRunning: the hooks.nsh replacement is not in use");
-    if (hooksAt < 0 || utilsAt < 0 || hooksAt < utilsAt) failures.push("hooks.nsh must be included after utils.nsh, or its CheckIfAppIsRunning replacement does not apply");
-    if (/KillProcess/.test(nsi)) failures.push("the generated installer.nsi calls KillProcess outside the replaced macro");
+  const body = /pub fn stop_clis\(\)[\s\S]*?\n}\n/.exec(velo)?.[0] ?? "";
+  if (!body) failures.push("velo.rs has no stop_clis: the CLIs would hold the files an update replaces");
+  else if (!/starts_with\(&prefix\)/.test(body) || /file_name|szExeFile|taskkill/i.test(body)) {
+    failures.push("velo.rs stop_clis no longer matches by the full path under cli\\ (RELEASE.md §4a)");
   }
 }
 
@@ -380,4 +378,4 @@ if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files and the extension; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the installer stops processes by path only; ${docsNote}`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files and the extension; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the feed is signed; the app stops processes by path only; ${docsNote}`);

@@ -61,6 +61,36 @@ A talk and docs only; no code (another build was in progress).
   artist only) and P2 A (guests' names from the enrichment call, 0 extra calls).
   apple-calls.md §5.4.
 
+## 2026-10-15 (velopack-spike) — Velopack: the scope, the spike, the build
+
+Branch `velopack-spike`, cut from `icons-fifteen`. His ask: an update like Discord's (press, the
+app is back in seconds, no installer seen). Today: the in-app route already ran NSIS passive,
+8–11 s press → new app (0.26.0, 0.26.1 in the log); the wizard he saw was the site installer
+(0.27.0 had no in-app install line).
+His calls: Velopack over a faster NSIS; no migration (he is the only live user); F1 A (a
+downloaded update applies at the next start); F2 C (no extension question, the extension
+experimental and Settings only); the beta is the test ground; Hop in comes after Velopack
+passes.
+- **Scope:** VELOPACK.md (§0–§11).
+- **Spike** (§8a, run by Claude): 8 of 8 passed. Update 2.44 s; delta 36 KB of 15.6 MB; the
+  signed feed refused a changed feed and changed packages; only our CLIs stopped; everything
+  signed; uninstall 1.3 s and clean. Found: Velopack writes `velopack.<id>` as the shortcut's
+  AUMID (the app must not override it); Update.exe stops processes in the install root by path
+  itself; an install from Claude's shell lands in the MSIX container (use WMI).
+- **Build** (§12): `velo.rs` (startup + hooks, `SignedSource`, check / download / install /
+  discard), `update.rs` on it, `tauri-plugin-updater` and the NSIS config gone, `release.mjs`
+  (`--no-bundle` → stage → `vpk pack` → sign the feed), `release-check` checks 3 / 4 / 11,
+  `publish-update.mjs` (packages → Setup → rollback feed → feed, all signed), the DeetsSupport
+  `vp/` route (branch `velopack`), the updater toasts, the Experimental label.
+- **Beta desk test** (§12.4; his go, his deploy permission; Claude ran it, he pressed three
+  toasts): the NSIS beta uninstalled; betas 0.28.0-beta.1 to .6 built and published on
+  `deetsmusic-test`; DeetsSupport deployed. Restart now 1.9 s; Later applied at the next start
+  (+0.7 s); Skip; rollback; uninstall. Found and fixed: `release-check` read the stage (vpk signs
+  copies; it reads the package now); the agent's skip set only the setting; a rollback lost a
+  newer skip (`rollbackSkip`, `src/update-rules.ts`, re-tested live on beta.5 / .6 with the
+  toasts clicked over CDP). Open: his looks (Setup.exe, uninstall, the media flyout), the wait
+  from a Start Menu start, the full app's move.
+
 ## 2026-10-15 (icons-fifteen) — the Deets head icon, everywhere it can go before a release
 
 Branch `icons-fifteen`. His drawings: `icon-template/deets-head-32.png` and `deets-head-16.png`.

@@ -217,7 +217,7 @@ export const NULL_ON_PURPOSE = new Set([
   "np_publish", "appearance_publish", "presence_clear", "presence_close", "presence_set",
   "lastfm_begin_auth", "lastfm_cancel_auth", "lastfm_disconnect", "lastfm_open_profile",
   // Updates (the site is the update), loudness memory, usage counts (USAGE-COUNTS.md: the app's)
-  "update_status", "update_check", "update_download", "update_install", "loudness_forget", "loudness_save",
+  "update_status", "update_check", "update_download", "update_install", "update_discard", "loudness_forget", "loudness_save",
   "usage_health", "usage_send",
 ]);
 

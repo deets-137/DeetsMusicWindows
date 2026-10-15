@@ -2,7 +2,7 @@
 status: shipped
 shipped_in: 0.26.0
 desk_test: passed 2026-10-13
-sources: [crates/mcp-install/src/lib.rs, src-tauri/src/mcp_install.rs, src/mcp-panel.ts, cli/src/main.rs, mcpb/server/index.js, mcpb/manifest.json, scripts/mcpb-pack.mjs, src-tauri/nsis/hooks.nsh]
+sources: [crates/mcp-install/src/lib.rs, src-tauri/src/mcp_install.rs, src/mcp-panel.ts, cli/src/main.rs, mcpb/server/index.js, mcpb/manifest.json, scripts/mcpb-pack.mjs, src-tauri/src/velo.rs]
 updated: 2026-10-14
 ---
 # DeetsMusic — connect AI apps (`mcp_install`)
@@ -362,7 +362,7 @@ Each part goes to the place that already holds its kind. Read against the tree o
 | Packing the `.mcpb` | **`scripts/mcpb-pack.mjs`**, called from `scripts/release.mjs` after `cli:build` | A zip with a manifest needs no tool of its own; the release already has a step list |
 | Shipping it | **`tauri.conf.json` › `bundle.resources`**: `"../mcpb/dist/deetsmusic.mcpb": "mcpb/deetsmusic.mcpb"`, beside `cli/deetsmusic.exe` | The CLI and the extension ship this way. The *Connect* button opens `$INSTDIR\mcpb\deetsmusic.mcpb`, and Windows hands it to Claude Desktop |
 | *Last used* (fork 8) | **CLI:** `serve_mcp` (`cli/src/main.rs`, the `initialize` arm) keeps `clientInfo.name` and sends it as an `X-Deets-Client` header on each bridge call. **App:** `bridge.rs` `handle` notes the name and the time in a memory map; `mcp_last_used` reads it | No database, no settings key: it is lost at restart, and the panel says "not used since DeetsMusic started" |
-| The uninstall hook (fork 6) | **`src-tauri/nsis/hooks.nsh`**, the `PREUNINSTALL` macro, before `DeetsStopCli` | The file already stops the CLI and removes the autostart value there; the same "the path, never the name" rules apply |
+| The uninstall hook (fork 6) | **`src-tauri/src/velo.rs`** `before_uninstall` since Velopack (2026-10-15); up to 0.27 `src-tauri/nsis/hooks.nsh`, the `PREUNINSTALL` macro, before `DeetsStopCli` | It also stops the CLI and removes the autostart value there; the same "the path, never the name" rules apply. The CLI path is now `%LOCALAPPDATA%\DeetsMusic\current\cli\deetsmusic.exe`: re-run *Set up the DeetsMusic MCP* once after the move |
 | The Settings UI | **Settings › Connections**, under *Agent control*. **Connect AI apps** replaces the **Copy setup for** row (`src/settings-card.ts`, the `setup` split row). *Copy setup info* stays inside the new part for the other apps | The row already sits there; a user who looks for it finds it in the same place |
 | The panel code | **`src/mcp-panel.ts`**, a new module, opened from the row | settings-card.ts is already large; a panel with its own state is its own file, like `room-panel.ts` |
 | Docs | AGENT-SETUP.md §2 rewritten around the panel; AGENT.md §4 the new verbs; ONBOARDING.md §1 the hints; `NEW_MARKS` one line; the guide page *Connect* (DOCS-ORG §13.10) | The build checklist (CLAUDE.md › Working style) |

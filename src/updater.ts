@@ -1,13 +1,15 @@
-// The updater's front half (RELEASE.md §6.3–6.5). Rust (`update.rs`) checks, downloads,
-// verifies and installs; this module decides WHEN, from Settings › Updates, and asks
-// through toasts:
+// The updater's front half (RELEASE.md §6.3–6.5). Rust (`update.rs`, Velopack underneath:
+// docs/ops/VELOPACK.md) checks, downloads, verifies and installs; this module decides WHEN,
+// from Settings › Updates, and asks through toasts:
 //   Automatic — check 30 s after launch and every 6 h; download in the background; then
-//               ask to restart (Restart now / Later / Skip this version).
+//               offer the restart (Restart now / Later / Skip this version).
 //   Ask       — ask before the download (Download / Later / Skip this version).
 //   Off       — no scheduled check; Settings › Updates › Check now still works.
-// "Later" holds that version until the next launch. "Skip this version" holds it until a
-// newer one exists (`updateSkip`). A version under the Worker's `minVersion` is required:
-// it downloads whatever the mode, and its toast has no Skip.
+// A downloaded version installs at the next start whatever is pressed, so "Later" means "at
+// the next start" (his call F1 A, VELOPACK.md §1). "Skip this version" holds it until a newer
+// one exists (`updateSkip`) and deletes its downloaded package, or the next start would apply
+// it. A version under the Worker's `minVersion` is required: it downloads whatever the mode,
+// and its toast has no Skip.
 // Rollback (Settings › Updates › Roll back) asks the Worker for an older version in the same
 // channel group, downloads it, and asks to restart. The version it leaves is skipped, or
 // Automatic would install it again at once.
@@ -20,6 +22,7 @@ import { toast, type ToastAction, type ToastHandle } from "./toast";
 import { setting, setSetting } from "./settings-store";
 import { flushForRestart } from "./queue-persist";
 import * as diag from "./diag";
+import { compareVersions, rollbackSkip } from "./update-rules";
 
 export interface UpdateStatus {
   state: "idle" | "checking" | "available" | "downloading" | "ready" | "error";
@@ -64,21 +67,7 @@ function take(s: UpdateStatus): UpdateStatus {
   return s;
 }
 
-/** -1 / 0 / 1 on x.y.z; a pre-release sorts before its release. Unparseable = equal. */
-export function compareVersions(a: string, b: string): number {
-  const parse = (v: string) => {
-    const m = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/.exec(v.trim());
-    return m ? { n: [+m[1], +m[2], +m[3]], pre: m[4] ?? null } : null;
-  };
-  const x = parse(a);
-  const y = parse(b);
-  if (!x || !y) return 0;
-  for (let i = 0; i < 3; i++) if (x.n[i] !== y.n[i]) return x.n[i] < y.n[i] ? -1 : 1;
-  if (x.pre === y.pre) return 0;
-  if (x.pre === null) return 1;
-  if (y.pre === null) return -1;
-  return x.pre < y.pre ? -1 : 1;
-}
+export { compareVersions };
 
 const isRequired = (s: UpdateStatus): boolean =>
   !!minVersion && !s.rollback && compareVersions(s.current, minVersion) < 0;
@@ -150,13 +139,25 @@ export function offerRestart(s: UpdateStatus): void {
     ? `DeetsMusic ${v} is ready. Restart to roll back.`
     : required
       ? `This version of DeetsMusic is no longer supported. Restart to update to ${v}.`
-      : `DeetsMusic ${v} is ready. Restart to update.`;
+      : `DeetsMusic ${v} is ready. Restart now, or it installs the next time DeetsMusic starts.`;
   const actions: ToastAction[] = [
     { label: "Restart now", run: () => void restartNow() },
     { label: "Later", run: () => void (laterFor = v) },
   ];
-  if (!required && !s.rollback) actions.push({ label: "Skip this version", run: () => setSetting("updateSkip", v) });
+  if (!required && !s.rollback) actions.push({ label: "Skip this version", run: () => void skipVersion(v) });
   ask(text, actions);
+}
+
+/** Skip a version (the toast, and the agent's `update skip`): remember the skip, and when that
+ *  version is already downloaded, delete the package the next start would apply. "" clears it. */
+export async function skipVersion(v: string): Promise<void> {
+  setSetting("updateSkip", v);
+  if (!v || status?.version !== v || status.state !== "ready" || status.rollback) return;
+  try {
+    take(await invoke<UpdateStatus>("update_discard"));
+  } catch (e) {
+    diag.warn("update:discard", { error: String(e) });
+  }
 }
 
 /** Install the ready update: save the session, then Rust runs the installer and exits. */
@@ -164,7 +165,7 @@ export async function restartNow(): Promise<void> {
   const s = status;
   if (!s || s.state !== "ready") return;
   const skipWas = setting("updateSkip");
-  if (s.rollback) setSetting("updateSkip", s.current); // Automatic must not reinstall what you left
+  if (s.rollback) setSetting("updateSkip", rollbackSkip(skipWas, s.current)); // update-rules.ts
   await flushForRestart();
   diag.log("update:install", { from: s.current, to: s.version, rollback: s.rollback });
   diag.flush();
@@ -173,7 +174,7 @@ export async function restartNow(): Promise<void> {
   } catch (e) {
     if (s.rollback) setSetting("updateSkip", skipWas);
     const msg = String(e);
-    toast({ kind: "warn", text: msg.includes("dev build") ? msg : "Couldn't start the installer. Try again." });
+    toast({ kind: "warn", text: msg.includes("dev build") ? msg : "Couldn't install the update. Try again." });
   }
 }
 
@@ -237,8 +238,9 @@ export function updateStatusText(): string {
     case "downloading":
       return `Downloading ${s.version} · ${pct}%`;
     case "ready":
-      return `${s.version} is ready. Restart to ${s.rollback ? "roll back" : "update"}`;
+      return s.rollback ? `${s.version} is ready. Restart to roll back` : `${s.version} is ready. It installs when DeetsMusic next starts`;
     case "error":
+      if (s.error?.includes("dev build")) return `Version ${s.current}. A dev build doesn't update`;
       return `Version ${s.current}. Couldn't check or download the update`;
     default:
       return checked ? `Version ${s.current}. Up to date` : `Version ${s.current}`;

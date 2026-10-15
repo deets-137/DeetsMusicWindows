@@ -1,29 +1,28 @@
-// `npm run release` — cli:build → signed tauri build → release-check → archive
-// (docs/ops/RELEASE.md §1, §6.6).
+// `npm run release` — cli:build → tauri build (no bundle) → stage → vpk pack → sign the feed →
+// release-check (docs/ops/RELEASE.md §1, docs/ops/VELOPACK.md §5.3).
 //
-// The updater needs every installer signed with the updater key: `bundle.createUpdaterArtifacts`
-// writes the .sig next to the setup exe. The key file comes from Deets' Secrets (override with
-// DEETSMUSIC_UPDATER_KEY) and its password from Windows Credential Manager, target
-// DeetsMusicUpdaterKey (made with `cmdkey /generic:DeetsMusicUpdaterKey /user:updater /pass`).
-// Both go ONLY into the tauri build's environment; neither is printed or written anywhere.
-// Note: TAURI_SIGNING_PRIVATE_KEY takes the key's CONTENT, not its path.
+// Velopack packs the app (VELOPACK.md): `vpk pack` writes the full package, a delta against the
+// previous version, `<Id>-<channel>-Setup.exe` and the feed `releases.<channel>.json` into
+// installers/velopack/<Id>-<channel>/. That folder IS the archive: it keeps every package, and
+// the previous full package there is what the next delta is made from. Keep it.
 //
-// Authenticode (RELEASE.md §6.9): Azure Artifact Signing through scripts/sign.mjs (signtool +
-// Microsoft's dlib). The app registration's client secret comes from Credential Manager,
-// target DeetsMusicAzureSigning; the IDs below are not secrets. The CLI is a bundle resource,
-// which Tauri does not sign, so it is signed here after cli:build. DeetsMusic.exe and the
-// installer are signed inside tauri build by a signCommand this script passes in a temporary
-// --config file (absolute paths; the repo path has spaces), so a plain `tauri build` stays
-// unsigned.
+// Two signatures:
+// - Authenticode (RELEASE.md §6.9): Azure Artifact Signing through scripts/sign.mjs (signtool +
+//   Microsoft's dlib). `vpk pack --signTemplate` calls it on every exe it packs (the app, the
+//   CLI, Update.exe, Setup.exe). The client secret comes from Credential Manager, target
+//   DeetsMusicAzureSigning; the IDs below are not secrets.
+// - The feed (VELOPACK.md §4): `tauri signer sign` with the updater key, which every install
+//   checks against the public key in velo.rs. The key file comes from Deets' Secrets (override
+//   with DEETSMUSIC_UPDATER_KEY) and its password from Credential Manager, target
+//   DeetsMusicUpdaterKey. Both go ONLY into that step's environment; neither is printed.
 //
-// `--beta` builds DeetsMusic Beta (docs/ops/BETA.md): DEETSMUSIC_FLAVOR=beta (beta.rs; the channel
-// is then always deetsmusic-test), the beta CLI (`--features beta`, into cli/target-beta), and
-// tauri.beta.conf.json merged with the windows retitled — Tauri merges an overlay as a JSON merge
-// patch, so the windows array must be the whole array (the same trap dev-app.mjs notes). The
-// version must be a beta one (0.14.0-beta.1), so a beta build can never share a full version's
-// number. Then `npm run release:publish -- --beta`.
+// `--beta` builds DeetsMusic Beta (docs/ops/BETA.md): DEETSMUSIC_FLAVOR=beta (beta.rs), the beta
+// CLI (`--features beta`, into cli/target-beta), tauri.beta.conf.json merged with the windows
+// retitled (Tauri merges an overlay as a JSON merge patch, so the windows array must be the whole
+// array), packed as `DeetsMusicBeta` on channel deetsmusic-test. The version must be a beta one
+// (0.14.0-beta.1). Then `npm run release:publish -- --beta`.
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -70,6 +69,16 @@ function readCredential(target, doc) {
   return secret;
 }
 
+/** The version's entry in docs/ops/RELEASE-NOTES.md, up to its first subsection (publish-update.mjs's rule). */
+function releaseNotes(version) {
+  const md = readFileSync(join(root, "docs", "ops", "RELEASE-NOTES.md"), "utf8").replace(/\r\n/g, "\n");
+  const start = md.search(new RegExp(`^## ${version.replace(/\./g, "\\.")}\\b`, "m"));
+  if (start === -1) return "";
+  const body = md.slice(start).split("\n").slice(1).join("\n");
+  const end = body.search(/^#{2,3} /m);
+  return (end === -1 ? body : body.slice(0, end)).trim();
+}
+
 if (!existsSync(KEY_FILE)) die(`no updater key at ${KEY_FILE} (RELEASE.md §6.6)`);
 const key = readFileSync(KEY_FILE, "utf8").trim();
 const password = readCredential(CREDENTIAL, "RELEASE.md §6.6");
@@ -82,8 +91,29 @@ if (BETA !== /-beta\.\d+$/.test(version)) {
 if (BETA && process.env.DEETSMUSIC_UPDATE_CHANNEL && process.env.DEETSMUSIC_UPDATE_CHANNEL !== "deetsmusic-test") {
   die("a beta build is always on deetsmusic-test; unset DEETSMUSIC_UPDATE_CHANNEL");
 }
-const buildEnv = BETA ? { ...signEnv, DEETSMUSIC_FLAVOR: "beta" } : signEnv;
-console.log(`[release] ${BETA ? "DeetsMusic Beta" : "DeetsMusic"} ${version} · update channel: ${BETA ? "deetsmusic-test" : process.env.DEETSMUSIC_UPDATE_CHANNEL || "deetsmusic"}`);
+if (process.env.DEETSMUSIC_VELO_FEED) die("DEETSMUSIC_VELO_FEED is set: a release must read the real feed (unset it)");
+const channel = BETA ? "deetsmusic-test" : process.env.DEETSMUSIC_UPDATE_CHANNEL || "deetsmusic";
+
+// vpk and the velopack crate must be the same version (VELOPACK.md §8a).
+const cargo = readFileSync(join(root, "src-tauri", "Cargo.toml"), "utf8");
+const crateVersion = /^velopack = \{ version = "=([\d.]+)"/m.exec(cargo)?.[1];
+let vpkVersion = "";
+try {
+  vpkVersion = execFileSync("vpk", ["-H"], { encoding: "utf8", shell: true }).match(/Velopack CLI ([\d.]+)/)?.[1] ?? "";
+} catch {
+  die("vpk is not installed: dotnet tool install -g vpk --version " + crateVersion);
+}
+if (!crateVersion || vpkVersion !== crateVersion) die(`vpk is ${vpkVersion || "unknown"}, the velopack crate ${crateVersion}: they must match`);
+
+const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+const overlay = BETA ? JSON.parse(readFileSync(join(root, "src-tauri", "tauri.beta.conf.json"), "utf8")) : {};
+const product = overlay.productName ?? conf.productName;
+const exeName = `${overlay.mainBinaryName ?? conf.mainBinaryName}.exe`;
+const packId = product.replace(/\s+/g, ""); // DeetsMusic · DeetsMusicBeta: the folder under %LOCALAPPDATA%
+const out = join(root, "installers", "velopack", `${packId}-${channel}`);
+console.log(`[release] ${product} ${version} · channel ${channel} · ${out}`);
+
+// 1. The CLI, signed (it rides in the package beside the app).
 const cliExe = BETA ? "deetsmusic-beta.exe" : "deetsmusic.exe";
 if (BETA) {
   step("cli:build (beta)", "cargo build --release --features beta --manifest-path cli/Cargo.toml --target-dir cli/target-beta && node scripts/cli-dist.mjs --beta && node scripts/mcpb-pack.mjs");
@@ -91,25 +121,60 @@ if (BETA) {
   step("cli:build", "npm run cli:build");
 }
 step("sign cli", `node "${SIGN_SCRIPT}" "${join(root, "cli", "dist", cliExe)}"`, signEnv);
-const signConfig = join(tmpdir(), `deetsmusic-sign-${process.pid}.json`);
-writeFileSync(
-  signConfig,
-  JSON.stringify({ bundle: { windows: { signCommand: { cmd: process.execPath, args: [SIGN_SCRIPT, "%1"] } } } }),
-);
-process.on("exit", () => rmSync(signConfig, { force: true }));
-let configs = `--config "${signConfig}"`;
+
+// 2. The app: the exe only. bundle.active is false; tauri-build still copies the resources.
+let configs = "";
 if (BETA) {
-  const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
-  const overlay = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.beta.conf.json"), "utf8"));
   overlay.app = { windows: conf.app.windows.map((w) => ({ ...w, title: overlay.productName })) };
   const gen = join(root, "src-tauri", ".tauri.beta.gen.json");
   writeFileSync(gen, JSON.stringify(overlay, null, 2));
-  configs = `--config "${gen}" ${configs}`;
+  configs = `--config "${gen}"`;
 }
-step("tauri build (signed)", `npx tauri build ${configs}`, {
-  ...buildEnv,
+step("tauri build", `npx tauri build --no-bundle ${configs}`, BETA ? { ...process.env, DEETSMUSIC_FLAVOR: "beta" } : process.env);
+
+// 3. Stage: the exe and every resource the bundle names (the beta's map drops the full CLI).
+const stage = join(root, "src-tauri", "target", "velopack-stage");
+rmSync(stage, { recursive: true, force: true });
+mkdirSync(stage, { recursive: true });
+cpSync(join(root, "src-tauri", "target", "release", exeName), join(stage, exeName));
+for (const [from, to] of Object.entries({ ...conf.bundle.resources, ...(overlay.bundle?.resources ?? {}) })) {
+  if (to !== null) cpSync(join(root, "src-tauri", from), join(stage, to), { recursive: true });
+}
+
+// 4. Pack and sign. The previous full package in `out` makes the delta.
+mkdirSync(out, { recursive: true });
+const notesFile = join(tmpdir(), `deetsmusic-notes-${process.pid}.md`);
+writeFileSync(notesFile, releaseNotes(version) || `DeetsMusic ${version}`);
+process.on("exit", () => rmSync(notesFile, { force: true }));
+step(
+  "vpk pack",
+  [
+    "vpk pack",
+    `--packId ${packId}`,
+    `--packVersion ${version}`,
+    `--packDir "${stage}"`,
+    `--mainExe ${exeName}`,
+    `--packTitle "${product}"`,
+    `--packAuthors "${conf.bundle.publisher}"`,
+    `--channel ${channel}`,
+    `--icon "${join(root, "src-tauri", BETA ? "icons-beta" : "icons", "icon.ico")}"`,
+    `--outputDir "${out}"`,
+    `--releaseNotes "${notesFile}"`,
+    "--framework webview2",
+    "--shortcuts StartMenuRoot",
+    `--signTemplate "node \\"${SIGN_SCRIPT}\\" {{file...}}"`,
+  ].join(" "),
+  signEnv,
+);
+
+// 5. Sign the feed (writes releases.<channel>.json.sig beside it).
+const feed = join(out, `releases.${channel}.json`);
+rmSync(`${feed}.sig`, { force: true });
+step("sign the feed", `npx tauri signer sign "${feed}"`, {
+  ...process.env,
   TAURI_SIGNING_PRIVATE_KEY: key,
   TAURI_SIGNING_PRIVATE_KEY_PASSWORD: password,
 });
+
 step("release-check", `node scripts/release-check.mjs${BETA ? " --beta" : ""}`);
-step("archive", `node scripts/archive-installer.mjs${BETA ? " --beta" : ""}`);
+console.log(`[release] done: ${out}\\${packId}-${channel}-Setup.exe — install it, test it, then npm run release:publish${BETA ? " -- --beta" : ""}`);

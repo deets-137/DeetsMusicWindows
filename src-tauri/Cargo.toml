@@ -1,6 +1,6 @@
 [package]
 name = "deetsmusic"
-version = "0.27.0"
+version = "0.28.0-beta.6"
 description = "A lightweight Apple Music player for Windows 11."
 authors = ["Aditya Sundaram"]
 edition = "2021"
@@ -59,8 +59,13 @@ base64 = "0.22"
 # The WebView2 settings interface that turns off browser keys (DRAG-DROP.md §6). The version
 # Tauri's wry already uses, so no new crate download.
 webview2-com = "0.38"
-# The updater (RELEASE.md §6, update.rs): signed installers from music-api.deets.solutions/update.
-tauri-plugin-updater = "2"
+# Install, update, uninstall (docs/ops/VELOPACK.md, velo.rs). Pinned to the `vpk` tool's
+# version: the two must match (release.mjs checks). `public-utils` exposes the crate's own HTTP
+# fetch for the signed feed; `file-logging` writes %LOCALAPPDATA%\velopack\velopack_<id>.log.
+velopack = { version = "=1.2.161", features = ["public-utils", "file-logging"] }
+# Checks the feed's signature (VELOPACK.md §4) against the updater key, the format
+# tauri-plugin-updater used until 0.27.
+minisign-verify = "0.2.5"
 # Last.fm signs every call with MD5 (docs/integrations/LASTFM.md §3). One small crate on the digest 0.10
 # family sha2 already brings.
 md-5 = "0.10"
@@ -124,5 +129,8 @@ features = [
   "Win32_System_LibraryLoader",
   "Win32_UI_HiDpi",
   "Win32_UI_Shell",
+  # The Velopack spike's CLI stop (velo.rs): a process snapshot. A feature of the crate the app
+  # already has; no new download.
+  "Win32_System_Diagnostics_ToolHelp",
 ]
 

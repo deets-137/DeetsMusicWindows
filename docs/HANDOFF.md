@@ -167,6 +167,13 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 
 ### Built, waiting on a release or a desk test
 
+- **Velopack replaces NSIS and the Tauri updater (2026-10-15, branch `velopack-spike`, cut from
+  `icons-fifteen`, not merged):** built, and the beta desk test passed on `deetsmusic-test`
+  (betas 0.28.0-beta.1 to .6; VELOPACK.md §12.4). The DeetsSupport `vp/` route is deployed
+  (branch `velopack` there). Open: his looks at Setup.exe and the uninstall on screen, the media
+  flyout's name, the wait from a Start Menu start; then the full app's move (he uninstalls the
+  NSIS 0.27.0 by hand) and a live release. Hop in follows (his order, 2026-10-15). The beta is
+  left installed on beta.4, skipping beta.6.
 - **Usage counts** (USAGE-COUNTS.md): shipped in 0.27.0 (2026-10-14). Watch the first weekly
   reports arrive on deets.solutions/deetsmusic/admin/; the cron's in-window delete is still not
   seen in a run. §11 the as-built record.

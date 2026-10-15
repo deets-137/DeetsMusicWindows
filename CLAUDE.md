@@ -189,6 +189,12 @@ HANDOFF first. `NEXT-VERSION.md` — the 2026-09 feature batches, all shipped.
 **`docs/ops/`** — build, ship, diagnose
 - `RELEASE.md` — build, Authenticode signing, publish, the updater, install, uninstall
   (§0 = the commands, secrets and keys on one page).
+- `VELOPACK.md` — BUILT 2026-10-15 on `velopack-spike` (spike §8a: an update in 2.4 s), beta
+  desk test passed the same day (§12.4: Restart now 1.9 s, Later, Skip, rollback, uninstall; two
+  skip bugs fixed), the DeetsSupport `vp/` route DEPLOYED; not on live. NSIS and
+  tauri-plugin-updater are gone; `velo.rs` (hooks, the signed feed), `release.mjs` runs
+  `vpk pack`. His calls §1. Install from a WMI-started process, never from this shell; a release
+  build takes a CDP port through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (§12.4).
 - `RELEASE-NOTES.md` — the text of each release; `release:publish` copies it into the update offer.
 - `BETA.md` — DeetsMusic Beta: a second installed app beside the full one (`release -- --beta`),
   the data copy and `deetsmusic-beta pull`. Beta-first is PAUSED since 2026-09-24: releases go
