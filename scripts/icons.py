@@ -11,6 +11,7 @@ Not here: icons-beta/ (scripts/beta-icon.ps1, its look is open), the Square*Logo
 Store, unused by NSIS), icon.icns (macOS). After it: `npm run signin:assets` copies
 app-icon.png to the sign-in page; a build picks up the .ico (build.rs watches it).
 """
+import sys
 from pathlib import Path
 
 from PIL import Image
@@ -73,3 +74,15 @@ for s in order:
     frame = back.copy().convert("RGBA")
     assert frame.size == (s, s) and frame.tobytes() == ico[s].tobytes(), f"icon.ico frame {s} differs"
 print(f"[icons] {len(files)} PNGs + icon.ico ({', '.join(map(str, order))}), every frame read back")
+
+# `--site <DeetsSolutions>`: the site's two icons at the exact size they are shown, one file
+# per screen density (srcset 1x / 1.5x / 2x), so no browser rescales pixel art. The head at a
+# whole-number scale, centered: the DeetsMusic page (72 CSS px) and the home card (56).
+if "--site" in sys.argv:
+    site = Path(sys.argv[sys.argv.index("--site") + 1]) / "assets" / "deetsmusic"
+    site_icons = {72: {1: 4, 1.5: 6, 2: 8}, 56: {1: 3, 1.5: 4, 2: 6}}
+    for css, scales in site_icons.items():
+        for density, k in scales.items():
+            size = round(css * density)
+            centered(grow(head, k), size).save(site / f"icon-{size}.png")
+            print(f"[icons] site icon-{size}.png: {css} px at {density}x, the head x{k}")

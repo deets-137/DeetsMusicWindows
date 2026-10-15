@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,24 @@ updated: 2026-10-14
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-15 (icons-fifteen) — the Deets head icon, everywhere it can go before a release
+
+Branch `icons-fifteen`. His drawings: `icon-template/deets-head-32.png` and `deets-head-16.png`.
+His calls: keep his canvas for 32 and up; 16 B (his 16) and 24 B (the head 1:1); 36 B (the head
+×2, edge to edge, for the 150 % taskbar); the link-preview card recomposed; the site icons crisp.
+Built (whitelabel.md §10.6 has the detail):
+- `npm run icons` (`scripts/icons.py`) makes the `.ico` (9 frames), the PNG set, `app-icon.png`,
+  the extension and the MCP bundle icons, nearest-neighbor only; `--site` the site's icons.
+- `src-tauri/src/app_icon.rs`: each window loads the exe's icon at its exact small and big size,
+  the tray takes its own frame, and both follow a scale change while open. Found on the way:
+  Tauri gives a window only the first `.ico` frame (the taskbar blurred his 16 up to 24), and
+  `build.rs` did not rerun on an `.ico` change (the exe kept stale frames).
+- DeetsSolutions `38abe54` (not pushed): the icon, the exact-size site icons, the link-preview
+  card on a dark tile, the `main.css` version. DeetsSupport: the sign-in icon (not deployed).
+
+Desk test (his, 2026-10-15): the taskbar and tray crisp at 100 %; the tray followed 100 → 150 →
+125 → 100 % in the log; at 150 % the head fills the button after the `build.rs` fix.
 
 ## 2026-10-14 (readability, part 2) — new text paints, built; the review sheet
 

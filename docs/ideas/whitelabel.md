@@ -362,9 +362,35 @@ display name.
 - **`npm run icons`** (`scripts/icons.py`, Python with Pillow) makes the whole set from his two
   drawings, with the extension (16 = his 16, 32 = his 16 ×2 for the toolbar at 200 %, 48 = the
   24 ×2, 128 = the canvas ×4) and the MCP bundle (the canvas ×8). Run it again after a drawing
-  changes. Not yet redrawn: `icons-beta/` (its look is open), the `Square*Logo` files (the
-  Store set, unused by NSIS), `icon.icns`, the sign-in page (`npm run signin:assets`, then a
-  DeetsSupport deploy: his call), the site's `assets/deetsmusic/icon.png` in DeetsSolutions.
+  changes. `npm run icons -- --site ../DeetsSolutions` also writes the site's icons at the exact
+  size they are shown (the DeetsMusic page 72 CSS px, the home card 56; 1x / 1.5x / 2x files
+  in `srcset`, the head at a whole-number scale), since a browser blurs a 512 shrunk to 72.
+- **The other repos (2026-10-15):** DeetsSolutions `38abe54`, committed, NOT pushed: the icon,
+  the site icons, the link-preview card (`og.jpg`, the head on a dark tile because its white
+  headband vanished on the white one; `build-og-cards.py` takes a tile color per card), the
+  `og:image` and `main.css` versions. DeetsSupport: `src/signin/icon.png` committed, NOT
+  deployed (only the icon: `signin:assets` also copies the stylesheets, which were left as
+  they were).
+
+#### Before it goes live
+
+His plan: the icon ships with a later release, after other build items. Left:
+1. **The release:** merge `icons-fifteen`, build, publish. A release line in RELEASE-NOTES.md
+   (his wording).
+2. **The same day:** push DeetsSolutions `38abe54`; deploy DeetsSupport (the sign-in icon, and
+   Apple's Access Request reads it from there). Both are his calls.
+3. **Discord:** the Rich Presence badge is the asset `deetsmusic` in the Discord Developer
+   Portal › Rich Presence › Art Assets (`src/presence.ts`). It is still the old icon until he
+   uploads `app-icon.png` there under the same name.
+4. **The sign-in page's mark** shows the 1024 px icon at 40 px (`.mark` in DeetsSupport's
+   `signin.js`), which a browser blurs. The fix is the site's: exact-size files and
+   `image-rendering: pixelated`. `signin.js` holds his own uncommitted edits, so it waits.
+   Its comments still say "the DM mark".
+5. **Update desk test:** install the release over 0.27.x and look at the pinned taskbar button,
+   the Start menu and Installed apps. Windows caches shortcut icons; if the old one stays, the
+   installer may need to refresh the shell (`SHChangeNotify`).
+6. **Not needed for live:** `icons-beta/` (Beta-first is paused; its look is open), the
+   `Square*Logo` set (the Store, unused by NSIS), `icon.icns` (macOS).
 - **Why `app_icon.rs` (2026-10-15):** Tauri gives a window ONE picture, the first `.ico`
   frame, and Windows scaled his 16 up to the 24 px taskbar button: a blur. Now each window
   loads the exe's icon resource (id 32512) at the exact size per scale (small = SM_CXSMICON,

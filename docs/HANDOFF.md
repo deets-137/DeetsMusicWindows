@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 # DeetsMusic — Handoff
 
@@ -135,6 +135,11 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   reviewed on the sheet by him and committed (WORKLOG 2026-10-14 *readability, part 2*): the
   opaque skins pass. Not yet on live. Open: Ocean's see-through card (50 % under the bar) and
   Glass in Moonlight and Black-Red. Run the check again after any fix.
+
+- **The Deets head icon (2026-10-15, branch `icons-fifteen`, not merged):** built and
+  desk-tested in the dev app (WORKLOG 2026-10-15). It goes live with the next release, together
+  with the DeetsSolutions push (`38abe54`) and a DeetsSupport deploy (the sign-in icon). The
+  list of what is left before then is whitelabel.md §10.6 › *Before it goes live*.
 
 ### Decided, not built (his next sittings)
 
