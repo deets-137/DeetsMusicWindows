@@ -1,0 +1,83 @@
+{
+  "about": [
+    "The readability check (docs/ops/checks/README.md › readability; his calls 2026-10-14: WCAG AA 4.5:1 for all readable text, 3:1 large; Glass at its defaults and at each slider's two ends).",
+    "Run it with `node docs/ops/checks/readability.mjs` (all looks, then the Glass slider ends, then the report). Each `read` step scores every text box on screen against the pixels behind it (scripts/readability.mjs).",
+    "Every card is on screen in one of the first four shots; the last four are the overlays: the Compass, the quick panel, the toasts and a hover hint."
+  ],
+  "shots": [
+    {
+      "id": "read-max-a",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "about": "Max at its defaults: Home, Library, Playlists, Search, Now Playing, Queue.",
+      "steps": [{ "wait": 800 }, { "read": "cards" }]
+    },
+    {
+      "id": "read-max-b",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "about": "Max with History, Radio, Rewind and Library.",
+      "storage": { "deets.layout.max": "{\"left\":\"history\",\"right\":\"radio\",\"c\":\"rewind\",\"d\":\"library\"}" },
+      "steps": [{ "wait": 800 }, { "read": "cards" }]
+    },
+    {
+      "id": "read-max-c",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "about": "Max, two columns: Diary and Rulez.",
+      "settings": { "maxCards": "2cols" },
+      "storage": { "deets.layout.max2": "{\"left\":\"diary\",\"right\":\"rulez\"}" },
+      "steps": [{ "wait": 800 }, { "read": "cards" }]
+    },
+    {
+      "id": "read-settings",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "about": "The Settings card, every section open, read page by page down the whole list.",
+      "settings": { "maxCards": "1" },
+      "storage": { "deets.layout.max1": "{\"left\":\"settings\"}" },
+      "steps": [
+        { "wait": 600 },
+        { "eval": "(async () => { for (let i = 0; i < 80; i++) { const b = document.querySelector('[data-mounted=settings] .set__fold[data-fold][aria-expanded=false]'); if (!b) break; b.click(); await new Promise((r) => setTimeout(r, 40)); } })()" },
+        { "wait": 900 },
+        { "read": "settings", "scroll": "[data-mounted=settings] .panel__body" }
+      ]
+    },
+    {
+      "id": "read-compass",
+      "kind": "picture",
+      "source": "demo",
+      "size": "midi",
+      "about": "The Compass bar with answers.",
+      "steps": [{ "key": "Ctrl+Space" }, { "wait": ".compass__input" }, { "type": "glass", "delay": 30 }, { "wait": 700 }, { "read": "compass" }]
+    },
+    {
+      "id": "read-quick",
+      "kind": "picture",
+      "source": "demo",
+      "size": "midi",
+      "about": "The cog's quick panel.",
+      "steps": [{ "click": "#cog-open" }, { "wait": 800 }, { "read": "quick" }]
+    },
+    {
+      "id": "read-toasts",
+      "kind": "picture",
+      "source": "demo",
+      "size": "midi",
+      "about": "One toast of each kind (__toast.demo()).",
+      "steps": [{ "eval": "__toast.demo()" }, { "wait": 900 }, { "read": "toasts" }]
+    },
+    {
+      "id": "read-hint",
+      "kind": "picture",
+      "source": "demo",
+      "size": "midi",
+      "about": "A hover hint (the cog's).",
+      "steps": [{ "hover": "#cog-open" }, { "wait": 1600 }, { "read": "hint" }]
+    }
+  ]
+}

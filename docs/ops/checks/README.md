@@ -1,7 +1,7 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/shots.mjs, scripts/webview-eval.mjs, docs/ops/checks/drop.mjs, docs/ops/checks/smooth.mjs, docs/ops/checks/smooth-monitor.js, docs/ops/checks/mb-support-probe.mjs, docs/ops/checks/lastfm-refresh-probe.mjs]
+sources: [scripts/shots.mjs, scripts/readability.mjs, docs/ops/checks/readability.mjs, docs/ops/checks/readability-sheet.mjs, scripts/webview-eval.mjs, docs/ops/checks/drop.mjs, docs/ops/checks/smooth.mjs, docs/ops/checks/smooth-monitor.js, docs/ops/checks/mb-support-probe.mjs, docs/ops/checks/lastfm-refresh-probe.mjs]
 updated: 2026-10-14
 ---
 # Checks — the archive of re-runnable test scripts
@@ -44,6 +44,7 @@ version apart; `--vs "--token=value"` runs a variant beside the first (SHOTS.md 
 | [mb-support-probe.mjs](mb-support-probe.mjs) | probe script | MusicBrainz (and Wikidata) coverage of the library's artists: the match by Apple artist URL, then by name + one album; the Support links by type; top 50 / top 200 / the rest. Reads the app's database read-only; no app needed | [SupportArtist.md §5](../../ideas/SupportArtist.md) | 2026-10-13 |
 | [lastfm-refresh-probe.mjs](lastfm-refresh-probe.mjs) | probe script | How often Last.fm refreshes its public counts: the top 3 chart songs and two albums read every minute; a line per move with the minutes since the last. No app needed; the key from the build's key file | [PresentationMode.md §7](../../features/PresentationMode.md) | 2026-10-13 |
 | [smooth.mjs](smooth.mjs) + [smooth-monitor.js](smooth-monitor.js) | shots runner + probe | The motion monitor: the motion set and the full player's open and close, every skin, each shot watched every frame for a flash, a one-frame snap and a jitter (§2a) | none — a regression run after any motion change ([fullscreen-player.md §13](../../features/fullscreen-player.md)) | 2026-10-14 |
+| [readability.mjs](readability.mjs) + [readability.json](readability.json) + [readability-sheet.mjs](readability-sheet.mjs) | shots runner + list + review sheet | The readability check: every text box on screen, in every theme × skin, scored against the real pixels behind it; Glass also with Fancy Glass on at both ends of each slider (§2b) | none — a regression run after any theme, skin or text-color change | 2026-10-14 |
 | [drop.mjs](drop.mjs) | drive script | `net <s>`: the webview offline and the Apple check held out for s seconds, on one CDP socket. `battery on\|off`: the page's `BatteryManager.charging` and a `chargingchange`. Prints the ring lines the drop caused | DESK-TESTS.md §1 (a network drop, held; unplug on a desktop) | 2026-10-01 |
 
 **drop.mjs, how to use it.** A network cut does nothing to a song MusicKit has buffered, so seek
@@ -87,6 +88,50 @@ same in every run. A hit not in this list is new, and it needs a look at that sh
 **Found and fixed with it (2026-10-14):** the full player's rows flashed after the open; the Max close ended with a jump (an empty resting place, then a last sliver)
 (fullscreen-player.md §13); the close square popped in beside the rows' fade; the hover hint
 blinked off and on after a drill (ONBOARDING.md §1, `STILL_PX`).
+
+### 2b. The readability check (readability.mjs)
+
+His ask (2026-10-14): "a full readability check" after the Settings card in Glass + Moonlight
+was hard to read. His calls: **all readable text, subtext too, meets WCAG 2 AA** (4.5:1, or 3:1
+for large text: 24 px, or 18.66 px bold); **Glass is checked at its defaults and at both ends of
+each Fancy Glass slider** (Tint, Backlight, Canvas glow, Canvas dim), so any setting a user can
+reach must read.
+
+`node docs/ops/checks/readability.mjs` runs `readability.json` in every look (pass 1), then the
+six Glass looks with Fancy Glass on, at its defaults and at 0 and 100 of each slider (pass 2),
+then writes `shots/readability/<version>/readability.html` and `readability-summary.json`.
+About 80 s a look; the whole run is about 1 h 45 min. `--look a,b` narrows it, `--no-glass`
+skips pass 2, `--report-only` builds the report again from the last readings.
+
+**How a text box is scored** (`scripts/readability.mjs`, the `read` step of the shots runner):
+1. The page lists each visible line of text: its color with its alpha times every ancestor's
+   opacity, its size and weight, its card (`data-mounted`) and the theme role its color matches.
+   Text scrolled out of its list, or under a solid layer, is left out.
+2. All animations pause. A screenshot with every text color transparent gives the backdrop alone.
+3. The text color is laid over each backdrop pixel under the box, and the WCAG ratio is taken per
+   pixel. The score is the 10th percentile: the worst tenth of the backdrop. APCA Lc is beside it,
+   for information only.
+4. Each failing box is outlined (red under 3:1, amber 3 to 4.5:1) in `<shot>.<look>.<read>.read.png`.
+
+The shots: Max at its defaults; Max with History, Radio, Rewind; Max with Diary and Rulez; the
+Settings card with every section open, read page by page; the Compass; the quick panel; the
+toasts; a hover hint. A `read` step with `"scroll": selector` reads, scrolls that list down by
+85 % of its height, and reads again to the end.
+
+**The review sheet** (2026-10-14, his ask): `node docs/ops/checks/readability-sheet.mjs <after
+dir> [<before dir>]` writes `<after dir>/sheet.html`: one theme × skin grid for each view (each
+Max shot, each Settings page, the Compass, the quick panel, the toasts, the hint), built from the
+clean picture each reading saves (`<shot>.<look>.<read>.clean.png`). With a before dir, each cell
+shows both pictures and the worst `--text` / `--subtext` before → after. `--tag <name>` on
+`readability.mjs` writes a run to `<version>-<name>`, so the last run stays to compare.
+
+**The report:** §1 each look's worst score per text role (`--title`, `--text`, `--subtext`);
+§2 each failing element across looks, so one fix is one row; §3 each look's failures with a
+link to the marked picture.
+
+**Limits.** The demo's covers are Apple's real covers, so Glass's backdrop is real; but the
+playing song is the demo's, and a brighter cover can score lower. Text on a hover or a focus
+state is not read (no pointer rests on a row). A disabled control is listed and never fails.
 
 ## 3. Limits
 

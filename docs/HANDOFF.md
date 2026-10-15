@@ -130,6 +130,11 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   lines were read on 2026-10-13: the read connection is real but not on the launch's path, so
   it stopped there (ideas/WORKERS.md §5.1). What gates `ready` is the library reply itself.
 - **deetsmeter's cold start** (below).
+- **Readability (2026-10-14):** the first run of the readability check ([the checks archive](ops/checks/README.md), its part 2b)
+  failed `--subtext` in Lilac, Green, Sepia and Moonlight in every skin. New paints are built,
+  reviewed on the sheet by him and committed (WORKLOG 2026-10-14 *readability, part 2*): the
+  opaque skins pass. Not yet on live. Open: Ocean's see-through card (50 % under the bar) and
+  Glass in Moonlight and Black-Red. Run the check again after any fix.
 
 ### Decided, not built (his next sittings)
 

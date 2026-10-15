@@ -3243,7 +3243,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   transition: transform var(--nav-dur) var(--nav-ease);
 }
 .lib-shelf--toggle.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
-.lib-shelf__count { margin-left: auto; opacity: 0.7; }
+/* Full strength: at 70 % no subtext can reach 4.5:1 (the readability check, 2026-10-14). */
+.lib-shelf__count { margin-left: auto; }
 
 /* ── Search card (SEARCH.md — the "searches" screen archetype) ── */
 /* Blended sectioned results: bar-divided vertical sections, each an h-scroller.

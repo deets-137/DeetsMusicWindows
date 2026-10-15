@@ -38,6 +38,7 @@ import { createServer } from "node:net";
 import { cpus, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readStep } from "./readability.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -117,7 +118,7 @@ function starter(name) {
   return {
     help: [
       "A scratch list for one bug (SHOTS.md §5d). Run: node scripts/shots.mjs --scratch " + name,
-      "Steps: click, rightclick, hover, key ('Ctrl+Space'), type, wait (ms or a selector), drag {from,to}, wheel (+dy, times), resize [w,h] (+over, steps), reload, eval, probe, snap.",
+      "Steps: click, rightclick, hover, key ('Ctrl+Space'), type, wait (ms or a selector), drag {from,to}, wheel (+dy, times), resize [w,h] (+over, steps), reload, eval, probe, snap, read (+scroll: the readability check, docs/ops/checks/README.md §2b).",
       "On any step: \"frames\": N keeps the next N real paints after it (a folder + a labeled PNG with marks, stalls and the change curve); \"region\": selector measures the curve in that box; \"strip\": true starts the strip there.",
       "Shot keys: size (mini, player, midi, max), seconds, prepare (steps before the recording), window (follow the app's set_size), settings, storage (raw localStorage keys, e.g. a DevTools flag), strip {fps, seconds, cols, width}.",
       "Flags: --slow 4 (CSS motion 4x slower), --raw (keep every real frame), --look theme-skin, --tag name (a folder of its own), --vs \"--token=value\" (a second run beside the first), --set, --repeat n (medians), --noise pct.",
@@ -544,6 +545,13 @@ async function runStep(page, step) {
     note("probe", `${step.probe} → ${JSON.stringify(v)}`);
     return;
   }
+  if ("read" in step) {
+    // The readability step (scripts/readability.mjs): the contrast of every text box against
+    // the pixels behind it, into <out>/readability.jsonl.
+    const { base, outDir, look, variant, change } = journal;
+    await readStep(page, evaluate, step, { base, outDir, look, variant, change, note });
+    return;
+  }
   if ("snap" in step) {
     // A picture of this moment (mid-clip too), named <id>.<look>.<snap>.png.
     const { data } = await page.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
@@ -616,7 +624,7 @@ async function shoot(page, demoUrl, shot, look, outDir, variant) {
   const settings = { ...(shot.settings ?? {}), ...variant.settings };
   const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: seedScript(look, size, settings, shot.badges === true, shot.window === true, variant.tokens, shot.storage ?? {}) });
   const base = `${shot.id}.${lookId(look)}${variant.label ? `.${variant.label}` : ""}`;
-  Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, base, outDir });
+  Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, base, outDir, look: lookId(look), variant: variant.label || undefined, change: variant.label ? variant.desc : undefined });
   try {
     const loaded = page.once("Page.loadEventFired");
     await page.send("Page.navigate", { url: demoUrl });

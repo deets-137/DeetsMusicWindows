@@ -12,6 +12,53 @@ updated: 2026-10-14
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-14 (readability, part 2) — new text paints, built; the review sheet
+
+His calls: the drafted paints as shown, and Black-Red option A. Built:
+- New paints, each role keeping its hue: Lilac `--paint-dusk-plum` / `-violet-ink` /
+  `-lavender-ink`; Green `--paint-deep-forest` / `-moss-ink` / `-sage-ink`; Sepia
+  `--paint-cocoa-ink` / `-tan-ink`; Moonlight `--paint-moon-bright` / `-mid` / `-dim`. The old
+  paints went (`--paint-forest` stays for the rule chip). The same in `extension/styles`.
+- Black-Red: `--paint-siren` `#FF2B2B` → `#FF4D45`; its `--picked` is 0.64 × the skin's strength.
+- `.lib-shelf__count` at full opacity (at 70 % no subtext can pass).
+- `readability-sheet.mjs`, `--tag` on `readability.mjs`, and each reading saves a clean picture.
+
+Run: before (the last commit, in a throwaway worktree) and after, all 30 looks, Glass at its
+defaults. Under the bar, before → after: every opaque look of Lilac, Green, Sepia, Moonlight
+and Black-Red 53–80 % → 0–1 %; Black-Yellow 0 % both. Still failing: **Ocean** 50 % in the
+four light-subtext themes (its card is 80 % see-through by default, the swell shows), and
+**Glass** in Moonlight 75 % and Black-Red 57 % (Lilac, Green, Sepia Glass are 1–10 %). Glass
+at the slider ends was not run again. Those are the next forks.
+
+Lesson: two shots runs at once on one `node_modules` share Vite's dep cache; both demos served
+"Outdated Optimize Dep" and an empty page, and every reading was empty. A reading with no text
+now fails the shot.
+
+## 2026-10-14 (readability) — the readability check, and its first run
+
+His report: the Settings card in Glass + Moonlight is hard to read. His calls: WCAG 2 AA for all
+readable text, subtext too (4.5:1, 3:1 large); Glass checked at its defaults and at both ends of
+each Fancy Glass slider. Built: the `read` step of the shots runner (`scripts/readability.mjs`)
+and `docs/ops/checks/readability.mjs` + `.json` ([the checks archive](ops/checks/README.md), its part 2b). Nothing in the app
+changed.
+
+First run on 0.27.0: 432 shots, 1,440 readings, 105 failing elements. Medians (WCAG ratio):
+
+| | Vanilla | Press | Ocean | Cyber | Glass | Glass, Tint 0 |
+|---|---|---|---|---|---|---|
+| `--subtext`, Library artist line: Lilac / Green / Sepia / Moonlight | 2.6 / 2.6 / 2.1 / 3.0 | 3.1 / 2.9 / 2.2 / 2.6 | 1.9 / 1.7 / 1.3 / 2.8 | 2.6 / 2.6 / 2.1 / 3.0 | 1.9 / 1.8 / 1.3 / 1.8 | 1.1–1.7 |
+| `--subtext`, the same: Black-Yellow / Black-Red | 11.5 / 6.8 | 10.4 / 6.2 | 10.6 / 6.3 | 11.5 / 6.8 | 6.5 / 4.2 | 1.2 |
+| `--text`, Settings row label: Lilac / Green / Sepia / Moonlight | 4.2 / 5.2 / 7.6 / 6.0 | 5.0 / 5.7 / 8.1 / 5.2 | 3.0 / 3.5 / 4.9 / 5.6 | 4.2 / 5.2 / 7.7 / 6.0 | 2.9 / 3.3 / 4.6 / 3.6 | 1.2–1.8 |
+
+Also: Black-Red `--title` on a picked fill (a pill's chosen half, the playing row) is 3.7–4.2;
+the counts beside the section headers sit at 70 % opacity, so they score lower than their role;
+the album-colored Now Playing title reaches 2.9 on Glass. A few low scores in the overlay shots
+(the Sort / View pill under a toast) are text under a layer that takes no pointer: the hit test
+cannot see that layer. Read the picture before you act on a row whose median passes.
+
+Left open: the fixes (his forks). The report is `shots/readability/0.27.0/readability.html`
+(gitignored).
+
 ## 2026-10-14 (release) — 0.27.0 published
 
 His ask: merge into `main`, clean up the docs, release and publish; "I've thoroughly desk

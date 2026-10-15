@@ -9,9 +9,9 @@
 :root {
   /* twilight-lilac family — the Lilac theme (enchanted twilight fairy) */
   --paint-dewy-lilac:          #E0DCF0; /* dewy lilac canvas */
-  --paint-twilight-plum:       #43306B; /* deep twilight plum (title) */
-  --paint-violet-slate:        #6A6385; /* muted violet-slate (text) */
-  --paint-lavender-grey:       #8B84A8; /* legible lavender-grey (subtext) */
+  --paint-dusk-plum:           #39255F; /* deep dusk plum (title); readable on every opaque card (WCAG AA, 2026-10-14) */
+  --paint-violet-ink:          #463F5F; /* violet-slate ink (text) */
+  --paint-lavender-ink:        #575071; /* lavender-grey ink (subtext) */
   --paint-fae-mint:            #2FB089; /* enchanted mint-green (go) */
   --paint-lilac-white:         #F2EFFA; /* elevated lilac surface */
   --paint-lilac-tint:          #E7E1F5; /* lilac hover tint */
@@ -23,8 +23,8 @@
   /* sepia family — vibe pulled from the harness "Sepia Dreams" theme */
   --paint-parchment:           #F5EFE6; /* warm paper */
   --paint-espresso:            #3E2C1C; /* dark roast brown */
-  --paint-cocoa:               #5C4733; /* mid brown */
-  --paint-faded-tan:           #B8A583; /* quiet tan */
+  --paint-cocoa-ink:           #594430; /* mid brown (text); readable on every opaque card (WCAG AA, 2026-10-14) */
+  --paint-tan-ink:             #685737; /* deep tan (subtext) */
   --paint-olive-leaf:          #6B8E4E; /* muted green */
   --paint-terracotta:          #A8432F; /* burnt red */
   --paint-amber-glow:          #D4A017; /* warm amber */
@@ -33,9 +33,9 @@
 
   /* moonlight family — dark slate-blue night theme */
   --paint-deep-slate:          #1A2436; /* deep slate-blue canvas */
-  --paint-slate-bright:        #C7D3E3; /* bright slate blue-gray (title) */
-  --paint-slate-mid:           #93A2B8; /* mid slate blue-gray (text) */
-  --paint-slate-dim:           #5E6E84; /* dim slate blue-gray (subtext) */
+  --paint-moon-bright:         #DFECFC; /* bright moonlit blue-white (title); readable on every opaque card (WCAG AA, 2026-10-14) */
+  --paint-moon-mid:            #BFCEE5; /* mid moonlit blue-gray (text) */
+  --paint-moon-dim:            #A4B6CE; /* dim moonlit blue-gray (subtext) */
   --paint-moonlight-white:     #EEF2F7; /* brightest moonlight white */
   --paint-moonlight-silver:    #C4CCD6; /* moonlight silver */
   --paint-moonlight-gray:      #9AA3AF; /* moonlight gray */
@@ -44,9 +44,10 @@
 
   /* Green family — chartreuse fairy-forest (light) */
   --paint-dewy-chartreuse:     #E9F0C0; /* dewy chartreuse canvas */
-  --paint-forest:              #1E4D2B; /* deep forest green (title) */
-  --paint-moss:                #54664B; /* muted moss (text) */
-  --paint-sage-grey:           #87977A; /* legible sage-grey (subtext) */
+  --paint-forest:              #1E4D2B; /* deep forest green (the rule chip) */
+  --paint-deep-forest:         #0C3D1C; /* deeper forest green (title); readable on every opaque card (WCAG AA, 2026-10-14) */
+  --paint-moss-ink:            #3B4C32; /* moss ink (text) */
+  --paint-sage-ink:            #4E5C41; /* sage-grey ink (subtext) */
   --paint-fern:                #4C9A46; /* fresh fern green (go) */
   --paint-foxglove:            #B04A6E; /* berry-rose (stop) — Green's fae sparkle */
   --paint-chartreuse-white:    #F4F8E3; /* elevated chartreuse surface */
@@ -55,7 +56,7 @@
 
   /* Black & Red family — cyber villain
      (canvas/surfaces reuse Black & Yellow's pitch / onyx / onyx-tint) */
-  --paint-siren:               #FF2B2B; /* bright siren red (title / go) */
+  --paint-siren:               #FF4D45; /* bright siren red (title / go); lighter from #FF2B2B so a chosen fill reads (2026-10-14) */
   --paint-blood:               #C01020; /* deep blood red (pause) */
   --paint-ember:               #D8837A; /* muted ember (text-dim / stop) */
   --paint-ash-white:           #EFE2DE; /* red-warmed off-white (body text) */

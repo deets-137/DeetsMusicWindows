@@ -99,16 +99,16 @@
   --stop:    var(--paint-purple-cactus-flower);
   --pause:   var(--paint-lemon-chrome);
   --traffic-glyph: rgba(0, 0, 0, 0.55);  /* sigil stroke on the light fills */
-  --title:   var(--paint-twilight-plum);
-  --text:    var(--paint-violet-slate);
-  --subtext: var(--paint-lavender-grey);
+  --title:   var(--paint-dusk-plum);
+  --text:    var(--paint-violet-ink);
+  --subtext: var(--paint-lavender-ink);
 
   --ink-2:   var(--stop);   /* cactus-flower magenta on dewy lilac */
 
   /* surfaces — floating panels (menus, popovers) above the canvas */
   --surface:       var(--paint-lilac-white);
   --surface-hover: var(--paint-lilac-tint);
-  --border:        rgba(67, 48, 107, 0.16);  /* twilight-plum @ low alpha */
+  --border:        rgba(67, 48, 107, 0.16);  /* plum @ low alpha */
 
   /* panel edge — bento grouper hairline (the fill is a skin decision now) */
   --panel-border: rgba(67, 48, 107, 0.30);
@@ -125,9 +125,9 @@
   --stop:    var(--paint-foxglove);
   --pause:   var(--paint-lemon-chrome);
   --traffic-glyph: rgba(0, 0, 0, 0.55);  /* sigil stroke on the light fills */
-  --title:   var(--paint-forest);
-  --text:    var(--paint-moss);
-  --subtext: var(--paint-sage-grey);
+  --title:   var(--paint-deep-forest);
+  --text:    var(--paint-moss-ink);
+  --subtext: var(--paint-sage-ink);
 
   --ink-2:   var(--stop);   /* foxglove pink against the green stock */
 
@@ -152,8 +152,8 @@
   --pause:   var(--paint-amber-glow);
   --traffic-glyph: rgba(0, 0, 0, 0.55);  /* sigil stroke on the light fills */
   --title:   var(--paint-espresso);
-  --text:    var(--paint-cocoa);
-  --subtext: var(--paint-faded-tan);
+  --text:    var(--paint-cocoa-ink);
+  --subtext: var(--paint-tan-ink);
 
   --ink-2:   var(--stop);   /* terracotta — the classic riso red */
 
@@ -177,16 +177,16 @@
   --stop:    var(--paint-moonlight-gray);    /* varying moonlight white → gray */
   --pause:   var(--paint-moonlight-silver);
   --traffic-glyph: rgba(0, 0, 0, 0.55);  /* sigil stroke on the white→gray fills */
-  --title:   var(--paint-slate-bright);      /* title → subtext: bright → dim */
-  --text:    var(--paint-slate-mid);
-  --subtext: var(--paint-slate-dim);
+  --title:   var(--paint-moon-bright);       /* title → subtext: bright → dim */
+  --text:    var(--paint-moon-mid);
+  --subtext: var(--paint-moon-dim);
 
   --ink-2:   color-mix(in srgb, var(--pause) 55%, var(--canvas));  /* muted silver plate */
 
   /* surfaces — floating panels (menus, popovers) above the canvas */
   --surface:       var(--paint-slate-surface);
   --surface-hover: var(--paint-slate-surface-tint);
-  --border:        rgba(199, 211, 227, 0.14); /* slate-bright @ low alpha */
+  --border:        rgba(199, 211, 227, 0.14); /* slate blue-gray @ low alpha */
 
   /* panel edge — bento grouper hairline (the fill is a skin decision now) */
   --panel-border: rgba(199, 211, 227, 0.30);

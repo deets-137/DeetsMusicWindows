@@ -12,7 +12,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 
 | Tier | File | Count |
 |---|---|---|
-| Palette (raw paints) | palette.css | 48 |
+| Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
 | Skin (everything else) | skin.css base block | 606 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
@@ -29,7 +29,7 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--np-subtext` | `var(--subtext)` | — |  |
 | `--np-accent` | `var(--title)` | — |  |
 | `--ink-2` | `var(--go)` | every theme | Second-plate fallback: a theme that never names --ink-2 still prints Press's offset in its own "go" accent. |
-| `--picked` | `color-mix(in srgb, var(--title) var(--picked-strength), transparent)` | — | Picked rows (multi-select, NEXT-VERSION §19): a picked row fills with the theme's own --title ink at the strength the SKIN sets, so a block of picks reads as one shape in every theme. Derived once here — no theme block names a picked color of its own. |
+| `--picked` | `color-mix(in srgb, var(--title) var(--picked-strength), transparent)` | black-red | Picked rows (multi-select, NEXT-VERSION §19): a picked row fills with the theme's own --title ink at the strength the SKIN sets, so a block of picks reads as one shape in every theme. Derived once here; Black-Red alone softens it (its block says why). |
 | `--apple-music-mark` | `light-dark(var(--paint-apple-music-black), var(--paint-apple-music-white))` | — | Apple Music icon fill: Apple's black file on light themes, the white file on dark. light-dark() follows each theme's own color-scheme, so no theme block repeats it. |
 | `--discord-mark` | `var(--apple-music-mark)` | — | Discord's symbol (the quick panel): its brand kit has the same black and white files, and the same rule, so it follows the Apple Music mark. |
 | `--new-badge` | `light-dark(var(--paint-amber-glow), var(--paint-hazard))` | — | The mark dots (his design, 2026-09-26). Yellow: the New badge (QUICK-SETTINGS.md §8) — warm amber on a light theme, where plain yellow fades into the menu; hi-vis yellow on a dark one. Green: a rule set the value; scarlet: your pick holds (the rule chip, RULES.md §9). The deep paint on a light theme, the brighter one of the pair on a dark theme. |
@@ -897,9 +897,9 @@ A skin sets these, but the base block never declares them — a token that only 
 | Paint | Value |
 |---|---|
 | `--paint-dewy-lilac` | `#E0DCF0` |
-| `--paint-twilight-plum` | `#43306B` |
-| `--paint-violet-slate` | `#6A6385` |
-| `--paint-lavender-grey` | `#8B84A8` |
+| `--paint-dusk-plum` | `#39255F` |
+| `--paint-violet-ink` | `#463F5F` |
+| `--paint-lavender-ink` | `#575071` |
 | `--paint-fae-mint` | `#2FB089` |
 | `--paint-lilac-white` | `#F2EFFA` |
 | `--paint-lilac-tint` | `#E7E1F5` |
@@ -907,17 +907,17 @@ A skin sets these, but the base block never declares them — a token that only 
 | `--paint-lemon-chrome` | `#F6C700` |
 | `--paint-parchment` | `#F5EFE6` |
 | `--paint-espresso` | `#3E2C1C` |
-| `--paint-cocoa` | `#5C4733` |
-| `--paint-faded-tan` | `#B8A583` |
+| `--paint-cocoa-ink` | `#594430` |
+| `--paint-tan-ink` | `#685737` |
 | `--paint-olive-leaf` | `#6B8E4E` |
 | `--paint-terracotta` | `#A8432F` |
 | `--paint-amber-glow` | `#D4A017` |
 | `--paint-parchment-light` | `#FBF6EE` |
 | `--paint-parchment-tint` | `#EFE6D6` |
 | `--paint-deep-slate` | `#1A2436` |
-| `--paint-slate-bright` | `#C7D3E3` |
-| `--paint-slate-mid` | `#93A2B8` |
-| `--paint-slate-dim` | `#5E6E84` |
+| `--paint-moon-bright` | `#DFECFC` |
+| `--paint-moon-mid` | `#BFCEE5` |
+| `--paint-moon-dim` | `#A4B6CE` |
 | `--paint-moonlight-white` | `#EEF2F7` |
 | `--paint-moonlight-silver` | `#C4CCD6` |
 | `--paint-moonlight-gray` | `#9AA3AF` |
@@ -925,13 +925,14 @@ A skin sets these, but the base block never declares them — a token that only 
 | `--paint-slate-surface-tint` | `#2E3C50` |
 | `--paint-dewy-chartreuse` | `#E9F0C0` |
 | `--paint-forest` | `#1E4D2B` |
-| `--paint-moss` | `#54664B` |
-| `--paint-sage-grey` | `#87977A` |
+| `--paint-deep-forest` | `#0C3D1C` |
+| `--paint-moss-ink` | `#3B4C32` |
+| `--paint-sage-ink` | `#4E5C41` |
 | `--paint-fern` | `#4C9A46` |
 | `--paint-foxglove` | `#B04A6E` |
 | `--paint-chartreuse-white` | `#F4F8E3` |
 | `--paint-chartreuse-tint` | `#EAF1D0` |
-| `--paint-siren` | `#FF2B2B` |
+| `--paint-siren` | `#FF4D45` |
 | `--paint-blood` | `#C01020` |
 | `--paint-ember` | `#D8837A` |
 | `--paint-ash-white` | `#EFE2DE` |
