@@ -182,12 +182,24 @@ sync. The app did not freeze.
 designed anywhere. This time nothing was lost, because the running sync was a full one. If the
 running sync is **incremental**, a ⟳ click that asks for a full sync is lost.
 
-**What follows (no fork):**
-- A ⟳ click during a full sync joins it: nothing new starts.
-- A ⟳ click during an incremental sync queues one full sync after it (one queued at most).
-- While it spins, the ⟳'s hover hint says what it does: "Reading your library… 1,200 of 4,042"
-  (the sync events already carry the count and the total). The hint is in ONBOARDING.md §1.
-- `diag.log` the join and the queue (`library:refreshJoin`, `library:refreshQueued`).
+**His call (2026-10-15): make the refusal visible; do not queue a refresh.** A click while a sync
+runs still starts nothing. What changes is that the user sees why. Not taken: a click that joins a
+full sync or queues one after an incremental sync.
+
+> **Part:** designed · 2026-10-15
+
+**What follows:**
+- The refusal is expected, so it is no longer a `console.error`. The front end knows a sync runs
+  (the `library-sync` start event), so a click while `is-busy` does not call `library_sync` at all.
+- `diag.log` the click (`library:refreshBusy`), with the sync's kind (full / incremental) and
+  progress.
+
+**Draft (his to edit): how it shows.**
+- While it spins, the ⟳'s hover hint says what runs: "Reading your library… 1,200 of 4,042"
+  (the sync events already carry the count and the total). The hint goes in ONBOARDING.md §1.
+- A click while it spins shows that hint at once, without the hover delay, and the ⟳ gives one
+  small nudge (the `pop` motion family; none under reduced motion). No toast: the answer sits on
+  the control that was clicked.
 
 ## 5. A song's primary artist (his question, 2026-10-15)
 
@@ -264,10 +276,8 @@ The menu with guests: *Go to Artist ▸* Girl Ultra · Buscabulla · Chromeo, th
 (the Library's submenu today, `songGoTo`). A guest opens by its catalog id (the Search way), or
 in the Library when it is a Library artist.
 
-## 6. Order of work (a draft)
+## 6. Order of work
 
-1. §4 the ⟳ (small, front-end and Rust guard).
-2. S4 + §5 + album-notes.md §6: one change to the sync page and the artist pass.
-3. S1 and S3 (the launch rule).
-4. S2 after its week of dates (§S2 probe).
-5. S5 alongside each of the above.
+The order is HANDOFF.md › Open now › *Build order* (2026-10-15). This doc's parts in it: §4 the
+⟳ (step 1); S4 + §5 + album-notes.md §6 (step 2, one change); S1 and S3 (step 3); S2 after its
+week of dates; S5 alongside each step that touches those calls.

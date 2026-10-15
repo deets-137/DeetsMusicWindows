@@ -60,6 +60,10 @@ A talk and docs only; no code (another build was in progress).
 - **His calls on the primary artist:** P1 A (Rewind counts a collaboration for the primary
   artist only) and P2 A (guests' names from the enrichment call, 0 extra calls).
   apple-calls.md §5.4.
+- **The ⟳ (his call):** make the silent refusal visible; do not queue a refresh
+  (apple-calls.md §4). **The build order** for his next sessions is in HANDOFF › Open now ›
+  *Build order*: the sheen and the ⟳; the primary and album artist; S1 + S3; Max default; Hop in;
+  the tray text; album notes. Written on `main` (Velopack's desk test has passed).
 
 ## 2026-10-15 (velopack-spike) — Velopack: the scope, the spike, the build
 

@@ -141,8 +141,38 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   with the DeetsSolutions push (`38abe54`) and a DeetsSupport deploy (the sign-in icon). The
   list of what is left before then is whitelabel.md §10.6 › *Before it goes live*.
 
+### Build order (recommended 2026-10-15, for his next sessions)
+
+One load-bearing feature in flight at a time; two small ones may share a step (CLAUDE.md ›
+Working style). Each step is its own branch and session, desk-tested before the next starts.
+
+1. **Two small fixes, one release:** the Press record without its sheen (VINYL.md §11, CSS only)
+   and the Library ⟳ that shows why a click does nothing while a sync runs (ideas/apple-calls.md
+   §4: visible, not queued).
+2. **A song's primary artist and an album's real artist, as one change** (apple-calls.md §5,
+   album-notes.md §6.2): `include=albums,artists` on the sync page, `catalog_name` on
+   `artist_catalog` (a schema bump). Fixes Go to Artist, the Last.fm counts and Rewind's split
+   artists. The backfill rides the next full sync.
+3. **Fewer launch calls, S1 and S3** (apple-calls.md §3): the same launch code as step 2, so
+   after it, and after one full sync has backfilled. About 55 calls a day saved for him.
+4. **A new user starts in Max** (FUTURE-SETTINGS.md §8b): before Hop in, whose Cruisin preset
+   and walk words depend on where a new user starts. The fit-to-screen part fixes Max on small
+   screens for everyone.
+5. **Hop in** (HOP-IN.md): decided; it followed Velopack, whose desk test has passed.
+6. **The tray hover text** (TRAY.md §7): small; it may pair with any step from 3 on. Its probe
+   (does an open tooltip take new text) comes first.
+7. **Album notes** (ideas/album-notes.md): large (a model field, a table, UI on every surface);
+   needs step 2's album artist. Its three read-only probes (§5) may run any time before.
+
+**Now, with no code:** S2's week of mirror dates (apple-calls.md S2): one read-only call a day,
+run from a script, so the evidence is ready when S2 is built. S5 (`fields[…]`) rides along with
+each step that touches those calls.
+
 ### Decided, not built (his next sittings)
 
+- **The Library ⟳'s refusal, made visible** (2026-10-15, his call): a click while a sync runs
+  still starts nothing, but the ⟳ shows why (the progress in its hint, at once on the click);
+  no queued refresh. ideas/apple-calls.md §4.
 - **The Press record without its sheen** (2026-10-15): the sheen goes; the grooves and the label
   ring stay. Every fork closed. VINYL.md §11. The center cap (§11.1) is parked.
 - **The tray icon's hover text** (2026-10-15): Steam-like tooltip text, no card: the song and
