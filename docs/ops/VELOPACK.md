@@ -417,3 +417,42 @@ chose C, and the extension becomes experimental.
 - **Open:** what Setup.exe and the uninstall show on screen; the *Access is denied* wait from a
   Start Menu start; the media flyout's name (step 9). The four version files stand at
   `0.28.0-beta.6`, the last published beta.
+
+### 12.5 His looks (DESK-TESTS.md B23, set up 2026-10-15)
+
+What only his eyes can check, and the one start that must not come through WMI. The beta is
+installed on beta.4 and closed; the feed offers beta.6 (skipped, but *Check now* offers it).
+
+1. **Start Menu start + the media flyout.** Start › *DeetsMusic Beta*. Play any song. Press a
+   media key or the volume key (or Win + A) to show Windows' media flyout. Look at: the app
+   name and icon it shows (expected: *DeetsMusic Beta*; the app id is `velopack.DeetsMusicBeta`).
+2. **An update from that start.** Settings › Updates › *Check now* → the beta.6 toast →
+   *Download* → *Restart now*. Look at: the time until the window is back, and the music spot.
+   Then tell Claude: it reads Velopack's log for the *Access is denied* wait (seen only on WMI
+   starts so far).
+3. **The uninstall.** Windows Settings › Apps › Installed apps › *DeetsMusic Beta* › ⋯ ›
+   Uninstall. Look at: any window or prompt it shows, and how long until it is gone (Claude's
+   run without `--silent`: 12.4 s, not seen).
+4. **The first install.** In `installers\velopack\DeetsMusicBeta-deetsmusic-test\`, double-click
+   `DeetsMusicBeta-deetsmusic-test-Setup.exe`. Look at: what shows from the double-click until
+   the app opens (no splash is set, so this is Velopack's default), and the Start Menu entry.
+   A local file carries no web mark, so SmartScreen does not show here (§8a S6).
+
+Results go in §12.6 (his words).
+
+### 12.6 His results (2026-10-15) — passed
+
+- **Steps 1 and 2** "looked great": the media flyout from a Start Menu start, and the update
+  (beta.4 → beta.6, press → app back in 2.0 s, 15:19:30.658 → 15:19:32.674).
+- **Steps 3 and 4** "worked seamlessly and quite fast vs what I'm used to on live": the uninstall
+  from Installed apps and the first install from Setup.exe (Velopack's default screen, no splash).
+- **The *Access is denied* wait, read by Claude after step 2:** it happens on a Start Menu start
+  too, so WMI was not the cause. A normal process of his can open the app for `SYNCHRONIZE`
+  (probed), and the crate starts Update.exe with a plain `CreateProcessW`, so the refusal is
+  inside Velopack's Update.exe. It is harmless: Update.exe goes on, and before the swap it stops
+  whatever still runs in the install root, by path (it found only itself every run, the app had
+  already exited). Worth a report to Velopack; not a blocker.
+
+**The beta desk test is complete.** Next (his call): the full app's move — he uninstalls the
+NSIS 0.27.0, a `0.28.0` release with its RELEASE-NOTES entry, `release:publish`, and the site's
+download button on the Velopack Setup.exe.

@@ -158,6 +158,7 @@ Order: the uncommitted work first (a fail there stops a commit), then the releas
 | B19 | Discord's two buttons are readable | [FRIENDS.md §8.4](../integrations/FRIENDS.md) item 3 | live | owner | A second Discord account |
 | B21 | deetsmeter: the judge's four scenes on both apps (play, scroll, search, warm and cold start) | [music-app-comp.md §17.15](../ideas/music-app-comp.md) | installed + Apple Music | owner | Built 2026-10-10, committed 7be3d55. Plays music aloud, borrows the pointer and the focus, closes and reopens both apps; the League client closed first. 2026-10-11: Claude ran steps 1–5 and 7 (passed, §17.16); step 6 (cold, a reboot) is left |
 | B22 | Rooms on the web: sign in, sound, an app and a browser in one room | [WebRooms.md §10.5](../features/WebRooms.md) | `npm run listen` + `dev:app` | owner | Needs his Apple ID typed in Apple's window. Claude ran the rest 2026-10-13 against the live worker (§10.4). The Safari part waits for the site page (part H) |
+| B23 | Velopack: his looks at Setup.exe, the uninstall and the media flyout; an update from a Start Menu start | [VELOPACK.md §12.5](VELOPACK.md) | the installed beta | owner | Set up 2026-10-15: the beta on beta.4, beta.6 on the feed, its Setup.exe built. Claude reads Velopack's log after step 2 |
 | B20 | The dead-next heal's double play | [QUEUE.md](../features/QUEUE.md) § The healed song played twice | live | owner | Cannot be forced; watch the next `player:deadNext` |
 
 ## 4. The two small scripts that live here
@@ -319,3 +320,4 @@ Summary: *8 pass · 2 partial · 1 fail (adjacent copies) · 2 noisy.* A slip du
 | Grow 19.1 4 | 2026-10-13 | pass (his) | The rows at `--grow-rows-at` as it is; no change |
 | Launch 1–6 | 2026-10-13 | pass (his eye) | DEBUGGING.md § Launch |
 | B14 on live | 2026-10-13 | pass (log) | `[apple] calls 1h` every hour on the installed 0.27.0 |
+| B23 | 2026-10-15 | pass (his) | Media flyout from a Start Menu start; update beta.4 → beta.6 in 2.0 s; uninstall and first install "seamless and quite fast". The Access is denied wait is inside Update.exe and harmless (VELOPACK.md §12.6) |
