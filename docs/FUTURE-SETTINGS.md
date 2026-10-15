@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/player.ts, src/stats.ts, src/playlists-card.ts, src/queue.ts, src/layout.ts, src/surface.ts]
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 # DeetsMusic — Future Settings (deferred toggles)
 
@@ -489,6 +489,48 @@ Front-end only (`src/`). Vite reloads it; no dev-runner restart.
 6. Settings › Reset › Window: the four sizes go back to the defaults.
 7. Press, Spin, NP at its minimum 420 × 460 and at a hand-dragged odd size: no jitter.
 8. Agent: `settings set sizePlayer 600x640` resizes NP; `set sizePlayer 10x10` is refused.
+
+### 8b. A new user starts in Max (2026-10-15)
+
+> **Part:** designed · 2026-10-15
+
+**His ask (2026-10-15):** make Max the default surface for a user.
+
+**What the code does today (checked 2026-10-15).**
+- `surface.ts:29` `DEFAULT_SURFACE = "midi"`. `initSurface()` uses it only when `deets.surface`
+  is not in localStorage, so only a fresh install sees it.
+- `fullSurface()` (`surface.ts:283`) reads `deets.surface.full`, and gives `"midi"` when it is not
+  set. *Open DeetsMusic* in the tray menu uses it.
+- Max opens at `sizeMax` = 1100 × 950 (§8a). `applySize()` calls `setSize` with no check of the
+  screen. Max's floor is 495 × 750 (`MIN_SIZES`).
+
+**Decided by his words.** A **default** is what a new install starts in. A user who has picked a
+surface (`deets.surface` is set) keeps it; nothing moves their window.
+
+**What follows (no fork):**
+- `DEFAULT_SURFACE = "max"`, and `fullSurface()` gives `"max"` when `deets.surface.full` is not set.
+- **Max must fit the screen.** 950 px is taller than many screens: a 1920 × 1080 laptop at 125 %
+  scale has about 816 logical px of work area above the taskbar. So `applySize()` fits each open
+  size to the work area of the window's monitor, and keeps the view's floor. This fixes every
+  open, not only the first: today a user on such a screen who picks Max gets a window past the
+  bottom of the screen. If the work area cannot hold Max's floor (750 tall, for example a
+  1366 × 768 screen, or 1080 p at 150 %), a new user starts in **Midi**, as before.
+- The window first paints at `tauri.conf.json`'s 495 × 670; the launch cover (`boot-cover.ts`)
+  waits for `surfaceSized()`, so the user sees Max at once, never a Midi that grows.
+- Max shows the `maxCards` default (4 cards, MAX-CARDS.md).
+- **Hop in** (HOP-IN.md, not built): Cruisin is the defaults, so a Cruisin user starts in Max. The
+  walk's Rulez step ("Go to Max, then pick Rulez") then reads wrong for most users. Fix the words
+  when Hop in is built.
+- `diag.log` the first-run pick and why (`surface:first max` or `surface:first midi (screen
+  <w>×<h>)`).
+
+**Desk test (at build time).**
+1. `npm run dev:fresh` on the desk screen: the app opens in Max at 1100 × 950, fully on screen.
+2. The sign-in screen before sign-in reads well at the Max size.
+3. Right-click the tray icon › *Open DeetsMusic* on a fresh install: Max.
+4. A user with `deets.surface = midi` saved: it opens in Midi, as before.
+5. A small screen (set Windows' scale to 150 % on a 1080 p screen): a fresh install opens in
+   Midi; on a screen with room for 750 but not 950, Max opens fitted to the work area.
 
 ---
 

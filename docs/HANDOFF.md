@@ -143,6 +143,22 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 
 ### Decided, not built (his next sittings)
 
+- **The Press record without its sheen** (2026-10-15): the sheen goes; the grooves and the label
+  ring stay. Every fork closed. VINYL.md §11. The center cap (§11.1) is parked.
+- **The tray icon's hover text** (2026-10-15): Steam-like tooltip text, no card: the song and
+  artist, the album, the next song. The time left only if an open tooltip updates live (a probe
+  first). Every fork closed. TRAY.md §7.
+- **A new user starts in Max** (2026-10-15): new installs only; each open size fits the screen,
+  and a screen too small for Max's floor starts in Midi. FUTURE-SETTINGS.md §8b.
+- **Album notes** (2026-10-15): Apple's editorial notes in the album's facts box, Apple's only
+  (Last.fm's wiki leaves the About cell); the full note opens on every surface; a song mention
+  plays the song in the album. Every fork closed; three probes before the build (§5).
+  ideas/album-notes.md.
+- **A Library album's real artist** (2026-10-15): the sync's song pages add `include=albums`,
+  which gives each song's library album and Apple's album artist at no extra call (probed); the
+  Library names the album by it, not by a vote of song credits. It can go in before album notes.
+  ideas/album-notes.md §6.1–§6.2.
+
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
@@ -159,6 +175,12 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   (§10.6).
 
 ### His to design or decide (asks and ideas, not built)
+
+- **Fewer Apple calls, and a song's primary artist** (2026-10-15): ideas/apple-calls.md. The
+  ledger, five savings (about 110 → 15 library calls a day for him), the ⟳'s silent refusal, and
+  Go to Artist / Last.fm / Rewind by Apple's primary artist. His calls: Rewind counts a
+  collaboration for the primary artist only (P1 A); guests' names ride the enrichment call (P2 A).
+  The savings S1–S5 are not yet his calls; S2 needs a week of dates first.
 
 - **Presentation mode** (PresentationMode.md): shipped in 0.27.0, his desk test passed
   2026-10-13 (§9.3). The view's picture is his to draw, the goal marker is paused, and a live

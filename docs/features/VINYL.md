@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: passed 2026-09-15
 sources: [src/vinyl.ts, scripts/webview-eval.mjs, src/now-playing-card.ts, src/tray.ts, src/skin-settings.ts, src/settings-store.ts]
-updated: 2026-10-11
+updated: 2026-10-15
 ---
 # Press record player (vinyl cover)
 
@@ -293,3 +293,84 @@ a late start; a step that is not ~10° is a snap; the slot count going 2 → 1 �
   Press card background, moving as the translucent drag chip. Kept as is.
 - **Double slide seen once (test 1) before the show telemetry existed**; not seen since. If it comes
   back, the `[perf] vinyl show` lines name the two keys.
+
+## 11. No sheen, and a center cap (2026-10-15)
+
+> **Part:** designed · 2026-10-15
+
+**His ask (2026-10-15):** remove the shading on the record. It looks wrong on many album covers,
+and it does not show true depth.
+
+**What the shading is.** The sheen (§3, layer 3): a `conic-gradient` with two opposite light lobes
+in `--surface` at 35 %, from 300°, 28° each. It does not turn. It sits on top of the cover, so on a
+dark cover it reads as two grey wedges, and on a busy cover it reads as a stain. It is the same
+fixed light on every cover, so it cannot show the depth of a real record.
+
+**Decided by his words.** The sheen goes. No Settings row: he asked to remove it, not to make it a
+choice.
+
+**What follows (no fork):**
+- `vinyl.ts` stops writing `<div class="vinyl__sheen">`; the file's head comment loses the sheen.
+- `styles.css` loses the `.vinyl__sheen` rules; the shared mask rule keeps `.vinyl__spin` only;
+  `.vinyl__plate, .vinyl__sheen { display: none; }` keeps the plate only.
+- `skin.css` loses the four `--vinyl-sheen-*` tokens. `npm run tokens` in the same commit.
+- §3 here loses layer 3, and §1 row 1 reads "grooves, spindle hole".
+- The motion set (`docs/guide/motion.json`) runs Press before and after, as the record of the change.
+
+**V1, the grooves and the label ring: KEEP (his call, 2026-10-15).** They are thin lines in
+`--title` ink (grooves 9 %, ring 30 %) that turn with the cover. They make the round cover read as
+a record, and they claim no light source.
+
+### 11.1 The center cap (his idea, 2026-10-15)
+
+> **Part:** parked · 2026-10-15
+
+**Parked (his call, 2026-10-15).** Documented, not to be built now. His reason: he runs the app
+full screen, so the hole looks larger to him than it does at a usual size. The sheen removal and
+the grooves (§11) do not wait for this. Fork C1 below stays open for when he comes back to it.
+
+**His words:** cover the hole in the middle with a static round picture. At first it is the
+DeetsMusic icon; the user can swap it.
+
+**Terms.** The **cap** is the round picture in the center of the record.
+
+**Decided by his words.**
+- The cap does **not turn** ("static"). It sits on a layer above the turning disc, the place the
+  sheen leaves (`.vinyl__sheen` becomes `.vinyl__cap`, a layer that never turns, like the plate).
+- The default picture is the DeetsMusic icon: the app icon of the build (the Deets head once
+  `icons-fifteen` is merged, whitelabel.md §10.6).
+- The user can swap the picture.
+
+**What the code shows (checked 2026-10-15).** The hole is `--vinyl-hole: 5%` of the radius in the
+mask, so its width is 5 % of the record's width. On the 120 px strip (`--np-cover`) that is 6 px;
+on a 400 px stage, 20 px. A picture at the size of the hole cannot be read. The label ring sits at
+33 % (`--vinyl-label`, one third of the record's width, as on a real LP: 100 of 300 mm).
+
+**Open fork, C1: the cap's size.**
+- **A (recommended): a cap of about half the label, 16 % of the record's width.** 19 px on the
+  strip, 64 px on a 400 px stage: the icon is clear, and most of the cover still shows. It reads as
+  the center sticker of a record. Cost: it hides the center of the cover (16 %).
+- **B: the whole label, 33 %, inside the label ring.** The picture is the record's label, as on a
+  real LP. Cost: it hides the center third of the cover, where a face or a title often is.
+- **C: the hole only, 5 %.** Your literal words. Cost: 6 to 20 px; the icon is a dot.
+
+**Draft (his to edit): the Settings row.**
+- Look and feel (Press only, under *Record player*): **Record center**: *DeetsMusic* · *Picture* ·
+  *None*. *Picture* opens the same picture list as Glass › Canvas › Picture (every picture by name,
+  plus Choose). *None* shows the hole, as today.
+- Hint: "Press only. The picture in the center of the record. It does not turn."
+- Default: *DeetsMusic*, so every Press user sees the cap after the update.
+
+**What follows (no fork):**
+- A user picture is a user file (`user-files.ts` `addPicture`, the store Glass › Canvas uses). The
+  key names its id, like `glassPictureId`; the row is a rule key, read with `effective`, so a rule
+  can hold another picture (RULES.md §19).
+- The picture is cut to a circle and filled (`object-fit: cover`). A thin ring in the label ring's
+  ink edges it, so a light picture on a light cover still shows as a round part.
+- The cap shows in each place the record shows (stage, strip, the tray panel by the *Show record
+  on* row). The ♪ placeholder slot has no record, so no cap.
+- The song-change slide (§5) moves the whole slot, so the cap slides with the old record and the
+  new one brings its own.
+- The checklist: a key in `settings-store.ts` with a default and why, a spec in
+  `agent-settings.ts`, a line in AGENT.md, a `NEW_MARKS` line, the Skin settings Reset group, the
+  hint in ONBOARDING.md §1, Compass by the store rule.

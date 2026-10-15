@@ -12,6 +12,55 @@ updated: 2026-10-15
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-15 — two ideas: the record's sheen, a tray hover card
+
+A talk and docs only; no code (another build was in progress).
+- **The Press record's shading.** His ask: remove it; it looks wrong on many covers and shows no
+  true depth. The shading is the fixed two-lobe sheen. It goes (his words). Open: keep the grooves
+  and the label ring or not. VINYL.md §11.
+- **A hover card on the tray icon.** His ask: hold the pointer on the icon to see what plays, its
+  facts, and up next. Checked: Tauri 2.11 has tray `Enter` / `Leave` with the icon's rect; the hub
+  carries no up next yet. Forks T1 (card / tooltip text / both) and T2 (a look only / clickable)
+  open, with a draft of the card. TRAY.md §7.
+- **His calls, the same sitting.** V1 A: keep the grooves and the label ring. A new idea: a static
+  round picture over the spindle hole, the DeetsMusic icon first, swappable (VINYL.md §11.1; the
+  hole is 6–20 px, so its size is fork C1). T1 B: tooltip text only, like Steam's download
+  percentage at a glance; T2 A. The tooltip text is a draft (TRAY.md §7).
+- **Then:** the cap is parked (he runs full screen, so the hole looks larger to him than at a usual
+  size). The tooltip loses the play / pause mark; the time left stays only if an open tooltip
+  updates live (the probe decides). Both ideas are decided, not built.
+- **A new user starts in Max** (his ask). Checked: `DEFAULT_SURFACE` and `fullSurface()` give
+  Midi; `applySize()` does not fit the 1100 × 950 Max size to the screen. New installs only (his
+  word "default"); the fit to the work area is the root fix; Midi when Max's floor cannot fit.
+  FUTURE-SETTINGS.md §8b.
+- **Album notes** (his question: does Apple give album info or artist's notes?). Probed live,
+  about 12 read-only calls: Rrromeo carries `editorialNotes` (tagline, short, and a ~900-word
+  standard with a track-by-track interview in `<b>` / `<i>`); Girl Ultra's artist record has no
+  notes, and the bio fields came back empty. His sketch: the short note in the About cell, the
+  full note on a click, song names as mentions. New doc ideas/album-notes.md.
+- **The album artist line** (his question, same screenshot): `groupAlbums()` takes the most
+  common song artist; his 2 Rrromeo songs tie, so one song's credit names the album (two
+  `album_info` rows prove it flips). The zero-call fix is the shared lead credit
+  (album-notes.md §6).
+- **His calls on album notes:** N1 Apple's notes only (Last.fm's wiki leaves the About cell);
+  N2 every surface; N3 A (a mention plays the song in the album). On the artist he set the rule
+  aside (names with commas, `&`, duos) and asked for Apple's own album artist, cached. Probed:
+  `me/library/songs…&include=albums` returns each song's library album with `artistName` (100 of
+  100; Rrromeo → *Girl Ultra*), same calls, 63 → 121 KB a page. It rides the sync into the track
+  JSON; the backfill rides the next full pass (album-notes.md §6.1–§6.2).
+- **Apple calls and the primary artist** (his questions). His log: 96 library calls in the
+  launch hour (count 1, full sync 41, artist pass ~15, re-reads ~40); 4 of the last 5 launches ran
+  a full sync because he adds songs daily. Probed: one `catalog/playlists?ids=` call gives
+  `lastModifiedDate` for 44 of 48 mirrors, Apple's mixes included; the sync page with
+  `include=albums,artists` and `fields[…]` is 106 KB and names each song's library artist, whose
+  catalog twin is the primary artist (Girl Ultra; nested catalog = 2.3 MB, rejected). The ⟳'s
+  clicks were refused by `SYNC_IN_FLIGHT` during the launch's full sync, a console error only.
+  Go to Artist used the unsplit credit (no solo Girl Ultra song, so no vocabulary); Rewind groups
+  by the raw credit. New doc ideas/apple-calls.md.
+- **His calls on the primary artist:** P1 A (Rewind counts a collaboration for the primary
+  artist only) and P2 A (guests' names from the enrichment call, 0 extra calls).
+  apple-calls.md §5.4.
+
 ## 2026-10-15 (icons-fifteen) — the Deets head icon, everywhere it can go before a release
 
 Branch `icons-fifteen`. His drawings: `icon-template/deets-head-32.png` and `deets-head-16.png`.

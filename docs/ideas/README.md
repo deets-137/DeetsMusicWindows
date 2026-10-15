@@ -55,6 +55,14 @@ the app can do any of these things.
   §2); the service layer is the real work (§3); Bandcamp has no public fan API (§4); a brand
   config as the first step (§8); the forks (§9); the planned rename to DeetsBeats and the
   Deets-head icon (§10, 2026-10-15).
+- [album-notes.md](album-notes.md) — an idea (2026-10-15): Apple's editorial notes in the album's
+  facts box, the short note in the About cell and the full note on a click, song names as
+  mentions; what Apple gives, probed live on Rrromeo (§1); his calls (§3); and a Library album's
+  real artist from the library sync's `include=albums`, at no extra call (§6).
+- [apple-calls.md](apple-calls.md) — an idea (2026-10-15): the ledger of every Apple call site
+  (§2), a measured day (§1), five savings probed or read (§3: about 110 → 15 library calls a day
+  for the owner), the Library ⟳'s silent refusal (§4), and a song's primary artist from Apple at
+  no extra call (§5; his calls P1 and P2, 2026-10-15).
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
   its first part was built (the stats cell grows over the card in Max).
 - [WebRooms.md](../features/WebRooms.md) — moved to features/ on 2026-10-13, when its app side

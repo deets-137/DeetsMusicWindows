@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-09
 sources: [src-tauri/src/tray.rs, src-tauri/src/lib.rs, src-tauri/src/media.rs, src/tray.ts, src/np-bus.ts, src-tauri/src/settings.rs]
-updated: 2026-09-29
+updated: 2026-10-15
 ---
 # Tray panel + minimize-to-tray
 
@@ -171,3 +171,65 @@ Known limits, both accepted:
   card lands (the v1 push, item 1, in WORKLOG.md's older entries).
 - Per-app volume for the Windows source would need the WASAPI session enumerator
   (`IAudioSessionManager2`) matched by process — skipped for v1.
+
+## 7. Hover text (designed, 2026-10-15)
+
+> **Part:** designed · 2026-10-15
+
+**His ask (2026-10-15):** hold the pointer on the tray icon to see what is playing, facts about
+it, and what is queued next.
+
+**Terms.**
+- **Hover card**: a small window that shows while the pointer rests on the tray icon.
+- **Tooltip**: Windows' own text box on a tray icon. Today it says "DeetsMusic"
+  (`tray.rs`, `.tooltip("DeetsMusic")`).
+- **Up next**: the songs after the current one in the Queue card (`queue.getUpcoming()`).
+
+**What the code allows (checked 2026-10-15).**
+- Tauri 2.11 sends `TrayIconEvent::Enter`, `Move` and `Leave`, each with the icon's `rect`.
+  `tray.rs` today reads only `Click`. So the card can be placed on the icon, with no new crate.
+- The hub (`np-bus.ts` → `bridge::Hub`) carries the current song, progress and volume. It does
+  **not** carry up next. The card needs a new short list in `NpState`: the next few songs (title,
+  artist, a small cover URL), published when the queue changes.
+- The tooltip text holds 127 characters, plain text, no picture (Windows `NOTIFYICONDATA.szTip`).
+
+### His calls (2026-10-15)
+
+- **T1 = B: the tooltip text only.** No hover card, no third window. His model is Steam's tray
+  icon: a hover tells you the game that downloads and its percentage, at a quick glance.
+- **T2 = A: a look only.** A Windows tooltip cannot take a click, so this holds by itself.
+- Not taken: the hover card (T1 A) and a Settings row to pick card or text (T1 C).
+
+### The text (his edit of the draft, 2026-10-15)
+
+Three lines, at most 127 characters in all. No play or pause mark (his call).
+
+| State | Line 1 | Line 2 | Line 3 |
+|-------|--------|--------|--------|
+| Playing or paused | `Song — Artist` | `Album` | `Next: Song — Artist` |
+| A station | `Song — Artist` | `Album` | `Station: name` |
+| Last song in the queue | as above | as above | (no line 3) |
+| Nothing plays | `DeetsMusic` | | |
+
+- **The time left: only if it updates live (his call).** Line 2 becomes `Album · 2:14 left` only
+  when the probe below shows that a tooltip open on screen takes the new text each second. If
+  Windows shows the new text only at the next hover, the time is left out.
+- Not in the text, for lack of room: the Last.fm listener count (LISTENERS.md) and ♥.
+
+### What follows (no fork)
+
+- **Rust writes the text.** The hub already gets each `np_publish` (at most once a second). It
+  builds the text and calls `set_tooltip` only when the text changes. No new window, and no hover
+  events.
+- **The hub carries the next song.** `NpState` gets one new field: the next song's title and
+  artist (from `queue.getUpcoming()[0]`), or the station's name. `np-bus.ts` publishes it when the
+  queue changes.
+- **The cut.** Each part is cut with "…" so the whole fits 127 UTF-16 units. The song and artist
+  keep the most room; the album is cut first.
+- **Our songs only.** The Windows media source (another app plays) is not shown: its poll runs
+  only while the panel is visible, and this icon is DeetsMusic's.
+- **Probes before the build:** does a tooltip that is open on screen show a new text (Windows may
+  show the new text only at the next hover; this decides the time left), and do the line breaks
+  show in a tray tooltip on Windows 11. Without the time, the text changes only at a song change
+  or a queue change.
+- A desk test written into this section at build time.

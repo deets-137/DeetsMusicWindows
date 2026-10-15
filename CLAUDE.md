@@ -227,7 +227,15 @@ no public fan API, local files are the clean path (§4); §9 the forks. §10 (20
 calls): the rename to DeetsBeats — display name only, the identifier stays, the MCP renamed in
 full, the CLI keeps `deetsmusic` as an alias; the name check found "Beats" unsafe, so the new name
 is open (§10.3); a new `productName` is a second install, moved by hand (§10.4); his
-Deets-head icon is drawn in `icon-template/` (§10.6).
+Deets-head icon is drawn in `icon-template/` (§10.6). `album-notes.md` — an idea (2026-10-15):
+Apple's editorial notes in the album's facts box (the short note in the About cell, the full note
+on a click, song names as mentions); probed live (§1: albums have notes, sometimes a track-by-track
+interview; artists have none for us); his calls (§3: Apple's notes only, every surface, a mention
+plays the song); §6 a Library album's real artist from the sync's `include=albums`, no extra call.
+`apple-calls.md` — an idea (2026-10-15): the ledger of every Apple call site (§2), a measured day
+(§1), the savings (§3: the explained count, mirror dates in one call, new artists from new songs),
+the Library ⟳'s silent refusal (§4), a song's primary artist from Apple at no extra call (§5,
+his calls P1 A, P2 A). The counter itself is `ops/APPLE-CALLS.md`.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
