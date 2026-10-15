@@ -50,6 +50,11 @@ the app can do any of these things.
 - [SiteOceanLive.md](SiteOceanLive.md) — an idea (2026-10-13): the site's Ocean glow takes the
   color of the song playing now (the visitor's, through the extension; or the owner's, through
   Last.fm); §4 the forks.
+- [whitelabel.md](whitelabel.md) — an idea (2026-10-14): DeetsMusic built under another brand
+  (a Bandcamp player was the ask). The brand layer is small (the Beta overlay is the pattern,
+  §2); the service layer is the real work (§3); Bandcamp has no public fan API (§4); a brand
+  config as the first step (§8); the forks (§9); the planned rename to DeetsBeats and the
+  Deets-head icon (§10, 2026-10-15).
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
   its first part was built (the stats cell grows over the card in Max).
 - [WebRooms.md](../features/WebRooms.md) — moved to features/ on 2026-10-13, when its app side

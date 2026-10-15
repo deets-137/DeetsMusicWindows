@@ -220,7 +220,13 @@ view to the artist's crowdfunding page, Bandcamp and official site (his call), f
 URL relationships at zero Apple calls; §4 the Apple terms read (one risk, his call); §5 the
 library probe that comes before HIS UI; §8 the forks. `SiteOceanLive.md` — an idea
 (2026-10-13): the site's Ocean glow takes the color of the song playing now (the visitor's,
-through the extension; or his, through Last.fm); §4 the forks.
+through the extension; or his, through Last.fm); §4 the forks. `whitelabel.md` — an idea
+(2026-10-14): DeetsMusic under another brand (his example: a Bandcamp player). The brand layer
+follows the Beta overlay (§2, §6); a second music service is the real work (§3); Bandcamp has
+no public fan API, local files are the clean path (§4); §9 the forks. §10 (2026-10-15, his
+calls): the rename to DeetsBeats — display name only, the identifier stays, the MCP renamed in
+full, the CLI keeps `deetsmusic` as an alias; the "Beats" name check is first (§10.3); his
+Deets-head icon is drawn in `icon-template/` (§10.6).
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
