@@ -193,8 +193,8 @@ not a code change, for as long as it plays Apple Music.
 
 ## 10. Renaming the base brand: DeetsMusic → DeetsBeats
 
-> **Part:** idea · 2026-10-15. Planned, not built. "DeetsBeats" is his working name. It is not
-> final until the check in §10.3 is done.
+> **Part:** idea · 2026-10-15. Planned, not built. "DeetsBeats" was his working name. The check
+> in §10.3 found it unsafe, so the new name is open. The plan below holds for any new name.
 
 ### 10.1 His calls (2026-10-15)
 
@@ -232,17 +232,58 @@ not a code change, for as long as it plays Apple Music.
 
 "Beats" is a mark of Apple's in music and audio (Beats Electronics; Apple Music's station was
 "Beats 1" until 2020). An app that plays Apple Music under a name with "Beats" in it can read as
-an Apple product, and the MusicKit rules forbid a claim of Apple's endorsement. Search the
-trademark registers (USPTO, EUIPO) and read the MusicKit terms before he commits to the name.
-Not checked yet.
+an Apple product, and the MusicKit rules forbid a claim of Apple's endorsement.
+
+> **Checked 2026-10-15 (Claude, on the web; not a lawyer's opinion).** Result: **DeetsBeats is
+> not safe. Claude recommends another name, with no "beat" in it.**
+
+- **No one uses "DeetsBeats".** A web search found no product, artist or mark of that name.
+- **Beats Electronics, LLC (Apple's) opposes almost every "beat" mark.** USPTO TTABVUE lists
+  100+ proceedings with Beats Electronics as a party. The newest page alone has 16 oppositions
+  from 2024–2026, among them BUCKLEBEATS, FRIDGEBEATS, VIBROBEATZ, BEATBEST, OUTBEAT, REDBEAT,
+  TPBEAT and UPBEAT SOUND CO. In 2021 it opposed MUSICY BEAT (audio gear) on the shared
+  "beat/beats" part, and called its marks "famous" for "audio- and music-related products and
+  services". "<word>BEATS" for music software is the exact shape it opposes.
+- **The music context makes it worse.** DeetsBeats plays Apple Music, and Apple owns Beats. A
+  user can take it for an Apple or Beats app. Apple Music's Identity Guidelines §7.5 say: "Do not
+  indicate any kind of sponsorship or endorsement by Apple." Apple can end the MusicKit access
+  that the whole app depends on, so the risk is not only a letter from a lawyer.
+- **Not registering the name does not remove the risk.** An opposition stops a registration. An
+  app that only uses the name can still get a demand to stop, and a rename after v1 costs more
+  than one now.
+- **What a new name avoids:** "beat", "beats", "beatz" in any form; "Apple", "Music" in an
+  Apple-like form; a round headphone mark with one letter in it (Beats' logo is a "b" in a
+  circle). The Deets-head icon (§10.6) is far from that logo.
+- **Before the next name is final:** a search of USPTO and EUIPO for it in classes 9 (software)
+  and 41/42 (music services), and a web search.
+
+Sources: [TTABVUE, Beats Electronics as a party](https://ttabvue.uspto.gov/ttabvue/v?pnam=Beats+Electronics%2C+LLC++),
+[Law Street Media on MUSICY BEAT, 2021](https://lawstreetmedia.com/news/tech/beats-files-opposition-to-musicy-beat-mark/),
+[Apple Music Identity Guidelines](https://marketing.services.apple/apple-music-identity-guidelines).
 
 ### 10.4 Open (his)
 
 1. **The alias for the CLI.** Two copies of one exe, or a small `deetsmusic.exe` that starts
    `deetsbeats.exe`. Test both against the NSIS close-the-CLI rules (`hooks.nsh`) first.
-2. **`productName` on update.** It names the install folder. Test what the updater does with a
-   new `productName` on a real install before the release that renames. If it makes a second
-   install, keep `productName` and change the display strings only.
+2. **`productName` on update.** Read in the docs 2026-10-15:
+   - `productName` names the install folder (`%LOCALAPPDATA%\DeetsMusic`, RELEASE.md §2) and
+     the Start-with-Windows value (`${PRODUCTNAME}`, RELEASE.md §3). A Tauri NSIS installer
+     keeps the same folder only while the product name stays the same (BETA.md §4.2).
+   - So a new `productName` installs a SECOND app in `%LOCALAPPDATA%\<new name>`, beside the
+     old one, and the pinned taskbar button stops working (RELEASE.md §6.8).
+     `release-check.mjs:97` fails such a build on purpose until it is allowed.
+   - **The data survives.** The data folder is the identifier's (`%APPDATA%\com.deetsmusic.app`),
+     not the product name's, and the identifier does not change (§10.1). The new app opens on
+     the same library, settings, tokens and Diary.
+   - **The trap:** both apps share that one data folder. If the old app's uninstaller runs with
+     **Delete app data** checked, it deletes the new app's data too.
+   - **With no user base (his call, §10.5), the plan is a hand move, not updater code:** copy
+     `%APPDATA%\com.deetsmusic.app` somewhere safe; install the new name by hand; uninstall
+     DeetsMusic from Installed apps with **Delete app data** NOT checked; pin the new app. The
+     release-check rule gets a one-time allow for this release.
+   - **Not tested:** what the OLD app's updater does if it is offered the renamed build (likely
+     the second install above). Do not publish the renamed build to the live channel until a
+     test install shows it; or install it by hand only.
 3. **The monogram.** "DB", or a user setting (§10.1).
 4. **The order.** The brand config (§8) first, then the rename as one value in it. Claude's
    recommendation: yes. With the config, a new literal "DeetsMusic" fails docs:check.
@@ -314,13 +355,26 @@ display name.
 - **As built (2026-10-15, branch `icons-fifteen`, his calls):** he kept his canvas: 32 and up
   are the whole 32 canvas ×1, ×2, ×4, ×8, ×16, ×32 (`app-icon.png`). 16 is his hand-drawn 16;
   20 is that 16 centered; 24 is the head 1:1 centered; 48 is the 24 ×2 (Claude's calls inside
-  his pick: 32 → 48 is not a whole number). The `.ico` holds 16, 20, 24, 32, 48, 64, 256, each
-  read back pixel for pixel. Not yet redrawn: `icons-beta/`, the `Square*Logo` files (the
+  his pick: 32 → 48 is not a whole number). The `.ico` holds 16, 20, 24, 30, 32, 36, 48, 64,
+  256, each read back pixel for pixel. 36 is the 150 % taskbar: the head ×2, edge to edge (his
+  call: Windows puts the space between taskbar icons). 30 is the 125 % taskbar: the head 1:1
+  centered, since no whole-number scale fits (Claude's call). Not yet redrawn: `icons-beta/`, the `Square*Logo` files (the
   Store set, unused by NSIS), `icon.icns`, the extension, the MCP bundle, the sign-in page,
   the site.
 - **Why `app_icon.rs` (2026-10-15):** Tauri gives a window ONE picture, the first `.ico`
   frame, and Windows scaled his 16 up to the 24 px taskbar button: a blur. Now each window
   loads the exe's icon resource (id 32512) at the exact size per scale (small = SM_CXSMICON,
   big = 24 px × scale, the taskbar's size) and sends `WM_SETICON`, again on a scale change;
-  the tray takes the `.ico` frame of the small-icon size at the system scale. Checked on his
+  the tray takes the `.ico` frame of the small-icon size at the taskbar's scale. Checked on his
   taskbar at 100 %: the 24 frame shows 1:1.
+- **A scale change while open (2026-10-15):** a window hears it as `ScaleFactorChanged`. The
+  tray has no window that hears it, and Windows fixes the system scale for the process's
+  life. So the main window is subclassed for `WM_SETTINGCHANGE` / `WM_DISPLAYCHANGE` /
+  `WM_DPICHANGED`; after the message returns, the tray size is read from the taskbar window
+  (`Shell_TrayWnd`) and, if it changed, the tray frame and every window's frames are set again
+  (log line `app_icon: tray 16px → 24px`). Desk test: with the dev app open, Settings ›
+  Display › Scale 100 % → 150 % → 100 %; the taskbar button and the tray stay crisp, with no
+  restart. First run (his): the tray followed (log), but at 150 % the head was small, because
+  the exe still held the old frames. `build.rs` now reruns when `icons/icon.ico` or
+  `icons-beta/icon.ico` changes (tauri-build does not watch them, and our own
+  `rerun-if-changed` lines turn Cargo's default off).

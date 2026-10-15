@@ -119,8 +119,10 @@ features = [
   # docs/ops/DB-HEALTH.md §7). A feature of the crate the app already has; no new download.
   "Win32_UI_WindowsAndMessaging",
   # Each window and the tray get their own frame of the app icon (app_icon.rs): the module
-  # handle for LoadImageW, and the window's scale. Features of the crate the app already has.
+  # handle for LoadImageW, the window's scale, and the main window's subclass that hears a
+  # scale change for the tray. Features of the crate the app already has.
   "Win32_System_LibraryLoader",
   "Win32_UI_HiDpi",
+  "Win32_UI_Shell",
 ]
 

@@ -225,7 +225,8 @@ through the extension; or his, through Last.fm); §4 the forks. `whitelabel.md` 
 follows the Beta overlay (§2, §6); a second music service is the real work (§3); Bandcamp has
 no public fan API, local files are the clean path (§4); §9 the forks. §10 (2026-10-15, his
 calls): the rename to DeetsBeats — display name only, the identifier stays, the MCP renamed in
-full, the CLI keeps `deetsmusic` as an alias; the "Beats" name check is first (§10.3); his
+full, the CLI keeps `deetsmusic` as an alias; the name check found "Beats" unsafe, so the new name
+is open (§10.3); a new `productName` is a second install, moved by hand (§10.4); his
 Deets-head icon is drawn in `icon-template/` (§10.6).
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each

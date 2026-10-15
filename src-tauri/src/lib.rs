@@ -293,6 +293,7 @@ pub fn run() {
             audio_out::setup(app.handle());
             tray::setup(app.handle())?;
             app_icon::set_all(app.handle());
+            app_icon::watch_scale(app.handle());
 
             // A login launch (`--tray`, the Run-key command) starts in the tray.
             if std::env::args().any(|a| a == "--tray") {

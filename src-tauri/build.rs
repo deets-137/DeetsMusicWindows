@@ -1,7 +1,18 @@
 fn main() {
     lastfm_key();
     build_key();
+    icons();
     tauri_build::build()
+}
+
+/// The exe's icon resource is packed from `icons/icon.ico` (the Beta's from `icons-beta/`) by
+/// tauri-build, which does not watch it. Our own `rerun-if-changed` lines above switch Cargo's
+/// "rerun on any file" off, so a new `.ico` alone kept the old frames in the exe: the 36 px
+/// frame was missing at 150 % on 2026-10-15 (whitelabel.md §10.6).
+fn icons() {
+    for dir in ["icons", "icons-beta"] {
+        println!("cargo:rerun-if-changed={dir}/icon.ico");
+    }
 }
 
 /// The Last.fm API account (docs/integrations/LASTFM.md §2): built into the exe, as Last.fm expects of a
