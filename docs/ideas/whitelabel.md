@@ -358,9 +358,13 @@ display name.
   his pick: 32 → 48 is not a whole number). The `.ico` holds 16, 20, 24, 30, 32, 36, 48, 64,
   256, each read back pixel for pixel. 36 is the 150 % taskbar: the head ×2, edge to edge (his
   call: Windows puts the space between taskbar icons). 30 is the 125 % taskbar: the head 1:1
-  centered, since no whole-number scale fits (Claude's call). Not yet redrawn: `icons-beta/`, the `Square*Logo` files (the
-  Store set, unused by NSIS), `icon.icns`, the extension, the MCP bundle, the sign-in page,
-  the site.
+  centered, since no whole-number scale fits (Claude's call).
+- **`npm run icons`** (`scripts/icons.py`, Python with Pillow) makes the whole set from his two
+  drawings, with the extension (16 = his 16, 32 = his 16 ×2 for the toolbar at 200 %, 48 = the
+  24 ×2, 128 = the canvas ×4) and the MCP bundle (the canvas ×8). Run it again after a drawing
+  changes. Not yet redrawn: `icons-beta/` (its look is open), the `Square*Logo` files (the
+  Store set, unused by NSIS), `icon.icns`, the sign-in page (`npm run signin:assets`, then a
+  DeetsSupport deploy: his call), the site's `assets/deetsmusic/icon.png` in DeetsSolutions.
 - **Why `app_icon.rs` (2026-10-15):** Tauri gives a window ONE picture, the first `.ico`
   frame, and Windows scaled his 16 up to the 24 px taskbar button: a blur. Now each window
   loads the exe's icon resource (id 32512) at the exact size per scale (small = SM_CXSMICON,
