@@ -25,7 +25,7 @@ import { addTrackToLibrary, libraryAddOffered, libraryAddEnabled, onLibraryAddCh
 import { favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favorites";
 import { songMenu } from "./media-menu";
 import { ICON_SHRINK } from "./card-grow";
-import { closeFullPlayer } from "./full-player";
+import { closeFullPlayer, fullPlayerAvailable, isFullPlayer, openFullPlayer } from "./full-player";
 
 const ICON_PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>';
@@ -537,7 +537,19 @@ export const nowPlayingCard: CardDef = {
     // anchored. Keys off the queue's current entry (player state carries no catalog id).
     const npMenu = (e: MouseEvent) => {
       const cur = queue.getCurrent();
-      if (!cur) return; // nothing playing → let the native menu through
+      // Expand / Shrink: the full player, Midi and Max only (features/fullscreen-player.md §7).
+      // It stays in the menu with nothing playing, since the full player opens then too.
+      const sizeRow = fullPlayerAvailable()
+        ? isFullPlayer()
+          ? { label: "Shrink Player", quick: "shrink" as const, run: () => void closeFullPlayer("menu") }
+          : { label: "Expand Player", quick: "expand" as const, run: () => void openFullPlayer("menu") }
+        : null;
+      if (!cur) {
+        if (!sizeRow) return; // nothing playing, nothing to offer → let the native menu through
+        e.preventDefault();
+        openContextMenu(e.clientX, e.clientY, [sizeRow]);
+        return;
+      }
       const t = resolveEntry(cur);
       // The song that is playing: the song menu without the Play group (CONTEXT-MENUS.md §3.1).
       const items = songMenu(t, {
@@ -545,6 +557,7 @@ export const nowPlayingCard: CardDef = {
         catalogId: cur.catalogId,
         play: null,
         own: [
+          sizeRow,
           onStation
             ? { label: "Stop Station", run: () => void stopStation().catch((err) => console.error("[np] stop station", err)) }
             : null,

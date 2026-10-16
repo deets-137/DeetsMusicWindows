@@ -87,9 +87,12 @@ Library's Sort pop: the text options, and the direction arrows in a column besid
 | + (✓ when held) | Add to Library | `ICON_PLUS` / `ICON_CHECK` (`add-square.ts`) |
 | ♥ (filled when on) | Favorite | the ♥ (`add-square.ts`) |
 | pin (filled when on) | Pin | `ICON_PIN` (`pins.ts`) |
+| four corner arrows, out | Expand Player (Now Playing only, 2026-10-16) | the Grow button, `ICON_GROW` (`card-grow.ts`) |
+| four corner arrows, in | Shrink Player (Now Playing only, 2026-10-16) | the full player's close square, `ICON_SHRINK` (`card-grow.ts`) |
 
 **What follows from the calls (Claude's, for his review):**
-- **Order** top to bottom: Play · Add to Queue · Add to Library · Favorite · Pin. A glyph whose
+- **Order** top to bottom: Play · Add to Queue · Add to Library · Favorite · Pin · Expand /
+  Shrink Player (his ask, 2026-10-16: the glyph matches the row). A glyph whose
   row the menu does not have is left out; the rest close up (the song that is playing has no
   Play; a station has no ♥).
 - **State:** ♥ and Pin are filled when on, in the title color.
@@ -150,6 +153,9 @@ Library · Favorite · Mark as Song of the Day · Pin.
 - **Pin pins the song**, wherever the row sits — inside an album view too (fork 3A).
 - **The song that is playing** (Now Playing, the Queue's now hero) has no Play group, and adds
   **Stop Station** while a station plays.
+- **Now Playing only** (2026-10-16, his ask): **Expand Player** opens the full player, and
+  **Shrink Player** closes it (fullscreen-player.md). Midi and Max only. With nothing playing,
+  the cover's menu holds this one row.
 - The **tray panel** has no cards, so it has no Play and no Go to group: Start Station · Copy
   Link · Add to Library · Favorite · Pin (fork 6A). The main window runs each row
   (`np_command`, np-bus.ts).
@@ -324,6 +330,7 @@ Start Station). One press makes a web playlist with no panel (`startWebItem`, we
 | Queue | upcoming row | Play Now (jumps to the row) replaces group 1 · Move to Top · Move to Bottom | Remove |
 | Queue | picked rows | — (no Play group) | Remove *N songs* |
 | Queue · Now Playing | now hero · cover and title | Stop Station (while one plays) | — |
+| Now Playing | cover and title | Expand Player / Shrink Player (Midi, Max) | — |
 | Queue | station row | Stop Station, or Don't resume (not a media menu) | — |
 | History | row · picked rows | group 1 plays the play record by its handle | — |
 | Playlists | playlist row | Move to Folder ▸ · Refresh ▸ · Import to Edit (Apple) · Keep Playlist · the cover rows | Delete Playlist |

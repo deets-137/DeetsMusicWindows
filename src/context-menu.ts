@@ -37,7 +37,7 @@ export interface ActionItem {
   /** A second, quieter line under the label (the artist of an album result). */
   note?: string;
   /** This row also has a glyph button in the quick column (CONTEXT-MENUS.md §2a). The row
-   *  stays in the list too (his call 2B). Only the five rows that have a glyph in the app. */
+   *  stays in the list too (his call 2B). Only rows that have a glyph in the app. */
   quick?: QuickGlyph;
   /** The quick glyph draws filled: the item is a favorite, or is pinned. On `library`, the
    *  glyph is the ✓: the item is in the library. */
@@ -47,8 +47,8 @@ export interface ActionItem {
   listless?: boolean;
 }
 /** The quick column's glyphs, in their order top to bottom (CONTEXT-MENUS.md §2a). */
-export type QuickGlyph = "play" | "queue" | "library" | "favorite" | "pin";
-const QUICK_ORDER: QuickGlyph[] = ["play", "queue", "library", "favorite", "pin"];
+export type QuickGlyph = "play" | "queue" | "library" | "favorite" | "pin" | "expand" | "shrink";
+const QUICK_ORDER: QuickGlyph[] = ["play", "queue", "library", "favorite", "pin", "expand", "shrink"];
 /** Each glyph is the one the app already draws for the verb, copied here so the menu
  *  primitive imports no feature module. */
 const QUICK_SVG: Record<QuickGlyph, string> = {
@@ -64,6 +64,10 @@ const QUICK_SVG: Record<QuickGlyph, string> = {
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>',
   // The pin (pins.ts `ICON_PIN`).
   pin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>',
+  // Now Playing's Expand Player / Shrink Player: the Grow button's arrows (card-grow.ts
+  // `ICON_GROW`) and the full player's close square (`ICON_SHRINK`).
+  expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg>',
+  shrink: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10h-6V4M14 10l7-7M4 14h6v6M10 14l-7 7"/></svg>',
 };
 // The + square's ✓ (add-square.ts `ICON_CHECK`): Add to Library when the item is held.
 const QUICK_HELD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
