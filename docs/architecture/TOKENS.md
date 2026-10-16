@@ -13,8 +13,8 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
-| Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 603 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Theme (color roles) | themes.css | 48 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 617 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -35,6 +35,7 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--new-badge` | `light-dark(var(--paint-amber-glow), var(--paint-hazard))` | — | The mark dots (his design, 2026-09-26). Yellow: the New badge (QUICK-SETTINGS.md §8) — warm amber on a light theme, where plain yellow fades into the menu; hi-vis yellow on a dark one. Green: a rule set the value; scarlet: your pick holds (the rule chip, RULES.md §9). The deep paint on a light theme, the brighter one of the pair on a dark theme. |
 | `--rule-chip-rule` | `light-dark(var(--paint-forest), var(--paint-fern))` | — |  |
 | `--rule-chip-hand` | `light-dark(var(--paint-blood), var(--paint-siren))` | — |  |
+| `--updates-lit` | `var(--new-badge)` | — | The updates button while an update is offered (docs/features/UpdatesButton.md): the New badge's yellow, the app's one color for "something new for you". |
 | `--eq-curve` | `var(--title)` | — | The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the song's shape at the strengths the SKIN sets, the song in the second plate so it never reads as the curve. Derived once here — no theme block names an EQ color of its own. |
 | `--eq-fill` | `color-mix(in srgb, var(--title) var(--sound-fill-strength), transparent)` | — |  |
 | `--eq-grid` | `color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent)` | — |  |
@@ -200,6 +201,20 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--cog-btn-size` | `var(--traffic-size)` | — | The cog (SETTINGS.md): the title bar button right of the Compass. Six teeth, so --cog-step lands on an identical tooth and the glyph never rests crooked. |
 | `--cog-step` | `120deg` | — | one click's turn |
 | `--cog-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — |  |
+| `--updates-btn-size` | `var(--traffic-size)` | — | The updates button (docs/features/UpdatesButton.md, styles/updates.css): right of the Compass, Max only. The arrows move in the glyph's own 24-unit grid. |
+| `--updates-fly` | `0.5s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | the up arrow leaves, the down arrow centers (the Compass needle's curve) |
+| `--updates-fly-y` | `-22px` | — | how far the up arrow rises: out of the glyph's top edge |
+| `--updates-center` | `3.5px` | — | the down arrow's move to the middle: 12 − 8.5 in the grid |
+| `--updates-bar-h` | `2px` | — | the download bar under the centered arrow |
+| `--updates-bar-w` | `70%` | — | of the button's width |
+| `--updates-bar-gap` | `3px` | — | below the button's box |
+| `--updates-bar-rise` | `3px` | — | it slides up into place from this far below |
+| `--updates-bar-in` | `0.36s var(--ease-ui)` | — | gentle: downloads are small, it is seldom seen |
+| `--updates-bar-fill` | `0.2s linear` | — | the fill follows the bytes |
+| `--updates-panel-w` | `var(--quick-panel-w)` | — | the cog's panel family: one width |
+| `--updates-panel-max-h` | `var(--quick-panel-max-h)` | — |  |
+| `--updates-panel-pad` | `var(--quick-panel-pad)` | — |  |
+| `--updates-lead-gap` | `var(--space-1)` | — | between two What's new bullets |
 | `--quick-icons` | `10` | — | The quick panel (QUICK-SETTINGS.md): the cog's strip of icons. One width, open or shut, so an icon press grows it down and never sideways. The width is the row's own sum: ten icons, nine gaps, one more gap between the two clusters, the padding, the border (1px a side) and the scrollbar gutter. A new icon adds one to --quick-icons. |
 | `--quick-panel-w` | `calc(var(--quick-icons) * (var(--quick-logo-size) + var(--space-2)) + 2 * var(--quick-panel-pad) + 2px + var(--scrollbar-w))` | — |  |
 | `--quick-panel-max-h` | `var(--sound-panel-max-h)` | — |  |

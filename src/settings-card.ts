@@ -272,8 +272,9 @@ const quickFoldsNow = (): Record<string, boolean> => {
   }
   return quickFolds;
 };
-const quickFoldOpen = (key: string): boolean => quickFoldsNow()[key] === true;
-const toggleQuickFold = (key: string): boolean => {
+/** Exported for the updates panel's What's new (docs/features/UpdatesButton.md): one fold memory. */
+export const quickFoldOpen = (key: string): boolean => quickFoldsNow()[key] === true;
+export const toggleQuickFold = (key: string): boolean => {
   const folds = quickFoldsNow();
   const open = !folds[key];
   if (open) folds[key] = true;
@@ -544,6 +545,12 @@ export function settingsRows(): SettingEntry[] {
 export interface SettingsPart {
   title: string;
   rows?: string[];
+  /** Rows of the section to leave out (the updates panel draws its own version row). */
+  except?: string[];
+  /** The first group's heading, when it differs from the section's title ("Bugs and suggestions"). */
+  label?: string;
+  /** A prefix on the fold keys, so a second panel keeps its own folds (docs/features/UpdatesButton.md). */
+  fold?: string;
 }
 
 /** The quick panel's rows (QUICK-SETTINGS.md §3): the Settings card's own sections, drawn by
@@ -2626,11 +2633,12 @@ function mountSettings(
           if (!s) return "";
           // A sub-heading that repeats the section's name (Window's first) would read twice.
           const rows = shown(s.rows).filter(
-            (r) => (!p.rows || p.rows.includes(r.id)) && !(r.kind === "head" && r.label === s.title),
+            (r) => (!p.rows || p.rows.includes(r.id)) && !p.except?.includes(r.id) && !(r.kind === "head" && r.label === s.title),
           );
           const tail = p.rows ? "" : tailOf(s);
           if (!rows.length && !tail) return "";
           return quickGroups(s.title, rows)
+            .map((g, i) => ({ ...g, key: (p.fold ?? "") + g.key, label: i === 0 && p.label ? p.label : g.label }))
             .map((g, i, all) => {
               const open = quickFoldOpen(g.key);
               const last = i === all.length - 1;

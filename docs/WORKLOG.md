@@ -12,6 +12,24 @@ updated: 2026-10-16
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-16 (shixtheenth) — the updates button
+
+**His ask:** a Max title bar button right of the Compass with his two-arrow glyph, and a panel
+for updates, what's new and bug reports. Designed and built in one sitting; every fork his
+(UpdatesButton.md §2, §6): toasts stay (F2), the whole Bugs form (F3), the New dot after an
+install (F4), a thin bar that slides in and out (F5), the bold leads with a lead rule in his
+changelog style (F1, §6.3), no count limit, the latest version only.
+- **Built:** UpdatesButton.md §7 (the as-built record and what was decided inside his calls).
+  `src/updates-btn.ts`, `src/styles/updates.css`, `src/release-leads.ts` (+ its tests),
+  `virtual:release-notes` in vite.config.ts, docs:check 31.
+- **Coordinated** with four sessions in the same checkout to stay on `shixtheenth`: each commits
+  only its own lines through a temporary index.
+- **Checks:** tsc, vite build, `npm test`, docs:check clean.
+- **Desk test:** UpdatesButton.md §8, all 11 steps PASSED on `dev:app` (run by Claude, §8.1).
+  Found and fixed in the run: the dev server could not load `virtual:release-notes` (a
+  relative `addWatchFile` path). Found, older: a click on a Compass row that opens a title bar
+  panel closes it again at once (Enter works); fixed next, in its own commit.
+
 ## 2026-10-16 (shixtheenth) — Suggest Less, built
 
 **His ask:** "scope out and build out suggest less". Every fork was closed on 2026-10-12, so this

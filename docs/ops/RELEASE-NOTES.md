@@ -9,6 +9,15 @@ updated: 2026-09-26
 The text for each GitHub Release. Newest first. Plain words, for the person installing.
 Settings paths are the current names (Settings sections were regrouped after 0.4.0).
 
+**Every paragraph starts with a bold lead (from the entry after 0.28.0).** The lead is also
+the bullet in the updates panel's *What's new* (UpdatesButton.md §6.3). Write it as a short
+changelog phrase, not a sentence: the change first, the place it shows, about 2 to 8 words,
+numerals and pipes welcome. Short wins over complete; the paragraph holds the detail.
+Examples: **App updates in 2 seconds.** · **Halved Press's record spin.** · **Choices to
+default to 1 | 2 | 4 cards for Max.** · **One-click MCP.** Never a category word alone
+("Lists."); **Fixes.** may close an entry, and the panel leaves it out. docs:check 31 tests
+the shape.
+
 Each entry, up to its first `###`, is copied into the update index by `release:publish` and
 shown in the app's update offer and on `deets.solutions/deetsmusic/` (RELEASE.md §6.2, §6.7).
 So keep the body to paragraphs and **bold**, and use absolute links only: a relative link

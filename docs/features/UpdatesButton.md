@@ -1,7 +1,7 @@
 ---
-status: idea
-desk_test: none
-sources: [index.html, src/updater.ts, src/update-rules.ts, src/quick-panel.ts, src/settings-card.ts, src/styles/compass.css, docs/ops/RELEASE-NOTES.md, scripts/publish-update.mjs]
+status: built
+desk_test: passed 2026-10-16
+sources: [index.html, src/updates-btn.ts, src/styles/updates.css, src/release-leads.ts, src/updater.ts, src/quick-panel.ts, src/settings-card.ts, src/compass.ts, vite.config.ts, scripts/docs-check.mjs, tests/release-leads.test.ts, docs/ops/RELEASE-NOTES.md]
 updated: 2026-10-16
 ---
 # The updates button — a Max title bar button for updates, what's new and bugs
@@ -12,7 +12,8 @@ updated: 2026-10-16
 > folding *Bugs and suggestions*. When an update exists, the up arrow flies off the top, the
 > down arrow moves to the center, and the button takes the highlight color. §1 is what exists
 > today; §2 his calls; §3 the design; §4 the rules that follow; §5 the forks (all closed
-> 2026-10-16); §6 F1 tried on the last five releases, and the lead rule (§6.3).
+> 2026-10-16); §6 F1 tried on the last five releases, and the lead rule (§6.3). **BUILT
+> 2026-10-16 on `shixtheenth`: §7 is the as-built record, §8 the desk test (passed 2026-10-16, run by Claude, §8.1).**
 
 ## 0. Terms
 
@@ -351,3 +352,132 @@ His leads are kept word for word; the others are Claude's, in his style, for him
 - Rule holds last until the condition changes
 - Tighter browser extension access
 - (Fixes — left out of the panel)
+
+## 7. As built (2026-10-16)
+
+> **Part:** built · 2026-10-16
+
+Where this differs from §3–§4, this section is the code.
+
+**Files.**
+- `src/updates-btn.ts` — the button, its states, the panel, the N dot, the Compass opener.
+- `src/styles/updates.css` — the button family (the Compass's), the arrows, the bar, the panel
+  (the cog's panel family).
+- `src/release-leads.ts` — the pure lead parser: `releaseEntries`, `releaseLeads`,
+  `leadFaults`, `LEAD_RULE_AFTER = "0.28.0"`. Tested in `tests/release-leads.test.ts`.
+- `vite.config.ts` — `virtual:release-notes`: the installed version's leads, read from
+  RELEASE-NOTES.md at build time (`src/vite-env.d.ts` types it). No network call.
+- `scripts/docs-check.mjs` — check 31 (DOCS-ORG.md §8): the lead rule, for entries after 0.28.0.
+- Small edits: `index.html` (the button and panel after `#compass-open`), `main.ts` (one
+  `later` line after `initUpdater`), `compass.ts` (two Places rows), `quick-panel.ts`
+  (`openQuickPanel(part)`, `keepRightInWindow` exported), `settings-card.ts` (`SettingsPart`
+  takes `except`, `label`, `fold`; the quick fold helpers exported), `updater.ts`
+  (`updateStatusText(s)` takes a status), `skin.css` (the `--updates-*` block after the cog's),
+  `themes.css` (`--updates-lit`).
+
+**Decided inside his calls (for his review).**
+- **Highlight color:** `--updates-lit` = `--new-badge`, the yellow of the New dot.
+- **The glyph:** two strokes with open heads, the Compass's stroke style (1.6, round caps):
+  down arrow at x 8.5, up arrow at x 15.5 of the 24 grid.
+- **The flight:** `--updates-fly` 0.5 s on the Compass needle's curve. The up arrow rises 22
+  units and fades; the down arrow moves 3.5 units to the middle. Reduced motion: no move.
+- **The bar:** 2 px high, 70 % of the button's width, 3 px under it. It slides up 3 px and fades
+  in over 0.36 s (`--updates-bar-in`); the fill follows the bytes in 0.2 s. A track in the
+  highlight at the EQ grid's strength, the fill in the full highlight.
+- **The version row:** the Settings card's split-row family. Its text is
+  `updateStatusText()` (the Settings › Updates words), and `Version 0.28.0` for a skipped
+  version. Its button: **Download** (offered, Ask mode), **Restart** (ready), **Check now**
+  (otherwise), **Checking** while a check runs, none while downloading or in a dev build.
+- **What's new:** the heading *What's new in 0.29.0* with the bullet count, the Settings fold
+  family. Inside: one bullet per lead, then *All release notes* (the account row's text link
+  family) to `deets.solutions/deetsmusic/#releases`. Its fold lives in the quick panel's fold
+  store under `updates::whatsnew`.
+- **Bugs and suggestions:** the Settings › Bugs section without its version row: the report
+  form, App log and My reports. One mount for the app's life, so a half-typed report survives
+  a close. Its fold key is `updates:Bugs::`, apart from the quick panel's.
+- **The N dot after an install:** a per-install mark in localStorage (`deets.updates.seen`),
+  not a setting. A brand-new install starts seen. An install that updates into the first
+  version with the button has no mark yet, so it gets the dot.
+- **A rollback that is ready** counts as an offer: the button lights.
+- **Hidden with no updater:** the web stand-ins answer `update_status` with null, so the button
+  never shows on the demo or the rooms page.
+- **The panel's width** is the quick panel's (`--updates-panel-w: var(--quick-panel-w)`).
+- **Compass:** two Places rows, not the three verbs of §4: *What's new* (Max only, opens the
+  panel with What's new unfolded) and *Updates and bugs* (Max: the panel; Mini and Midi: the
+  quick panel at the beetle). "Report a bug" is an alias of the second. COMPASS-TERMS.md §1.
+- **Check 31's range:** a lead of 2 to 10 words (rule 4 says about 2 to 8; the check allows a
+  little either side).
+- **A dev console handle:** `__updates.fake(state, got)` paints the button and the panel in a
+  pretend state for the desk test; `__updates.real()` goes back. Dev builds only.
+
+**Known now.** A dev build and 0.28.0 show 0.28.0's leads, which were written before the
+rule: two of them are fragments ("The tray icon's hover text"). The first entry that follows
+the rule is the release that ships this button.
+
+## 8. Desk test
+
+> **Part:** built · 2026-10-16 — desk test passed 2026-10-16 (§8.1, run by Claude)
+
+Run `npm run dev:app` (vite.config.ts changed: a dev server that was already running needs a
+restart). Use Max.
+
+1. **The button.** Right of the Compass: two arrows, down on the left, up on the right, in
+   `--subtext`; `--title` on hover. Hint: *Updates, what's new, and bug reports*. Switch to
+   Mini and Midi: the button is gone.
+2. **The panel.** Click it. The panel drops from the button's left edge with the row slide.
+   Row 1 reads *Version 0.28.0. A dev build doesn't update*, with no button. *What's new in
+   0.28.0* is folded, with a count of 8. *Bugs and suggestions* is folded.
+3. **What's new.** Open it: 8 bullets, then *All release notes*. The panel grows to fit. Click
+   the link: the browser opens deets.solutions/deetsmusic/#releases. Close the panel, open it
+   again: What's new is still open. Fold it.
+4. **Bugs.** Open *Bugs and suggestions*: the report fields, What went wrong, Attach log,
+   Send, App log. Type a title, close the panel, open it: the title is still there.
+5. **The flight.** In DevTools: `__updates.fake("available")`. The up arrow flies up and out,
+   the down arrow slides to the middle, the button turns yellow. The hint names 0.29.0. Open
+   the panel: *DeetsMusic 0.29.0 is available* with **Download**; *What's new in 0.29.0* has 3
+   bullets (App updates in 2 seconds · New App Icon · Halved Press's record spin), no Fixes.
+   Do not press Download (the fake has no package).
+6. **The bar.** `__updates.fake("downloading", 0.2)`: a thin yellow bar slides up under the
+   arrow, a fifth full. `__updates.fake("downloading", 0.8)`: it fills to four fifths.
+   `__updates.fake("ready")`: the bar slides away; the panel's button reads **Restart** (do not
+   press it in dev).
+7. **Back.** `__updates.real()`: the up arrow comes back down, the down arrow goes back left,
+   the color goes back to `--subtext`.
+8. **The N dot.** In DevTools: `localStorage.setItem("deets.updates.seen", "0.27.0")`, then
+   reload. The button wears the yellow dot. Open the panel: What's new is unfolded this once,
+   and the dot is gone. Close and open again: What's new follows its own fold again.
+9. **Compass.** Ctrl+Space, type *what's new*: the row opens the panel with What's new
+   unfolded. Type *report a bug*: *Updates and bugs* opens the panel. In Midi, the same row
+   opens the quick panel at the beetle.
+10. **Reduced motion.** Windows › Accessibility › Visual effects › Animation effects off. Repeat
+    5 to 7: the arrows and the bar change at once, with no move.
+11. **docs:check 31.** Add a test entry `## 0.29.0 — 2026-10-20` to RELEASE-NOTES.md with a
+    paragraph led by **Lists.**: `npm run docs:check` fails check 31. Remove the entry.
+
+### 8.1 Claude's run (2026-10-16, `dev:app`, Cyber, driven over CDP)
+
+| Step | Result |
+|---|---|
+| 1 Button | PASS. Right of the Compass in the same grey; hidden in Midi (and Mini, the same rule). |
+| 2 Panel | PASS. Row 1 *Version 0.28.0. A dev build doesn't update*, no button; What's new (8), Bugs and suggestions. |
+| 3 What's new | PASS. Opens and folds; the fold is kept across a close. The link was not clicked (it opens the browser on his screen); `opener:default` allows https. |
+| 4 Bugs | PASS. *Bugs and suggestions*, no second version row; a typed title survives a close and an open. The panel scrolls at its max height. |
+| 5 Flight | PASS. Up arrow −22 units and opacity 0, down arrow +3.5, color `--new-badge`; hint *DeetsMusic 0.29.0 is available*; Download; 3 bullets, no Fixes. |
+| 6 Bar | PASS. Slides up and fades in (opacity 0.53 at 120 ms), fills 0.2 → 0.8; on ready it slides away and the row reads Restart. |
+| 7 Back | PASS. Arrows and color return. |
+| 8 N dot | PASS. Planted seen 0.27.0: the dot shows; the first open unfolds What's new and clears it; the next open follows the fold memory. |
+| 9 Compass | PASS with Enter: *what's new* / *changelog* open the panel unfolded; *report a bug* finds Updates and bugs; in Midi it opens the quick panel at the beetle, and What's new is not offered. **A click on the row fails** (below). |
+| 10 Reduced motion | PASS (emulated in the page over CDP, not the Windows setting): the arrows and the bar are at their ends after 40 ms. |
+| 11 Check 31 | PASS. *0.29.0: the lead "Lists." is one word*. Entry removed. |
+
+**Found and fixed in the run:** the dev server could not load `virtual:release-notes`: a
+relative `addWatchFile` path read as an import (vite.config.ts now uses absolute paths). The
+release build was not affected.
+
+**Found, older than this feature:** a mouse click on a Compass row that opens a title bar panel
+(Quick settings, Sound, and now Updates and bugs) opens the panel and closes it on the same
+click: the click reaches the panel's dropdown as a click away, because the row stays in the
+page after the Compass closes. Enter works. Seen with a scripted click, not a hand click.
+
+**For the test runner:** other sessions' file edits in this checkout reload the dev page, so
+each step ran inside one script.

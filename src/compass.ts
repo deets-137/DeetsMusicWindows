@@ -51,6 +51,8 @@ import { speakersKnown, connectSpeaker, scanSpeakers, isScanning } from "./airpl
 import { webQuick, openTitleWeb, type WebRequest } from "./web";
 import { openSoundPanel } from "./sound-panel";
 import { openQuickPanel } from "./quick-panel";
+import { openUpdatesPanel } from "./updates-btn";
+import { updateStatusText } from "./updater";
 import { openRoomPanel } from "./room-panel";
 import { inRoom, leaveRoom, endRoom, roomState, startRoom, isStopped, listenAgain, stopListening } from "./room";
 import { friendsState } from "./friends";
@@ -348,6 +350,11 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   rows.push({ group: "Places", title: "Sleep timer", sub: "The alarm clock", run: () => openSleepPanel() });
   rows.push({ group: "Places", title: "Web", sub: "Makes a playlist from an artist and the artists around them", run: () => openTitleWeb() });
   rows.push({ group: "Places", title: "Quick settings", sub: "Every setting, by what it is for", run: () => openQuickPanel() });
+  // The updates panel (docs/features/UpdatesButton.md): Max only; elsewhere the quick panel's
+  // Updates and bugs square holds the same rows, and What's new has no place.
+  if (currentSurface() === "max")
+    rows.push({ group: "Places", title: "What's new", sub: "This version's changes", aliases: ["release notes", "changelog", "news"], run: () => openUpdatesPanel(true) });
+  rows.push({ group: "Places", title: "Updates and bugs", sub: updateStatusText() || "Check for updates, report a bug", aliases: ["update", "report a bug", "suggestion"], run: () => openUpdatesPanel() });
   rows.push({
     group: "Places",
     title: "Listening room",

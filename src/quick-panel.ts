@@ -23,7 +23,7 @@ import { tokenMs } from "./boot-cover";
 import type { CardInstance } from "./cards";
 import * as diag from "./diag";
 
-type Part = "apple" | "discord" | "window" | "look" | "help" | "agents" | "fun" | "bugs" | "reset";
+export type Part = "apple" | "discord" | "window" | "look" | "help" | "agents" | "fun" | "bugs" | "reset";
 
 /** What each icon shows (QUICK-SETTINGS.md §3). Apple Music: its section and AirPlay, under
  *  the sign-in row. Discord: its own section, then the one Discord row of Sharing. Window:
@@ -101,10 +101,13 @@ const APPLE_MARK = APPLE_SIGIL.replace(/class="[^"]*"/, 'class="quick__mark quic
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let dropdown: DropdownHandle | null = null;
+let openPart: ((part: Part) => void) | null = null;
 
-/** Open the panel from elsewhere (the Compass's Places row, COMPASS.md §9). */
-export function openQuickPanel(): void {
+/** Open the panel from elsewhere (the Compass's Places row, COMPASS.md §9), at one icon's rows
+ *  when `part` is given (the updates panel's stand-in in Mini and Midi: "bugs"). */
+export function openQuickPanel(part?: Part): void {
   dropdown?.open();
+  if (part) openPart?.(part);
 }
 
 /** Wire the cog's panel. Call once, BEFORE main.ts paints the Account row: the Apple part
@@ -185,6 +188,7 @@ export function initQuickPanel(): void {
     }
     animateHeight(from);
   };
+  openPart = (part) => { if (open !== part) show(part); };
 
   // ── The panel's cog: All settings (the cog's old job), or Collapse while Settings is
   //    grown — then it wears the pressed fill, as a logo whose rows are open does. ──
@@ -273,7 +277,7 @@ export function initQuickPanel(): void {
 /** The panel hangs from the cog's left edge (`left: 0`); in a narrow window it would pass
  *  the right edge, so move it left by the difference, less --panel-edge-gap. The mirror of
  *  dropdown.ts `keepInWindow`, which serves the right-anchored panels. */
-function keepRightInWindow(anchor: HTMLElement, panel: HTMLElement): void {
+export function keepRightInWindow(anchor: HTMLElement, panel: HTMLElement): void {
   panel.style.left = "";
   const gap = parseFloat(getComputedStyle(panel).getPropertyValue("--panel-edge-gap")) || 0;
   const right = anchor.getBoundingClientRect().left + panel.offsetWidth;

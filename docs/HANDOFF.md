@@ -201,6 +201,11 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **The updates button** (UpdatesButton.md, 2026-10-16, branch `shixtheenth`): built, desk test
+  passed (§8.1, run by Claude; his own look still welcome). The Max title bar button right of the Compass and its panel (version row, What's
+  new, Bugs and suggestions). The next release entry is the first under the lead rule (§6.3,
+  docs:check 31).
+
 - **Branch `twenty-eighth` (2026-10-15, cut from `main` at `c11ecd2`, pushed, not merged):**
   Build order steps 1, 2, 3, 4 and 6, every desk test passed (his). The Library ⟳ spins for the
   whole sync; the Press record has no sheen; a song's primary artist, an album's real artist and

@@ -31,6 +31,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join, posix } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { COPIES, render as renderCopy } from "./docs-copies.mjs";
+// Node strips the types; the file has no imports of its own (check 31).
+import { LEAD_RULE_AFTER, leadFaults, releaseEntries, versionAfter } from "../src/release-leads.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const GRACE_END = "2026-09-28"; // F5: the release check fails on facts from this date
@@ -481,6 +483,16 @@ export function check() {
     }
   }
 
+  // 31. The release notes' bold leads (docs/features/UpdatesButton.md §6.3, 2026-10-16): each
+  //     paragraph of an entry after LEAD_RULE_AFTER starts with a short bold lead, the
+  //     bullet the updates panel shows; "Fixes" only last. Older entries stay as written.
+  {
+    const NOTES = "docs/ops/RELEASE-NOTES.md";
+    for (const e of releaseEntries(read(NOTES)).filter((e) => versionAfter(e.version, LEAD_RULE_AFTER))) {
+      for (const f of leadFaults(e.body)) fail(31, NOTES, 0, `${e.version}: ${f} (UpdatesButton.md §6.3)`);
+    }
+  }
+
   return { facts, docs: docs.length };
 }
 
@@ -489,7 +501,7 @@ export function report({ facts, docs }) {
   const names = {
     1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links",
     20: "settings keys", 21: "toast sites", 22: "hover hints", 23: "scrollers", 24: "right-click ledger", 25: "popover placers", 26: "list keys",
-    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger",
+    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger", 31: "release leads",
   };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);

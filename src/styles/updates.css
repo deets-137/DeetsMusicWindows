@@ -1,0 +1,106 @@
+/* ── The updates button and its panel (docs/ideas/UpdatesButton.md) ─────────────────────
+   The button is the Compass button's family (styles/compass.css): the row's height, no fill,
+   no border, --subtext until hover. Max only, as the Compass: Mini and Midi keep the title bar
+   free to drag the window, and reach the same rows through the quick panel's Updates and bugs
+   square. The panel is the cog's panel family (styles.css › The quick panel), hung from the
+   button's left edge; its rows are the Settings card's own row family. */
+
+.updates { position: relative; display: flex; align-items: center; margin-left: var(--space-2); }
+.updates[hidden] { display: none; }
+[data-surface="mini"] .updates, [data-surface="midi"] .updates { display: none; }
+
+.updates__btn {
+  position: relative;
+  width: var(--updates-btn-size); height: var(--updates-btn-size);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.updates__btn:hover, .updates__btn[aria-expanded="true"] { color: var(--title); }
+.updates__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.updates__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The arrows (§3.2). Offered: the up arrow rises out of the glyph's top and fades, the down
+   arrow moves to the middle, and the button takes the highlight. The reverse when the offer
+   ends. The transforms are in the glyph's own grid. */
+.updates__up, .updates__down { transition: transform var(--updates-fly), opacity var(--updates-fly); }
+.updates[data-offer] .updates__btn { color: var(--updates-lit); }
+.updates[data-offer] .updates__up { transform: translateY(var(--updates-fly-y)); opacity: 0; }
+.updates[data-offer] .updates__down { transform: translateX(var(--updates-center)); }
+/* At launch with an offer already known, the button paints in place (updates-btn.ts sets
+   data-still for one frame). */
+.updates[data-still] .updates__up, .updates[data-still] .updates__down { transition: none; }
+
+/* The download bar (F5): it slides up into place when a download starts, fills with the
+   bytes, and slides away when it ends. */
+.updates__bar {
+  position: absolute; left: 50%; bottom: calc(-1 * var(--updates-bar-gap));
+  width: var(--updates-bar-w); height: var(--updates-bar-h);
+  border-radius: var(--updates-bar-h);
+  background: color-mix(in srgb, var(--updates-lit) var(--sound-grid-strength), transparent);
+  overflow: hidden;
+  opacity: 0;
+  transform: translate(-50%, var(--updates-bar-rise));
+  transition: opacity var(--updates-bar-in), transform var(--updates-bar-in);
+  pointer-events: none;
+}
+.updates[data-state="downloading"] .updates__bar { opacity: 1; transform: translate(-50%, 0); }
+.updates__got {
+  display: block; height: 100%; width: 100%;
+  background: var(--updates-lit);
+  transform-origin: left center;
+  transform: scaleX(var(--updates-got, 0));
+  transition: transform var(--updates-bar-fill);
+}
+
+/* The N dot after an install (F4): the cog's own New badge, on the button and not the glyph,
+   so it never moves with the arrows. */
+.updates__btn[data-new]::after {
+  content: "";
+  position: absolute; top: var(--new-badge-off); right: var(--new-badge-off);
+  display: block;
+  box-sizing: border-box; width: var(--new-badge-size); height: var(--new-badge-size);
+  border-radius: 50%;
+  background: var(--new-badge);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .updates__up, .updates__down, .updates__bar, .updates__got { transition: none; }
+}
+
+/* ── The panel ── */
+.updates__panel {
+  position: absolute; top: 100%; left: 0;
+  --pop-origin: top left;
+  margin-top: var(--space-1);
+  width: var(--updates-panel-w);
+  max-height: var(--updates-panel-max-h);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--updates-panel-pad);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  z-index: 20;
+}
+.updates__panel[hidden], .updates__panel [hidden] { display: none; }
+.updates__panel.is-growing { overflow: hidden; } /* updates-btn.ts animates the height */
+
+/* What's new: one bullet per bold lead, then the text link to every release's notes. */
+.updates__leads {
+  margin: 0; padding: var(--space-1) var(--space-2) 0 calc(var(--space-2) + var(--space-3));
+  display: flex; flex-direction: column; gap: var(--updates-lead-gap);
+  color: var(--text);
+}
+.updates__more { padding: 0 var(--space-2) var(--space-1); }

@@ -57,6 +57,7 @@ import { initRoomFriends } from "./room-friends";
 import { initSotd } from "./sotd";
 import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
+import { initUpdatesButton } from "./updates-btn";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import { initQuickPanel } from "./quick-panel";
@@ -567,6 +568,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // gives the launch cover a settled promise, so the window shows.
   const restored = boot("initQueuePersist", () => initQueuePersist()) ?? Promise.resolve();
   later.push(["initUpdater", () => initUpdater()]); // RELEASE.md §6: scheduled checks per Settings › Updates
+  later.push(["initUpdatesButton", () => initUpdatesButton()]); // the Max title bar's updates button (docs/features/UpdatesButton.md)
   // Warm MusicKit + the DRM module under the launch cover, as the window shows, so the
   // session's first click pays neither (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the
   // click before this). It waited a fixed 1.5 s after the handler until 2026-09-29.

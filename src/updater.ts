@@ -225,9 +225,9 @@ export function versionText(): string {
   return s.current;
 }
 
-/** The Settings › Updates status line. */
-export function updateStatusText(): string {
-  const s = status;
+/** The Settings › Updates status line (and the updates panel's version row, which may pass a
+ *  pretend status in a dev desk test). */
+export function updateStatusText(s: UpdateStatus | null = status): string {
   if (!s) return "";
   const pct = s.size ? Math.min(100, Math.round((s.got / s.size) * 100)) : 0;
   switch (s.state) {
