@@ -235,7 +235,7 @@
            and the button takes the highlight color; a thin bar fills under it while it downloads.
            The panel: the version row, What's new, Bugs and suggestions. src/updates-btn.ts. -->
       <div class="updates" id="updates" hidden>
-        <button class="updates__btn" id="updates-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Updates and what's new" title="Updates, what's new, and bug reports"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="updates__down"><path d="M8.5 4v15.2M5.4 16.1l3.1 3.3 3.1-3.3"/></g><g class="updates__up"><path d="M15.5 20V4.8M12.4 7.9l3.1-3.3 3.1 3.3"/></g></svg><span class="updates__bar" aria-hidden="true"><span class="updates__got"></span></span></button>
+        <button class="updates__btn" id="updates-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Updates and what's new" title="Updates, what's new, and bug reports"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="updates__down"><g class="updates__roll"><path d="M8.5 4v15.2M5.4 16.1l3.1 3.3 3.1-3.3"/></g></g><g class="updates__up"><g class="updates__roll"><path d="M15.5 20V4.8M12.4 7.9l3.1-3.3 3.1 3.3"/></g></g></svg><span class="updates__bar" aria-hidden="true"><span class="updates__got"></span></span></button>
         <div class="updates__panel pop app-scroll" id="updates-panel" role="group" aria-label="Updates" data-frames="updates" data-tauri-drag-region="false" hidden>
           <div class="set quick__rows" id="updates-top"></div>
           <div id="updates-bugs"></div>

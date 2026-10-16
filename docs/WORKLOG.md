@@ -52,6 +52,12 @@ changelog style (F1, §6.3), no count limit, the latest version only.
   Found and fixed in the run: the dev server could not load `virtual:release-notes` (a
   relative `addWatchFile` path). Found, older: a click on a Compass row that opens a title bar
   panel closes it again at once (Enter works); fixed next, in its own commit.
+- **Round 2 (his look):** the version row in layout A with new status words (UpdatesButton.md
+  §9: "Skipped 0.29.0", the next check's time before the first check), the arrows roll on a
+  press, and the split pills' line between halves shows app-wide. That line had never drawn:
+  `.set__half`'s `border: none` came later with the same weight. The Compass click fix is in
+  `src/dropdown.ts` (§9.4). The close plays the roll backwards (§9.5). All tested on dev:app
+  by Claude.
 
 ## 2026-10-16 (shixtheenth) — the quick column in right-click menus
 

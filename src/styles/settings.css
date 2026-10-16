@@ -135,7 +135,6 @@
   border-radius: var(--set-pill-radius);
   overflow: hidden;
 }
-.set__split > * + * { border-left: 1px solid var(--border); }
 .set__menu-wrap { display: flex; min-width: 0; }
 .set__half {
   min-width: 0;
@@ -150,6 +149,10 @@
   text-overflow: ellipsis;
   cursor: pointer;
 }
+/* The line between halves, so two halves read as two buttons. AFTER .set__half: its
+   `border: none` has the same weight and erased this line while it came first (it never
+   showed, his screenshot 2026-10-16). */
+.set__split > * + * { border-left: 1px solid var(--split-rule); }
 .set__half:hover { background: var(--surface-hover); color: var(--title); }
 .set__half[aria-pressed="true"],
 .set__half--toggle[aria-checked="true"] { color: var(--title); background: var(--surface-hover); }

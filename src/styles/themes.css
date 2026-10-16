@@ -70,6 +70,10 @@
   /* The updates button while an update is offered (docs/features/UpdatesButton.md): the New
      badge's yellow, the app's one color for "something new for you". */
   --updates-lit:    var(--new-badge);
+  /* The updates panel's status when a check failed: the error toast's edge. */
+  --updates-bad:    var(--stop);
+  /* The line between a split pill's halves (settings.css): the subtext ink at the skin's strength. */
+  --split-rule:     color-mix(in srgb, var(--subtext) var(--split-rule-strength), transparent);
 
   /* The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the
      song's shape at the strengths the SKIN sets, the song in the second plate so it never

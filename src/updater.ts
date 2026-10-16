@@ -48,6 +48,7 @@ const CHECK_EVERY_MS = 6 * 60 * 60_000;
 
 let status: UpdateStatus | null = null;
 let checked = false; // a check answered this session, so "Up to date" means something
+let nextAt: number | null = null; // the next scheduled check (the updates panel shows it)
 let laterFor: string | null = null;
 let minVersion: string | null = null;
 let offer: ToastHandle | null = null;
@@ -225,27 +226,68 @@ export function versionText(): string {
   return s.current;
 }
 
-/** The Settings › Updates status line (and the updates panel's version row, which may pass a
- *  pretend status in a dev desk test). */
-export function updateStatusText(s: UpdateStatus | null = status): string {
-  if (!s) return "";
+/** When the next scheduled check runs (ms since the epoch), or null when none is scheduled. */
+export const nextCheckAt = (): number | null => nextAt;
+
+/** A dev build cannot update: Rust answers every check with this error. */
+export const isDevBuild = (s: UpdateStatus): boolean => s.state === "error" && !!s.error?.includes("dev build");
+
+/** What the status says, and its tone: "lit" = an update waits for you (the updates button's
+ *  yellow), "bad" = the check failed. The updates panel's status line under the version and,
+ *  with the version in front, the Settings › Updates status line (docs/features/UpdatesButton.md
+ *  §9, his words 2026-10-16). */
+export interface StatusWords {
+  text: string;
+  tone: "" | "lit" | "bad";
+}
+
+export function updateStatusWords(s: UpdateStatus | null = status): StatusWords {
+  if (!s) return { text: "", tone: "" };
   const pct = s.size ? Math.min(100, Math.round((s.got / s.size) * 100)) : 0;
   switch (s.state) {
     case "checking":
-      return "Checking for updates…";
+      return { text: "Checking…", tone: "" };
     case "available":
-      return `DeetsMusic ${s.version} is available`;
+      if (s.version === setting("updateSkip") && !isRequired(s)) return { text: `Skipped ${s.version}`, tone: "" };
+      return { text: isRequired(s) ? `${s.version} is required` : `${s.version} is out`, tone: "lit" };
     case "downloading":
-      return `Downloading ${s.version} · ${pct}%`;
+      return { text: `Getting ${s.version} · ${pct}%`, tone: "" };
     case "ready":
-      return s.rollback ? `${s.version} is ready. Restart to roll back` : `${s.version} is ready. It installs when DeetsMusic next starts`;
+      return { text: s.rollback ? `Rolls back to ${s.version} on restart` : `${s.version} installs on restart`, tone: "lit" };
     case "error":
-      if (s.error?.includes("dev build")) return `Version ${s.current}. A dev build doesn't update`;
-      return `Version ${s.current}. Couldn't check or download the update`;
-    default:
-      return checked ? `Version ${s.current}. Up to date` : `Version ${s.current}`;
+      if (isDevBuild(s)) return { text: "Dev build · no updates", tone: "" };
+      return { text: "Couldn't reach the update server", tone: "bad" };
+    default: {
+      if (checked) return { text: "Up to date", tone: "" };
+      // Before the first check, say how updates arrive (his call: the next check's time in
+      // Automatic; only until the first check, 30 s after launch).
+      const mode = setting("updateMode");
+      if (mode === "off") return { text: "Updates are off", tone: "" };
+      if (mode === "ask") return { text: "Asks before it downloads", tone: "" };
+      return { text: nextAt ? `Next check for updates ${whenText(nextAt)}` : "Up to date", tone: "" };
+    }
   }
 }
+
+/** "at 4:30 PM" today, "on 10/17 at 4:30 AM" on another day. */
+function whenText(at: number): string {
+  const d = new Date(at);
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (d.toDateString() === new Date().toDateString()) return `at ${time}`;
+  return `on ${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} at ${time}`;
+}
+
+/** The Settings › Updates status line: the version, then the status words. A line about another
+ *  version names it already, so it goes alone. */
+export function updateStatusText(s: UpdateStatus | null = status): string {
+  if (!s) return "";
+  const words = updateStatusWords(s).text;
+  const aboutOther = !!s.version && (s.state === "available" || s.state === "downloading" || s.state === "ready");
+  return aboutOther ? words : `Version ${s.current} · ${words}`;
+}
+
+/** Is this offer a required update (under the worker's `minVersion`)? */
+export const isRequiredUpdate = (s: UpdateStatus): boolean => isRequired(s);
 
 /** Boot (main.ts): follow Rust's status, read `minVersion`, schedule the checks. */
 export function initUpdater(): void {
@@ -263,6 +305,13 @@ export function initUpdater(): void {
     if (setting("updateMode") === "off" && !required) return;
     void checkForUpdate(false);
   };
-  window.setTimeout(tick, FIRST_CHECK_MS);
-  window.setInterval(tick, CHECK_EVERY_MS);
+  nextAt = Date.now() + FIRST_CHECK_MS;
+  window.setTimeout(() => {
+    nextAt = Date.now() + CHECK_EVERY_MS;
+    tick();
+    window.setInterval(() => {
+      nextAt = Date.now() + CHECK_EVERY_MS;
+      tick();
+    }, CHECK_EVERY_MS);
+  }, FIRST_CHECK_MS);
 }

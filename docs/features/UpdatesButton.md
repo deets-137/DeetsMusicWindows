@@ -478,6 +478,92 @@ release build was not affected.
 (Quick settings, Sound, and now Updates and bugs) opens the panel and closes it on the same
 click: the click reaches the panel's dropdown as a click away, because the row stays in the
 page after the Compass closes. Enter works. Seen with a scripted click, not a hand click.
+**Fixed the same day** in `src/dropdown.ts` (§9.4).
 
 **For the test runner:** other sessions' file edits in this checkout reload the dev page, so
 each step ran inside one script.
+
+## 9. Round 2 (2026-10-16, his look at the panel)
+
+> **Part:** built · 2026-10-16
+
+His notes on the panel (a screenshot on Lilac): "Bug | Suggestion" read as one item, and the
+version row read as a line of text; he did not like "A dev build doesn't update". This section
+replaces §3.3's version-row table and §7's version-row bullet.
+
+### 9.1 His calls
+
+| Question | His call |
+|---|---|
+| The line between a split pill's halves | **Clear on every split pill in the app** (Settings and both panels), not only the Send row. |
+| The version row | **Layout A:** "DeetsMusic 0.28.0" is the row's title, the status sits under it, the download bar under that, the action on the right. |
+| The status words | The draft table (§9.2), with **"Skipped 0.29.0"** (not "You skipped"). |
+| The next check | **"Next check for updates at 4:30 PM"** in Automatic before the first check only (the alternative; it shows for about 30 s after a launch). |
+| A press on the button | **The arrows roll:** each leaves the way it points, and a new one comes in from the other side. |
+
+### 9.2 The status words (`updateStatusWords`, updater.ts)
+
+The panel shows them under the version. Settings › Updates shows "Version 0.28.0 · " and then
+the words, except for a line about another version, which names it already.
+
+| State | Status | Tone | Button |
+|---|---|---|---|
+| Not checked yet, Automatic | Next check for updates at 4:30 PM (another day: on 10/17 at 4:30 AM) | — | Check now |
+| Not checked yet, Ask | Asks before it downloads | — | Check now |
+| Not checked yet, Off | Updates are off | — | Check now |
+| Checked, up to date | Up to date | — | Check now |
+| Checking | Checking… | — | — |
+| Update available | 0.29.0 is out | yellow | Download |
+| Skipped | Skipped 0.29.0 | — | Check now |
+| Downloading | Getting 0.29.0 · 42% (and the bar) | — | — |
+| Ready | 0.29.0 installs on restart | yellow | Restart |
+| Rollback ready | Rolls back to 0.27.0 on restart | yellow | Restart |
+| Required update | 0.29.0 is required | yellow | Download |
+| Could not check | Couldn't reach the update server | red | Try again |
+| Dev build | Dev build · no updates | — | — |
+
+### 9.3 As built
+
+- **Split pills:** the line between halves is `--split-rule` (themes.css: the subtext ink at
+  `--split-rule-strength` 45 %, skin.css). **Root cause of the missing line:** the rule
+  `.set__split > * + *` came before `.set__half`, whose `border: none` has the same weight, so
+  the line never drew on any split pill. It now comes after.
+- **Version row:** `.updates__ver` in updates.css; the title is the title face at
+  `--updates-ver-fs` (the text size); the status is the subtext size; yellow is
+  `--updates-lit`, red is `--updates-bad` (= `--stop`, the error toast's edge). The bar is
+  `--updates-ver-bar-w` (120 px) wide.
+- **Next check:** updater.ts keeps `nextAt` (30 s after launch, then every 6 h) and exports
+  `nextCheckAt()`. The interval now starts at the first check, so the checks run at 30 s,
+  6 h 30 s, 12 h 30 s.
+- **The roll:** an inner `.updates__roll` group in each arrow (index.html), animated with the
+  Web Animations API on every open (and backwards on every close, §9.5): out over 40 % of `--updates-roll` (0.42 s) on `--ease-ui`,
+  in from the other side on the roll's overshoot curve, `--updates-roll-y` 22 units. The
+  offer's flight stays on the outer group. Reduced motion: no roll.
+- **Measured on dev:app (Lilac):** every state's words and tone read as the table; the split
+  line shows on Bug | Suggestion and Open folder | Copy; the up arrow is out by 180 ms and back
+  by 440 ms with a small overshoot.
+
+### 9.4 The Compass click fix (src/dropdown.ts)
+
+A click on a Compass row that opens a title bar panel (Quick settings, Sound, Sleep timer,
+Web, Listening room, What's new, Updates and bugs) opened the panel and closed it on the same
+click. **Cause:** the row runs `open()` in its click handler; the same click then bubbles to
+the dropdown's document listener, its target (the row) is still in the page and outside the
+panel, so it counted as a click away. **Fix, in the primitive:** `open()` records
+`openedAt = performance.now()`, and the document listener ignores a click whose
+`timeStamp <= openedAt` — a click that began before the panel appeared is the one that opened
+it. Every other click is judged as before.
+
+### 9.5 The roll back on close (his ask, 2026-10-16)
+
+The panel's open rolls the arrows (§9.3); its close plays the roll backwards: the up arrow
+drops out of the bottom and a new one comes down from the top, the down arrow the other way.
+Both follow the panel's `hidden` attribute (a MutationObserver), so every path rolls: the
+button, a click away, Escape, the Compass. Traced on dev:app: open up −22 / down +22, close and
+Escape the reverse, each back at 0 by about 330 ms.
+
+### 9.6 The Compass fix's desk test
+
+**Desk test (run by Claude, dev:app, PASSED):** each of the seven rows above, clicked, leaves
+its panel open; Enter still opens each; a click on the title bar's empty part closes the
+updates panel; the button still toggles it shut.

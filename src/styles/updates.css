@@ -97,6 +97,34 @@
 .updates__panel[hidden], .updates__panel [hidden] { display: none; }
 .updates__panel.is-growing { overflow: hidden; } /* updates-btn.ts animates the height */
 
+/* The version row (§9, his layout A): the version is the row's title in the title face, the
+   status sits under it in the subtext size and its tone, the download bar under that. The one
+   action is the Settings split-pill family, on the right. */
+.updates__ver { align-items: center; gap: var(--space-2); }
+.updates__ver-text { display: flex; flex-direction: column; gap: var(--updates-ver-gap); min-width: 0; flex: 1 1 auto; }
+.updates__ver-name {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--updates-ver-fs);
+  color: var(--title);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.updates__ver-status { font-size: var(--fs-subtext); color: var(--subtext); }
+.updates__ver-status[data-tone="lit"] { color: var(--updates-lit); }
+.updates__ver-status[data-tone="bad"] { color: var(--updates-bad); }
+.updates__ver-bar {
+  display: block; width: var(--updates-ver-bar-w); height: var(--updates-bar-h);
+  margin-top: var(--updates-ver-gap);
+  border-radius: var(--updates-bar-h);
+  background: color-mix(in srgb, var(--updates-lit) var(--sound-grid-strength), transparent);
+  overflow: hidden;
+}
+.updates__ver-bar > span {
+  display: block; height: 100%; width: 100%;
+  background: var(--updates-lit);
+  transform-origin: left center;
+  transform: scaleX(var(--updates-got, 0));
+  transition: transform var(--updates-bar-fill);
+}
+
 /* What's new: one bullet per bold lead, then the text link to every release's notes. */
 .updates__leads {
   margin: 0; padding: var(--space-1) var(--space-2) 0 calc(var(--space-2) + var(--space-3));

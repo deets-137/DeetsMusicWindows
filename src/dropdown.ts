@@ -85,6 +85,8 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
   const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, alsoInside, disabled, onOpen } = opts;
   let mode: DropdownMode = opts.mode ?? globalMode;
   let graceTimer: number | undefined;
+  /** When the panel last appeared, on the event clock (`performance.now()`). */
+  let openedAt = -Infinity;
 
   const isOpen = () => !panel.hidden;
   const open = () => {
@@ -106,6 +108,7 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     }
     panel.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
+    if (appearing) openedAt = performance.now();
     if (appearing) mark("panel:open", panel.dataset.frames || panel.id);
     if (appearing) onOpen?.();
   };
@@ -135,6 +138,13 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     // "outside" about a press that was inside. A panel that WANTS to close on a press
     // calls close() itself, so nothing loses a close it asked for.
     if (!t.isConnected) return;
+    // The click that OPENED the panel from elsewhere is not a click away from it. A Compass
+    // row (Quick settings, Sound, What's new) runs `open()` in its own click handler; that
+    // same click then bubbles here, outside the panel, and closed it again at once (found
+    // 2026-10-16, UpdatesButton.md §8.1). An event's timeStamp is when it began, on the same
+    // clock as `performance.now()`, so a click that began before the panel appeared is the
+    // one that opened it.
+    if (e.timeStamp <= openedAt) return;
     const inside = root.contains(t) || panel.contains(t) || !!alsoInside?.().some((el) => el?.contains(t));
     if (isOpen() && !inside) close("away");
   };

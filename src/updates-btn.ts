@@ -16,7 +16,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import built from "virtual:release-notes";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
-import { onUpdateStatus, updateStatus, updateStatusText, checkForUpdate, download, restartNow, type UpdateStatus } from "./updater";
+import { onUpdateStatus, updateStatus, updateStatusWords, isDevBuild, isRequiredUpdate, checkForUpdate, download, restartNow, type UpdateStatus } from "./updater";
 import { releaseLeads } from "./release-leads";
 import { mountSettingsParts, quickFoldOpen, toggleQuickFold } from "./settings-card";
 import { setting, isFreshInstall } from "./settings-store";
@@ -54,7 +54,8 @@ const writeSeen = (v: string) => {
 };
 
 /** A version the user skipped is not news: no highlight, and the row offers Check now. */
-const skipped = (s: UpdateStatus): boolean => !!s.version && s.version === setting("updateSkip") && s.state === "available";
+const skipped = (s: UpdateStatus): boolean =>
+  !!s.version && s.version === setting("updateSkip") && s.state === "available" && !isRequiredUpdate(s);
 /** An update is offered: the arrows move and the button lights. */
 const offered = (s: UpdateStatus | null): s is UpdateStatus =>
   !!s && !!s.version && (s.state === "available" || s.state === "downloading" || s.state === "ready") && !skipped(s);
@@ -139,6 +140,35 @@ export function initUpdatesButton(): void {
     wasState = s.state;
   };
 
+  // ── the panel's open rolls the arrows (§9, his ask): each leaves the way it points, out of the
+  //    glyph's box, and a new one comes in from the other side to take its place. Its close
+  //    plays the roll backwards (§9.5): each leaves against the way it points. The inner group
+  //    rolls, so the offer's flight on the outer group (the centered down arrow) is kept. ──
+  const roll = (back = false) => {
+    if (reduced()) return;
+    const cs = getComputedStyle(root);
+    const y = parseFloat(cs.getPropertyValue("--updates-roll-y")) || 0;
+    // The exit on the app's own curve, the entry on the roll's (the Compass needle's overshoot):
+    // one curve over both made the exit a snap.
+    const enter = cs.getPropertyValue("--updates-roll").trim().replace(/^\S+\s*/, "") || "ease";
+    const leave = cs.getPropertyValue("--ease-ui").trim() || "ease";
+    const duration = tokenMs("--updates-roll");
+    const go = (g: Element | null, dir: 1 | -1) =>
+      g?.animate(
+        [
+          { transform: "translateY(0)", opacity: 1, easing: leave },
+          { transform: `translateY(${dir * y}px)`, opacity: 0, offset: 0.4 },
+          { transform: `translateY(${-dir * y}px)`, opacity: 0, offset: 0.4, easing: enter },
+          { transform: "translateY(0)", opacity: 1 },
+        ],
+        { duration },
+      );
+    go(root.querySelector(".updates__up .updates__roll"), back ? 1 : -1);
+    go(root.querySelector(".updates__down .updates__roll"), back ? -1 : 1);
+  };
+  // Every open and every close, by any path (the button, a click away, Escape, the Compass).
+  new MutationObserver(() => roll(panel.hidden)).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+
   // ── the New dot after an install (F4) ──
   let seenChecked = false;
   const paintNew = (s: UpdateStatus | null) => {
@@ -154,18 +184,26 @@ export function initUpdatesButton(): void {
 
   // ── the panel's top: the version row, then What's new ──
   let checking = false;
+  /** The version row (§9, his layout A): the version as the row's title, the status under it in
+   *  its tone, the download bar under that while it downloads, and the one action on the right. */
   const versionRow = (s: UpdateStatus): string => {
-    const text = skipped(s) ? `Version ${s.current}` : updateStatusText(s);
+    const words = checking ? { text: "Checking…", tone: "" } : updateStatusWords(s);
     let act = "";
-    if (checking) act = `<button class="set__half" type="button" disabled>Checking</button>`;
+    if (checking || s.state === "checking" || s.state === "downloading" || isDevBuild(s)) act = "";
     else if (offered(s) && s.state === "available")
       act = `<button class="set__half" type="button" data-uact="download" title="Downloads the update. Restart to install it">Download</button>`;
     else if (offered(s) && s.state === "ready")
       act = `<button class="set__half" type="button" data-uact="restart" title="Installs the update and opens DeetsMusic again">Restart</button>`;
-    else if (s.state !== "downloading" && s.state !== "checking" && !s.error?.includes("dev build"))
+    else if (s.state === "error")
+      act = `<button class="set__half" type="button" data-uact="check" title="Asks music-api.deets.solutions for a newer version">Try again</button>`;
+    else
       act = `<button class="set__half" type="button" data-uact="check" title="Asks music-api.deets.solutions for a newer version">Check now</button>`;
+    const pct = s.size ? Math.min(1, s.got / s.size) : 0;
+    const bar = s.state === "downloading" ? `<span class="updates__ver-bar" style="--updates-got: ${pct}"><span></span></span>` : "";
     return (
-      `<div class="set__row set__row--choice" data-uversion><span class="set__label">${esc(text)}</span>` +
+      `<div class="set__row updates__ver" data-uversion><span class="updates__ver-text">` +
+      `<span class="updates__ver-name">DeetsMusic ${esc(s.current)}</span>` +
+      `<span class="updates__ver-status"${words.tone ? ` data-tone="${words.tone}"` : ""}>${esc(words.text)}</span>${bar}</span>` +
       (act ? `<div class="set__split">${act}</div>` : "") +
       `</div>`
     );

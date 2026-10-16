@@ -13,8 +13,8 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
-| Theme (color roles) | themes.css | 48 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 624 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Theme (color roles) | themes.css | 50 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 630 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -36,6 +36,8 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--rule-chip-rule` | `light-dark(var(--paint-forest), var(--paint-fern))` | — |  |
 | `--rule-chip-hand` | `light-dark(var(--paint-blood), var(--paint-siren))` | — |  |
 | `--updates-lit` | `var(--new-badge)` | — | The updates button while an update is offered (docs/features/UpdatesButton.md): the New badge's yellow, the app's one color for "something new for you". |
+| `--updates-bad` | `var(--stop)` | — | The updates panel's status when a check failed: the error toast's edge. |
+| `--split-rule` | `color-mix(in srgb, var(--subtext) var(--split-rule-strength), transparent)` | — | The line between a split pill's halves (settings.css): the subtext ink at the skin's strength. |
 | `--eq-curve` | `var(--title)` | — | The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the song's shape at the strengths the SKIN sets, the song in the second plate so it never reads as the curve. Derived once here — no theme block names an EQ color of its own. |
 | `--eq-fill` | `color-mix(in srgb, var(--title) var(--sound-fill-strength), transparent)` | — |  |
 | `--eq-grid` | `color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent)` | — |  |
@@ -215,6 +217,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--updates-panel-max-h` | `var(--quick-panel-max-h)` | — |  |
 | `--updates-panel-pad` | `var(--quick-panel-pad)` | — |  |
 | `--updates-lead-gap` | `var(--space-1)` | — | between two What's new bullets |
+| `--updates-ver-fs` | `var(--fs-text)` | — | the version row's title: one step over the rows |
+| `--updates-ver-gap` | `2px` | — | between the version and its status |
+| `--updates-ver-bar-w` | `120px` | — | the download bar under the status |
+| `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | a press: each arrow leaves the way it points and a new one takes its place |
+| `--updates-roll-y` | `22px` | — | how far an arrow travels: out of the glyph's box |
+| `--split-rule-strength` | `45%` | — | The Settings split pill's line between its halves (settings.css): readable on every theme. --border alone vanished on the light themes (his screenshot, 2026-10-16). |
 | `--quick-icons` | `10` | — | The quick panel (QUICK-SETTINGS.md): the cog's strip of icons. One width, open or shut, so an icon press grows it down and never sideways. The width is the row's own sum: ten icons, nine gaps, one more gap between the two clusters, the padding, the border (1px a side) and the scrollbar gutter. A new icon adds one to --quick-icons. |
 | `--quick-panel-w` | `calc(var(--quick-icons) * (var(--quick-logo-size) + var(--space-2)) + 2 * var(--quick-panel-pad) + 2px + var(--scrollbar-w))` | — |  |
 | `--quick-panel-max-h` | `var(--sound-panel-max-h)` | — |  |
