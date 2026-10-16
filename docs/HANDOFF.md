@@ -74,9 +74,11 @@ npm run release          # secrets → cli:build → sign → tauri build (signe
 npm run release:publish  # after testing the installed build: R2 upload + update index → installs update
 ```
 
-Produces `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` + `.sig`
-(~9 MB) and copies both into `installers/` (gitignored; pre-release versions go to
-`installers/dev/`). Installs per-user to `%LOCALAPPDATA%\DeetsMusic` with **no admin prompt**.
+Since 0.28.0 (Velopack) it produces `installers/velopack/<Id>-<channel>/`: the full and delta
+`.nupkg`, `<Id>-<channel>-Setup.exe` (~23 MB) and the signed feed. That folder keeps every
+version and is never pruned. The Setup.exe is also copied to
+`installers/DeetsMusic_<version>_x64-setup.exe`, beside the NSIS ones up to 0.27.0
+(RELEASE.md §2). All gitignored. Installs per-user to `%LOCALAPPDATA%\DeetsMusic` with **no admin prompt**.
 A release needs two Credential Manager entries (`DeetsMusicUpdaterKey`,
 `DeetsMusicAzureSigning`), the updater key file, and the signing tools in
 `%LOCALAPPDATA%\DeetsTools\artifact-signing` (RELEASE.md §0 table).
@@ -675,13 +677,12 @@ scripts/cli-dist.mjs        stages cli/dist/deetsmusic.exe for bundle.resources
 scripts/release.mjs         `npm run release`: reads secrets, builds, signs, checks, archives (RELEASE.md §1)
 scripts/sign.mjs            Authenticode signing: signtool + Azure Artifact Signing dlib (RELEASE.md §6.9)
 scripts/release-check.mjs   the release gate: repo paths, versions, pin/updater, signatures (§1a)
-scripts/archive-installer.mjs   copies each shipped setup exe + .sig into installers/ (pre-release → dev/)
 scripts/publish-update.mjs  `npm run release:publish`: R2 upload + update index, withdraw, notes (§6.7)
 scripts/cred-read.ps1       reads a Credential Manager secret for release.mjs (never printed)
 scripts/cred-write.ps1      saves a secret to Credential Manager, trimmed and checked
 src-tauri/src/update.rs     the updater: channel, check, in-memory verified download, install
 src/updater.ts              Settings › Updates + the update toasts (RELEASE.md §6.3)
-installers/                 local archive of shipped NSIS installers (gitignored)
+installers/                 DeetsMusic_<version>_x64-setup.exe per release + velopack/ (every package, never pruned); gitignored
 src-tauri/secrets/          Apple key/IDs + captured MUT (gitignored)
 dev-dumps/                  raw API samples used to design the model (gitignored)
 ```

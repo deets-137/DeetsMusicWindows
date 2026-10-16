@@ -25,13 +25,13 @@
 //   4. releases.<channel>.json + .sig: the feed every install reads, without withdrawn versions.
 // Every feed is signed here with the updater key (the password from Credential Manager,
 // DeetsMusicUpdaterKey); every install checks it (velo.rs). Then <channel>/index.json gets
-// { version, group, notes, pub_date, size, file, setup, velopack: true } for the website and the
+// { version, group, notes, pub_date, size, file, setup, setup_size, velopack: true } for the website and the
 // rollback list. `group` is package.json `deetsmusic.updateGroup` (§6.5); `notes` is the version's
 // entry in docs/ops/RELEASE-NOTES.md, up to its first subsection. Wrangler runs from
 // ../DeetsSupport, whose account owns the bucket. The rows before 0.28 (NSIS installers) stay as
 // they are, for the website's history.
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -241,6 +241,9 @@ const entry = {
   size: full.Size,
   file: full.FileName,
   setup,
+  // The website's "MB installer" line: Setup.exe carries the stub and the update tool, so it is
+  // ~7 MB larger than the package `size` names (0.28.0: 22.8 MB against 15.3 MB).
+  setup_size: statSync(setupLocal).size,
   velopack: true,
 };
 putFeed(FEED, liveAssets({ releases: [...index.releases.filter((r) => r.version !== version), entry] })); // 4

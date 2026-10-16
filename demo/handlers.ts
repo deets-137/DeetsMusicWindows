@@ -310,8 +310,7 @@ const H: Record<string, Handler> = {
   "plugin:window|outer_size": () => ({ width: Math.round(innerWidth * devicePixelRatio), height: Math.round(innerHeight * devicePixelRatio) }),
   "plugin:window|inner_position": () => ({ x: 0, y: 0 }),
   "plugin:window|outer_position": () => ({ x: 0, y: 0 }),
-  // No monitor in a browser: the window's keep-on-screen move (surface.ts) does nothing.
-  "plugin:window|current_monitor": () => null,
+  // set_position does nothing: the window's keep-on-screen move (surface.ts) cannot move a page.
   "plugin:window|set_position": () => null,
   "plugin:window|scale_factor": () => devicePixelRatio || 1,
   "plugin:window|is_maximized": () => false,

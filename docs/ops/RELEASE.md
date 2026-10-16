@@ -99,6 +99,7 @@ of each is in [RELEASE-NOTES.md](RELEASE-NOTES.md). "Hand test" is §0 step 3.
 | 0.26.0 | 2026-10-11 | `8377f6e` | skipped, his call (asked, "Publish when built"): §0b reads it high risk (Rust `safe_file` and `settings.rs` per-field reads, twelve file-writing commands off the UI thread, the new `mcp_install.rs` + `crates/mcp-install`, `tray.rs` restore). Two desk tests open (MAX-CARDS.md §7, MCP-INSTALL.md §9) | Layout for Max, Hide cards, MCP setup, the Rulez pass, the quick panel folds, Press at 16⅔ rpm, the title-bar drag. Version jump from 0.25.4, his call. Check 1 failed the first three builds on `crates/mcp-install` panic paths (§0b). 9.2 MB. The health route answered 0.26.0 and the update offer from 0.25.4 carried its notes after publish |
 | 0.26.1 | 2026-10-11 | `78e275c` | skipped, his call ("publish please", after Claude stopped on §0b): §0b reads it high risk. The diff is front-end only (the DevTools flag removed), but it turns on the full player for live installs: a cover size change calls `refreshPlayerState()` in `player.ts`, and the Press record swaps its picture | the full player on for everyone. 9.2 MB. The health route answered 0.26.1 and the update offer from 0.26.0 carried its notes after publish. The web demo went to DeetsSolutions master |
 | 0.27.0 | 2026-10-14 | `dffa80e` | done, his ("I've thoroughly desk tested so we can push straight to release / publishing"): §0b reads it high risk (Rust `usage.rs`, `lastfm.rs`, `gpu.rs`, the AirPlay sends off the UI thread; `player.ts` unshuffle and the History play; the startup path, `platform.ts`) | usage counts, the Last.fm facts boxes and Presentation mode, the listener counts, unshuffle, History plays from the click, the graphics fallback, one search box, the Full \| Lib switch. The 2026-10-13 build (`e6bffef`) was never published; this one was cut again from `main`. 9.3 MB. The health route answered 0.27.0 and the update offer from 0.26.1 carried its notes after publish. The web demo went to DeetsSolutions master (`3c9c35e`) |
+| 0.28.0 | 2026-10-16 | — | done, his (installed by hand from Setup.exe, then "let's publish"): §0b reads it high risk (Velopack replaces the updater: `velo.rs`, `update.rs`; schema v19; `tray-icon` 0.24.2 and the scale-change subclass; the startup path, Max on a new install) | **The first Velopack release.** Updates in about 2 s, a new icon, readable text colors, the primary artist, fewer Apple calls, the window inside the work area, the tray hover text. No migration: a 0.27.0 install is uninstalled by hand (VELOPACK.md §1). Package 14.6 MB, Setup.exe 22.8 MB. The health route, the signed feed and its `.sig`, the rollback feed and the Setup.exe all answered 200 after publish. The web demo first failed on a duplicate key in `demo/handlers.ts` (from `354dcc7`); fixed and pushed (DeetsSolutions `37dc118`). The worker's `setup_size` change is not deployed, so the site shows 14.6 MB |
 
 ### 0b. When Claude may publish without the hand test (his rule, 2026-09-21)
 
@@ -283,6 +284,24 @@ token source had not been checked first.
    brand-new one). Watch with a status-only loop before declaring it done.
 6. Re-check each live app: the log shows a `token: 401 … refetching` line followed by a
    successful play, with no restart.
+
+**The layout since 2026-10-16 (his calls: the whole history kept, a top level that reads by
+version).**
+- **The top level** — `DeetsMusic_<version>_x64-setup.exe` for every release, one sorted list:
+  the NSIS installers (with their updater `.sig`) up to 0.27.0, then Velopack's Setup.exe from
+  0.28.0 (no `.sig`: the feed carries the signature now). `release.mjs` step 6 copies each
+  Setup.exe here under its version, because `vpk` names it by channel only and overwrites it on
+  the next build. A beta's copy goes to `installers/beta/`.
+- **`velopack/<Id>-<channel>/`** — `vpk`'s own folder: every full and delta `.nupkg`, the latest
+  Setup.exe, the feed and its `.sig`. It is the base of the next delta. **Never prune it:**
+  `release:publish` copies this local feed into the live one, so a package deleted here leaves
+  the live feed too. `release.mjs` deletes the Portable.zip that `vpk` always writes (nothing
+  publishes it).
+
+The test builds (`dev/`, `beta/`, `velopack-spike/`) were deleted on 2026-10-16; none reached
+live.
+
+The text below is the NSIS record.
 
 `installers/` is **gitignored** (~6 MB each), exactly as DeetsAirplay does it. Since 0.4.3
 each installer has its updater `.sig` beside it (`release:publish` needs it, so keep the pair).

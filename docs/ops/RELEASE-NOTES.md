@@ -32,6 +32,35 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.28.0 — 2026-10-16
+
+**Updates in two seconds.** DeetsMusic now updates in place. Press *Restart now* and the app
+is back in about two seconds, with no installer window. Most updates download only what
+changed. Press *Later* and the update applies the next time you start the app. Every update
+is signed, and the app refuses one that is not. **To move to this version, uninstall
+DeetsMusic in Settings › Apps › Installed apps (leave *Delete app data* off), then run the new installer.** Your library,
+settings and pins stay.
+
+**A new icon.** The app, the tray, the taskbar and the browser extension show the hand-drawn
+Deets head, sharp at every display scale.
+
+**Easier to read.** Lilac, Green, Sepia and Moonlight have new text colors, and Black-Red a
+lighter red, so text is clear on every solid card.
+
+**The right artist.** A song now goes to its main artist, and an album to its real artist,
+for Go to Artist, Last.fm, Rewind and the album name. Featured artists are found for every
+song in your library.
+
+**Fewer calls to Apple.** A library sync skips work it does not need, and new artists come
+with their photos.
+
+**The window fits the screen.** A new install opens in Max when the screen is large enough,
+and the window always opens inside the screen's work area.
+
+**The tray icon's hover text** shows three lines, with the time left counting down.
+
+**The Library's refresh button** spins until the sync is done.
+
 ## 0.27.0 — 2026-10-14
 
 **Usage counts.** DeetsMusic now sends anonymous counts: how many installs are active, which

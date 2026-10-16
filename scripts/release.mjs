@@ -4,7 +4,11 @@
 // Velopack packs the app (VELOPACK.md): `vpk pack` writes the full package, a delta against the
 // previous version, `<Id>-<channel>-Setup.exe` and the feed `releases.<channel>.json` into
 // installers/velopack/<Id>-<channel>/. That folder IS the archive: it keeps every package, and
-// the previous full package there is what the next delta is made from. Keep it.
+// the previous full package there is what the next delta is made from. Keep it, and never prune
+// it: release:publish copies this local feed into the live one, so a package deleted here
+// leaves the live feed too (his call 2026-10-16: the whole history stays). The top level of
+// installers/ is the readable history: DeetsMusic_<version>_x64-setup.exe for every release,
+// NSIS up to 0.27.0 and Velopack's Setup.exe from 0.28.0 (step 6).
 //
 // Two signatures:
 // - Authenticode (RELEASE.md §6.9): Azure Artifact Signing through scripts/sign.mjs (signtool +
@@ -166,6 +170,9 @@ step(
   ].join(" "),
   signEnv,
 );
+// vpk 1.2.161 always writes a Portable.zip (~15 MB) and has no switch to skip it. Nothing
+// publishes it, so it goes; the archive keeps only what an install reads.
+rmSync(join(out, `${packId}-${channel}-Portable.zip`), { force: true });
 
 // 5. Sign the feed (writes releases.<channel>.json.sig beside it).
 const feed = join(out, `releases.${channel}.json`);
@@ -177,4 +184,13 @@ step("sign the feed", `npx tauri signer sign "${feed}"`, {
 });
 
 step("release-check", `node scripts/release-check.mjs${BETA ? " --beta" : ""}`);
-console.log(`[release] done: ${out}\\${packId}-${channel}-Setup.exe — install it, test it, then npm run release:publish${BETA ? " -- --beta" : ""}`);
+
+// 6. A copy named by its version, beside the NSIS ones (his call 2026-10-16: the top level reads
+// as the history). vpk names Setup.exe by channel only and overwrites it each build, so without
+// this copy only R2 keeps an older version's installer. A beta goes to installers/beta/, so the
+// top level holds real releases only.
+const archive = BETA ? join(root, "installers", "beta") : join(root, "installers");
+mkdirSync(archive, { recursive: true });
+const setupCopy = join(archive, `${packId}_${version}_x64-setup.exe`);
+cpSync(join(out, `${packId}-${channel}-Setup.exe`), setupCopy);
+console.log(`[release] done: ${setupCopy} — install it, test it, then npm run release:publish${BETA ? " -- --beta" : ""}`);
