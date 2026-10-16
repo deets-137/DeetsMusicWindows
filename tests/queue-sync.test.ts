@@ -98,3 +98,15 @@ test("skipToSameId 2026-10-01: a skip onto an adjacent copy is found, any other 
   assert.equal(skipToSameId(ids, -1, 1), false); // no now-playing item
   assert.equal(skipToSameId([null, null], 0, 1), false); // no ids
 });
+
+test("nextFed steps over a Suggest Less row and names it (2026-10-16)", async () => {
+  const { nextFed } = await import("../src/queue-sync.ts");
+  const up = [{ id: "a", marked: true }, { dead: true }, { id: "b" }, { id: "c", marked: true }];
+  const fed = (e: { id?: string; marked?: boolean }) => (e.marked ? null : e.id);
+  const skipped = (e: { marked?: boolean }) => !!e.marked;
+  const r = nextFed(up, fed, skipped);
+  assert.equal(r.at, 2);
+  assert.deepEqual(r.passed, [up[0]]);
+  assert.deepEqual(expectedIds(up, 10, fed), ["b"]);
+  assert.equal(nextFed([up[0], up[3]], fed, skipped).at, -1);
+});

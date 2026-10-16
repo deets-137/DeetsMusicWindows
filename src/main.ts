@@ -48,6 +48,7 @@ import { formatCode, joinRoom, inRoom } from "./room";
 import { initLoudness } from "./sound-loudness";
 import * as frames from "./frames";
 import { initFavorites } from "./favorites";
+import { initSuggest } from "./suggest";
 import { initPins } from "./pins";
 import { initRowOrder } from "./row-order";
 import { initPresence } from "./presence";
@@ -552,6 +553,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // ── Shared library store: one load, read by every card ──
   boot("initTrackStore", () => initTrackStore());
   boot("initFavorites", () => initFavorites()); // the ♥ mirror (favorites.ts) — local, zero Apple calls
+  boot("initSuggest", () => initSuggest()); // the Suggest Less marks (suggest.ts, SUGGEST-LESS.md) — local, zero Apple calls
   boot("initPins", () => initPins()); // the pins mirror (pins.ts, PINS.md) — local, zero Apple calls
   boot("initRowOrder", () => initRowOrder()); // the saved row order (row-order.ts, MOVABLE-ROWS.md) — local, one read
   later.push(["initPresence", () => initPresence()]); // Discord Rich Presence (presence.ts, FRIENDS.md §8) — opens nothing until you switch it on

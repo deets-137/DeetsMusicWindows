@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 602 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 603 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -322,6 +322,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--hint-credit-gap` | `var(--space-1)` | — | the blank line before a song's writers |
 | `--credit-flat-opacity` | `0.6` | — | a credited song the app holds no track for |
 | `--unreleased-opacity` | `var(--credit-flat-opacity)` | — | an album song that is not out yet: the same "a row that does not play" |
+| `--suggest-less-opacity` | `var(--unreleased-opacity)` | — | an Up Next row Suggest Less steps over: it does not play on its own |
 | `--hint-pad-x` | `var(--space-2)` | — |  |
 | `--hint-pad-y` | `calc(var(--space-1) + 1px)` | — |  |
 | `--hint-radius` | `var(--radius-control)` | — |  |

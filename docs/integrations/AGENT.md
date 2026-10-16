@@ -378,6 +378,12 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `showAlbumInfo` (On | Off, default On). On: an album's page shows Last.fm's tags, plays and
   listeners, the wiki's first two sentences and a link beside the cover. Off: no Last.fm album
   call is made.
+- **Playback › Suggest Less** (2026-10-16, SUGGEST-LESS.md §4): three plain toggles, not
+  consent gates. `suggestSkipStations` ("Skip on stations": On | Off, default On) skips a
+  station song that matches a mark as it starts. `suggestSkipWebs` ("Leave out of webs", default
+  On) leaves marked songs, artists and albums out of a new web. `suggestSkipQueue` ("Skip in
+  queues", default On) steps over a marked song in a playlist, an album or Up Next. The marks
+  themselves are made from the right-click menus and the Compass, not by the agent (§9).
 - **About › Send usage counts** (2026-10-13, USAGE-COUNTS.md): `usageReports` (On | Off,
   default On). A consent gate: an agent may turn it off, never on. Off: no usage report is sent.
 - **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).

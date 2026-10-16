@@ -18,6 +18,8 @@ import { toast } from "./toast";
 import { getCurrent } from "./queue";
 import { trackById, tracks } from "./track-store";
 import { isLoved, setLoved } from "./favorites";
+import { isSongMarked, setSongMark } from "./suggest";
+import { libraryAddEnabled } from "./library-add";
 import { applePlaylistAdd, onPlaylistsChange, playlistInsertTracks, playlistsCached } from "./playlists";
 import { requestDiaryAlbum } from "./layout-bus";
 import type { Playlist } from "./search";
@@ -82,6 +84,16 @@ export function initRulesApp(): void {
     run: async () => {
       const t = trackNow();
       if (t && !isLoved(t)) await setLoved(t, true);
+    },
+  });
+  // Suggest Less (SUGGEST-LESS.md §4): an Apple write only with Add to Library and ♥ on.
+  registerAction("suggestLess", {
+    cost: "free",
+    appleIf: () => libraryAddEnabled() && !!trackNow()?.catalogId,
+    exists: () => !!trackNow(),
+    run: async () => {
+      const t = trackNow();
+      if (t && !isSongMarked(t)) await setSongMark(t, true);
     },
   });
   registerAction("diary", {

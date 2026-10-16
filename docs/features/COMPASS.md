@@ -216,7 +216,13 @@ Two terms are commands, drawn as the first row:
   there is nothing to grow (one card fills the window). **Tab** moves between them (on a row
   with its own options, Tab is the row's, not the filter row's); the last pick is remembered
   (`deets.compass.grow`). Enter grows.
-- **`favorite [song]`** (`fav`, `love`, `heart`, `like`; `unfavorite`, `unlove`, `dislike`):
+- **`suggest less [song]`**, **`suggest less artist <name>`**, **`suggest less album <name>`**
+  (`dislike`, `less`, `thumbs down`; 2026-10-16, SUGGEST-LESS.md §9a): marks the song, the
+  artist or the album Suggest Less, or the playing one with no name. The words toggle: on a
+  marked item the row offers Undo Suggest Less. The mark needs no Apple, so the gate does not
+  stop it; with the gate on, a song's −1 goes to Apple Music too. The second line says what
+  the mark does ("Leaves it out of new webs" with that row on).
+- **`favorite [song]`** (`fav`, `love`, `heart`, `like`; `unfavorite`, `unlove`):
   ♥ the song on Apple Music, or the current song with no name; a loved song offers
   Unfavorite. The name is looked for in the current song, Up Next, this session's plays,
   then the library. Behind the Add to Library and ♥ gate: off, the row opens that setting.

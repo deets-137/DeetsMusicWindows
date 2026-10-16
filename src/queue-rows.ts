@@ -48,6 +48,8 @@ export function rowHTML(
   meta = "",
   add = "",
   cid = "",
+  /** Suggest Less steps over this row (SUGGEST-LESS.md §6): greyed, with its own hint. */
+  less = false,
 ): string {
   const art = cover
     ? `<img class="qrow__art" src="${esc(cover)}" alt="" loading="lazy" data-art />`
@@ -55,7 +57,8 @@ export function rowHTML(
   const role = interactive ? ` role="button" tabindex="0"` : "";
   // data-cid: the hover hint reads the song's writers off it (CREDITS.md §7, hint.ts).
   const id = cid ? ` data-cid="${esc(cid)}"` : "";
-  return `<li class="qrow" data-idx="${idx}"${role}${id}>${art}<div class="qrow__text"><span class="qrow__title">${esc(
+  const lessAttr = less ? ` title="Suggest Less — skipped. Click to play it anyway"` : "";
+  return `<li class="qrow${less ? " is-less" : ""}" data-idx="${idx}"${role}${id}${lessAttr}>${art}<div class="qrow__text"><span class="qrow__title">${esc(
     title,
   )}</span><span class="qrow__artist">${esc(artist)}</span></div>${meta}${add}</li>`;
 }

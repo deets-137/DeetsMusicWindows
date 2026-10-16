@@ -399,6 +399,9 @@ pub(crate) fn forget_account(conn: &mut Connection) -> Result<usize, String> {
     // own data: they go too, or they show under the new account (his call, 2026-09-29). The
     // mirror refills at its next sync; the ♥ mirror from the new account's Favorite Songs.
     tx.execute("DELETE FROM favorites", []).map_err(|e| e.to_string())?;
+    // Suggest Less (SUGGEST-LESS.md §3): the −1s read from the last account go; the marks made
+    // here are the user's own and stay. The table exists from schema v20.
+    let _ = tx.execute("DELETE FROM suggest_less WHERE source = 'apple'", []);
     tx.execute("DELETE FROM apple_playlist_tracks", []).map_err(|e| e.to_string())?;
     tx.execute("DELETE FROM apple_playlists", []).map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;

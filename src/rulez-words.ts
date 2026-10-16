@@ -278,6 +278,8 @@ export const DOS: DoWord[] = [
   { id: "hide", section: "Window", label: "Hide the app in the tray", input: "none", moment: () => ({ hide: true }) },
   { id: "addTo", section: "Library", label: "Add the song to a playlist", input: "choice", choices: "editable", moment: (v) => ({ addTo: String(v) }) },
   { id: "love", section: "Library", label: "Love the song", input: "none", moment: () => ({ love: true }) },
+  // Suggest Less (SUGGEST-LESS.md §4): an Apple write only with Add to Library and ♥ on.
+  { id: "suggestLess", section: "Library", label: "Mark the song Suggest Less", input: "none", moment: () => ({ suggestLess: true }) },
   { id: "diary", section: "Library", label: "Open the Diary for this album", input: "none", moment: () => ({ diary: true }) },
   // Your own files (RULEZ.md §5, session B's store). A picture in a While row holds Glass ›
   // Canvas on that picture; in a When row it sets it as your pick.
@@ -477,6 +479,7 @@ export function actionText(a: Action | undefined, lists: Lists): string {
     case "hide": return "Hide the app in the tray";
     case "addTo": return `Add the song to ${labelOf(lists.editable, arg)}`;
     case "love": return "Love the song";
+    case "suggestLess": return "Mark the song Suggest Less";
     case "diary": return "Open the Diary for this album";
     case "scrobble": return `Turn scrobbling ${arg ? "on" : "off"}`;
     case "picture": return `Use the picture ${labelOf(lists.pictures, arg)}`;
@@ -568,7 +571,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   keep: { act: "keeps it from happening" }, growOutside: { keep: "keeps the outside-press collapse" },
   sharePause: { act: "pauses sharing for an hour", keep: "keeps sharing paused" }, sleepIn: { act: "starts the sleep timer for" },
   note: { act: "shows the note" }, picture: { act: "uses the picture", keep: "keeps the picture" }, playSound: { act: "plays the sound" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
-  love: { act: "loves the song" }, diary: { act: "opens the Diary for this album" }, scrobble: { act: "turns scrobbling" },
+  love: { act: "loves the song" }, suggestLess: { act: "marks the song Suggest Less" }, diary: { act: "opens the Diary for this album" }, scrobble: { act: "turns scrobbling" },
   shuffleLibrary: { act: "plays the library shuffled" }, openIn: { act: "opens it in" },
   // A rule key reads as a thing DeetsMusic keeps at a value, never as its Settings label
   // (2026-10-10: "keeps Collapse on outside click off" was the Party recipe's sentence).

@@ -8,12 +8,13 @@ import { wireListKeys } from "./list-keys";
 import "./styles/qcard.css";
 import { rowDrag, registerDropTarget, isDragging, onDragEnd } from "./row-drag";
 import { dropToQueue } from "./drop-actions";
-import { setting } from "./settings-store";
+import { setting, onSettingsChange } from "./settings-store";
 import * as queue from "./queue";
 import {
   onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, reconcileUpcoming,
-  stopStation, dropResumeStation, type PlayerState,
+  stopStation, dropResumeStation, suggestSkipped, type PlayerState,
 } from "./player";
+import { onSuggestChange } from "./suggest";
 import { onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
@@ -77,7 +78,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     const rows = shown
       .map((e, i) => {
         const t = resolve(e);
-        return rowHTML(i, t?.title ?? "Unknown", t?.artistName ?? "", artURL(t, 72), true, "", addSquareHTML(t), t?.catalogId ?? "");
+        return rowHTML(i, t?.title ?? "Unknown", t?.artistName ?? "", artURL(t, 72), true, "", addSquareHTML(t), t?.catalogId ?? "", suggestSkipped(e));
       })
       .join("");
     const more =
@@ -324,6 +325,8 @@ function mountQueue(host: HTMLElement): CardInstance {
   // synced songs resolve instead of showing "Unknown".
   const unsubTracks = onTracksChange(render, "qcard");
   const unsubQueue = queue.onQueueChange(render);
+  const unsubSuggest = onSuggestChange(render); // a mark greys or ungreys its rows
+  const unsubSuggestRow = onSettingsChange((k) => { if (k === "suggestSkipQueue") render(); });
   const unsubState = onPlayerState((s) => {
     lastState = s;
     render();
@@ -361,6 +364,8 @@ function mountQueue(host: HTMLElement): CardInstance {
     destroy() {
       unsubTracks();
       unsubQueue();
+      unsubSuggest();
+      unsubSuggestRow();
       unsubState();
       document.removeEventListener("keydown", onKey);
       unwireKeys();

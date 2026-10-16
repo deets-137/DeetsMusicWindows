@@ -21,6 +21,7 @@
 // candidate at once. A hide is a hide, never a dislike — it is not fed back into the
 // score. Playing an item again clears its own hide.
 
+import { recheckRecent } from "./suggest";
 import { invoke } from "@tauri-apps/api/core";
 import type { Artwork, Track } from "./library";
 import { tracks as allTracks, trackById, addTransientTracks } from "./track-store";
@@ -446,7 +447,11 @@ async function fetchApple(): Promise<void> {
         return null;
       }),
     ]);
-    if (played) applePlayed = played;
+    if (played) {
+      applePlayed = played;
+      // R1 (SUGGEST-LESS.md §3a): a −1 set on the phone shows on a song you played there.
+      recheckRecent(played);
+    }
     if (added) appleAdded = added;
     appleAt = Date.now() + (played || added ? APPLE_FLOOR_MS : APPLE_RETRY_MS);
   })();

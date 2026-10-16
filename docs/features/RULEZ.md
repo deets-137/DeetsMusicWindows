@@ -239,8 +239,8 @@ rule` shows each fire.
 ## 3. Next — the ten routes and the Logs view
 
 > **Part:** built · 2026-09-27 · his call: build all of them. Every route is built: route 2 is §7,
-> session A's routes are §8, route 8 is §10.2. Only route 6's *Mark Suggest Less* waits (for
-> Suggest Less itself).
+> session A's routes are §8, route 8 is §10.2. Route 6's *Mark Suggest Less* was built with
+> Suggest Less on 2026-10-16 (SUGGEST-LESS.md §12).
 
 Confirmed by the owner on 2026-09-27 after a review of the engine. Two sessions build them in
 parallel on `rules-rulez`, each committing only its own paths. Each route gets its own step, its
@@ -599,7 +599,7 @@ hold on skip lines) · `src/rules-eval.ts` (`{ recipe }` source, `Stored.recipes
 | 3 | `Stored.recipes` lists the recipes that are on (none by default). Six ship: the four of §4, Play on launch (§10.2) and Live Theming (§11.1). A recipe shows locked under **Recipes** as one row with one On \| Off switch (§14); its menu: Turn on / off, Try, *Duplicate into your rules*, Copy as text. Party's station is `{ special: "discovery" }`, found from your Discovery station at run time. |
 | 4 | The header's ⋯: **Paste a rule** (a field: Ctrl+V, then Enter), **Import from a file…** (a file picker), **Export your rules to a file** (`deetsmusic.deetsrules.json` in Downloads), **Copy your rules as text**. A row's menu: *Copy as text*. Every pasted or imported rule is checked against `known()`; a broken one is named and skipped. |
 | 5 | Loved, Diary score, Times played, Songs up next, Minutes since the app opened, Minutes with no press, Battery, Charging, Online, Data saver, Output kind. The Diary score and play count are read once per song, only while a rule reads them (`pin_play_counts`, the cached Diary list, one `diary_get`). Minute facts wake the engine only while a rule reads them. |
-| 6 | Show a note, Hide the app in the tray, Add the song to a playlist (your local playlists and editable Apple ones), Love the song (Apple), Open the Diary for this album, Turn scrobbling on / off. An add to an Apple playlist is an Apple call through `appleIf`. *Mark Suggest Less* waits for Suggest Less. |
+| 6 | Show a note, Hide the app in the tray, Add the song to a playlist (your local playlists and editable Apple ones), Love the song (Apple), Open the Diary for this album, Turn scrobbling on / off. An add to an Apple playlist is an Apple call through `appleIf`. *Mark the song Suggest Less* (built 2026-10-16, `suggestLess`): an Apple call through `appleIf` only with Add to Library and ♥ on. |
 | 6 cap | His call: **at most 3 Apple actions in 30 s across all rules**, and never from an event another rule caused, never while Apple asks us to wait. |
 | 7 | *A station is about to come back* (`maybeResumeStation`), *You go Back from a grown album or artist* (`levelLeft`), *The weekly Replay is about to be made* (`runWeeklyReplay`; a Keep marks this week done). Keep's words are now *Keep it from happening*, for every cancel event. |
 | 9 | Your rows and the locked rows show "Also matches when *X* does. *X* runs first." from `whoWins` (same event and card, or a shared While target, and conditions that can both hold). The Settings chip names your rule: *Your rule "Night jazz" sets this now.* |

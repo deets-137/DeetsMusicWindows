@@ -78,9 +78,11 @@
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-control);
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui);
+  transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui), opacity var(--dur-fast) var(--ease-ui);
 }
 .qrow:hover { background: var(--surface-hover); transform: var(--hover-lift); }
+/* Suggest Less (SUGGEST-LESS.md §6): a row the queue steps over. A click still plays it. */
+.qrow.is-less { opacity: var(--suggest-less-opacity); }
 /* The station row (radio): the "next song" is the station itself — informative, not a
    jump target, so no lift; right-click still offers Stop Station / Don't resume. */
 .qrow--station { cursor: default; }

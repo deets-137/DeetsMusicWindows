@@ -8,7 +8,7 @@ import { registerHooks } from "node:module";
 
 // Every heavy import of media-menu.ts goes to the stub map. `./queue`, `./row-pick` and
 // `./settings-store` are pure and load for real, as their own tests show.
-const STUBBED = /^\.\/(search|track-store|player|playlists|layout-bus|go-to|artist-credit|primary-artist|copy-link|start-station|web|library-add|favorites|sotd|pins|rewind)$/;
+const STUBBED = /^\.\/(search|track-store|player|playlists|layout-bus|go-to|artist-credit|primary-artist|copy-link|start-station|web|library-add|favorites|suggest|sotd|pins|rewind)$/;
 const stubs = new URL("./stubs/menu-deps.ts", import.meta.url).href; // a file URL already (a Windows path must not go through pathToFileURL twice)
 registerHooks({
   resolve(spec, ctx, next) {
@@ -25,7 +25,7 @@ before(async () => {
 
 const labels = (items: { label?: string; input?: { label?: string } }[]) => items.map((i) => i.label ?? `[${i.input?.label ?? "field"}]`);
 const song = { catalogId: "c1", title: "Song", artistName: "Artist", albumName: "Album", genres: [], hasLyrics: false };
-const SONG = ["Play Now", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Go to Album", "Song Credits", "Start Station", "Start a Web", "Copy Link", "Add to Library", "Favorite", "Mark as Song of the Day", "Pin"];
+const SONG = ["Play Now", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Go to Album", "Song Credits", "Start Station", "Start a Web", "Copy Link", "Add to Library", "Favorite", "Suggest Less", "Suggest Less of This Artist", "Suggest Less of This Album", "Mark as Song of the Day", "Pin"];
 
 test("a song: the §3.1 rows in the §2 order", () => {
   assert.deepEqual(labels(m.songMenu(song, { context: "t" })), SONG);
@@ -64,7 +64,7 @@ test("an unreleased song: Go to Artist alone", () => {
 });
 
 const album = { title: "Album", artistName: "Artist", known: [song] };
-const ALBUM = ["Play Now", "Shuffle", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Go to Album", "Start a Web", "Copy Link", "Add to Library", "Add to Diary", "Favorite", "Pin"];
+const ALBUM = ["Play Now", "Shuffle", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Go to Album", "Start a Web", "Copy Link", "Add to Library", "Add to Diary", "Favorite", "Suggest Less of This Album", "Pin"];
 
 test("an album: the §3.2 rows, Shuffle second, no station", () => {
   assert.deepEqual(labels(m.albumMenu(album, { context: "t" })), ALBUM);
@@ -82,7 +82,12 @@ test("a Home New tile (pinKey null): no Pin row", () => {
 
 test("an artist in the library: the §3.3 rows", () => {
   const items = m.artistMenu({ name: "Artist", songs: [song], inLibrary: true }, { context: "t" });
-  assert.deepEqual(labels(items), ["Play Now", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Start Station", "Start a Web", "Copy Link", "Pin"]);
+  assert.deepEqual(labels(items), ["Play Now", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Start Station", "Start a Web", "Copy Link", "Suggest Less of This Artist", "Pin"]);
+});
+
+test("a Home tile: no Suggest Less rows (SUGGEST-LESS.md §2, 2026-10-16)", () => {
+  const it = { kind: "song", title: "Song", context: "home", key: "k", tracks: () => [song] } as unknown as Parameters<Menu["tileMenu"]>[0];
+  assert.ok(!labels(m.tileMenu(it, {})).some((l) => l.startsWith("Suggest Less")));
 });
 
 test("the artist view's own hero (here): no Go to Artist", () => {

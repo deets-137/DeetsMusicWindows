@@ -68,6 +68,7 @@ import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
 import { restartWalk } from "./walk";
 import { hiddenCount, clearHidden } from "./home";
+import { clearMarks, countText, markCount, onSuggestChange } from "./suggest";
 import {
   sotdSettings, outletStatuses, refreshSotdSettings, onSotdChange,
   postLog, postLine, outletName, STATE_WORD, withdrawPickAsking, type PostRecord,
@@ -197,6 +198,10 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playback", row: "listeners" }, // Show play counts from Last.FM, built 2026-10-12 (LISTENERS.md §4)
   { section: "Playback", row: "artistinfo" }, // Show artist info on the artist's page, built 2026-10-12 (LISTENERS.md §6)
   { section: "Playback", row: "albuminfo" }, // Show album info on the album's page, built 2026-10-13 (LISTENERS.md §7)
+  { section: "Playback", row: "suggeststations" }, // Suggest Less: Skip on stations, built 2026-10-16 (SUGGEST-LESS.md §4)
+  { section: "Playback", row: "suggestwebs" }, // Suggest Less: Leave out of webs, built 2026-10-16
+  { section: "Playback", row: "suggestqueue" }, // Suggest Less: Skip in queues, built 2026-10-16
+  { section: "Playback", row: "suggestclear" }, // Suggest Less marks › Clear, built 2026-10-16
   { section: "About", row: "usage" }, // Send usage counts, built 2026-10-13 (USAGE-COUNTS.md)
   { section: "Playlists", row: "createsummonsolo" }, // Also when Playlists is the only card, built 2026-10-16 (FUTURE-SETTINGS §16)
 ];
@@ -422,7 +427,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Layout for Max, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "showAlbumInfo", "pinNewAct"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "showAlbumInfo", "pinNewAct", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1504,7 +1509,28 @@ function mountSettings(
         storeToggle("artistinfo", "Show artist info on the artist's page", "showArtistInfo", () => "The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked"),
         // The album facts box (LISTENERS.md §7; his call 2026-10-13: its own row).
         storeToggle("albuminfo", "Show album info on the album's page", "showAlbumInfo", () => "The album's page shows Last.fm's tags, plays and listeners, a few words about it, and a link. Off: Last.fm is not asked"),
+        // Suggest Less (SUGGEST-LESS.md §4; his calls 2026-10-12: three plain toggles, webs on,
+        // queues and stations off). Right-click a song, an artist or an album to mark it.
+        headRow("g-suggest", "Suggest Less"),
+        storeToggle("suggeststations", "Skip on stations", "suggestSkipStations", () => "Skips a station song you marked Suggest Less, or one by an artist or from an album you marked"),
+        storeToggle("suggestwebs", "Leave out of webs", "suggestSkipWebs", () => "Leaves songs, artists and albums you marked Suggest Less out of a new web"),
+        storeToggle("suggestqueue", "Skip in queues", "suggestSkipQueue", () => "Skips songs, artists and albums you marked Suggest Less when they come up in a playlist, an album or Up Next"),
+        {
+          kind: "split", id: "suggestclear", label: "Suggest Less marks",
+          hint: () => "Clears every mark in DeetsMusic. You can undo it after. Marks on Apple Music stay there",
+          halves: [
+            {
+              type: "action",
+              label: "Clear",
+              run: (el) => {
+                if (!markCount()) return flash(el, "None");
+                void clearMarks().catch((e) => console.error("[settings] suggest clear", e));
+              },
+            },
+          ],
+        },
       ],
+      tail: () => `<div class="set__status">Suggest Less: ${esc(countText())}</div>`,
     },
     {
       // Sound (SOUND.md; Settings regroup 2026-09-18, fork 2A). The Sound panel keeps the LIVE
@@ -2973,6 +2999,7 @@ function mountSettings(
   const unsubFiles = onFilesChange(() => render()); // a picture added, renamed or deleted
   const unsubSkin = onSkinChange(() => render()); // skin-only rows come and go
   const unsubLibAdd = onLibraryAddChange(render);
+  const unsubSuggest = onSuggestChange(() => { if (alive) render(); }); // the Suggest Less count
   // An agent set a value Rust owns (agent-settings.ts): read the cached ones again.
   const unsubOwned = onOwnedSettingChange(() => {
     invoke<RustSettings>("settings_get")
@@ -3160,6 +3187,7 @@ function mountSettings(
       unsubSkin();
       unsubFiles();
       unsubLibAdd();
+      unsubSuggest();
       unsubOwned();
       unsubUpdate();
       unsubLook();

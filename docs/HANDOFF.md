@@ -194,8 +194,10 @@ each step that touches those calls.
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
-- **Suggest Less and proactive skips** (SUGGEST-LESS.md): checked against the code and every
-  fork closed 2026-10-12; not built.
+- **Suggest Less and proactive skips** (SUGGEST-LESS.md): BUILT 2026-10-16 on `shixtheenth`,
+  committed; schema **v20**; all three rows default ON (his call, 2026-10-16). Desk test passed
+  2026-10-16 (his). §12 is the as-built record. The DeetsSupport usage allow-list copy is
+  committed there and not deployed. Waits on a release.
 
 ### Built, waiting on a release or a desk test
 
@@ -456,7 +458,8 @@ complete.
 - **The agent's "Later" list** ([AGENT.md §7](integrations/AGENT.md)): the installer PATH entry,
   `artist:` ids for `play`, durable history as a second history source, a small-model test of
   `mcp --small`.
-- **Designed, not built:** Suggest Less ([SUGGEST-LESS.md](features/SUGGEST-LESS.md)), a second
+- **Built, desk-tested, not released:** Suggest Less ([SUGGEST-LESS.md](features/SUGGEST-LESS.md), 2026-10-16).
+- **Designed, not built:** a second
   Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)), Hop in ([HOP-IN.md](features/HOP-IN.md)),
   Layout ([LAYOUT.md](features/LAYOUT.md)), Skinz ([SKINZ.md](features/SKINZ.md)), Backup
   ([BACKUP.md](features/BACKUP.md)), Local radio ([LOCAL-RADIO.md](features/LOCAL-RADIO.md)),

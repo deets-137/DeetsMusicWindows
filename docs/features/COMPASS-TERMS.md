@@ -109,7 +109,8 @@ The last row is always **Search Apple Music for …**: the Search card opens wit
 
 | Command | Aliases | What follows | Does |
 |---|---|---|---|
-| **favorite** | fav, love, heart, like; unfavorite, unlove, dislike | a song's name, or nothing for the playing song | ♥ on Apple Music (Unfavorite when it is loved) |
+| **favorite** | fav, love, heart, like; unfavorite, unlove | a song's name, or nothing for the playing song | ♥ on Apple Music (Unfavorite when it is loved) |
+| **suggest less** | dislike, less, thumbs down | `[artist\|album] <name>`, a song's name, or nothing for the playing song | Marks it Suggest Less (Undo Suggest Less when it is marked); a song's −1 goes to Apple Music with Add to Library and ♥ on (SUGGEST-LESS.md §9a, 2026-10-16) |
 | **add** | add to library | a song's name, or nothing for the playing song | Adds it to your library. Only a song not in it yet (a station's, a catalog play's) |
 | **queue** | — | `[song\|album\|playlist] <name> [N \| next \| end]` | Puts it in Up Next: at position N, next (the default), or at the end |
 | **shuffle** | — | `[album\|playlist] <name>` | Plays that library album or playlist shuffled (the menus' Shuffle row). With no name, **shuffle** is the Shuffle button |
@@ -136,7 +137,7 @@ The same table as `SYNONYMS` in `src/compass.ts`; change both.
 | eq, equalizer | eq, equalizer |
 | speaker, airplay, homepod | speakers, play on |
 | timer, alarm | sleep |
-| fav, love, heart, like, dislike, unlove | favorite |
+| fav, love, heart, like, unlove | favorite |
 | up next, upnext | queue |
 | recent, recents | recently played, history |
 | station, stations | radio |

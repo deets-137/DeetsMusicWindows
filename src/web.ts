@@ -39,6 +39,7 @@ import { creditIndex } from "./artist-credit";
 import { libraryAlbumGroups } from "./library-albums";
 import { searchField } from "./search-field";
 import { APPLE_SIGIL } from "./apple-sigil";
+import { checkWeb, webKeep } from "./suggest";
 
 interface WebSong {
   track: Track;
@@ -166,12 +167,21 @@ export async function webQuick(r: WebRequest, status: (text: string) => void, ch
   return webFrom(seed, r, status, chip, "compass");
 }
 
+/** Read the web (web.rs), then Suggest Less (SUGGEST-LESS.md §4): Apple is asked about the
+ *  candidates never asked (its −1s join the list), and with **Leave out of webs** on the marked
+ *  songs go before the genre chips and the cap. */
+async function webBuild(seed: WebSeed, reach: number, fresh: boolean): Promise<WebResult> {
+  const res = await invoke<WebResult>("web_build", { seed, reach, fresh });
+  await checkWeb(res.songs, 2 * setting("webSize"));
+  return { ...res, songs: webKeep(res.songs) };
+}
+
 /** Build the web of a known seed and pick its songs by the panel's settings, with no panel:
  *  webFrom's first half, shared with the web at a list's end (§12). */
 async function buildWebList(seed: WebSeed, r: { reach?: 1 | 2 | 3; genres?: string[] }) {
   const wanted = r.reach ?? setting("webReach");
   const reach = seed.kind === "album" ? Math.min(ALBUM_MAX_REACH, wanted) : wanted;
-  const res = await invoke<WebResult>("web_build", { seed, reach, fresh: false });
+  const res = await webBuild(seed, reach, false);
   const have = new Set(res.songs.flatMap((s) => s.track.genres));
   const want = (r.genres ?? []).map((g) => g.trim().toLowerCase()).filter(Boolean);
   let picked = new Set([...have].filter((g) => want.some((w) => g.toLowerCase().startsWith(w) || g.toLowerCase().includes(w))));
@@ -947,7 +957,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     renderChips();
     setStatus("Reading the web…");
     try {
-      const r = await invoke<WebResult>("web_build", { seed, reach: reachNow(), fresh });
+      const r = await webBuild(seed, reachNow(), fresh);
       if (mine !== building) return;
       result = r;
       // A new song or album seed picks its own genres (§9.1); a rebuild keeps your chips.

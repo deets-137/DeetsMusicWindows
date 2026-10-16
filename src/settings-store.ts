@@ -293,6 +293,15 @@ export interface Settings {
   /** When a list ends with Repeat off: play a temporary web from it (on), or load the list
    *  again at its first song, paused (off). QUEUE.md §The end of a list. */
   listEndWeb: boolean;
+  /** Suggest Less (SUGGEST-LESS.md §4): a station song you marked, or one by an artist or from
+   *  an album you marked, is skipped as it starts, under the hush (§5b). Live stations never. */
+  suggestSkipStations: boolean;
+  /** A new web leaves out the songs, artists and albums you marked Suggest Less. A web made
+   *  before a mark is not changed (§2). */
+  suggestSkipWebs: boolean;
+  /** A marked song that comes up on its own in a playlist, an album or Up Next is stepped over
+   *  before MusicKit gets it; its Queue card row is greyed, and a click on it plays it (§5a). */
+  suggestSkipQueue: boolean;
   /** Where manual picks land on a one-shot shuffle (§5a). */
   shuffleManual: "top" | "hold" | "mix";
   /** Shuffle with nothing playing: play the whole library shuffled, or do nothing (§5b). */
@@ -569,6 +578,9 @@ export const DEFAULTS: Settings = {
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
   listEndWeb: true, // user's call 2026-09-29: an ended album goes on like autoplay, with a web of songs like it
+  suggestSkipStations: true, // his call 2026-10-16 (SUGGEST-LESS.md F1, changed): a mark you made acts everywhere by default
+  suggestSkipWebs: true, // his call 2026-10-12, kept 2026-10-16: a mark you made reads as "keep it out of new webs"
+  suggestSkipQueue: true, // his call 2026-10-16 (changed from off): as stations, on
   shuffleManual: "top",
   shuffleIdle: "library",
   goToTarget: "fits", // RULEZ.md §10.1: what Go to did before the row existed, so nothing moves

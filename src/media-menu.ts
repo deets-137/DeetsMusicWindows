@@ -11,7 +11,8 @@
 //   2 File      Add to Playlist ▸
 //   3 Go to     Go to Artist · Go to Album · Go to Playlist · Song Credits
 //   4 Seed      Start Station · Start a Web · Copy Link
-//   5 Keep      Add to Library · Add to Diary (albums) · Favorite · Mark as Song of the Day · On Click ▸ · Pin
+//   5 Keep      Add to Library · Add to Diary (albums) · Favorite · Suggest Less (and of This Artist /
+//               Album; not on Home's tiles, SUGGEST-LESS.md §2) · Mark as Song of the Day · On Click ▸ · Pin
 //   6 The card's own rows
 //   7 Take away (last): Remove · Hide · Delete
 //
@@ -38,6 +39,7 @@ import { startStationItem, startArtistStationItem } from "./start-station";
 import { startWebItem, type WebSeed } from "./web";
 import { addSongToLibraryItem, addAlbumFromSongsItem, addAlbumToLibraryItem, addPlaylistToLibraryItem } from "./library-add";
 import { favoriteItem, albumFavoriteItem, playlistFavoriteItem, playlistFav } from "./favorites";
+import { suggestSongItem, suggestArtistItem, suggestAlbumItem } from "./suggest";
 import { markItem } from "./sotd";
 import { pinRows, pinItem, pinActItem, songKey, isPinned, setPin, clearPin } from "./pins";
 import { albumKey, pid } from "./rewind";
@@ -68,6 +70,8 @@ export interface Where {
   own?: Row[];
   /** Group 7: the take-away rows (Remove, Hide, Delete) — always last (fork 1A). */
   away?: Row[];
+  /** Home's tiles: no Suggest Less rows. A hide is never a Suggest Less (SUGGEST-LESS.md §2). */
+  noSuggest?: boolean;
 }
 
 /** The list a song sits in, for "Play Now → the song, then the list" (SETTINGS.md / §1). */
@@ -170,6 +174,19 @@ function songGoTo(t: Track | undefined, cid: string | undefined, nav?: LibNav): 
   return [artist, album, ...desk(credits)];
 }
 
+/** Suggest Less on a song row (SUGGEST-LESS.md §4): the song, its artist and its album. The
+ *  artist is Apple's primary one when known, else the song's artist line. */
+function songSuggest(t: Track | undefined, cid: string | undefined, w: Where): Row[] {
+  if (!t || w.noSuggest) return [];
+  const artist = songArtists(cid)?.[0];
+  const albumArtist = t.albumArtist || artist?.name || t.artistName;
+  return [
+    suggestSongItem(t),
+    suggestArtistItem({ name: artist?.name ?? t.artistName, catalogId: artist?.id }),
+    t.albumName ? suggestAlbumItem({ title: t.albumName, artistName: albumArtist }) : null,
+  ];
+}
+
 /** One song's menu. `t` may be undefined only where a row is still resolving (Queue,
  *  History): the rows that need the track then leave themselves out. */
 export function songMenu(t: Track | undefined, w: SongWhere): MenuItem[] {
@@ -196,6 +213,7 @@ export function songMenu(t: Track | undefined, w: SongWhere): MenuItem[] {
     desk(
       t ? addSongToLibraryItem(t) : null,
       favoriteItem(t),
+      ...songSuggest(t, cid, w),
       t ? markItem([t], w.context) : null,
       // A song row pins the song, wherever it sits — inside an album view too (fork 3A).
       ...(t ? pinRows(songKey(t), "song", t) : []),
@@ -321,6 +339,7 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
       },
       // ♥ (his call F2A, 2026-09-24): every album menu; the state is what the mirror knows.
       albumFavoriteItem({ id: a.catalogId ?? undefined, seed: seed?.catalogId, name: a.title }),
+      !w.noSuggest && suggestAlbumItem({ title: a.title, artistName: a.artistName ?? first?.albumArtist ?? first?.artistName ?? "", catalogId: a.catalogId }),
       ...albumPinRows(a),
     ),
     w.own ?? [],
@@ -395,7 +414,10 @@ export function artistMenu(a: ArtistSubject, w: ArtistWhere): MenuItem[] {
       ),
       copyArtistLinkItem(a.catalogId, seedId ? resolveId : undefined),
     ],
-    desk(...pinRows(`artist:${a.name}`, "artist", { name: a.name, artwork: a.artwork, catalogId: a.catalogId })),
+    desk(
+      !w.noSuggest && suggestArtistItem({ name: a.name, catalogId: a.catalogId }),
+      ...pinRows(`artist:${a.name}`, "artist", { name: a.name, artwork: a.artwork, catalogId: a.catalogId }),
+    ),
     w.own ?? [],
     w.away ?? [],
   );
@@ -474,7 +496,8 @@ export interface TileWhere extends Where {
 export function tileMenu(it: HomeItem, w: Omit<TileWhere, "context">): MenuItem[] {
   const list = it.tracks();
   const known = Array.isArray(list) ? list : [];
-  const where = { ...w, context: it.context };
+  // Home stays Hide only (SUGGEST-LESS.md §2): its tiles, and the Pinned shelves that share them.
+  const where = { ...w, context: it.context, noSuggest: true };
   switch (it.kind) {
     case "station":
       return it.station ? stationMenu(it.station, where) : [];

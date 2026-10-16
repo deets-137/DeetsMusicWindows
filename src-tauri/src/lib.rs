@@ -35,6 +35,7 @@ mod roworder;
 mod safe_file;
 mod smtc;
 mod sotd;
+mod suggest;
 mod tray;
 mod update;
 mod usage;
@@ -267,6 +268,7 @@ pub fn run() {
             playlists::migrate_v17(&conn).expect("v17 migration failed");
             library::migrate_v18(&conn).expect("v18 migration failed");
             enrich::migrate_v19(&conn).expect("v19 migration failed");
+            suggest::migrate_v20(&conn).expect("v20 migration failed");
             conn
             }));
             let conn = match opened {
@@ -462,6 +464,11 @@ pub fn run() {
             favorites::favorites_reconcile,
             favorites::favorite_collection_set,
             favorites::favorite_collection_reconcile,
+            suggest::suggest_list,
+            suggest::suggest_set,
+            suggest::suggest_clear,
+            suggest::suggest_restore,
+            suggest::suggest_push,
             enrich::catalog_enrich,
             enrich::album_palette,
             credits::credits_stats,

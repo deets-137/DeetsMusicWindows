@@ -48,7 +48,7 @@ The same in every menu. The groups never change places.
 | 2 | File | Add to Playlist ▸ |
 | 3 | Go to | Go to Artist · Go to Album · Go to Playlist · Song Credits |
 | 4 | Seed | Start Station · Start a Web · Copy Link |
-| 5 | Keep | Add to Library · Add to Diary (albums) · Favorite · Mark as Song of the Day · On Click ▸ · Pin |
+| 5 | Keep | Add to Library · Add to Diary (albums) · Favorite · Suggest Less (and Suggest Less of This Artist / Album; not on Home's tiles) · Mark as Song of the Day · On Click ▸ · Pin |
 | 6 | The card's own rows | Move to Top / Bottom · Move to Folder ▸ · Refresh ▸ · Stop Station · a pick's note … |
 | 7 | Take away (last) | Remove · Remove from Playlist · Hide · Delete Playlist |
 
@@ -79,7 +79,8 @@ Library · Favorite · Mark as Song of the Day · Pin.
 
 ### 3.2 Album — `albumMenu`
 Play Now · Shuffle · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Go to Album ·
-Start a Web · Copy Link · Add to Library · Add to Diary · Favorite · On Click ▸ · Pin.
+Start a Web · Copy Link · Add to Library · Add to Diary · Favorite · Suggest Less of This Album ·
+On Click ▸ · Pin.
 
 - **Shuffle** (2026-09-24, his call 3A): the hero's Shuffle button as a row, on every card. With
   "Shuffle stays on" it turns the mode on (`runListAction`'s rule).
@@ -98,7 +99,7 @@ Start a Web · Copy Link · Add to Library · Add to Diary · Favorite · On Cli
 
 ### 3.3 Artist — `artistMenu`
 Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Start Station · Start
-a Web · Copy Link · On Click ▸ · Pin.
+a Web · Copy Link · Suggest Less of This Artist · On Click ▸ · Pin.
 
 - **What plays** (fork 4A): the artist's songs in your library, in album order. An artist off
   the library plays Apple's Top Songs — one memoized `artistDetail` read, on the press only.

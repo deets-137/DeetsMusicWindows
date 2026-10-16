@@ -17,6 +17,20 @@ export function expectedIds<E>(upcoming: readonly E[], cap: number, idOf: (e: E)
   return out;
 }
 
+/** The first upcoming entry MusicKit is fed (`fed` → an id), and the entries before it that a
+ *  Suggest Less skip left out (`skipped`), in order. A dead entry (no play id at all) is passed
+ *  over too, but it is not a skip. MusicKit's window holds only fed entries, so a step of one
+ *  in MusicKit is a step to `at` in the model (SUGGEST-LESS.md §5a). `at` is -1 when none is fed. */
+export function nextFed<E>(upcoming: readonly E[], fed: (e: E) => string | null | undefined, skipped: (e: E) => boolean): { at: number; passed: E[] } {
+  const passed: E[] = [];
+  for (let i = 0; i < upcoming.length; i++) {
+    const e = upcoming[i];
+    if (fed(e)) return { at: i, passed };
+    if (skipped(e)) passed.push(e);
+  }
+  return { at: -1, passed };
+}
+
 /** The longest start of `ids` with no id twice: what one MusicKit insert call may carry.
  *  One `playLater` / `playNext` call that holds an id twice keeps only its LAST copy, while
  *  separate calls keep every copy (probed 2026-10-01, QUEUE.md §Repeats in one insert). */

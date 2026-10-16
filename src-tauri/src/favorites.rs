@@ -48,6 +48,8 @@ pub(crate) fn seed_from_playlist(conn: &Connection, tracks: &[Track]) -> Result<
     for t in tracks {
         let Some(id) = t.catalog_id.clone().filter(|s| !s.is_empty()) else { continue };
         set_local(conn, &id, true)?;
+        // A ♥ on the phone replaced a −1 (SUGGEST-LESS.md §3): the mark goes.
+        let _ = crate::suggest::forget_song(conn, &id);
         n += 1;
     }
     Ok(n)
@@ -90,6 +92,10 @@ pub async fn favorite_set(
     let conn = db.lock();
     library::materialize_many(&conn, std::slice::from_ref(&track))?;
     set_local(&conn, &id, loved)?;
+    if loved {
+        // Apple keeps one rating per song: the ♥ replaced a Suggest Less (SUGGEST-LESS.md §3).
+        crate::suggest::forget_song(&conn, &id)?;
+    }
     crate::log::info(&format!("favorites: {} {id}", if loved { "loved" } else { "unloved" }));
     Ok(())
 }
@@ -233,33 +239,41 @@ pub async fn favorites_known(app: tauri::AppHandle) -> Result<Vec<String>, Strin
 pub struct Reconciled {
     pub loved: Vec<String>,
     pub unloved: Vec<String>,
+    /// Rated −1 (Suggest Less, SUGGEST-LESS.md §3): also in `unloved`, and in our list now.
+    pub disliked: Vec<String>,
 }
 
 /// Ask Apple about a batch of catalog ids the mirror has never seen (a ♥ set on the
 /// phone). One `GET …/ratings/songs?ids=` per 100 ids; ids Apple omits are not loved.
 /// Every asked id gets a mirror row either way, so it is never asked again on this
-/// install (a later ♥ elsewhere shows up through the Favorite Songs seed).
+/// install (a later ♥ elsewhere shows up through the Favorite Songs seed). `why` names the
+/// asker for the log (SUGGEST-LESS.md §3a: R1 re-asks Home's recent plays, ids with a row too).
+///
+/// The same read carries Apple's −1s: each goes into the Suggest Less list, and an asked id
+/// with no −1 takes an Apple-read mark out (it was cleared on another device).
 ///
 /// A background job, like `favorite_collection_reconcile` (APPLE-CALLS.md §3).
 #[tauri::command]
 pub async fn favorites_reconcile(
     ids: Vec<String>,
+    why: Option<String>,
     state: State<'_, AppleState>,
     db: State<'_, Db>,
 ) -> Result<Reconciled, String> {
     if crate::apple_calls::skip("favorites_reconcile") {
         return Err(crate::apple_calls::BUSY.into());
     }
-    crate::apple_calls::background("favorites_reconcile", favorites_reconcile_run(ids, state, db)).await
+    crate::apple_calls::background("favorites_reconcile", favorites_reconcile_run(ids, why, state, db)).await
 }
 
 async fn favorites_reconcile_run(
     ids: Vec<String>,
+    why: Option<String>,
     state: State<'_, AppleState>,
     db: State<'_, Db>,
 ) -> Result<Reconciled, String> {
     let ids: Vec<String> = ids.into_iter().filter(|s| !s.is_empty()).collect();
-    let mut out = Reconciled { loved: Vec::new(), unloved: Vec::new() };
+    let mut out = Reconciled { loved: Vec::new(), unloved: Vec::new(), disliked: Vec::new() };
     if ids.is_empty() {
         return Ok(out);
     }
@@ -283,6 +297,8 @@ async fn favorites_reconcile_run(
                 if let Some(id) = r.get("id").and_then(|i| i.as_str()) {
                     if v == 1 {
                         loved_here.insert(id.to_string());
+                    } else if v == -1 {
+                        out.disliked.push(id.to_string());
                     }
                 }
             }
@@ -302,10 +318,16 @@ async fn favorites_reconcile_run(
     for id in &out.unloved {
         set_local(&conn, id, false)?;
     }
+    crate::suggest::note_apple(&conn, &out.disliked)?;
+    let disliked: std::collections::HashSet<&String> = out.disliked.iter().collect();
+    let cleared: Vec<String> = ids.iter().filter(|id| !disliked.contains(id)).cloned().collect();
+    let gone = crate::suggest::clear_apple(&conn, &cleared)?;
     crate::log::info(&format!(
-        "favorites: reconciled {} id(s), {} loved",
+        "favorites: reconciled {} id(s), {} loved, {} suggest less, {gone} cleared, why={}",
         out.loved.len() + out.unloved.len(),
-        out.loved.len()
+        out.loved.len(),
+        out.disliked.len(),
+        why.as_deref().unwrap_or("screen")
     ));
     Ok(out)
 }

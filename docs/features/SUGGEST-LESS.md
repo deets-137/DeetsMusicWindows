@@ -1,13 +1,14 @@
 ---
-status: designed
-desk_test: none
-sources: [src-tauri/src/favorites.rs, src-tauri/src/apple.rs, src-tauri/src/web.rs, src/player.ts, src/queue-sync.ts, src/favorites.ts, src/media-menu.ts, src/compass.ts, src/web.ts]
-updated: 2026-10-12
+status: built
+desk_test: passed 2026-10-16
+sources: [src-tauri/src/suggest.rs, src-tauri/src/favorites.rs, src-tauri/src/library.rs, src/suggest.ts, src/suggest-match.ts, src/player.ts, src/queue-sync.ts, src/queue-rows.ts, src/qcard.ts, src/favorites.ts, src/media-menu.ts, src/compass.ts, src/web.ts, src/home.ts, src/settings-card.ts, src/rules-app.ts, tests/suggest-match.test.ts, tests/queue-sync.test.ts]
+updated: 2026-10-16
 ---
 # DeetsMusic — Suggest Less and proactive skips
 
 Designed 2026-09-17. Checked against the code and changed 2026-10-12 (§0a). Every fork is
-closed (§11, 2026-10-12). **Not built.** The station timing is measured when we build (§8).
+closed (§11, 2026-10-12). **Built 2026-10-16, all three parts in one change (§12 is the as-built
+record); desk test passed 2026-10-16 (his, §8).** The station timing is in §12.
 
 ## 0. Terms
 
@@ -144,11 +145,12 @@ It is an Apple write with the consent on, so it takes `cost: "apple"` and the §
 
 | Row | Key | Default | Hover hint |
 |---|---|---|---|
-| **Skip on stations** | `suggestSkipStations` | **off** | "Skips a station song you marked Suggest Less, or one by an artist or from an album you marked" |
+| **Skip on stations** | `suggestSkipStations` | **on** | "Skips a station song you marked Suggest Less, or one by an artist or from an album you marked" |
 | **Leave out of webs** | `suggestSkipWebs` | **on** | "Leaves songs, artists and albums you marked Suggest Less out of a new web" |
-| **Skip in queues** | `suggestSkipQueue` | **off** | "Skips songs, artists and albums you marked Suggest Less when they come up in a playlist, an album or Up Next" |
+| **Skip in queues** | `suggestSkipQueue` | **on** | "Skips songs, artists and albums you marked Suggest Less when they come up in a playlist, an album or Up Next" |
 
-Defaults (his calls, 2026-10-12): a mark you made reads as "keep it out of new webs", so
+Defaults: **all three on** (his call, 2026-10-16, after the build). Before that (2026-10-12):
+a mark you made reads as "keep it out of new webs", so
 webs are on; a skip you did not expect reads as a bug, so queues and stations are off.
 
 - Each row acts alone. With all three off, the marks are kept and only the menus and
@@ -259,6 +261,11 @@ yet; the build adds one in Rust and uses it for both the web and the player's ma
 
 ## 8. Desk test
 
+> **Part:** passed · 2026-10-16 · his. He ran it on the dev app: song marks, the queue skip, and
+> station starts from a marked song (Kill Bill, then Snooze). Two station fixes came out of it
+> (§12: the first song of a station, and the hush before play on a marked seed). The Snooze run
+> measured: the skip added about 0.2 s to a normal 1.2–1.8 s station start.
+
 1. Mark a song Suggest Less with **Add to Library and ♥** on. Check its rating in Apple Music
    on the phone.
 2. Mark a song on the phone. Build a web that holds it, with **Leave out of webs** on. The
@@ -331,7 +338,7 @@ already does:
 
 | # | Fork | His call |
 |---|---|---|
-| F1 | Defaults of **Leave out of webs** and **Skip in queues** | Webs on, queues off |
+| F1 | Defaults of **Leave out of webs** and **Skip in queues** | Webs on, queues off; **changed 2026-10-16: all three on** |
 | F2 | The artist and album menu items | Always shown; the *Dislike Artists and Albums* row is dropped |
 | F3 | Which marks **Skip on stations** acts on | All marks (song, album, artist) |
 | F4 | The Compass word | A new **suggest less** command takes `dislike`; the words toggle (§9a) |
@@ -339,3 +346,85 @@ already does:
 | F6 | Fresher −1s (§3a) | R1 only |
 
 A closed fork is not a go: the build starts when he says so.
+
+## 12. As built (2026-10-16)
+
+> **Part:** built · 2026-10-16 · desk test passed 2026-10-16 (his, §8)
+
+Where this section and §1–§10 differ, this section is the code. All three parts of §10 went in
+as one change (his rule since 2026-10-13: one change, one commit).
+
+**Data.** Schema **v20**: the `suggest_less` table of §3 (`suggest.rs` `migrate_v20`, primary
+key `kind, key`). An Apple row stores only the id; its words come from the song's `tracks` row at
+read time (`suggest_list`). `favorites_reconcile` now returns `disliked` and takes `why` (`R1`,
+`web`, or none for a read on screen). A −1 adds an `apple` row (a local row Apple now holds turns
+`synced`); an asked id with no −1 deletes its `apple` row only. `favorite_set` with a ♥ and the
+Favorite Songs seed delete the song's mark. A sign-in with another account deletes the `apple`
+rows; the marks made here stay (`forget_account`). `favorites.synced_at` was not needed: R1 asks
+every id each time, so no "asked at" is read.
+
+**The match** is in the front-end, not in Rust as §5c said: the player answers at a song change
+and in the queue window with no call, so the marks sit in memory (`suggest.ts`) and
+`suggest-match.ts` is the pure rule, with its tests. `fold` is there. An artist mark matches by
+folded name (a song carries no artist id); an album mark by folded album name plus the album's
+artist or any name the song credits.
+
+**Writes.** `suggest_set` sends `PUT −1` / `DELETE` first for a catalog song when the consent is
+on (a library-only id has no rating route, so it stays local), then writes the row; the front-end
+flips first and rolls back with the warn toast. `suggest_push` sends the unsynced local songs when
+the consent turns on. Clear (`suggest_clear`) returns the rows, and its Undo (`suggest_restore`)
+puts them back; Apple's −1s are not cleared on Apple.
+
+**R1.** `home.ts` calls `recheckRecent` when `recent_played_tracks` returns: up to 100 catalog
+ids, one call. **The web check (1B):** `web.ts` `webBuild` wraps both `web_build` calls: the
+candidates with no ♥ mirror row, nearest degree first, at most 2 × Web size, then `webKeep` with
+**Leave out of webs** on. The anchor (the seed song you picked) always stays.
+
+**Menus.** `media-menu.ts`: the song menu has Suggest Less, … of This Artist (Apple's primary
+artist when known), … of This Album; the album and artist menus have their one row. `tileMenu`
+passes `noSuggest`, so Home's tiles **and the Pinned shelves** (they share `tileMenu`) have none.
+
+**Settings › Playback** ends with a *Suggest Less* group: the three toggles, a **Suggest Less
+marks › Clear** row, and the section's status line (*Suggest Less: 12 songs, 2 artists*). The
+three keys are in the Playback Reset group and in the usage allow-list (`usage-keys.ts`, copied to
+DeetsSupport by `npm run usage:keys`; the worker drops a key it does not know until it is
+deployed).
+
+**Compass.** `suggestRow`: `suggest less`, `dislike`, `less`, `thumbs down`, with `artist` /
+`album` and a name. `dislike` left `favoriteRow` and the `SYNONYMS` table.
+
+**Rules.** The action `suggestLess` (*Mark the song Suggest Less*): `cost: "free"`, and an Apple
+call through `appleIf` only with the consent on and a catalog song.
+
+**Skip in queues (§5a).** `player.ts` `feedId` = `playId` unless `suggestSkipped` (the row is on
+and the song matches). Every path that feeds or counts Up Next uses it: the window build,
+`reconcileUpcoming`'s expected list, the alignment report, `mkUpcomingIndex`, the inserts
+(`fedIds`), the model's follow (`jumpToNextFed`, over `nextFed` in `queue-sync.ts`, with a test),
+the dead-next heal, the dry-window heal, the copy skip and Next while idle. A list whose only
+rows left are marked ends there (`dropSkippedTail`, then the list-end path). A mark made or a
+toggle flipped re-windows at once (`ensureAligned("suggest")`). The current song is never asked,
+so a pick plays. The toast gathers skips for 0.8 s; Undo plays the first one on top of Up Next.
+
+**Skip on stations (§5b).** `stationSuggestSkip` runs before `stationFollow`. The hush has two
+reasons now (`hush("resume" | "suggest")`, each with its own cap), so a skip and a network resume
+never clear each other; the station skip's cap is 8 s, and it ends when a song that does not match
+arrives, when the station ends (`exitRadio`), or when the skip is refused (`suggest:skipRefused`,
+the song then plays with sound). Undo is a break-out with the song, then `queueStationAfter`. **The station's first song**
+(fixed 2026-10-16, his desk test: a station started from the marked "Kill Bill" played it) does
+not come through `nowPlayingItemDidChange`: `playStation` follows it itself once the station
+loads. It now asks `stationSuggestSkip` first, and hushes before `play()` when MusicKit already
+names a marked first song, **or when the station is a marked song's own** (`ra.<song id>`: Apple
+plays the seed first). The seed rule is the sure one: in his Snooze run MusicKit named no song
+before `play()`, and the hush came 0.5 s after Snooze was the playing item. Log line
+`suggest:preHush {by: first|seed}`. A first song that is not the seed ends the hush on arrival.
+Dev telemetry: `[perf] suggest station {npMs, skipMs, silentMs, next}`. `audibleMs` is not in it:
+whether any sound played is read by ear and from the hush lines in the desk test.
+
+**Not built from §6:** the greyed trail row for a skipped station song. The trail is the
+queue's `history`, and an entry there is a song Previous goes back to and the play log counts; a
+row that never played does not fit it. The toast names the song. His call if he wants it.
+
+**Log lines:** `suggest:mark`, `suggest:ask {why, ids}`, `suggest:skip {where, why, match, id}`,
+`suggest:undo`, `suggest:hush`, `suggest:arm` / `suggest:off`, `suggest:web {dropped}`,
+`suggest:clear`, `suggest:skipRefused`.
+

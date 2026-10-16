@@ -40,6 +40,7 @@ export const REPORTED: readonly string[] = [
   "streamQuality", "playNowScope", "pinNewAct", "dropPlayQueue", "previousReach", "restoreQueue",
   "listEndWeb", "shuffleStays", "shuffleOff", "shuffleManual", "historyShowDay", "showListeners",
   "showArtistInfo", "showAlbumInfo", "shuffleIdle",
+  "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue",
   // AirPlay, Home, Apple Music
   "airplaySend", "homeApple", "libraryAdd", "addSquareOwned", "playlistExport", "playlistGetNew",
   // Last.fm (on/off only)

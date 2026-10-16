@@ -141,6 +141,7 @@ const H: Record<string, Handler> = {
   lastfm_heard: () => false,
   favorites_cached: () => [],
   favorites_known: () => [],
+  suggest_list: () => [],
   pins_list: () => [],
   pin_play_counts: () => [],
   row_order_all: () => [],
@@ -196,6 +197,7 @@ export const NULL_ON_PURPOSE = new Set([
   "playlist_rename", "playlist_reorder", "playlist_set_cover",
   // ♥, pins, row order, credits
   "favorite_collection_reconcile", "favorite_collection_set", "favorite_set", "favorites_reconcile",
+  "suggest_set", "suggest_clear", "suggest_restore", "suggest_push",
   "pin_act", "pin_clear", "pin_set", "row_order_reset", "row_order_set", "credits_fetch", "credits_for", "songs_by_writer",
   // Friends (none on the web, his call W3), Song of the Day, Last.fm
   "friend_add", "friend_key_export", "friend_key_import", "friend_me", "friend_pin", "friend_remove", "friend_rename", "friend_sign",

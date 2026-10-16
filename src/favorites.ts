@@ -111,13 +111,42 @@ export function reconcile(tracks: Track[]): void {
     ids.push(id);
   }
   if (!ids.length) return;
-  invoke<{ loved: string[]; unloved: string[] }>("favorites_reconcile", { ids })
+  invoke<Ratings>("favorites_reconcile", { ids, why: null })
     .then((r) => {
-      r.loved.forEach((id) => { loved.add(id); known.add(id); });
-      r.unloved.forEach((id) => { loved.delete(id); known.add(id); });
-      if (r.loved.length) emit();
+      applyRatings(r);
+      if (r.disliked.length) ratingListeners.forEach((cb) => cb());
     })
     .catch((e) => console.warn("[favorites] reconcile", e));
+}
+
+/** What one ratings read answers (favorites.rs `Reconciled`): `disliked` is Suggest Less. */
+export interface Ratings {
+  loved: string[];
+  unloved: string[];
+  disliked: string[];
+}
+
+/** A ratings read landed: the ♥ set follows it. Suggest Less reads it too (suggest.ts). */
+export function applyRatings(r: Ratings): void {
+  let changed = false;
+  r.loved.forEach((id) => { changed ||= !loved.has(id); loved.add(id); known.add(id); });
+  r.unloved.forEach((id) => { changed ||= loved.has(id); loved.delete(id); known.add(id); });
+  if (changed) emit();
+}
+
+/** Has the mirror an answer for this song (loved or not)? An id with none was never asked. */
+export const isKnown = (id: string): boolean => known.has(id);
+
+/** Apple now holds a −1 in place of this song's ♥ (a Suggest Less, suggest.ts). */
+export function dropLoved(id: string): void {
+  known.add(id);
+  if (loved.delete(id)) emit();
+}
+
+// A read on screen found a −1: Suggest Less reloads its list (no import of suggest.ts here).
+const ratingListeners = new Set<() => void>();
+export function onDislikesRead(cb: () => void): void {
+  ratingListeners.add(cb);
 }
 
 // ── Albums and playlists (CONTEXT-MENUS.md §3b, his calls F1A F2A F3A, 2026-09-24) ──

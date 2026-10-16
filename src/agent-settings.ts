@@ -313,6 +313,10 @@ const SPECS: Spec[] = [
   storeToggle("Playback", "showListeners", "Show play counts from Last.FM"),
   storeToggle("Playback", "showArtistInfo", "Show artist info on the artist's page"),
   storeToggle("Playback", "showAlbumInfo", "Show album info on the album's page"),
+  // Suggest Less (SUGGEST-LESS.md §4): plain toggles, not consent gates, so the agent may turn them on.
+  storeToggle("Playback", "suggestSkipStations", "Skip on stations"),
+  storeToggle("Playback", "suggestSkipWebs", "Leave out of webs"),
+  storeToggle("Playback", "suggestSkipQueue", "Skip in queues"),
   // ── AirPlay (AIRPLAY.md §7) ──
   {
     key: "airplaySend", label: "Send to speaker", section: "AirPlay", kind: "choice",

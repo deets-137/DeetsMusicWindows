@@ -76,6 +76,7 @@ export type Action =
   | { note: string }
   | { addTo: string }
   | { love: true }
+  | { suggestLess: true }
   | { diary: true }
   | { scrobble: boolean }
   | { hide: true }

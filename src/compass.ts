@@ -10,6 +10,7 @@
 // The index is built from the app's own registries (cards.ts, the title menu's buttons,
 // settings-card.ts's inert rows) and the in-memory track store. Nothing is stored.
 
+import { isAlbumMarked, isArtistMarked, isSongMarked, setAlbumMark, setArtistMark, setSongMark } from "./suggest";
 import "./styles/compass.css";
 import { registry, type CardId } from "./cards";
 import { requestCard, requestSetting, requestLibraryDrill, requestSearchTerm, requestDiaryAlbum, requestDiaryEntry, cardHost } from "./layout-bus";
@@ -119,7 +120,7 @@ export const SYNONYMS: Record<string, string[]> = {
   speaker: ["speakers"], airplay: ["speakers", "play on"], homepod: ["speakers"],
   timer: ["sleep"], alarm: ["sleep"],
   fav: ["favorite"], love: ["favorite"], heart: ["favorite"], like: ["favorite"],
-  dislike: ["favorite"], unlove: ["favorite"],
+  unlove: ["favorite"],
   "up next": ["queue"], upnext: ["queue"],
   recent: ["recently played", "history"], recents: ["recently played"],
   stations: ["radio"], station: ["radio"],
@@ -646,7 +647,7 @@ const gateRow = (title: string): Row => ({
 /** "favorite [song]" (fav, love, heart, like): ♥ the song, or the current song with no name.
  *  A loved song offers Unfavorite. A REAL Apple write, behind the ♥ gate. */
 function favoriteRow(term: string): Row[] {
-  const m = /^(?:favou?rite|fav|love|heart|like|unfavou?rite|unfav|unlove|dislike)(?:\s+(.+))?$/i.exec(term.trim());
+  const m = /^(?:favou?rite|fav|love|heart|like|unfavou?rite|unfav|unlove)(?:\s+(.+))?$/i.exec(term.trim());
   if (!m) return [];
   if (!libraryAddEnabled()) return [gateRow("Favorite")];
   const t = songFor(m[1]?.trim() ?? "", nearbySongs(true));
@@ -655,6 +656,53 @@ function favoriteRow(term: string): Row[] {
   return [{
     group: "Actions", title: `${on ? "Unfavorite" : "Favorite"} \u201c${t.title}\u201d`, sub: `${songSub(t)} · ${on ? "takes the ♥ off" : "♥ on Apple Music too"}`,
     run: () => void setLoved(t, !on).catch((e) => console.error("[compass] favorite", e)),
+  }];
+}
+
+/** "suggest less [song]" (dislike, less, thumbs down), "suggest less artist <name>", "suggest less
+ *  album <name>" (SUGGEST-LESS.md §9a): mark it, or the current song with no name. The words
+ *  toggle, as favorite does: on a marked item the row offers Undo. The mark needs no Apple, so
+ *  the consent gate does not stop it; with the consent on a song's −1 goes to Apple too. */
+function suggestRow(term: string): Row[] {
+  const m = /^(?:suggest\s+less|dislike|less|thumbs\s+down)(?:\s+(artist|album))?(?:\s+(.+))?$/i.exec(term.trim());
+  if (!m) return [];
+  const what = m[1]?.toLowerCase() as "artist" | "album" | undefined;
+  const name = m[2]?.trim() ?? "";
+  const pool = nearbySongs(true);
+  const webs = setting("suggestSkipWebs") ? "Leaves it out of new webs" : "";
+  const fail = (e: unknown) => console.error("[compass] suggest less", e);
+  if (what === "artist") {
+    // The artist: the playing song's with no name, else the best artist name among the songs.
+    const names = [...new Map(pool.map((t) => [t.artistName, t])).keys()];
+    const rows: Row[] = names.map((n) => ({ group: "Artists", title: n, run: () => {} }));
+    const artist = name ? names[rows.indexOf(hitsOf(rows, fold(name).split(/\s+/), fold(name))[0]?.r as Row)] : songFor("", pool)?.artistName;
+    if (!artist) return name ? [] : [{ group: "Actions", title: "Suggest Less of an artist", sub: "Nothing is playing", disabled: true, run: () => false }];
+    const on = isArtistMarked(artist);
+    return [{
+      group: "Actions", title: `${on ? "Undo Suggest Less" : "Suggest Less"} of “${artist}”`, sub: on ? "Takes the mark off" : webs || "Marks the artist",
+      run: () => void setArtistMark({ name: artist }, !on).catch(fail),
+    }];
+  }
+  if (what === "album") {
+    const albums = [...new Map(pool.filter((t) => t.albumName).map((t) => [`${t.albumName}|${t.albumArtist || t.artistName}`, t])).values()];
+    const rows: Row[] = albums.map((t) => ({ group: "Albums", title: t.albumName!, sub: t.albumArtist || t.artistName, run: () => {} }));
+    const t = name ? albums[rows.indexOf(hitsOf(rows, fold(name).split(/\s+/), fold(name))[0]?.r as Row)] : songFor("", pool);
+    if (!t?.albumName) return name ? [] : [{ group: "Actions", title: "Suggest Less of an album", sub: "Nothing is playing", disabled: true, run: () => false }];
+    const a = { title: t.albumName, artistName: t.albumArtist || t.artistName };
+    const on = isAlbumMarked(a.title, a.artistName);
+    return [{
+      group: "Actions", title: `${on ? "Undo Suggest Less" : "Suggest Less"} of “${a.title}”`, sub: `${a.artistName} · ${on ? "takes the mark off" : webs || "marks the album"}`,
+      run: () => void setAlbumMark(a, !on).catch(fail),
+    }];
+  }
+  const t = songFor(name, pool);
+  if (!t) return name ? [] : [{ group: "Actions", title: "Suggest Less", sub: "Nothing is playing", disabled: true, run: () => false }];
+  const on = isSongMarked(t);
+  const apple = libraryAddEnabled() && t.catalogId ? "−1 on Apple Music too" : "";
+  return [{
+    group: "Actions", title: `${on ? "Undo Suggest Less" : "Suggest Less"} “${t.title}”`,
+    sub: [songSub(t), on ? "takes the mark off" : [webs, apple].filter(Boolean).join(" · ")].filter(Boolean).join(" · "),
+    run: () => void setSongMark(t, !on).catch(fail),
   }];
 }
 
@@ -1004,7 +1052,7 @@ function query(termRaw: string, kind: Group | null): Result {
   const words = term.split(/\s+/);
   const lib = libraryRows();
   preloadStations();
-  const rows: Row[] = [...mathRow(termRaw), ...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...shuffleRow(termRaw), ...favoriteRow(termRaw), ...addRow(termRaw)];
+  const rows: Row[] = [...mathRow(termRaw), ...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...shuffleRow(termRaw), ...favoriteRow(termRaw), ...suggestRow(termRaw), ...addRow(termRaw)];
   // Each group is a block with its best score; the blocks come in that order, ties in the
   // default order — so an exact playlist name ("Replay") sits above the Settings rows that
   // only contain the word. The library block (its chips ride with it) is one block.

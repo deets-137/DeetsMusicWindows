@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,30 @@ updated: 2026-10-15
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-16 (shixtheenth) — Suggest Less, built
+
+**His ask:** "scope out and build out suggest less". Every fork was closed on 2026-10-12, so this
+was the build: all three parts of SUGGEST-LESS.md §10 as one change (his rule since 2026-10-13).
+- **Built:** the marks (schema v20, `suggest.rs`, `suggest.ts`), Apple's −1 read with the ♥ read,
+  R1 after Home's recent-plays read, the web check and **Leave out of webs**, the menu rows, the
+  Settings group with Clear, the Compass `suggest less` command (`dislike` moved to it), the
+  `suggestLess` rule action; **Skip in queues** (`feedId` in player.ts, the greyed Queue row, the
+  toast with Undo); **Skip on stations** (the hush with two reasons, the skip, the telemetry).
+  The as-built record and every difference from the design: SUGGEST-LESS.md §12.
+- **Decided inside his choices (listed for him):** the match lives in the front-end; Clear leaves
+  Apple's −1s on Apple; Undo of an Apple-read mark with the consent off removes it here only; the
+  Pinned shelves lose the rows with Home (they share `tileMenu`); the three keys joined the usage
+  allow-list (the DeetsSupport copy is changed, not deployed).
+- **Not built:** the greyed trail row for a skipped station song (§12, why).
+- **Checks:** `npx tsc --noEmit`, `npm test` (new: suggest-match, nextFed, the menu rows),
+  `cargo test suggest`, `npm run docs:check`.
+- **Defaults changed (his call, after the build):** all three rows on.
+- **His desk test (passed):** a station started from the marked "Kill Bill" played it: the
+  station's first song is followed by `playStation` itself, not the song-change path, so it
+  never met the check. Fixed: `playStation` asks `stationSuggestSkip` first. The Snooze run
+  (log): the cover showed Snooze ~0.5 s before the hush, so a hush before `play()` was added when
+  the station is a marked song's own (`ra.<id>`). Skip cost: ~0.2 s on a 1.2–1.8 s station start.
 
 ## 2026-10-15 (twenty-eighth) — the Library ⟳ spins for the whole sync
 

@@ -30,7 +30,8 @@ import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import { unreleasedToast } from "./release";
-import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart, skipToSameId } from "./queue-sync";
+import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart, skipToSameId, nextFed } from "./queue-sync";
+import { matchOf, onSuggestChange } from "./suggest";
 import { resumePoint } from "./resume-point";
 import { idleSkip } from "./idle-skip";
 import { launchMark } from "./launch-perf";
@@ -85,6 +86,9 @@ function exitRadio(): void {
   if (mode === "radio") mode = "queue"; // room mode stays: its loads come through here too
   radioStation = null;
   pendingBreakout = false;
+  // A station skip's hush ends with the station (SUGGEST-LESS.md §5b): the next song is ours.
+  suggestSkipping = null;
+  if (hushReasons.has("suggest")) hush("suggest", false);
 }
 
 /**
@@ -724,7 +728,15 @@ export function setShuffleMode(on: boolean): void {
 onSettingsChange((k) => {
   if (k === "repeatMode") applyRepeatToMusicKit();
   if (k === "repeatMode" || k === "shuffleMode" || k === "shuffleStays") emit();
+  if (k === "suggestSkipQueue") suggestRewindow();
 });
+// A mark made or taken off: MusicKit's window follows at once, gaplessly (the current song
+// never moves). The Queue card greys or ungreys its rows from the same change.
+onSuggestChange(() => suggestRewindow());
+function suggestRewindow(): void {
+  if (mode !== "queue" || !music?.nowPlayingItem || loadingContext) return;
+  void ensureAligned("suggest").catch((e) => console.warn("[player] suggest re-window:", e));
+}
 
 /**
  * Station return: once the break-out block has played out (model upcoming empty and
@@ -754,12 +766,24 @@ function maybeResumeStation(): void {
  * Qcard kept showing it under "Not playing". Move it to the heard trail instead. Only when
  * the model has nothing upcoming: a window that ran out early is a top-up problem, not an end.
  */
+/** Does Up Next hold a row MusicKit is fed? Rows Suggest Less skips do not count. */
+const hasFedUpcoming = (): boolean => queue.getUpcoming().some((h) => !!feedId(h));
+/** The list ended with only skipped rows after it: they go, and the toast names them. */
+function dropSkippedTail(): void {
+  const up = queue.getUpcoming();
+  if (!up.length) return;
+  noteSuggestSkips(up.filter(suggestSkipped), "queue", "end");
+  for (let i = up.length - 1; i >= 0; i--) queue.removeAt(i);
+}
+
 function maybeFinishQueue(): void {
   if (!music || mode !== "queue" || loadingContext || isLoading) return;
   const S = window.MusicKit?.PlaybackStates;
   const st = music.playbackState;
   const finished = !!S && (st === S.completed || st === S.ended);
-  if (!finished || music.nowPlayingItem || queue.getUpcoming().length || !queue.getCurrent()) return;
+  if (!finished || music.nowPlayingItem || hasFedUpcoming() || !queue.getCurrent()) return;
+  // Only rows Suggest Less steps over are left: they were passed over, so the list has ended.
+  dropSkippedTail();
   // Repeat (NEXT-VERSION §12d): ALL refills Up Next with the whole list and plays on — one
   // buffering gap per lap (no pre-wrap: a list shorter than the window would dedup away).
   // ONE normally never gets here (MusicKit loops the song itself); if a build ignores
@@ -1080,8 +1104,12 @@ function onNowPlayingChange(): void {
         }, 0);
       } else {
         pendingBreakout = false; // an emptied block (rows removed) — stay in radio
-        stationFollow();
-        diag.log("player:np", snap());
+        // Suggest Less (SUGGEST-LESS.md §5b): a marked song is skipped before it is followed,
+        // so it never reaches History, the play counts or Last.fm.
+        if (!stationSuggestSkip()) {
+          stationFollow();
+          diag.log("player:np", snap());
+        }
       }
     } else if (mode === "room") {
       // The room wrote the model already (room.ts); only count the play.
@@ -1128,6 +1156,75 @@ async function checkBreakout(m: any, again = false): Promise<void> {
   perf.event("breakoutMiss", data);
   await loadFromModel(m, true, { stopFirst: true });
   await checkBreakout(m, true);
+}
+
+// ── Suggest Less on a station (SUGGEST-LESS.md §5b; Settings › Playback › Skip on stations) ──
+// MusicKit owns a station's future, so the app first sees a song at `nowPlayingItemDidChange`.
+// A song that matches a mark (song, album or artist) is hushed at once (MusicKit's gain to 0,
+// which silences a speaker's stream too) and skipped; the hush ends when a song that does not
+// match arrives, or at its cap. A live station has no skip and is never touched.
+const SUGGEST_HUSH_MAX_MS = 8000;
+/** The marked station song being skipped now: a repeated change event for it is ignored. */
+let suggestSkipping: string | null = null;
+/** Dev telemetry: the arrival of the song being skipped, for `[perf] suggest station`. */
+let suggestNpAt = 0;
+let suggestSkipAt = 0;
+
+function stationSuggestSkip(): boolean {
+  const item = music?.nowPlayingItem;
+  const id: string | undefined = item?.id;
+  const ends = () => {
+    if (!hushReasons.has("suggest")) return;
+    hush("suggest", false);
+    suggestTimeLine(id);
+  };
+  if (!item || !id || id.startsWith("ra.")) return false; // the station container: wait for its song
+  if (!setting("suggestSkipStations") || !radioStation || radioStation.isLive) {
+    ends();
+    return false;
+  }
+  if (id === suggestSkipping) return true; // the same song's second event
+  const a = item.attributes ?? {};
+  const song = {
+    catalogId: id,
+    title: item.title ?? a.name ?? "",
+    artistName: item.artistName ?? a.artistName ?? "",
+    albumName: item.albumName ?? a.albumName,
+  };
+  const match = matchOf(song);
+  if (!match) {
+    suggestSkipping = null;
+    ends();
+    return false;
+  }
+  hush("suggest", true, SUGGEST_HUSH_MAX_MS);
+  suggestSkipping = id;
+  suggestNpAt = performance.now();
+  songChangeSeen();
+  const station = radioStation;
+  const t: Track = { ...song, genres: [], hasLyrics: false };
+  addTransientTracks([t]); // the toast and its Undo name the song
+  noteSuggestSkips([{ catalogId: id }], "station", match, () => {
+    // Undo: a break-out with the song, and the station comes back after it.
+    void playTracks([t], 0, "suggest")
+      .then(() => queueStationAfter(station))
+      .catch((e) => console.warn("[player] suggest station undo:", e));
+  });
+  suggestSkipAt = performance.now();
+  void Promise.resolve(music?.skipToNextItem?.()).catch((e: unknown) => {
+    // A refused skip (Apple may limit them, §5b): the song plays, with sound.
+    diag.warn("suggest:skipRefused", { id, msg: String((e as Error)?.message ?? e) });
+    suggestSkipping = null;
+    hush("suggest", false);
+  });
+  return true;
+}
+
+/** `[perf] suggest station` (dev only, §7): the arrival of the skipped song → our skip call →
+ *  the next song's arrival. No sound was heard when the hush covered all of it. */
+function suggestTimeLine(nextId: string | undefined): void {
+  const now = performance.now();
+  perf.event("suggest station", { npMs: 0, skipMs: Math.round(suggestSkipAt - suggestNpAt), silentMs: Math.round(now - suggestNpAt), next: nextId ?? null });
 }
 
 /**
@@ -1293,12 +1390,12 @@ function alignmentReport() {
   const items: any[] = music?.queue?.items ?? [];
   const np = typeof music?.nowPlayingItemIndex === "number" ? music.nowPlayingItemIndex : -1;
   const mkUp: string[] = np >= 0 ? items.slice(np + 1).map((it) => it?.id).filter(Boolean) : [];
-  const modelUp = queue.getUpcoming().filter((e) => !!playId(e));
+  const modelUp = queue.getUpcoming().filter((e) => !!feedId(e));
   let firstMismatch: { mkPos: number; mkId: string; want: string | null } | null = null;
   for (let j = 0; j < mkUp.length; j++) {
     const e = modelUp[j];
     if (!e || !isEntry(e, mkUp[j])) {
-      firstMismatch = { mkPos: j, mkId: mkUp[j], want: e ? playId(e) ?? null : null };
+      firstMismatch = { mkPos: j, mkId: mkUp[j], want: e ? feedId(e) ?? null : null };
       break;
     }
   }
@@ -1379,9 +1476,7 @@ function syncModelToMusicKit(): number {
   let diff = p - windowPos;
   let short = 0;
   while (diff > 0) {
-    const k = queue.getUpcoming().findIndex((h) => !!playId(h));
-    if (k < 0) short++;
-    else queue.jumpTo(k);
+    if (!jumpToNextFed("follow")) short++;
     diff--;
   }
   while (diff < 0) {
@@ -1589,6 +1684,69 @@ const playId = (h: TrackHandle): string | undefined => {
   return undefined;
 };
 
+// ── Suggest Less in a queue (SUGGEST-LESS.md §5a; Settings › Playback › Skip in queues) ──
+// A marked song in Up Next is never fed to MusicKit: `feedId` answers nothing for it, as for a
+// dead song, so MusicKit's window, the alignment check and the model's follow all count only
+// the fed rows, and nothing is heard of the skipped song. The row stays in the model, greyed in
+// the Queue card; a click on it is a pick and plays it (the current song is never asked).
+
+/** Is this Up Next row stepped over? The row is on and the song matches a mark (§5c). */
+export function suggestSkipped(h: TrackHandle): boolean {
+  if (!setting("suggestSkipQueue")) return false;
+  const t = trackById(h.catalogId ?? h.libraryId) ?? { catalogId: h.catalogId, libraryId: h.libraryId, title: "", artistName: "" };
+  return !!matchOf(t, h.catalogId);
+}
+/** The id an UPCOMING row is fed to MusicKit by: its play id, unless Suggest Less skips it. */
+const feedId = (h: TrackHandle): string | undefined => (suggestSkipped(h) ? undefined : playId(h));
+
+/** Step the model to the next fed Up Next row (`queue.jumpTo`), and tell of the rows Suggest
+ *  Less passed over. False when no row is fed: the list has ended. */
+function jumpToNextFed(where: string): boolean {
+  const { at, passed } = nextFed(queue.getUpcoming(), feedId, suggestSkipped);
+  if (passed.length) noteSuggestSkips(passed, "queue", where);
+  return at >= 0 && !!queue.jumpTo(at);
+}
+
+/** The songs a skip passed over, gathered for one toast (§6): "Skipped “Song”" or "Skipped 3
+ *  songs". Undo plays the first one now, as a pick: in a queue it goes on top of Up Next and
+ *  plays; on a station, `undo` breaks out with it and the station comes back after it. */
+const SUGGEST_TOAST_GAP_MS = 800;
+let suggestPassed: Track[] = [];
+let suggestToastTimer = 0;
+let suggestUndo: (() => void) | null = null;
+function noteSuggestSkips(hs: TrackHandle[], where: "queue" | "station", why: string, undo?: () => void): void {
+  for (const h of hs) {
+    const t = trackById(h.catalogId ?? h.libraryId);
+    diag.log("suggest:skip", { where, why, match: t ? matchOf(t, h.catalogId) : null, id: h.catalogId ?? h.libraryId ?? null });
+    if (t) suggestPassed.push(t);
+  }
+  if (!suggestPassed.length) return;
+  if (undo && suggestPassed.length === hs.length) suggestUndo = undo;
+  window.clearTimeout(suggestToastTimer);
+  suggestToastTimer = window.setTimeout(() => {
+    const songs = suggestPassed;
+    const station = suggestUndo;
+    suggestPassed = [];
+    suggestUndo = null;
+    const first = songs[0];
+    toast({
+      kind: "info",
+      text: songs.length === 1 ? `Skipped “${first.title}” — Suggest Less.` : `Skipped ${songs.length} songs — Suggest Less.`,
+      timeout: 6000,
+      actions: [
+        {
+          label: "Undo",
+          run: () => {
+            diag.log("suggest:undo", { where, id: first.catalogId ?? first.libraryId ?? null });
+            if (station) station();
+            else void playTracksKeepQueue([first], "suggest").catch((e) => console.warn("[player] suggest undo:", e));
+          },
+        },
+      ],
+    });
+  }, SUGGEST_TOAST_GAP_MS);
+}
+
 // The heal's backstop (QUEUE.md §A library song Apple sends with no play id). MusicKit
 // takes an insert of a library id it cannot play WITHOUT an error and leaves the song out.
 // The heal after each sync finds these songs first; this catches one it has not seen yet
@@ -1626,6 +1784,9 @@ function unresolvedIds(e: unknown): string[] {
 /** The still-playable ids of a handle list (deadIds-aware, unplayables dropped). */
 const liveIds = (hs: TrackHandle[]): string[] =>
   hs.map(playId).filter((id): id is string => !!id);
+/** The ids of Up Next rows MusicKit is fed: live, and not stepped over by Suggest Less. */
+const fedIds = (hs: TrackHandle[]): string[] =>
+  hs.map(feedId).filter((id): id is string => !!id);
 
 /**
  * Run a MusicKit insert (playNext/playLater) with the same NOT_FOUND self-healing as
@@ -1734,7 +1895,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
   // to the first live song instead, as healDeadNext does. False: nothing live is left.
   const skipDeadCurrent = (): boolean => {
     if (playId(current)) return true;
-    const k = queue.getUpcoming().findIndex((h) => !!playId(h));
+    const k = queue.getUpcoming().findIndex((h) => !!feedId(h));
     const deadId = current.catalogId ?? current.libraryId;
     diag.log("player:deadCurrent", { id: deadId ?? null, to: k });
     if (deadId) noteDeadSongs([deadId]); // the same "Skipped …" toast, once per burst
@@ -1775,7 +1936,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
       ids.push(curId);
     }
     for (const h of queue.getUpcoming().slice(0, fwdN)) {
-      const id = playId(h);
+      const id = feedId(h);
       if (!id || seen.has(id)) continue;
       seen.add(id);
       ids.push(id);
@@ -2098,6 +2259,25 @@ export async function playStation(s: Station): Promise<void> {
     notePause("station");
     if (m.isPlaying && typeof m.pause === "function") await m.pause();
     await setStationQueue(m, s);
+    // A first song Suggest Less will skip is hushed before it can sound (SUGGEST-LESS.md §5b);
+    // the skip itself runs in `finally`, once the station plays. Two ways to know it first:
+    // MusicKit already names the song, or the station is a song's (`ra.<song id>`) and that
+    // song is marked — Apple plays the seed first. MusicKit often names nothing yet here (his
+    // Snooze run, 2026-10-16), so the seed is the sure one. A first song that is not the seed
+    // ends the hush on arrival (`stationSuggestSkip` finds no match).
+    if (setting("suggestSkipStations") && !s.isLive) {
+      const first = m.nowPlayingItem;
+      const a = first?.attributes ?? {};
+      const seed = /^ra\.(\d+)$/.exec(s.id)?.[1];
+      const firstMarked =
+        !!first?.id && !String(first.id).startsWith("ra.") &&
+        !!matchOf({ catalogId: first.id, title: first.title ?? a.name ?? "", artistName: first.artistName ?? a.artistName ?? "", albumName: first.albumName ?? a.albumName });
+      const seedMarked = !!seed && !!matchOf({ catalogId: seed, title: "", artistName: "" });
+      if (firstMarked || seedMarked) {
+        diag.log("suggest:preHush", { by: firstMarked ? "first" : "seed", station: s.id });
+        hush("suggest", true, SUGGEST_HUSH_MAX_MS);
+      }
+    }
     if (!m.isPlaying) await m.play();
     recordStationPlay(s); // recents — an actual play, not a browse
   } catch (e) {
@@ -2111,8 +2291,10 @@ export async function playStation(s: Station): Promise<void> {
     loadingContext = false;
     isLoading = false;
     // The first track may have landed while model-follow was suppressed — settle it
-    // now; if MusicKit is still fetching, the coming np-change event handles it.
-    if (mode === "radio") stationFollow();
+    // now; if MusicKit is still fetching, the coming np-change event handles it. Suggest Less
+    // asks first: a station started from a marked song plays that song first (SUGGEST-LESS.md
+    // §5b; found in his desk test 2026-10-16, "Kill Bill" played).
+    if (mode === "radio" && !stationSuggestSkip()) stationFollow();
     emit();
   }
 }
@@ -2202,11 +2384,11 @@ async function enqueue(handles: TrackHandle[], where: "next" | "later"): Promise
   if (where === "next") {
     queue.playNextMany(playable);
     if (typeof m.playNext === "function")
-      await insertWithRetry("enqueue:next", (ids) => m.playNext({ songs: ids }), () => liveIds(playable), "reverse");
+      await insertWithRetry("enqueue:next", (ids) => m.playNext({ songs: ids }), () => fedIds(playable), "reverse");
   } else {
     queue.addToQueueMany(playable);
     if (typeof m.playLater === "function")
-      await insertWithRetry("enqueue:later", (ids) => m.playLater({ songs: ids }), () => liveIds(playable));
+      await insertWithRetry("enqueue:later", (ids) => m.playLater({ songs: ids }), () => fedIds(playable));
   }
   await ensureAligned(`enqueue:${where}`);
 }
@@ -2292,7 +2474,7 @@ function mkUpcomingIndex(m: any, k: number, id: string): number {
   const np = typeof m.nowPlayingItemIndex === "number" && m.nowPlayingItemIndex >= 0 ? m.nowPlayingItemIndex : windowPos;
   // MusicKit holds only the live entries (a dead one is never fed), so count those. Since
   // 2026-09-24 a song can sit in the window twice, which makes the exact slot matter.
-  const live = queue.getUpcoming().slice(0, k).filter((h) => !!playId(h)).length;
+  const live = queue.getUpcoming().slice(0, k).filter((h) => !!feedId(h)).length;
   const guess = np + 1 + live;
   if (items[guess]?.id === id) return guess;
   for (let i = np + 1; i < items.length; i++) if (items[i]?.id === id) return i; // dedup drift
@@ -2371,7 +2553,7 @@ async function doReconcileUpcoming(cap: number): Promise<void> {
   // No dedup: `playLater` keeps a repeated id (only `setQueue` collapses them, which is why
   // loadFromModel's window still dedups). The rules live in queue-sync.ts, under test.
   // A closure so the NOT_FOUND retry can rebuild it after a dead-id bank (playId is deadIds-aware).
-  const computeExpected = (): string[] => expectedIds(queue.getUpcoming(), cap, playId);
+  const computeExpected = (): string[] => expectedIds(queue.getUpcoming(), cap, feedId);
   const expected = computeExpected();
 
   const mkUp: string[] = items.slice(np + 1).map((it) => it?.id);
@@ -2752,8 +2934,10 @@ function skipWhileIdle(way: "next" | "prev"): boolean {
   resumeAt = null;
   resumeAfterReconnect = null;
   if (step === "refill" && !queue.refillFromPlan(isShuffleOn())) return true;
-  if (step === "advance" || step === "refill") queue.advance();
-  else if (step === "previous") queue.previous();
+  // Next steps over a Suggest Less row as a song end does (SUGGEST-LESS.md §0).
+  if (step === "advance" || step === "refill") {
+    if (!jumpToNextFed("idleNext")) queue.advance();
+  } else if (step === "previous") queue.previous();
   refreshPlayerState(); // Now Playing and its scrubber show the model's song at 0:00
   return true;
 }
@@ -2800,7 +2984,8 @@ const isUnavailable = (e: unknown): boolean =>
 async function healDeadNext(m: any, why: string, bank: boolean, failed?: TrackHandle): Promise<boolean> {
   // `failed`: the song that failed is the model's current, not the next one (onPlaybackError,
   // 2026-09-29). It is banked; the jump below still moves to the first live upcoming song.
-  const nx = failed ?? queue.peekNext();
+  // The next song MusicKit tried: the first fed row, past any Suggest Less row (never banked).
+  const nx = failed ?? queue.getUpcoming().find((h) => !!feedId(h));
   const id = nx ? playId(nx) : undefined;
   if (!id) return false;
   // Bank only on MusicKit's own word (the skip rejection). The end-of-song shape also
@@ -2811,8 +2996,7 @@ async function healDeadNext(m: any, why: string, bank: boolean, failed?: TrackHa
   diag.log("player:deadNext", { id, why, bank, current: !!failed });
   perf.event("deadNext", { id, why, bank });
   console.warn(`[player] next song ${bank ? "unavailable" : "failed to start"} (${id}); ${bank ? "moving on" : "re-windowing onto it"}`);
-  const k = queue.getUpcoming().findIndex((h) => !!playId(h));
-  if (k < 0 || !queue.jumpTo(k)) return false;
+  if (!jumpToNextFed("deadNext")) return false;
   // `stopFirst`: MusicKit sits in `ended` here, so the load's pause is skipped (`isPlaying` is
   // false) and nothing resets its position. Twice on live (2026-09-27, 02:55 and 16:56) the
   // re-windowed song then played with NO now-playing index: both grows returned silently, the
@@ -2944,7 +3128,7 @@ function onEndedWithoutItem(): void {
   const S = window.MusicKit?.PlaybackStates;
   if (!m || !S || endHealing || cueingListEnd || loadingContext || isLoading || mode !== "queue") return;
   const st = m.playbackState;
-  if ((st !== S.ended && st !== S.completed) || m.nowPlayingItem || !queue.getUpcoming().length) return;
+  if ((st !== S.ended && st !== S.completed) || m.nowPlayingItem || !hasFedUpcoming()) return;
   const items: any[] = m.queue?.items ?? [];
   const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
   const mkRemaining = np >= 0 ? items.length - np - 1 : 0;
@@ -2969,7 +3153,7 @@ function onEndedWithoutItem(): void {
     : (async () => {
         diag.log("player:windowDry", { np, mkLen: items.length, up: queue.getUpcoming().length });
         perf.event("windowDry", { np, mkLen: items.length, up: queue.getUpcoming().length });
-        if (!queue.advance()) return false;
+        if (!jumpToNextFed("windowDry")) return false;
         await recoverLoad(m, "windowDry"); // same `ended` state as healDeadNext
         return true;
       })();
@@ -3274,7 +3458,8 @@ async function skipCopyByLoad(m: any, dir: 1 | -1): Promise<boolean> {
   if (!skipToSameId(ids, np, dir)) return false;
   if (dir === 1 ? !queue.peekNext() : !queue.getHistory().length) return false;
   diag.log("player:copySkip", { dir, id: ids[np] ?? null, np });
-  if (dir === 1) queue.advance();
+  // Forward goes to the next FED row: the copy MusicKit holds, past any Suggest Less row.
+  if (dir === 1) jumpToNextFed("copySkip");
   else queue.previous();
   await loadFromModel(m);
   return true;
@@ -3381,23 +3566,30 @@ let duck = 1;
 // MusicKit's gain only: the slider, the saved level and a speaker's own volume never see it
 // (with a speaker, MusicKit's gain silences the stream it sends). It can never outlast
 // RESUME_HUSH_MAX_MS, whatever fails on the way.
-let resumeHush = false;
-let resumeHushTimer = 0;
+//
+// Two reasons hold it, each with its own cap timer, so one never clears the other: the resume,
+// and a Suggest Less skip on a station (SUGGEST-LESS.md §5b), which hushes the marked song from
+// its arrival until the next song arrives.
+type HushReason = "resume" | "suggest";
+const hushReasons = new Set<HushReason>();
+const hushTimers = new Map<HushReason, number>();
 const RESUME_HUSH_MAX_MS = 12_000;
-function hushForResume(on: boolean): void {
-  window.clearTimeout(resumeHushTimer);
-  if (on) resumeHushTimer = window.setTimeout(() => hushForResume(false), RESUME_HUSH_MAX_MS);
-  if (on === resumeHush) return;
-  resumeHush = on;
-  diag.log("player:resumeHush", { on });
+function hush(reason: HushReason, on: boolean, maxMs = RESUME_HUSH_MAX_MS): void {
+  window.clearTimeout(hushTimers.get(reason));
+  if (on) hushTimers.set(reason, window.setTimeout(() => hush(reason, false), maxMs));
+  if (on === hushReasons.has(reason)) return;
+  if (on) hushReasons.add(reason);
+  else hushReasons.delete(reason);
+  diag.log(reason === "resume" ? "player:resumeHush" : "suggest:hush", { on });
   applyVolumeToMusic();
 }
+const hushForResume = (on: boolean): void => hush("resume", on);
 
 function applyVolumeToMusic(): void {
   volumeListeners.forEach((cb) => cb());
   if (!music) return;
   try {
-    music.volume = resumeHush ? 0 : volumeSink ? 1 : muted ? 0 : level * duck * clipDuck;
+    music.volume = hushReasons.size ? 0 : volumeSink ? 1 : muted ? 0 : level * duck * clipDuck;
   } catch (e) {
     console.warn("[player] volume not settable:", e);
   }

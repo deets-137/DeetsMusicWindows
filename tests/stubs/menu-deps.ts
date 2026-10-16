@@ -86,6 +86,9 @@ export const addPlaylistToLibraryItem = () => row("Add to Library");
 // ./favorites
 export const favoriteItem = (t?: unknown) => (t ? row("Favorite") : null);
 export const albumFavoriteItem = () => row("Favorite");
+export const suggestSongItem = (t?: unknown) => (t ? row("Suggest Less") : null);
+export const suggestArtistItem = () => row("Suggest Less of This Artist");
+export const suggestAlbumItem = () => row("Suggest Less of This Album");
 export const playlistFavoriteItem = () => row("Favorite");
 export const playlistFav = (p: unknown) => p;
 
