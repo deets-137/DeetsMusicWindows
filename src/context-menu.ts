@@ -36,7 +36,37 @@ export interface ActionItem {
   art?: string;
   /** A second, quieter line under the label (the artist of an album result). */
   note?: string;
+  /** This row also has a glyph button in the quick column (CONTEXT-MENUS.md §2a). The row
+   *  stays in the list too (his call 2B). Only the five rows that have a glyph in the app. */
+  quick?: QuickGlyph;
+  /** The quick glyph draws filled: the item is a favorite, or is pinned. On `library`, the
+   *  glyph is the ✓: the item is in the library. */
+  on?: boolean;
+  /** Not a row: only its quick glyph shows, as a mark and not a button. Add to Library's ✓,
+   *  whose row leaves itself out when the item is held (his call, 2026-10-16). */
+  listless?: boolean;
 }
+/** The quick column's glyphs, in their order top to bottom (CONTEXT-MENUS.md §2a). */
+export type QuickGlyph = "play" | "queue" | "library" | "favorite" | "pin";
+const QUICK_ORDER: QuickGlyph[] = ["play", "queue", "library", "favorite", "pin"];
+/** Each glyph is the one the app already draws for the verb, copied here so the menu
+ *  primitive imports no feature module. */
+const QUICK_SVG: Record<QuickGlyph, string> = {
+  // The Library's Play button (collection-card.ts `lib-action__icon`).
+  play: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z"/></svg>',
+  // Now Playing's "Show queue" (`#np-summon`), the triangle moved to the left of the lines
+  // and still pointing into them (his call, 2026-10-16).
+  queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6h10M11 12h10M11 18h10"/><path d="M2 8.5 7 12 2 15.5z"/></svg>',
+  // The + square (add-square.ts `ICON_PLUS`).
+  library: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  // The ♥ square (add-square.ts `ICON_HEART`).
+  favorite:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>',
+  // The pin (pins.ts `ICON_PIN`).
+  pin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>',
+};
+// The + square's ✓ (add-square.ts `ICON_CHECK`): Add to Library when the item is held.
+const QUICK_HELD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
 export interface InputItem {
   /** `label` is an optional non-interactive title rendered above the field (e.g. the
    *  New (+) dropdown's "Playlist" / "Folder" pair of labelled create fields). */
@@ -211,18 +241,28 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
   // on its own right edge. The flyout is row-relative (offsetParent = the .ctx-menu__sub
   // wrap), so the vertical fix is a plain offsetTop shift; max-height in CSS keeps it
   // scrollable when very long.
+  // A menu with a quick column (§2a) holds its rows in a list box beside the column. A top
+  // flyout then opens from the menu's outer edge, past the column, so it never covers it.
+  let list: HTMLElement | null = null;
   const placeFly = (fly: HTMLElement, host: HTMLElement) => {
     fly.classList.remove("is-left");
     fly.style.top = "";
+    fly.style.left = "";
+    const edge = host === list ? menu : host;
     const vw = document.documentElement.clientWidth;
     const vh = document.documentElement.clientHeight;
-    if (host.getBoundingClientRect().right + fly.offsetWidth + PAD > vw) fly.classList.add("is-left");
+    if (edge.getBoundingClientRect().right + fly.offsetWidth + PAD > vw) fly.classList.add("is-left");
+    else if (edge !== host) {
+      const wrap = fly.parentElement!;
+      fly.style.left = `${menu.getBoundingClientRect().right - wrap.getBoundingClientRect().left}px`;
+    }
     const over = fly.getBoundingClientRect().bottom - (vh - PAD);
     if (over > 0) fly.style.top = `${fly.offsetTop - over}px`;
   };
 
   const appendItems = (host: HTMLElement, list: MenuItem[], depth: number) => {
     for (const item of list) {
+      if ("run" in item && item.listless) continue; // its glyph only (the quick column)
       if ("divider" in item) {
         const line = document.createElement("div");
         line.className = "ctx-menu__divider";
@@ -364,7 +404,44 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
       host.appendChild(btn);
     }
   };
-  appendItems(menu, items, 0);
+  // The quick column (CONTEXT-MENUS.md §2a): one glyph button per marked top-level row, in
+  // QUICK_ORDER. A glyph whose row the menu does not have is left out. A flyout has none.
+  const quick = QUICK_ORDER.map((g) => items.find((i): i is ActionItem => "run" in i && i.quick === g)).filter(
+    (i): i is ActionItem => !!i,
+  );
+  if (quick.length) {
+    list = document.createElement("div");
+    list.className = "ctx-menu__list";
+    const col = document.createElement("div");
+    col.className = "ctx-menu__quick";
+    col.setAttribute("role", "group");
+    col.setAttribute("aria-label", "Quick actions");
+    for (const item of quick) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `ctx-menu__quick-btn${item.on ? " is-on" : ""}`;
+      btn.dataset.quick = item.quick;
+      btn.setAttribute("role", "menuitem");
+      btn.setAttribute("aria-label", item.label);
+      btn.title = item.label; // the row's own words, as a hover hint (ONBOARDING.md §1)
+      btn.innerHTML = item.quick === "library" && item.on ? QUICK_HELD : QUICK_SVG[item.quick!];
+      // A mark, not a button: aria-disabled and not `disabled`, so the hint still shows.
+      if (item.listless) btn.setAttribute("aria-disabled", "true");
+      else if (item.disabled) btn.disabled = true;
+      else
+        btn.addEventListener("click", () => {
+          closeContextMenu();
+          diag.log("ui:act", { do: "menu", what: item.label.slice(0, 40), via: "quick" });
+          item.run();
+        });
+      // No pointerenter close here: the pointer crosses the column on its way from a row to
+      // that row's flyout, which opens past the column (placeFly).
+      col.appendChild(btn);
+    }
+    menu.classList.add("ctx-menu--quick");
+    menu.append(list, col);
+    appendItems(list, items, 0);
+  } else appendItems(menu, items, 0);
 
   // Mount hidden so we can measure, then clamp to the live viewport and reveal.
   menu.style.visibility = "hidden";

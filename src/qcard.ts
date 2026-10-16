@@ -197,7 +197,7 @@ function mountQueue(host: HTMLElement): CardInstance {
       const items = songMenu(t, {
         context: "queue",
         catalogId: entry.catalogId,
-        play: [{ label: "Play Now", run: act(jumpToUpcoming, "play now") }],
+        play: [{ label: "Play Now", run: act(jumpToUpcoming, "play now"), quick: "play" }],
         own: [
           { label: "Move to Top", run: act((i) => moveInQueue(i, "top"), "move top") },
           { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },

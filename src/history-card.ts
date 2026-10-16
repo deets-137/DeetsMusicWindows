@@ -192,9 +192,9 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       context: "history",
       catalogId: e.catalogId,
       play: [
-        { label: "Play Now", run: () => void playContext([h], 0).catch(err("play now")) },
+        { label: "Play Now", run: () => void playContext([h], 0).catch(err("play now")), quick: "play" },
         { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
-        { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")) },
+        { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")), quick: "queue" },
       ],
     });
   };
@@ -206,9 +206,9 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     return setMenu(() => ts, set.length, "song", {
       context: "history",
       play: [
-        { label: `Play ${picksText(set.length)}`, run: () => void playContext(hs, 0).catch(err("play set")) },
+        { label: `Play ${picksText(set.length)}`, run: () => void playContext(hs, 0).catch(err("play set")), quick: "play" },
         { label: "Play Next", run: () => void enqueueNext(hs).catch(err("play next")) },
-        { label: "Add to Queue", run: () => void enqueueLater(hs).catch(err("add to queue")) },
+        { label: "Add to Queue", run: () => void enqueueLater(hs).catch(err("add to queue")), quick: "queue" },
       ],
     });
   };

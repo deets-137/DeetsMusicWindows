@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 48 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 622 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 624 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -325,6 +325,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--menu-grow-dur` | `var(--pop-in)` | — |  |
 | `--menu-grow-ease` | `var(--pop-ease)` | — |  |
 | `--menu-result-art` | `var(--lib-row-art)` | — |  |
+| `--menu-quick-size` | `var(--lib-pop-dir-size)` | — | The quick column (CONTEXT-MENUS.md §2a): the Sort pop's icon square family, so a skin that reshapes the direction squares reshapes these with them. |
+| `--menu-quick-icon` | `var(--icon-sm)` | — |  |
 | `--menu-surface` | `var(--surface)` | press, glass | Menu material — same doctrine as --panel/--panel-backdrop, for the FLOATING tier (.menu, .flyout, popovers, ctx-menu, pickers). Base is opaque theme surface + no frost; Glass opts into a translucent mix + blur. A skin points these at roles/derivations, never a hex. |
 | `--menu-backdrop` | `none` | glass |  |
 

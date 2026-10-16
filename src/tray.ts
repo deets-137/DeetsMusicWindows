@@ -456,9 +456,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if (s.catalogId) items.push({ label: "Start Station", run: send("start-station") });
     if (s.catalogId)
       items.push({ label: "Copy Link", run: () => void navigator.clipboard.writeText(`https://music.apple.com/song/${s.catalogId}`).catch((err) => log("tray:copy-failed", String(err))) });
-    if (s.catalogId && !s.inLibrary) items.push({ label: "Add to Library", run: send("add-to-library") });
-    if (s.loved !== null && s.loved !== undefined) items.push({ label: s.loved ? "Unfavorite" : "Favorite", run: send("favorite") });
-    if (s.pinned !== null && s.pinned !== undefined) items.push({ label: s.pinned ? "Unpin" : "Pin", run: send("pin") });
+    // The quick column's glyphs too (CONTEXT-MENUS.md §2a): the ✓ when the song is held.
+    if (s.inLibrary) items.push({ label: "In your library", run: () => {}, quick: "library", on: true, listless: true });
+    else if (s.catalogId) items.push({ label: "Add to Library", run: send("add-to-library"), quick: "library" });
+    if (s.loved !== null && s.loved !== undefined) items.push({ label: s.loved ? "Unfavorite" : "Favorite", run: send("favorite"), quick: "favorite", on: s.loved });
+    if (s.pinned !== null && s.pinned !== undefined) items.push({ label: s.pinned ? "Unpin" : "Pin", run: send("pin"), quick: "pin", on: s.pinned });
     if (!items.length) return;
     e.preventDefault();
     openContextMenu(e.clientX, e.clientY, items);

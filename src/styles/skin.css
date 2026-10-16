@@ -287,6 +287,10 @@
   --menu-grow-dur:       var(--pop-in);
   --menu-grow-ease:      var(--pop-ease);
   --menu-result-art:     var(--lib-row-art);
+  /* The quick column (CONTEXT-MENUS.md §2a): the Sort pop's icon square family, so a skin
+     that reshapes the direction squares reshapes these with them. */
+  --menu-quick-size:     var(--lib-pop-dir-size);
+  --menu-quick-icon:     var(--icon-sm);
   /* Menu material — same doctrine as --panel/--panel-backdrop, for the
      FLOATING tier (.menu, .flyout, popovers, ctx-menu, pickers). Base is
      opaque theme surface + no frost; Glass opts into a translucent mix +

@@ -232,6 +232,8 @@ export function pinItem(key: string, kind: PinKind, data?: unknown): MenuItem {
   const on = pins.has(key);
   return {
     label: on ? "Unpin" : "Pin",
+    quick: "pin",
+    on,
     run: () => void togglePin(key, kind, data).catch((e) => console.error("[pins] toggle", e)),
   };
 }

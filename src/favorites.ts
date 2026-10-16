@@ -266,6 +266,8 @@ export function albumFavoriteItem(a: AlbumFav): MenuItem | null {
   const on = isAlbumLoved(a);
   return {
     label: on ? "Unfavorite" : "Favorite",
+    quick: "favorite",
+    on,
     run: () => void setAlbumLoved(a, !on).catch((e) => console.error("[favorites] album", e)),
   };
 }
@@ -276,6 +278,8 @@ export function playlistFavoriteItem(p: PlaylistFav | undefined): MenuItem | nul
   const on = loved.has(playlistKey(p));
   return {
     label: on ? "Unfavorite" : "Favorite",
+    quick: "favorite",
+    on,
     run: () => void setPlaylistLoved(p, !on).catch((e) => console.error("[favorites] playlist", e)),
   };
 }
@@ -286,6 +290,8 @@ export function favoriteItem(t: Track | undefined): MenuItem | null {
   const on = isLoved(t);
   return {
     label: on ? "Unfavorite" : "Favorite",
+    quick: "favorite",
+    on,
     run: () => void setLoved(t, !on).catch((e) => console.error("[favorites] set", e)),
   };
 }

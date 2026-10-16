@@ -103,12 +103,19 @@ const readListed = () =>
 readListed();
 onPlaylistsChange(() => readListed());
 
+/** The quick column's ✓ for an item the library already holds (CONTEXT-MENUS.md §2a). Not
+ *  a row: the Add to Library row stays out, as before; only the glyph shows. */
+const heldItem = (): MenuItem => ({ label: "In your library", run: () => {}, quick: "library", on: true, listless: true });
+
 /** Add to Library for one of Apple's playlists, or null when not offered. */
 export function addPlaylistToLibraryItem(p: Playlist): MenuItem | null {
   const id = p.catalogId;
-  if (!enabled || !id || p.libraryId || p.source || listed.has(id)) return null;
+  if (!enabled || p.source) return null;
+  if (p.libraryId || (id && listed.has(id))) return heldItem();
+  if (!id) return null;
   return {
     label: "Add to Library",
+    quick: "library",
     run: () => void addPlaylistToLibrary(p, id).catch((e) => console.error("[library-add] playlist", e)),
   };
 }
@@ -163,13 +170,17 @@ export async function addDroppedToLibrary(tracks: Track[], albumId?: string): Pr
 }
 
 /**
- * "Add to Library" for one song. Returns `null` when the toggle is off, the track is
- * already in the library, or it has no catalog id (catalog-less uploads can't be added).
+ * "Add to Library" for one song. Returns `null` when the toggle is off or it has no catalog
+ * id (catalog-less uploads can't be added); the quick column's ✓ (`heldItem`, no row) when
+ * the track is already in the library.
  */
 export function addSongToLibraryItem(t: Track): MenuItem | null {
-  if (!enabled || alreadyInLibrary(t) || !t.catalogId) return null;
+  if (!enabled) return null;
+  if (alreadyInLibrary(t)) return heldItem();
+  if (!t.catalogId) return null;
   return {
     label: "Add to Library",
+    quick: "library",
     run: () =>
       void addToLibrary("songs", [t.catalogId!], [t]).catch((e) =>
         console.error("[library-add] song", e),
@@ -194,17 +205,18 @@ export function addSongToLibraryItem(t: Track): MenuItem | null {
  * drilled costs no call at all. If the hop fails the songs themselves are added, which is
  * the outcome the user asked for either way.
  *
- * Null when the toggle is off, when no song of the list carries a catalog id, or when the
- * library already holds every song — that last rule is what keeps the row off every album
- * tile on the Library card, where the answer is always "you have it".
+ * Null when the toggle is off, or when no song of the list carries a catalog id. When the
+ * library already holds every song, the quick column's ✓ (`heldItem`): no row, so the row
+ * stays off every album tile on the Library card, where the answer is always "you have it".
  */
 export function addAlbumFromSongsItem(items: Track[]): MenuItem | null {
   if (!enabled || !items.length) return null;
+  if (items.every(alreadyInLibrary)) return heldItem();
   const seed = items.find((t) => t.catalogId);
   if (!seed?.catalogId) return null;
-  if (items.every(alreadyInLibrary)) return null;
   return {
     label: "Add to Library",
+    quick: "library",
     run: () =>
       void catalogRelated("songs", seed.catalogId!, "albums")
         .then((ref) => {
@@ -220,6 +232,7 @@ export function addAlbumToLibraryItem(catalogId: string, getTracks: () => Promis
   if (!enabled || !catalogId) return null;
   return {
     label: "Add to Library",
+    quick: "library",
     run: () =>
       void getTracks()
         .then((ts) => addToLibrary("albums", [catalogId], ts))

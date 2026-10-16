@@ -53,6 +53,23 @@ changelog style (F1, §6.3), no count limit, the latest version only.
   relative `addWatchFile` path). Found, older: a click on a Compass row that opens a title bar
   panel closes it again at once (Enter works); fixed next, in its own commit.
 
+## 2026-10-16 (shixtheenth) — the quick column in right-click menus
+
+**His ask:** the Sort pop's column of glyphs for the right-click menus, "icons first", dividers
+later. His calls: only the rows that already have a glyph (Play, Add to Queue, Add to Library,
+♥, Pin), a column on the right as in the Sort pop (1A), the rows stay in the list too (2B), Add
+to Queue = the "Show queue" glyph with the triangle on the left; the Compass's own Up Next glyph
+stays as it is.
+- **Built:** CONTEXT-MENUS.md §2a. `ActionItem.quick` / `.on`, the column in context-menu.ts,
+  the rows marked where they are made, two skin tokens, the hint line in ONBOARDING.md §1.
+- **Changed at the build (his review):** no ✓ for Add to Library (the row leaves itself out
+  when held); no arrow keys (menus have none yet). Both are written in §2a.
+- **His review, the same sitting:** the ✓ back (a `listless` item: the glyph without the row),
+  and the column's line to the bottom of the menu. The tray panel's song menu joined.
+- **Shared tree:** the Suggest Less work of this branch was uncommitted in media-menu.ts,
+  favorites.ts, qcard.ts and skin.css; this change adds a word to a row there, nothing more.
+- **Desk test:** §2a, open.
+
 ## 2026-10-16 (shixtheenth) — Suggest Less, built
 
 **His ask:** "scope out and build out suggest less". Every fork was closed on 2026-10-12, so this

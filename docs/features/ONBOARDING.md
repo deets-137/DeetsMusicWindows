@@ -66,6 +66,7 @@ nothing about authoring changed when the box did.
 | Friends panel | the **DeetsRooms** heading (a fold) | Start a room, or join one with a code | room-panel.ts |
 | Any list with picks (Library, Playlists, Search, Queue, History, Rewind) | the Play and Shuffle buttons while rows are picked | Play what you picked, in order · Shuffle what you picked | collection-card.ts `actionsRowHTML` |
 | Song Credits pane | a writer chip | Other songs by this name | search-card.ts (CREDITS.md §7) |
+| Any media right-click menu (2026-10-16) | a glyph in the quick column (Play · Add to Queue · Add to Library · ♥ · Pin) | the row's own label: Play Now (or Play 3 songs) · Add to Queue · Add to Library (the ✓: In your library) · Favorite / Unfavorite · Pin / Unpin | context-menu.ts (CONTEXT-MENUS.md §2a) |
 | Home | the Refresh button in the header | Builds the shelves again, and asks Apple Music what you played and added elsewhere | home-card.ts |
 | Song Credits | the *credited* mark on a writer with no track held | Credited, but DeetsMusic holds no track for it yet | credits.ts `FLAT_MARK` |
 | Compass | a Tab-walked pill (a kind chip, a two-answer row) · the Open / alt halves | Tab moves between these · Enter · Ctrl+Enter | compass.ts |

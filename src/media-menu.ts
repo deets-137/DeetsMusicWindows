@@ -103,11 +103,11 @@ export function playRows(
       })
       .catch(err(`play ${how}`));
   return [
-    { label: opts.label ?? "Play Now", run: run("now") },
+    { label: opts.label ?? "Play Now", run: run("now"), quick: "play" },
     // Albums and playlists (his call 3A, 2026-09-24): the hero's Shuffle, in every menu.
     opts.shuffle && { label: "Shuffle", run: run("shuffle") },
     { label: "Play Next", run: run("next") },
-    { label: "Add to Queue", run: run("later") },
+    { label: "Add to Queue", run: run("later"), quick: "queue" },
   ].filter(Boolean) as MenuItem[];
 }
 
@@ -474,8 +474,8 @@ export interface StationWhere extends Where {
 export function stationMenu(s: Station, w: StationWhere): MenuItem[] {
   return join(
     [
-      { label: "Play Now", run: w.play ?? (() => void playStation(s).catch(err("play station"))) },
-      { label: "Add to Queue", run: () => void queueStationAfter(s).catch(err("queue station")) },
+      { label: "Play Now", run: w.play ?? (() => void playStation(s).catch(err("play station"))), quick: "play" },
+      { label: "Add to Queue", run: () => void queueStationAfter(s).catch(err("queue station")), quick: "queue" },
     ],
     [copyStationLinkItem(s.url)],
     desk(pinItem(`station:${s.id}`, "station", s)),

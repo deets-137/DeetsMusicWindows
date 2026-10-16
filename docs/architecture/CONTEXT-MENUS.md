@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.14.0
 desk_test: passed 2026-09-24
-sources: [src/media-menu.ts, src/context-menu.ts, src/web.ts, src/copy-link.ts, src/go-to.ts, src/pins.ts, src/np-bus.ts, src/tray.ts]
-updated: 2026-10-14
+sources: [src/media-menu.ts, src/context-menu.ts, src/web.ts, src/copy-link.ts, src/go-to.ts, src/pins.ts, src/np-bus.ts, src/tray.ts, src/library-add.ts, src/favorites.ts]
+updated: 2026-10-16
 ---
 # DeetsMusic — Right-click menus
 
@@ -61,6 +61,83 @@ Delete Entry) read as two groups. Another menu takes it only by the owner's call
 Two menus put a row ABOVE group 1, both by an earlier decision of the owner: the Playlists
 card's **Rename** field (PLAYLISTS.md §10.2, "the field first, ready to type") and the Song
 of the Day suggestion's **Mark** (DeetsOTD.md §8.6, the row the tile exists for).
+
+## 2a. The quick column
+
+> **Part:** built · 2026-10-16 · desk test open
+
+A column of glyph buttons beside the text list, for the most common rows. The shape is the
+Library's Sort pop: the text options, and the direction arrows in a column beside them.
+
+**His calls (2026-10-16):**
+- **Which rows:** only the rows that already have a glyph in the app. These are Play, Add to
+  Queue, Add to Library, Favorite and Pin. Every other row stays text, with no glyph.
+- **Where (1A):** a column on the right of the list, as in the Sort pop. A strip across the
+  top and a glyph inside each row were the other choices.
+- **The rows stay (2B):** the five rows stay in the text list too, in their §2 places. The
+  text says what each glyph does.
+- **Add to Queue's glyph:** the Now Playing "Show queue" glyph (`#np-summon`: three lines and
+  an outlined triangle on the right) with the triangle moved to the LEFT of the lines. It
+  still points right, into the lines.
+
+| Glyph | Row | Source |
+|---|---|---|
+| ▶ filled triangle | Play Now (the row's own label: "Play 3 songs", the Queue's jump) | the Library's Play button (`collection-card.ts`) |
+| triangle, then three lines | Add to Queue | the "Show queue" glyph, mirrored (`now-playing-card.ts`) |
+| + (✓ when held) | Add to Library | `ICON_PLUS` / `ICON_CHECK` (`add-square.ts`) |
+| ♥ (filled when on) | Favorite | the ♥ (`add-square.ts`) |
+| pin (filled when on) | Pin | `ICON_PIN` (`pins.ts`) |
+
+**What follows from the calls (Claude's, for his review):**
+- **Order** top to bottom: Play · Add to Queue · Add to Library · Favorite · Pin. A glyph whose
+  row the menu does not have is left out; the rest close up (the song that is playing has no
+  Play; a station has no ♥).
+- **State:** ♥ and Pin are filled when on, in the title color.
+- **The ✓ (his call, 2026-10-16, after the first build):** when the item is in the library,
+  Add to Library shows the ✓, as the + square does. The row itself still leaves itself out:
+  the builder returns a `listless` item, which draws its glyph only. The ✓ is a mark, not a
+  button (`aria-disabled`, so its hint "In your library" still shows). Where the builder
+  knows: a song, an album from its songs (every song held), a playlist (a library playlist,
+  or one of Apple's the library lists). A Search album (`addAlbumToLibraryItem`) cannot
+  know, so it shows the + as before.
+- **The line (his call, 2026-10-16):** the column is as tall as the list, so its hairline runs
+  to the bottom; the squares sit at the top. A menu that gains a glyph keeps its shape.
+- **A press** runs the row and closes the menu, as the row does. The click trail logs it as
+  `ui:act { do: "menu", what: <label>, via: "quick" }`.
+- **The flyouts** open from the menu's outer edge, past the column, so Add to Playlist ▸ never
+  covers it (`placeFly`). The column has no hover-close: the pointer crosses it on its way
+  from a row to that row's flyout, and the flyout stays open.
+- **Code:** `ActionItem.quick` (the glyph) and `ActionItem.on` (filled). The rows are marked
+  where they are made: `playRows` and `stationMenu` (media-menu.ts), the History and Queue
+  cards' own Play groups, the four `Add to Library` builders (library-add.ts), the three ♥
+  builders (favorites.ts), `pinItem` (pins.ts), and the tray panel's hand-built song menu
+  (tray.ts: +/✓, ♥, Pin). The primitive draws the column from the
+  marked rows of the top box only: a flyout has none. A menu with no marked row (Rulez, card
+  grow, Settings) has no list box and no column, and is built exactly as before.
+- **Keys:** right-click menus have no arrow keys today (rows and squares are reached by Tab).
+  The design's arrow keys wait for arrow keys in the menu as a whole.
+- **Hints:** each glyph has a hover hint with its row's label; a line in ONBOARDING.md §1.
+- **Tokens:** `--menu-quick-size` (= `--lib-pop-dir-size`, the Sort pop's square) and
+  `--menu-quick-icon` (= `--icon-sm`). The hairline is `--border`; the glyph is the subtext
+  color and takes the title color on hover.
+
+**Desk test.**
+1. Right-click a song in the Library. The column on the right shows Play, Add to Queue, ✓, ♥
+   and Pin; its line runs to the bottom of the menu. The ✓ does nothing on a press, and its
+   hint is "In your library". Each other glyph's hint is its row's label. In Search, a song
+   not in your library shows + and the Add to Library row.
+2. Press each glyph: it does what its row does, and the menu closes. Right-click again: the ♥
+   and the pin are filled when the song is a favorite or pinned.
+3. Hover Add to Playlist ▸ and move right: the flyout opens past the column and stays open
+   while the pointer crosses the column.
+4. Near the right edge of the window: the flyout opens to the left.
+5. Right-click a station (Radio), a Queue row, a History row, a picked set and the Now Playing
+   cover: the column holds only the glyphs whose rows the menu has (no Play on Now Playing).
+6. Right-click a rule in Rulez and a card's title: no column.
+6a. Right-click the song in the tray panel: +/✓, ♥ and Pin in the column.
+7. Each skin: the squares match the Sort pop's direction squares.
+- **Not now:** dividers between the §2 groups ("icons first", his words). `join()` already
+  receives each group apart, so a divider between two groups that are not empty is one line.
 
 ## 3. The menus
 

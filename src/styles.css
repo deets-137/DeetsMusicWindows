@@ -2795,6 +2795,48 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    Set by context-menu.ts when the resolved items contain a submenu; the trade is that
    this one flyout does not scroll. */
 .ctx-menu__fly--deep { overflow: visible; }
+/* The quick column (CONTEXT-MENUS.md §2a): the five common rows as glyph squares beside the
+   list, in the Sort pop's shape (.lib-pop__col--dir): a hairline, then the squares. */
+/* The column is as tall as the list (its hairline runs to the bottom), and its squares sit at
+   the top: a menu that gains a glyph later does not change shape (his call, 2026-10-16). */
+.ctx-menu--quick { display: flex; align-items: stretch; gap: var(--space-1); }
+.ctx-menu__list { flex: 1 1 auto; min-width: 0; }
+.ctx-menu__quick {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+  padding-left: var(--space-1);
+  border-left: 1px solid var(--border);
+}
+.ctx-menu__quick-btn {
+  display: grid;
+  place-items: center;
+  width: var(--menu-quick-size); height: var(--menu-quick-size);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-control);
+  color: var(--subtext);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui), color var(--dur-fast) var(--ease-ui);
+}
+.ctx-menu__quick-btn:hover { background: var(--surface-hover); color: var(--title); }
+.ctx-menu__quick-btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.ctx-menu__quick-btn:disabled { opacity: 0.5; cursor: default; }
+.ctx-menu__quick-btn svg {
+  width: var(--menu-quick-icon); height: var(--menu-quick-icon);
+  fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+/* Play is a solid triangle, as on the Library's Play button; ♥ and the pin fill when on. */
+.ctx-menu__quick-btn[data-quick="play"] svg { fill: currentColor; stroke: none; }
+.ctx-menu__quick-btn.is-on { color: var(--title); }
+.ctx-menu__quick-btn.is-on svg { fill: currentColor; }
+/* Add to Library's ✓ (held): a stroke, as on the + square, and a mark, not a button. */
+.ctx-menu__quick-btn[data-quick="library"].is-on svg { fill: none; }
+.ctx-menu__quick-btn[aria-disabled="true"] { cursor: default; }
+.ctx-menu__quick-btn[aria-disabled="true"]:hover { background: transparent; }
 /* rows with a mini cover (songs/albums/artists lines) */
 .lib-row--art { display: flex; align-items: center; gap: var(--space-2); }
 .lib-row__art {
