@@ -26,7 +26,7 @@ export function onPlaylistsChange(cb: ChangeCb): () => void {
 const emitChange = (rowid?: number, appleId?: string) => changeSubs.forEach((cb) => cb(rowid, appleId));
 /** Tell the mounted cards the list changed outside a store call (an agent's export re-synced
  *  the mirror, agent-writes.ts). */
-export const notifyPlaylistsChanged = (): void => emitChange();
+export const notifyPlaylistsChanged = (rowid?: number): void => emitChange(rowid);
 // Another Apple account signed in: Rust cleared the last account's Apple playlists
 // (library.rs `forget_account`), so the cards redraw without them (2026-09-29).
 void listen("apple-account-changed", () => emitChange()).catch(() => {});
@@ -76,7 +76,7 @@ export function applePlaylistCounts(): Promise<number> {
 /** Create an empty local playlist; returns its rowid (list id = `local:{rowid}`).
  *  `role` "replay" marks one made from listening (replay.ts, PLAYLISTS.md §10.8). */
 /** `expireDays`: a temporary web playlist (PLAYLIST-WEB.md §10); absent = kept. */
-export function playlistCreate(name: string, role?: "replay", expireDays?: number): Promise<number> {
+export function playlistCreate(name: string, role?: "replay" | "rulez", expireDays?: number): Promise<number> {
   return invoke<number>("playlist_create", { name, description: null, role: role ?? null, expireDays: expireDays ?? null }).then(async (id) => {
     await startCover(id, name);
     emitChange(id);
@@ -131,6 +131,8 @@ export function playlistInsertTracks(p: Playlist, at: number | null, tracks: Tra
 /** Made from listening (replay.ts): never an add target, and never renamed, reordered, or
  *  edited by hand (PLAYLISTS.md §10.8). */
 export const isReplay = (p: Playlist): boolean => p.role === "replay";
+/** A Rulez Playlist: its songs come from a filter rule (filters.ts, features/filter-rules.md). */
+export const isRulez = (p: Playlist): boolean => p.role === "rulez";
 
 /** The user's own cover, served at the app's cover link (PLAYLISTS.md §10.6) — not the
  *  artwork of its Apple copy, which can't be removed here. */

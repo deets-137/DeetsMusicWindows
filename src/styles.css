@@ -4924,3 +4924,44 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .rulez-log__facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: var(--space-3); color: var(--subtext); }
 .rulez-log__fact { display: contents; }
 .rulez-log__fact > span:last-child { color: var(--text); overflow-wrap: anywhere; }
+
+/* The Library's Filter panel (features/filter-rules.md §13.3): the third pop, after Sort and View.
+   The pop shell is .lib-pop's; the condition is the Rulez blanks above; the buttons are the
+   panel chip family (.sound__pill); a saved filter is a menu row (.ctx-menu__item's shape). */
+.lib-pop--rule { width: var(--filter-pop-w); max-width: calc(100vw - 2 * var(--panel-edge-gap)); max-height: var(--filter-pop-max-h); overflow-y: auto; }
+.fpop { display: flex; flex-direction: column; gap: var(--space-2); }
+.fpop__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.fpop__title { font-family: var(--font-body); font-size: var(--fs-text); color: var(--title); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fpop__count { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; }
+.fpop__cond, .fpop__part { display: flex; flex-direction: column; gap: var(--filter-gap); }
+.fpop__part { padding-top: var(--space-2); border-top: 1px solid var(--border); }
+.fpop__notes { display: flex; flex-direction: column; gap: var(--space-half); }
+.fpop__missing {
+  align-self: flex-start;
+  padding: 0; background: none; border: none;
+  font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--subtext); font-style: italic;
+  text-decoration: underline dotted; cursor: pointer;
+}
+.fpop__missing:hover { color: var(--title); }
+.fpop__missing:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.fpop__acts { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.fpop__acts:empty { display: none; }
+.fpop__chip { border-radius: var(--filter-chip-radius); min-width: var(--filter-chip-min-w); }
+/* The accent toggle beside a text condition (§13.5): a panel chip that shows its state. */
+.fpop__accent { min-width: 0; border-radius: var(--filter-chip-radius); }
+.fpop__saved { display: flex; flex-direction: column; gap: var(--space-half); }
+.fpop__row { display: flex; align-items: center; gap: var(--space-1); }
+.fpop__use {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-half);
+  padding: var(--space-1) var(--space-2);
+  background: none; border: none; border-radius: var(--radius-control);
+  color: var(--text); font-family: var(--font-body); text-align: left; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui);
+}
+.fpop__use:hover { background: var(--surface-hover); }
+.fpop__use:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.fpop__row.is-on .fpop__use { background: var(--surface-hover); }
+.fpop__row.is-on .fpop__name { color: var(--title); font-weight: 600; }
+.fpop__name { font-size: var(--fs-text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fpop__sub { font-size: var(--fs-subtext); color: var(--subtext); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

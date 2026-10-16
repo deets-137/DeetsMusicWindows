@@ -12,6 +12,7 @@ mod dbhealth;
 mod diary;
 mod enrich;
 mod favorites;
+mod filter;
 mod friends;
 mod gpu;
 mod heal;
@@ -269,6 +270,7 @@ pub fn run() {
             library::migrate_v18(&conn).expect("v18 migration failed");
             enrich::migrate_v19(&conn).expect("v19 migration failed");
             suggest::migrate_v20(&conn).expect("v20 migration failed");
+            filter::migrate_v21(&conn).expect("v21 migration failed");
             conn
             }));
             let conn = match opened {
@@ -469,6 +471,14 @@ pub fn run() {
             suggest::suggest_clear,
             suggest::suggest_restore,
             suggest::suggest_push,
+            filter::filters_list,
+            filter::filter_save,
+            filter::filter_delete,
+            filter::filter_attach,
+            filter::filter_set_refresh,
+            filter::filter_set_lists,
+            filter::filter_write,
+            filter::filter_read,
             enrich::catalog_enrich,
             enrich::album_palette,
             credits::credits_stats,

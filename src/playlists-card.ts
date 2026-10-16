@@ -14,7 +14,7 @@ import {
   playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
   playlistRemoveTrack, playlistRemovePositions, playlistRename, playlistReorder, playlistSetCover, playlistImport, onPlaylistsChange,
   playlistInsertTracks, playlistCoverData,
-  foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, ownCover, type PlaylistFolder,
+  foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, isRulez, ownCover, type PlaylistFolder,
   onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest, refreshSet,
 } from "./playlists";
 import {
@@ -45,6 +45,9 @@ import { dropToPlaylist, dropToApplePlaylist } from "./drop-actions";
 import { MOSAIC_MAX } from "./mosaic";
 import { drawCover, coverLetters } from "./cover-art";
 import { mountWeb } from "./web";
+import { refreshNow, rulezRowOf } from "./filters";
+import { refreshItems, refreshLabel } from "./filter-panel";
+import { requestLibraryFilter } from "./layout-bus";
 
 const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
 /** A local playlist edited by hand: a Replay is made from listening (PLAYLISTS.md §10.8). */
@@ -569,6 +572,25 @@ export const playlistsCard: CardDef = {
       };
     };
 
+    // "Rulez Playlist ▸" (features/filter-rules.md §7): a playlist made by a filter rule. Its
+    // rule opens in the Library's Filter panel (the playlist page's own place for it is not
+    // designed yet, §13.3); its refresh is Live · Daily · Weekly · Off. The refresh in force
+    // rides the parent row, as Refresh's does.
+    const rulezItem = (p: Playlist): MenuItem | null => {
+      const n = p.libraryId?.startsWith("local:") ? Number(p.libraryId.slice(6)) : NaN;
+      const row = isRulez(p) && Number.isFinite(n) ? rulezRowOf(n) : undefined;
+      if (!row) return null;
+      return {
+        label: "Rulez Playlist",
+        badge: menuState(refreshLabel(row.refresh)),
+        sub: () => [
+          { label: "Edit the rule", run: () => requestLibraryFilter(row.rule.id) },
+          { label: "Make it again now", run: () => void refreshNow(row.rule.id) },
+          { label: "Refresh", badge: menuState(refreshLabel(row.refresh)), sub: () => refreshItems(row.rule.id, row.refresh) },
+        ],
+      };
+    };
+
     // Folder headers: rename in place, delete unfiles the members (playlists untouched).
     const folderMenu = (id: number): MenuItem[] => [
       {
@@ -760,6 +782,8 @@ export const playlistsCard: CardDef = {
       // field first, ready to type (hand-made only). Go to Playlist drills in place.
       const own: MenuItem[] = [moveToFolderItem(p)];
       if (covered(p)) own.push(refreshItem(p)); // no remote copy to re-read = no row (D3)
+      const rz = rulezItem(p);
+      if (rz) own.push(rz);
       if (p.source === "apple") own.push(importItem(p));
       // Local playlists only (mirrors have no delete path — the Apple write ceiling).
       // The change bus (below) handles the cache eviction + list reload.

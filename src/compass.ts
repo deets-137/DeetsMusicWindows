@@ -61,12 +61,14 @@ import { toast } from "./toast";
 import { parseSum } from "./compass-math";
 import { plainError } from "./plain-error";
 import { searchField } from "./search-field";
+import { filterRows } from "./filters";
+import { requestLibraryFilter } from "./layout-bus";
 
 // ── the rows ──────────────────────────────────────────────────
 
 type Group =
   | "Answer" | "Places" | "Settings" | "Actions" | "Sound" | "Up Next" | "Recently Played" | "Speakers"
-  | "Songs" | "Albums" | "Artists" | "Genres" | "Playlists" | "Stations" | "Apple Music" | "Diary";
+  | "Songs" | "Albums" | "Artists" | "Genres" | "Playlists" | "Stations" | "Apple Music" | "Diary" | "Filters";
 /** Rows per group, and for the shown library kind, by surface: Mini is a small window
  *  (the user's call 2026-09-17: three there). */
 const perGroup = (): number => (currentSurface() === "mini" ? 3 : 6);
@@ -190,6 +192,8 @@ const GLYPH: Record<Group, string> = {
   "Apple Music": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>',
   // A bound book with its lines: the Diary (DIARY.md §10).
   Diary: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h11a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H6z"/><path d="M6 3.5v17M9.5 8h6M9.5 11.5h6M9.5 15h4"/></svg>',
+  // A funnel: a filter keeps some songs and lets the rest go (features/filter-rules.md).
+  Filters: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg>',
 };
 const COMPASS_GLYPH =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg>';
@@ -428,6 +432,18 @@ function diaryRows(): Row[] {
     run: () => requestDiaryEntry(s.id),
     alt: { label: "Export", run: () => void copyDiaryExport(s.id) },
     tracks: () => diaryGet(s.id).then((e) => e.tracks.filter((x) => !x.unreleased)),
+  }));
+}
+
+/** Your saved filters and Rulez Playlists (features/filter-rules.md): Enter puts one in force in
+ *  the Library and opens its panel. */
+function filterRowsC(): Row[] {
+  return filterRows().map((f): Row => ({
+    group: "Filters",
+    title: f.rule.name || "A filter",
+    sub: f.playlistId != null ? "Rulez Playlist · its rule" : "Filter",
+    aliases: ["filter", "rule", "rulez playlist", "smart playlist"],
+    run: () => requestLibraryFilter(f.rule.id),
   }));
 }
 
@@ -1077,7 +1093,7 @@ function query(termRaw: string, kind: Group | null): Result {
     }
     if (h.length) blocks.push({ best: h[0].s, rows: h.map((x) => x.r) });
   }
-  for (const pool of [settingRows(), actions(true), soundRows(), upNextRows(), recentRows(), speakerRows(term), diaryRows()]) {
+  for (const pool of [settingRows(), actions(true), soundRows(), upNextRows(), recentRows(), speakerRows(term), diaryRows(), filterRowsC()]) {
     const h = hitsOf(pool, words, term).slice(0, perGroup());
     if (h.length) blocks.push({ best: h[0].s, rows: h.map((x) => x.r) });
   }

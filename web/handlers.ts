@@ -142,6 +142,7 @@ const H: Record<string, Handler> = {
   favorites_cached: () => [],
   favorites_known: () => [],
   suggest_list: () => [],
+  filters_list: () => [], // no saved filters or Rulez Playlists on the web (features/filter-rules.md)
   pins_list: () => [],
   pin_play_counts: () => [],
   row_order_all: () => [],
@@ -198,6 +199,8 @@ export const NULL_ON_PURPOSE = new Set([
   // ♥, pins, row order, credits
   "favorite_collection_reconcile", "favorite_collection_set", "favorite_set", "favorites_reconcile",
   "suggest_set", "suggest_clear", "suggest_restore", "suggest_push",
+  // Filters and Rulez Playlists (desktop only: the store and the read are Rust's)
+  "filter_save", "filter_delete", "filter_attach", "filter_set_refresh", "filter_set_lists", "filter_read", "filter_write",
   "pin_act", "pin_clear", "pin_set", "row_order_reset", "row_order_set", "credits_fetch", "credits_for", "songs_by_writer",
   // Friends (none on the web, his call W3), Song of the Day, Last.fm
   "friend_add", "friend_key_export", "friend_key_import", "friend_me", "friend_pin", "friend_remove", "friend_rename", "friend_sign",

@@ -17,7 +17,12 @@ import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange, noCatalogCopy, addTransientTracks } from "./track-store";
 import { materializeTrack } from "./search";
 import { playTracks, shuffledStart } from "./player";
-import { onLibraryDrill, takeLibraryDrill } from "./layout-bus";
+import { onLibraryDrill, onLibraryFilter, takeLibraryDrill, takeLibraryFilter } from "./layout-bus";
+import { drawFilterPanel, emptyRule, type FilterState, type PanelHost } from "./filter-panel";
+import { filterRow, filtersReady, libraryKeys, onFiltersChange } from "./filters";
+import { trackKey } from "./filter-eval";
+import { onSuggestChange } from "./suggest";
+import { onDiaryChange } from "./diary";
 import { isLoved, onFavoritesChange } from "./favorites";
 import { songMenu, albumMenu, artistMenu, listMenu, setMenu, tileMenu } from "./media-menu";
 import { initCollectionCard, esc, type Context, type Grouping, type SortSpec, type Density, type ActionTitles, type ColumnMode, type ColumnSpec, formatTotal } from "./collection-card";
@@ -617,7 +622,45 @@ export const libraryCard: CardDef = {
     // ♥ filter (the toolbar pill): narrows the SOURCE list, so songs, albums and artists
     // all reduce to what holds a favorite. Session state; the engine draws the pill.
     let favOnly = false;
-    const source = (): Track[] => (favOnly ? tracks().filter(isLoved) : tracks());
+    // The Filter (the third pop; features/filter-rules.md §13.3): a condition asked of each song.
+    // `passKeys` = the songs that pass, null with no condition. Session state, as the ♥ pill;
+    // it narrows the SOURCE list too, so albums, artists and genres follow it.
+    let fState: FilterState = { rule: emptyRule(), savedId: null, result: null };
+    let passKeys: Set<string> | null = null;
+    let fGen = 0;
+    let keepNextOpen = false; // the next open of the panel keeps the rule in force (*Edit the rule*)
+    const recheck = async () => {
+      const g = ++fGen;
+      const c = fState.rule.if;
+      if (!c) passKeys = null;
+      else {
+        try {
+          const r = await libraryKeys(c);
+          if (g !== fGen) return; // a newer check started
+          passKeys = r.keys;
+          fState = { ...fState, result: { shown: r.keys.size, total: r.total, missing: r.missing } };
+        } catch (e) {
+          diag.warn("filter:check", { e: String(e) });
+          return;
+        }
+      }
+      card.rulePop.mark(!!c);
+      card.reload();
+      card.rulePop.redraw();
+    };
+    const panelHost: PanelHost = {
+      state: () => fState,
+      apply: (rule, savedId) => {
+        fState = { rule, savedId, result: null };
+        card.rulePop.redraw(); // "Counting…" at once
+        void recheck();
+      },
+    };
+    const source = (): Track[] => {
+      const all = favOnly ? tracks().filter(isLoved) : tracks();
+      const keys = passKeys;
+      return keys ? all.filter((t) => keys.has(trackKey(t) ?? "")) : all;
+    };
     // The play tallies (one local read, zero Apple calls): the Plays sort and, on a filled
     // card, the Plays column (CARD-GROW.md §9a).
     let rootPlays: Map<string, PlayCount> | undefined;
@@ -656,6 +699,18 @@ export const libraryCard: CardDef = {
       ],
       defaults: { grouping: "songs", density: "lines", sortKey: "az", sortDir: "asc" },
       filter: { label: "Favorites only", icon: ICON_HEART, active: () => favOnly, toggle: () => { favOnly = !favOnly; } },
+      rulePop: {
+        label: "Filter", title: "Shows only the songs a rule picks: a genre, a year, songs you loved, and more",
+        active: () => !!fState.rule.if,
+        draw: (panel) => drawFilterPanel(panel, panelHost),
+        // A Rulez Playlist made or edited here is done once the panel shuts: the next open starts
+        // fresh, for a new rule (his call, 2026-10-16). A saved filter you use stays in force.
+        // *Edit the rule* opens on its playlist on purpose, so that one open keeps it.
+        opening: () => {
+          if (keepNextOpen) return void (keepNextOpen = false);
+          if (fState.savedId && filterRow(fState.savedId)?.playlistId != null) panelHost.apply(emptyRule(), null);
+        },
+      },
     });
 
     // Header state for the slot picker: track root/title and replay it to late subscribers.
@@ -736,6 +791,32 @@ export const libraryCard: CardDef = {
       }
     }
     const unsubFavs = onFavoritesChange(() => card.reload()); // the ♥ filter follows the mirror
+    // A filter in force follows what it reads: the library, loved, Suggest Less, the Diary.
+    // (A sync's reload is above; this one checks again first, then reloads.)
+    const refilter = () => void (fState.rule.if && recheck());
+    const unsubRefilter = [
+      onTracksChange((why) => why === "library" && refilter(), "library.filter"),
+      onFavoritesChange(refilter),
+      onSuggestChange(refilter),
+      onDiaryChange(refilter),
+      onFiltersChange(() => card.rulePop.redraw()), // a save, a rename, a hand edit's Keep / Never
+    ];
+    // A saved filter asked for from outside (a Rulez Playlist's *Edit the rule*, the Compass):
+    // put it in force at the root and open the panel on it.
+    const takeFilter = () => {
+      const id = takeLibraryFilter();
+      if (!id) return;
+      void filtersReady().then(() => {
+        const row = filterRow(id);
+        if (!row) return;
+        card.toRoot();
+        panelHost.apply(JSON.parse(JSON.stringify(row.rule)), id);
+        keepNextOpen = !card.rulePop.isOpen(); // this open shows the rule it was asked for (an open panel just redraws)
+        requestAnimationFrame(() => card.rulePop.open());
+      });
+    };
+    const unsubFilter = onLibraryFilter(takeFilter);
+    takeFilter(); // this card was mounted BY a request
 
     // The ⟳ spins while any sync holds the lock, the launch's and the ⟳'s own alike, from
     // the lock to its release (library.ts `onSyncBusy`; a card that mounts mid-sync spins too).
@@ -776,6 +857,8 @@ export const libraryCard: CardDef = {
       unsubPins();
         unsubDrill();
         unsubFavs();
+        unsubRefilter.forEach((u) => u());
+        unsubFilter();
         unsubGrow();
         unregisterDrop();
         syncUnlisten.then((un) => un()).catch(() => {});

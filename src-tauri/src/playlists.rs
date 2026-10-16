@@ -1730,23 +1730,28 @@ pub async fn playlist_restore(playlist: ExpiredPlaylist, app: tauri::AppHandle) 
 
 #[tauri::command]
 pub async fn playlist_rename(id: i64, name: String, app: tauri::AppHandle) -> Result<(), String> {
-    crate::db_thread::run(&app, move |db| {
+    let rulez = crate::db_thread::run(&app, move |db| {
         let conn = db.lock();
         conn.execute(
             "UPDATE local_playlists SET name = ?2, updated_at = ?3 WHERE id = ?1",
             rusqlite::params![id, name, now_ms()],
         )
         .map_err(err)?;
-        Ok(())
+        crate::filter::on_playlist_rename(&conn, id, &name) // a Rulez Playlist's rule takes the name
     })
-    .await
+    .await?;
+    if rulez {
+        crate::filter::emit_changed(&app);
+    }
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn playlist_delete(id: i64, app: tauri::AppHandle) -> Result<(), String> {
-    crate::db_thread::run(&app, move |db| {
+    let rulez = crate::db_thread::run(&app, move |db| {
         let mut conn = db.lock();
         let tx = conn.transaction().map_err(err)?;
+        let rulez = crate::filter::on_playlist_delete(&tx, id)?; // a Rulez Playlist's filter goes with it
         tx.execute("DELETE FROM local_playlist_tracks WHERE playlist_id = ?1", [id])
             .map_err(err)?;
         tx.execute(
@@ -1758,19 +1763,52 @@ pub async fn playlist_delete(id: i64, app: tauri::AppHandle) -> Result<(), Strin
             .map_err(err)?;
         tx.execute("DELETE FROM playlist_apple_baseline WHERE playlist_id = ?1", [id])
             .map_err(err)?;
-        tx.commit().map_err(err)
+        tx.commit().map_err(err)?;
+        Ok(rulez)
     })
-    .await
+    .await?;
+    if rulez {
+        crate::filter::emit_changed(&app);
+    }
+    Ok(())
+}
+
+/// The song keys a hand add puts on a Rulez Playlist's Keep list (filter.rs `on_hand`).
+fn kept_keys(tracks: &[Track]) -> Vec<String> {
+    tracks.iter().filter(|t| !t.unreleased).filter_map(crate::library::track_key).collect()
+}
+/// The song keys of stored rows a hand remove puts on the Never list.
+fn removed_keys<'a>(jsons: impl IntoIterator<Item = &'a String>) -> Vec<String> {
+    jsons.into_iter().filter_map(|j| crate::filter::json_key(j)).collect()
+}
+/// A hand edit's tail: tell the page when it was a Rulez Playlist's (its Keep / Never moved).
+fn after_hand(app: &tauri::AppHandle, rulez: bool) {
+    if rulez {
+        crate::filter::emit_changed(app);
+    }
+}
+
+/// A Rulez Playlist's songs as a pass made them (filter.rs `filter_write`): rewrite and stamp,
+/// in the caller's transaction. Never a hand edit, so Keep and Never stay as they are.
+pub(crate) fn rewrite_local(tx: &rusqlite::Transaction, id: i64, jsons: &[String]) -> Result<(), String> {
+    write_local_tracks(tx, id, jsons)?;
+    touch_playlist(tx, id)
 }
 
 /// Append tracks (denormalised snapshots) to the end, preserving order.
 #[tauri::command]
 pub async fn playlist_add_tracks(id: i64, tracks: Vec<Track>, app: tauri::AppHandle) -> Result<(), String> {
-    crate::db_thread::run(&app, move |db| {
+    let rulez = crate::db_thread::run(&app, move |db| {
         let mut conn = db.lock();
-        append_local(&mut conn, id, &tracks)
+        let tx = conn.transaction().map_err(err)?;
+        append_in(&tx, id, &tracks)?;
+        let rulez = crate::filter::on_hand(&tx, id, &kept_keys(&tracks), &[], false)?;
+        tx.commit().map_err(err)?;
+        Ok(rulez)
     })
-    .await
+    .await?;
+    after_hand(&app, rulez);
+    Ok(())
 }
 
 /// The refresh offer's [Get them] (PLAYLIST-REFRESH.md): append only the held songs the
@@ -1812,6 +1850,10 @@ pub async fn playlist_add_new_tracks(
     .await
 }
 
+/// The append on its own transaction. `playlist_add_tracks` now appends inside its own, beside
+/// the Rulez Playlist's Keep list (filter.rs `on_hand`); this stays as the docs' name for the
+/// append rule (unreleased songs stay out) and for a caller with nothing to add to the write.
+#[allow(dead_code)]
 fn append_local(conn: &mut Connection, id: i64, tracks: &[Track]) -> Result<(), String> {
     let tx = conn.transaction().map_err(err)?;
     append_in(&tx, id, tracks)?;
@@ -1887,20 +1929,24 @@ fn write_local_tracks(tx: &rusqlite::Transaction, id: i64, jsons: &[String]) -> 
 
 #[tauri::command]
 pub async fn playlist_remove_track(id: i64, position: i64, app: tauri::AppHandle) -> Result<(), String> {
-    crate::db_thread::run(&app, move |db| {
+    let rulez = crate::db_thread::run(&app, move |db| {
         let mut conn = db.lock();
         let mut jsons = read_local_tracks(&conn, id)?;
         let pos = position as usize;
         if pos >= jsons.len() {
             return Err(format!("playlist_remove_track: position {position} out of range"));
         }
-        jsons.remove(pos);
+        let gone = jsons.remove(pos);
         let tx = conn.transaction().map_err(err)?;
         write_local_tracks(&tx, id, &jsons)?;
         touch_playlist(&tx, id)?;
-        tx.commit().map_err(err)
+        let rulez = crate::filter::on_hand(&tx, id, &[], &removed_keys([&gone]), false)?;
+        tx.commit().map_err(err)?;
+        Ok(rulez)
     })
-    .await
+    .await?;
+    after_hand(&app, rulez);
+    Ok(())
 }
 
 /// Remove a set of rows by their AUTHORED positions, in one transaction (2026-09-29): a picked
@@ -1908,25 +1954,30 @@ pub async fn playlist_remove_track(id: i64, position: i64, app: tauri::AppHandle
 /// is checked before anything is written; a repeated position counts once.
 #[tauri::command]
 pub async fn playlist_remove_positions(id: i64, positions: Vec<i64>, app: tauri::AppHandle) -> Result<(), String> {
-    crate::db_thread::run(&app, move |db| {
+    let rulez = crate::db_thread::run(&app, move |db| {
         let mut conn = db.lock();
         let jsons = read_local_tracks(&conn, id)?;
         let gone: std::collections::HashSet<usize> = positions.iter().map(|&p| p as usize).collect();
         if let Some(bad) = positions.iter().find(|&&p| p < 0 || p as usize >= jsons.len()) {
             return Err(format!("playlist_remove_positions: position {bad} out of range"));
         }
+        let removed = removed_keys(jsons.iter().enumerate().filter(|(i, _)| gone.contains(i)).map(|(_, j)| j));
         let kept: Vec<String> = jsons.into_iter().enumerate().filter(|(i, _)| !gone.contains(i)).map(|(_, j)| j).collect();
         let tx = conn.transaction().map_err(err)?;
         write_local_tracks(&tx, id, &kept)?;
         touch_playlist(&tx, id)?;
-        tx.commit().map_err(err)
+        let rulez = crate::filter::on_hand(&tx, id, &[], &removed, false)?;
+        tx.commit().map_err(err)?;
+        Ok(rulez)
     })
-    .await
+    .await?;
+    after_hand(&app, rulez);
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn playlist_reorder(id: i64, from: i64, to: i64, app: tauri::AppHandle) -> Result<(), String> {
-    crate::db_thread::run(&app, move |db| {
+    let rulez = crate::db_thread::run(&app, move |db| {
         let mut conn = db.lock();
         let mut jsons = read_local_tracks(&conn, id)?;
         let (f, t) = (from as usize, to as usize);
@@ -1938,16 +1989,21 @@ pub async fn playlist_reorder(id: i64, from: i64, to: i64, app: tauri::AppHandle
         let tx = conn.transaction().map_err(err)?;
         write_local_tracks(&tx, id, &jsons)?;
         touch_playlist(&tx, id)?;
-        tx.commit().map_err(err)
+        // A move on a Rulez Playlist puts it in your order, so the next pass keeps the move.
+        let rulez = crate::filter::on_hand(&tx, id, &[], &[], true)?;
+        tx.commit().map_err(err)?;
+        Ok(rulez)
     })
-    .await
+    .await?;
+    after_hand(&app, rulez);
+    Ok(())
 }
 
 /// Insert tracks (denormalised snapshots) at authored position `at`, in order — a drop on
 /// an open local playlist (DRAG-DROP.md §3). `at` past the end appends. One transaction.
 #[tauri::command]
 pub async fn playlist_insert_tracks(id: i64, at: i64, tracks: Vec<Track>, app: tauri::AppHandle) -> Result<(), String> {
-    crate::db_thread::run(&app, move |db| {
+    let rulez = crate::db_thread::run(&app, move |db| {
         let mut conn = db.lock();
         let mut jsons = read_local_tracks(&conn, id)?;
         let at = (at.max(0) as usize).min(jsons.len());
@@ -1961,9 +2017,14 @@ pub async fn playlist_insert_tracks(id: i64, at: i64, tracks: Vec<Track>, app: t
         let tx = conn.transaction().map_err(err)?;
         write_local_tracks(&tx, id, &jsons)?;
         touch_playlist(&tx, id)?;
-        tx.commit().map_err(err)
+        // A drop at a place: Keep, and your order, so the song stays where it landed.
+        let rulez = crate::filter::on_hand(&tx, id, &kept_keys(&tracks), &[], true)?;
+        tx.commit().map_err(err)?;
+        Ok(rulez)
     })
-    .await
+    .await?;
+    after_hand(&app, rulez);
+    Ok(())
 }
 
 /// Every stored playlist's songs, for the artist views' "Your Playlists" (ARTIST-VIEW.md §3):

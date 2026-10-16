@@ -569,6 +569,13 @@
   /* max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) */
   --max-stage-w:    340px;          /* stage + queue column width */
   --np-stage-glyph: 96px;           /* placeholder ♪ on the stage */
+  /* The Library's Filter panel (features/filter-rules.md §13.3): the third pop. Its condition is
+     the Rulez blanks, its buttons the panel chips (UI-ARCHITECTURE.md §2a). Aliases, but the size. */
+  --filter-pop-w:        340px;          /* room for a condition line: "Plays in the last 7 days is above 5" */
+  --filter-pop-max-h:    min(70vh, 560px);
+  --filter-chip-radius:  var(--sound-chip-radius);
+  --filter-chip-min-w:   var(--sound-pill-min-w);
+  --filter-gap:          var(--rulez-gap);
   --qcard-now-art:  48px;           /* the Queue card's now-playing cover */
   --qcard-idle-dim: 0.6;            /* the now-playing row with nothing to play */
   --qcard-loading-dim: 0.55;        /* its cover while a jump buffers (UX-COVERUPS.md §1) */

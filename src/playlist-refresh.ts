@@ -24,6 +24,7 @@
 // make while nobody is watching (D9).
 
 import type { Playlist } from "./search";
+import { lastMidnight, lastWeekdayMidnight } from "./filter-eval";
 import {
   playlistsCached,
   playlistGetAppleSongs,
@@ -104,20 +105,10 @@ export function choiceLabel(c: RefreshChoice): string {
 }
 
 /** The most recent local midnight, in ms. */
-function midnight(now = Date.now()): number {
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-/** The most recent local midnight of `weekday`, in ms. Today counts when today IS that
- *  weekday: a Friday mix is due on Friday morning, not the Friday after. */
-function weeklyMidnight(weekday: number, now = Date.now()): number {
-  const d = new Date(midnight(now));
-  const back = (d.getDay() - weekday + 7) % 7;
-  d.setDate(d.getDate() - back);
-  return d.getTime();
-}
+// The day arithmetic is shared with the Rulez Playlists (filter-eval.ts): a Friday mix is due
+// on Friday morning, not the Friday after.
+const midnight = lastMidnight;
+const weeklyMidnight = lastWeekdayMidnight;
 
 /** Is this playlist due a read? Arithmetic only — no clock of its own. */
 export function isDue(p: Playlist, now = Date.now()): boolean {

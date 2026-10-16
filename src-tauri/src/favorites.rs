@@ -57,8 +57,35 @@ pub(crate) fn seed_from_playlist(conn: &Connection, tracks: &[Track]) -> Result<
 
 /// Is this mirror row Apple's generated Favorite Songs list? There is no type field:
 /// the tell is the fixed name on a read-only library playlist with no catalog twin.
+///
+/// "No catalog twin" means no EDITORIAL id (`pl.` + hex, an Apple playlist you added). Apple
+/// now gives Favorite Songs a user-scoped share id, `pl.u-…` (seen 2026-10-16 on both of the
+/// owner's databases). The old test (`global_id.is_none()`) then said no, and the seed stopped
+/// without a word: a ♥ made on the phone reached DeetsMusic only through the small ratings
+/// read (found by filter-rules.md's desk test: 16 loved in the dev app against 405 songs).
 pub(crate) fn is_favorite_songs(p: &crate::model::Playlist) -> bool {
-    p.name == "Favorite Songs" && !p.can_edit && p.global_id.is_none()
+    p.name == "Favorite Songs" && !p.can_edit && p.global_id.as_deref().map_or(true, |g| g.starts_with("pl.u-"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::Playlist;
+
+    fn list(name: &str, can_edit: bool, global: Option<&str>) -> Playlist {
+        Playlist { name: name.into(), can_edit, global_id: global.map(str::to_string), ..Default::default() }
+    }
+
+    /// 2026-10-16: Apple sends `pl.u-…` on Favorite Songs now; the seed must still see it.
+    #[test]
+    fn favorite_songs_with_a_user_share_id_2026_10_16() {
+        assert!(is_favorite_songs(&list("Favorite Songs", false, Some("pl.u-AZUoPVvaE"))));
+        assert!(is_favorite_songs(&list("Favorite Songs", false, None))); // the shape before
+        // An editorial playlist of that name you added, and one of your own, are not it.
+        assert!(!is_favorite_songs(&list("Favorite Songs", false, Some("pl.f4d106fed2bd41149aaacabb233eb5eb"))));
+        assert!(!is_favorite_songs(&list("Favorite Songs", true, None)));
+        assert!(!is_favorite_songs(&list("Favourite Songs", false, None)));
+    }
 }
 
 /// ♥ / un-♥ one song: `PUT …/ratings/songs/{id}` value 1, or `DELETE`. Write-through:

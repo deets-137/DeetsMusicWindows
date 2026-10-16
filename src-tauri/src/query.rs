@@ -66,6 +66,11 @@ pub fn set_db_path(path: PathBuf) {
     let _ = DB_PATH.set(path);
 }
 
+/// The database file, for a reader that opens it on its own (filter.rs `filter_read`).
+pub(crate) fn db_path() -> Option<PathBuf> {
+    DB_PATH.get().cloned()
+}
+
 /// The copy (guard 1). Plain SQL over the attached file; ids use the same `song:` / `playlist:`
 /// prefixes the other agent tools take, so a row can be played at once.
 const BUILD: &str = "

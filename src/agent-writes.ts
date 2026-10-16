@@ -298,7 +298,7 @@ async function playlist(payload: any): Promise<Reply> {
     case "new_copy": {
       mustBeLocal(p, all, "export");
       if (!setting("playlistExport")) throw blocked("Export playlists is off in DeetsMusic › Settings › Apple Music.");
-      const after = () => void applePlaylistsSync(false).then(notifyPlaylistsChanged).catch((e) => console.warn("[agent] mirror sync", e));
+      const after = () => void applePlaylistsSync(false).then(() => notifyPlaylistsChanged()).catch((e) => console.warn("[agent] mirror sync", e));
       const copy = p.exportedAppleId ? all.find((m) => m.source === "apple" && m.libraryId === p.exportedAppleId) : undefined;
       const run = () => (action === "export" && copy ? sendNew(p, after) : makeNew(p, !!p.exportedAppleId, after));
       if (!noticeOff(EXPORT_NOTICE_KEY))

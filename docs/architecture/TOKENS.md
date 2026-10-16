@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 48 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 617 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 622 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -571,6 +571,11 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--rulez-fold-ease` | `var(--ease-ui)` | — |  |
 | `--font-mono` | `"Cascadia Mono", Consolas, ui-monospace, monospace` | — | log text |
 | `--max-stage-w` | `340px` | — | max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) — stage + queue column width |
+| `--filter-pop-w` | `340px` | — | The Library's Filter panel (features/filter-rules.md §13.3): the third pop. Its condition is the Rulez blanks, its buttons the panel chips (UI-ARCHITECTURE.md §2a). Aliases, but the size. — room for a condition line: "Plays in the last 7 days is above 5" |
+| `--filter-pop-max-h` | `min(70vh, 560px)` | — |  |
+| `--filter-chip-radius` | `var(--sound-chip-radius)` | — |  |
+| `--filter-chip-min-w` | `var(--sound-pill-min-w)` | — |  |
+| `--filter-gap` | `var(--rulez-gap)` | — |  |
 | `--np-stage-glyph` | `96px` | — | placeholder ♪ on the stage |
 | `--qcard-now-art` | `48px` | — | the Queue card's now-playing cover |
 | `--qcard-idle-dim` | `0.6` | — | the now-playing row with nothing to play |

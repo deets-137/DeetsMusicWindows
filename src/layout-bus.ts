@@ -107,6 +107,13 @@ export const requestLibraryDrill = (d: LibraryDrill): void => libraryDrill.reque
 export const takeLibraryDrill = (): LibraryDrill | null => libraryDrill.take();
 export const onLibraryDrill = (cb: () => void): (() => void) => libraryDrill.on(cb);
 
+/** The Library card with a saved filter in force and its Filter panel open (filters.ts): a
+ *  Rulez Playlist's *Edit the rule*, a Compass row. The filter's id. */
+const libraryFilter = heldRequest<string>("library");
+export const requestLibraryFilter = (id: string): void => libraryFilter.request(id);
+export const takeLibraryFilter = (): string | null => libraryFilter.take();
+export const onLibraryFilter = (cb: () => void): (() => void) => libraryFilter.on(cb);
+
 /** The Diary card at an album (DIARY.md §2): "Add to Diary" on an album's menu. The songs load
  *  when the card takes the request, so a Search album costs no fetch until then. */
 export interface DiaryRequest {

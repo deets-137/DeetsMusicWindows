@@ -201,6 +201,12 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **Filter and Rulez Playlists** (features/filter-rules.md, 2026-10-16, branch `shixtheenth`,
+  not committed): built, desk test open (§14.4, step 9 is the gate). The Library's third pill,
+  *Filter*, and playlists that a rule makes from sources, Live by default; schema **v21**
+  (`filter_rules`). The gate's page part is sliced (17–28 ms as one task for 20,000 songs); the
+  Rust read is 66 ms. Not built: the playlist page's own place for the rule (§13.3, his to design).
+
 - **The updates button** (UpdatesButton.md, 2026-10-16, branch `shixtheenth`): built, desk test
   passed (§8.1, run by Claude; his own look still welcome). The Max title bar button right of the Compass and its panel (version row, What's
   new, Bugs and suggestions). The next release entry is the first under the lead rule (§6.3,

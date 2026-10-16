@@ -169,6 +169,13 @@ for word, with RELEASE.md's section numbers.
   `WEB_ROOMS` flag, a TypeScript twin of the Rust catalog normalizers held to one fixture.
   His calls §7.1, §9.7. Not built: the site page (part H) and the publish; the worker change
   is not deployed (§10.6). A new `invoke()` in a shared file needs a line in `web/handlers.ts`.
+- `filter-rules.md` — BUILT 2026-10-16 on `shixtheenth`, desk test open (§14.4): a rule that
+  picks songs. The Library's third pill, **Filter** (a quick filter by any song fact, or a saved
+  one), and **Rulez Playlists** made from sources (library, playlists, Rewind, Song of the Day,
+  the Diary) at Live (his default) · Daily · Weekly · Off, with Keep and Never by hand. The rules
+  engine's `evalCond` over song facts (`filter-eval.ts`); one read off the lock (`filter.rs`,
+  schema v21); the condition menus shared with Rulez (`cond-editor.ts`). His calls §13; §14 the
+  as-built record and the gate. Not built: the playlist page's own place for the rule (§13.3).
 - `UpdatesButton.md` — BUILT 2026-10-16 on `shixtheenth`, desk test passed (§8.1, run by Claude): the Max title
   bar button right of the Compass, his two arrows (the up arrow flies off and the down arrow
   centers when an update is offered; a thin bar while it downloads; the New dot after an

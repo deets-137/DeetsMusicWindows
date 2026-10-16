@@ -20,21 +20,24 @@ import { allRules, known, onRulesChange, recipesOn, ruleIdle, ruleStats, saveUse
 import { RECIPES } from "./rules-recipes";
 import { evalCond, factsOf, validate, validateDraft, type EventId, type Leaf, type MomentRule, type OnHand, type Rule, type StateRule, type Value } from "./rules-eval";
 import {
-  EVENTS, FACTS, SECTIONS, choicesOf, doValueText, doWordOf, dosFor, formatTime, isComplete,
+  EVENTS, FACTS, SECTIONS, choicesOf, condText, doValueText, doWordOf, dosFor, formatTime, isComplete,
   leafParts, leafText, lowerFirst, parseTime, saysOf, sentenceText, stateParts, whenText, whoWins,
-  type Choice, type DoWord, type FactWord, type Lists, type Section,
+  type Choice, type DoWord, type Lists, type Section,
 } from "./rulez-words";
 import { blockOf, fromBlock, isLeaf, liftGroup, rootBlock, toCond, withBlock, type Block, type BlockKind } from "./rulez-blocks";
 import { logsHTML, isRuleLine } from "./rulez-logs";
+import { KIND_WORDS, bySection as sectionMenus, factMenu as condFactMenu, withSearch as searchMenu, type CondCtx } from "./cond-editor";
 import { splitPillHTML, splitPick } from "./split-pill";
-import { MENU_CHOSEN, MENU_DIVIDER, openContextMenu, openContextMenuUnder, type ActionItem, type MenuItem } from "./context-menu";
+import { MENU_CHOSEN, MENU_DIVIDER, openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { enterRows } from "./pop";
 import { hideHint } from "./hint";
 import { wireListKeys } from "./list-keys";
 import { isDragging, onDragEnd, rowDrag } from "./row-drag";
 import { holdMs } from "./row-order";
 import { onSettingsChange, setting } from "./settings-store";
-import { requestSetting } from "./layout-bus";
+import { requestLibraryFilter, requestSetting } from "./layout-bus";
+import { filterRows, onFiltersChange } from "./filters";
+import { refreshLabel } from "./filter-panel";
 import { presetOptions } from "./sound";
 import { THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import { playlistsCached } from "./playlists";
@@ -209,44 +212,13 @@ export const rulezCard: CardDef = {
     };
 
     // ── menus ──
-    /** Sections as submenus, each holding its own rows (empty sections left out). */
-    const bySection = <T extends { section: Section }>(words: T[], row: (w: T) => MenuItem): MenuItem[] =>
-      SECTIONS.map((s) => ({ s, ws: words.filter((w) => w.section === s) }))
-        .filter((x) => x.ws.length)
-        .map(({ s, ws }) => ({ label: s, sub: () => ws.map(row) }));
+    // The section menus, the search field and the fact menus are shared with the Filter panel
+    // (cond-editor.ts), so a filter and a rule never offer the same fact two ways.
+    const bySection = <T extends { section: Section }>(words: T[], row: (w: T) => MenuItem): MenuItem[] => sectionMenus(SECTIONS, words, row);
     const k = () => known();
     const chosen = (on: boolean) => (on ? MENU_CHOSEN : undefined);
-    /** A typing field at the top of a word menu (his call, 2026-10-10, RULEZ.md §19): a few
-     *  letters show the rows of every section that hold them, with the section as the note;
-     *  Enter picks the first. A word with a value opens its value rows under the same blank.
-     *  Only the section flyouts are searched (a Clear row or a group stays where it is). */
-    const withSearch = (el: HTMLElement, items: MenuItem[], placeholder: string): MenuItem[] => {
-      type Row = { label: string; note: string; item: MenuItem };
-      const rows: Row[] = [];
-      for (const it of items) {
-        if (!("sub" in it) || !(SECTIONS as readonly string[]).includes(it.label)) continue;
-        const sub = it.sub();
-        if (!Array.isArray(sub)) continue;
-        for (const s of sub) if ("label" in s && !("input" in s) && !("disabled" in s && s.disabled)) rows.push({ label: s.label, note: it.label, item: s });
-      }
-      const find = (q: string): Row[] => {
-        const t = q.toLowerCase();
-        const hits = rows.filter((r) => r.label.toLowerCase().includes(t));
-        return hits.sort((a, b) => Number(!a.label.toLowerCase().startsWith(t)) - Number(!b.label.toLowerCase().startsWith(t)));
-      };
-      const pick = (r: Row) => {
-        if ("run" in r.item) r.item.run();
-        else if ("sub" in r.item) openContextMenuUnder(el, r.item.sub() as MenuItem[]);
-      };
-      return [
-        { input: {
-          placeholder,
-          onSubmit: (v) => { const r = find(v)[0]; if (r) pick(r); },
-          onInput: (v, show) => { const hits = find(v).slice(0, 8); show(hits.length ? hits.map((r): ActionItem => ({ label: r.label, note: r.note, run: () => pick(r) })) : "Nothing here holds that."); },
-        } },
-        ...items,
-      ];
-    };
+    const withSearch = (el: HTMLElement, items: MenuItem[], placeholder: string): MenuItem[] => searchMenu(el, items, placeholder, SECTIONS);
+    const condCtx: CondCtx = { words: FACTS, sections: SECTIONS, usable: (id) => k().facts.has(id), lists: () => lists(), library: () => tracks() };
 
     /** A moment rule with no moment: a While rule if it has a condition, else a draft that asks
      *  for its When again (RULEZ.md §19). */
@@ -304,88 +276,8 @@ export const rulezCard: CardDef = {
       ...lists().cards.map((c): MenuItem => ({ label: c.label, badge: chosen(r.card === c.value), run: () => edit(r.id, "in", (x) => void ((x as MomentRule).card = String(c.value))) })),
     ];
 
-    /** Your library's names that hold `text`: the ones that start with it first, then the rest,
-     *  each A–Z (no Apple call). */
-    const matches = (kind: "genre" | "artist" | "album", text: string): string[] => {
-      const q = text.toLowerCase();
-      const pool = new Set<string>();
-      for (const t of tracks()) {
-        const vals = kind === "genre" ? t.genres : kind === "artist" ? [t.artistName] : [t.albumName ?? ""];
-        for (const v of vals) if (v && v !== "Music" && v.toLowerCase().includes(q)) pool.add(v);
-        if (pool.size > 40) break;
-      }
-      const starts = (v: string) => (v.toLowerCase().startsWith(q) ? 0 : 1);
-      return [...pool].sort((a, b) => starts(a) - starts(b) || a.localeCompare(b));
-    };
-    /** Suggest from your library as you type. */
-    const suggest = (kind: "genre" | "artist" | "album", text: string, submit: (v: string) => void): ActionItem[] | string => {
-      const rows = matches(kind, text).slice(0, 8).map((v): ActionItem => ({ label: v, run: () => submit(v) }));
-      return rows.length ? rows : "Nothing in your library matches. Press Enter to use it as typed.";
-    };
-    /** Enter in a suggesting field: the library's own spelling, so "ja" saves "Jazz" and not a
-     *  word no song has (a leaf compares the whole name). The same name typed in full wins over
-     *  a longer one; with no match the text stays as typed, as the empty line says. */
-    const resolveTyped = (kind: "genre" | "artist" | "album", text: string): string => {
-      const found = matches(kind, text);
-      return found.find((v) => v.toLowerCase() === text.toLowerCase()) ?? found[0] ?? text;
-    };
-
-    /** The value rows for one fact: they build a leaf and hand it to `done`. */
-    const valueItems = (w: FactWord, done: (l: Leaf) => void): MenuItem[] => {
-      const L = (x: Omit<Leaf, "fact">): void => done({ fact: w.id, ...x });
-      switch (w.kind) {
-        case "bool":
-          return [{ label: w.yes!, run: () => L({ is: true }) }, { label: w.no!, run: () => L({ is: false }) }];
-        case "choice": {
-          const cs = choicesOf(w, lists());
-          if (!cs.length) return [{ label: "Nothing to pick yet", disabled: true, run: () => {} }];
-          return [
-            { label: "Is", sub: () => cs.map((c): MenuItem => ({ label: c.label, run: () => L({ is: c.value }) })) },
-            { label: "Is not", sub: () => cs.map((c): MenuItem => ({ label: c.label, run: () => L({ isNot: c.value }) })) },
-          ];
-        }
-        case "time": {
-          const at = (key: "gt" | "lt") => (v: string) => {
-            const t = parseTime(v);
-            if (t !== null) L({ [key]: t });
-          };
-          return [
-            { input: { label: "Is after", placeholder: "8:00 PM", onSubmit: at("gt") } },
-            { input: { label: "Is before", placeholder: "6:00 AM", onSubmit: at("lt") } },
-          ];
-        }
-        case "number": {
-          const num = (key: "gt" | "lt" | "is") => (v: string) => {
-            const n = Number(v.replace(/[^\d.+-]/g, ""));
-            if (v.trim() && Number.isFinite(n)) L({ [key]: n });
-          };
-          const ph = w.unit ? `A number (${w.unit})` : "A number";
-          return [
-            { input: { label: "Is above", placeholder: ph, onSubmit: num("gt") } },
-            { input: { label: "Is below", placeholder: ph, onSubmit: num("lt") } },
-            { input: { label: "Is", placeholder: ph, onSubmit: num("is") } },
-          ];
-        }
-        case "text": {
-          const field = (label: string, key: "is" | "isNot"): MenuItem => ({
-            input: {
-              label, placeholder: w.suggest === "genre" ? "Jazz" : w.label,
-              onSubmit: (v) => L({ [key]: w.suggest ? resolveTyped(w.suggest, v) : v }),
-              onInput: w.suggest ? (v, show) => show(suggest(w.suggest!, v, (pick) => L({ [key]: pick }))) : undefined,
-            },
-          });
-          return [field("Is", "is"), field("Is not", "isNot")];
-        }
-      }
-    };
-
-    /** Pick a fact by section, then its value. */
-    const factMenu = (done: (l: Leaf) => void): MenuItem[] => {
-      const reg = k();
-      return bySection(FACTS, (f): MenuItem =>
-        reg.facts.has(f.id) ? { label: f.label, sub: () => valueItems(f, done) } : { label: f.label, disabled: true, run: () => {} },
-      );
-    };
+    /** Pick a fact by section, then its value (cond-editor.ts). */
+    const factMenu = (done: (l: Leaf) => void): MenuItem[] => condFactMenu(condCtx, done);
 
     // ── conditions as blocks (RULEZ.md §6.4) ──
     /** Change the rule's condition: `fn` gets the root block and returns the new one. */
@@ -446,7 +338,6 @@ export const rulezCard: CardDef = {
       { label: "A group inside this one", sub: () => factMenu((l) => addTo(r, path, { all: [l] })) },
       ...(!path.length && rootBlock(r).members.length ? [MENU_DIVIDER, { label: "Clear every condition", run: () => clearCond(r) } as MenuItem] : []),
     ];
-    const KIND_WORDS: Record<BlockKind, string> = { all: "all of these", any: "any of these", none: "none of these" };
     const blockMenu = (r: Rule, path: number[], kind: BlockKind): MenuItem[] => {
       const items: MenuItem[] = (Object.keys(KIND_WORDS) as BlockKind[]).map((k2) => ({
         label: `Only if ${KIND_WORDS[k2]}`,
@@ -899,8 +790,19 @@ export const rulezCard: CardDef = {
       const empty = mine.length ? "" : `<p class="rulez__empty">You have no rules yet. Press + to make one.</p>`;
       const head = `<button class="rulez__divider rulez__divider--fold${settingsOpen ? "" : " is-collapsed"}" type="button" data-act="settings" aria-expanded="${settingsOpen}" title="${settingsOpen ? "Hides the rules your Settings rows make" : "Shows the rules your Settings rows make"}">
         <svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg><span>Made by Settings</span><span class="lib-shelf__count">${groups.length}</span></button>`;
+      // Your filters and Rulez Playlists (features/filter-rules.md §13.6): a filter asks each
+      // song, not the app, so it is made and changed in the Library's Filter panel; a press
+      // opens it there.
+      const saved = filterRows();
+      const filters = saved.length
+        ? `<div class="rulez__divider">Filters</div>${saved.map((f) => `<div class="fpop__row rulez__filter">
+            <button class="fpop__use" type="button" data-act="useFilter" data-id="${esc(f.rule.id)}" title="Opens this filter in the Library">
+              <span class="fpop__name">${esc(f.rule.name || "No name")}</span><span class="fpop__sub">${esc(f.playlistId != null ? `Rulez Playlist · ${refreshLabel(f.refresh)}` : "Filter")} · ${esc(condText(f.rule.if, L) || "Every song")}</span>
+            </button></div>`).join("")}`
+        : "";
       return `<div class="rulez__list">
         <div class="rulez__mine">${mine.map((r, i) => ownRowHTML(r, wins, L, i)).join("")}</div>${empty}
+        ${filters}
         <div class="rulez__divider">Recipes</div>${RECIPES.map((x) => recipeRowHTML(x, wins, L)).join("")}
         ${groups.length ? head + (settingsOpen ? groups.map((g) => lockedRowHTML(g, wins, L)).join("") : "") : ""}
       </div>`;
@@ -1052,6 +954,10 @@ export const rulezCard: CardDef = {
       const el = target.closest<HTMLElement>("[data-act]") ?? (target.classList.contains("rulez__rule") ? target.querySelector<HTMLElement>(":scope > .rulez__bar[data-act]") : null);
       if (!el) return;
       // The "Made by Settings" fold: its rows enter with the row motion, as a Settings section's do.
+      if (el.dataset.act === "useFilter") {
+        diag.log("ui:act", { do: "rulez", what: "filter:open" });
+        return requestLibraryFilter(el.dataset.id!);
+      }
       if (el.dataset.act === "settings") {
         settingsOpen = !settingsOpen;
         frames.during("fold", 250, settingsOpen ? "open" : "close");
@@ -1243,6 +1149,7 @@ export const rulezCard: CardDef = {
     // One draw per frame for the checks (RULES.md §18c): a launch runs a check per group of
     // modules, and each one drew the whole list again (~28 ms each on a cold launch).
     let rulesFrame = 0;
+    const offFilters = onFiltersChange(() => render()); // the Filters section (features/filter-rules.md §13.6)
     const offRules = onRulesChange(() => {
       if (!rulesFrame) rulesFrame = requestAnimationFrame(() => ((rulesFrame = 0), render()));
     });
@@ -1263,6 +1170,7 @@ export const rulezCard: CardDef = {
         offDiag();
         offFiles();
         offRules();
+        offFilters();
         offSettings();
         offDragEnd();
         rowMove.destroy();

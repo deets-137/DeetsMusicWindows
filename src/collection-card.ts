@@ -201,6 +201,10 @@ export interface Context {
    *  card owns the state and narrows its own lists; the engine draws the pill, flips
    *  it, and re-renders. */
   filter?: { label: string; icon: string; active: () => boolean; toggle: () => void };
+  /** A third pop after Sort and View that the card draws itself (the Library's Filter,
+   *  features/filter-rules.md §13.3). It rides the same dropdown; `draw` fills the panel on each
+   *  open and again on the card's call; menus opened from inside it keep it open. */
+  rulePop?: { label: string; title: string; active: () => boolean; draw: (panel: HTMLElement) => void; /** Before each open's draw (the Library starts fresh after a Rulez Playlist). */ opening?: () => void };
   /** Two ways to see the same thing, as chips in the card head (the Library's "Full | Lib",
    *  docs/features/FULL-LIB.md). A pick REPLACES this level with the context `to` returns, so
    *  Back still goes to where the drill came from. Needs a `[data-coll-views]` slot in the head. */
@@ -452,6 +456,8 @@ export interface CollectionCardHandle {
   hold(): void;
   /** How many levels are open (1 = the root). */
   depth(): number;
+  /** The card's own pop (`Context.rulePop`, the Library's Filter). */
+  rulePop: { open(): void; redraw(): void; isOpen(): boolean; mark(on: boolean): void };
   /** Close every level at once, with no slide: the root shows again (a new search in the
    *  Search card leaves the levels for its results). */
   toRoot(): void;
@@ -477,6 +483,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       restore: (_s: unknown): boolean => false,
       hold: () => {},
       depth: () => 1,
+      rulePop: { open: () => {}, redraw: () => {}, isOpen: () => false, mark: () => {} },
       toRoot: () => {},
       dropPicks: () => {},
     };
@@ -708,6 +715,16 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
               ? `<div class="lib-ctrl" data-ctrl="view">
             <button class="lib-pill" data-pop="view" type="button" aria-haspopup="true" aria-expanded="false" title="Changes what the list groups by and how big the rows are">
               <span class="lib-pill__label">View</span>
+              <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
+            </button>
+          </div>`
+              : ""
+          }
+          ${
+            f.ctx.rulePop
+              ? `<div class="lib-ctrl" data-ctrl="rule">
+            <button class="lib-pill${f.ctx.rulePop.active() ? " is-active" : ""}" data-pop="rule" type="button" aria-haspopup="true" aria-expanded="false" title="${esc(f.ctx.rulePop.title)}">
+              <span class="lib-pill__label">${esc(f.ctx.rulePop.label)}</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>
           </div>`
@@ -1533,7 +1550,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   // open, so tweaks can continue. The pills are rebuilt with the head on a render, so
   // `wirePops` re-binds each kind's handle to the live pill. Before this day it was its own
   // mechanism (built and placed on each open), the one popover off the primitive.
-  type PopKind = "sort" | "view";
+  type PopKind = "sort" | "view" | "rule";
   const pops = new Map<PopKind, { panel: HTMLElement; handle: DropdownHandle | null; pill: HTMLElement | null }>();
   const popCols = (panel: HTMLElement) =>
     [...panel.querySelectorAll<HTMLElement>(".lib-pop__col")].map((c) => [...c.querySelectorAll<HTMLButtonElement>("button")]);
@@ -1625,8 +1642,17 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   /** The panel of one kind: made on the first need, kept for the card's life. */
   const popPanel = (which: PopKind): HTMLElement => {
     const panel = document.createElement("div");
-    panel.className = "lib-pop pop";
     panel.hidden = true;
+    if (which === "rule") {
+      // The card's own panel: it draws and handles itself (filter-panel.ts). It scrolls.
+      panel.className = "lib-pop lib-pop--rule pop app-scroll";
+      panel.dataset.frames = "lib-pop-rule";
+      panel.setAttribute("role", "dialog");
+      panel.setAttribute("aria-label", "Filter");
+      document.body.appendChild(panel);
+      return panel;
+    }
+    panel.className = "lib-pop pop";
     panel.dataset.frames = "lib-pop"; // the arrival's frames (frames.ts, through makeDropdown)
     panel.setAttribute("role", "menu");
     panel.setAttribute("aria-label", which === "sort" ? "Sort" : "View");
@@ -1635,6 +1661,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     document.body.appendChild(panel);
     return panel;
   };
+  /** A context menu opened from inside a pop (the Filter panel's blanks) is part of it: a
+   *  click there, the pointer on it, or its Escape does not close the pop under it. */
+  const ctxMenus = (): Element[] => [...document.querySelectorAll(".ctx-menu")];
+  const menuUp = (): boolean => ctxMenus().length > 0;
 
   /** Under the pill's left edge, clamped to the live viewport; above the pill when there is no
    *  room below (`data-above` turns the arrival around). The gap is the panel's own margin and
@@ -1658,7 +1688,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   /** Bind each kind's dropdown to the pane's live pill. Called after every head render and on
    *  a pane slide; a pill that is the same element keeps its handle (a kept head). */
   const wirePops = (pane: HTMLElement) => {
-    for (const which of ["sort", "view"] as PopKind[]) {
+    for (const which of ["sort", "view", "rule"] as PopKind[]) {
       const pill = pane.querySelector<HTMLElement>(`[data-pop="${which}"]`);
       const bound = pops.get(which);
       if (bound && bound.pill === pill) continue;
@@ -1668,12 +1698,23 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
         continue;
       }
       const panel = bound?.panel ?? popPanel(which);
+      const rule = which === "rule";
       const handle = makeDropdown({
         root: pill.closest<HTMLElement>(".lib-ctrl") ?? pill, // the hover region: the pill's own wrap
         trigger: pill,
         panel,
         disabled: () => animating || pane !== curPane,
+        // The Filter panel opens menus of its own (the blanks): they are inside it.
+        alsoInside: rule ? ctxMenus : undefined,
+        shouldStayOpen: rule ? (why) => (why === "escape" || why === "leave") && menuUp() : undefined,
         onOpen: () => {
+          if (rule) {
+            panel.dataset.enter = "1"; // an arrival: the rows enter (filter-panel.ts)
+            cur().ctx.rulePop?.opening?.();
+            cur().ctx.rulePop?.draw(panel);
+            placePop(panel, pill);
+            return; // the panel enters its own rows (filter-panel.ts)
+          }
           panel.innerHTML = which === "sort" ? sortPopBody(cur()) : viewPopBody(cur());
           placePop(panel, pill);
           if (pill.matches(":focus-visible")) {
@@ -1691,7 +1732,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     for (const b of pops.values()) b.handle?.close();
   };
   // Fixed-positioned, so a scroll or a resize would leave an open pop mis-anchored: it closes.
-  const onPopAway = () => {
+  const onPopAway = (e?: Event) => {
+    // A scroll INSIDE a pop (the Filter panel scrolls) or a menu it opened is not a move of its anchor.
+    const t = e?.target;
+    if (t instanceof Node && ([...pops.values()].some((b) => b.panel.contains(t)) || ctxMenus().some((m) => m.contains(t)))) return;
     if ([...pops.values()].some((b) => b.handle?.isOpen)) closePops();
   };
   document.addEventListener("scroll", onPopAway, true);
@@ -2273,6 +2317,20 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     hold,
     /** How many levels are open (1 = the root). */
     depth: () => stack.length,
+    /** The card's own pop (`rulePop`): open it (an edit asked for from elsewhere), draw it
+     *  again in place (its state changed), and read whether it is open. */
+    rulePop: {
+      open: (): void => pops.get("rule")?.handle?.open(),
+      redraw: (): void => {
+        const b = pops.get("rule");
+        if (!b?.handle?.isOpen || !b.pill) return;
+        cur().ctx.rulePop?.draw(b.panel);
+        placePop(b.panel, b.pill);
+      },
+      isOpen: (): boolean => !!pops.get("rule")?.handle?.isOpen,
+      /** The pill's look follows the filter in force. */
+      mark: (on: boolean): void => void curPane?.querySelector('[data-pop="rule"]')?.classList.toggle("is-active", on),
+    },
     toRoot,
     /** Drop the multi-select picks (§19). A host action that removes the rows it acted on
      *  calls this, or the count row keeps counting rows that have left the list. */

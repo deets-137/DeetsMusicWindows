@@ -85,9 +85,13 @@ export const eventLabel = (id: EventId): string => eventWord(id)?.label ?? HIDDE
 
 export type FactKind = "text" | "number" | "bool" | "choice" | "time";
 
+/** The Filter panel's sections (features/filter-rules.md §4): a filter asks each song, not the app. */
+export const FILTER_SECTIONS = ["The song", "Plays", "Your marks", "Library"] as const;
+export type FilterSection = (typeof FILTER_SECTIONS)[number];
+
 export interface FactWord {
   id: FactId;
-  section: Section;
+  section: Section | FilterSection;
   label: string;
   kind: FactKind;
   /** number: the unit after the value. */
@@ -181,7 +185,48 @@ export const FACTS: FactWord[] = [
 /** Built-in only (a Settings row's rule reads them). */
 const HIDDEN_FACTS: Partial<Record<FactId, string>> = { "entry.new": "The entry is new", now: "Now", lookMode: "Look schedule", cause: "Cause", from: "From", soloCard: "Only card" };
 
-export const factWord = (id: FactId): FactWord | undefined => FACTS.find((f) => f.id === id);
+// ── the Filter panel's facts (features/filter-rules.md §4) ──────────
+// A filter asks each song in a pool. The facts the engine also has (genre, loved …) keep their
+// Rulez words; the rest are the filter's own. Never in FACTS, so Rulez never offers them.
+
+const WINDOW_WORDS = [
+  ["Day", "in the last day"], ["Week", "in the last 7 days"], ["Month", "in the last 30 days"],
+  ["Year", "in the last 365 days"], ["Ytd", "this year"],
+] as const;
+const fromFacts = (id: FactId, section: FilterSection): FactWord => ({ ...FACTS.find((f) => f.id === id)!, section });
+export const FILTER_FACTS: FactWord[] = [
+  { id: "title", section: "The song", label: "Title", kind: "text" },
+  fromFacts("artist", "The song"),
+  fromFacts("album", "The song"),
+  { id: "albumArtist", section: "The song", label: "Album artist", kind: "text", suggest: "artist" },
+  { id: "composer", section: "The song", label: "Writer", kind: "text" },
+  fromFacts("genre", "The song"),
+  fromFacts("year", "The song"),
+  { id: "length", section: "The song", label: "Length", kind: "number", unit: "s" },
+  fromFacts("explicit", "The song"),
+  { id: "lyrics", section: "The song", label: "Lyrics", kind: "bool", yes: "The song has lyrics", no: "The song has no lyrics" },
+  fromFacts("plays", "Plays"),
+  { id: "finishes", section: "Plays", label: "Times played to the end", kind: "number" },
+  { id: "skips", section: "Plays", label: "Times skipped", kind: "number" },
+  { id: "lastPlayedDays", section: "Plays", label: "Days since last played", kind: "number", unit: "days" },
+  ...WINDOW_WORDS.map(([w, words]): FactWord => ({ id: `plays${w}` as FactId, section: "Plays", label: `Plays ${words}`, kind: "number" })),
+  ...WINDOW_WORDS.map(([w, words]): FactWord => ({ id: `minutes${w}` as FactId, section: "Plays", label: `Minutes ${words}`, kind: "number", unit: "min" })),
+  fromFacts("loved", "Your marks"),
+  fromFacts("diaryScore", "Your marks"),
+  { id: "inDiary", section: "Your marks", label: "In your Diary", kind: "bool", yes: "The song is in your Diary", no: "The song is not in your Diary" },
+  { id: "sotd", section: "Your marks", label: "Song of the Day", kind: "bool", yes: "The song was a Song of the Day", no: "The song was never a Song of the Day" },
+  { id: "pinned", section: "Your marks", label: "Pinned", kind: "bool", yes: "The song is pinned", no: "The song is not pinned" },
+  {
+    id: "lessMarked", section: "Your marks", label: "Suggest Less", kind: "choice",
+    choices: [{ value: "song", label: "The song" }, { value: "artist", label: "Its artist" }, { value: "album", label: "Its album" }, { value: "none", label: "Nothing" }],
+  },
+  { id: "listeners", section: "Your marks", label: "Last.fm listeners", kind: "number" },
+  { id: "inLibrary", section: "Library", label: "In your library", kind: "bool", yes: "The song is in your library", no: "The song is not in your library" },
+  { id: "addedDays", section: "Library", label: "Days since you added it here", kind: "number", unit: "days" },
+  { id: "inPlaylist", section: "Library", label: "Playlist", kind: "choice", choices: "playlists" },
+];
+
+export const factWord = (id: FactId): FactWord | undefined => FACTS.find((f) => f.id === id) ?? FILTER_FACTS.find((f) => f.id === id);
 
 export function choicesOf(w: FactWord | DoWord, lists: Lists): Choice[] {
   const c = w.choices;
@@ -360,11 +405,27 @@ export function valueText(w: FactWord | undefined, v: Value, lists: Lists): stri
   if (!w) return String(v);
   if (w.kind === "time" && typeof v === "number") return formatTime(v);
   if (w.kind === "choice") return labelOf(choicesOf(w, lists), v);
+  if (w.kind === "number" && w.unit === "s" && typeof v === "number") return lengthText(v);
   if (w.kind === "number") {
     const sign = w.unit === "dB" && typeof v === "number" && v > 0 ? "+" : "";
     return `${sign}${v}${w.unit ? (w.unit === "%" ? "%" : ` ${w.unit}`) : ""}`;
   }
   return String(v);
+}
+
+/** A length in seconds as a song's length reads: 245 → "4:05". */
+export function lengthText(s: number): string {
+  const m = Math.floor(s / 60);
+  return `${m}:${String(Math.round(s - m * 60)).padStart(2, "0")}`;
+}
+/** A typed number: "4:05" is 245 seconds for a length; else the number in it. Null when none. */
+export function parseNumber(text: string, unit?: string): number | null {
+  const t = text.trim();
+  if (!t) return null;
+  const mss = /^(\d+):(\d{1,2})$/.exec(t);
+  if (mss && unit === "s") return Number(mss[1]) * 60 + Number(mss[2]);
+  const n = Number(t.replace(/[^\d.+-]/g, ""));
+  return Number.isFinite(n) ? n : null;
 }
 
 const list = (v: Value | Value[]) => (Array.isArray(v) ? v : [v]);
@@ -410,8 +471,11 @@ export function leafParts(l: Leaf, lists: Lists): LeafParts {
   const parts: string[] = [];
   const vals = (v: Value | Value[]) => list(v).map((x) => valueText(w, x, lists)).join(" or ");
   const time = w?.kind === "time";
+  // A filter's own tests (filter-rules.md §13.4): "has a value" / "has no value", "contains".
+  if (l.known !== undefined) parts.push(l.known ? "has a value" : "has no value");
   if (l.is !== undefined) parts.push(`is ${vals(l.is)}`);
   if (l.isNot !== undefined) parts.push(`is not ${vals(l.isNot)}`);
+  if (l.has !== undefined) parts.push(`contains ${list(l.has).map((x) => `“${x}”`).join(" or ")}`);
   if (l.gt !== undefined) parts.push(`${time ? "is after" : "is above"} ${valueText(w, l.gt, lists)}`);
   if (l.gte !== undefined) parts.push(`${time ? "is from" : "is at least"} ${valueText(w, l.gte, lists)}`);
   if (l.lt !== undefined) parts.push(`${time ? "is before" : "is below"} ${valueText(w, l.lt, lists)}`);

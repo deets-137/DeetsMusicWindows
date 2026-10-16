@@ -36,7 +36,18 @@ export type FactId =
   // The full player (features/fullscreen-player.md §12.6): "on" while it is open.
   | "player"
   // The one content card on screen, or "none" when two or more show (layout.ts; built-in only).
-  | "soloCard";
+  | "soloCard"
+  // Filter rules (features/filter-rules.md §4): song facts, read once for each song in a pool by
+  // filter-eval.ts. Never registered with the engine, so a Rulez rule cannot pick them.
+  | SongFactId;
+/** A song fact a filter rule reads (filter-eval.ts). The ids the engine also has (genre, loved …)
+ *  stay in FactId above; these are the filter's own. */
+export type SongFactId =
+  | "title" | "composer" | "albumArtist" | "length" | "lyrics" | "inLibrary" | "addedRank" | "addedDays"
+  | "finishes" | "skips" | "lastPlayedDays"
+  | "playsDay" | "playsWeek" | "playsMonth" | "playsYear" | "playsYtd"
+  | "minutesDay" | "minutesWeek" | "minutesMonth" | "minutesYear" | "minutesYtd"
+  | "inDiary" | "sotd" | "inPlaylist" | "pinned" | "listeners" | "lessMarked";
 export type Value = string | number | boolean;
 /** A fact's value. A list (a song's genres) holds when any member does. */
 export type FactValue = Value | string[];
@@ -47,8 +58,14 @@ export type Source = { row: string } | { fixed: string } | { user: true } | { re
 
 /** A leaf: `is` = equal to the value (or to any value in a list), `isNot` = equal to none of them (not `not`: that name is the group);
  *  `lt` / `gt` / `gte` / `lte` compare a number (his call, 2026-09-26: the sharing pause is
- *  `now < until`). Every test given must hold. Text compares without case. */
-export type Leaf = { fact: FactId; is?: Value | Value[]; isNot?: Value | Value[]; lt?: number; gt?: number; gte?: number; lte?: number };
+ *  `now < until`). Every test given must hold. Text compares without case.
+ *  Filter rules (features/filter-rules.md §13.4–§13.5): `has` = the text holds this (any of a
+ *  list); `known` = the fact has a value (true) or has none (false); `accents` = accents count
+ *  in this leaf's text (a filter folds them away by default: "venus" finds "Vénus"). */
+export type Leaf = {
+  fact: FactId; is?: Value | Value[]; isNot?: Value | Value[]; lt?: number; gt?: number; gte?: number; lte?: number;
+  has?: string | string[]; known?: boolean; accents?: boolean;
+};
 /** A condition: a leaf, or a group of conditions at any depth (his call, 2026-09-27, RULES.md §20.1). */
 export type Cond = { all: Cond[] } | { any: Cond[] } | { not: Cond } | Leaf;
 export type Group = Exclude<Cond, Leaf>;
@@ -153,8 +170,10 @@ function leafError(l: unknown, k: Known): string | null {
   if (!isObj(l) || typeof l.fact !== "string") return "a leaf needs a fact";
   if (!k.facts.has(l.fact)) return `unknown fact ${l.fact}`;
   const nums = ["lt", "gt", "gte", "lte"] as const;
-  if (l.is === undefined && l.isNot === undefined && nums.every((n) => l[n] === undefined)) return `leaf ${l.fact} tests nothing`;
+  if (l.is === undefined && l.isNot === undefined && l.has === undefined && l.known === undefined && nums.every((n) => l[n] === undefined)) return `leaf ${l.fact} tests nothing`;
   for (const n of nums) if (l[n] !== undefined && typeof l[n] !== "number") return `${n} needs a number`;
+  if (l.has !== undefined && !(typeof l.has === "string" || (Array.isArray(l.has) && l.has.every((x) => typeof x === "string")))) return "has needs text";
+  if (l.known !== undefined && typeof l.known !== "boolean") return "known needs true or false";
   return null;
 }
 
@@ -246,19 +265,72 @@ export function validateDraft(r: unknown, k: Known): string | null {
 const TRUE: Cond = { all: [] };
 export const ALWAYS = TRUE;
 
-const fold = (x: Value): Value => (typeof x === "string" ? x.toLowerCase() : x);
-/** The fact's value (or any of its values, for a list) equals one of `want`. */
-function matches(v: FactValue, want: Value | Value[]): boolean {
-  const wants = (Array.isArray(want) ? want : [want]).map(fold);
-  const have = (Array.isArray(v) ? v : [v]).map(fold);
-  return have.some((h) => wants.includes(h));
+const foldCase = (s: string): string => s.toLowerCase();
+/** Case and accents away: "Vénus" → "venus", "Beyoncé" → "beyonce" (NFD, the marks taken out).
+ *  Kept in a map: a filter pass folds the same genres and artists thousands of times, and
+ *  `normalize` was most of a 20,000-song pass (37 ms → see the gate test). */
+const folded = new Map<string, string>();
+export function foldAccents(s: string): string {
+  let f = folded.get(s);
+  if (f === undefined) {
+    f = s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    if (folded.size > 50_000) folded.clear();
+    folded.set(s, f);
+  }
+  return f;
 }
 
-function leafHolds(l: Leaf, f: Facts): boolean {
+/** How a condition is read. `songs`: a filter rule over one song (features/filter-rules.md §13.4–5):
+ *  text folds accents unless the leaf asks for them, and "is not" holds on a song with no value
+ *  ("Diary score is not 8" keeps a song with no score). A Rulez rule reads as before. */
+export interface EvalOpts {
+  songs?: boolean;
+}
+
+// Plain loops, no arrays made: a filter runs these once per song for thousands of songs (the
+// gate, filter-rules.md §13.1b).
+const same = (h: Value, w: Value, fold: (s: string) => string): boolean =>
+  typeof h === "string" && typeof w === "string" ? fold(h) === fold(w) : h === w;
+const anyWant = (h: Value, want: Value | Value[], fold: (s: string) => string): boolean => {
+  if (!Array.isArray(want)) return same(h, want, fold);
+  for (const w of want) if (same(h, w, fold)) return true;
+  return false;
+};
+/** The fact's value (or any of its values, for a list) equals one of `want`. */
+function matches(v: FactValue, want: Value | Value[], fold: (s: string) => string): boolean {
+  if (!Array.isArray(v)) return anyWant(v, want, fold);
+  for (const h of v) if (anyWant(h, want, fold)) return true;
+  return false;
+}
+const holdsOne = (h: unknown, want: string | string[], fold: (s: string) => string): boolean => {
+  if (typeof h !== "string") return false;
+  const t = fold(h);
+  if (!Array.isArray(want)) return !!want && t.includes(fold(want));
+  for (const w of want) if (w && t.includes(fold(w))) return true;
+  return false;
+};
+/** The fact's text (or any of its texts, for a list) holds one of `want`. */
+function holdsText(v: FactValue, want: string | string[], fold: (s: string) => string): boolean {
+  if (!Array.isArray(v)) return holdsOne(v, want, fold);
+  for (const h of v) if (holdsOne(h, want, fold)) return true;
+  return false;
+}
+
+const NUMS = ["lt", "gt", "gte", "lte"] as const;
+/** Only `isNot` (and `known: false`) can hold on a missing value. */
+const onlyNegative = (l: Leaf): boolean => l.is === undefined && l.has === undefined && NUMS.every((n) => l[n] === undefined);
+
+function leafHolds(l: Leaf, f: Facts, o?: EvalOpts): boolean {
   const v = f[l.fact];
-  if (v === undefined) return false;
-  if (l.is !== undefined && !matches(v, l.is)) return false;
-  if (l.isNot !== undefined && matches(v, l.isNot)) return false;
+  if (l.known !== undefined && (v !== undefined) !== l.known) return false;
+  if (v === undefined) {
+    if (l.known === false) return onlyNegative(l);
+    return !!o?.songs && l.isNot !== undefined && onlyNegative(l);
+  }
+  const fold = o?.songs && !l.accents ? foldAccents : foldCase;
+  if (l.is !== undefined && !matches(v, l.is, fold)) return false;
+  if (l.isNot !== undefined && matches(v, l.isNot, fold)) return false;
+  if (l.has !== undefined && !holdsText(v, l.has, fold)) return false;
   const n = typeof v === "number" ? v : null;
   if (l.lt !== undefined && !(n !== null && n < l.lt)) return false;
   if (l.gt !== undefined && !(n !== null && n > l.gt)) return false;
@@ -267,12 +339,12 @@ function leafHolds(l: Leaf, f: Facts): boolean {
   return true;
 }
 
-export function evalCond(c: Cond | undefined, f: Facts): boolean {
+export function evalCond(c: Cond | undefined, f: Facts, o?: EvalOpts): boolean {
   if (!c) return true;
-  if ("all" in c) return c.all.every((m) => evalCond(m as Cond, f));
-  if ("any" in c) return c.any.some((m) => evalCond(m as Cond, f));
-  if ("not" in c) return !evalCond(c.not as Cond, f);
-  return leafHolds(c, f);
+  if ("all" in c) return c.all.every((m) => evalCond(m as Cond, f, o));
+  if ("any" in c) return c.any.some((m) => evalCond(m as Cond, f, o));
+  if ("not" in c) return !evalCond(c.not as Cond, f, o);
+  return leafHolds(c, f, o);
 }
 
 /** Every fact a condition reads (a `next` hold watches these). */

@@ -86,6 +86,7 @@ Any other row opens the Settings card at that row. Examples: **hover hints**, **
 | **reset row order** (arrange, rearrange, move, order, sections) | Opens Settings › Reset › Row order — the way back to the built-in order of every section and every pinned item (MOVABLE-ROWS.md, 2026-09-20). Shown only when you have moved something |
 | **add to diary** (diary, review, journal, rate album, write about) | Puts the playing song's album in the Diary and opens its entry (DIARY.md §10, 2026-09-24). Shown while a song plays |
 | an album in your **Diary** (diary, entry, review) | Opens its entry in the Diary; **Ctrl+Enter** copies its Export (DIARY.md §10, 2026-09-24) |
+| a saved **filter** or **Rulez Playlist** by its name (filter, rule, rulez playlist, smart playlist) | Puts the filter in force in the Library and opens its Filter panel; a Rulez Playlist's rule opens there to edit (features/filter-rules.md, 2026-10-16) |
 | **refresh playlists now** (refresh, stale, update playlists, re-read playlists) | Re-reads the playlists that are DUE — the day-change check, on demand (PLAYLIST-REFRESH.md, 2026-09-20) |
 | **start a listening room** (room, listen together, share) | Starts a room from what you play now |
 | **leave room** / **end room** (in a room) | Leaves it, or ends it for everyone |

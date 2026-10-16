@@ -12,6 +12,29 @@ updated: 2026-10-16
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-16 (shixtheenth) — filter rules: the Library's Filter and Rulez Playlists
+
+**His ask:** a rule over the whole library: custom filters, and playlists made from a rule and
+sources that refresh at an interval. Documented as an idea, then every fork his the same sitting
+(features/filter-rules.md §13): the name *Rulez Playlist*, `evalCond` in the page, Live ·
+Daily · Weekly · Off with Live by default behind a measured gate, Keep and Never, the "has a
+value" rule and the accent toggle, a *Filter* pill on the Library (a quick filter by any fact
+too), the editor in a panel on every surface, Rulez Playlists built but not the playlist page.
+- **Built:** §14.1. `filter-eval.ts` (+ 17 tests), `filters.ts`, `filter-panel.ts`,
+  `cond-editor.ts` (the Rulez card's condition menus moved here, one copy), `filter.rs`
+  (schema v21, + 3 tests), the Keep / Never hooks in `playlists.rs`, the `rulePop` on the
+  collection engine, the Rulez card's Filters section, the Compass rows.
+- **Measured:** the Rust read 170 → 66 ms for 20,000 songs (sparse columns); the page part
+  17–28 ms as one task, so it is sliced (§14.2).
+- **Coordinated** with the updates-button and speed-test sessions in this checkout: each
+  shared-file edit was announced first; nothing committed.
+- **Checks:** tsc, vite build, `npm run check` (287 + 88 Rust tests), docs:check clean. A smoke run in the dev app through the modules (§14.4): a filter, a read, a Rulez Playlist made, edited by hand and deleted. The panel itself is not run.
+- **Desk test:** §14.4, open.
+- **Found in his desk test, fixed:** a "loved" filter showed 16 songs. The filter was right; the
+  ♥ mirror was short. Apple now gives Favorite Songs a `pl.u-…` globalId, and the seed's test
+  wanted none, so the seed had stopped (FAVORITES.md, the last section). Fixed in
+  `favorites.rs` with a test; the dev app re-read it: 405 seeded, 381 loved in the library.
+
 ## 2026-10-16 (shixtheenth) — the updates button
 
 **His ask:** a Max title bar button right of the Compass with his two-arrow glyph, and a panel

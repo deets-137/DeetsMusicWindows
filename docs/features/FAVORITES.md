@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: none
-sources: [src/library-add.ts, src/track-store.ts, src-tauri/src/apple.rs, src-tauri/src/library.rs, src-tauri/src/lib.rs, src/main.ts]
-updated: 2026-09-24
+sources: [src/library-add.ts, src/track-store.ts, src-tauri/src/favorites.rs, src-tauri/src/apple.rs, src-tauri/src/library.rs, src-tauri/src/lib.rs, src/main.ts]
+updated: 2026-10-16
 ---
 # DeetsMusic — Favorites & library writes
 
@@ -305,3 +305,18 @@ only).
 
 **Dropped ✂️ (not planned):** the **👎 Dislike** write, a dislike control, and the ratings-as-a-system
 / thumbs-refinement loop. See [Dropped](#decisions).
+
+## The Favorite Songs seed stopped, and the fix (2026-10-16)
+
+> **Part:** built · 2026-10-16 · not committed
+
+Apple now gives the generated **Favorite Songs** playlist a user-scoped share id, `globalId:
+"pl.u-…"`. `is_favorite_songs` (favorites.rs) asked for no `globalId` at all, so it said no, and the
+seed from that playlist stopped without a word: a ♥ made on the phone reached the mirror only
+through the small ratings read. Found by the Filter desk test ([filter-rules.md](filter-rules.md)
+§14.4): the dev app had 16 loved songs against the 405 in Favorite Songs; the installed app 378,
+from seeds made before the change. The test now takes no `globalId` OR a `pl.u-` one; an
+editorial playlist of that name (`pl.` + hex) and one of your own (editable) are still not it.
+Test: `favorite_songs_with_a_user_share_id_2026_10_16`. After the fix the dev app seeded 405 and
+holds 403 loved, 381 in the library. The installed app catches up at its next read of Favorite
+Songs after a release (its refresh is Daily: the mirror classes it `catalog`).
