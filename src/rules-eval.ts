@@ -34,7 +34,9 @@ export type FactId =
   // RULEZ.md §11: the cover's color as a word, and light or dark.
   | "albumColor" | "albumLight"
   // The full player (features/fullscreen-player.md §12.6): "on" while it is open.
-  | "player";
+  | "player"
+  // The one content card on screen, or "none" when two or more show (layout.ts; built-in only).
+  | "soloCard";
 export type Value = string | number | boolean;
 /** A fact's value. A list (a song's genres) holds when any member does. */
 export type FactValue = Value | string[];
@@ -450,7 +452,8 @@ export interface RowValues {
   soundEqPerOutput: boolean;
   soundEqOutputs: Record<string, string>;
   sharePauseUntil: number;
-  playlistCreateSummon: "always" | "notmini" | "off";
+  playlistCreateSummon: "on" | "off";
+  playlistCreateSummonSolo: boolean;
   sleepSchedule: "off" | "sun" | "clock";
   goToTarget: "fits" | "search" | "library";
   shuffleIdle: "library" | "noop";
@@ -553,12 +556,14 @@ export function builtinRules(s: RowValues): Rule[] {
     });
   }
 
-  // Playlists › New playlist opens Search.
+  // Playlists › New playlist opens Search. Where Playlists is the only card on screen (Mini, Max
+  // with one card, a grow over every other card), Search would take its place: the follow-up
+  // row "Also when Playlists is the only card" lets it (FUTURE-SETTINGS §16).
   if (s.playlistCreateSummon !== "off") {
     out.push({
       id: "row:playlistCreateSummon", kind: "moment", source: row("playlistCreateSummon"), on: true,
       when: "playlist.create", card: "*",
-      if: s.playlistCreateSummon === "notmini" ? { not: surfaceIs("mini") } : undefined,
+      if: s.playlistCreateSummonSolo ? undefined : { not: { fact: "soloCard", is: "playlists" } },
       do: { summon: "search" },
     });
   }

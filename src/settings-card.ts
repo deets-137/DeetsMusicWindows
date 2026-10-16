@@ -198,6 +198,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playback", row: "artistinfo" }, // Show artist info on the artist's page, built 2026-10-12 (LISTENERS.md §6)
   { section: "Playback", row: "albuminfo" }, // Show album info on the album's page, built 2026-10-13 (LISTENERS.md §7)
   { section: "About", row: "usage" }, // Send usage counts, built 2026-10-13 (USAGE-COUNTS.md)
+  { section: "Playlists", row: "createsummonsolo" }, // Also when Playlists is the only card, built 2026-10-16 (FUTURE-SETTINGS §16)
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -433,7 +434,7 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   {
     id: "playlists", label: "Playlists", hint: "Every Playlists row",
-    keys: ["playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer", "webSeedFilter", "webPlayNew", "webPlayMode", "webSkipSeed", "webSkipSeedAt", "webMakeMotion"],
+    keys: ["playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "playlistCreateSummonSolo", "nowPlayingCover", "newPlaylistCover", "webReach", "webSize", "webPrefer", "webSeedFilter", "webPlayNew", "webPlayMode", "webSkipSeed", "webSkipSeedAt", "webMakeMotion"],
   },
   {
     id: "sound", label: "Sound", hint: adaptiveUnhidden() ? "The equalizer, adaptive sound and their choices. Not your saved presets" : "The equalizer and its choices. Not your saved presets",
@@ -1808,8 +1809,15 @@ function mountSettings(
         storeToggle("autorefresh", "Refresh playlists by themselves", "playlistAutoRefresh", () => "Re-reads a playlist when you open it, and once a day. Each playlist keeps its own setting"),
         {
           kind: "choice", id: "createsummon", label: "New playlist opens Search", key: "playlistCreateSummon",
-          hint: "Puts the Search card beside the new playlist. Mini shows one card, so Search would hide it",
-          options: [{ value: "notmini", label: "Not in mini" }, { value: "always", label: "Always" }, { value: "off", label: "Never" }],
+          hint: "Puts the Search card beside the new playlist, so adding songs is one card away",
+          options: [{ value: "on", label: "On" }, { value: "off", label: "Never" }],
+        },
+        // The follow-up (his call 2026-10-16): where Playlists is the only card, the summon takes
+        // its place, so it waits for a yes here.
+        {
+          ...storeToggle("createsummonsolo", "Also when Playlists is the only card", "playlistCreateSummonSolo", () =>
+            "In Mini, in Max with one card, and when Playlists fills the window, Search takes its place"),
+          when: () => setting("playlistCreateSummon") !== "off",
         },
         {
           kind: "choice", id: "npcover", label: "Cover while playing", key: "nowPlayingCover",

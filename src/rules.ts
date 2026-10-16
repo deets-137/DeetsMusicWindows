@@ -130,7 +130,7 @@ const STORE_HOLDS = "deets.rules.holds";
 /** The rows whose values make the built-in rules (RULES.md §13). */
 const ROW_KEYS: (keyof RowValues)[] = [
   "drillGrow", "diaryGrow", "lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "lookHold",
-  "alwaysOnTop", "soundEqPerOutput", "soundEqOutputs", "sharePauseUntil", "playlistCreateSummon", "sleepSchedule",
+  "alwaysOnTop", "soundEqPerOutput", "soundEqOutputs", "sharePauseUntil", "playlistCreateSummon", "playlistCreateSummonSolo", "sleepSchedule",
   "goToTarget", "shuffleIdle", "graphicsFallback",
 ];
 

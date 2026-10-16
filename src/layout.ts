@@ -29,7 +29,7 @@ import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grow
 import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE_LOCK_HINT, maxCardsOf, maxSlots, keepCard, type MaxCards } from "./layout-rules";
 import { openContextMenu } from "./context-menu";
 import { toast } from "./toast";
-import { cancelled, emit, registerAction, registerEvent } from "./rules";
+import { cancelled, emit, registerAction, registerEvent, registerFact } from "./rules";
 
 type Assignment = Partial<Record<Slot, CardId>>;
 
@@ -303,7 +303,7 @@ declare global {
 export function initLayout(): void {
   initCardMemory(); // the saved places, before the first card mounts (CARD-MEMORY.md §3)
   // The rules engine's summon action (RULES.md §13): a card comes into a slot, as a request.
-  registerEvent("playlist.create", { facts: ["surface"] });
+  registerEvent("playlist.create", { facts: ["surface", "soloCard"] });
   registerAction("summon", { cost: "free", run: (card) => requestCard(card as CardId) });
   const npHost = document.querySelector<HTMLElement>('[data-slot="np"]');
   const npDef = registry["now-playing"];
@@ -380,6 +380,12 @@ export function initLayout(): void {
   if (bento) initFullPlayer({ hosts, bento, slots: () => comp.slots, mountSide });
   // A slot that shows its card: on screen and not under a grown card.
   const shown = (s: Slot): boolean => onScreen(hosts[s]) && !isCovered(s);
+  // The one content card you can see: Mini, Max with one card, or a grow over every other
+  // card. A summon there takes its place (New playlist opens Search reads it).
+  registerFact("soloCard", () => {
+    const open = comp.slots.filter(shown);
+    return open.length === 1 ? layout[open[0]] ?? "none" : "none";
+  });
 
   // ── Slot recency — which content slot the user interacted with least recently.
   // Any pointerdown inside a slot counts (capture phase, so drills/scrolls/menus all

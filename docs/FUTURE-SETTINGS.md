@@ -781,6 +781,22 @@ so a summon there put Search in the only slot and hid the playlist you had just 
 reads `currentSurface()` at the moment of the create. An older stored `true` migrates to
 *Not in mini*, `false` to *Never*.
 
+**Changed (2026-10-16, his call): On / Never plus a follow-up row.** Mini was not the only place
+with one card. In Max with *Layout for Max* = 1 card, Search took the playlist's only slot. When
+Playlists was grown over every other card (Fill in Max, a grow in Midi), the grow ended and the
+expanded view was lost. So the main row is now **On** (default) · Never, and a follow-up row,
+*Also when Playlists is the only card* (`playlistCreateSummonSolo`, default **off**), shows
+under *On*. Off, the rule adds `if soloCard ≠ playlists`: `soloCard` (layout.ts, built-in only)
+is the one content card on screen, or `none`. A grow that leaves another slot open is not
+"only": Search lands in the open slot, as before. Migration: *Not in mini* → On + off (no
+change in Mini); *Always* → On + on (no change anywhere).
+
+*Desk test:* (1) Midi, two cards: make a playlist; Search comes in beside it. (2) Mini: make a
+playlist; the playlist stays. (3) Max, Layout for Max = 1 card: the playlist stays. (4) Midi or
+Max, grow Playlists over every card (Fill): the playlist stays grown. (5) Turn the follow-up on
+and repeat 2–4: Search comes in each time. (6) Pick *Never*: the follow-up row goes away, and no
+create brings Search.
+
 **Earlier note — current default (hardcoded):** **summon ON** — the whole flow is choreographed to
 land you in "empty playlist here, Search beside it, start adding." But it *does*
 commandeer the other slot, evicting whatever card was there (and a flip remounts both

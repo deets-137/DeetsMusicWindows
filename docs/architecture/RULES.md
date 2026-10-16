@@ -348,7 +348,7 @@ an async round trip, and the level would paint small and then jump.
 | Window › Keep on top (`alwaysOnTop`) | *Always*: `window.onTop` = true. *Player*: while `surface` = player. *Off*: none | State (property) |
 | Sound › Remember each output (`soundEqPerOutput`, `soundEqOutputs`) | One rule per remembered output: while `output` = key → `soundEqPreset` = id. `onHand: learn` | State |
 | Sharing › Pause sharing for an hour (`sharePauseUntil`) | While `now` < until → the three sharing keys = false | State |
-| Playlists › New playlist opens Search (`playlistCreateSummon`) | `playlist.create` → summon Search; *Not in mini* adds `if surface ≠ mini` | Moment |
+| Playlists › New playlist opens Search (`playlistCreateSummon`, `playlistCreateSummonSolo`) | `playlist.create` → summon Search; with *Also when Playlists is the only card* off, adds `if soloCard ≠ playlists` (2026-10-16; was `if surface ≠ mini` for *Not in mini*) | Moment |
 | Sleep › Sleep every day (`sleepSchedule`, `sleepAt`) | `sleep.arm` → sleep at the clock time or sunset. The wind down and play out stay in sleep.ts | Moment |
 | Menus › **Go to opens** (`goToTarget`, new 2026-09-27, RULEZ.md §10.1) | *Search* / *Library*: `goto.artist` and `goto.album` → `openIn`. *Where it fits*: none (the Library in place, other cards in Search) | Moment |
 | Playback › Shuffle with nothing currently playing behavior (`shuffleIdle`, 2026-09-27) | *Library*: `shuffle.press` if `loaded` is false → `shuffleLibrary`. *Nothing*: none. player.ts has no idle branch of its own | Moment |

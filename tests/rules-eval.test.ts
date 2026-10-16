@@ -8,7 +8,7 @@ import {
 
 const known: Known = {
   events: new Set(["album.open", "artist.open", "diary.open", "cog", "playlist.create", "sleep.arm", "goto.artist", "goto.album", "shuffle.press"]),
-  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded", "graphics"]),
+  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded", "graphics", "soloCard"]),
   actions: new Set(["grow", "summon", "sleep", "openIn", "shuffleLibrary"]),
   targets: new Set([
     "key:theme", "key:skin", "key:soundEqPreset", "key:shareActivityApp", "key:shareActivityDiscord", "key:discordRoomInvite", "prop:window.onTop",
@@ -19,7 +19,7 @@ const known: Known = {
 const ROWS: RowValues = {
   drillGrow: "vertical", diaryGrow: "new", lookSchedule: "off", dayTheme: "lilac", daySkin: "press",
   nightTheme: "black-red", nightSkin: "cyber", lookHold: "next", alwaysOnTop: "off", soundEqPerOutput: true,
-  soundEqOutputs: {}, sharePauseUntil: 0, playlistCreateSummon: "notmini", sleepSchedule: "off",
+  soundEqOutputs: {}, sharePauseUntil: 0, playlistCreateSummon: "on", playlistCreateSummonSolo: false, sleepSchedule: "off",
   goToTarget: "fits", shuffleIdle: "library", graphicsFallback: "save",
 };
 const rows = (patch: Partial<RowValues>) => builtinRules({ ...ROWS, ...patch });
@@ -143,13 +143,13 @@ test("the cog fills Settings in Max and widens it in Midi", () => {
   assert.equal(growFor(rows({}), "cog", "settings", { surface: "mini" }), null);
 });
 
-test("New playlist opens Search: always, not in mini, off", () => {
-  const summon = (v: RowValues["playlistCreateSummon"], surface: string) =>
-    (pickMoment(rows({ playlistCreateSummon: v }), "playlist.create", "playlists", { surface }).rule?.do as { summon?: string } | undefined)?.summon ?? null;
-  assert.equal(summon("always", "mini"), "search");
-  assert.equal(summon("notmini", "mini"), null);
-  assert.equal(summon("notmini", "midi"), "search");
-  assert.equal(summon("off", "max"), null);
+test("New playlist opens Search: on, never, and the only-card follow-up (2026-10-16)", () => {
+  const summon = (v: RowValues["playlistCreateSummon"], solo: boolean, soloCard: string) =>
+    (pickMoment(rows({ playlistCreateSummon: v, playlistCreateSummonSolo: solo }), "playlist.create", "playlists", { soloCard }).rule?.do as { summon?: string } | undefined)?.summon ?? null;
+  assert.equal(summon("on", false, "none"), "search"); // a second card is on screen
+  assert.equal(summon("on", false, "playlists"), null); // Mini, Max with one card, a grow over every other card
+  assert.equal(summon("on", true, "playlists"), "search");
+  assert.equal(summon("off", true, "none"), null);
 });
 
 test("Sleep every day: the clock, the sun, off", () => {
@@ -242,7 +242,7 @@ test("the software renderer names (2026-10-11): WARP, SwiftShader, llvmpipe; a c
 });
 
 test("every built-in rule is valid", () => {
-  const all = rows({ lookSchedule: "clock", alwaysOnTop: "player", soundEqOutputs: { hp: "warm" }, sharePauseUntil: 5, sleepSchedule: "sun", playlistCreateSummon: "always", diaryGrow: "every", drillGrow: "full", goToTarget: "library" });
+  const all = rows({ lookSchedule: "clock", alwaysOnTop: "player", soundEqOutputs: { hp: "warm" }, sharePauseUntil: 5, sleepSchedule: "sun", playlistCreateSummon: "on", diaryGrow: "every", drillGrow: "full", goToTarget: "library" });
   for (const r of all) assert.equal(validate(r, known), null, r.id);
 });
 

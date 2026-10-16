@@ -47,7 +47,7 @@ test("a draft is not complete until its When and Do are there", () => {
 test("every built-in rule reads back as words (the locked rows)", () => {
   const all: Rule[] = builtinRules({
     drillGrow: "vertical", diaryGrow: "new", lookSchedule: "sun", dayTheme: "lilac", daySkin: "press", nightTheme: "black-red", nightSkin: "cyber",
-    lookHold: "next", alwaysOnTop: "player", soundEqPerOutput: true, soundEqOutputs: { hp: "bass" }, sharePauseUntil: 5, playlistCreateSummon: "notmini", sleepSchedule: "sun",
+    lookHold: "next", alwaysOnTop: "player", soundEqPerOutput: true, soundEqOutputs: { hp: "bass" }, sharePauseUntil: 5, playlistCreateSummon: "on", playlistCreateSummonSolo: false, sleepSchedule: "sun",
     graphicsFallback: "save",
   } as Parameters<typeof builtinRules>[0]);
   for (const r of all) {

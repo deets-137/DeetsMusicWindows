@@ -238,7 +238,9 @@ bottom up so the positions still to go stay true.
   The pane has always accepted a drop; now it says so, and a drag lights the slot
   ([UI-ARCHITECTURE.md](../architecture/UI-ARCHITECTURE.md) §4a, *An empty pane keeps the shape*).
   Search is summoned beside it per Settings › Playlists › *New playlist opens Search*
-  (**Not in mini** by default — mini has one slot, so a summon there hid the new playlist;
+  (**On** by default). Where Playlists is the only card on screen (Mini, Max with one card, a
+  grow over every other card), a summon would hide the new playlist, so it waits for the
+  follow-up row *Also when Playlists is the only card* (default off, 2026-10-16;
   [FUTURE-SETTINGS §16](../FUTURE-SETTINGS.md)).
 - **`Add to Playlist ▸`** — a JS-latched side-flyout submenu (`SubmenuItem`) on Library
   songs/albums (shared `trackMenu` — playlist-detail rows ride it too), playlist rows

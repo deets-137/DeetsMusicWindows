@@ -344,6 +344,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   keeps its card's own rule. A song pin and a station pin always play and have no verb. The
   per-pin verb itself has no agent verb: it is the **On Click** row on the tile's right-click
   menu.
+- **Playlists › New playlist opens Search** (2026-10-16, FUTURE-SETTINGS.md §16): `playlistCreateSummon`
+  (on | off, was notmini | always | off) and its follow-up **Also when Playlists is the only card**,
+  `playlistCreateSummonSolo` (on | off, default off): off keeps the new playlist on screen where
+  it is the only card (Mini, Max with one card, a grow over every other card).
 - **Playlists › Refresh playlists by themselves** (2026-09-20, PLAYLIST-REFRESH.md): `playlistAutoRefresh`
   (on | off). Off stops BOTH automatic triggers — the one on open and the day-change check — and
   every per-playlist choice is remembered and resumes when it comes back on. The per-playlist

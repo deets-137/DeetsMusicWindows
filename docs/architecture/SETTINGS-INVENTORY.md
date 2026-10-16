@@ -403,7 +403,8 @@ Who can see what you play. A status line under the rows says what is shared now.
 | Pinned Item click behavior | The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click | **Open** / Play / Shuffle |
 | Show playlist counts | Fills in the song count on the overview. One small request per playlist, once | **on** / off |
 | Refresh playlists by themselves | Re-reads a playlist when you open it, and once a day. Each playlist keeps its own setting | **on** / off |
-| New playlist opens Search | Puts Search beside the new playlist. Mini shows one card, so Search would hide it | **Not in mini** / Always / Never |
+| New playlist opens Search | Puts the Search card beside the new playlist, so adding songs is one card away | **On** / Never |
+| Also when Playlists is the only card | Shows under *On*. In Mini, in Max with one card, and when Playlists fills the window, Search takes its place | on / **off** |
 | Cover while playing | For a song played from a playlist: the cover shown in Now Playing, in mini and in the tray panel | **Album** / Playlist |
 | New cover | How a new playlist's cover starts. Letters and Note keep the theme you made it in | **Letters** / Mosaic / Note |
 | Web reach | How far a playlist web goes. 1 reaches the artist's collaborators; each step reaches one circle further | 1 / **2** / 3 |

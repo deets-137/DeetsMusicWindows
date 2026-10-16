@@ -179,7 +179,7 @@ export const FACTS: FactWord[] = [
   { id: "player", section: "Window", label: "Full player", kind: "choice", choices: [{ value: "on", label: "On" }, { value: "off", label: "Off" }] },
 ];
 /** Built-in only (a Settings row's rule reads them). */
-const HIDDEN_FACTS: Partial<Record<FactId, string>> = { "entry.new": "The entry is new", now: "Now", lookMode: "Look schedule", cause: "Cause", from: "From" };
+const HIDDEN_FACTS: Partial<Record<FactId, string>> = { "entry.new": "The entry is new", now: "Now", lookMode: "Look schedule", cause: "Cause", from: "From", soloCard: "Only card" };
 
 export const factWord = (id: FactId): FactWord | undefined => FACTS.find((f) => f.id === id);
 

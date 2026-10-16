@@ -45,7 +45,7 @@ export const REPORTED: readonly string[] = [
   // Last.fm (on/off only)
   "lastfmScrobble", "lastfmNowPlaying",
   // Playlists and the web
-  "playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "nowPlayingCover",
+  "playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "playlistCreateSummonSolo", "nowPlayingCover",
   "newPlaylistCover", "webReach", "webSize", "webMakeMotion", "webSeedFilter", "webPrefer",
   "webTempDays", "webPlayNew", "webPlayMode", "webSkipSeed",
   // Cards: which cards the picker offers

@@ -324,7 +324,9 @@ export interface Settings {
   /** Backfill missing playlist song counts on the overview (§14). */
   playlistEagerCounts: boolean;
   /** New Playlist summons the Search card beside it (§16). */
-  playlistCreateSummon: "always" | "notmini" | "off";
+  playlistCreateSummon: "on" | "off";
+  /** …also when Playlists is the only card on screen, where Search takes its place (§16). */
+  playlistCreateSummonSolo: boolean;
   /** Offer Export ▸ Apple Music on local playlists (PLAYLISTS.md §6). Default on. */
   playlistExport: boolean;
   /** What Get New Songs and the refresh offer bring from a local playlist's Apple copy
@@ -579,7 +581,8 @@ export const DEFAULTS: Settings = {
   replayDay: "mon",
   replayKeep: false,
   playlistEagerCounts: true,
-  playlistCreateSummon: "notmini", // user's call 2026-09-15: in mini the summon replaces the playlist
+  playlistCreateSummon: "on",
+  playlistCreateSummonSolo: false, // user's call 2026-10-16: where Playlists is the only card, Search would replace the playlist you just made
   playlistExport: true, // user's call 2026-09-14: on, like Add to Library
   playlistGetNew: "missing", // user's call 2026-09-29: today's behavior stays the default — for some users the Apple copy is the source of truth
   addSquareOwned: false, // user's call 2026-09-17: most playlist and History songs are yours, so a ✓ on each hover says nothing
@@ -636,8 +639,15 @@ function migrate(into: Partial<Settings>): void {
   // New playlist opens Search became a three-way choice (2026-09-15): in mini the Search card
   // takes the only slot, so it hid the playlist you had just made. A stored "on" lands on the
   // new default, which keeps the summon everywhere but mini.
+  // On 2026-10-16 the three pills became On / Never plus a follow-up row, "Also when Playlists
+  // is the only card" (Mini, Max with one card, a grow over every other card). Not in mini keeps
+  // the follow-up off; Always turns it on, so neither pick changes in Mini.
   const summon = into.playlistCreateSummon as unknown;
-  if (typeof summon === "boolean") into.playlistCreateSummon = summon ? "notmini" : "off";
+  if (typeof summon === "boolean") into.playlistCreateSummon = summon ? "on" : "off";
+  else if (summon === "notmini" || summon === "always") {
+    into.playlistCreateSummon = "on";
+    if (into.playlistCreateSummonSolo === undefined) into.playlistCreateSummonSolo = summon === "always";
+  }
   const eager = localStorage.getItem("deets.playlists.eagerCounts");
   if (eager !== null && into.playlistEagerCounts === undefined) into.playlistEagerCounts = eager !== "off";
   // Show notices lost its "off" choice (2026-09-14): a failure must always show.
