@@ -131,6 +131,10 @@ updated: 2026-10-14
   one catalog search per library song Apple sent with no play id, at most 50 per pass, stopping
   at the first failed call. Its backstop `catalog_heal_one` (one song, when MusicKit leaves a
   library id out of an insert) is a user-path call: it serves a play.
+  **Added 2026-10-15:** the guests pass (`song_guests`, `enrich::guests_pass`), after every
+  library sync — the catalog artists of each library song not read yet, 300 songs a call
+  (`catalog/{sf}/songs?ids=…&include=artists`). The whole library once after schema v19 (about
+  14 calls), then only new songs; stops at the first failed call (ideas/apple-calls.md §5.6).
 - **The 429 toast** (`apple-busy`, apple-health.ts): `warn`, 6 s, the words of §3; a second 429
   within 6 s adds none. `apple_check`'s probe reads a 429 as "the token is fine" (`ok`), so a
   busy Apple never shows "Apple Music isn't responding to DeetsMusic".

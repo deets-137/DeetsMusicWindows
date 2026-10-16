@@ -71,6 +71,10 @@ export interface NpState {
   /** The two modes (NEXT-VERSION §12, §14) — for the agent snapshot; the tray panel ignores them. */
   repeat: "off" | "all" | "one";
   shuffle: boolean;
+  /** The Queue card's next song, for the tray icon's hover text (TRAY.md §7). None on a
+   *  station and at the queue's last song. */
+  nextTitle?: string;
+  nextArtist?: string;
 }
 
 interface NpCommand {
@@ -89,6 +93,8 @@ function snapshot(): NpState {
   // MusicKit's item first; the model's current fills in when MusicKit holds nothing (a
   // restored session before the first Play) — the same gap-fill the Now Playing card does.
   const title = lastState.title ?? t?.title;
+  const upNext = lastState.station ? undefined : queue.getUpcoming()[0];
+  const next = upNext ? resolveEntry(upNext) : undefined;
   return {
     active: !!title,
     playing: lastState.playing,
@@ -111,6 +117,8 @@ function snapshot(): NpState {
     muted: isMuted(),
     repeat: getRepeat(),
     shuffle: isShuffleOn(),
+    nextTitle: next?.title,
+    nextArtist: next?.artistName,
   };
 }
 
@@ -371,6 +379,8 @@ export function initNpBus(): void {
   onPinsChange(() => publish(true)); // and its Pin / Unpin label a pin set anywhere
   // "Show cover" flipped or a playlist's cover changed: the tray panel's cover follows.
   onPlaylistCoverChange(() => publish(true));
+  // The tray icon's hover text names the next song (TRAY.md §7): a queue edit changes it.
+  queue.onQueueChange(() => publish(true));
 
   listen<NpCommand>("np-command", (e) => {
     run(e.payload).catch((err) => console.error("[np-bus] command failed:", e.payload, err));

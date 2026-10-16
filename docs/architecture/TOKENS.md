@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 47 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 606 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 602 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -507,10 +507,6 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--vinyl-groove-w` | `1px` | — |  |
 | `--vinyl-groove-ink` | `var(--title)` | — |  |
 | `--vinyl-groove-alpha` | `9%` | — |  |
-| `--vinyl-sheen-ink` | `var(--surface)` | — |  |
-| `--vinyl-sheen-alpha` | `35%` | — |  |
-| `--vinyl-sheen-from` | `300deg` | — | where the light sits |
-| `--vinyl-sheen-spread` | `28deg` | — | each of its two lobes |
 | `--vinyl-swap-dur` | `0.4s` | press |  |
 | `--vinyl-swap-ease` | `ease-in-out` | press |  |
 | `--vinyl-swap-travel` | `110%` | — | of the disc: far enough to leave the cover box |

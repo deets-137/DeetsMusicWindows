@@ -8,7 +8,7 @@ import { registerHooks } from "node:module";
 
 // Every heavy import of media-menu.ts goes to the stub map. `./queue`, `./row-pick` and
 // `./settings-store` are pure and load for real, as their own tests show.
-const STUBBED = /^\.\/(search|track-store|player|playlists|layout-bus|go-to|artist-credit|copy-link|start-station|web|library-add|favorites|sotd|pins|rewind)$/;
+const STUBBED = /^\.\/(search|track-store|player|playlists|layout-bus|go-to|artist-credit|primary-artist|copy-link|start-station|web|library-add|favorites|sotd|pins|rewind)$/;
 const stubs = new URL("./stubs/menu-deps.ts", import.meta.url).href; // a file URL already (a Windows path must not go through pathToFileURL twice)
 registerHooks({
   resolve(spec, ctx, next) {

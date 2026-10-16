@@ -11,7 +11,11 @@
 // (sizeMini / sizePlayer / sizeMidi / sizeMax). A resize by hand is not remembered.
 
 import { setting, onSettingsChange, DEFAULTS } from "./settings-store";
-import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
+
+// diag.ts loads lazily: it starts a flush timer when it loads, and the pure modules that import
+// this one (row-pick.ts) run in the unit tests, where the timer would keep the test from ending.
+const diagLog = (tag: string, data: unknown): void => void import("./diag").then((d) => d.log(tag, data));
 
 export type SurfaceName = "mini" | "midi" | "max";
 /** What mini shows (2026-09-14): Now Playing + one card, or the player — the Now Playing
@@ -26,7 +30,9 @@ export type SizeSlot = SurfaceName | "player";
 export type SizeKey = "sizeMini" | "sizePlayer" | "sizeMidi" | "sizeMax";
 /** The setting that holds each view's open size (FUTURE-SETTINGS §8a). */
 export const SIZE_KEYS: Record<SizeSlot, SizeKey> = { mini: "sizeMini", player: "sizePlayer", midi: "sizeMidi", max: "sizeMax" };
-const DEFAULT_SURFACE: SurfaceName = "midi";
+// A new install starts in Max (FUTURE-SETTINGS.md §8b, his ask 2026-10-15), when the screen
+// has room for it (`firstSurface`); a user who picked a surface keeps it.
+const DEFAULT_SURFACE: SurfaceName = "max";
 
 // ── Band table (hardcoded this build; the editor UI is a future setting) ──
 // Width-driven: ≤ MINI_CEIL → mini · ≤ MIDI_CEIL → midi · above → max. Narrowing the
@@ -223,6 +229,28 @@ async function applyMinSize(): Promise<void> {
   }
 }
 
+/** After a resize, move the window back inside its monitor's work area when the new size ran
+ *  past its right or bottom edge (FUTURE-SETTINGS.md §8b). `openSize` already fits the size to
+ *  the screen; a window grows from its top-left corner, so a Max opened from a Midi low on the
+ *  screen ran past the taskbar. The first launch opens wherever Windows puts a new window. */
+async function keepOnScreen(): Promise<void> {
+  const mon = await currentMonitor();
+  if (!mon) return;
+  const [pos, size] = await Promise.all([appWindow.outerPosition(), appWindow.outerSize()]);
+  const wa = mon.workArea;
+  // Windows 11 counts the invisible resize border (~8 px at 100 %) in the outer position, so a
+  // window snapped to an edge sits that far past it; the clamp leaves it that slack, or every
+  // open would nudge a snapped window (tray.rs `fit_on_monitor` has the same rule).
+  const slack = Math.round(8 * mon.scaleFactor);
+  const right = wa.position.x + wa.size.width + slack;
+  const bottom = wa.position.y + wa.size.height + slack;
+  const x = Math.max(wa.position.x - slack, Math.min(pos.x, right - size.width));
+  const y = Math.max(wa.position.y - slack, Math.min(pos.y, bottom - size.height));
+  if (x === pos.x && y === pos.y) return;
+  await appWindow.setPosition(new PhysicalPosition(x, y));
+  diagLog("surface:onScreen", { from: [pos.x, pos.y], to: [x, y] });
+}
+
 /** Resize the OS window to a surface's open size, without triggering a flip. */
 async function applySize(s: SurfaceName): Promise<void> {
   const { w, h } = openSize(slotOf(s));
@@ -230,6 +258,7 @@ async function applySize(s: SurfaceName): Promise<void> {
   try {
     await applyMinSize(); // first: a smaller size would be refused under the old minimum
     await appWindow.setSize(new LogicalSize(w, h));
+    await keepOnScreen().catch((e) => console.error("[surface] keep on screen failed", e));
   } catch (e) {
     console.error("[surface] setSize failed", e);
   } finally {
@@ -279,10 +308,24 @@ export function isPlayerView(): boolean {
   return active === "mini" && miniView === "player";
 }
 
-/** The surface the real app window uses (midi unless the user chose max). */
+/** The surface the real app window uses: the last non-mini one, Max when none is stored
+ *  (FUTURE-SETTINGS.md §8b), Midi when the screen has no room for Max. */
 export function fullSurface(): SurfaceName {
   const v = localStorage.getItem(FULL_KEY);
-  return v === "max" ? "max" : "midi";
+  if (v === "max" || v === "midi") return v;
+  return screenHoldsMax() ? "max" : "midi";
+}
+
+/** The screen's work area holds Max: its floor height, and wide enough to be a Max and not a
+ *  Midi (past the band's dead-band). A 1366 × 768 screen, or 1080 p at 150 %, does not. */
+const screenHoldsMax = (): boolean =>
+  window.screen.availHeight >= MIN_SIZES.max.h && window.screen.availWidth > MIDI_CEIL + HYST;
+
+/** A new install's first surface: Max, or Midi when the screen cannot hold Max (§8b). */
+function firstSurface(): SurfaceName {
+  const s: SurfaceName = screenHoldsMax() ? DEFAULT_SURFACE : "midi";
+  diagLog("surface:first", { surface: s, screen: `${window.screen.availWidth}x${window.screen.availHeight}` });
+  return s;
 }
 
 /** Deliberate selection (settings row / tray / agent). Always sets the view's open size —
@@ -306,7 +349,7 @@ let sized: Promise<void> = Promise.resolve();
 export const surfaceSized = (): Promise<void> => sized;
 
 export function initSurface(): void {
-  const saved = (localStorage.getItem(STORAGE_KEY) as SurfaceName | null) ?? DEFAULT_SURFACE;
+  const saved = (localStorage.getItem(STORAGE_KEY) as SurfaceName | null) ?? firstSurface();
   activate(saved);
   readNarrow(); // before the first paint: a thin window never shows the full volume bar
   // The window opens at tauri.conf's size, so set the chosen view's open size.

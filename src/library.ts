@@ -27,6 +27,13 @@ export interface Track {
   /** A song Apple lists but does not play yet (a pre-release album). Its `releaseDate` is
    *  then the album's. Never queued; dimmed on the album page (src/release.ts). */
   unreleased?: boolean;
+  /** A library song's one library artist (the sync's `include=artists`); its catalog twin is
+   *  the song's primary artist (primary-artist.ts, ideas/apple-calls.md §5). */
+  libraryArtist?: string;
+  /** The library album's own artist: names the album over its songs' guest credits. */
+  albumArtist?: string;
+  /** The library album's id (`l.…`). */
+  libraryAlbumId?: string;
 }
 
 export interface Artwork {
@@ -44,7 +51,9 @@ export interface Page<T> {
 }
 
 export interface SyncEvent {
-  phase: "start" | "progress" | "done" | "error";
+  /** `idle`: the sync lock is released. It comes after `done` / `error`, once the artist
+   *  pass and the heal have ended too; a ⟳ click is refused until then. */
+  phase: "start" | "progress" | "done" | "error" | "idle";
   fetched?: number;
   count?: number;
   total?: number;
@@ -81,4 +90,48 @@ export function librarySync(full = true, signin = false): Promise<number> {
 /** Subscribe to sync progress. Returns an unlisten fn. */
 export function onSyncEvent(cb: (e: SyncEvent) => void): Promise<UnlistenFn> {
   return listen<SyncEvent>("library-sync", (event) => cb(event.payload));
+}
+
+// ── Is a sync running? (the Library ⟳'s spin, 2026-10-15) ──
+// Busy from `start` (or any `progress`) to `idle`, the lock's release. The first subscriber
+// asks Rust once, so a card that mounts during a sync (the launch sync often starts before
+// the Library card is on screen) spins at once instead of standing still.
+let busy = false;
+let lastProgress: { fetched?: number; total?: number } = {};
+const busyCbs = new Set<(busy: boolean) => void>();
+let busyWired = false;
+
+function setBusy(b: boolean): void {
+  if (b === busy) return;
+  busy = b;
+  if (!b) lastProgress = {};
+  for (const cb of busyCbs) cb(b);
+}
+
+function wireBusy(): void {
+  if (busyWired) return;
+  busyWired = true;
+  let heard = false; // an event after the ask is newer than the ask's answer
+  void onSyncEvent((e) => {
+    heard = true;
+    if (e.phase === "progress") lastProgress = { fetched: e.fetched, total: e.total };
+    if (e.phase === "start" || e.phase === "progress") setBusy(true);
+    else if (e.phase === "idle") setBusy(false);
+  });
+  invoke<boolean>("library_sync_busy")
+    .then((b) => !heard && setBusy(b))
+    .catch(() => {});
+}
+
+/** A sync holds the lock now: a ⟳ click would be refused. */
+export const syncBusy = (): boolean => busy;
+/** The last progress of the running sync (empty before the first page). */
+export const syncProgress = (): { fetched?: number; total?: number } => lastProgress;
+
+/** Follow the busy state. Calls `cb` at once with the current state. Returns an unsubscribe fn. */
+export function onSyncBusy(cb: (busy: boolean) => void): () => void {
+  wireBusy();
+  busyCbs.add(cb);
+  cb(busy);
+  return () => busyCbs.delete(cb);
 }

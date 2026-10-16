@@ -54,7 +54,13 @@ export const requestPlaylistPane = noop;
 export const requestArtistPane = noop;
 
 // ./artist-credit
-export const creditIndex = () => ({ namesOf: () => [] as string[] });
+export const creditIndex = () => ({ namesOf: () => [] as string[], tracksFor: () => [] });
+// The people of Go to Artist ▸ (its own test is tests/artist-credit-primary.test.ts): none here,
+// so the row is the single Go to Artist, as the §3.1 order expects.
+export const goToPeople = () => [];
+
+// ./primary-artist
+export const songArtists = () => undefined;
 
 // ./copy-link
 export const copySongLinkItem = (id?: string) => (id ? row("Copy Link") : null);

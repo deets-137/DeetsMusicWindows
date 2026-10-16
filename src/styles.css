@@ -3889,7 +3889,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 
 /* ── Record player (Press "Record player"; docs/features/VINYL.md, src/vinyl.ts) ──────
    The cover box holds its art in a slot (.vinyl): a plate, the art that turns
-   (.vinyl__spin, a Web Animation), and a sheen that does not turn. --vinyl on the box
+   (.vinyl__spin, a Web Animation). No sheen (VINYL.md §11). --vinyl on the box
    says whether this place draws a record (1) or the plain cover (0); the skin sets the
    three place values (skin.css --vinyl-stage / -strip / -tray). At 0 the slot draws
    exactly the old square cover. The slide axis (vinyl.ts reads it): sideways on the stage,
@@ -3902,7 +3902,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 
 .vinyl { position: absolute; inset: 0; }
 .vinyl__spin { position: absolute; inset: 0; }
-.vinyl__plate, .vinyl__sheen { display: none; }
+.vinyl__plate { display: none; }
 .vinyl--out { pointer-events: none; }
 @container style(--vinyl: 0) {
   .vinyl__spin { transform: none !important; } /* a plain cover never turns (beats the animation) */
@@ -3920,7 +3920,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
     box-shadow: var(--vinyl-plate-shadow); /* on a layer that never turns: drawn once */
   }
   /* One mask cuts both edges: the spindle hole and the disc's rim. */
-  .vinyl__spin, .vinyl__sheen {
+  .vinyl__spin {
     -webkit-mask: radial-gradient(circle closest-side, transparent var(--vinyl-hole), #000 calc(var(--vinyl-hole) + 0.5px), #000 calc(100% - 0.5px), transparent 100%);
     mask: radial-gradient(circle closest-side, transparent var(--vinyl-hole), #000 calc(var(--vinyl-hole) + 0.5px), #000 calc(100% - 0.5px), transparent 100%);
   }
@@ -3944,20 +3944,6 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
       color-mix(in srgb, var(--vinyl-groove-ink) var(--vinyl-groove-alpha), transparent) calc(var(--vinyl-groove-pitch) - var(--vinyl-groove-w)) var(--vinyl-groove-pitch));
     -webkit-mask: radial-gradient(circle closest-side, transparent var(--vinyl-label), #000 calc(var(--vinyl-label) + 0.5px));
     mask: radial-gradient(circle closest-side, transparent var(--vinyl-label), #000 calc(var(--vinyl-label) + 0.5px));
-  }
-  /* a fixed light over the turning disc: two lobes, opposite each other */
-  .vinyl__sheen {
-    display: block;
-    position: absolute; inset: 0;
-    pointer-events: none;
-    background: conic-gradient(from var(--vinyl-sheen-from),
-      transparent 0deg,
-      color-mix(in srgb, var(--vinyl-sheen-ink) var(--vinyl-sheen-alpha), transparent) var(--vinyl-sheen-spread),
-      transparent calc(var(--vinyl-sheen-spread) * 2),
-      transparent 180deg,
-      color-mix(in srgb, var(--vinyl-sheen-ink) var(--vinyl-sheen-alpha), transparent) calc(180deg + var(--vinyl-sheen-spread)),
-      transparent calc(180deg + var(--vinyl-sheen-spread) * 2),
-      transparent 360deg);
   }
 }
 /* The slide is a Web Animation (vinyl.ts), skipped under reduced motion. */

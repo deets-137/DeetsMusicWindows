@@ -12,6 +12,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
+import { noteSongArtists } from "./primary-artist";
 
 export interface SongCredit {
   /**
@@ -130,7 +131,8 @@ export async function fetchCredits(catalogIds: (string | null | undefined)[]): P
   if (!ids.length) return 0;
   for (const id of ids) cache.delete(id); // the answer is about to change
   const n = await invoke<number>("credits_fetch", { catalogIds: ids });
-  await primeCredits(ids);
+  // The same read stored each song's catalog artists: the guests in Go to Artist ▸.
+  await Promise.all([primeCredits(ids), noteSongArtists(ids)]);
   return n;
 }
 

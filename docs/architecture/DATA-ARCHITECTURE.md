@@ -302,8 +302,10 @@ artist and album pages, stations) are plain `apple.rs` commands outside the trai
 `lib.rs` setup and held as managed `Db(Mutex<Connection>)`. Take it with `Db::lock`, which
 recovers a poisoned lock ([DB-HEALTH.md](../ops/DB-HEALTH.md)). Since 2026-09-25 every command
 that takes the lock runs on **the database thread** (`db_thread.rs`): one queue, first in,
-first out, off the UI thread; a slow job logs `db: slow …`. The schema is at v18
-(`meta.schema_version`); each `migrate_vN` in `library.rs` is one step.
+first out, off the UI thread; a slow job logs `db: slow …`. The schema is at v19
+(`meta.schema_version`); each `migrate_vN` (most in `library.rs`) is one step. v19
+(2026-10-15, `enrich::migrate_v19`): `artist_catalog.catalog_name` and `track_catalog.artists`,
+a song's primary artist and its guests (ideas/apple-calls.md §5.5).
 
 ```sql
 tracks(track_id TEXT PRIMARY KEY, source TEXT DEFAULT 'library', sort_key TEXT, json TEXT)

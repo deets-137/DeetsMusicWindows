@@ -761,14 +761,25 @@ pub async fn added_at_map(app: tauri::AppHandle) -> Result<Vec<(String, i64)>, S
 
 // One sync at a time. Overlapping invocations (double-triggered refresh, a card
 // re-mount racing the startup sync) would double the Apple traffic and interleave
-// progress events. The guard's Drop releases the flag on every exit path.
+// progress events. The guard's Drop releases the flag on every exit path, and says
+// `{phase:"idle"}`: the Library ⟳ spins from the lock to its release, not from `start` to
+// `done`, because the artist pass and the heal run after `done` and still hold the lock
+// (2026-10-15: the ⟳ stood still while his clicks were refused).
 static SYNC_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 
-struct SyncFlagGuard;
+struct SyncFlagGuard(AppHandle);
 impl Drop for SyncFlagGuard {
     fn drop(&mut self) {
         SYNC_IN_FLIGHT.store(false, Ordering::SeqCst);
+        self.0.emit("library-sync", serde_json::json!({ "phase": "idle" })).ok();
     }
+}
+
+/// Is a library sync running now? A card that mounts during a sync missed its `start`
+/// event; it asks once. An atomic read, no I/O.
+#[tauri::command]
+pub fn library_sync_busy() -> bool {
+    SYNC_IN_FLIGHT.load(Ordering::SeqCst)
 }
 
 /// A full pass is due this often on its own (the owner's rule, 2026-09-29; it was six hours).
@@ -1240,7 +1251,7 @@ async fn library_sync_run(
     if SYNC_IN_FLIGHT.swap(true, Ordering::SeqCst) {
         return Err("library sync already in progress".into());
     }
-    let _guard = SyncFlagGuard;
+    let _guard = SyncFlagGuard(app.clone());
 
     let dev = apple::developer_token()?;
     let user = apple_state
@@ -1297,7 +1308,11 @@ async fn library_sync_run(
     // Apple's count, when a pass must ask for it: the sign-in page already holds it, else one
     // `limit=1` call. The ⟳ and the weekly pass do not ask; their first page tells them.
     let mut apple_total: Option<u32> = first.as_ref().map(|p| p.total);
-    let why = if full.unwrap_or(true) && !signin {
+    // S1 (ideas/apple-calls.md §3): Apple counts MORE songs than the last count. The
+    // incremental pass runs first, and when its new songs explain the rise exactly, no full
+    // pass follows (about 55 calls saved on such a launch).
+    let mut explain: Option<u32> = None;
+    let mut why = if full.unwrap_or(true) && !signin {
         "asked".to_string()
     } else if weekly {
         match age {
@@ -1310,21 +1325,36 @@ async fn library_sync_run(
             None => provider.songs_page(0, 1, false).await.map_err(fail)?.total,
         };
         apple_total = Some(total);
-        if known_total == Some(total) {
-            String::new() // the same count: the incremental pass
-        } else {
-            format!(
+        match launch_pass(known_total, total) {
+            LaunchPass::Incremental => String::new(),
+            LaunchPass::Explain(rise) => {
+                explain = Some(rise);
+                String::new()
+            }
+            LaunchPass::Full => format!(
                 "Apple counts {total} song(s), the last full pass {}",
                 known_total.map(|k| k.to_string()).unwrap_or_else(|| "stored no count".into())
-            )
+            ),
         }
     };
 
     if why.is_empty() {
-        let n = sync_incremental(&app, provider, &db, age.unwrap_or(0), changed).await;
-        artist_catalog_pass(&dev, &user, &db, false).await;
-        crate::heal::pass(&app, &dev, &user, &db).await; // songs Apple sent with no play id
-        return n;
+        match sync_incremental(&app, provider.clone(), &db, age.unwrap_or(0), changed, explain).await? {
+            Incremental::Done(n) => {
+                // S3: an artist count that moved is filled from the new songs first.
+                artist_catalog_pass(&dev, &user, &db, false, true).await;
+                crate::heal::pass(&app, &dev, &user, &db).await; // songs Apple sent with no play id
+                crate::enrich::guests_pass(&app, &dev, &user, &db).await; // the new songs' guests (§5.6)
+                return Ok(n);
+            }
+            // Not explained: a removal hides in the count, so the full pass runs. The rows
+            // the incremental pass changed count toward `done`, or the Library would skip its
+            // reload (the full pass finds them already written).
+            Incremental::Unexplained { found, changed: c } => {
+                changed += c;
+                why = format!("not explained: Apple counts +{}, the incremental pass found {found} new", explain.unwrap_or(0));
+            }
+        }
     }
     crate::log::info(&format!("library: full sync start ({why})"));
 
@@ -1420,7 +1450,7 @@ async fn library_sync_run(
     // The artist pass rides the sync (HOME.md §10.3). Only the weekly pass re-pages every
     // artist without asking (so an artist swapped for another one heals within a week);
     // the other passes ask Apple's artist count first, one `limit=1` call.
-    artist_catalog_pass(&dev, &user, &db, weekly).await;
+    artist_catalog_pass(&dev, &user, &db, weekly, false).await;
     crate::log::info(&format!("library: full sync done, {} of {total} song(s), {changed} row(s) changed", all.len()));
     app.emit(
         "library-sync",
@@ -1430,6 +1460,9 @@ async fn library_sync_run(
     // Songs Apple sent with no play id get their catalog copy (heal.rs), after `done`:
     // the Library is already on screen, and the heal's own event updates the map.
     crate::heal::pass(&app, &dev, &user, &db).await;
+    // Every library song's catalog artists, the guests in Go to Artist ▸ (ideas/apple-calls.md
+    // §5.6): the whole library once after v19, then only the songs not read yet.
+    crate::enrich::guests_pass(&app, &dev, &user, &db).await;
     Ok(all.len() as u32)
 }
 
@@ -1440,9 +1473,11 @@ async fn library_sync_run(
 /// `force` re-pages without asking; otherwise one `limit=1` call compares Apple's count
 /// to the stored one and usually ends there. **Never fatal**: the songs are what a sync
 /// promises, and a failed artist pass leaves the old rows in place and warns.
-async fn artist_catalog_pass(dev: &str, user: &str, db: &State<'_, Db>, force: bool) {
+/// `from_new_songs` (S3, after an incremental pass): a moved count is first filled from the
+/// new songs' library artists, and re-pages only when that cannot find them all.
+async fn artist_catalog_pass(dev: &str, user: &str, db: &State<'_, Db>, force: bool, from_new_songs: bool) {
     let client = apple::http_client();
-    if let Err(e) = apple::sync_artist_catalog(&client, dev, user, db, force).await {
+    if let Err(e) = apple::sync_artist_catalog(&client, dev, user, db, force, from_new_songs).await {
         crate::log::warn(&format!("library: artist catalog pass failed: {e}"));
     }
 }
@@ -1451,13 +1486,42 @@ async fn artist_catalog_pass(dev: &str, user: &str, db: &State<'_, Db>, force: b
 /// page that holds a song already cached (everything older is known too). Upserts
 /// only — a removal on another device waits for the next full pass. The guard is a
 /// page cap at the library total, so an unexpectedly all-new library ends anyway.
+///
+/// `explain` (S1, ideas/apple-calls.md §3): Apple counts this many songs more than the last
+/// count. When the pass finds exactly that many new songs, the rise is explained: Apple's new
+/// count is stored and the pass ends as usual. Otherwise it says so and announces nothing (no
+/// `done`), and the caller runs the full pass.
+enum Incremental {
+    Done(u32),
+    Unexplained { found: u32, changed: usize },
+}
+
+/// The launch's pass from Apple's count against the last stored one (DATA-ARCHITECTURE.md §5a,
+/// S1): the same count → incremental; a rise → incremental that must explain it; a fall (a
+/// removal) or no stored count → full.
+#[derive(Debug, PartialEq)]
+enum LaunchPass {
+    Incremental,
+    Explain(u32),
+    Full,
+}
+
+fn launch_pass(known: Option<u32>, total: u32) -> LaunchPass {
+    match known {
+        Some(k) if k == total => LaunchPass::Incremental,
+        Some(k) if total > k => LaunchPass::Explain(total - k),
+        _ => LaunchPass::Full,
+    }
+}
+
 async fn sync_incremental(
     app: &AppHandle,
     provider: std::sync::Arc<AppleProvider>,
     db: &State<'_, Db>,
     age_secs: i64,
     mut changed: usize,
-) -> Result<u32, String> {
+    explain: Option<u32>,
+) -> Result<Incremental, String> {
     let mut offset = 0u32;
     let mut new_total = 0u32;
     let mut pages = 0u32;
@@ -1496,6 +1560,18 @@ async fn sync_incremental(
         }
         offset = next.unwrap_or(offset + 100);
     }
+    if let Some(rise) = explain {
+        if new_total != rise {
+            crate::log::info(&format!("library: incremental does not explain +{rise} ({new_total} new): full sync"));
+            return Ok(Incremental::Unexplained { found: new_total, changed });
+        }
+        crate::log::info(&format!("library: incremental explains +{rise} ({new_total} new)"));
+        // The count the next launch compares with, as a full pass would store it.
+        let conn = db.lock();
+        if let Err(e) = meta_set(&conn, META_LIBRARY_TOTAL, &total.to_string()) {
+            crate::log::warn(&format!("library: song count not written: {e}"));
+        }
+    }
     let count: u32 = {
         let conn = db.lock();
         conn.query_row("SELECT COUNT(*) FROM tracks WHERE source = 'library'", [], |r| r.get(0)).unwrap_or(0)
@@ -1505,7 +1581,22 @@ async fn sync_incremental(
         age_secs / 3600
     ));
     app.emit("library-sync", serde_json::json!({ "phase": "done", "count": count, "total": total, "changed": changed })).ok();
-    Ok(new_total)
+    Ok(Incremental::Done(new_total))
+}
+
+#[cfg(test)]
+mod launch_pass_tests {
+    use super::*;
+
+    /// 2026-10-15 (S1, ideas/apple-calls.md §3): a rise asks the incremental pass to explain
+    /// it; only a fall or no stored count runs the full pass at launch.
+    #[test]
+    fn launch_pass_explains_a_rise_2026_10_15() {
+        assert_eq!(launch_pass(Some(4042), 4042), LaunchPass::Incremental);
+        assert_eq!(launch_pass(Some(4037), 4042), LaunchPass::Explain(5));
+        assert_eq!(launch_pass(Some(4042), 4040), LaunchPass::Full);
+        assert_eq!(launch_pass(None, 4042), LaunchPass::Full);
+    }
 }
 
 #[cfg(test)]

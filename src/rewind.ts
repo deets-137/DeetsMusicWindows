@@ -14,6 +14,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
 import { trackById } from "./track-store";
+import { primaryOf } from "./primary-artist";
 import { playlistsCached } from "./playlists";
 import type { Playlist } from "./search";
 import { allPicks, dayLabel } from "./sotd";
@@ -131,14 +132,19 @@ export async function topBy(stat: RewindStat, window: RewindWindow): Promise<Rew
         title = t?.title ?? "Unknown";
         subtitle = t?.artistName ?? "";
         break;
-      case "artists":
-        title = t?.artistName ?? "Unknown";
-        key = title;
+      case "artists": {
+        // A collaboration counts for its primary artist only (his call P1, ideas/apple-calls.md
+        // §5.4), by catalog id, so "Girl Ultra, Buscabulla & Chromeo" and "Girl Ultra & Chromeo"
+        // are one row, Girl Ultra's. A song with no primary keeps its credit string.
+        const p = primaryOf(t);
+        title = p?.name ?? t?.artistName ?? "Unknown";
+        key = p ? `id:${p.id}` : title;
         break;
+      }
       case "albums":
         key = t ? albumKey(t) : "Unknown Album";
         title = t?.albumName ?? "Unknown Album";
-        subtitle = t?.artistName ?? "";
+        subtitle = t?.albumArtist || t?.artistName || "";
         break;
       case "playlists": {
         if (!e.context?.startsWith("playlist:")) continue;

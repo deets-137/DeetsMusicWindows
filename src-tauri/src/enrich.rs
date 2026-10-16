@@ -22,7 +22,7 @@ use crate::library::Db;
 use crate::lock::LockExt;
 
 /// Documented ceiling for "Get Multiple Catalog Songs" by ids.
-const BATCH: usize = 300;
+pub(crate) const BATCH: usize = 300;
 
 pub fn init_tables(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
@@ -70,6 +70,37 @@ pub fn init_tables(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// v19 (2026-10-15, ideas/apple-calls.md §5): `artist_catalog.catalog_name` (the primary
+/// artist's own name, from the artist pass) and `track_catalog.artists` (a song's catalog
+/// artists in Apple's order, `[[id, name], …]` JSON, from the enrichment read: the guests).
+/// Additive, idempotent.
+pub fn migrate_v19(conn: &Connection) -> Result<(), String> {
+    let has = |table: &str, col: &str| -> Result<bool, String> {
+        conn.query_row(
+            &format!("SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = ?1"),
+            [col],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|n| n > 0)
+        .map_err(|e| e.to_string())
+    };
+    let mut added = Vec::new();
+    if !has("artist_catalog", "catalog_name")? {
+        conn.execute_batch("ALTER TABLE artist_catalog ADD COLUMN catalog_name TEXT;")
+            .map_err(|e| format!("add artist_catalog.catalog_name: {e}"))?;
+        added.push("artist_catalog.catalog_name");
+    }
+    if !has("track_catalog", "artists")? {
+        conn.execute_batch("ALTER TABLE track_catalog ADD COLUMN artists TEXT;")
+            .map_err(|e| format!("add track_catalog.artists: {e}"))?;
+        added.push("track_catalog.artists");
+    }
+    if !added.is_empty() {
+        crate::log::info(&format!("migration: v19 added {}", added.join(", ")));
+    }
+    crate::library::meta_set(conn, "schema_version", "19")
+}
+
 fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -102,7 +133,7 @@ fn css_hex(v: &serde_json::Value) -> Option<String> {
 
 // ── Storefront (cached — a prerequisite for every catalog call) ──────────────
 
-fn cached_storefront(conn: &Connection) -> Option<String> {
+pub(crate) fn cached_storefront(conn: &Connection) -> Option<String> {
     conn.query_row(
         "SELECT value FROM meta WHERE key = 'storefront'",
         [],
@@ -157,6 +188,9 @@ struct FetchedSong {
     title: String,
     artist_name: String,
     composer: Option<String>,
+    /// Every credited catalog artist, `(id, name)` in Apple's order, the primary first
+    /// (`include=artists`). None when the read did not carry them (a search result).
+    artists: Option<Vec<(String, String)>>,
 }
 
 async fn fetch_catalog_songs(
@@ -166,8 +200,9 @@ async fn fetch_catalog_songs(
     sf: &str,
     ids: &[String],
 ) -> Result<Vec<FetchedSong>, String> {
+    // The guests ride the same read, cut to their names (ideas/apple-calls.md §5.4, P2).
     let url = format!(
-        "https://api.music.apple.com/v1/catalog/{sf}/songs?ids={}",
+        "https://api.music.apple.com/v1/catalog/{sf}/songs?ids={}&include=artists&fields[artists]=name",
         ids.join(",")
     );
     let (status, body) = api_get(client, dev, mut_tok, &url).await?;
@@ -194,6 +229,15 @@ async fn fetch_catalog_songs(
                         title: a["name"].as_str().unwrap_or_default().to_string(),
                         artist_name: a["artistName"].as_str().unwrap_or_default().to_string(),
                         composer: a["composerName"].as_str().map(String::from),
+                        artists: v["relationships"]["artists"]["data"].as_array().map(|arr| {
+                            arr.iter()
+                                .filter_map(|x| {
+                                    let id = x["id"].as_str().filter(|s| !s.is_empty())?;
+                                    let name = x["attributes"]["name"].as_str().filter(|s| !s.is_empty())?;
+                                    Some((id.to_string(), name.to_string()))
+                                })
+                                .collect()
+                        }),
                     })
                 })
                 .collect()
@@ -215,13 +259,16 @@ fn write_song(conn: &Connection, s: &FetchedSong, extra_cover_key: Option<&str>)
             artist_name: &s.artist_name,
         }),
     );
+    // A read with no artists (a search result) keeps the ones a read stored before.
+    let artists = s.artists.as_ref().filter(|a| !a.is_empty()).and_then(|a| serde_json::to_string(a).ok());
     conn.execute(
-        "INSERT INTO track_catalog(catalog_id, isrc, preview_url, cover_url, fetched_at)
-         VALUES(?1, ?2, ?3, ?4, ?5)
+        "INSERT INTO track_catalog(catalog_id, isrc, preview_url, cover_url, fetched_at, artists)
+         VALUES(?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT(catalog_id) DO UPDATE SET
              isrc = excluded.isrc, preview_url = excluded.preview_url,
-             cover_url = excluded.cover_url, fetched_at = excluded.fetched_at",
-        rusqlite::params![s.catalog_id, s.isrc, s.preview_url, s.cover_url, now],
+             cover_url = excluded.cover_url, fetched_at = excluded.fetched_at,
+             artists = COALESCE(excluded.artists, track_catalog.artists)",
+        rusqlite::params![s.catalog_id, s.isrc, s.preview_url, s.cover_url, now, artists],
     )
     .map_err(|e| e.to_string())?;
 
@@ -279,10 +326,124 @@ pub(crate) fn cache_tracks(conn: &Connection, tracks: &[crate::model::Track]) ->
             title: t.title.clone(),
             artist_name: t.artist_name.clone(),
             composer: t.composer.clone(),
+            artists: None,
         };
         write_song(conn, &song, None)?;
     }
     Ok(())
+}
+
+// ── The guests pass (his call G1 = A, ideas/apple-calls.md §5.6) ─────────────
+
+/// Library songs whose catalog artists were never read: a catalog id, and no `artists` in
+/// `track_catalog` (no row, or a row from before v19 or from a search result). `'[]'` marks a
+/// song read with none (Apple did not return it, or listed no artist), so it is never asked
+/// again.
+fn guests_pending(conn: &Connection) -> Result<Vec<String>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT json_extract(t.json, '$.catalogId') FROM tracks t
+             LEFT JOIN track_catalog c ON c.catalog_id = json_extract(t.json, '$.catalogId')
+             WHERE t.source = 'library'
+               AND json_extract(t.json, '$.catalogId') IS NOT NULL
+               AND json_extract(t.json, '$.catalogId') <> ''
+               AND c.artists IS NULL",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(|e| e.to_string())?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+/// After a read, every asked id with no artists stored gets `'[]'`: asked, none.
+fn mark_read(conn: &Connection, ids: &[String]) -> Result<(), String> {
+    let now = now_ms();
+    let mut stmt = conn
+        .prepare_cached(
+            "INSERT INTO track_catalog(catalog_id, fetched_at, artists) VALUES(?1, ?2, '[]')
+             ON CONFLICT(catalog_id) DO UPDATE SET artists = COALESCE(track_catalog.artists, '[]')",
+        )
+        .map_err(|e| e.to_string())?;
+    for id in ids {
+        stmt.execute(rusqlite::params![id, now]).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// One read of up to 300 songs (`BATCH`) for their catalog artists, stored as the guests
+/// pass stores them (`write_song`, then `'[]'` for the rest). Returns each returned song's
+/// artists, the primary first. Shared with the artist pass's S3 fill (apple.rs).
+pub(crate) async fn read_song_artists(
+    client: &reqwest::Client,
+    dev: &str,
+    user: &str,
+    sf: &str,
+    ids: &[String],
+    db: &Db,
+) -> Result<std::collections::HashMap<String, Vec<(String, String)>>, String> {
+    let songs = fetch_catalog_songs(client, dev, user, sf, ids).await?;
+    let conn = db.lock();
+    let mut out = std::collections::HashMap::new();
+    for s in &songs {
+        if let Err(e) = write_song(&conn, s, None) {
+            crate::log::warn(&format!("song guests: write {}: {e}", s.catalog_id));
+        }
+        out.insert(s.catalog_id.clone(), s.artists.clone().unwrap_or_default());
+    }
+    if let Err(e) = mark_read(&conn, ids) {
+        crate::log::warn(&format!("song guests: mark: {e}"));
+    }
+    Ok(out)
+}
+
+/// The pass after a library sync: read the catalog artists of every library song that has
+/// none stored, 300 songs a call. The first pass after v19 reads the whole library once (about
+/// 14 calls for 4,042 songs); after that, only the songs the sync just added. The same read
+/// stores each song's ISRC, preview, palette and writer credits (`write_song`), at no extra
+/// call. A background job (APPLE-CALLS.md §3): it skips its turn while Apple's back-off holds
+/// and stops at the first failed call. Never fatal. `song-artists` tells the front end.
+pub async fn guests_pass(app: &tauri::AppHandle, dev: &str, user: &str, db: &State<'_, Db>) {
+    use tauri::Emitter;
+    if crate::apple_calls::skip("song_guests") {
+        return;
+    }
+    crate::apple_calls::background("song_guests", async {
+        let todo = {
+            let conn = db.lock();
+            match guests_pending(&conn) {
+                Ok(t) => t,
+                Err(e) => return crate::log::warn(&format!("song guests: read failed: {e}")),
+            }
+        };
+        if todo.is_empty() {
+            return;
+        }
+        let client = apple::http_client();
+        let sf = match storefront(&client, dev, user, db).await {
+            Ok(sf) => sf,
+            Err(e) => return crate::log::warn(&format!("song guests: storefront: {e}")),
+        };
+        let (mut calls, mut read, mut with) = (0usize, 0usize, 0usize);
+        for chunk in todo.chunks(BATCH) {
+            let got = match read_song_artists(&client, dev, user, &sf, chunk, db).await {
+                Ok(g) => g,
+                Err(e) => {
+                    crate::log::warn(&format!("song guests: stopped after {calls} call(s): {e}"));
+                    break;
+                }
+            };
+            calls += 1;
+            read += got.len();
+            with += got.values().filter(|a| !a.is_empty()).count();
+        }
+        crate::log::info(&format!(
+            "song guests: {} song(s) to read, {read} read in {calls} call(s), {with} with artists",
+            todo.len()
+        ));
+        if calls > 0 {
+            app.emit("song-artists", serde_json::json!({ "read": read })).ok();
+        }
+    })
+    .await
 }
 
 // ── Commands ─────────────────────────────────────────────────────────────────
@@ -351,6 +512,49 @@ pub async fn catalog_enrich(
         fetched,
         missing: misses.len() - fetched,
     })
+}
+
+/// The stored catalog artists of songs, `[catalog id, [[artist id, name], …]]`, the primary
+/// first (ideas/apple-calls.md §5.4, P2): the guests in *Go to Artist ▸*. `None` = every song
+/// that has them (the front end's map at launch); a list = just those (after a read that may
+/// have added some). Network-free: a song not read since v19 has none, and shows the primary
+/// artist only.
+#[tauri::command]
+pub async fn song_artists(
+    catalog_ids: Option<Vec<String>>,
+    app: tauri::AppHandle,
+) -> Result<Vec<(String, Vec<(String, String)>)>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let parse = |id: String, json: String| serde_json::from_str::<Vec<(String, String)>>(&json).ok().map(|a| (id, a));
+        let mut out = Vec::new();
+        match catalog_ids {
+            None => {
+                let mut stmt = conn
+                    .prepare_cached("SELECT catalog_id, artists FROM track_catalog WHERE artists IS NOT NULL")
+                    .map_err(|e| e.to_string())?;
+                let rows = stmt
+                    .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+                    .map_err(|e| e.to_string())?;
+                for row in rows {
+                    let (id, json) = row.map_err(|e| e.to_string())?;
+                    out.extend(parse(id, json));
+                }
+            }
+            Some(ids) => {
+                let mut stmt = conn
+                    .prepare_cached("SELECT artists FROM track_catalog WHERE catalog_id = ?1 AND artists IS NOT NULL")
+                    .map_err(|e| e.to_string())?;
+                for id in ids.into_iter().filter(|i| !i.is_empty()) {
+                    if let Ok(json) = stmt.query_row([id.as_str()], |r| r.get::<_, String>(0)) {
+                        out.extend(parse(id, json));
+                    }
+                }
+            }
+        }
+        Ok(out)
+    })
+    .await
 }
 
 /// Read these songs from Apple **now**, for their writer credits (CREDITS.md §8).
@@ -474,5 +678,39 @@ pub async fn album_palette(
             .map_err(|e| e.to_string())?;
             Ok(None)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 2026-10-15 (G1 = A, ideas/apple-calls.md §5.6): the guests pass reads each library song
+    /// once. A song with stored artists, or marked `[]` (asked, none), is not asked again; a
+    /// seen song and a song with no catalog id are never asked.
+    #[test]
+    fn guests_pass_asks_each_library_song_once_2026_10_15() {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::library::init_db(&conn).unwrap();
+        init_tables(&conn).unwrap();
+        migrate_v19(&conn).unwrap();
+        let put = |id: &str, source: &str, json: &str| {
+            conn.execute("INSERT INTO tracks(track_id, source, json) VALUES(?1, ?2, ?3)", [id, source, json]).unwrap();
+        };
+        put("1", "library", r#"{"catalogId":"1","title":"a"}"#);
+        put("2", "library", r#"{"catalogId":"2","title":"b"}"#);
+        put("3", "seen", r#"{"catalogId":"3","title":"c"}"#);
+        put("i.4", "library", r#"{"libraryId":"i.4","title":"d"}"#);
+        // Song 2 was read before v19 (a row with no artists): it is still to read.
+        conn.execute("INSERT INTO track_catalog(catalog_id, fetched_at) VALUES('2', 0)", []).unwrap();
+        let mut todo = guests_pending(&conn).unwrap();
+        todo.sort();
+        assert_eq!(todo, vec!["1".to_string(), "2".to_string()]);
+        // One read: song 1 came back with its artists, song 2 did not come back.
+        conn.execute("INSERT INTO track_catalog(catalog_id, fetched_at, artists) VALUES('1', 0, '[[\"9\",\"A\"]]')", []).unwrap();
+        mark_read(&conn, &todo).unwrap();
+        assert!(guests_pending(&conn).unwrap().is_empty());
+        let kept: String = conn.query_row("SELECT artists FROM track_catalog WHERE catalog_id = '1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(kept, r#"[["9","A"]]"#);
     }
 }

@@ -12,7 +12,7 @@
 // Artists group by PARSED credit (artist-credit.ts), so collabs/features land
 // under every credited artist instead of fragmenting into one tile per credit.
 
-import { librarySync, onSyncEvent, type Track, type Artwork } from "./library";
+import { librarySync, onSyncBusy, onSyncEvent, syncBusy, syncProgress, type Track, type Artwork } from "./library";
 import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange, noCatalogCopy, addTransientTracks } from "./track-store";
 import { materializeTrack } from "./search";
@@ -34,6 +34,7 @@ import { addSquareHTML, markCellHTML } from "./add-square";
 import { unreleasedHint } from "./release";
 import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey, fmtClock } from "./library-model";
 import { mediaLevels } from "./media-levels";
+import * as diag from "./diag";
 
 // ── derived models ────────────────────────────────────────────────────────────
 // The album model and its pure helpers live in library-model.ts (shared with the album and
@@ -736,16 +737,12 @@ export const libraryCard: CardDef = {
     }
     const unsubFavs = onFavoritesChange(() => card.reload()); // the ♥ filter follows the mirror
 
+    // The ⟳ spins while any sync holds the lock, the launch's and the ⟳'s own alike, from
+    // the lock to its release (library.ts `onSyncBusy`; a card that mounts mid-sync spins too).
+    const unsubBusy = onSyncBusy((b) => refreshBtn?.classList.toggle("is-busy", b));
     const syncUnlisten = onSyncEvent((e) => {
-      if (e.phase === "start") refreshBtn?.classList.add("is-busy");
-      if (e.phase === "done") {
-        refreshBtn?.classList.remove("is-busy");
-        console.log(`[sync] cached ${e.count}/${e.total} songs`);
-      }
-      if (e.phase === "error") {
-        refreshBtn?.classList.remove("is-busy"); // don't spin forever on a failed sync
-        console.error(`[sync] incomplete (${e.count}/${e.total} cached): ${e.message}`);
-      }
+      if (e.phase === "done") console.log(`[sync] cached ${e.count}/${e.total} songs`);
+      if (e.phase === "error") console.error(`[sync] incomplete (${e.count}/${e.total} cached): ${e.message}`);
     });
 
     // A drop on the Library card adds the songs to the library, as Add to Library does
@@ -760,6 +757,12 @@ export const libraryCard: CardDef = {
     const triggerSync = () => librarySync().catch((e) => console.error("[sync]", e));
     // The ⟳ also marks every saved featured-playlist list as old (ARTIST-VIEW.md §4).
     refreshBtn?.addEventListener("click", () => {
+      // A sync runs (the ⟳ spins): Rust would refuse the click, so it does not go out
+      // (ideas/apple-calls.md §4). Logged, not a console error: the refusal is expected.
+      if (syncBusy()) {
+        diag.log("library:refreshBusy", syncProgress());
+        return;
+      }
       expireArtistInfo();
       void triggerSync();
     });
@@ -776,6 +779,7 @@ export const libraryCard: CardDef = {
         unsubGrow();
         unregisterDrop();
         syncUnlisten.then((un) => un()).catch(() => {});
+        unsubBusy();
         card.destroy();
         host.innerHTML = "";
       },

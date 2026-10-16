@@ -172,9 +172,9 @@ Known limits, both accepted:
 - Per-app volume for the Windows source would need the WASAPI session enumerator
   (`IAudioSessionManager2`) matched by process — skipped for v1.
 
-## 7. Hover text (designed, 2026-10-15)
+## 7. Hover text (designed and built, 2026-10-15)
 
-> **Part:** designed · 2026-10-15
+> **Part:** built · 2026-10-15 (as built at the end of this section)
 
 **His ask (2026-10-15):** hold the pointer on the tray icon to see what is playing, facts about
 it, and what is queued next.
@@ -233,3 +233,65 @@ Three lines, at most 127 characters in all. No play or pause mark (his call).
   show in a tray tooltip on Windows 11. Without the time, the text changes only at a song change
   or a queue change.
 - A desk test written into this section at build time.
+
+### The probe (2026-10-15, `twenty-eighth`)
+
+A throwaway PowerShell tray icon (`System.Windows.Forms.NotifyIcon`: the same `Shell_NotifyIcon`
+NIM_MODIFY + NIF_TIP path that the tray-icon crate uses) with a 3-line text whose number counts
+up each second. **The automatic run decided nothing:** Windows 11 put the new icon in the hidden
+icons (`Shell_NotifyIconGetRect` gave the ^ button's place), and a pointer moved by a program
+(`SetCursorPos`) opened no tooltip in either screenshot. **Next: the probe by hand**: he hovers
+the icon for the 40 s it shows and reports (1) whether the open tooltip's number changes without
+moving the pointer, and (2) whether it shows three lines.
+
+**Result by hand (his, 2026-10-15): the number goes up while the tooltip is open, and the
+tooltip shows three lines.** So line 2 carries the time left (`Album · 2:14 left`), as his call
+said.
+
+### As built (2026-10-15, `twenty-eighth`; desk test passed, his, 2026-10-15)
+
+> **Part:** built · 2026-10-15 · desk test passed 2026-10-15 (after the tray-icon 0.24.2 fix)
+
+- **np-bus.ts** publishes `nextTitle` / `nextArtist` (the Queue card's next song, resolved; none
+  on a station) and publishes again on every queue change (`queue.onQueueChange`).
+- **bridge.rs** `NpState` gains `next_title` / `next_artist`; `np_publish` calls
+  `tray::update_tooltip`, which builds the text (`tooltip_text`) and calls `set_tooltip` only when
+  it changed. While a song plays, `np_publish` comes about once a second, so the time left counts
+  down in an open tooltip; while paused, the text does not change.
+- **The text** (`tooltip_text`): `Song — Artist` / `Album · 2:14 left` / `Next: Song — Artist`
+  or `Station: name`. Line 2 is the album alone on a live station (no end), the time alone with
+  no album. Past an hour the time reads `1:02:14`. Nothing plays: `DeetsMusic`.
+- **The cut (his call after the first desk test, 2026-10-15): the lines share the room
+  evenly.** The 127 UTF-16 units, less the line breaks and each line's fixed words (`Next: `,
+  `Station: `, ` · 2:14 left`), are shared among the three lines' own text (`even_shares`: a line
+  under its share keeps all of it and leaves the rest to the others). Each line is cut at its
+  end with "…": line 1 loses the artist before the song, line 2 loses the album and keeps the
+  time whole, line 3 keeps `Next: ` and the start of the next song. So the time, part of the song
+  playing and part of the next song always show. (It replaced an album-first cut.)
+- Tests: tray.rs `tray_text_has_his_three_lines_2026_10_15`, `tray_text_shares_the_room_evenly_2026_10_15`.
+
+**Desk test, first run (his, 2026-10-15): two lines, the album cut mid-word.** The hub's text was
+exactly 127 units (*Separate Ways (feat. The Marías) — Eyedress* / *Separate Ways (feat. The
+Marías) - Single · 2:14 left* / *Next: The Light — Jordan Rakei*). He saw line 1 and the album
+cut mid-word. **Probe 2** (two icons with a 3-line, 107-character text: the crate's way, and
+version 4 with `NIF_SHOWTIP`): **both show all three lines** (his, 2026-10-15). So there is no
+63-character cap, and the newer mode changes nothing.
+
+**The cause (found 2026-10-15): the tray library.** He saw line 2 cut after "(feat.": line 1's
+43 units + the break + 20 = exactly 64. tray-icon **0.24.1** (the version in Cargo.lock) never
+sets `cbSize` in `set_tooltip` or at the icon's first registration: the struct is zeroed, so the
+size is 0, and Windows reads it as the oldest `NOTIFYICONDATA`, whose tooltip holds 64 units.
+The probes set `cbSize` and got the full 128. **tray-icon 0.24.2 sets it** in both places, and
+Tauri 2.11.3 takes any 0.24, so the fix is a patch bump in Cargo.lock alone: the tray-icon block
+(version, checksum, and its own `windows-sys` 0.60.2, which 0.24.2 requires). `cargo update -p
+tray-icon --precise 0.24.2` also re-picked `windows-sys` for six unrelated packages, so the lock
+was edited by hand instead; `cargo test --locked` accepts it. A crate change needs a dev-runner
+restart.
+
+**Desk test (owner).** Restart the dev runner (Rust changed).
+1. Play an album. Rest the pointer on the DeetsMusic tray icon: three lines, the song and artist,
+   the album with the time left, the next song. Keep the pointer still: the time counts down.
+2. Pause: the time stops; the text stays. Skip to the album's last song: no third line.
+3. Drag another song to the top of the Queue card's up next: the third line names it.
+4. Play a station: line 3 reads `Station: …`; on a live station, no time left.
+5. Stop (nothing in the queue) or launch with nothing loaded: `DeetsMusic`.

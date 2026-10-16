@@ -1593,7 +1593,16 @@ fn artwork_from(v: &serde_json::Value) -> Option<Artwork> {
 fn track_from_library_song(v: &serde_json::Value) -> Track {
     let a = &v["attributes"];
     let pp = &a["playParams"];
+    // The sync page's `include=albums,artists` (ideas/apple-calls.md §5, album-notes.md §6.2):
+    // Apple links each library song to one library artist and one library album.
+    let rel = &v["relationships"];
+    let lib_artist = &rel["artists"]["data"][0];
+    let lib_album = &rel["albums"]["data"][0];
+    let named = |s: &serde_json::Value| s.as_str().filter(|n| !n.is_empty()).map(String::from);
     Track {
+        library_artist: named(&lib_artist["attributes"]["name"]),
+        album_artist: named(&lib_album["attributes"]["artistName"]),
+        library_album_id: named(&lib_album["id"]),
         library_id: v["id"].as_str().map(String::from),
         catalog_id: pp["catalogId"].as_str().map(String::from),
         title: a["name"].as_str().unwrap_or_default().to_string(),
@@ -1654,6 +1663,10 @@ pub(crate) fn track_from_catalog_song(v: &serde_json::Value) -> Track {
         added_rank: None,
         // No playParams = Apple will not play it yet (model.rs `Track::unreleased`).
         unreleased: pp.is_null(),
+        // Library-only links: a catalog song has no library artist or album.
+        library_artist: None,
+        album_artist: None,
+        library_album_id: None,
         play_params: PlayParams {
             id: pp["id"].as_str().map(String::from).or(id),
             catalog_id: pp["id"].as_str().map(String::from),
@@ -1797,8 +1810,11 @@ impl MusicProvider for AppleProvider {
         // Newest-first (the incremental sync) maps the position back onto the same
         // ascending rank via the total, so a song added today still sorts newest.
         let sort = if newest_first { "-dateAdded" } else { "dateAdded" };
+        // Each song's library artist and library album ride the page at no extra call, cut
+        // to the names we read (ideas/apple-calls.md §5, S4: about 106 KB a page).
         let url = format!(
-            "https://api.music.apple.com/v1/me/library/songs?limit={limit}&offset={offset}&sort={sort}"
+            "https://api.music.apple.com/v1/me/library/songs?limit={limit}&offset={offset}&sort={sort}\
+             &include=albums,artists&fields[library-albums]=name,artistName&fields[library-artists]=name"
         );
         let (status, body) = api_get(&self.client, &self.dev, &self.user, &url).await?;
         if status != 200 {
@@ -2132,6 +2148,29 @@ pub async fn artist_photos(app: tauri::AppHandle) -> Result<Vec<(String, Artwork
     .await
 }
 
+/// Every library artist's primary artist: `[library name, catalog id, catalog name]` triples
+/// from `artist_catalog` (ideas/apple-calls.md §5). A song's `libraryArtist` looks itself up
+/// here, so "Girl Ultra, Buscabulla & Chromeo" resolves to Girl Ultra. Read-only and
+/// network-free; the front end reads it again after each sync, when the artist pass may have
+/// changed a row.
+#[tauri::command]
+pub async fn artist_primaries(app: tauri::AppHandle) -> Result<Vec<(String, String, String)>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT name, catalog_id, catalog_name FROM artist_catalog
+                 WHERE catalog_id <> '' AND catalog_name IS NOT NULL AND catalog_name <> ''",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?)))
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    })
+    .await
+}
+
 /// The Library artist view's catalog facts for a library artist NAME (ARTIST-VIEW.md §4).
 /// Cache-first from `artist_catalog`:
 ///  - no row → `songs/{song_id}?include=artists` gives the id and the photo (1 call);
@@ -2150,6 +2189,16 @@ pub async fn library_artist_info(
     type Row = (String, Option<String>, Option<String>, i64, Option<String>);
     let row: Option<Row> = {
         let conn = db.lock();
+        // A primary artist known only by its catalog name ("Toddla T", whose library artist is
+        // "Toddla T & Jada Kingdom"): its own row, copied from that one at 0 calls, so the
+        // saves below find it by this name (ideas/apple-calls.md §5).
+        conn.execute(
+            "INSERT OR IGNORE INTO artist_catalog(name, catalog_id, artwork, featured, featured_at, catalog_name)
+             SELECT ?1, catalog_id, artwork, NULL, 0, catalog_name FROM artist_catalog
+             WHERE catalog_name = ?1 AND catalog_id <> '' LIMIT 1",
+            [name.as_str()],
+        )
+        .map_err(|e| e.to_string())?;
         conn.query_row(
             "SELECT catalog_id, artwork, featured, featured_at, top_songs FROM artist_catalog WHERE name = ?1",
             [name.as_str()],
@@ -2196,10 +2245,11 @@ pub async fn library_artist_info(
             let node = &body["data"][0]["relationships"]["artists"]["data"][0];
             let id = node["id"].as_str().unwrap_or_default().to_string();
             let art = artwork_from(&node["attributes"]["artwork"]);
+            let cat_name = node["attributes"]["name"].as_str().filter(|n| !n.is_empty());
             let conn = db.lock();
             conn.execute(
-                "INSERT OR REPLACE INTO artist_catalog(name, catalog_id, artwork, featured, featured_at) VALUES(?1, ?2, ?3, NULL, 0)",
-                rusqlite::params![name, id, art.as_ref().and_then(|a| serde_json::to_string(a).ok())],
+                "INSERT OR REPLACE INTO artist_catalog(name, catalog_id, artwork, featured, featured_at, catalog_name) VALUES(?1, ?2, ?3, NULL, 0, ?4)",
+                rusqlite::params![name, id, art.as_ref().and_then(|a| serde_json::to_string(a).ok()), cat_name],
             )
             .map_err(|e| e.to_string())?;
             if id.is_empty() {
@@ -2667,6 +2717,9 @@ async fn recent_added_run(
 /// The `meta` key holding Apple's own count of library artists, so the pass below can
 /// tell in ONE call whether anything changed.
 const META_ARTISTS_TOTAL: &str = "library_artists_total";
+/// Set once a pass has stored every row's `catalog_name` (schema v19). Until then the pass
+/// re-pages even at an unchanged count: one time, about 15 calls for 1,430 artists.
+const META_ARTIST_NAMES: &str = "artist_catalog_names";
 /// Library artists per page. Apple's ceiling for this endpoint.
 const ARTIST_PAGE: u32 = 100;
 /// Catalog artists per `ids=` read. The shape `web.rs` already uses.
@@ -2689,6 +2742,7 @@ pub(crate) async fn sync_artist_catalog(
     user: &str,
     db: &crate::library::Db,
     force: bool,
+    from_new_songs: bool,
 ) -> Result<u32, String> {
     let url = "https://api.music.apple.com/v1/me/library/artists?limit=1";
     let (status, body) = api_get(client, dev, user, url).await?;
@@ -2696,12 +2750,32 @@ pub(crate) async fn sync_artist_catalog(
         return Err(format!("me/library/artists HTTP {status}"));
     }
     let total = body["meta"]["total"].as_u64().unwrap_or(0) as u32;
-    let known: Option<u32> = {
+    let (known, names_due): (Option<u32>, bool) = {
         let conn = db.lock();
-        crate::library::meta_get(&conn, META_ARTISTS_TOTAL).and_then(|v| v.parse().ok())
+        (
+            crate::library::meta_get(&conn, META_ARTISTS_TOTAL).and_then(|v| v.parse().ok()),
+            crate::library::meta_get(&conn, META_ARTIST_NAMES).is_none(),
+        )
     };
-    if !force && known == Some(total) {
+    if !force && !names_due && known == Some(total) {
         return Ok(0);
+    }
+    // S3 (ideas/apple-calls.md §3): after an incremental pass, the moved count is first filled
+    // from the songs whose library artist has no row yet. Anything it cannot find re-pages.
+    if from_new_songs && !force && !names_due && known.is_some() {
+        match fill_new_artists(client, dev, user, db).await {
+            Ok(Some(n)) => {
+                let conn = db.lock();
+                crate::library::meta_set(&conn, META_ARTISTS_TOTAL, &total.to_string())?;
+                crate::log::info(&format!(
+                    "library: artist count {} → {total}, {n} new artist(s) from the new songs; no re-page",
+                    known.unwrap_or(0)
+                ));
+                return Ok(n);
+            }
+            Ok(None) => crate::log::info("library: new artists not all found from the songs; re-paging"),
+            Err(e) => crate::log::warn(&format!("library: new artists from the songs failed ({e}); re-paging")),
+        }
     }
 
     let mut written = 0u32;
@@ -2726,15 +2800,19 @@ pub(crate) async fn sync_artist_catalog(
                 let Some(id) = cat["id"].as_str() else { continue };
                 let art = artwork_from(&cat["attributes"]["artwork"])
                     .and_then(|a| serde_json::to_string(&a).ok());
+                // The catalog artist's own name: the primary artist of every song that links
+                // to this library artist ("Toddla T & Jada Kingdom" → "Toddla T"; apple-calls.md §5).
+                let cat_name = cat["attributes"]["name"].as_str().filter(|n| !n.is_empty());
                 // Keep `featured`, `featured_at` and `top_songs`: this pass knows nothing
                 // about them, and a NULL photo from Apple must not erase a good one.
                 conn.execute(
-                    "INSERT INTO artist_catalog(name, catalog_id, artwork, featured, featured_at, top_songs)
-                     VALUES(?1, ?2, ?3, NULL, 0, NULL)
+                    "INSERT INTO artist_catalog(name, catalog_id, artwork, featured, featured_at, top_songs, catalog_name)
+                     VALUES(?1, ?2, ?3, NULL, 0, NULL, ?4)
                      ON CONFLICT(name) DO UPDATE SET
-                       catalog_id = excluded.catalog_id,
-                       artwork    = COALESCE(excluded.artwork, artist_catalog.artwork)",
-                    rusqlite::params![name, id, art],
+                       catalog_id   = excluded.catalog_id,
+                       artwork      = COALESCE(excluded.artwork, artist_catalog.artwork),
+                       catalog_name = COALESCE(excluded.catalog_name, artist_catalog.catalog_name)",
+                    rusqlite::params![name, id, art, cat_name],
                 )
                 .map_err(|e| e.to_string())?;
                 written += 1;
@@ -2745,9 +2823,92 @@ pub(crate) async fn sync_artist_catalog(
     {
         let conn = db.lock();
         crate::library::meta_set(&conn, META_ARTISTS_TOTAL, &total.to_string())?;
+        crate::library::meta_set(&conn, META_ARTIST_NAMES, "1")?;
     }
     crate::log::info(&format!("library: artist catalog filled, {written} of {total} artist(s)"));
     Ok(written)
+}
+
+/// S3: the library artists our songs name that `artist_catalog` has no row for, each with one
+/// of its songs' catalog ids. A name none of whose songs has a catalog id comes back with
+/// `None`: it cannot be found this way.
+fn missing_library_artists(conn: &rusqlite::Connection) -> Result<Vec<(String, Option<String>)>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT json_extract(json, '$.libraryArtist') AS la, MAX(json_extract(json, '$.catalogId'))
+             FROM tracks
+             WHERE source = 'library' AND la IS NOT NULL AND la <> ''
+               AND la NOT IN (SELECT name FROM artist_catalog)
+             GROUP BY la",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?)))
+        .map_err(|e| e.to_string())?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+/// S3: give each missing library artist its row from one of its songs. The song read
+/// (`enrich::read_song_artists`, up to 300 songs a call, which also stores the songs' guests)
+/// names the primary catalog artist first; `artists?ids=` (25 a call) brings the photo, as the
+/// re-page would. `Some(n)` when every missing artist was found (0 when none was missing, as
+/// after a removal); `None` when one was not, so the caller re-pages.
+async fn fill_new_artists(client: &reqwest::Client, dev: &str, user: &str, db: &crate::library::Db) -> Result<Option<u32>, String> {
+    let (missing, sf) = {
+        let conn = db.lock();
+        (missing_library_artists(&conn)?, crate::enrich::cached_storefront(&conn))
+    };
+    if missing.is_empty() {
+        return Ok(Some(0));
+    }
+    let Some(sf) = sf else { return Ok(None) };
+    if missing.len() > crate::enrich::BATCH || missing.iter().any(|(_, s)| s.is_none()) {
+        return Ok(None);
+    }
+    let songs: Vec<String> = missing.iter().filter_map(|(_, s)| s.clone()).collect();
+    let read = crate::enrich::read_song_artists(client, dev, user, &sf, &songs, db).await?;
+    let mut found: Vec<(String, String, String)> = Vec::new(); // library name, catalog id, name
+    for (name, song) in &missing {
+        let Some((id, cat_name)) = song.as_ref().and_then(|s| read.get(s)).and_then(|a| a.first()) else {
+            return Ok(None);
+        };
+        found.push((name.clone(), id.clone(), cat_name.clone()));
+    }
+    // The photos, as the re-page's `include=catalog` gives them.
+    let mut ids: Vec<&str> = found.iter().map(|f| f.1.as_str()).collect();
+    ids.sort();
+    ids.dedup();
+    let mut photos = std::collections::HashMap::new();
+    for chunk in ids.chunks(ARTIST_IDS_BATCH) {
+        let url = format!(
+            "https://api.music.apple.com/v1/catalog/{sf}/artists?ids={}&fields[artists]=name,artwork",
+            chunk.join(",")
+        );
+        let (status, body) = api_get(client, dev, user, &url).await?;
+        if status != 200 {
+            return Err(format!("catalog/artists HTTP {status}"));
+        }
+        for v in body["data"].as_array().into_iter().flatten() {
+            if let (Some(id), Some(art)) = (v["id"].as_str(), artwork_from(&v["attributes"]["artwork"])) {
+                photos.insert(id.to_string(), art);
+            }
+        }
+    }
+    let conn = db.lock();
+    for (name, id, cat_name) in &found {
+        let art = photos.get(id).and_then(|a| serde_json::to_string(a).ok());
+        conn.execute(
+            "INSERT INTO artist_catalog(name, catalog_id, artwork, featured, featured_at, top_songs, catalog_name)
+             VALUES(?1, ?2, ?3, NULL, 0, NULL, ?4)
+             ON CONFLICT(name) DO UPDATE SET
+               catalog_id   = excluded.catalog_id,
+               artwork      = COALESCE(excluded.artwork, artist_catalog.artwork),
+               catalog_name = COALESCE(excluded.catalog_name, artist_catalog.catalog_name)",
+            rusqlite::params![name, id, art, cat_name],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(Some(found.len() as u32))
 }
 
 /// The newest release by each of the given LIBRARY artist names, through
@@ -2856,6 +3017,52 @@ fn album_from_library(v: &serde_json::Value) -> Album {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 2026-10-15 (S3, ideas/apple-calls.md §3): the library artists with no row, each with a
+    /// song to read; a name with no catalog song comes back without one (the pass re-pages).
+    #[test]
+    fn s3_finds_the_library_artists_with_no_row_2026_10_15() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::library::init_db(&conn).unwrap();
+        crate::enrich::init_tables(&conn).unwrap();
+        crate::enrich::migrate_v19(&conn).unwrap();
+        let put = |id: &str, source: &str, json: &str| {
+            conn.execute("INSERT INTO tracks(track_id, source, json) VALUES(?1, ?2, ?3)", [id, source, json]).unwrap();
+        };
+        put("1", "library", r#"{"catalogId":"1","libraryArtist":"Known"}"#);
+        put("2", "library", r#"{"catalogId":"2","libraryArtist":"New"}"#);
+        put("i.3", "library", r#"{"libraryId":"i.3","libraryArtist":"No Catalog"}"#);
+        put("4", "seen", r#"{"catalogId":"4","libraryArtist":"Seen Only"}"#);
+        put("5", "library", r#"{"catalogId":"5"}"#);
+        conn.execute("INSERT INTO artist_catalog(name, catalog_id) VALUES('Known', '9')", []).unwrap();
+        let mut m = missing_library_artists(&conn).unwrap();
+        m.sort();
+        assert_eq!(m, vec![("New".to_string(), Some("2".to_string())), ("No Catalog".to_string(), None)]);
+    }
+
+    /// 2026-10-15 (ideas/apple-calls.md §5, album-notes.md §6.2): the sync page's
+    /// `include=albums,artists` gives a library song its library artist and its album's
+    /// artist. Shape as probed live on *Mentirasmentiras*.
+    #[test]
+    fn library_song_reads_its_library_artist_and_album_2026_10_15() {
+        let v = serde_json::json!({
+            "id": "i.abc",
+            "attributes": { "name": "Mentirasmentiras", "artistName": "Girl Ultra, Buscabulla & Chromeo",
+                            "albumName": "Rrromeo", "playParams": { "id": "i.abc", "catalogId": "1" } },
+            "relationships": {
+                "artists": { "data": [{ "id": "r.1", "type": "library-artists", "attributes": { "name": "Girl Ultra" } }] },
+                "albums": { "data": [{ "id": "l.9", "type": "library-albums",
+                                       "attributes": { "name": "Rrromeo", "artistName": "Girl Ultra" } }] }
+            }
+        });
+        let t = track_from_library_song(&v);
+        assert_eq!(t.library_artist.as_deref(), Some("Girl Ultra"));
+        assert_eq!(t.album_artist.as_deref(), Some("Girl Ultra"));
+        assert_eq!(t.library_album_id.as_deref(), Some("l.9"));
+        // A page read without the include (an old row's shape) leaves them out.
+        let bare = track_from_library_song(&serde_json::json!({ "id": "i.x", "attributes": { "name": "x" } }));
+        assert!(bare.library_artist.is_none() && bare.album_artist.is_none() && bare.library_album_id.is_none());
+    }
 
     /// The web build has a TypeScript twin of the catalog normalizers (web/apple-catalog.ts,
     /// docs/features/WebRooms.md §9.3 C). Both read the same Apple sample and must give the same

@@ -307,6 +307,132 @@ fn fit_on_monitor(
     Some(PhysicalPosition::new(x, y))
 }
 
+// ── The icon's hover text (TRAY.md §7, his calls T1 B and T2 A, 2026-10-15) ──────────
+
+/// Windows' tray tooltip holds 127 UTF-16 units (`NOTIFYICONDATA.szTip`, 128 with the null).
+const TIP_MAX: usize = 127;
+
+fn units(s: &str) -> usize {
+    s.encode_utf16().count()
+}
+
+/// `s` in at most `n` UTF-16 units, its end replaced by "…" when it is cut.
+fn cut(s: &str, n: usize) -> String {
+    if units(s) <= n {
+        return s.to_string();
+    }
+    if n == 0 {
+        return String::new();
+    }
+    let mut out = String::new();
+    let mut used = 0;
+    for c in s.chars() {
+        let w = c.len_utf16();
+        if used + w > n - 1 {
+            break;
+        }
+        out.push(c);
+        used += w;
+    }
+    format!("{}…", out.trim_end())
+}
+
+/// "2:14", or "1:02:14" past an hour.
+fn clock(secs: f64) -> String {
+    let s = secs.max(0.0).round() as u64;
+    if s >= 3600 {
+        format!("{}:{:02}:{:02}", s / 3600, (s / 60) % 60, s % 60)
+    } else {
+        format!("{}:{:02}", s / 60, s % 60)
+    }
+}
+
+/// The tray icon's hover text (TRAY.md §7). Three lines at most:
+/// `Song — Artist` · `Album · 2:14 left` · `Next: Song — Artist` (or `Station: name`).
+/// No play or pause mark (his call). Nothing plays: `DeetsMusic`.
+///
+/// **The cut (his call, 2026-10-15): the lines share the room evenly.** The 127 UTF-16 units,
+/// less the line breaks and each line's fixed words (`Next: `, ` · 2:14 left`), are shared
+/// among the three lines' own text; a line shorter than its share gives the rest to the others
+/// (`even_shares`). Each line is cut at its end, so line 1 loses the artist before the song,
+/// line 2 loses the album and keeps the time whole, and line 3 keeps `Next: ` and the start of
+/// the next song. So the time, part of the song playing, and part of the next song always show.
+pub(crate) fn tooltip_text(s: &crate::bridge::NpState) -> String {
+    let nz = |o: &Option<String>| o.as_deref().map(str::trim).filter(|v| !v.is_empty()).map(String::from);
+    let Some(title) = nz(&s.title).filter(|_| s.active) else { return "DeetsMusic".into() };
+    // The time left, while it can be known (a live station has no end).
+    let left = (s.duration > 0.0 && !s.live).then(|| format!("{} left", clock(s.duration - s.current_time)));
+    // Each line: (fixed words before, its own text, fixed words after).
+    let mut lines: Vec<(String, String, String)> = Vec::new();
+    let line1 = match nz(&s.artist) {
+        Some(a) => format!("{title} — {a}"),
+        None => title,
+    };
+    lines.push((String::new(), line1, String::new()));
+    match (nz(&s.album), &left) {
+        (Some(al), Some(l)) => lines.push((String::new(), al, format!(" · {l}"))),
+        (Some(al), None) => lines.push((String::new(), al, String::new())),
+        (None, Some(l)) => lines.push((String::new(), String::new(), l.clone())),
+        (None, None) => {}
+    }
+    match nz(&s.station) {
+        Some(st) => lines.push(("Station: ".into(), st, String::new())),
+        None => {
+            if let Some(t) = nz(&s.next_title) {
+                let own = match nz(&s.next_artist) {
+                    Some(a) => format!("{t} — {a}"),
+                    None => t,
+                };
+                lines.push(("Next: ".into(), own, String::new()));
+            }
+        }
+    }
+    let fixed: usize = lines.iter().map(|(b, _, a)| units(b) + units(a)).sum::<usize>() + lines.len() - 1;
+    let room = TIP_MAX.saturating_sub(fixed);
+    let shares = even_shares(&lines.iter().map(|(_, own, _)| units(own)).collect::<Vec<_>>(), room);
+    let text = lines
+        .iter()
+        .zip(shares)
+        .map(|((before, own, after), n)| format!("{before}{}{after}", cut(own, n)))
+        .collect::<Vec<_>>()
+        .join("\n");
+    cut(&text, TIP_MAX) // a guard only: the shares already fit
+}
+
+/// Share `room` among parts of these lengths as evenly as it goes: a part shorter than its
+/// share keeps its length and leaves the rest to the others ("water filling"). The shares
+/// never add up to more than `room`.
+fn even_shares(lens: &[usize], room: usize) -> Vec<usize> {
+    let mut out = vec![0; lens.len()];
+    let mut order: Vec<usize> = (0..lens.len()).collect();
+    order.sort_by_key(|&i| lens[i]);
+    let mut left = room;
+    for (k, &i) in order.iter().enumerate() {
+        let share = left / (lens.len() - k);
+        out[i] = lens[i].min(share);
+        left -= out[i];
+    }
+    out
+}
+
+/// Set the icon's hover text from the hub (each `np_publish`, at most about once a second);
+/// a call only when the text changed. An open tooltip shows the new text at once (the probe,
+/// TRAY.md §7), so the time left counts down while the pointer rests on the icon.
+pub fn update_tooltip(app: &AppHandle, s: &crate::bridge::NpState) {
+    static LAST: Mutex<String> = Mutex::new(String::new());
+    let text = tooltip_text(s);
+    {
+        let mut last = LAST.lock_or_recover();
+        if *last == text {
+            return;
+        }
+        *last = text.clone();
+    }
+    if let Some(tray) = app.tray_by_id("main") {
+        tray.set_tooltip(Some(text)).ok();
+    }
+}
+
 /// Put the window back where the last session left it (`settings.json` → `windowPos`),
 /// guarded on the monitor layout by `fit_on_monitor`.
 fn restore_window_pos(app: &AppHandle) {
@@ -462,4 +588,83 @@ pub async fn app_quit(app: AppHandle) {
         app.exit(0);
     })
     .await;
+}
+
+#[cfg(test)]
+mod tooltip_tests {
+    use super::*;
+    use crate::bridge::NpState;
+
+    fn playing() -> NpState {
+        NpState {
+            active: true,
+            playing: true,
+            title: Some("Mentirasmentiras".into()),
+            artist: Some("Girl Ultra, Buscabulla & Chromeo".into()),
+            album: Some("Rrromeo".into()),
+            duration: 200.0,
+            current_time: 66.0,
+            next_title: Some("Denisse".into()),
+            next_artist: Some("Girl Ultra & Chromeo".into()),
+            ..Default::default()
+        }
+    }
+
+    /// 2026-10-15 (TRAY.md §7): his three lines; no play or pause mark.
+    #[test]
+    fn tray_text_has_his_three_lines_2026_10_15() {
+        assert_eq!(
+            tooltip_text(&playing()),
+            "Mentirasmentiras — Girl Ultra, Buscabulla & Chromeo\nRrromeo · 2:14 left\nNext: Denisse — Girl Ultra & Chromeo"
+        );
+        // Paused: the same text (no mark).
+        let paused = NpState { playing: false, ..playing() };
+        assert_eq!(tooltip_text(&paused), tooltip_text(&playing()));
+        // The last song in the queue: no third line.
+        let last = NpState { next_title: None, next_artist: None, ..playing() };
+        assert_eq!(tooltip_text(&last), "Mentirasmentiras — Girl Ultra, Buscabulla & Chromeo\nRrromeo · 2:14 left");
+        // A live station: its name on line 3, and no time left.
+        let st = NpState { station: Some("Chill Radio".into()), live: true, ..playing() };
+        assert_eq!(tooltip_text(&st), "Mentirasmentiras — Girl Ultra, Buscabulla & Chromeo\nRrromeo\nStation: Chill Radio");
+        // Nothing plays.
+        assert_eq!(tooltip_text(&NpState::default()), "DeetsMusic");
+        assert_eq!(clock(3734.0), "1:02:14");
+    }
+
+    /// 2026-10-15 (his call): too long, the three lines share the room evenly; the time, part
+    /// of the song playing and part of the next song always show.
+    #[test]
+    fn tray_text_shares_the_room_evenly_2026_10_15() {
+        // A long album: the next line (under its share) keeps all of it; the song line and the
+        // album share the rest evenly, so the song line loses the end of its artist.
+        let long = NpState {
+            album: Some("A Very Long Deluxe Edition Album Name With Bonus Tracks And Live Recordings (Remastered 2026)".into()),
+            ..playing()
+        };
+        let t = tooltip_text(&long);
+        assert!(units(&t) <= TIP_MAX, "{t}");
+        let lines: Vec<&str> = t.split('\n').collect();
+        assert_eq!(lines[0], "Mentirasmentiras — Girl Ultra, Buscab…");
+        assert_eq!(lines[1], "A Very Long Deluxe Edition Album Name… · 2:14 left");
+        assert_eq!(lines[2], "Next: Denisse — Girl Ultra & Chromeo");
+        // Everything long: three lines of about the same length, each with its start kept.
+        let all = NpState {
+            title: Some(format!("Song{}", "s".repeat(200))),
+            artist: Some("a".repeat(200)),
+            album: Some("b".repeat(200)),
+            next_title: Some(format!("Later{}", "n".repeat(200))),
+            ..playing()
+        };
+        let t = tooltip_text(&all);
+        assert!(units(&t) <= TIP_MAX, "{} units", units(&t));
+        let lines: Vec<&str> = t.split('\n').collect();
+        assert_eq!(lines.len(), 3);
+        assert!(lines[0].starts_with("Song") && lines[0].ends_with('…'));
+        assert!(lines[1].ends_with("… · 2:14 left"), "{}", lines[1]);
+        assert!(lines[2].starts_with("Next: Later") && lines[2].ends_with('…'));
+        let own = [units(lines[0]), units(lines[1]) - units(" · 2:14 left"), units(lines[2]) - units("Next: ")];
+        assert!(own.iter().max().unwrap() - own.iter().min().unwrap() <= 1, "{own:?}");
+        assert_eq!(even_shares(&[10, 100, 100], 110), vec![10, 50, 50]);
+        assert_eq!(even_shares(&[10, 20, 30], 200), vec![10, 20, 30]);
+    }
 }

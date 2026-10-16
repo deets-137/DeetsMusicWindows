@@ -6,7 +6,9 @@
 // /me/library/artists has the same per-credit-string fragmentation (probed
 // 2026-07-03 — entries like "Alessia Cara & Julia Michaels"), and real catalog
 // artist ids are the deferred post-v1 backfill (HANDOFF). So: parse the strings,
-// zero Apple calls.
+// zero Apple calls. Since 2026-10-15 a song's PRIMARY artist is Apple's own answer
+// (primary-artist.ts): it seeds the vocabulary and leads the song's names; the parse
+// still finds the guests.
 //
 // The trick is a self-built VOCABULARY: a name that ever appears as a complete,
 // separator-free credit somewhere in the library ("Drake", "BETWEEN FRIENDS") is
@@ -114,13 +116,73 @@ export interface CreditIndex {
   tracksFor(name: string): Track[];
 }
 
+/** A song's primary artist name, from Apple (primary-artist.ts registers it). `version`
+ *  changes when its answers change, so the memo below rebuilds. */
+export interface PrimaryLookup {
+  version(): number;
+  nameOf(t: Track): string | undefined;
+}
+let primary: PrimaryLookup = { version: () => 0, nameOf: () => undefined };
+export function usePrimaryLookup(lookup: PrimaryLookup): void {
+  primary = lookup;
+}
+
+/**
+ * A song's artists with its primary artist first (ideas/apple-calls.md §5). The parse names
+ * the primary already when the vocabulary holds it: it moves to the front. When the parse
+ * spells it another way (or not at all), the primary takes the LEADING name's place, which is
+ * the primary in Apple's credit order, so one artist never gets two tiles.
+ */
+export function withPrimary(parsed: string[], primaryName: string | undefined): string[] {
+  if (!primaryName) return parsed;
+  if (parsed.includes(primaryName)) return [primaryName, ...parsed.filter((n) => n !== primaryName)];
+  return [primaryName, ...parsed.slice(1)];
+}
+
+/** One name in a song's *Go to Artist ▸* list. */
+export interface GoToPerson {
+  name: string;
+  /** The catalog artist id, when Apple named this artist (the Search way opens it). */
+  id?: string;
+  /** The Library holds songs under this name (the Library way). */
+  inLibrary: boolean;
+  /** The song's first artist: the song → artist hop in Search resolves to this one. */
+  lead: boolean;
+}
+
+/**
+ * The people of a song's *Go to Artist ▸* (ideas/apple-calls.md §5.4, P2): the library
+ * names first (the primary leads), each with its catalog id when Apple named it too, then
+ * Apple's guests the parse does not know, in Apple's order. With no library names (a catalog
+ * song), Apple's list alone, the primary first. Names match case-blind.
+ */
+export function goToPeople(
+  names: string[],
+  catalog: { id: string; name: string }[] | undefined,
+  inLibrary: (name: string) => boolean,
+): GoToPerson[] {
+  const key = (s: string) => s.trim().toLowerCase();
+  const cat = catalog ?? [];
+  const byName = new Map(cat.map((a) => [key(a.name), a]));
+  const out: GoToPerson[] = names.map((n, i) => ({ name: n, id: byName.get(key(n))?.id, inLibrary: inLibrary(n), lead: i === 0 }));
+  const seen = new Set(names.map(key));
+  for (const a of cat) {
+    if (seen.has(key(a.name))) continue;
+    seen.add(key(a.name));
+    out.push({ name: a.name, id: a.id, inLibrary: inLibrary(a.name), lead: out.length === 0 });
+  }
+  return out;
+}
+
 // Memoized per tracks-array identity — the track store keeps one stable array
-// between syncs, so the parse runs once per library load, not per render.
-const memo = new WeakMap<Track[], CreditIndex>();
+// between syncs, so the parse runs once per library load, not per render — and per
+// primary-map version (the artist pass may land after the songs).
+const memo = new WeakMap<Track[], { v: number; idx: CreditIndex }>();
 
 export function creditIndex(tracks: Track[]): CreditIndex {
+  const v = primary.version();
   const hit = memo.get(tracks);
-  if (hit) return hit;
+  if (hit && hit.v === v) return hit.idx;
 
   const vocab = new Set<string>();
   for (const t of tracks) {
@@ -129,12 +191,16 @@ export function creditIndex(tracks: Track[]): CreditIndex {
     // A single-name feat guest is unambiguous; a compound clause is NOT split into
     // vocab (a "feat. Earth, Wind & Fire" must not poison it with "Earth").
     if (s.guests.length === 1) vocab.add(s.guests[0]);
+    // Apple's primary artist stands alone by definition, comma or not: "Girl Ultra & Chromeo"
+    // splits under Girl Ultra with no solo song by her in the library (§5.3).
+    const p = primary.nameOf(t);
+    if (p) vocab.add(p);
   }
 
   const names = new Map<Track, string[]>();
   const byArtist = new Map<string, Track[]>();
   for (const t of tracks) {
-    const ns = creditArtists(t.artistName ?? "", vocab);
+    const ns = withPrimary(creditArtists(t.artistName ?? "", vocab), primary.nameOf(t));
     names.set(t, ns);
     for (const nm of ns) {
       let list = byArtist.get(nm);
@@ -144,9 +210,9 @@ export function creditIndex(tracks: Track[]): CreditIndex {
   }
 
   const idx: CreditIndex = {
-    namesOf: (t) => names.get(t) ?? creditArtists(t.artistName ?? "", vocab),
+    namesOf: (t) => names.get(t) ?? withPrimary(creditArtists(t.artistName ?? "", vocab), primary.nameOf(t)),
     tracksFor: (name) => byArtist.get(name) ?? [],
   };
-  memo.set(tracks, idx);
+  memo.set(tracks, { v, idx });
   return idx;
 }

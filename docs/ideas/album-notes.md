@@ -203,6 +203,10 @@ fields: 99 ids in one call, 99 songs back, 137 KB, 0.36 s. That is a bulk path f
 
 ### 6.2 What follows (no fork)
 
+> **Part:** built · 2026-10-15 (`twenty-eighth`, with apple-calls.md §5; the as-built record and
+> the desk test are apple-calls.md §5.5). The web twin item does not apply: the twin normalizes
+> catalog shapes only.
+
 - **The sync adds `include=albums`** to its song pages, the full pass and the incremental pass.
   With the primary artist (apple-calls.md §5) it is one change:
   `include=albums,artists&fields[library-albums]=name,artistName&fields[library-artists]=name`,

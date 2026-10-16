@@ -31,7 +31,8 @@ import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStatio
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
 import { requestDrillCard, requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
 import { goTo, goToArtistItem, goToAlbumItem, goToAlbumPaneItem, artistSearch, songCreditsItem, requestPlaylistPane, requestArtistPane, type LibraryWay } from "./go-to";
-import { creditIndex } from "./artist-credit";
+import { creditIndex, goToPeople, type GoToPerson } from "./artist-credit";
+import { songArtists } from "./primary-artist";
 import { copySongLinkItem, copyAlbumLinkItem, copyAlbumLinkFromSongItem, copyArtistLinkItem, copyPlaylistLinkItem, copyStationLinkItem } from "./copy-link";
 import { startStationItem, startArtistStationItem } from "./start-station";
 import { startWebItem, type WebSeed } from "./web";
@@ -136,15 +137,29 @@ const libNames = (): Pick<LibNav, "artistNames"> => ({ artistNames: (t) => credi
 function songGoTo(t: Track | undefined, cid: string | undefined, nav?: LibNav): Row[] {
   const lib = nav && t ? t : libCopy(t);
   const inPlace = !!nav;
+  // The library names, the primary artist first (artist-credit.ts `withPrimary`).
   const names = lib ? (nav ?? libNames()).artistNames(lib) : [];
   const toArtist = (n: string) => (nav ? nav.drillArtist(n) : requestLibraryDrill({ kind: "artist", name: n }));
+  // Apple's catalog artists of the song, the primary first (his call P2, ideas/apple-calls.md
+  // §5.4): a guest the parse does not know joins the list; one it knows lends its catalog id.
+  const people = goToPeople(names, songArtists(cid), (n) => creditIndex(tracks()).tracksFor(n).length > 0);
+  const way = (p: GoToPerson) => ({
+    library: p.inLibrary ? { run: () => toArtist(p.name), inPlace } : undefined,
+    // The Search way: the artist's own page by its id; else the song's first artist (Apple's
+    // primary), which is right for the leading name only.
+    search: p.id ? () => requestArtistPane({ id: p.id!, name: p.name }) : p.lead ? artistSearch("songs", cid, p.name) : undefined,
+  });
   const artist: Row =
-    nav && names.length > 1
+    people.length > 1
       ? {
           label: "Go to Artist",
-          sub: () => names.map((n) => ({ label: n, run: () => goTo("artist", { run: () => toArtist(n), inPlace }, artistSearch("songs", cid, n)) })),
+          sub: () =>
+            people.map((p) => {
+              const w = way(p);
+              return { label: p.name, run: () => goTo("artist", w.library, w.search) };
+            }),
         }
-      : goToArtistItem("songs", cid, t?.artistName, names.length ? { run: () => toArtist(names[0]), inPlace } : undefined);
+      : goToArtistItem("songs", cid, people[0]?.name ?? t?.artistName, people[0] ? way(people[0]).library : undefined);
   const album = goToAlbumItem(
     cid,
     t?.albumName,

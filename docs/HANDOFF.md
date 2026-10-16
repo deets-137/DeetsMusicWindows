@@ -136,7 +136,7 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   opaque skins pass. Not yet on live. Open: Ocean's see-through card (50 % under the bar) and
   Glass in Moonlight and Black-Red. Run the check again after any fix.
 
-- **The Deets head icon (2026-10-15, branch `icons-fifteen`, not merged):** built and
+- **The Deets head icon (2026-10-15, branch `icons-fifteen`, merged into `main`):** built and
   desk-tested in the dev app (WORKLOG 2026-10-15). It goes live with the next release, together
   with the DeetsSolutions push (`38abe54`) and a DeetsSupport deploy (the sign-in icon). The
   list of what is left before then is whitelabel.md §10.6 › *Before it goes live*.
@@ -148,19 +148,30 @@ Working style). Each step is its own branch and session, desk-tested before the 
 
 1. **Two small fixes, one release:** the Press record without its sheen (VINYL.md §11, CSS only)
    and the Library ⟳ that shows why a click does nothing while a sync runs (ideas/apple-calls.md
-   §4: visible, not queued).
+   §4: visible, not queued). **BUILT 2026-10-15 on `twenty-eighth`, desk tests passed (his, 2026-10-15)** (WORKLOG):
+   the sheen is gone; the ⟳ spins from the sync lock to its release. The ⟳ hint words and the
+   nudge (the §4 draft) are not built.
 2. **A song's primary artist and an album's real artist, as one change** (apple-calls.md §5,
    album-notes.md §6.2): `include=albums,artists` on the sync page, `catalog_name` on
    `artist_catalog` (a schema bump). Fixes Go to Artist, the Last.fm counts and Rewind's split
-   artists. The backfill rides the next full sync.
+   artists. The backfill rides the next full sync. **BUILT 2026-10-15 on `twenty-eighth` with
+   the guests (P2), desk test passed (his, 2026-10-15)** (apple-calls.md §5.5). Schema v19. G1 = A (his call): a
+   guests pass after each sync reads every library song's artists once (§5.6).
 3. **Fewer launch calls, S1 and S3** (apple-calls.md §3): the same launch code as step 2, so
    after it, and after one full sync has backfilled. About 55 calls a day saved for him.
+   **BUILT 2026-10-15 on `twenty-eighth`, desk test passed (his, 2026-10-15)** (apple-calls.md §3 › *S1 and S3 as
+   built*). S3 also reads the new artists' photos (1 call), so Home's tiles keep them.
 4. **A new user starts in Max** (FUTURE-SETTINGS.md §8b): before Hop in, whose Cruisin preset
    and walk words depend on where a new user starts. The fit-to-screen part fixes Max on small
-   screens for everyone.
-5. **Hop in** (HOP-IN.md): decided; it followed Velopack, whose desk test has passed.
+   screens for everyone. **BUILT 2026-10-15 on `twenty-eighth`, desk test passed (his, 2026-10-15)** (§8b › As
+   built): the size was already fitted; the new part keeps the window's position on screen.
+5. **Hop in** (HOP-IN.md): decided; it followed Velopack, whose desk test has passed. **Skipped
+   for now (his call, 2026-10-15)**; the tray hover text comes first.
 6. **The tray hover text** (TRAY.md §7): small; it may pair with any step from 3 on. Its probe
-   (does an open tooltip take new text) comes first.
+   (does an open tooltip take new text) comes first. **BUILT 2026-10-15 on `twenty-eighth`,
+   desk test passed (his, 2026-10-15)** (§7 › As built). The probe by hand: an open tooltip
+   updates live and shows three lines, so the time left is in. The first desk test found a
+   64-unit cut (tray-icon 0.24.1, fixed by 0.24.2); long text now shares the room evenly.
 7. **Album notes** (ideas/album-notes.md): large (a model field, a table, UI on every surface);
    needs step 2's album artist. Its three read-only probes (§5) may run any time before.
 
@@ -170,24 +181,12 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
-- **The Library ⟳'s refusal, made visible** (2026-10-15, his call): a click while a sync runs
-  still starts nothing, but the ⟳ shows why (the progress in its hint, at once on the click);
-  no queued refresh. ideas/apple-calls.md §4.
-- **The Press record without its sheen** (2026-10-15): the sheen goes; the grooves and the label
-  ring stay. Every fork closed. VINYL.md §11. The center cap (§11.1) is parked.
-- **The tray icon's hover text** (2026-10-15): Steam-like tooltip text, no card: the song and
-  artist, the album, the next song. The time left only if an open tooltip updates live (a probe
-  first). Every fork closed. TRAY.md §7.
-- **A new user starts in Max** (2026-10-15): new installs only; each open size fits the screen,
-  and a screen too small for Max's floor starts in Midi. FUTURE-SETTINGS.md §8b.
+- **The Library ⟳'s hint on a refused click** (2026-10-15): the spin part is built (Build order
+  step 1); the hint words and the nudge are a draft for him to edit. ideas/apple-calls.md §4.
 - **Album notes** (2026-10-15): Apple's editorial notes in the album's facts box, Apple's only
   (Last.fm's wiki leaves the About cell); the full note opens on every surface; a song mention
   plays the song in the album. Every fork closed; three probes before the build (§5).
   ideas/album-notes.md.
-- **A Library album's real artist** (2026-10-15): the sync's song pages add `include=albums`,
-  which gives each song's library album and Apple's album artist at no extra call (probed); the
-  Library names the album by it, not by a vote of song credits. It can go in before album notes.
-  ideas/album-notes.md §6.1–§6.2.
 
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
@@ -197,8 +196,18 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **Branch `twenty-eighth` (2026-10-15, cut from `main` at `c11ecd2`, pushed, not merged):**
+  Build order steps 1, 2, 3, 4 and 6, every desk test passed (his). The Library ⟳ spins for the
+  whole sync; the Press record has no sheen; a song's primary artist, an album's real artist and
+  every song's guests (schema **v19**, a guests pass after each sync); fewer launch calls (S1,
+  S3); Max for a new install, and every open keeps the window on screen; the tray icon's hover
+  text (tray-icon bumped to **0.24.2** in Cargo.lock: 0.24.1 cut tooltips at 64 units). WORKLOG
+  2026-10-15 (twenty-eighth). **Resume here:** merge it into `main` (which already holds
+  `velopack-spike` and `icons-fifteen`) for the 0.28.0 release, then Build order step 7 (album
+  notes) or step 5 (Hop in, skipped for now, his call). The ⟳ hint words are still his draft (apple-calls.md §4).
+
 - **Velopack replaces NSIS and the Tauri updater (2026-10-15, branch `velopack-spike`, cut from
-  `icons-fifteen`, not merged):** built, and the beta desk test passed on `deetsmusic-test`
+  `icons-fifteen`, merged into `main`):** built, and the beta desk test passed on `deetsmusic-test`
   (betas 0.28.0-beta.1 to .6; VELOPACK.md §12.4). The DeetsSupport `vp/` route is deployed
   (branch `velopack` there). His looks passed the same day (DESK-TESTS.md B23, VELOPACK.md
   §12.6). Next, his call: the full app's move (he uninstalls the NSIS 0.27.0 by hand) and a

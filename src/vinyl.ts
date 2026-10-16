@@ -1,5 +1,5 @@
 // Press "Record player" (docs/features/VINYL.md). The cover box keeps its art in a slot (.vinyl):
-// a plate, the art that turns (.vinyl__spin), and a sheen that does not. CSS decides whether
+// a plate that does not turn, and the art that turns (.vinyl__spin). CSS decides whether
 // the slot looks like a record in this place (--vinyl on .np__art: the skin, the rows and
 // the surface); everywhere else it draws the plain square cover. The Now Playing card and the
 // tray panel both use it.
@@ -198,7 +198,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
     const el = document.createElement("div");
     el.className = s ? "vinyl" : "vinyl vinyl--glyph";
     if (s) {
-      el.innerHTML = '<div class="vinyl__plate"></div><div class="vinyl__spin"><img alt="" data-art /></div><div class="vinyl__sheen"></div>';
+      el.innerHTML = '<div class="vinyl__plate"></div><div class="vinyl__spin"><img alt="" data-art /></div>';
       const img = el.querySelector("img")!;
       img.decoding = "async";
       img.src = s;

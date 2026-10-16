@@ -427,7 +427,7 @@ cards (blur) slider was built first and dropped the same day; the blur is a fixe
 Settings › Skin settings › **Record player** (Spin / Still / Off), **Show record on**, **Spin speed**
 (16⅔ / 33⅓ / 45 / 78 rpm; 16⅔ the default since 2026-10-11), **Show record plate**. The cover box (`.np__art`, in the Now Playing card and the tray panel) holds its art in a
 slot from `src/vinyl.ts`: a plate that never turns, the art that turns (one Web Animation, the
-compositor's), and a sheen that never turns. The place decides the look: skin.css sets
+compositor's); the sheen was removed 2026-10-15 (VINYL.md §11). The place decides the look: skin.css sets
 `--vinyl-stage` / `--vinyl-strip` / `--vinyl-tray` (1 or 0) from the rows; styles.css hands one to
 `.np__art` as `--vinyl`, and the record rules sit in `@container style(--vinyl: 1)`. At 0 the slot
 draws the old square cover (`transform: none !important` beats the animation). The cover box is a

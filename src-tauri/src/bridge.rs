@@ -118,6 +118,10 @@ pub struct NpState {
     /// "off" | "all" | "one" (NEXT-VERSION §12); the tray panel ignores both.
     pub repeat: String,
     pub shuffle: bool,
+    /// The Queue card's next song, for the tray icon's hover text (TRAY.md §7). None on a
+    /// station and at the queue's last song.
+    pub next_title: Option<String>,
+    pub next_artist: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -146,6 +150,7 @@ pub struct Hub {
 pub fn np_publish(state: NpState, app: AppHandle, hub: tauri::State<'_, Hub>) {
     *hub.np.lock_or_recover() = state.clone();
     crate::smtc::update(&state);
+    crate::tray::update_tooltip(&app, &state); // the icon's hover text (TRAY.md §7)
     crate::airplay::on_np_state(&app, &state);
     let _ = app.emit_to("tray", "np", state);
 }

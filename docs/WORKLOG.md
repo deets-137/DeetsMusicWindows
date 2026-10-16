@@ -12,6 +12,82 @@ updated: 2026-10-15
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-15 (twenty-eighth) — the Library ⟳ spins for the whole sync
+
+**His report:** mid-sync the ⟳ stood still, and his clicks did nothing. **His ask:** the ⟳ spins
+while a sync runs, so the user knows it is working.
+- **Why it stood still (the log, 11:12:47):** the ⟳ spun only on a `start` event the Library card
+  heard. The launch sync often starts before the card mounts, and a card swapped in mid-sync
+  missed it too. A second gap: after an incremental pass says `done`, the artist pass and the heal
+  still hold the lock, so the ⟳ stopped while clicks were still refused.
+- **Built:** the lock's release says `{phase:"idle"}` (`SyncFlagGuard`, library.rs); a new
+  `library_sync_busy` command answers a card that mounts mid-sync; `onSyncBusy` / `syncBusy` in
+  library.ts. The ⟳ spins from the lock to its release. A click while it spins does not call
+  `library_sync` (no console error) and logs `library:refreshBusy` with the progress.
+  ideas/apple-calls.md §4.
+- **Not built:** the hint words and the nudge on a refused click (the §4 draft, his to edit).
+- **Desk test (owner):** launch with the Library card off screen, swap it in during the launch
+  sync: the ⟳ spins at once and stops when the sync's last log line (`catalog heal`) is written.
+  Click it while it spins: nothing starts, `diag` shows `library:refreshBusy`. Click it after: a
+  full sync runs. Needs a dev-runner restart (Rust changed).
+
+**The Press record without its sheen (VINYL.md §11, the same sitting).** His picture: a dark
+diagonal band across a light cover; that was the sheen's two lobes in the dark `--surface`. Removed:
+the `.vinyl__sheen` layer (vinyl.ts), its CSS, the four `--vinyl-sheen-*` tokens; `npm run tokens`.
+The grooves and the label ring stay. The motion set's Press `next-song` shot after the change:
+`shots/motion/0.28.0-beta.6-sheen-off/`. Desk test: VINYL.md §11 › As built.
+
+**Step 2: a song's primary artist, an album's real artist, the guests (the same sitting, his
+go).** His calls before the build: he runs the backfill himself with the ⟳ (no forced full
+pass); P2 built with this step. Built per apple-calls.md §5 and album-notes.md §6.2; schema v19.
+Probed live first (3 calls): the new sync page is 107 KB and names 100 of 100 library artists
+and album artists; the enrichment read lists Girl Ultra, Buscabulla, Chromeo with ids. Two
+things found in the build: the artist pass would never fill `catalog_name` on a ⟳ (it is
+incremental by count), so a one-time `meta` flag re-pages it once; and the enrichment read runs
+far less often than P2 assumed, so few songs get their guests (fork G1, his). The as-built
+record and the desk test: apple-calls.md §5.5. **G1 = A (his call):** a guests pass after each
+sync reads every library song's catalog artists once (about 14 calls the first time), then only
+new songs; the same read caches the whole library's palettes and writer credits. §5.6.
+
+**Desk tests passed (his, 2026-10-15):** step 1 (the ⟳ spin, the record without its sheen) and
+step 2 (the primary artist, the album artist, the guests). Then, his call: steps 3 and 4 in one
+go; Hop in skipped for now; the tray hover text after.
+
+**Steps 3 and 4 built (the same sitting).**
+- **S1 + S3** (apple-calls.md §3 › *S1 and S3 as built*): a rise in Apple's song count runs the
+  incremental pass first; exactly N new songs for +N stores the count and skips the full pass.
+  A moved artist count after an incremental pass fills the new artists from their songs (1 song
+  read + 1 photo read) instead of re-paging about 15 calls; anything not found re-pages. Decided
+  inside his call: the photo read (the doc's S3 had none, and Home's artist tiles use the photos).
+  A launch after a few new songs: 3 to 5 calls, against about 57.
+- **Max for a new install** (FUTURE-SETTINGS.md §8b › As built): Max when the screen holds it,
+  else Midi. The size was already fitted to the screen (§8a's `openSize`); what was missing was the
+  position, so every open now moves the window back inside the monitor's work area
+  (`keepOnScreen`, a new `core:window:allow-set-position` permission). Found: the web demo shares
+  surface.ts, so its first visit also starts in Max on a large screen.
+- Found while building the tray text: tray.rs `fit_on_monitor` allows Windows 11's invisible
+  ~8 px border; `keepOnScreen` now does too, or a window snapped to an edge moved 8 px per open.
+- No Apple probe was run for these: S1 uses the calls the sync already makes; S3's song read is the
+  enrichment read probed in step 2, and `artists?ids=` is the shape Home's New shelf uses.
+
+**The tray hover text (step 6; Hop in skipped, his call).** The probe: a throwaway PowerShell tray
+icon (the same NIM_MODIFY + NIF_TIP path as the tray-icon crate). The automatic run could not
+open a tooltip (Windows put the icon in the hidden icons; a program-moved pointer opens none), so
+he ran it by hand: **the open tooltip updates live and shows three lines.** So the time left is
+in. Built per TRAY.md §7 (§7 › As built): np-bus publishes the next song and republishes on a
+queue change; Rust builds the text and sets it only when it changes; the cut keeps 127 units.
+Nothing open was left to bring him.
+- **His first desk test: two lines, the album cut after "(feat."** — exactly 64 units. Probe 2
+  (a 107-unit text, two modes) showed all three lines in both, so Windows was not the limit.
+  The cause: tray-icon 0.24.1 leaves `cbSize` at 0 in `set_tooltip`, and Windows then takes the
+  oldest struct, with a 64-unit tooltip. tray-icon 0.24.2 sets it; Cargo.lock bumped by hand to
+  0.24.2 (a `cargo update` also moved `windows-sys` for six unrelated packages). TRAY.md §7.
+- **His second look: three lines, the time counting down.** His call: when the text is too
+  long, the three lines share the room evenly, so the time, part of the song and part of the
+  next song always show (`even_shares`, tray.rs). It replaced the album-first cut.
+- **Desk tests passed (his, 2026-10-15):** steps 3 (S1 + S3), 4 (Max for a new install) and 6
+  (the tray hover text). Step 5, Hop in, stays skipped for now.
+
 ## 2026-10-15 — two ideas: the record's sheen, a tray hover card
 
 A talk and docs only; no code (another build was in progress).

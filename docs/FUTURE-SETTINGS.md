@@ -492,7 +492,25 @@ Front-end only (`src/`). Vite reloads it; no dev-runner restart.
 
 ### 8b. A new user starts in Max (2026-10-15)
 
-> **Part:** designed · 2026-10-15
+> **Part:** built · 2026-10-15 (`twenty-eighth`; desk test passed, his, 2026-10-15)
+
+**As built (2026-10-15).** Where it differs from the design below, this is the code.
+- `DEFAULT_SURFACE = "max"`. A new install's first surface is `firstSurface()`: Max when the
+  screen's work area holds Max (`screenHoldsMax`: `availHeight` ≥ 750, Max's floor, and
+  `availWidth` > 860, past the Midi band and its dead-band), else Midi. `diag.log`
+  `surface:first` with the surface and the screen. A saved `deets.surface` wins, as before.
+- `fullSurface()`: the stored `deets.surface.full`; with none, the same screen rule.
+- **The size was already fitted.** `openSize()` has clamped every open size to
+  `screen.availWidth/availHeight` (above the view's floor) since §8a; the "no check of the screen"
+  below is out of date. What was missing is the **position**: a window grows from its top-left
+  corner, so a Max opened low on the screen ran past the taskbar. `keepOnScreen()` (surface.ts)
+  runs after every `applySize`: it moves the window back inside its monitor's work area
+  (`currentMonitor().workArea`) and logs `surface:onScreen`. It leaves the ~8 px invisible
+  resize border its slack, as tray.rs `fit_on_monitor` does, so a window snapped to an edge is
+  not nudged on each open. This fixes every open, the tray's and
+  an agent's too. It needs `core:window:allow-set-position` (capabilities/default.json).
+- The web demo answers `current_monitor` with nothing, so it never moves. Its first visit follows
+  the same rule and starts in Max on a large screen; the shots runner sets its surface itself.
 
 **His ask (2026-10-15):** make Max the default surface for a user.
 

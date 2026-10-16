@@ -30,9 +30,11 @@ export const albumKey = (t: Track) => {
 };
 
 export function groupAlbums(tracks: Track[]): AlbumGroup[] {
-  // Album's displayed artist = its DOMINANT track artist (a featured guest on one track
-  // shouldn't relabel the whole album), tracked via per-artist counts.
-  const map = new Map<string, AlbumGroup & { artistCounts: Map<string, number> }>();
+  // Album's displayed artist = Apple's own album artist when its songs carry one (the sync's
+  // `include=albums`, ideas/album-notes.md §6.2: Rrromeo is Girl Ultra's on every run). Else
+  // its DOMINANT track artist (a featured guest on one track shouldn't relabel the whole
+  // album), tracked via per-artist counts.
+  const map = new Map<string, AlbumGroup & { artistCounts: Map<string, number>; albumArtist?: string }>();
   for (const t of tracks) {
     const key = albumKey(t);
     let g = map.get(key);
@@ -43,6 +45,7 @@ export function groupAlbums(tracks: Track[]): AlbumGroup[] {
     g.count++;
     const an = t.artistName ?? "";
     g.artistCounts.set(an, (g.artistCounts.get(an) ?? 0) + 1);
+    if (!g.albumArtist && t.albumArtist) g.albumArtist = t.albumArtist;
     if (!g.artwork && t.artwork) g.artwork = t.artwork;
     if (t.releaseDate && (!g.releaseDate || t.releaseDate < g.releaseDate)) g.releaseDate = t.releaseDate;
     // album's "added" = its MOST-RECENTLY-added track, so a freshly-touched album surfaces first
@@ -50,6 +53,10 @@ export function groupAlbums(tracks: Track[]): AlbumGroup[] {
   }
   const groups = [...map.values()];
   for (const g of groups) {
+    if (g.albumArtist) {
+      g.artist = g.albumArtist;
+      continue;
+    }
     let best = -1;
     for (const [name, n] of g.artistCounts) if (n > best) { best = n; g.artist = name; }
   }
@@ -93,7 +100,8 @@ export const artistOrder = (ts: Track[]): Track[] =>
  *  (media-menu.ts, CONTEXT-MENUS.md). `pinKey`: the tile's own key, where it has one. */
 export const libAlbum = (ts: Track[], pinKey?: string): AlbumSubject => ({
   title: ts[0]?.albumName ?? "Album",
-  artistName: ts[0]?.artistName,
+  // Apple's album artist when a song carries it; else the first song's credit, as before.
+  artistName: ts.find((t) => t.albumArtist)?.albumArtist ?? ts[0]?.artistName,
   artwork: ts[0]?.artwork,
   known: ts,
   pinKey,

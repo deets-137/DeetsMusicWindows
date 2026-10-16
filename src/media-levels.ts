@@ -206,7 +206,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     artistNames: (t) => creditIndex(tracks()).namesOf(t),
     drillArtist: (name) => card().drill(libArtistLevel(name)),
     drillAlbum: (t) =>
-      card().drill(libAlbumLevel({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.artistName ?? "", count: 0 }, t)),
+      card().drill(libAlbumLevel({ key: albumKey(t), name: t.albumName ?? "Unknown Album", artist: t.albumArtist || t.artistName || "", count: 0 }, t)),
     drillGenre: (name) => deps.genre(name),
     drillSong: (t) => card().drill(songLevel(t)),
   };

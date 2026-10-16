@@ -26,7 +26,7 @@ day (§9); the telemetry and the trace recipe that found each fault are in §8.
 
 | # | Fork | Pick |
 |---|------|------|
-| 1 | What is the disc | **A**: the whole cover is the disc (grooves, sheen, spindle hole) |
+| 1 | What is the disc | **A**: the whole cover is the disc (grooves, spindle hole; the sheen removed 2026-10-15, §11) |
 | 2 | Where it shows | **C** as a row: Stage / Stage + card / Everywhere (tray panel included) |
 | 3 | Speed | **B**: true 33⅓ rpm at full frame rate. An optimization session follows |
 | 4 | Control | **A**: a three-way pill (Spin / Still / Off). It does not follow "Animate backgrounds" |
@@ -67,9 +67,8 @@ A slot (`.vinyl`) holds, bottom to top:
      `--vinyl-ring-alpha`.
    - `::after`: the grooves, a `repeating-radial-gradient` (`--vinyl-groove-pitch`,
      `--vinyl-groove-w`, `--vinyl-groove-ink` at `--vinyl-groove-alpha`), masked to start at the label.
-3. **Sheen** (`.vinyl__sheen`). A `conic-gradient` with two opposite lobes (`--vinyl-sheen-from`,
-   `--vinyl-sheen-spread`, `--vinyl-sheen-ink` at `--vinyl-sheen-alpha`). It **does not turn**: a fixed
-   light over a turning disc is what reads as a record.
+3. ~~**Sheen**~~ (`.vinyl__sheen`) — **removed 2026-10-15** (§11). It was a fixed two-lobe
+   `conic-gradient` light over the turning disc; on many covers it read as grey wedges or a stain.
 
 - **Shape.** The cover box is a size container (`container-type: size`). The stage box is not always
   square — the card's width caps it — so the slot is a square of `calc(100cqmin − 2 × --vinyl-inset)`,
@@ -296,7 +295,15 @@ a late start; a step that is not ~10° is a snap; the slot count going 2 → 1 �
 
 ## 11. No sheen, and a center cap (2026-10-15)
 
-> **Part:** designed · 2026-10-15
+> **Part:** built · 2026-10-15 (`twenty-eighth`; desk test passed, his, 2026-10-15; the cap, §11.1, parked)
+
+**As built (2026-10-15).** Every line of *What follows* below is done. His picture showed the
+sheen as a dark diagonal band across a light cover (the theme's dark `--surface` in the two lobes).
+The motion set's `next-song` shot for Press, without the sheen, is in
+`shots/motion/0.28.0-beta.6-sheen-off/`: the record, grooves and ring, no band. The 0.25.1 run of
+the same shot draws the square cover, so there is no record-with-sheen picture to set beside it.
+Desk test (owner): play a light cover on Press with the record on; no dark band, the grooves and
+the label ring still turn.
 
 **His ask (2026-10-15):** remove the shading on the record. It looks wrong on many album covers,
 and it does not show true depth.

@@ -13,6 +13,7 @@ import * as health from "./apple-health";
 import * as diag from "./diag";
 import { launchMark } from "./launch-perf";
 import { takeBootRead } from "./boot-prefetch";
+import { loadPrimaries, loadSongArtists } from "./primary-artist";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
@@ -79,10 +80,13 @@ export async function loadTracks(): Promise<void> {
     // TRANSIENT map, so historical feedback (Rewind, play stats) resolves to metadata
     // across sessions — while the browsable library stays synced rows only.
     // The first load takes the reads main.ts asked for at module load (boot-prefetch.ts).
+    // The primary-artist map loads beside the songs, so the first render names each song's
+    // primary artist (primary-artist.ts).
     const [page, seen] = await Promise.all([
       takeBootRead("library") ?? libraryTracks(0, 100000),
       takeBootRead("seen") ?? seenTracks(),
       loadHeals(),
+      loadPrimaries(),
     ]);
     all = page.items;
     index();
@@ -153,7 +157,16 @@ export function initTrackStore(): void {
   // A heal pass (after a sync) or the player's backstop found catalog copies: re-index, so
   // the rows and "in your library" follow at once.
   void listen("catalog-heal", () => void refreshHeals());
+  void loadSongArtists(); // the guests (primary-artist.ts); no render waits for them
+  // The guests pass after a sync read some (enrich.rs `guests_pass`): the menus read them next.
+  void listen("song-artists", () => void loadSongArtists());
   onSyncEvent((e) => {
+    // The artist pass runs after an incremental pass's `done`, so the primary map is read
+    // again when the lock is released; a change re-renders the library views.
+    if (e.phase === "idle")
+      void loadPrimaries().then((changed) => {
+        if (changed) notify("library");
+      });
     // Reload on error too: an incomplete sync still upserted the pages that DID fetch. A pass
     // that changed no row (`changed: 0`, 2026-09-29) skips the reload and the fan-out to every
     // card: the cache is what the store already holds.

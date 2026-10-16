@@ -82,6 +82,19 @@ pub struct Track {
     /// cached or queued; the album page dims it (SEARCH.md §Unreleased songs).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub unreleased: bool,
+    /// A library song's ONE library artist (the sync page's `include=artists`). Its
+    /// `artist_catalog` row gives the primary artist's catalog id and name, so "Girl Ultra,
+    /// Buscabulla & Chromeo" goes to Girl Ultra (ideas/apple-calls.md §5). None on a
+    /// catalog song, and on a library song not re-read since 2026-10-15.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub library_artist: Option<String>,
+    /// The library album's own artist (`include=albums`), which names the album when its
+    /// songs credit different guests (ideas/album-notes.md §6.2).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub album_artist: Option<String>,
+    /// The library album's id (`l.…`), for the album's true identity later.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub library_album_id: Option<String>,
     /// Defaulted on deserialize: Tracks round-trip through the frontend (e.g.
     /// `materialize_track`), whose TS type doesn't re-state playParams.
     #[serde(default)]

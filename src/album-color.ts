@@ -23,6 +23,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { onPlayerState } from "./player";
 import { getCurrent, onQueueChange, peekNext } from "./queue";
 import { trackById } from "./track-store";
+import { noteSongArtists } from "./primary-artist";
 import { artURL, coverArtPx } from "./queue-rows";
 import { playlistCoverFor } from "./playlist-cover";
 import * as diag from "./diag";
@@ -92,7 +93,12 @@ const inFlight = new Map<string, Promise<AlbumPalette | null>>();
 export function lookupPalette(coverUrl: string, catalogId: string | null): Promise<AlbumPalette | null> {
   let p = inFlight.get(coverUrl);
   if (!p) {
-    p = invoke<AlbumPalette | null>("album_palette", { coverUrl, catalogId }).finally(() => inFlight.delete(coverUrl));
+    p = invoke<AlbumPalette | null>("album_palette", { coverUrl, catalogId }).finally(() => {
+      inFlight.delete(coverUrl);
+      // A palette miss reads the song from Apple, which stores its catalog artists too
+      // (Go to Artist ▸'s guests, primary-artist.ts). A cache hit adds none; the read is local.
+      void noteSongArtists([catalogId]);
+    });
     inFlight.set(coverUrl, p);
   }
   return p;

@@ -266,6 +266,7 @@ pub fn run() {
             heal::migrate_v16(&conn).expect("v16 migration failed");
             playlists::migrate_v17(&conn).expect("v17 migration failed");
             library::migrate_v18(&conn).expect("v18 migration failed");
+            enrich::migrate_v19(&conn).expect("v19 migration failed");
             conn
             }));
             let conn = match opened {
@@ -439,6 +440,9 @@ pub fn run() {
             library::pin_clear,
             library::pin_play_counts,
             library::library_sync,
+            library::library_sync_busy,
+            apple::artist_primaries,
+            enrich::song_artists,
             library::library_tracks,
             library::seen_tracks,
             library::record_play,

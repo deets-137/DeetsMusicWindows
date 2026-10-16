@@ -310,6 +310,9 @@ const H: Record<string, Handler> = {
   "plugin:window|outer_size": () => ({ width: Math.round(innerWidth * devicePixelRatio), height: Math.round(innerHeight * devicePixelRatio) }),
   "plugin:window|inner_position": () => ({ x: 0, y: 0 }),
   "plugin:window|outer_position": () => ({ x: 0, y: 0 }),
+  // No monitor in a browser: the window's keep-on-screen move (surface.ts) does nothing.
+  "plugin:window|current_monitor": () => null,
+  "plugin:window|set_position": () => null,
   "plugin:window|scale_factor": () => devicePixelRatio || 1,
   "plugin:window|is_maximized": () => false,
   "plugin:window|is_minimized": () => false,
@@ -388,6 +391,9 @@ const H: Record<string, Handler> = {
   recent_played_tracks: () => recentPlayed(),
   recent_added: () => ({ albums: albumsByLatestPick().slice(0, 40), playlists: allPlaylists().slice(0, 3) }),
   artist_photos: () => [...cat.artistArt.entries()],
+  artist_primaries: () => [],
+  song_artists: () => [],
+  library_sync_busy: () => false,
   artist_new_releases: () => cat.albums.filter((a) => (a.releaseDate ?? "") >= String(new Date().getFullYear() - 1)),
 
   // Playlists

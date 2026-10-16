@@ -106,6 +106,36 @@ a key or an agent.
 
 For him, S1 to S3 take a typical day from about 110 library calls to about 15.
 
+### S1 and S3 as built (2026-10-15, `twenty-eighth`; desk test passed, his, 2026-10-15)
+
+> **Part:** built · 2026-10-15 (S1, S3) · S2 designed · S5 rides each step
+
+- **S1** (library.rs): `launch_pass(known, total)` picks the launch's pass: the same count →
+  incremental; a rise → incremental with `explain`; a fall or no stored count → full (test
+  `launch_pass_explains_a_rise_2026_10_15`). `sync_incremental` with `explain` stores Apple's new
+  count and logs `library: incremental explains +N (N new)` when it found exactly N new songs.
+  Otherwise it logs `…does not explain +N (M new): full sync`, emits no `done`, and the full pass
+  runs (`full sync start (not explained: …)`); the rows it already changed count toward the full
+  pass's `done`, so the Library still reloads.
+- **S3** (apple.rs `fill_new_artists`): after an incremental pass, an artist count that moved
+  first gives each library artist with no `artist_catalog` row its row from one of its songs:
+  one song read (`enrich::read_song_artists`, which also stores the songs' guests, so the guests
+  pass skips them) names the primary catalog artist, and one `artists?ids=` read (25 a call)
+  brings the photo the re-page would have brought. Logs `library: artist count A → B, N new
+  artist(s) from the new songs; no re-page`. When a name cannot be found that way (no song with a
+  catalog id, more than 300 names, no stored storefront, a song Apple does not return), it logs
+  why and re-pages, as before. A fall in the count (a removal) finds nothing missing: the count is
+  stored, 1 call. The weekly pass still re-pages every artist (test
+  `s3_finds_the_library_artists_with_no_row_2026_10_15`).
+- **What a launch costs now** after a few songs were added: 1 count call + 1 incremental page +
+  1 artist count call + (if new artists) 1 song read + 1 photo read + the guests pass for the new
+  songs (0, their read was shared) = 3 to 5, against about 57 before.
+- **Desk test (owner):** add two songs to the library on the phone, then relaunch the dev app.
+  The log shows `incremental explains +2 (2 new)`, no `full sync start`, and, when one of them
+  is by a new artist, `artist count … no re-page`. The new songs show in the Library with their
+  artist's tile and photo. Then remove one song on the phone and relaunch: `full sync start`
+  (the count fell).
+
 ### S1. The explained count
 
 **Today** (`library.rs`, DATA-ARCHITECTURE.md §5a): a launch makes the count call. If the total
@@ -186,13 +216,22 @@ running sync is **incremental**, a ⟳ click that asks for a full sync is lost.
 runs still starts nothing. What changes is that the user sees why. Not taken: a click that joins a
 full sync or queues one after an incremental sync.
 
-> **Part:** designed · 2026-10-15
+> **Part:** built · 2026-10-15 (the spin; desk test passed, his, 2026-10-15) · the hint draft below designed
 
 **What follows:**
 - The refusal is expected, so it is no longer a `console.error`. The front end knows a sync runs
   (the `library-sync` start event), so a click while `is-busy` does not call `library_sync` at all.
 - `diag.log` the click (`library:refreshBusy`), with the sync's kind (full / incremental) and
   progress.
+
+**As built (2026-10-15, `twenty-eighth`; his ask: the ⟳ spins while a sync runs).** The ⟳ spun
+only from a `start` event the Library card heard, so it stood still when the card mounted after
+the launch sync began (his report), and it stopped at `done` while the artist pass and the heal
+still held the lock. Now the lock's release emits `{phase:"idle"}` (`SyncFlagGuard`, library.rs),
+`library_sync_busy` answers a card that mounts mid-sync, and library.ts's `onSyncBusy` drives
+`is-busy` from the lock to its release. A click while busy does not call `library_sync` and logs
+`library:refreshBusy` with the last progress (the sync's kind is not in the events; not logged).
+The draft below (the hint words, the nudge) is not built.
 
 **Draft (his to edit): how it shows.**
 - While it spins, the ⟳'s hover hint says what runs: "Reading your library… 1,200 of 4,042"
@@ -253,7 +292,8 @@ So the primary artist is Apple's own answer, not a parse: a name with a comma or
   catalog names), so "Girl Ultra & Chromeo" splits under Girl Ultra even with no solo song. The
   parse remains only for the guests.
 - A song with no library artist (a catalog song in a queue or a playlist) keeps today's way.
-- **The backfill** rides the next full sync, as in album-notes.md §6.2.
+- **The backfill** rides the next full sync, as in album-notes.md §6.2. No forced pass: he runs
+  it himself with the ⟳ after the update (his call, 2026-10-15).
 
 ### 5.4 His calls (2026-10-15)
 
@@ -272,9 +312,117 @@ Apple's order) beside the ISRC and the preview in `track_catalog`. 0 extra calls
 has not enriched shows the primary artist only until it is. Not taken: one read of all library
 songs (about 14 calls); the parse for the guests.
 
+**The method (2026-10-15, `twenty-eighth`, before the build).** P2 is built with step 2, not
+later. The front end gets one small map, library artist name → catalog id and catalog name, and
+the track store resolves each song's primary artist through it; the name is not written into
+each track's JSON, so a later artist pass corrects every song at once. A library artist with no
+catalog twin, and a song with no library artist, keep today's way (the credit parse).
+
 The menu with guests: *Go to Artist ▸* Girl Ultra · Buscabulla · Chromeo, the primary first
 (the Library's submenu today, `songGoTo`). A guest opens by its catalog id (the Search way), or
 in the Library when it is a Library artist.
+
+### 5.5 As built (2026-10-15, `twenty-eighth`; desk test passed, his, 2026-10-15)
+
+> **Part:** built · 2026-10-15 · desk test passed 2026-10-15
+
+**Probed live before the hand-off (3 calls).** The sync page with
+`include=albums,artists&fields[library-albums]=name,artistName&fields[library-artists]=name`:
+200, 107 KB a page, 100 of 100 songs named their library artist and their album's artist
+(*bbno$, Diamond Pistols & BENEE* → library artist bbno$, album artist bbno$). The enrichment
+read with `include=artists&fields[artists]=name` on *Mentirasmentiras*: Girl Ultra
+`1207957662`, Buscabulla `916005416`, Chromeo `5523592`, in that order; the ISRC, the preview,
+the palette and `composerName` still ride along.
+
+**Rust.**
+- `Track` gains `libraryArtist`, `albumArtist`, `libraryAlbumId` (model.rs), read by
+  `track_from_library_song` from the page's relationships; `songs_page` asks for them (the full
+  and the incremental pass). In the track's JSON; no table change.
+- Schema v19 (`enrich::migrate_v19`): `artist_catalog.catalog_name`, `track_catalog.artists`.
+- The artist pass stores `catalog_name`. **One forced re-page:** the pass is incremental by
+  count, so a ⟳ alone would never fill the new column. A `meta` flag (`artist_catalog_names`)
+  makes the first pass after the update re-page once (about 15 calls for 1,430 artists), then
+  the count rule holds again.
+- `artist_primaries` (new, network-free): `[library name, catalog id, catalog name]`.
+- `library_artist_info`: a name with no row of its own but a `catalog_name` match ("Toddla T")
+  gets its row copied at 0 calls; the one-call path stores the catalog name too.
+- The enrichment read (`fetch_catalog_songs`) adds `include=artists&fields[artists]=name` and
+  stores `[[id, name], …]` in `track_catalog.artists`; a read without them (a search result)
+  keeps what is stored. `song_artists` (new, network-free) reads them.
+
+**Front end.**
+- `src/primary-artist.ts` holds the two maps: the primaries load with each library load and
+  again on the sync's `idle` (the artist pass may land after `done`; a change re-renders); the
+  guests load at launch and again after a palette read and a credits read.
+- `artist-credit.ts`: the primary seeds the vocabulary and leads each song's names
+  (`withPrimary`); the memo also keys on the map's version. `goToPeople` builds *Go to Artist ▸*:
+  the library names (primary first), then Apple's guests the parse does not know.
+- `songGoTo` (media-menu.ts): the submenu from every menu now, not only the Library's, whenever
+  a song has more than one person. A guest opens in Search by its catalog id, or in the Library
+  when the Library holds it.
+- Rewind's *Artists* keys on the primary's catalog id (P1); its *Albums* subtitle is the album
+  artist.
+- Albums: `groupAlbums` and `libAlbum` take `albumArtist` when the songs carry it (album-notes.md
+  §6.2). The Last.fm album box asks by it; the artist box asks by the drill name, which is now the
+  primary's name.
+- Tests: `tests/artist-credit-primary.test.ts` (5), apple.rs
+  `library_song_reads_its_library_artist_and_album_2026_10_15`.
+
+**Not applied.** The web demo's TypeScript twin (WebRooms.md §9.3) normalizes catalog shapes
+only; library songs are not in it, so it gains no fields. The demo stubs answer the two new
+commands with nothing.
+
+**Found in the build: few songs get their guests (fork G1; his call A, built in §5.6).** P2 assumed the enrichment
+read runs whenever a surface touches a song. It runs on a palette miss only (`album_palette`:
+the first song of a new cover, one song) and in the song credits pane (`credits_fetch`).
+`catalog_enrich` has no caller in the front end. So most library songs will show the primary
+artist only, for a long time.
+- **A (recommended): one read of the library's songs for their artists**, about 14 calls once
+  (300 a call), then each new song in the sync's own pass. Every song gets its guests at once.
+  It is the option P2 did not take, at the cost the doc gave.
+- **B: read a song when its menu asks**: the right-click on a song with no guests stored reads
+  it (1 call), so the submenu has its guests the next time. Calls only for songs he touches;
+  the first right-click shows the primary only.
+- **C: keep P2 as built.** 0 calls; guests come slowly.
+
+**Desk test (owner).**
+1. Restart the dev runner (Rust changed; schema v19 runs). Click the Library ⟳ once (his
+   backfill). The log shows `migration: v19 added …`, a full sync, and `artist catalog filled`.
+2. Right-click *Mentirasmentiras* › *Go to Artist ▸*: Girl Ultra first. Girl Ultra opens her
+   artist view; its Last.fm box shows Girl Ultra's counts, not the three-name string's.
+3. The Library's Artists view has a Girl Ultra tile with both songs.
+4. Open *Rrromeo*: the artist line reads Girl Ultra; its Last.fm box is the album's.
+5. Rewind › Artists: one Girl Ultra row, no "Girl Ultra, Buscabulla & Chromeo" row.
+6. Play a song whose cover has not played before, then right-click it: *Go to Artist ▸* lists
+   its guests after the primary. (Since §5.6 every library song has them after the ⟳; this
+   step checks a catalog song from Search.)
+
+### 5.6 G1 = A: every library song's guests (his call, 2026-10-15)
+
+> **Part:** built · 2026-10-15 (`twenty-eighth`; desk test passed, his, 2026-10-15)
+
+**His call:** read the library's songs for their artists once, then each new song in the sync.
+
+**As built.** `enrich::guests_pass` runs after the heal pass at the end of every library sync
+(the full and the incremental pass). It picks each library song with a catalog id and no
+`track_catalog.artists` (`guests_pending`), reads them 300 a call with the enrichment read, and
+writes each song through `write_song`. Every asked id that came back with no artists, or did
+not come back, is marked `'[]'` (`mark_read`), so it is never asked again. The first pass after
+v19 reads the whole library (about 14 calls for 4,042 songs); later passes read only the songs
+the sync added (usually none, so 0 calls). A background job (`song_guests`, ops/APPLE-CALLS.md):
+skipped while Apple's back-off holds, stops at the first failed call, never fatal. It ends with
+`song guests: N song(s) to read, … in M call(s)` in the log and a `song-artists` event; the track
+store reloads the guests map on it.
+
+**At no extra call, the same read** stores each song's ISRC, preview, album palette and writer
+credits. So after the first pass the album colors of the whole library are cached (no palette
+miss on a first play), and the song credits pane has every library song's writers.
+
+**Test:** enrich.rs `guests_pass_asks_each_library_song_once_2026_10_15`.
+
+**Desk test (owner), with §5.5's.** After the ⟳: the log shows one `song guests:` line with about
+14 calls; a second ⟳ shows no `song guests:` line, or one with 0 calls. Right-click any
+collaboration in the Library: *Go to Artist ▸* lists every credited artist, the primary first.
 
 ## 6. Order of work
 

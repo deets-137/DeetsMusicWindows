@@ -114,6 +114,9 @@ const H: Record<string, Handler> = {
   library_tracks: () => ({ items: [], total: 0, nextOffset: null }), // a Page<Track>
 
   library_sync: () => 0,
+  library_sync_busy: () => false,
+  artist_primaries: () => [],
+  song_artists: () => [],
   seen_tracks: () => [],
   materialize_track: () => null,
   catalog_heals: () => ({ healed: [], none: [] }),
