@@ -1,55 +1,51 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/sign.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/src/velo.rs]
-updated: 2026-10-15
+sources: [scripts/sign.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/src/velo.rs, src-tauri/src/update.rs, src/updater.ts, src/update-rules.ts]
+updated: 2026-10-16
 ---
 # Release, install, uninstall
 
-> **Velopack replaces NSIS and tauri-plugin-updater (built 2026-10-15 on `velopack-spike`, not
-> yet released; the beta goes first).** The design, the spike and its as-built record are
-> [VELOPACK.md](VELOPACK.md). In this doc, §0, §1, §2, §6 intro and the secrets are current;
-> §3, §4, §4a and §5 describe the NSIS installer up to 0.27, kept as the record. Where they
-> disagree, VELOPACK.md is the code.
+> **Velopack since 0.28.0 (2026-10-16).** DeetsMusic installs and updates through Velopack: a
+> per-user package, no admin prompt, no wizard, and an update that swaps in place in about 2 s.
+> The design, the spike and the beta desk test are [VELOPACK.md](VELOPACK.md). Up to 0.27.0 it
+> was a hand-built NSIS installer with `tauri-plugin-updater`; that runbook is kept word for
+> word in [RELEASE-NSIS.md](../archive/RELEASE-NSIS.md), with the same section numbers. A
+> pointer to this doc written before 2026-10-16 about the NSIS hooks, the passive install or
+> the 0.4.x spike means that doc.
 >
-> Status (2026-09-15): **installer, updater and Authenticode signing are all live and tested.**
-> 0.4.3 is the first release on the update channel (§6). Signing was tested with 0.4.4-t1 → t2
-> on the test channel (§6.9); 0.5.0 was the first signed real release.
 > Code: `package.json` (`release`, `release:check`, `release:publish`), `scripts/release.mjs`,
 > `scripts/sign.mjs`, `scripts/release-check.mjs`, `scripts/publish-update.mjs`,
 > `scripts/cli-dist.mjs`, `scripts/cred-read.ps1`, `scripts/cred-write.ps1`,
-> `src-tauri/src/velo.rs`, `src-tauri/src/update.rs`, `src/updater.ts`, `DeetsSupport/src/update.js`.
+> `src-tauri/src/velo.rs`, `src-tauri/src/update.rs`, `src/updater.ts`, `src/update-rules.ts`,
+> `DeetsSupport/src/update.js`.
 
-Since 0.28: a **Velopack** package, per-user, no admin prompt, no wizard. `vpk pack` keeps every
-version in `installers/velopack/<Id>-<channel>/` (gitignored), which is also the base of each
-delta. DeetsMusic updates itself (§6) and every exe is Authenticode-signed (§6.9). Up to 0.27 it
-was the house pattern shared with DeetsAirplay / DeetsRGB: a hand-built NSIS installer.
-
-## 0. The release pipeline at a glance (2026-09-15)
+## 0. The release pipeline at a glance
 
 **Terms.**
-- **Updater key** — a minisign key pair made by `tauri signer`. Its public half is compiled into
-  every install (`PUBKEY` in velo.rs; `plugins.updater.pubkey` up to 0.27). Since Velopack it
-  signs the **feed**, and the feed holds each package's SHA-256: an install refuses a feed whose
-  `.sig` does not match (VELOPACK.md §4). It protects **updates** (§6.6).
+- **Package** — one version's files as a `.nupkg`. A **full** package holds every file; a
+  **delta** holds binary patches against the version before it.
+- **Feed** — `releases.<channel>.json`: each version, its packages, their sizes and SHA-256.
+- **Updater key** — a minisign key pair made by `tauri signer`. Its public half is compiled
+  into every install (`PUBKEY` in velo.rs). It signs the **feed**; an install refuses a feed
+  whose `.sig` does not match (§6.6, VELOPACK.md §4). It protects **updates**.
 - **Authenticode signature** — the Windows signature that puts a publisher name on an exe. It
   comes from Azure Artifact Signing. It protects **first installs and trust in Windows** (§6.9).
-- **Channel** — `deetsmusic` (real installs) or `deetsmusic-test` (DeetsMusic Beta since
-  2026-09-23; the old spike rows stay there, withdrawn). Compiled into the build; an install only
-  ever sees its own channel.
-- **Beta is paused (the owner, 2026-09-24).** Releases go straight to the live channel. Too few
-  features are built in parallel to need a beta. From 0.14.5 on, step 0 is skipped until he
-  says otherwise. When it runs: `npm run release -- --beta` on a `-beta.N` version, then
+- **Channel** — `deetsmusic` (real installs) or `deetsmusic-test` (DeetsMusic Beta). Compiled
+  into the build; an install only ever sees its own channel.
+- **Beta is paused (the owner, 2026-09-24).** Releases go straight to the live channel. When it
+  runs: `npm run release -- --beta` on a `-beta.N` version, then
   `npm run release:publish -- --beta` ([BETA.md](BETA.md) §4).
 
 **The commands, in order:**
 
 | Step | Command | What it does | Needs |
 |---|---|---|---|
-| 1 | set the version, write the notes | the same version in the seven files (§1: all seven are checked), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. Publish copies that entry to the update offer and the website, and refuses to run without it | — |
-| 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build --no-bundle` → stage the exe and its resources → `vpk pack` (signs every exe through `sign.mjs`; writes the full package, the delta, Setup.exe and the feed) → sign the feed with the updater key → `release-check` | both secrets below, the signing tools (§6.9), `vpk` at the crate's version (`dotnet tool install -g vpk --version 1.2.161`) |
-| 3 | install + test | `installers/velopack/<Id>-<channel>/<Id>-<channel>-Setup.exe`, by hand. **From Claude's shell, start it through WMI** (VELOPACK.md §8a: the MSIX container) | — |
-| 4 | `npm run release:publish` | uploads the packages, Setup.exe, the version's rollback feed and then the feed to R2 `<channel>/vp/`, each feed signed; adds the row to the channel index; installs start to update. Then builds the web demo and commits + pushes it to `../DeetsSolutions` master, which deploys the site (WEB-DEMO.md §9.8) | `../DeetsSupport` checkout, wrangler login; the updater key; `../DeetsSolutions` on master |
+| 1 | set the version, write the notes | the same version in the seven files (§1), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. `vpk pack` puts that entry in the package; publish copies it to the update offer and the website, and refuses to run without it | — |
+| 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build --no-bundle` → stage the exe and its resources → `vpk pack` (signs every exe through `sign.mjs`; writes the full package, the delta, Setup.exe and the feed) → delete the Portable.zip → sign the feed → `release-check` → copy Setup.exe to `installers/DeetsMusic_<version>_x64-setup.exe` (§1) | both secrets below, the signing tools (§6.9), `vpk` at the crate's version (`dotnet tool install -g vpk --version 1.2.161`) |
+| 3 | install + test | `installers/DeetsMusic_<version>_x64-setup.exe`, by hand. **From Claude's shell, start it through WMI** (§4) | — |
+| 4 | `npm run release:publish` | uploads the packages, Setup.exe, the version's rollback feed and then the feed to R2 `<channel>/vp/`, each feed signed; adds the row to the channel index; installs start to update (§6.7). Then builds the web demo and commits + pushes it to `../DeetsSolutions` master, which deploys the site (WEB-DEMO.md §9.8) | `../DeetsSupport` checkout, wrangler login; the updater key; `../DeetsSolutions` on master |
+| 5 | check the publish | the routes in §0b, *Check a publish* | — |
 | 0 | `npm run release -- --beta` then `npm run release:publish -- --beta` | DeetsMusic Beta on `deetsmusic-test`, before step 1 ([BETA.md](BETA.md) §4.1) | the same as step 2 |
 
 **The secrets and keys:**
@@ -61,12 +57,13 @@ was the house pattern shared with DeetsAirplay / DeetsRGB: a hand-built NSIS ins
 | Azure client secret (`Deets Release Signing`) | Credential Manager `DeetsMusicAzureSigning`. **Expires 2027-03-14** | `release.mjs` → `sign.mjs` | Make a new one in a minute; runbook §6.9 |
 | Artifact Signing dlib + `metadata.json` | `%LOCALAPPDATA%\DeetsTools\artifact-signing\` | `sign.mjs` | Download again (§6.9) |
 | Build key (one line) | `Documents\Deets' Secrets\deetsmusic-build-key.txt` | `build.rs` → the exe → `X-Deets-Build` on the mint and report intake; the Worker's `BUILD_KEYS` secret | Lost = make a new one and add it to `BUILD_KEYS` (a list) before the next release; leaked = nothing, it was always readable from the exe (§7a) |
-| Last.fm API key + secret | `DocumentsDeets' Secretslastfm.json` | `build.rs` → the exe (`DEETS_LASTFM_KEY` / `_SECRET`); `release-check` fails a build without it | Lost = make a new API account at Last.fm; leaked = readable from the exe anyway, like the build key |
+| Last.fm API key + secret | `Documents\Deets' Secrets\lastfm.json` | `build.rs` → the exe (`DEETS_LASTFM_KEY` / `_SECRET`); `release-check` fails a build without it | Lost = make a new API account at Last.fm; leaked = readable from the exe anyway, like the build key |
 | Cloudflare account (Worker, R2) | wrangler login in `../DeetsSupport` | `release:publish`, the update route | Secure it first in any key incident (§6.6) |
 
 **Why two signatures.** A stolen updater key alone cannot push an update: the attacker also needs
 the Worker, R2 or the DNS record. Authenticode gives the installer a publisher name that Windows
 and users can check, and it opens a possible second lock (§6.6).
+
 
 ## 0a. What went out (the release log)
 
@@ -88,7 +85,7 @@ of each is in [RELEASE-NOTES.md](RELEASE-NOTES.md). "Hand test" is §0 step 3.
 | 0.13.0 | 2026-09-21 | `0091992` | skipped, his call (small reach, tested in dev) | the quick panel, the N badges, the docs re-org |
 | 0.13.1 | 2026-09-22 | `d86bf00` | skipped, his call ("release and publish"): §0b reads it high risk (player.ts + `np_command` in de31ff7, logging only) | Web in the title bar; `player:pause` names who paused; the web demo |
 | 0.14.0 | 2026-09-23 | `62d516a` | skipped, his call ("Desk tests all look good. Publish"): §0b reads it high risk (Rust `NpState.pinned`, np-bus tray commands, the beta flavor) | one right-click menu per media type, Start a Web, the Ocean heavy swell + album light. The first release after beta `0.14.0-beta.2` (published the same day on `deetsmusic-test`) |
-| 0.14.1 | 2026-09-24 | `e2d8e3d` | skipped, his call ("Ship as 0.14.1"); the hook commands were tested from a 32-bit NSIS test installer (§4a) | hotfix: the 0.14.0 update aborted while MCP CLIs held `cli\deetsmusic.exe` (§4a). Beta `0.14.1-beta.1` first. Its notes carry 0.14.0's |
+| 0.14.1 | 2026-09-24 | `e2d8e3d` | skipped, his call ("Ship as 0.14.1"); the hook commands were tested from a 32-bit NSIS test installer ([RELEASE-NSIS.md](../archive/RELEASE-NSIS.md) §4a) | hotfix: the 0.14.0 update aborted while MCP CLIs held `cli\deetsmusic.exe` (RELEASE-NSIS.md §4a). Beta `0.14.1-beta.1` first. Its notes carry 0.14.0's |
 | 0.14.5 | 2026-09-25 | `1e19a9b` | skipped, his call ("good enough to publish all of this"): §0b reads it high risk (Rust `diary.rs` schema v14–v15, `wallpaper.rs`, `favorites.rs`, `bridge.rs`; `player.ts` queue alignment). The features were desk-tested in dev | the Diary card, Full \| Lib, the Glass canvas (Covers / Picture), unreleased songs dimmed, album and playlist favorites, the queue fix. 7.9 MB. **No beta**: beta-first paused from this release (§0) |
 | 0.14.6 | 2026-09-25 | `5f1abb5` | skipped, his call ("publish it too please, I've tested adequately"): §0b reads it high risk (Rust: the database thread over 73 commands, `lock_or_recover` everywhere, the watchdog, the AirPlay crate 0.4.1 reconnect; `player.ts` MusicKit retry; the Sound meter). Every part was desk-tested in dev | the AirPlay reconnect, play after an offline start, Adaptive sound hidden, Undo, the database thread, the Glass canvas dim 15. 8.4 MB. The update route answered `latest: 0.14.6` and the installer URL 200 after publish |
 | 0.14.7 | 2026-09-26 | `5fe868c` | skipped, his call ("ear test passed, will stress test in live"; "release 0.14.7"): §0b reads it high risk (`player.ts` room clock + settle, `room.ts` Listen Along keep-playing, Friends, Rust `friend_code` + the log label). Claude desk-tested it on two dev apps (FRIENDS.md §18.8, ROOMS.md §18.8) | add friends from a room, Listen Along keeps the host playing, rooms in sync to the millisecond, the Diary's playing-album box. The rooms worker was deployed first (`0561f70f`, 41/41 live). 8.5 MB. The update route answered `latest: 0.14.7`, the health route 0.14.7, and the installer URL 200 after publish |
@@ -113,7 +110,8 @@ risk. Read the whole diff from the last row of §0a, not only the commit message
   `#[tauri::command]`, a thread, a lock, a pipe or a socket (0.12.0 froze this way);
 - playback: `player.ts`, `queue.ts`, MusicKit calls, the audio graph (`sound`, AirPlay, vinyl
   clock), the media keys;
-- anything networked that runs by itself: rooms, Friends, Discord, Last.fm, the updater;
+- anything networked that runs by itself: rooms, Friends, Discord, Last.fm, the updater
+  (`velo.rs`, `update.rs`, `updater.ts`);
 - the database schema or migrations, the settings store's shape, the startup path;
 - a feature whose own desk test was never run where it could reach playback (rooms 0.10.0 is
   the example: it was never tested with two apps).
@@ -122,16 +120,17 @@ risk. Read the whole diff from the last row of §0a, not only the commit message
 hover hints, wording, docs, scripts that do not ship.
 
 When in doubt, it is high risk. The report names the version, the risk call and why, and the
-checks run (health route, update offer).
+checks run (*Check a publish*, below).
 
 What the log taught:
 - **A withdrawal is not a fix.** The updater offers only a NEWER version, so an install
   already on a withdrawn build is offered nothing until a hotfix ships. Withdrawn rows stay on
   the website with their reason (which users read, so he picks the wording).
+  `release:publish -- --withdraw <v>` also signs the feed again without that version (§6.7).
 - **A withdrawn version's notes never reach an update offer.** The release that replaces it
   carries the whole line's notes (DOCS-ORG.md §12 is the real fix; not built).
-- **The signing service fails now and then.** A single "failed to run node.exe" while signing
-  an NSIS plugin means nothing; run `npm run release` again before you dig.
+- **The signing service fails now and then.** A single signing failure during `vpk pack` means
+  nothing; run `npm run release` again before you dig (§6.9).
 - **A release deploys no worker.** After a theme, skin, palette or font change, run
   `npm run signin:assets` and deploy DeetsSupport by hand. After any worker deploy, curl the
   route: `node --check` passes an unresolved import that returns 1101 live.
@@ -140,8 +139,18 @@ What the log taught:
   outside the package an absolute source path, so every `x[i]`, `doc["key"]`, `.unwrap()` and
   `json!({ "k": expr })` (it unwraps the expression) in non-test code leaks it. Use `get`,
   `split_first` and `?`, and build a JSON object by hand when a value is not a literal.
-- **Check a publish** with `curl https://music-api.deets.solutions/update/deetsmusic?v=<old>`
-  and `/update/deetsmusic/health`.
+- **The web demo can fail after a good publish** (0.28.0: a duplicate key in
+  `demo/handlers.ts` failed its `tsc`). The publish stands; fix it and run
+  `npm run demo:publish -- --push`. Run `npx tsc --noEmit -p demo` before a release that
+  touched `demo/`.
+- **Check a publish** (base `https://music-api.deets.solutions/update/deetsmusic`):
+  `/health` names the new version; `/vp/releases.deetsmusic.json` and its `.sig` answer 200;
+  `/vp/rollback/<v>/releases.deetsmusic.json?v=<v>` answers 200; `/releases` has the new
+  version as `latest`, its `url` on `/vp/DeetsMusic-<v>-Setup.exe` and its `size` equal to the
+  Setup.exe's bytes; a `HEAD` of that URL answers 200.
+- **An NSIS install (0.27.0 and older) is never offered a Velopack version.** Its updater asks
+  the old route, which answers from NSIS rows only: 204 to 0.27.0, an offer of 0.27.0 to an
+  older one. Moving to 0.28.0 is a hand install (§4b).
 
 ## 1. Cut a build
 
@@ -151,70 +160,57 @@ What the log taught:
 |---|---|---|
 | `package.json` | `release-check` | `vpk pack --packVersion` reads it; caught |
 | `src-tauri/tauri.conf.json` | `release-check` | the app's own version (Settings, the update check) reads it; caught |
-| `src-tauri/Cargo.toml` | `release-check` | caught |
+| `src-tauri/Cargo.toml` | `release-check` | caught. The `start:` log line reads it |
 | `cli/Cargo.toml` | `release-check` | caught. It is what `deetsmusic --version` and the MCP server info report |
-| `extension/manifest.json` | `release-check` (a hard fail since 2026-09-26; a beta build skips it), `docs:check` check 5 | the browser extension keeps reporting the old version |
+| `extension/manifest.json` | `release-check` (a beta build skips it), `docs:check` check 5 | the browser extension keeps reporting the old version |
 | `src-tauri/Cargo.lock` + `cli/Cargo.lock` | `docs:check` check 5 (so `npm run check` and the pre-push hook) | cargo rewrites them during the build, so the release is fine but the tree is left dirty and the version commit is incomplete |
 
-On 0.11.0 both `extension/manifest.json` and `cli/Cargo.lock` were still on 0.10.1 after the
-first four were bumped, and nothing said so; that is why they are checked now. Bump the
-manifest by hand, and run `cargo check` in `cli/` (and let the app's own build touch
-`src-tauri/Cargo.lock`) before the version commit, so the locks are in it rather than in the
-next one.
-
-A mismatch among the checked four fails `release-check` with the four listed.
+Bump the manifest by hand, and run `cargo check` in `cli/` and in `src-tauri/` before the
+version commit, so both locks are in it rather than in the next one.
 
 ```bash
-npm run release     # secrets → cli:build → sign cli → tauri build --no-bundle → stage → vpk pack (signs) → sign the feed → release-check
+npm run release     # secrets → cli:build → sign cli → tauri build --no-bundle → stage → vpk pack (signs) → sign the feed → release-check → the versioned copy
 ```
 
-`scripts/release.mjs` runs the stages, and the order matters. **Since Velopack (2026-10-15)
-steps 3 and 5 below are replaced** — the record of them stays for the NSIS builds up to 0.27:
-- **3′. `tauri build --no-bundle`** (`bundle.active` is false): the exe only; tauri-build still
-  copies `bundle.resources` next to it. The stage folder `src-tauri/target/velopack-stage/` gets
-  the exe and every resource (the beta's map drops the full CLI).
-- **4′. `vpk pack`** into `installers/velopack/<Id>-<channel>/`, with `--signTemplate` calling
-  `sign.mjs` on every exe (the app, the CLI, `Update.exe`, Setup.exe), `--releaseNotes` from
-  RELEASE-NOTES.md, `--framework webview2`, `--shortcuts StartMenuRoot`. The previous full
-  package in that folder makes the delta, so the folder is kept (it is the archive). `vpk` must
-  be the velopack crate's version; release.mjs checks.
-- **4″. Sign the feed** `releases.<channel>.json` with the updater key (`tauri signer sign`).
-- **5′. `release-check`** reads the Velopack output (checks 3, 4, 11 rewritten 2026-10-15).
+`scripts/release.mjs` runs the stages, and the order matters:
 
 0. **Read the secrets first** — the updater key file and password (§6.6) and the Azure client
-   secret (§6.9). A missing one fails here, before the slow build.
+   secret (§6.9). A missing one fails here, before the slow build. It also refuses a `vpk` that
+   is not the velopack crate's version, and a version that does not match `--beta`.
 1. **`npm run cli:build`** — `cargo build --release` on `cli/`, then `scripts/cli-dist.mjs`
    stages the exe at `cli/dist/deetsmusic.exe`, where `bundle.resources` expects it.
-   **`tauri build` alone ships the PREVIOUS CLI**, with no warning. Always use `npm run release`.
-2. **Sign the CLI** — `scripts/sign.mjs` on `cli/dist/deetsmusic.exe`. Tauri does not sign
-   bundle resources.
-3. **`tauri build`** — bundles the front end into the exe, then runs `makensis`. It gets a
-   `signCommand` from a temporary `--config` file and signs `DeetsMusic.exe`, the NSIS plugin DLLs,
-   the uninstaller and the installer. With the updater env vars it then writes the updater `.sig`
-   (after the Authenticode signature — tested §6.9). ~3 min cold, ~1 min warm. Output:
-   `src-tauri/target/release/bundle/nsis/DeetsMusic_<version>_x64-setup.exe` (+ `.sig`, ~9 MB in 0.26).
-4. **`scripts/release-check.mjs`** — the gate (§1a): no repo paths in the exe, versions agree,
-   **no dev telemetry in the shipped JS** (check 5, 2026-09-16: `frames.ts` / `perf.ts` /
-   `vinyl.ts` ride `TELEMETRY` in `src/telemetry-on.ts`, which `VITE_PERF=1` turns ON so a
-   release-shaped bundle can be measured — a stray `VITE_PERF` in the release environment
-   would otherwise ship a rAF loop and a log-writing observer to every user),
-   pin and updater settings intact, the `.sig` present, the CLI and installer signed, and
-   **no synchronous `#[tauri::command]` that blocks the UI thread** (check 9, 2026-09-20:
-   a sync command runs on the thread that paints, so a wait in one freezes the window —
-   FRIENDS.md §8.11. It walks calls three deep and skips bodies handed
-   to `spawn`/`spawn_blocking`; checked against the 0.12.0 `presence.rs`, which it names).
-   Since 2026-10-13 the walk follows `crate::x::f(` and `x::f(` into other modules, and a send
-   on the AirPlay session is a blocker: the walk had stopped at `bridge.rs`, so `np_publish`
-   froze the window 6 s in a LAN drop (AIRPLAY.md §13.6). Checked against the old
-   `airplay.rs`, which it names. `log.rs:append` is allowed, as `log_event` is.
-   Since 2026-09-25 it also names a sync command that takes `db.lock()`: the library sync
-   and the playlist refresh hold that lock for whole write batches. It fails the build. The
-   fix for this one is `crate::db_thread::run`, not `spawn_blocking`: one thread in arrival
-   order, so two quick writes cannot swap (DB-HEALTH.md §2a). The 73 commands it first named
-   moved the same day. A BLOCKERS row may carry `{ soft: true }` to warn instead of fail
-   while a sweep is under way; a hard hit always wins over a soft one in the same command.
-5. **`scripts/archive-installer.mjs`** — copies the exe and `.sig` into `installers/` (a
-   pre-release version such as `0.4.4-t1` goes to `installers/dev/`).
+2. **Sign the CLI** — `scripts/sign.mjs` on `cli/dist/deetsmusic.exe`. It is a resource, and
+   resources are not signed by the build.
+3. **`tauri build --no-bundle`** (`bundle.active` is false): the front end into the exe, no
+   installer. tauri-build still copies `bundle.resources` next to the exe.
+4. **Stage** — `src-tauri/target/velopack-stage/` gets the exe and every resource
+   (`cli\`, `extension\`, `mcpb\`; the beta's map drops the full CLI).
+5. **`vpk pack`** into `installers/velopack/<Id>-<channel>/`, with `--signTemplate` calling
+   `sign.mjs` on every exe it packs (§6.9), `--releaseNotes` from RELEASE-NOTES.md,
+   `--framework webview2`, `--shortcuts StartMenuRoot`, `--channel`. The previous full package
+   in that folder makes the delta. Then the Portable.zip that `vpk` always writes is deleted:
+   nothing publishes it.
+6. **Sign the feed** `releases.<channel>.json` with the updater key (`tauri signer sign`).
+7. **`scripts/release-check.mjs`** — the gate (§1a). It reads the Velopack output: no repo
+   paths in the exe; the versions agree; **no dev telemetry in the shipped JS** (check 5: a
+   stray `VITE_PERF` in the release environment would ship a rAF loop and a log-writing
+   observer to every user); the product and exe names unchanged (the taskbar pin), `PUBKEY` in
+   velo.rs, Setup.exe present, a signed feed with this version's full package and SHA-256s
+   (check 3); the CLI, the app exe and `Update.exe` (read out of the full package) and
+   Setup.exe signed (check 4); `TOKENS.md` current; the Last.fm and build keys built in;
+   **no synchronous `#[tauri::command]` that blocks the UI thread** (check 9); the docs check
+   (check 10); `stop_clis` matching by full path (check 11).
+   - Check 9 (2026-09-20): a sync command runs on the thread that paints, so a wait in one
+     freezes the window (FRIENDS.md §8.11). It walks calls three deep, follows `crate::x::f(`
+     and `x::f(` into other modules (2026-10-13: the walk had stopped at `bridge.rs`, so
+     `np_publish` froze the window 6 s in a LAN drop, AIRPLAY.md §13.6), counts a send on the
+     AirPlay session as a blocker, and skips bodies handed to `spawn` / `spawn_blocking`.
+     `log.rs:append` is allowed, as `log_event` is. It also names a sync command that takes
+     `db.lock()`; the fix for that one is `crate::db_thread::run`, not `spawn_blocking`: one
+     thread in arrival order, so two quick writes cannot swap (DB-HEALTH.md §2a). A BLOCKERS
+     row may carry `{ soft: true }` to warn instead of fail while a sweep is under way.
+8. **The versioned copy** — Setup.exe to `installers/DeetsMusic_<version>_x64-setup.exe` (a
+   beta's to `installers/beta/`), only after the check passed (§1b).
 
 Publishing is a separate command, run after the installed build is tested (§6.7).
 
@@ -235,10 +231,11 @@ installed build showed it. Three layers now guard this:
 1. **Structural.** Anything that reads the source tree is compiled out of release builds with
    `#[cfg(debug_assertions)]` — not a runtime `cfg!` check — so the path string is not in
    the exe at all (`apple.rs` `repo_secrets_dir`, the bridge's dev extension path).
-2. **Automated gate.** `npm run release` runs `scripts/release-check.mjs` after `tauri build`
-   and before archiving. It fails when the exe contains an absolute path into the repo (build
-   output under `src-tauri\target\` is allowed), when the four version files disagree, when the
-   pin or updater settings changed or the `.sig` is missing, or when the CLI or the installer
+2. **Automated gate.** `npm run release` runs `scripts/release-check.mjs` after the pack
+   and the feed signature, and before the versioned copy (§1 step 7). It fails when the exe
+   contains an absolute path into the repo (build output under `src-tauri\target\` is
+   allowed), when the version files disagree, when the pin settings changed, `PUBKEY` is
+   missing or the feed is unsigned, or when the CLI, the app exe, `Update.exe` or Setup.exe
    lacks a Valid, timestamped Authenticode signature from `bundle.publisher` (§6.9).
    Run it alone with `npm run release:check`.
 3. **Checklist on the INSTALLED build — when relevant, not on every release.** Run it before
@@ -285,33 +282,24 @@ token source had not been checked first.
 6. Re-check each live app: the log shows a `token: 401 … refetching` line followed by a
    successful play, with no restart.
 
-**The layout since 2026-10-16 (his calls: the whole history kept, a top level that reads by
-version).**
+## 1b. The installers folder (his calls, 2026-10-16)
+
+`installers/` is **gitignored**. His calls: the whole history is kept, and the top level reads
+by version.
+
 - **The top level** — `DeetsMusic_<version>_x64-setup.exe` for every release, one sorted list:
-  the NSIS installers (with their updater `.sig`) up to 0.27.0, then Velopack's Setup.exe from
-  0.28.0 (no `.sig`: the feed carries the signature now). `release.mjs` step 6 copies each
-  Setup.exe here under its version, because `vpk` names it by channel only and overwrites it on
-  the next build. A beta's copy goes to `installers/beta/`.
+  the NSIS installers (each with its updater `.sig`) up to 0.27.0, then Velopack's Setup.exe from
+  0.28.0 (no `.sig`: the feed carries the signature now). `release.mjs` copies each Setup.exe
+  here under its version, because `vpk` names it by channel only and overwrites it on the next
+  build. A beta's copy goes to `installers/beta/`, so the top level holds real releases only.
 - **`velopack/<Id>-<channel>/`** — `vpk`'s own folder: every full and delta `.nupkg`, the latest
   Setup.exe, the feed and its `.sig`. It is the base of the next delta. **Never prune it:**
   `release:publish` copies this local feed into the live one, so a package deleted here leaves
-  the live feed too. `release.mjs` deletes the Portable.zip that `vpk` always writes (nothing
-  publishes it).
+  the live feed too.
 
 The test builds (`dev/`, `beta/`, `velopack-spike/`) were deleted on 2026-10-16; none reached
-live.
-
-The text below is the NSIS record.
-
-`installers/` is **gitignored** (~6 MB each), exactly as DeetsAirplay does it. Since 0.4.3
-each installer has its updater `.sig` beside it (`release:publish` needs it, so keep the pair).
-A pre-release version (`0.4.2-t1`, a spike build) archives to `installers/dev/` instead, so the
-top folder holds only real releases. The difference
-is that DeetsAirplay fills it by hand and its archive drifted — 0.1.0 sitting in the folder
-while the app said 0.1.1 — so here the copy is a build stage instead of a habit.
-
-The archive earns its keep because `src-tauri/target/` is the only other copy, and
-`cargo clean` takes it.
+live. R2 holds every published version as well; the local folder is the copy that survives a
+lost bucket, and `src-tauri/target/` is not one (`cargo clean` takes it).
 
 ## 2. What ships inside
 
@@ -332,99 +320,64 @@ Every exe above (and the setup exe) carries an Authenticode signature from *Adit
 from the first release after 0.4.3. Check one with **Properties › Digital Signatures**, or
 `Get-AuthenticodeSignature`.
 
-Install root is `%LOCALAPPDATA%\DeetsMusic` (per user; NSIS's `installMode: currentUser` up to
-0.27, the same root). Velopack's log is `%LOCALAPPDATA%\velopack\velopack_DeetsMusic.log`. User data lives
+Install root is `%LOCALAPPDATA%\DeetsMusic` (per user, the same root as the NSIS
+installs up to 0.27). Velopack's log is `%LOCALAPPDATA%\velopack\velopack_DeetsMusic.log`. User data lives
 elsewhere and survives: `%APPDATA%\com.deetsmusic.app` holds `deetsmusic.db`,
 `user-token.txt`, `settings.json`, `deetsmusic.log`, `developer-token.json`, the user's own
 pictures and sounds (`files\`), and the Friends and Song of the Day files
 (DATA-ARCHITECTURE.md §8).
 
-## 3. The NSIS hooks
+## 3. The Velopack hooks
 
-> **Part:** archived · 2026-10-15 — up to 0.27. `hooks.nsh` is deleted; its work moved to
-> Velopack's hooks in `velo.rs` (VELOPACK.md §6): the CLI stop, the MCP removal and the
-> start-with-Windows removal. The extension question is gone (his call F2 C).
+Velopack starts `DeetsMusic.exe` with one argument at four moments: `--veloapp-install`,
+`--veloapp-obsolete` (the old version, before an update), `--veloapp-updated` (the new version,
+after) and `--veloapp-uninstall`. `velo.rs` `startup()` is the first thing `run()` does
+(lib.rs), so a hook start does its work and exits before Tauri and the single-instance plugin
+start. A hook shows no UI and cannot cancel; Velopack kills it after 30 s (install, uninstall)
+or 15 s (the two update hooks).
 
-`src-tauri/nsis/hooks.nsh` supplies four macros that Tauri splices into the generated
-installer:
+- **Before an update** (the old version): `stop_clis` stops our CLIs in `current\cli\`, by full
+  path, and logs the count. `Update.exe` also stops every process whose exe is inside the
+  install root, by path, before and after the swap (VELOPACK.md §8a S4); ours runs first, in
+  the app, before the exit.
+- **Before an uninstall:** `mcp uninstall --all --quiet` through the bundled CLI (our MCP entry
+  leaves every AI app), `stop_clis`, and the start-with-Windows value is removed when it points
+  into this install.
+- **After an install, after an update:** nothing. No extension question: the extension is
+  experimental and reachable from Settings only (his call, VELOPACK.md §1 F2 C). The song
+  comes back after an update because the app writes it before it exits (`flushForRestart`,
+  queue-persist, §6.3), not through a hook.
 
-- **`NSIS_HOOK_PREINSTALL`** and **`NSIS_HOOK_PREUNINSTALL`** — stop the bundled CLI.
-- **`NSIS_HOOK_POSTUNINSTALL`** (2026-09-28) — remove the start-with-Windows value
-  (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, named `${PRODUCTNAME}`). The app writes
-  it (`settings.rs` `autostart_write`) and Tauri's template never removed it, so an uninstall
-  left a login entry for an exe that was gone. Skipped on `/UPDATE`: an update keeps the same
-  path and the user's choice. Only a value that points into this `$INSTDIR` is removed. The
-  app's `autostart_seeded` flag is in the app data, so a reinstall that keeps the data does not
-  turn start-with-Windows on again; a reinstall after **Delete app data** does. The hook runs
-  in the NEW uninstaller only: an install on 0.25.1 or older still leaves the value when it
-  uninstalls. It also runs when the reinstall page's "uninstall first" choice runs the old
-  uninstaller without `/UPDATE`, so that path turns start-with-Windows off.
-  **Desk test:** install the build, check the value
-  (`reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v DeetsMusic`), update over it
-  with the next build (the value stays), then uninstall (the value is gone).
-- **`NSIS_HOOK_POSTINSTALL`** — offer the browser extension walkthrough
-  ([EXTENSION.md](../integrations/EXTENSION.md) §6). Asked at most once per PC (2026-09-14): never on an
-  updater or silent install (`$UpdateMode = 1`, `IfSilent`), never once the extension has
-  reached the app (`extension-connected`, written by `bridge.rs`), never after a No
-  (`extension-declined`, written by the hook). Both files sit in `%APPDATA%\com.deetsmusic.app`.
-- **`MUI_WELCOMEPAGE_TEXT`** (a define, not a macro; 2026-09-17) — the Welcome page's text. NSIS's
-  stock line ("close all other applications … without having to reboot your computer") is not
-  true for a per-user install that closes the app itself. Tauri includes the hooks file above
-  `!insertmacro MUI_PAGE_WELCOME`, so the define takes effect.
+**Why the CLIs must stop.** Windows will not replace or delete a file a process holds open, and
+the CLI is long-lived in practice: `deetsmusic mcp` serves an MCP session for as long as the AI
+app runs. A held `current\cli\deetsmusic.exe` would fail the swap. Under NSIS this caused a
+half-uninstall (0.1.2) and an aborted update (0.14.0): [RELEASE-NSIS.md](../archive/RELEASE-NSIS.md)
+§3 and §4a.
 
-**The installer's look (2026-09-17).** `bundle.windows.nsis.installerIcon` = `icons/icon.ico`
-(the setup exe and its title bar; it was NSIS's stock icon) and `sidebarImage` =
-`nsis/sidebar.bmp` (the Welcome and Finish pages' left strip; it was NSIS's blue default). The
-strip is Deets and Happy standing on the street of the night skyline, pixel art doubled to
-164 × 314 (24-bit BMP). `powershell -NoProfile -File scripts/installer-art.ps1` draws it from
-`src-tauri/nsis/art/` — `deets.png` (the user's sprite), `happy.png` (DeetsSolutions
-`assets/sprites/happy/idle_down.png`), `skyline.png`; it extends the sky upward in the art's own
-purples, moves the moon into it, and adds fixed stars. Run it again after a source changes.
-Checked by compiling the generated `installer.nsi` with the two paths set; a real installer
-needs `npm run release`.
-
-### Why the CLI has to be stopped (2026-09-09)
-
-Tauri's template closes the **app** before it writes or deletes files. It knows nothing about
-the CLI beside it, and that CLI is long-lived in practice: `deetsmusic mcp` serves an MCP
-session for as long as the agent runs. Windows will not replace or delete a file a process
-holds open.
-
-What that actually cost, on the 0.1.2 → 0.1.3 changeover: uninstalling 0.1.2 removed the
-registry entry and then failed on `cli\deetsmusic.exe`, leaving **every file on disk** while
-Windows reported the app as not installed. A half-uninstall. An upgrade fails the same way,
-more quietly — a new app paired with a stale CLI.
-
-The macro matches **by path** (`$INSTDIR\cli\*`), not by image name. `target\debug\deetsmusic.exe`
-carries the same name, and an uninstall has no business killing a dev build.
-
-Two quoting traps, both invisible until an install fails: `$$_` is how NSIS emits a literal
-`$_` for PowerShell, and `$\'` is how it emits a single quote — double quotes would close
-PowerShell's own `-Command "…"` string.
+**Start with Windows.** The app writes the value (`settings.rs` `autostart_write`). An update
+keeps it: `current\` is the same path for every version. The uninstall hook removes it. The
+app's `autostart_seeded` flag is in the app data, so a reinstall that keeps the data does not
+turn start-with-Windows on again. **Desk test:** install, check the value
+(`reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v DeetsMusic`), update (the
+value stays), then uninstall (the value is gone).
 
 ## 4. Install
 
-**Since Velopack:** run `installers/velopack/DeetsMusic-deetsmusic/DeetsMusic-deetsmusic-Setup.exe`
-(the website serves it as `DeetsMusic-<version>-Setup.exe`). No wizard, no admin prompt: it
-unpacks for about 1–2 s, adds the Start Menu entry and the Installed apps entry, and opens the
-app. No extension question (his call F2 C). From Claude's shell, start it through WMI
-(`Win32_Process.Create`), or it lands in Claude's MSIX container (VELOPACK.md §8a). The rest of
-this section is the NSIS installer up to 0.27.
+Run `installers/DeetsMusic_<version>_x64-setup.exe` (the website serves the same file as
+`DeetsMusic-<version>-Setup.exe`). No wizard, no admin prompt: it unpacks for about 1–2 s,
+adds the Start Menu entry and the Installed apps entry, and opens the app. Velopack's default
+screen shows meanwhile (no splash is set; VELOPACK.md §11). WebView2 is installed first when it
+is missing (`--framework webview2`).
 
-```bash
-installers/DeetsMusic_<version>_x64-setup.exe
-```
-
-No admin prompt. Adds a Start Menu entry (right-click → *Pin to taskbar*) and the uninstaller,
-then offers the extension walkthrough.
-
-- The installer is **Authenticode-signed** by *Aditya Sundaram* from the first release after
-  0.4.3 (§6.9); 0.4.3 and earlier are unsigned. **SmartScreen checks only files with the web
-  mark** (a browser download). A locally built installer and an updater download carry no mark,
-  so they never show it. A signed installer from a browser can still warn (*More info → Run
-  anyway*) until the publisher builds download reputation.
-  The user-facing wording for each release lives in [RELEASE-NOTES.md](RELEASE-NOTES.md);
-  paste that entry into the GitHub Release.
+- **From Claude's shell, start it through WMI** (`Win32_Process.Create`), or it lands in
+  Claude's MSIX container (VELOPACK.md §8a). To drive the installed app over CDP, add
+  `--remote-debugging-port` through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` in the WMI
+  environment (VELOPACK.md §12.4).
+- The Setup.exe and every exe in the package are **Authenticode-signed** by *Aditya Sundaram*
+  (§6.9). **SmartScreen checks only files with the web mark** (a browser download). A locally
+  built Setup.exe and an update carry no mark, so they never show it. A browser download can
+  still warn until the publisher builds download reputation for that version; the steps for
+  each browser are on the website and in [RELEASE-NOTES.md](RELEASE-NOTES.md)'s header.
 - **`npm run tauri dev` and the installed app share `%APPDATA%\com.deetsmusic.app`** (same
   identifier). Anything a dev run writes to `settings.json` the installed build reads. Use
   `npm run dev:app` (own identifier) when testing anything that seeds a one-shot state.
@@ -432,94 +385,58 @@ then offers the extension walkthrough.
   the mint, as a stranger's install does (§1a, §7; `apple.rs`, "debug builds only", since
   2026-09-13). Only a debug build reads `apple.json` + the `.p8`, from the app data dir or the
   repo.
-- **An install closed a running dev build too** (seen 2026-09-14, an updater install of
-  0.4.2-t2): Tauri's installer closed processes by the name `DeetsMusic.exe`, and Windows
-  matches `target\debug\deetsmusic.exe` without case. **Fixed 2026-09-23 (§4a)**: the installer
-  now closes only the exe inside its own folder. A plain `tauri dev` still shares the installed
-  build's identifier and data dir — see [TRAY.md](../features/TRAY.md) §6 on the single-instance
-  guard, and use `npm run dev:app` to separate them.
 
-### 4a. What an install, an update and an uninstall stop (2026-09-23)
+### 4a. What an update and an uninstall stop
 
-**Since Velopack (2026-10-15)** the rule is the same (by full path inside this install, never by
-name) and the code is `velo.rs` `stop_clis`, run by the app before an update and by the
-uninstall hook; `Update.exe` also stops what runs inside the install root, by path (VELOPACK.md
-§8a S4). The text below is the NSIS record.
+**The rule: by full path inside this install, never by name.** Several related processes run
+on this PC at once: the full app, DeetsMusic Beta ([BETA.md](BETA.md)), the dev build, and a
+`deetsmusic` CLI for every AI app that has the MCP open. An update or an uninstall must stop
+only its own. The code is `velo.rs` `stop_clis` (§3); `Update.exe` keeps the same rule for the
+install root.
 
-**The rule: by full path inside `$INSTDIR`, never by name.** Several related processes run on
-this PC at once: the full app, DeetsMusic Beta ([BETA.md](BETA.md)), the dev build, and a
-`deetsmusic` CLI for every AI app that has the MCP open. An install must stop only its own.
-
-**What was wrong.** Tauri's template closes the app with `CheckIfAppIsRunning`, which finds and
-kills processes by NAME (`nsis_tauri_utils::KillProcessCurrentUser`), and Windows compares names
-without case. The full app's installer looks for `DeetsMusic.exe`, so it also killed:
-- the dev build, `target\debug\deetsmusic.exe`;
-- **every `deetsmusic.exe` CLI on the PC**, wherever it ran. On 2026-09-23 there were five, all
-  MCP servers of open Claude sessions. `DeetsStopCli` had spared them by path; the template's
-  close ran right after it and killed them by name.
-
-The beta was never exposed: `DeetsMusicBeta.exe` matches no other name.
-
-**The fix** (`src-tauri/nsis/hooks.nsh`). Tauri includes hooks.nsh after its `utils.nsh`, so the
-hooks `!macroundef CheckIfAppIsRunning` and define it again. The new one keeps the template's
-prompt, messages and Abort paths, but finds and stops only `$INSTDIR\<exe>`, by full path. The
-path reaches PowerShell in the `DEETS_PATH` environment variable, so an apostrophe in a user
-name cannot break the quoting. `DeetsStopCli` uses the same variable.
-
-| Installer | Stops | Leaves running |
+| App | Stops | Leaves running |
 |---|---|---|
-| Full app | `%LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe`, CLIs in `…\DeetsMusic\cli\` | the beta, the dev build, CLIs anywhere else |
-| Beta | `%LOCALAPPDATA%\DeetsMusic Beta\DeetsMusicBeta.exe`, CLIs in `…\DeetsMusic Beta\cli\` | the full app, the dev build, CLIs anywhere else |
+| Full app | its own exe and the CLIs in `%LOCALAPPDATA%\DeetsMusic\current\cli\` | the beta, the dev build, CLIs anywhere else |
+| Beta | its own exe and the CLIs in `%LOCALAPPDATA%\DeetsMusicBeta\current\cli\` | the full app, the dev build, CLIs anywhere else |
 
-It also applies to the uninstaller and to an updater install (`/UPDATE`, passive): both use the
-same two macros.
+**What still stops.** An update of an app stops ITS OWN CLIs: Windows will not replace an exe
+that a process holds open. An AI app that had that CLI open loses its DeetsMusic tools until it
+starts them again.
 
-**The 0.14.0 abort (2026-09-24), and why the path comes from WMI.** The 0.14.0 update stopped
-with *Can't write …\DeetsMusic\cli\deetsmusic.exe*: four MCP CLIs of open Claude sessions held
-the file. The installer is a **32-bit** program, so nsExec starts the 32-bit PowerShell, and a
-32-bit process cannot read a 64-bit process's path: `Get-Process`'s `.Path` was EMPTY for every
-DeetsMusic process, and the by-path match matched nothing. `DeetsStopCli` had never matched
-anything since it was written; the template's kill by name had hidden it until 0.14.0 removed
-that. Two more faults hid in the same place: the app's count read PowerShell's printed output,
-which nsExec returns as "?" (so the app was never seen as open), and so a manual install over a
-running app, or an uninstall, would not have closed it. **Fixed in 0.14.1:** every path comes
-from `Get-CimInstance Win32_Process` (`ExecutablePath`, read by the WMI service at any bitness),
-each stop is `Stop-Process -Id`, and the count is the exit code. Tested from a 32-bit NSIS test
-installer outside the Claude package: 4 of 4 CLIs matched; a scratch 64-bit process in a test
-folder stopped; the CLIs outside it kept running. release-check 11 now fails `Get-Process` or
-`$$_.Path` in hooks.nsh.
+**The gate.** release-check 11 fails the build when `stop_clis` no longer matches by the full
+path under `cli\`. The NSIS installer killed by name and took the dev build and every MCP CLI
+with it (2026-09-23); the history and its fix are [RELEASE-NSIS.md](../archive/RELEASE-NSIS.md)
+§4a.
 
-**What still stops.** An update of an app stops ITS OWN CLIs: Windows will not replace an exe that
-a process holds open. An AI app that had that CLI open loses its DeetsMusic tools until it starts
-them again.
+**Desk test.** With the full app, its MCP CLIs and a `dev:app` running, update the beta. All of
+them are still running afterwards (`Get-Process DeetsMusic*,deetsmusic*`).
 
-**The gate.** release-check 11 fails the build when hooks.nsh stops anything by name, when a
-`Stop-Process` is not filtered by `DEETS_PATH`, or when the generated `installer.nsi` /
-`utils.nsh` no longer define and insert `CheckIfAppIsRunning` — a Tauri upgrade that renames the
-macro would otherwise turn the fix off without a word.
+### 4b. Moving from an NSIS install (0.27.0 and older)
 
-**Desk test.** With the full app, its MCP CLIs and a `dev:app` running, install the beta. All of
-them are still running afterwards (`Get-Process DeetsMusic*,deetsmusic*`). Then quit nothing, and
-install the beta again over itself: only the beta closes, and it starts again.
+There is no migration path (his call, VELOPACK.md §1). An NSIS install is never offered a
+Velopack version (§0b), so it stays on 0.27.0. To move:
+
+1. Settings › Apps › Installed apps › DeetsMusic › Uninstall. **Leave *Delete app data* off.**
+2. Run the 0.28.0 (or newer) Setup.exe from `deets.solutions/deetsmusic/`.
+
+The library, settings and pins stay: they are in `%APPDATA%\com.deetsmusic.app`, not in the
+install folder. The exe moves from the install root to `current\`, so a few things that hold
+the old path need one hand step (VELOPACK.md §3): run *Set up the DeetsMusic MCP* again (the
+CLI path changed), pin the taskbar button again, point Chrome's unpacked extension at
+`current\extension`, and fix a hand-added `…\DeetsMusic\cli` on the user PATH.
 
 ## 5. Uninstall
 
-**Since Velopack:** Settings → Installed apps → DeetsMusic → Uninstall, which runs
-`"%LOCALAPPDATA%\DeetsMusic\Update.exe" --uninstall` (add `--silent` for no UI). It has no
-questions. The app's before-uninstall hook (`velo.rs`) removes our MCP entry from the AI apps,
-stops the CLIs and removes the start-with-Windows value; Velopack stops what runs in the folder
-and deletes it, the shortcut and the Installed apps entry (tested 1.3 s, VELOPACK.md §8a S8).
-The NSIS uninstaller's *Delete app data* box has no Velopack twin: the row that replaces it is
-a draft for him (VELOPACK.md §11). Up to 0.27:
+Settings › Apps › Installed apps › DeetsMusic › Uninstall. It runs
+`"%LOCALAPPDATA%\DeetsMusic\Update.exe" --uninstall` (add `--silent` for no UI) and asks no
+questions. The uninstall hook (§3) removes our MCP entry from the AI apps, stops the CLIs and
+removes the start-with-Windows value; Velopack stops what runs in the folder and deletes it,
+the shortcut and the Installed apps entry (1.3 s silent, 12.4 s from Installed apps;
+VELOPACK.md §12.4). There is no *Delete app data* box: the row that would replace it is a draft
+for him (VELOPACK.md §11).
 
-```bash
-"$LOCALAPPDATA/DeetsMusic/uninstall.exe"        # add /S for no prompts
-```
-
-Or Settings → Installed apps. The `PREUNINSTALL` hook stops the CLI first. The
-`POSTUNINSTALL` hook removes the start-with-Windows value (§3).
-
-User data is **not** part of the install root, so this leaves it. Remove it deliberately:
+User data is **not** part of the install root, so the uninstall leaves it. Remove it
+deliberately:
 
 ```bash
 rm -rf "$APPDATA/com.deetsmusic.app"
@@ -527,171 +444,161 @@ rm -rf "$APPDATA/com.deetsmusic.app"
 
 That costs the sign-in, the library cache (Apple calls to rebuild) and the extension pairing
 token (re-pair needed). Keep the folder for an ordinary reinstall; delete it to test the
-first-run path.
-
-If a half-uninstall ever happens again — no registry entry, files still present — the
-uninstaller is still on disk and can be re-run, or the folder deleted directly.
+first-run path (or use `npm run dev:fresh`, ONBOARDING.md).
 
 ## 6. The updater
 
-> **Since Velopack (built 2026-10-15, VELOPACK.md):** `npm run release` signs every exe
-> (Authenticode) and the feed (the updater key) → `release:publish` puts the packages, Setup.exe,
-> the version's rollback feed and the feed in R2 `<channel>/vp/` and a row in `index.json` →
-> the app's `SignedSource` (velo.rs) reads `GET music-api.deets.solutions/update/<channel>/vp/releases.<channel>.json`
-> and its `.sig`, checks the signature, then Velopack downloads the delta (or the full package)
-> and checks its SHA-256 → *Restart now* hands the swap to `Update.exe` (~2.4 s); *Later* means
-> the next start applies it (his call F1 A). §6.2–§6.5's rules hold (one download, the size cap,
-> rollback inside the group, Skip, `minVersion`); §6.3's "Later re-offers at the next launch" and
-> §6.4's "held in memory" are the NSIS record. Skip deletes a downloaded package
-> (`update_discard`). A dev build has no install and does not check.
->
-> Status: **built on branch `yupdates` 2026-09-14, spike passed (§6.8), shipped in 0.4.3** — the
-> first release on the `deetsmusic` channel. Re-tested with signed installers 2026-09-15 (§6.9).
-> Decisions below are the user's. Code: `src-tauri/src/update.rs`, `src/updater.ts`,
-> Settings › Updates (`settings-card.ts`), `scripts/release.mjs`, `scripts/publish-update.mjs`,
-> `scripts/cred-read.ps1`, `scripts/cred-write.ps1`, and `DeetsSupport/src/update.js`.
->
-> **How an update travels:** `npm run release` signs the installer twice (Authenticode, then the
-> updater `.sig`) → `release:publish` puts both in R2 and adds a row to `<channel>/index.json` →
-> the app asks `GET music-api.deets.solutions/update/<channel>?v=<current>` → the Worker answers
-> from the index → the plugin downloads the installer into memory and checks the `.sig` against
-> the compiled public key → a restart runs NSIS in passive mode and relaunches the app.
->
-> **As built — where it differs from the plan below:**
-> - The verified installer is held **in memory**, not staged on disk (§6.4). A file read back
->   later would skip the signature check, which the plugin runs only at download time.
-> - Two channels: `deetsmusic` and `deetsmusic-test`, fixed at compile time by
->   `DEETSMUSIC_UPDATE_CHANNEL`. Spike builds never reach a real install.
-> - Publishing is its own command, `npm run release:publish`, not a stage of `npm run release`.
->   Test the installed build first; publishing is what makes installs update.
-> - The Windows install mode is **passive**: NSIS shows only a progress bar, then relaunches the app.
-> - An update restart restores the song, paused, at its position, even when Restore on launch is off.
+> **Velopack since 0.28.0** (built 2026-10-15, VELOPACK.md §12; beta desk test passed §12.6;
+> live 2026-10-16). Code: `src-tauri/src/velo.rs` (the hooks, `SignedSource`, the feed checks),
+> `src-tauri/src/update.rs` (the commands and the status), `src/updater.ts` (Settings ›
+> Updates and the toasts), `src/update-rules.ts` (pure: `compareVersions`, `rollbackSkip`),
+> `scripts/release.mjs`, `scripts/publish-update.mjs`, and `DeetsSupport/src/update.js`.
 
-History: `tauri-plugin-updater` was deferred because it fetches its manifest
-unauthenticated, so the private GitHub repo could not serve it. `DeetsSupport` (§7) removes
-that blocker.
+**How an update travels:** `npm run release` signs every exe (Authenticode) and the feed (the
+updater key) → `release:publish` puts the packages, Setup.exe, the version's rollback feed and
+the feed in R2 `<channel>/vp/`, and a row in `<channel>/index.json` → the app's `SignedSource`
+reads `GET music-api.deets.solutions/update/<channel>/vp/releases.<channel>.json` and its
+`.sig`, checks the signature against `PUBKEY`, then checks each entry (our package id, a
+SHA-256, under the size cap, a plain `.nupkg` name) → Velopack downloads the delta (or the full
+package) and checks its SHA-256 → *Restart now* hands the swap to `Update.exe`, and the new app
+is back in about 2 s (1.9–2.4 s measured); *Later* means the next start applies it. A dev build
+has no install and does not check ("A dev build doesn't update.").
 
 ### 6.1 Terms
 
-- **Updater** — `tauri-plugin-updater`. It reads the manifest, downloads the installer,
-  checks its signature, and runs it.
-- **Manifest** — the JSON that names the newest version, its URL, its size and its signature.
+- **Signed feed** — the feed plus `releases.<channel>.json.sig`, a minisign signature by the
+  updater key. Chain: key → feed → SHA-256 → package.
+- **Rollback feed** — `rollback/<version>/releases.<channel>.json` (+ `.sig`): a feed that
+  holds only that version's full package, the target of a rollback to it.
 - **Channel group** — a set of versions that share a compatible cache database (§6.5).
+- **Apply at start** — a downloaded package waits in `packages\` and is installed the next time
+  the app starts (his call, VELOPACK.md §1 F1 A).
 
-### 6.2 Host — a Worker route + R2 (decided)
+### 6.2 Host — a Worker route + R2
 
-- `GET music-api.deets.solutions/update/deetsmusic?v=<current>` returns the manifest. It
-  answers from a var or R2 metadata, **never D1**, the same rule as `/token`.
-- Installers and their `.sig` files live in an R2 bucket, one object per version. ~6 MB
-  each; R2 storage is free to 10 GB and egress is free, so every version is kept.
-- The route reads `?v=`, so the Worker can hold back a bad release or offer a rollback
-  target per request.
-- **`KILL` must not block this route.** Today `KILL` returns 503 on every route
-  (`DeetsSupport/src/index.js`). A bad release must stay fixable by an update, so the update
-  route checks `KILL_UPDATE` (its own var) instead.
-- This is a file channel for **signed installers only**. It never serves code the app loads
+- **The routes** (`DeetsSupport/src/update.js`), all under `music-api.deets.solutions/update/<channel>`:
+  - `/vp/releases.<channel>.json` and `.sig` — the feed every install reads (cached 60 s);
+  - `/vp/<Id>-<v>-<channel>-full.nupkg` and `-delta.nupkg` — the packages;
+  - `/vp/<Id>-<v>-Setup.exe` — a first install (the website's download);
+  - `/vp/rollback/<v>/releases.<channel>.json[.sig]?v=<current>` — a rollback feed, answered
+    only inside the running version's group;
+  - `/releases` — the website's list; `/health` — heads the latest package and Setup.exe;
+    `/versions` — the rollback list.
+- **R2:** bucket `deetsmusic-releases`, `<channel>/index.json` and `<channel>/vp/…`. R2 storage
+  is free to 10 GB and egress is free, so every version is kept. The NSIS installers up to
+  0.27.0 stay at `<channel>/DeetsMusic_<v>_x64-setup.exe` for the website's history.
+- The route answers from R2, **never D1**, the same rule as `/token`.
+- **`KILL` must not block this route.** A bad release must stay fixable by an update, so the
+  update route checks `KILL_UPDATE` (its own var) instead.
+- This is a file channel for **signed files only**. It never serves code the app loads
   (support.md "config yes, code no").
-- **The website reads the same index** (built and deployed 2026-09-14; 0.1.3–0.4.1 backfilled):
-  `GET /update/<channel>/releases` is the public release list behind
-  `deets.solutions/deetsmusic/` (DeetsSolutions `docs/support.md`, "The page"). No `?v=`;
-  newest first; `latest` is the newest live non-pre-release. Each row carries version, date,
-  notes, and — only when it has an installer and is not withdrawn — size and a download URL
-  on `music-api.`. Signature and group stay off it. `Cache-Control: public, max-age=300`.
-  Same rules as the rest of the route: R2 only, before `KILL`, behind `KILL_UPDATE`.
-  Two kinds of row the updater never sees, because `readIndex` keeps only entries with a
-  `file` and a `signature`:
-  - **History rows** — 0.1.3 to 0.4.1 shipped before the updater, so they have no `.sig`.
-    They go into the index as notes only (§6.7), so the page's history does not start at 0.4.3.
+- **The website reads `/releases`** (behind `deets.solutions/deetsmusic/`): every row, newest
+  first; `latest` is the newest live non-pre-release. A row carries version, date, notes, and —
+  only when it has an installer and is not withdrawn — a download URL and a size. For a
+  Velopack row the URL is its Setup.exe and the size is `setup_size`, the Setup.exe's bytes
+  (2026-10-16; before it the site showed the smaller package size). `Cache-Control: public,
+  max-age=300`. Two kinds of row the updater never sees:
+  - **History rows** — 0.1.3 to 0.4.1 shipped before the updater; notes and a date only.
   - **Withdrawn releases stay listed**, notes and all, marked withdrawn and with no download.
-    What went wrong is part of the record. An optional `withdrawn_reason` says why.
+    An optional `withdrawn_reason` says why.
+- **The old route** `/update/<channel>?v=<current>` still answers NSIS installs, from NSIS rows
+  only (§0b, §4b).
 
-### 6.3 Behavior — download in background, ask to restart (decided)
+### 6.3 Behavior — download in the background, apply at the next start
 
 Settings row, verb-first per the label style: **Updates — Automatic / Ask / Off**.
 
-- **Automatic** — check at launch and every few hours; download in the background; a toast
-  offers **Restart now** / **Later**. Later re-offers at the next launch. The app often lives
-  in the tray and never quits, so "install on quit" alone is not enough.
+- **Automatic** — check at launch and every 6 hours; download in the background; a toast
+  offers **Restart now** / **Later**. *Later* means the update installs the next time
+  DeetsMusic starts (his call F1 A), not "ask again".
 - **Ask** — the toast offers **Download** first, then the restart toast.
 - **Off** — no check. The Settings row still has **Check now**.
-- Every offer has **Skip this version**; the skipped version is stored in `settings.json`.
-- An update cannot apply while the app runs: Windows will not replace a running exe, and the
-  front end is inside it. A restart takes a few seconds. `restoreQueue` brings the song and
-  queue back; **the playback position is not saved today** — add it with the build.
-- The install closes the bundled CLI (`PREINSTALL` hook), so an open MCP session ends.
-- `minVersion` from the remote config (already in the `/token` response) turns the offer into
-  a required update. The `notice` string becomes a notice toast (TOASTS.md §5).
+- Every offer has **Skip this version**: the version is stored in `settings.json` and its
+  downloaded package is deleted (`update_discard`), so the next start does not install it.
+- An update restart restores the song, paused, at its position, even when Restore on launch is
+  off (`updateRestart` in queue-persist).
+- The update stops our CLIs (§3), so an open MCP session ends.
+- `minVersion` from the remote config (in the `/token` response) makes an update required: it
+  downloads whatever the mode. The `notice` string becomes a notice toast (TOASTS.md §5).
+- The toast wordings are TOASTS.md §5 (`updater.ts` rows).
 
-### 6.4 Download rules — one at a time (decided)
+### 6.4 Download rules — one at a time
 
-- **One download in flight.** Rust holds one lock; a check while a download runs does nothing.
-- **One staged installer on disk,** in a fixed folder. A newer version replaces it. It is
-  deleted after the install, or when the running version already matches.
-- **Size cap.** The manifest states the size. The app refuses a manifest above a fixed cap
-  (~50 MB) and aborts a download that grows past the stated size.
-- The updater buffers the download in memory before writing it; the cap bounds that too.
+- **One download in flight.** Velopack takes a global lock; `update.rs` keeps its own for the
+  status, and a check while a download runs does nothing.
+- **One waiting package.** `packages\` holds the current full package and at most one
+  downloaded update; Skip deletes it.
+- **Size cap.** `SignedSource` refuses a feed entry above 50 MB (`SIZE_CAP`, velo.rs), and
+  Velopack checks each download's SHA-256 against the signed feed.
+- A delta is usually a few MB (0.28.0 betas: 3.2–4.5 MB); several missed versions chain their
+  deltas, or fall back to the full package (~15 MB).
 
-### 6.5 Rollback — previous version, plus a list (decided)
+### 6.5 Rollback — previous version, plus a list
 
 - Settings shows **Roll back to <previous>** — one press.
 - Under it, **Other versions…** lists older versions **in the same channel group** only.
-- A rollback marks the version it left as skipped, or Automatic would re-install it at once.
-- **Why the group rule:** the cache db migrates forward (`library.rs` v2–v5). v3–v5 only add
-  tables and columns, so an older build still reads the newer db. v2 re-keyed rows, so a build
-  from before v2 would break on it. **Release rule:** a destructive migration starts a new
-  channel group, and the manifest carries the group per version.
-- The updater needs a custom version comparator to accept an older version.
+- The app reads that version's rollback feed (§6.1) with downgrades allowed; the Worker
+  answers it only inside the running version's group.
+- A rollback keeps the newer of the old skip and the version it leaves as the skip
+  (`rollbackSkip`, `src/update-rules.ts`), or apply-at-start would install the newer version
+  again at the next start (found in the beta desk test, VELOPACK.md §12.4).
+- **Why the group rule:** the cache db migrates forward. A migration that only adds tables and
+  columns leaves the db readable by an older build; one that re-keys rows does not. **Release
+  rule:** a destructive migration starts a new channel group (`package.json`
+  `deetsmusic.updateGroup`), and the index carries the group per version.
+- Versions compare with `compareVersions` (update-rules.ts and the Worker): a pre-release sorts
+  before its release, and `beta.10` after `beta.9`.
 
-### 6.6 Signing — local, password in Credential Manager (decided)
+### 6.6 Signing — the updater key, password in Credential Manager
 
-- `npx tauri signer generate` makes the key pair. The **public key** goes in
-  `tauri.conf.json` (compiled into every install). The **private key** signs each installer
-  at build time (`bundle.createUpdaterArtifacts`, env `TAURI_SIGNING_PRIVATE_KEY` +
-  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`).
+- `npx tauri signer generate` made the key pair. The **public key** is `PUBKEY` in velo.rs
+  (compiled into every install; up to 0.27 it was `plugins.updater.pubkey`). The **private
+  key** signs every feed: `release.mjs` signs the local feed after the pack, and
+  `publish-update.mjs` signs each feed it uploads (the rollback feed, the feed, and the feed
+  again on `--withdraw`), through `tauri signer sign` with `TAURI_SIGNING_PRIVATE_KEY` +
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 - **Why it matters:** the signature is the defence if the Worker, R2 or DNS is taken. The
   private key **never goes into Cloudflare** or the repo.
 - **Lost key = no install can update again.** Every install trusts only its compiled public
-  key, and a new key can only ship in a release signed by the old one.
-- **Not Authenticode.** This key does not give the installer a publisher name. Authenticode
-  is a separate signature from Azure Artifact Signing (§6.9).
+  key, and a new key can only ship in a release whose feed is signed by the old one.
+- **Not Authenticode.** This key does not give an exe a publisher name. Authenticode is a
+  separate signature from Azure Artifact Signing (§6.9).
 
 **Where things live — two copies of each, in two places:**
 
 | Item | Copy 1 (this PC) | Copy 2 (off this PC) |
 |---|---|---|
-| Key password | Windows Credential Manager — the release script reads it | iCloud Passwords (end-to-end encrypted, two-factor) |
+| Key password | Windows Credential Manager — the release scripts read it | iCloud Passwords (end-to-end encrypted, two-factor) |
 | Private key file (encrypted form only) | `Documents\Deets' Secrets`, noted in its README | USB drive or OneDrive — **never iCloud Drive** |
 
 1. The key file and its password never share an account.
 2. The key file is only ever stored encrypted.
 3. On the day the key is made, sign a test file using **copy 2 of both** to prove the backup.
-4. The release script passes the password only to `tauri build`; it never prints or writes it.
+4. The scripts pass the password only to `tauri signer sign`; they never print or write it.
 
 **Runbook — the key file is copied, but the password is not known to anyone else.** The file is
 encrypted, so it is not usable. Make a new key when convenient and rotate (below). Not urgent.
 
 **Runbook — the key AND its password are exposed.** An attacker also needs the update route
-(the Worker, R2 or the DNS record) to push a fake installer. So:
+(the Worker, R2 or the DNS record) to push a fake feed. So:
 1. Secure Cloudflare first: change the password, check two-factor sign-in, revoke API tokens.
 2. Set `KILL_UPDATE` until step 4 ships, if the route itself is in doubt.
 3. `npx tauri signer generate` a new key; store it and back it up as above.
-4. Ship a release **signed with the OLD key** that carries the **NEW** public key. Installs
-   that take it trust only the new key from then on.
+4. Ship a release whose feed is **signed with the OLD key** and whose app carries the **NEW**
+   `PUBKEY`. Installs that take it trust only the new key from then on.
 5. Raise `minVersion` to that release, so every install is pushed to take it.
 6. Installs that never update keep trusting the old key. That gap cannot be closed from here.
 
 **Runbook — the key is LOST (both copies).** No install can verify an update again. There is
 no fix inside the updater. The recovery is the config channel, which does not use the key:
 1. Make a new key and a release with the new public key.
-2. Put it where a person can download it by hand (the GitHub Release, the support page).
+2. Put it where a person can download it by hand (the website's Setup.exe).
 3. Set the remote `notice` to say so, with the download link. Every install reads it on the
-   `/token` fetch. **So the notice toast must show a link button — build that with the updater.**
+   `/token` fetch.
 
-**Possible second lock (not decided; now possible, 2026-09-15):** Artifact Signing is set up
-(§6.9), so the app could also require the downloaded installer to carry a valid Authenticode
-signature with CN `Aditya Sundaram` before it runs. Then a stolen updater key plus a taken Worker
-is still not enough. It needs a signed release to reach every install first, or installs that
-still expect unsigned updates would refuse them.
+**Possible second lock (not decided):** the app could also require every exe in a downloaded
+package to carry a valid Authenticode signature with CN `Aditya Sundaram` before it applies it.
+Then a stolen updater key plus a taken Worker is still not enough.
 
 Why Credential Manager over a typed prompt: the password protects a copied key file, and
 both options protect that equally. Neither protects against malware running as the user.
@@ -699,73 +606,61 @@ The vault lets a Claude session run a full release; a prompt would not.
 
 ### 6.7 Publish step
 
-**As built:** publishing is its own command, `npm run release:publish`, run only after the
-installed build passed its checks. It uploads the archived installer from `installers/` (or
-`installers/dev/`) to R2, then rewrites `<channel>/index.json` with `{ version, group, notes,
-pub_date, size, signature, file }`. `npm run release` does the signing; publish never builds.
-The local `installers/` archive stays.
+`npm run release:publish`, run only after the installed build passed its checks.
+`npm run release` does the signing; publish never builds. From
+`installers/velopack/<Id>-<channel>/` to R2 `<channel>/vp/`, in this order, so an install
+never reads a feed that names a package not yet uploaded:
 
-**Additions for the website (built 2026-09-14)** — `scripts/publish-update.mjs`. Notes are
-stored with `\n` line endings whatever the checkout uses:
+1. the version's full package and its delta (when there is one);
+2. Setup.exe as `<Id>-<version>-Setup.exe`;
+3. `rollback/<version>/releases.<channel>.json` + `.sig`;
+4. `releases.<channel>.json` + `.sig`: the local feed without withdrawn versions, signed.
 
-- `--history` writes a **notes-only row** for every `## <version>` in RELEASE-NOTES.md that the
-  index lacks: `{ version, notes, pub_date, history: true }`, with the date taken from the
-  heading. No `file`, no `signature`, so the updater and rollback skip it. Run once for
-  0.1.3–0.4.1; safe to re-run.
-- `--withdraw <v> --reason "<text>"` stores `withdrawn_reason` beside `withdrawn: true`. The
-  reason is shown on the public page, so it is written in plain words for a user.
-- `--notes-only <v>` refreshes one row's `notes` from RELEASE-NOTES.md without re-uploading
-  the installer. (Before it, a typo fix needed `--replace`, which uploads the installer again.)
+Then `<channel>/index.json` gets `{ version, group, notes, pub_date, size, file, setup,
+setup_size, velopack: true }`. `size` is the full package's bytes, `setup_size` the
+Setup.exe's. `notes` is the version's RELEASE-NOTES.md entry up to its first `###`, stored
+with `\n` line endings whatever the checkout uses. Then, on `deetsmusic`, the web demo is built
+and pushed (§0b: a demo failure never undoes the publish).
+
+The flags (`scripts/publish-update.mjs`):
+- `--beta` — DeetsMusic Beta to `deetsmusic-test`; it needs a `-beta.N` version, and a
+  `-beta.N` version needs it.
+- `--replace` — overwrite a version already in the index.
+- `--withdraw <v> --reason "<text>"` — marks the row withdrawn, stores the reason (shown on the
+  public page, so written in plain words for a user), and signs the feed again without that
+  version: the Worker cannot change a signed file.
+- `--notes-only <v>` — refreshes one row's `notes` from RELEASE-NOTES.md without an upload.
+- `--history` — a notes-only row for every `## <version>` in RELEASE-NOTES.md that the index
+  lacks (run once for 0.1.3–0.4.1; safe to re-run).
 - **A publish to `deetsmusic` stops when RELEASE-NOTES.md has no entry for the version**
-  (added 2026-09-16). Before that, the script wrote `notes: ""` without a warning. 0.6.3 and
-  0.7.0 went live that way, and their rows on the website were empty until `--notes-only`
-  filled them. The test channel is not checked: its spike builds have no notes.
+  (2026-09-16: 0.6.3 and 0.7.0 went live with empty notes before this). The test channel is
+  not checked.
 
-### 6.8 Test first (spike before the build)
+### 6.8 Test a change to the updater — the beta channel
 
-- [x] The release script reads the **real** Credential Manager vault from this session (the
-  Claude app's MSIX package virtualized the registry before; the vault is a separate store).
-  **Confirmed 2026-09-14:** `CredReadW` on target `DeetsMusicUpdaterKey` (made by the user
-  with `cmdkey /generic:DeetsMusicUpdaterKey /user:updater /pass`) returned the password,
-  and `tauri signer sign -f <key>` signed a test file with it. Trap: the env var
-  `TAURI_SIGNING_PRIVATE_KEY` takes the key's CONTENT, not its path ("Invalid symbol 58").
-- [x] NSIS in the updater's mode installs an **older** version over a newer one without a prompt.
-- [x] The app relaunches after the update, the **pinned taskbar button keeps its icon**, and
-  the relaunched window groups under it. The pin holds only while `mainBinaryName`,
-  `productName` and the install folder stay fixed — all three are in `release-check.mjs`.
-- [x] An updater download shows no SmartScreen warning (expected: no browser mark on the file).
+A change to `velo.rs`, `update.rs`, `updater.ts`, the Worker's update route or the scripts is
+tested on DeetsMusic Beta (`deetsmusic-test`) before a live release. The beta is a second
+installed app with its own data, CLI and deep link, so the live app is never touched
+([BETA.md](BETA.md)).
 
-**Spike result (2026-09-14, installed 0.4.2-t1 ⇄ t2 on `deetsmusic-test`): all pass.**
-- Update t1 → t2: offered, downloaded and verified in ~2 s, installed with a progress bar, and
-  t2 started by itself 8 s later. The song came back paused and resumed at its position. The pin
-  kept its icon. No SmartScreen.
-- Rollback t2 → t1: offered only inside group 1, no downgrade prompt, t1 started 8 s later.
-- Skip after rollback: `updateSkip` survived the installer's exit. The automatic check 30 s
-  after start found t2 and showed no toast; only the two manual **Check now** presses did.
-- Found: the install closes a running dev build (§4), and the updater install showed the
-  extension question (fixed in `hooks.nsh`, §3; not yet verified in a build).
-- The dev PC's installed app is now a **test-channel** build. It will only see test releases,
-  so the next real release must be installed by hand once.
+1. Set a `-beta.N` version, `npm run release -- --beta`, install
+   `installers/beta/DeetsMusicBeta_<version>_x64-setup.exe`, `npm run release:publish -- --beta`.
+2. Bump to `-beta.N+1`, build and publish the same way. Do not install it.
+3. In the installed beta: Settings › Updates › Check now → the toast → **Restart now**. Expect
+   the app back in about 2 s, the song at its position, the pin still one icon.
+4. The rest of the walk is VELOPACK.md §12.3: *Later* then a restart, Skip, a rollback, the
+   media flyout's name, the uninstall.
 
-**How to run the spike (test channel, never reaches a real install):**
-1. Deploy the Worker (`npx wrangler deploy` in DeetsSupport); smoke `/token`, then
-   `GET /update/deetsmusic-test?v=0.0.1` → 204 (empty index).
-2. Set the version to a test number (e.g. `0.4.2-t1`) in the seven files (§1).
-   `DEETSMUSIC_UPDATE_CHANNEL=deetsmusic-test npm run release`, then
-   `npm run release:publish -- --channel deetsmusic-test`. Install that setup exe by hand; pin it.
-3. Bump to `0.4.2-t2`, build and publish the same way. Do not install it.
-4. In the installed t1: Settings › Updates › Check now → the restart question → **Restart now**.
-   Expect a progress bar, then t2 opens by itself, the song back at its position, the pin intact.
-5. In t2: Roll back → `0.4.2-t1` → Install → Restart now. Expect t1, and t2 marked skipped.
-6. Set the version back to the real one. A test build stays on `deetsmusic-test` until the
-   installed copy is replaced by a normal release.
+`DEETSMUSIC_VELO_FEED` (build time) points a test build at a folder or URL instead of the
+Worker; `release.mjs` refuses it for a release. **The pin holds only while `productName`,
+`mainBinaryName` and the package id stay fixed** (release-check 3): a new `productName` is a
+second install (ideas/whitelabel.md §10.4).
 
 ### 6.9 Authenticode — Azure Artifact Signing (set up 2026-09-14/15)
 
-> Status: **working, tested 2026-09-15** (0.4.4-t1 → t2 on `deetsmusic-test`). The next real
-> `npm run release` ships signed (every release since 0.5.0). The first-run prompt was checked
-> 2026-09-15 (the last "Test first" item): Edge names the publisher and still warns until the
-> download reputation builds.
+> Status: **working since 0.5.0.** Since 0.28.0 the signatures go through `vpk pack
+> --signTemplate`. A browser download names the publisher and still warns until the download
+> reputation builds (RELEASE-NOTES.md header).
 
 **Terms.** *Authenticode* is the Windows signature that puts a publisher name on an exe. It is
 separate from the updater key (§6.6). *Artifact Signing* is Azure's service for it (formerly
@@ -789,20 +684,25 @@ Owner alone can neither validate nor sign.
 **What signs what (`npm run release`):** every signature goes through `scripts/sign.mjs`.
 1. `release.mjs` reads the secret before the build, so a missing one fails first. The tenant and
    client IDs and the secret go only into the child processes' environment.
-2. After `cli:build`, it signs `cli/dist/deetsmusic.exe`. The CLI is a bundle **resource**, and
-   Tauri does not sign resources.
-3. `tauri build` gets a `signCommand` (`node scripts/sign.mjs %1`, object form) from a temporary
-   `--config` file, and runs it on `DeetsMusic.exe` and the NSIS installer. The object form is
-   needed because the repo path has a space. **`tauri.conf.json` has no `signCommand`**, so a
-   plain `npx tauri build` makes an unsigned build instead of failing.
-   Tauri also signs the NSIS plugin DLLs and the uninstaller inside the installer (~9 signatures
-   per build in all).
-4. `release-check.mjs` §4 fails the release unless the CLI and the installer have a **Valid**,
-   timestamped signature whose CN equals `bundle.publisher`.
-   **Trap (2026-09-15):** `target\release\DeetsMusic.exe` stays **NotSigned** after a good build.
-   Tauri signs a patched copy for the installer, then writes the unsigned original back (its
-   file time is after the setup exe's). Do not check that file; check the **installed**
-   `%LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe` after an install.
+2. After `cli:build`, it signs `cli/dist/deetsmusic.exe`, a resource the build does not sign.
+   `vpk` then skips it as already signed (its log: "3 file(s) will be signed, 1 will be
+   skipped").
+3. `vpk pack --signTemplate "node sign.mjs {{file...}}"` signs the app exe, the stub
+   (`DeetsMusic.exe` at the install root), `Update.exe` (`Squirrel.exe` in the package) and
+   Setup.exe. **`tauri.conf.json` has no `signCommand`**, and `tauri build --no-bundle` signs
+   nothing; only `npm run release` makes a signed build.
+4. `release-check` check 4 fails the release unless the CLI, the app exe and `Squirrel.exe`
+   (read out of the full package) and Setup.exe have a **Valid**, timestamped signature whose
+   CN equals `bundle.publisher`.
+   **Trap (2026-10-15):** `vpk` signs copies, so the staged exe in
+   `src-tauri/target/velopack-stage/` stays **NotSigned** after a good build. Check the package
+   or the installed `%LOCALAPPDATA%\DeetsMusic\current\DeetsMusic.exe`.
+
+**The x86 warning (read 2026-10-16).** `vpk pack` logs *No architecture specified with
+--runtime, defaulting to x86*. The package is still `win-x64` (read from the main exe); only
+`Update.exe` and the stub are `vpk`'s 32-bit copies, as in every beta that passed the desk
+test. A 32-bit `Update.exe` runs on 64-bit Windows. Adding `--runtime win-x64` would ship the
+64-bit copies, untested; leave it until a beta tries it.
 
 **Tools on the signing PC (not in the repo):**
 - `signtool.exe` — Windows SDK, x64. `sign.mjs` picks the newest `10.*` SDK.
@@ -817,27 +717,11 @@ Owner alone can neither validate nor sign.
 **Rejected (2026-09-15):** `artifact-signing-cli` / `trusted-signing-cli` (cargo). Its help
 lists the client-secret options, but it refuses to run without the Azure CLI installed.
 
-**Test first:**
-- [x] One test file signs from this session with the vault secret. **2026-09-15:** Valid,
-  `CN=Aditya Sundaram`, timestamped, ~2 s per file. Trap: a paste into `cmdkey /pass` stored extra
-  characters → `AADSTS7000215 Invalid client secret`; use `cred-write.ps1`.
-- [x] The first signed release: `release-check` §4 passes. **2026-09-15, 0.4.4-t1 on
-  `deetsmusic-test`:** after a hand install, `%LOCALAPPDATA%\DeetsMusic\DeetsMusic.exe`,
-  `cli\deetsmusic.exe` and `uninstall.exe` are all Valid, `CN=Aditya Sundaram`, timestamped.
-- [x] The updater `.sig` verifies on that installer (a test-channel update, §6.8). If Tauri made the
-  `.sig` before the Authenticode signature, every update would fail its check. **2026-09-15:**
-  the build log and file times show the `.sig` written after the signed setup exe; installed t1
-  took t2 through Check now → Restart now, and t2 opened by itself. The updated `DeetsMusic.exe`,
-  CLI and uninstaller are Valid, `CN=Aditya Sundaram`, timestamped.
-- [x] **A browser download** of the first signed real release (from `deets.solutions/deetsmusic/`)
-  shows *Aditya Sundaram* in the SmartScreen or install prompt, not "Unknown publisher". Not
-  testable with a local build: the 2026-09-15 hand install of t1 showed no prompt at all,
-  because a file from a build folder has no web mark and SmartScreen skips it. **2026-09-15,
-  checked twice** (RELEASE-NOTES.md header): 0.5.0 in Edge warned "isn't commonly downloaded";
-  0.6.0 from `deets.solutions/deetsmusic/` gave the same Edge warning, now naming the publisher
-  *Aditya Sundaram* (Delete ▾ › Keep anyway). Windows showed no "Windows protected your PC", and
-  the install worked. Still open, and not part of this box: the day a new version downloads with
-  no Edge warning (download reputation), which ends the Installing lines in the release notes.
+**The first checks** (2026-09-15, on NSIS builds 0.4.4-t1 → t2: the first signed file, the
+first signed release, the updater `.sig` made after the signature, the first browser download)
+are in [RELEASE-NSIS.md](../archive/RELEASE-NSIS.md) §6.9. Still open: the day a new version
+downloads with no Edge warning (download reputation), which ends the Installing lines in the
+release notes.
 
 **Runbook — the secret expires or leaks.** Entra ID › App registrations › Deets Release Signing ›
 Certificates & secrets: add a new secret, run
@@ -849,35 +733,20 @@ renew. Update the expiry date above.
 **Cost:** $9.99/month while the account exists, even with no release. Deleting the account ends
 it; signatures already made stay valid (they are timestamped).
 
-**The build can fail to SPAWN the signer, and a plain re-run fixes it (0.11.0, 2026-09-18).**
-The first `npm run release` for 0.11.0 died with:
-
-```
-Signing .../nsis/x64/Plugins/x86-unicode/additional/nsis_tauri_utils.dll with a custom signing command
-failed to bundle project: `failed to run C:/Program Files/nodejs/node.exe`
-```
-(the real output uses Windows backslashes; forward slashes here so the paths read cleanly)
-
-The identical command, with nothing changed, succeeded on the next run and every run after.
-
-**Read the error before digging.** This one is NOT signtool and NOT Azure:
+**A signing step can fail once and pass on a re-run.** The first `npm run release` for 0.11.0
+(NSIS, 2026-09-18) died with "failed to run node.exe" on one file, and the identical command
+passed the next time; the full case is [RELEASE-NSIS.md](../archive/RELEASE-NSIS.md) §6.9.
+**Read the error before digging:**
 - `sign.mjs` prints `[sign] signtool failed on <file>` when the signer itself fails, and the
   Artifact Signing banner (`Version: 1.0.128`, `Submitting digest…`) for every file it tries.
-  **Neither appeared for that DLL**, so `sign.mjs` never ran at all.
-- "failed to run node.exe" is Tauri reporting that it could not *start* the `signCommand`
-  process — a transient OS-level spawn failure on a DLL that `makensis` had just written.
-  Defender scanning the new file is the usual cause of that shape on Windows.
+- When neither appears for the failed file, `sign.mjs` never ran: the caller could not start
+  the process. A transient spawn failure on a file just written (Defender scanning it) is the
+  usual cause of that shape on Windows.
 
-**So: run it again first.** A single failure means nothing. If it repeats on the same file
-twice in a row, then look at: whether `node.exe` is still at the path Tauri names, whether
-Defender is holding `src-tauri/target/release/nsis/`, and whether the NSIS plugin directory is
-read-only from an interrupted earlier build (delete `src-tauri/target/release/nsis/` and let it
-be re-extracted).
-
-**No automatic retry.** Nothing wraps `tauri build` in one, deliberately: a retry around a
-signing stage hides exactly the repeated failure that would matter, and the re-run is one
-command. If it ever becomes common, the retry belongs in `release.mjs` around stage 3, not in
-`sign.mjs` — which, as above, is not where the failure happens.
+**So: run it again first.** If it repeats on the same file twice in a row, look at whether
+`node.exe` is still where the caller names it and whether Defender holds the output folder.
+**No automatic retry:** a retry around a signing stage hides exactly the repeated failure that
+would matter, and the re-run is one command.
 
 ## 7. Distributing a usable build — the developer token
 

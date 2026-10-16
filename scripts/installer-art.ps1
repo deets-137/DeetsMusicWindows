@@ -1,6 +1,7 @@
 # Draws the installer's side image (src-tauri/nsis/sidebar.bmp): Deets and Happy on the
 # street of the night skyline. NSIS shows it on the Welcome and Finish pages
-# (bundle.windows.nsis.sidebarImage, RELEASE.md §3). Run again after a source changes:
+# (bundle.windows.nsis.sidebarImage up to 0.27, docs/archive/RELEASE-NSIS.md §3; kept for a
+# Velopack splash, VELOPACK.md §11). Run again after a source changes:
 #   powershell -NoProfile -File scripts/installer-art.ps1
 #
 # Sources (src-tauri/nsis/art/): deets.png (32 x 64, the user's sprite), happy.png (32 x 32,

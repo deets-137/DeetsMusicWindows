@@ -134,7 +134,7 @@ The popup's source badge says which path fired (`YouTube · credits` / `YouTube`
   loaded unpacked extension reads `$INSTDIR\extension`, and the browser takes the new files at
   its next start.
   That file now holds two more macros — `PREINSTALL` / `PREUNINSTALL` stop the bundled CLI,
-  which otherwise locks its own exe against the installer ([RELEASE.md](../ops/RELEASE.md) §3).
+  which otherwise locks its own exe against the installer ([RELEASE-NSIS.md](../archive/RELEASE-NSIS.md) §3).
 - **Chrome refuses to auto-install anything outside the Web Store**, so `install.html` is a
   themed load-unpacked walkthrough that locates its own folder (copy buttons for the path and
   `chrome://extensions`). The app's Settings card → **Extension → Install guide…** opens the same

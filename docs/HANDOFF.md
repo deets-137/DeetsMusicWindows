@@ -94,10 +94,11 @@ Things that bite:
   manifest by hand and run `cargo check` in `cli/` before the version commit.
 - **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
   file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
-  0.1.3 `PREINSTALL`/`PREUNINSTALL` hooks stop the CLI first (RELEASE.md §3).
-- **`target\release\DeetsMusic.exe` is unsigned after a good signed build.** Tauri signs a
-  patched copy for the installer and writes the original back. Check the installed exe instead
-  (RELEASE.md §6.9).
+  Velopack hooks stop our CLIs by path before an update and an uninstall (RELEASE.md §3; the
+  NSIS hooks did it from 0.1.3 to 0.27.0, [RELEASE-NSIS.md](archive/RELEASE-NSIS.md) §3).
+- **The staged exe is unsigned after a good signed build.** `vpk` signs copies, so
+  `src-tauri/target/velopack-stage/DeetsMusic.exe` stays NotSigned. Check the package or the
+  installed `current\DeetsMusic.exe` instead (RELEASE.md §6.9).
 - **Save secrets with `scripts/cred-write.ps1`, not `cmdkey /pass`.** A paste into the hidden
   `cmdkey` prompt stored extra characters on 2026-09-15 (Azure: "Invalid client secret").
 - **A secret expires:** the Azure client secret on **2027-03-14** (runbook RELEASE.md §6.9).
@@ -544,8 +545,8 @@ When to use it and its limits (not WebView2, no MusicKit, no OS window):
   taskbar icons in dev are expected, and why a debug build flashes a console.
 - **A running `deetsmusic mcp` blocks install and uninstall** — Windows won't replace or
   delete an open file, and the CLI is long-lived (an MCP session lasts as long as the agent).
-  Uninstalling 0.1.2 removed the registry entry and then left every file on disk. The NSIS
-  `PREINSTALL`/`PREUNINSTALL` hooks stop it by path; see [RELEASE.md](ops/RELEASE.md) §3.
+  Uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
+  Velopack hooks stop it by path; see [RELEASE.md](ops/RELEASE.md) §3.
 - **No in-app OAuth popups** (Tauri/WebView2) — auth is browser-loopback by design (via
   `tauri-plugin-opener`, cross-platform); don't try to "fix" `authorize()` in the webview.
 - **Liberation + skin fonts aren't on Windows** — bundled locally; the loopback page serves them

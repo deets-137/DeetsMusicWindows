@@ -1,17 +1,18 @@
 ---
-status: designed
-desk_test: none
+status: shipped
+shipped_in: 0.28.0
+desk_test: passed 2026-10-15
 sources: [src-tauri/src/velo.rs, src-tauri/src/update.rs, src/updater.ts, src-tauri/tauri.conf.json, src-tauri/src/lib.rs, src-tauri/src/settings.rs, src-tauri/src/bridge.rs, src-tauri/src/mcp_install.rs, src-tauri/src/media.rs, src-tauri/src/beta.rs, crates/mcp-install/src/lib.rs, cli/src/main.rs, scripts/release.mjs, scripts/sign.mjs, scripts/publish-update.mjs, scripts/release-check.mjs]
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 # Velopack — updates that swap in place, like Discord's
 
-> **Designed 2026-10-15; spike passed (§8a); BUILT the same day (§12), desk test open, not
-> released, the Worker route not deployed.** The scope of a move from
-> the NSIS installer and `tauri-plugin-updater` to Velopack. His decisions are §1. Both forks
-> are closed (§1). An update took **2.4 s** from the press to the new app (today 8–11 s).
-> Today's pipeline is [RELEASE.md](RELEASE.md) §0–§6. The spike code is on branch
-> `velopack-spike`, behind `--features velopack`.
+> **LIVE since 0.28.0 (published 2026-10-16).** Designed and built 2026-10-15 (spike §8a, as
+> built §12), beta desk test passed (§12.6), the Worker route deployed. The move from the NSIS
+> installer and `tauri-plugin-updater` to Velopack; his decisions are §1. An update takes about
+> **2 s** from the press to the new app (NSIS: 8–11 s). This doc is the design and the record;
+> the runbook in use is [RELEASE.md](RELEASE.md) §0–§6, and the NSIS one is
+> [RELEASE-NSIS.md](../archive/RELEASE-NSIS.md). Where §2–§11 say "today", they mean NSIS.
 
 ## 0. Terms
 
@@ -105,7 +106,7 @@ new package. **We keep the second key** (stop rule: maximum security).
 - **`main.rs`:** `VelopackApp::build()…run()` is the FIRST line, before `beta::before_start` and
   before Tauri. A hook start must exit before the single-instance plugin forwards its arguments
   to the running app.
-- **Hooks** (the NSIS macros move here, RELEASE.md §3):
+- **Hooks** (the NSIS macros move here, RELEASE-NSIS.md §3; as built, RELEASE.md §3):
   - `on_before_update_fast_callback` (the old version): stop our CLIs by path (the
     `DeetsStopCli` rule, §4a: a running MCP CLI holds `current\cli\deetsmusic.exe`). **The
     spike found that `Update.exe` does this itself** (§8a S4): before and after the swap it
@@ -268,7 +269,7 @@ delta's. The first install is 23 MB.
   (a login with `--tray` included) swaps first, then opens. No second toast. Discord works
   this way. Cost: the update happens on a start you did not choose for it, and adds about
   1–2 s to that start.
-- **B — the toast asks again at the next start**, as RELEASE.md §6.3 says today
+- **B — the toast asks again at the next start**, as the NSIS updater did (RELEASE-NSIS.md §6.3)
   (`set_auto_apply_on_startup(false)`). Cost: one more toast per update.
 
 **F2. Where the extension question goes** (the NSIS Finish page asks it once per PC today). He
@@ -291,7 +292,7 @@ chose C, and the extension becomes experimental.
 
 ## 12. As built (2026-10-15, branch `velopack-spike`)
 
-> **Part:** built · 2026-10-15 — desk test open (§12.3). Where this differs from §3–§7, this is
+> **Part:** shipped · 0.28.0 — desk test passed 2026-10-15 (§12.6). Where this differs from §3–§7, this is
 > the code.
 
 ### 12.1 What changed
@@ -322,7 +323,7 @@ chose C, and the extension becomes experimental.
 - **`scripts/publish-update.mjs`** — to R2 `<channel>/vp/`: packages → `<Id>-<v>-Setup.exe` →
   `rollback/<v>/` feed → the feed (withdrawn versions left out), each feed signed; the index
   row `{ …, file, setup, velopack: true }`. `--withdraw` re-signs the feed without the version.
-- **DeetsSupport `src/update.js`** (branch `velopack`, **not deployed**) — `GET
+- **DeetsSupport `src/update.js`** (branch `velopack`, deployed 2026-10-15, merged to master 2026-10-16) — `GET
   /update/<channel>/vp/…` for the feed, packages, Setup and the group-checked rollback feed;
   `/releases` links a Velopack row's Setup; `/health` heads its package and Setup; `/versions`
   lists only Velopack versions to a Velopack install. The NSIS route is unchanged, so an NSIS

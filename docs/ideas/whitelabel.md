@@ -267,10 +267,12 @@ Sources: [TTABVUE, Beats Electronics as a party](https://ttabvue.uspto.gov/ttabv
    `deetsbeats.exe`. Test both against the NSIS close-the-CLI rules (`hooks.nsh`) first.
 2. **`productName` on update.** Read in the docs 2026-10-15:
    - `productName` names the install folder (`%LOCALAPPDATA%\DeetsMusic`, RELEASE.md §2) and
-     the Start-with-Windows value (`${PRODUCTNAME}`, RELEASE.md §3). A Tauri NSIS installer
-     keeps the same folder only while the product name stays the same (BETA.md §4.2).
+     the Start-with-Windows value (`${PRODUCTNAME}`, RELEASE-NSIS.md §3). A Tauri NSIS installer
+     keeps the same folder only while the product name stays the same (BETA.md §4.2). Since
+     0.28 the folder is Velopack's package id, made from the product name (RELEASE.md §6.8):
+     the same rule.
    - So a new `productName` installs a SECOND app in `%LOCALAPPDATA%\<new name>`, beside the
-     old one, and the pinned taskbar button stops working (RELEASE.md §6.8).
+     old one, and the pinned taskbar button stops working (RELEASE-NSIS.md §6.8).
      `release-check.mjs:97` fails such a build on purpose until it is allowed.
    - **The data survives.** The data folder is the identifier's (`%APPDATA%\com.deetsmusic.app`),
      not the product name's, and the identifier does not change (§10.1). The new app opens on

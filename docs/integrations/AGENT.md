@@ -37,8 +37,8 @@ the MCP is the surface a person actually uses, so every write lives there too.
 
 **It is a long-lived process.** `deetsmusic mcp` runs for the whole agent session, which
 means the installed `cli\deetsmusic.exe` is an **open file** — Windows then refuses to replace
-or delete it, so it blocks both an install and an uninstall of the app. The NSIS
-`PREINSTALL` / `PREUNINSTALL` hooks stop it by path ([RELEASE.md](../ops/RELEASE.md) §3). Note also
+or delete it, so it blocks both an update and an uninstall of the app. The app's Velopack
+hooks stop it by path before either ([RELEASE.md](../ops/RELEASE.md) §3). Note also
 that an MCP client config (e.g. `.claude.json`) holds the **absolute path** to that exe, so an
 uninstall breaks the tools until a reinstall puts it back in the same place.
 
@@ -254,7 +254,7 @@ Export and Get New Songs keep their own result toasts, and those texts are the r
 **Rules kept from the update design.**
 - `install` and `rollback` never restart the app. They download, then the app's own Restart
   question appears; the reply is `pending` and says the restart stops these tools until the
-  agent app restarts them (the installer stops `cli\deetsmusic.exe`, RELEASE.md §3).
+  agent app restarts them (the update stops `current\cli\deetsmusic.exe`, RELEASE.md §3).
 - `check` is `checkForUpdate(manual)` — the same as Settings › Updates › Check now.
 - `rollback` with no value lists the versions (`olderVersions`, one request per session).
 

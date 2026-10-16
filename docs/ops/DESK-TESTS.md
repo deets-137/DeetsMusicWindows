@@ -306,7 +306,7 @@ Summary: *8 pass · 2 partial · 1 fail (adjacent copies) · 2 noisy.* A slip du
 | AirPlay §13.6 | 2026-10-13 | pass (his) | Play on the HomePod, pull the cable: the window keeps answering |
 | Listeners §4.3 | 2026-10-13 | pass (his) | The badge and the Settings row |
 | Unshuffle | 2026-10-13 | pass (his) | The row's words and the hint |
-| Uninstall Run value | 2026-10-13 | pass (his) | RELEASE.md §3: the update keeps it, the uninstall removes it |
+| Uninstall Run value | 2026-10-13 | pass (his) | RELEASE-NSIS.md §3 (the NSIS hook): the update keeps it, the uninstall removes it. Velopack's twin is RELEASE.md §3 |
 | Copy edit §5 | 2026-10-13 | pass (his) | |
 | Presentation mode §9.3 | 2026-10-13 | pass (his) | |
 | Usage counts §10 | 2026-10-13 | pass (his eye: the notice, the panel; Claude: steps 2, 3, 5, 6, 7) | Step 8 half: the cron's in-window delete not seen in a run |
