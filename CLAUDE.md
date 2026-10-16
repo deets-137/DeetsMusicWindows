@@ -245,6 +245,11 @@ plays the song); §6 a Library album's real artist from the sync's `include=albu
 (§1), the savings (§3: the explained count, mirror dates in one call, new artists from new songs),
 the Library ⟳'s silent refusal (§4), a song's primary artist from Apple at no extra call (§5,
 his calls P1 A, P2 A). The counter itself is `ops/APPLE-CALLS.md`.
+`UpdatesButton.md` — an idea (2026-10-16, branch `shixtheenth`): a Max title bar button right
+of the Compass, his two-arrow glyph (the up arrow flies off and the down arrow centers when an
+update exists); its panel has the version row, a folding What's new, and Bugs and suggestions.
+No new Rust. Every fork closed 2026-10-16 (§2); What's new uses the release notes' bold leads,
+written by the lead rule (§6.3).
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

@@ -63,6 +63,8 @@ the app can do any of these things.
   (§2), a measured day (§1), five savings probed or read (§3: about 110 → 15 library calls a day
   for the owner), the Library ⟳'s silent refusal (§4), and a song's primary artist from Apple at
   no extra call (§5; his calls P1 and P2, 2026-10-15).
+- [UpdatesButton.md](UpdatesButton.md) — an idea (2026-10-16): a Max title bar button for
+  updates, what's new and bug reports; every fork closed (§2, §6).
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
   its first part was built (the stats cell grows over the card in Max).
 - [WebRooms.md](../features/WebRooms.md) — moved to features/ on 2026-10-13, when its app side
