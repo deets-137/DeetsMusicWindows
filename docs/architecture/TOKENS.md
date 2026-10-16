@@ -569,13 +569,13 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--rulez-name-max-w` | `16em` | — | a long rule name ends in … so the summary keeps room |
 | `--rulez-fold-dur` | `var(--dur-med)` | — | a rule opening or closing: the Library search bar's glide |
 | `--rulez-fold-ease` | `var(--ease-ui)` | — |  |
-| `--font-mono` | `"Cascadia Mono", Consolas, ui-monospace, monospace` | — | log text |
-| `--max-stage-w` | `340px` | — | max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) — stage + queue column width |
 | `--filter-pop-w` | `340px` | — | The Library's Filter panel (features/filter-rules.md §13.3): the third pop. Its condition is the Rulez blanks, its buttons the panel chips (UI-ARCHITECTURE.md §2a). Aliases, but the size. — room for a condition line: "Plays in the last 7 days is above 5" |
 | `--filter-pop-max-h` | `min(70vh, 560px)` | — |  |
 | `--filter-chip-radius` | `var(--sound-chip-radius)` | — |  |
 | `--filter-chip-min-w` | `var(--sound-pill-min-w)` | — |  |
 | `--filter-gap` | `var(--rulez-gap)` | — |  |
+| `--font-mono` | `"Cascadia Mono", Consolas, ui-monospace, monospace` | — | log text |
+| `--max-stage-w` | `340px` | — | max stage (the tall Now Playing column, SURFACES-AND-CARDS §4) — stage + queue column width |
 | `--np-stage-glyph` | `96px` | — | placeholder ♪ on the stage |
 | `--qcard-now-art` | `48px` | — | the Queue card's now-playing cover |
 | `--qcard-idle-dim` | `0.6` | — | the now-playing row with nothing to play |
