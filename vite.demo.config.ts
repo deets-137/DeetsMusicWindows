@@ -9,6 +9,8 @@
 import { defineConfig, type Plugin } from "vite";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+// The real src/ imports `virtual:release-notes` (the updates panel's What's new).
+import { releaseNotesPlugin } from "./vite-release-notes";
 
 const version: string = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
 
@@ -121,7 +123,7 @@ function demoPage(): Plugin {
 
 export default defineConfig({
   base: "./",
-  plugins: [demoPage(), sotdPicks()],
+  plugins: [demoPage(), sotdPicks(), releaseNotesPlugin()],
   define: { __DEMO_VERSION__: JSON.stringify(version) },
   // The catalog waits for the feed before the app starts (a top-level await in demo/catalog.ts).
   esbuild: { target: "es2022" },
