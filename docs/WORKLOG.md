@@ -12,6 +12,17 @@ updated: 2026-10-16
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 — the Filter desk test passed; read the record before you call a test open
+
+**His asks:** mark the Filter rules desk test passed; check the logs before calling a desk test
+incomplete, because he does not want to be slowed down by tests he finished but forgot to mark.
+- **Filter rules** (features/filter-rules.md §14.4): desk test passed (his call). The dev and
+  installed logs had rotated: no `rulezPlaylist pass` line was left to read. HANDOFF and
+  CLAUDE.md corrected. The doc also said "not committed": it is 3a9d3bf, on `main`.
+- **The rule:** CLAUDE.md › How to verify and DESK-TESTS.md §2 rule 7. Read the log, the `diag`
+  ring, the `plays` table and WORKLOG.md before you report a test as open. If they show a clean
+  run, mark it passed and cite them.
+
 ## 2026-10-16 (shixtheenth) — package identity and the city icon, built (uncommitted)
 
 **His asks:** why the live taskbar icon is smaller than dev's; "no way to make it crisp like

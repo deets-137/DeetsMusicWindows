@@ -169,7 +169,7 @@ for word, with RELEASE.md's section numbers.
   `WEB_ROOMS` flag, a TypeScript twin of the Rust catalog normalizers held to one fixture.
   His calls §7.1, §9.7. Not built: the site page (part H) and the publish; the worker change
   is not deployed (§10.6). A new `invoke()` in a shared file needs a line in `web/handlers.ts`.
-- `filter-rules.md` — BUILT 2026-10-16 on `shixtheenth`, desk test open (§14.4): a rule that
+- `filter-rules.md` — BUILT 2026-10-16, desk test passed 2026-10-17 (§14.4): a rule that
   picks songs. The Library's third pill, **Filter** (a quick filter by any song fact, or a saved
   one), and **Rulez Playlists** made from sources (library, playlists, Rewind, Song of the Day,
   the Diary) at Live (his default) · Daily · Weekly · Off, with Keep and Never by hand. The rules
@@ -322,6 +322,12 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
   for anything older. The ring auto-flushes every 5 minutes. Two code paths that read the
   same in the file can behave differently on the queue's state at the click, so reading the
   source is not a trace. DEBUGGING.md §Recipe — the user reports a playback complaint.
+- **Before you call a desk test open, read the record (2026-10-17, his ask).** A doc's
+  `desk_test: open` can be stale: he often runs the test and forgets to mark it. Check the
+  evidence first: the log file (the feature's own log lines, e.g. `rulezPlaylist pass`), the
+  `diag` ring, the `plays` table, WORKLOG.md and the transcripts. If they show the steps ran
+  clean, mark the test passed (cite what you read) and say so in one line. He can override.
+  Only when the evidence is missing or shows a failure, report the test as open.
 - **Frame smoothness is measured the same way (2026-09-13).** `src/frames.ts` logs one
   `[perf] frames …` line per scroll / scrub / pane slide / folder open / queue drag / menu /
   appearance switch, judged against the sampled display refresh rate, plus `[perf] input …`

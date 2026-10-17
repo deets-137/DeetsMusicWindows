@@ -1,12 +1,12 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-17
 sources: [src/filter-eval.ts, src/filters.ts, src/filter-panel.ts, src/cond-editor.ts, src/rules-eval.ts, src/rulez-words.ts, src/rulez-card.ts, src/library-card.ts, src/collection-card.ts, src/playlists-card.ts, src/compass.ts, src/suggest.ts, src/rewind.ts, src/playlist-refresh.ts, src-tauri/src/filter.rs, src-tauri/src/playlists.rs, src-tauri/src/query.rs, tests/filter-eval.test.ts]
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 # Filter rules — a rule that picks songs
 
-> **Part:** built · 2026-10-16 · not committed, desk test open (§14.4). §14 is the as-built
+> **Part:** built · 2026-10-16 · committed (3a9d3bf), desk test passed 2026-10-17 (§14.4, his). §14 is the as-built
 > record: where it differs from §1–§13, §14 is the code. The playlist page's own place for
 > the rule (§13.3) is not built: his call, left for a design pass.
 >
@@ -452,7 +452,7 @@ settles how a filter rule shows there beside the When / While rules.
 
 ## 14. As built (2026-10-16)
 
-> **Part:** built · 2026-10-16 · not committed · desk test open (§14.4)
+> **Part:** built · 2026-10-16 · committed (3a9d3bf) · desk test passed 2026-10-17 (§14.4)
 
 ### 14.1 What is in the code
 
@@ -519,7 +519,11 @@ thread like every other command.
 - **Facts left out of the filter for now:** the album color words (a palette is cached per cover
   only once that cover has been shown), the cover light / dark.
 
-### 14.4 The desk test (open)
+### 14.4 The desk test (passed)
+
+**Passed 2026-10-17 (his call).** He marked the test passed. The run itself left no record that
+this sitting could find: the dev and installed logs had rotated past any `rulezPlaylist pass`
+line.
 
 **Run by Claude (2026-10-16, dev app, through the page's modules, not the UI):** the library of
 4,046 songs; *genre contains "rock"* → 88 songs; a pool of the library, Song of the Day and

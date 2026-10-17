@@ -114,7 +114,11 @@ Terms:
 6. **Visual steps** (a color, a motion, an alignment) are read from computed style and the
    `[perf] frames` lines where a number exists; where only an eye can judge, write *needs his
    look* and what the DOM said.
-7. **One WORKLOG entry per run**, dated, with the §5 table's summary line. HANDOFF.md › Open
+7. **Read the record before you run or report a row (2026-10-17, his ask).** The owner often
+   runs a test and forgets to mark it. Read the log, the `diag` ring, the `plays` table and
+   WORKLOG.md first. If they show the steps ran clean, mark the row passed and cite what you
+   read. He can override. Logs rotate, so read them early.
+8. **One WORKLOG entry per run**, dated, with the §5 table's summary line. HANDOFF.md › Open
    now is corrected in place for each row that closes.
 
 ## 3. The list
