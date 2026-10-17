@@ -485,6 +485,20 @@ the launch cover (§6) hides all of it.
    drawn, two or three at a time, in reading order. The visible-slot queue stays for the rest.
 4. **The first screen's covers asked for first:** `fetchpriority="high"` on first-screen covers,
    `loading="lazy"` on the rest. DOM order is reading order, so the requests start in it.
+5. **More found in the baseline and the code (2026-10-17), for the build:**
+   - **Decode before showing.** A disk-cached cover is still late by 100–250 ms (7.13), because
+     the `<img>` goes in before it is decoded. The wait counts `img.decode()`, so a warm open
+     reveals with every picture painted.
+   - **One ladder of cover sizes.** Covers are asked at 64, 72, 96, 128, 160, 192, 300 and 360
+     px across the cards, and the mosaic worker at 60, 120, 240 and 480. Each size is its own
+     URL, so the same album downloads again per size, and a mosaic never reuses a cover a row
+     already has. A few shared steps (the mosaic's included) turn most of those into cache hits;
+     a picture shown smaller than its step costs some bytes. His call on the steps.
+   - **Connect early to Apple's image server.** No `preconnect` today (index.html). A cold first
+     cover pays the DNS and TLS set-up; a `<link rel="preconnect">` to the mzstatic hosts at boot
+     takes it off the first screen.
+   - **Draws in parallel.** The mosaic queue runs one draw at a time after an idle callback; its
+     wait was up to 891 ms. Two or three at once, as part 3 says.
 
 ### 7.5 The launch
 
@@ -632,6 +646,17 @@ heavy section never holds back a light one.
 8. **The cost:** none on Apple. The calls and the 300 ms delay are unchanged; only the swap waits.
 9. **The measurement (7.13)** reports per section: answer → reveal, and the cells not ready at
    the cap. It sets the final numbers of the two tokens.
+
+**Fork S2 — the text first, the pictures as one wave (his idea, 2026-10-17; open, his):** the
+baseline shows Search's covers landing 0.6–1.8 s after the last keystroke, so at a 200 ms cap
+most of a section is not ready, and the swap above would show placeholders anyway.
+- **A (recommended): text at once, pictures as one wave per section.** The answer swaps in at
+  once (names, artists, the placeholder squares; ↓ and Enter work on it). Each section's covers
+  wait, decoded, until its first screen is ready or a cap (to be set from the measurement,
+  about 800 ms to start), then fade in left to right; a cover after the cap fades alone. No wait
+  on the words, one picture event per section.
+- B: the design above (each section held up to 200 ms, text and pictures together).
+- The hidden build (1) stays: it is where the covers load and decode before they show.
 
 ### 7.11 The other surfaces with many covers (scoped 2026-10-17)
 
