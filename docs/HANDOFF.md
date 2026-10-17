@@ -143,10 +143,10 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   desk-tested in the dev app (WORKLOG 2026-10-15). It goes live with the next release, together
   with the DeetsSolutions push (`38abe54`) and a DeetsSupport deploy (the sign-in icon). The
   list of what is left before then is whitelabel.md §10.6 › *Before it goes live*.
-- **Package identity and the city icon (2026-10-16, branch `shixtheenth`, uncommitted):** built;
-  the desk test is IDENTITY.md §9.2 (a release build installed, the taskbar at 100 / 125 / 150 %,
-  a new pin, the tray, an update, an uninstall). His plan: test, then a release minted from
-  `shixtheenth`, then the merge into `main`. The spike's files are in the worktree
+- **Package identity and the city icon (2026-10-16): published in 0.29.0** (his call, before his
+  desk test). His desk test runs on live: IDENTITY.md §9.2 (the taskbar at 100 / 125 / 150 %, a
+  new pin, the tray, the media flyout, the next update, an uninstall on the Beta). `main` is level
+  with `shixtheenth` (local, not pushed). The spike's files are in the worktree
   `../DeetsMusic-identity` (branch `identity-spike`).
 
 ### Build order (recommended 2026-10-15, for his next sessions)
