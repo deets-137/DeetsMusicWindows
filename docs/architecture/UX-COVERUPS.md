@@ -384,6 +384,15 @@ One noisy run gave 64–85 % on three skins; a rerun at once was back to these.
 
 > **Part:** designed · 2026-10-16
 
+> **Start here (the build session, from 2026-10-17):** build §7.7 steps 2–8 on `shixtheenth`.
+> The Filter rules desk test passed (3d0b647), so the engine is free. First ask him the two open
+> forks (§7.7 end: S2, the ladder's sizes). Read, in order: 7.1–7.6 (the rules), 7.7 (the steps,
+> with every 7.4 optimization), 7.9–7.12 (the surfaces and the setting), 7.13 (the baseline to
+> beat and the command). Walk CLAUDE.md's build checklist for each new part (tokens, hints,
+> settings key, NEW_MARKS, Compass, rule key, marks, threads). After the build: an as-built
+> record under §7, the desk test (7.8) handed to him, and the list of what you decided inside
+> his choices.
+
 **Terms:**
 - **First screen** — the rows or tiles whose box is inside the card's visible list area (the
   view, under its sticky bar) when the level's data is drawn, at the card's size of that moment
@@ -521,19 +530,41 @@ do not play their own reveal: the launch lift is the reveal, and the window show
 
 ### 7.7 Build order
 
-1. The probe (7.4.1).
-2. **A redraw keeps the rows that did not change.** In the short-list path of `renderViewInto`,
-   a row whose markup is the same as the one on screen keeps its node and its loaded cover (the
-   windowed path already does). This is the root fix for the redraws, and the reveal needs it:
-   a background sync must not rebuild the first screen.
-3. Late covers (7.3), with the missing `data-art` markers.
-4. Load priority (7.4.2–4).
+Steps 2–8 are one build in one session (his plan, 2026-10-17), with a measure after each step.
+**Every optimization in 7.4 is in it** (his call, 2026-10-17: "do all those optimizations").
+
+1. ~~The probe (7.4.1).~~ **DONE 2026-10-17:** the downloads, not the drawing (7.4.1).
+2. **The keyed patch: a redraw keeps the rows that did not change.** One shared helper (keep a
+   child whose key is still there, add, remove, move), used by the engine's short-list path of
+   `renderViewInto` (the windowed path already keeps its rows), the engine's shelves
+   (`Context.shelves`: Radio, the artist view, Pinned), Home's shelves (7.9 part 3), the Queue,
+   History (7.11) and Search's sections. The root fix for "made again by a redraw" (83 at a
+   launch, 12 per Home Refresh, 7.13), and the reveal needs it: a background sync must not
+   rebuild the first screen.
+3. **Late covers** (7.3), with the missing `data-art` markers (Home, pins, web.ts, the mosaic
+   `<img>`, the Compass).
+4. **Load priority, all of 7.4:**
+   a. mosaics drawn at the size on screen; the large one only for the hero (part 2);
+   b. mosaics of the first screen drawn at idle after launch, two or three at a time (part 3,
+      part 5 "draws in parallel");
+   c. `fetchpriority="high"` on first-screen covers (part 4);
+   d. decode before showing: the wait counts `img.decode()` (part 5);
+   e. one ladder of cover sizes for every card and the mosaic worker (part 5; **the steps are
+      his: ask before the build**);
+   f. `<link rel="preconnect">` to Apple's image hosts in index.html (part 5).
 5. reveal.ts, `Context.loading`, the engine's held moments (7.1, 7.2).
 6. The launch (7.5).
 7. Home (7.9) and Search (7.10) adopt reveal.ts; then the Queue, History, Rewind, Diary, the
    playlist web and the Compass (7.11). The per-card setting (7.12) lands with the first card
    that waits, so no build ships a wait that cannot be turned off.
-8. Measure on his live dev app (7.13), before step 2 and after each step. Tune the cap with him.
+8. **Measure** on his live dev app after each step:
+   `node scripts/shots.mjs --list docs/ops/checks/reveal-live.json --noise 60 --tag step<N>`
+   (needs `npm run dev:app` with its window on screen), and compare each `loads` line with the
+   baseline table (7.13). Write the new numbers under it. Tune the caps with him.
+
+**Asks before the build (his forks, still open):** S2, Search's text first and its pictures as
+one wave (7.10, recommended A); the ladder's sizes (step 4e). W2 is not an ask: the build keeps
+both behind `deets.dev.instantFade`, and he picks after the feel test (7.8 step 8).
 
 ### 7.8 Desk test (his, on the dev app)
 

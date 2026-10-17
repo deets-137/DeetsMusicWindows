@@ -189,10 +189,13 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
-- **A card's first screen: one reveal in reading order** (2026-10-16): the card holds until the
-  covers on screen are ready (cap 1.5 s), then shows them as a diagonal wave; late covers fade
-  in alone; mosaics drawn early and at the size on screen; the launch waits for it. Every fork
-  his. The first step is a probe of the 0.2–2.8 s mosaic time. UX-COVERUPS.md §7.
+- **A card's first screen: one reveal in reading order** (2026-10-16, scoped through
+  2026-10-17): the card holds until the covers on screen are ready (cap 1.5 s), then shows them
+  as a diagonal wave; late covers fade in alone; a redraw keeps its rows; every load
+  optimization (mosaics small, early and in parallel, decode before show, one size ladder, a
+  preconnect); Home, Search and the other cards; a per-card wait-or-instant toggle in Settings ›
+  Cards. Step 1 (the probe) and the baseline are done (7.13). **Next: one session builds steps
+  2–8**; it asks him S2 and the ladder's sizes first. UX-COVERUPS.md §7 › Start here.
 - **The loading set** (2026-10-16): replay his real command and cover timings (p90) in the demo,
   one clip per loading wait. Step 1 is the recorder. guide/LOADING-SET.md.
 
