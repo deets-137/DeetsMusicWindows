@@ -12,6 +12,67 @@ updated: 2026-10-16
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 — CPU hunt on live: the record's spin, a paused floor that grows
+
+**His asks:** read the live app's resource use; hunt for CPU savings (the live app and a second
+dev app, not the first dev app: another session held it); write down a morning heaviness run
+and a prompt for it; can the spin cap match the monitor's rate?
+- **Live, 0.29.0, 7.8 h up** (Press, Moonlight, Max, 1 card, playing, Spin): private working
+  set 308 MB (renderer 181, GPU 60, CDM 33). Good. CPU 66–80 % of one core (renderer 43–52, GPU
+  20–26). Paused: 25 (renderer 22, GPU 3). Record Still and playing: 36.
+- **After the settings were changed and put back, his settings read only 33–40** (GPU 5). The
+  record may not have started again after Still → Spin. That is not checked: the live app
+  closed for a restart that was blocked (a WMI launch with a CDP port).
+- **Second dev app** (`dev:app -- --second --built`, Press, Max, 1 card, 1100 × 950): Apple
+  refuses its license (`MEDIA_LICENSE`), so it cannot play. A paused page is 98 % idle on the
+  main thread. 40 skips paused: no growth (1 animation, 1,058 nodes, heap 14 → 15 MB). So the
+  live paused floor comes from something that grows while music PLAYS.
+- **The spin, by hand on its disc** (the keyframes of vinyl.ts): linear 31–44 % of one core ·
+  steps at 120 fps 21 · 60 fps 15 · 30 fps 13 · still 0.4. Both monitors are 240 Hz
+  (DISPLAY1 1080 × 1920, DISPLAY2 3440 × 1440). Trace, 5 s at 240 Hz: GPU main 464–569 ms, Viz
+  327–409, Compositor 319–404. Without the mask, the grooves or the other cards: within 15 % of
+  that. At 60 fps: 153 / 170 / 218. **The cost is per frame, not per pixel.**
+- **His wish:** a smooth spin at the monitor's rate. The app does that today, and that is the cost.
+- **The spin-rate fork (open; he looks in the morning):** 1. a 120 fps cap (about ½ the cost:
+  21 % in place of 31–44 %), if he cannot see the difference from the full rate; 2. keep the full
+  rate. Dropped: full rate only while the window has focus (his app sits unfocused on the
+  portrait monitor, so it would almost always run slow); 60 fps (he likes the smooth spin). A
+  cap would be a skin token read by vinyl.ts (a steps() easing on the spin) and would cover the
+  tray panel's disc too. Not built.
+- **Kept for a rerun** ([the checks archive](ops/checks/README.md), its table): `checks/cpu-split.ps1` (the per-process CPU
+  split) and `checks/spin-rate.ps1` (the rates on the second dev app; `-Hold 120`, `-Hold full`
+  and `-Hold off` for the eye test).
+- **Left as is at the end:** the live app closed (he starts it); his live settings as before,
+  but Settings › Connections › *Agent changes settings* is on **Allow** (his change for this
+  hunt). The second dev app runs, set to Press, Moonlight, Max, 1 card, volume 1 %.
+- **Prompt 1, the morning heaviness run (his ask):**
+
+  > Run the CPU heaviness check on the live DeetsMusic app (WORKLOG 2026-10-17 *CPU hunt*,
+  > HANDOFF › Open now). Leave my settings alone. Do not use the first dev app (another session
+  > may hold it). Port 47825 belongs to whichever app started first, so read the `bridge:
+  > listening on` line in `%APPDATA%\com.deetsmusic.app\deetsmusic.log` and pass `--port` to
+  > the `deetsmusic` CLI (`%LOCALAPPDATA%\DeetsMusic\current\cli\`). 1. Start
+  > `scripts/heaviness-sample.ps1 -Loop 600` in the background, and note the start time and the
+  > live app's uptime. 2. Every hour, while I listen on my usual settings (Press, Spin, Max),
+  > read the log and take a 20 s split with `docs/ops/checks/cpu-split.ps1`, then one more
+  > 20 s split paused (`deetsmusic pause`, then `resume`). 3. Report whether the paused
+  > renderer floor (0 % on a fresh start, 20–25 % after 7.8 h) and the playing cost rise with
+  > uptime and with the number of songs played (`plays` table). Also check that the record
+  > still spins after a Still → Spin change (the reading of 2026-10-17 suggests it may not).
+  > 4. If the floor rises, read the live diag ring and find what grows (animations, nodes,
+  > timers, listeners) without a restart. If you need a CDP port, ask me first: that needs a
+  > restart. Then write the result into WORKLOG and HANDOFF › Open now.
+
+- **Prompt 2, the spin-rate eye test (his plan):**
+
+  > Help me pick the Press record's spin rate (WORKLOG 2026-10-17 *CPU hunt*, HANDOFF › Open
+  > now). Start the second dev app (`npm run dev:app -- --second --built`) if it is not running,
+  > set it to Press with the record showing in Max, and put it on my portrait monitor. Then run
+  > `docs/ops/checks/spin-rate.ps1 -Hold full`, then `-Hold 120`, and switch between them when I
+  > ask, telling me which one is on only after I guess. When I pick, bring me the build plan
+  > for the cap (a skin token, vinyl.ts, the tray disc) as a fork first; do not build before I
+  > say go.
+
 ## 2026-10-17 — verify while you build: the runner on the dev app, the song box's edges
 
 **His asks:** after the song facts box's desk test, review how complete it was; write down the
@@ -30,6 +91,28 @@ might break a feature (his standing permission); make the fixes now, test tomorr
 - **Not run on the dev app** (his call: tomorrow): the 16 shots of
   `ops/checks/song-box-edges.json`. The reveal session held the dev app meanwhile; each session
   told the other before a src edit.
+
+## 2026-10-17 — a card's first screen, built (UX-COVERUPS.md §7.7 steps 2–7)
+
+**His ask:** build §7.7 steps 2–8 on `shixtheenth`; ask the two open forks first. Then (his
+call) in the same checkout and branch as the song facts box session: `main`, not committed.
+- **His calls:** S2 **A** (Search's words at once, its covers as one wave per section); the
+  ladder **96 · 192 · 480**.
+- **Built:** §7.14 is the record: the keyed patch, late covers, all of 7.4, reveal.ts on every
+  card in scope, the launch, the `instantCards` setting. Nine decisions inside his calls are
+  listed there.
+- **Checked:** tsc, `npm test` (307; six new in tests/reveal-wave.test.ts), vite build,
+  docs:check. A demo launch shot settled complete with no console error from the change (CPU
+  busy: its numbers do not count).
+- **Not done:** step 8, the measure on his live dev app (it presses his app: his go). The desk
+  test §7.8 (two steps added: Search, the Queue).
+- **Noticed, not this change:** the Library's Sort and View pills show only their carets at
+  Midi width since the Filter pill joined them (2026-10-16).
+- **Later the same sitting:** the step 8 measure on his dev app (§7.13); Claude's desk test of
+  the motion, Max with one card, with four fixes (§7.8), his "feels good", passed. His calls: W2
+  **B** final (the `deets.dev.instantFade` switch removed); the Cards sub-headings renamed in his
+  style, no colons and direct names: *Cover load animations* (his name) and *Cards in the
+  picker* (Claude's pick at his ask, for *Enable / Disable these Cards:*).
 
 ## 2026-10-17 — the song facts box, scoped
 

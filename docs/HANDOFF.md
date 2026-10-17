@@ -148,6 +148,18 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   new pin, the tray, the media flyout, the next update, an uninstall on the Beta). `main` is level
   with `shixtheenth` (local, not pushed). The spike's files are in the worktree
   `../DeetsMusic-identity` (branch `identity-spike`).
+- **CPU on live, the morning run (his ask, 2026-10-17):** run the heaviness sampler on the live
+  app for some hours in the morning of 2026-10-17 (`scripts/heaviness-sample.ps1 -Loop 600`).
+  It must answer two questions. 1. After 7.8 h on 0.29.0, the paused renderer used 20–25 % of
+  one core, but a fresh app uses 0 % paused, even after 40 skips. What grows while music plays?
+  2. Does the spin cost grow over the hours? The method, the numbers and the session prompt are
+  in WORKLOG 2026-10-17 *CPU hunt*. Memory is good: a 308 MB private working set.
+- **The record's spin rate (his fork, open):** the Press record redraws at the display's full
+  rate, 240 Hz on both of his monitors. The cost is per frame, about 1.2 ms of CPU across the GPU,
+  Viz and Compositor threads. A simpler disc saves almost nothing, and a 60 fps step cuts the cost
+  to about ⅓. He likes the smooth spin. Next (his plan, the morning of 2026-10-17): he compares a
+  120 fps record and a full-rate record by eye on a dev app, then picks a 120 fps cap or the full
+  rate. The choices and the eye-test prompt are in WORKLOG 2026-10-17 *CPU hunt*. Not built.
 
 ### Build order (recommended 2026-10-15, for his next sessions)
 
@@ -189,13 +201,6 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
-- **A card's first screen: one reveal in reading order** (2026-10-16, scoped through
-  2026-10-17): the card holds until the covers on screen are ready (cap 1.5 s), then shows them
-  as a diagonal wave; late covers fade in alone; a redraw keeps its rows; every load
-  optimization (mosaics small, early and in parallel, decode before show, one size ladder, a
-  preconnect); Home, Search and the other cards; a per-card wait-or-instant toggle in Settings ›
-  Cards. Step 1 (the probe) and the baseline are done (7.13). **Next: one session builds steps
-  2–8**; it asks him S2 and the ladder's sizes first. UX-COVERUPS.md §7 › Start here.
 - **The loading set** (2026-10-16): replay his real command and cover timings (p90) in the demo,
   one clip per loading wait. Step 1 is the recorder. guide/LOADING-SET.md.
 
@@ -211,6 +216,7 @@ each step that touches those calls.
   Last.fm's wiki as the fallback (N1 changed 2026-10-17); the full note opens on every surface;
   a song mention plays the song in the album. Every fork closed; three probes before the build
   (§5). ideas/album-notes.md.
+
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
@@ -220,6 +226,18 @@ each step that touches those calls.
   committed there and not deployed. Waits on a release.
 
 ### Built, waiting on a release or a desk test
+
+- **A card's first screen: one reveal in reading order** (UX-COVERUPS.md §7.14, 2026-10-17, on
+  `main`, NOT committed): steps 2–7 built. The keyed patch (`keyed.ts`) on the engine, Home,
+  the Queue, History, Rewind and Search; late covers fade (`artwork-heal.ts`); the ladder
+  96 · 192 · 480 (`art-size.ts`, his call); mosaics at the size on screen, three at a time, warm
+  at launch; a preconnect; `reveal.ts` (hold, cap, diagonal wave) on every engine card, Home,
+  Search (his S2 A: words at once, covers as one wave per section), the Queue, History, Rewind
+  and the Diary; the launch waits for it; Settings › Cards › *Cover load animations*
+  (`instantCards`). Home no longer waits on Apple. Step 8 measured on his dev app (§7.13):
+  every card open revealed with no cover late. Desk test passed 2026-10-17 (§7.8, run by
+  Claude with four fixes; his "feels good"). W2 is B (his call): an instant card's covers
+  pop in as they load. **Open:** a commit. What Claude decided: §7.14.
 
 - **The song facts box** (features/LISTENERS.md §8, 2026-10-17, on `main`): built, desk test
   passed (§8.10, run by Claude on his dev app with the shots runner). **To test (2026-10-18):
