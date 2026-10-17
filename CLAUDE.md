@@ -275,7 +275,10 @@ header-only `fetch` wrap reads `Content-Length`; §6 its A/B test on every chang
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
 feature, made by a script from the demo; for the guide, a marketing overview, and visual
-debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins. `marketing.md` — the
+debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins. `LOADING-SET.md` —
+DESIGNED 2026-10-16, not built: a dev-only recorder of each command's round trip, a profile
+from his log (`latency.json`), the demo replaying it plus his cover load times, and one clip
+per loading wait that counts the pops; L1–L2 open (§5). `marketing.md` — the
 shipped features as a tech spec, with the shot of each, for the intro video; he directs it (§1).
 
 ## How to verify your work
@@ -503,6 +506,8 @@ npm run release:publish   # after testing the install: put it on the update chan
 npx tsc --noEmit      # front-end typecheck
 npm test              # the unit tests (tests/*.test.ts, Node's own runner)
 npm run check         # tsc + tests + docs:check + cargo check + cargo test (the pre-push hook)
+npm run storage       # where the repo's disk goes; `-- --prune` deletes Rust incremental folders
+                      # unused for 24 h. `check` warns in one line when the build folders pass 40 GB.
 ```
 Devtools auto-open in dev (`src-tauri/src/lib.rs`).
 
