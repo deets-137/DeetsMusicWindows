@@ -378,6 +378,12 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `showAlbumInfo` (On | Off, default On). On: an album's page shows Last.fm's tags, plays and
   listeners, the wiki's first two sentences and a link beside the cover. Off: no Last.fm album
   call is made.
+- **Playback › Show song info on the song's page** (2026-10-17, LISTENERS.md §8):
+  `showSongInfo` (On | Off, default On). On: Song Credits shows Last.fm's tags, plays and
+  listeners, About and a link beside the cover. Off: no box.
+- **Playback › Notes from** (2026-10-17, LISTENERS.md §8.4): `notesSource` (`both` | `apple` |
+  `lastfm` | `none`, default `both`). Where the About cell on a song's or an album's page gets
+  its words: the song before its album, Apple before Last.fm; one source; or none.
 - **Playback › Suggest Less** (2026-10-16, SUGGEST-LESS.md §4): three plain toggles, not
   consent gates. `suggestSkipStations` ("Skip on stations": On | Off, default On) skips a
   station song that matches a mark as it starts. `suggestSkipWebs` ("Leave out of webs", default

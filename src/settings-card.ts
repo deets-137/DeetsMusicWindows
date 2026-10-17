@@ -198,6 +198,8 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playback", row: "listeners" }, // Show play counts from Last.FM, built 2026-10-12 (LISTENERS.md §4)
   { section: "Playback", row: "artistinfo" }, // Show artist info on the artist's page, built 2026-10-12 (LISTENERS.md §6)
   { section: "Playback", row: "albuminfo" }, // Show album info on the album's page, built 2026-10-13 (LISTENERS.md §7)
+  { section: "Playback", row: "songinfo" }, // Show song info on the song's page, built 2026-10-17 (LISTENERS.md §8)
+  { section: "Playback", row: "notessource" }, // Notes from, built 2026-10-17 (LISTENERS.md §8.4)
   { section: "Playback", row: "suggeststations" }, // Suggest Less: Skip on stations, built 2026-10-16 (SUGGEST-LESS.md §4)
   { section: "Playback", row: "suggestwebs" }, // Suggest Less: Leave out of webs, built 2026-10-16
   { section: "Playback", row: "suggestqueue" }, // Suggest Less: Skip in queues, built 2026-10-16
@@ -428,7 +430,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Layout for Max, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "showAlbumInfo", "pinNewAct", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1516,6 +1518,14 @@ function mountSettings(
         storeToggle("artistinfo", "Show artist info on the artist's page", "showArtistInfo", () => "The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked"),
         // The album facts box (LISTENERS.md §7; his call 2026-10-13: its own row).
         storeToggle("albuminfo", "Show album info on the album's page", "showAlbumInfo", () => "The album's page shows Last.fm's tags, plays and listeners, a few words about it, and a link. Off: Last.fm is not asked"),
+        // The song facts box (LISTENERS.md §8; 2026-10-17: its own row, as the album's).
+        storeToggle("songinfo", "Show song info on the song's page", "showSongInfo", () => "Song Credits shows Last.fm's tags, plays and listeners, a few words about the song or its album, and a link"),
+        // Where the About cells' words come from (LISTENERS.md §8.4, his ask 2026-10-17).
+        {
+          kind: "choice", id: "notessource", label: "Notes from", key: "notesSource",
+          hint: "Where the About words on a song's or an album's page come from. Both: Apple first, then Last.fm",
+          options: [{ value: "both", label: "Apple and Last.fm" }, { value: "apple", label: "Apple only" }, { value: "lastfm", label: "Last.fm only" }, { value: "none", label: "None" }],
+        },
         // Suggest Less (SUGGEST-LESS.md §4; his calls 2026-10-12: three plain toggles, webs on,
         // queues and stations off). Right-click a song, an artist or an album to mark it.
         headRow("g-suggest", "Suggest Less"),

@@ -25,6 +25,15 @@ features/LISTENERS.md §8.
 - **Probed:** six songs on `track.getInfo`. Large songs have tags and a wiki; small ones often
   have neither; tags are noisy (a radio station's name in the top five).
 - **Next:** the build, before album notes (§8.3).
+- **Built the same sitting** (his "doc and start build"): §8.7 is the as-built record, §8.8 what
+  Claude decided, §8.9 the desk test. The reveal build session shared the checkout and the
+  three settings files; each session committed only its own hunks.
+- **Desk test passed (his ask: "desk test it yourself with the new shots tooling"):** the
+  runner's dev source on his dev app, Max; LISTENERS.md §8.10, the list kept as
+  ops/checks/song-box.json. It found one bug: Esc in presentation mode also went Back
+  (list-keys.ts, fixed). Mishaps: a `click` on the Library's search field landed on a pinned
+  tile and played it (Come Back to Me, Jungle, in place of what was on); the lists now set the
+  field by script. A reload from the other session's edits moved slot d to Search mid-run.
 
 ## 2026-10-17 — the Filter desk test passed; read the record before you call a test open
 

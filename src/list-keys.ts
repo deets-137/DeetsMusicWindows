@@ -89,6 +89,10 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
     const inControl = !!t.closest("button, a, [role='slider'], [role='switch']") && t !== row;
 
     if (e.key === "Escape") {
+      // A key already spent above us is not ours: presentation mode's Escape (present.ts, on the
+      // window in capture) closed the view AND went Back from the song page (desk test,
+      // 2026-10-17, LISTENERS.md §8.9).
+      if (e.defaultPrevented) return;
       if (o.back?.()) e.preventDefault();
       return;
     }

@@ -2,15 +2,16 @@
 status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
-sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts, src/media-levels.ts, src/present.ts]
+sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts, src/media-levels.ts, src/present.ts, src/notes-order.ts, src/info-box-menu.ts]
 updated: 2026-10-17
 ---
 # Listeners — how rare a song is, from Last.fm
 
 > **Built 2026-10-12.** The read side (§3) and the badge on Now Playing (§4, his design) are
 > built, in 0.27.0; the desk test (§4.3) passed 2026-10-13. §4 is the as-built record: where it disagrees with §1–§3,
-> it is the code. **§8, the song facts box on the Song Credits page, is DESIGNED, not built
-> (2026-10-17, every fork his).**
+> it is the code. **§8, the song facts box on the Song Credits page, is BUILT 2026-10-17
+> (every fork his); its desk test passed the same day (§8.10, run by Claude). §8.7 is the
+> as-built record.**
 
 **Terms**
 - **Listeners:** the number of distinct Last.fm users who have scrobbled a song at least once.
@@ -403,7 +404,8 @@ draws it at once.
 
 ## 8. The song facts box (on the Song Credits page)
 
-> **Part:** designed · 2026-10-17 · not built. Every fork his (§8.2).
+> **Part:** built · 2026-10-17 · desk test passed 2026-10-17 (§8.10, run by Claude). Every fork
+> his (§8.2). §8.7 is the as-built record: where it disagrees with §8.1–§8.5, it is the code.
 
 His ask (2026-10-17): the stats panel on a song's credits page. **Terms:** the *song page* is
 the level that **Song Credits** opens (`songLevel` in media-levels.ts; CREDITS.md §7): the
@@ -512,3 +514,80 @@ cell (the song's and the album's; the artist box has no About).
 
 - The user's own play count on the song (not asked for).
 - A background pass over the library (§5 fork 3).
+
+### 8.7 As built (2026-10-17)
+
+> **Part:** built · 2026-10-17 · desk test passed 2026-10-17 (§8.10)
+
+| Piece | Where | What |
+|---|---|---|
+| The table | `listen_counts` gains `tags` (JSON) and `wiki` (`lastfm::init_tables`, added when missing) | NULL tags = a row kept before 2026-10-17 |
+| The call | `fetch_count` reads `toptags.tag` (`tags_in`) and `wiki.summary` (`wiki_of`, shared with the album's) | the same one `track.getInfo` |
+| The command | `lastfm_listeners(track_id, artist, title, max_age_ms?, facts?)` | `max_age_ms` as the artist and album reads (floored at a minute); `facts: true` treats a known song with NULL tags as stale, so the song page asks once more; the badge does not pass it |
+| The reader | `songInfoFor` / `songInfoNow` / `songInfoFresh` / `songInfoByKey` in `listeners.ts` | gated by `showSongInfo`; its own memory beside the badge's, so the box draws in the first paint once its answer is known |
+| The order | `pickNote` / `needsAlbumWiki` in `src/notes-order.ts` | pure; `tests/notes-order.test.ts` |
+| The markup | `songInfoHTML` in `info-box.ts`, `SONG_INFO_HINTS`, `ABOUT_HINTS` | `data-info-box="song"`, the fold line *Song Info*; `data-song` (the key), `data-artist`, `data-title` for presentation mode. The About goes through `aboutSec` for the album's box too, so *Notes from* applies there |
+| The page | `songLevel` in `media-levels.ts` | `hero().aside`; asks the song on open, then the album's Last.fm facts only when `needsAlbumWiki` says so; each answer lands through `heroAside` (the slide, hero-slide.ts) |
+| Presentation mode | `present.ts` | a song kind: the title · the artist, `songInfoFresh` every 5 min |
+| The menu | `info-box-menu.ts` | *Hide song info*, the toast *Song info hidden…* with Undo |
+| The rows | Settings › Playback: *Show song info on the song's page* (`showSongInfo`, on) and *Notes from* (`notesSource`: Apple and Last.fm · Apple only · Last.fm only · None) | New marks; agent specs; hero-slide.ts parks and returns the box on `showSongInfo` |
+| Esc in presentation mode | `list-keys.ts`: the Escape branch skips a key already `defaultPrevented` | found by the desk test: with the focus in the card's list, one Esc closed the view AND went Back from the song page. The album and artist views had the same fault |
+
+### 8.8 Decided inside his calls (for his review)
+
+- The row words *Show song info on the song's page* and its hint; the *Notes from* row's place
+  (after the song row) and its hint; the four labels are the draft of §8.4 as written.
+- *Notes from* applies the next time a page draws its box (an open page keeps its box until
+  you open it again or the card redraws).
+- *Apple only* shows no About today: Apple's notes wait on album notes.
+- A song Last.fm does not know, whose album has a Last.fm wiki, draws a box with only About
+  and no link.
+- The album's Last.fm facts are asked from the song page only with *Show album info* on; with
+  it off, the song page's About has only the song's own wiki.
+- The hint words of the four About sources (ONBOARDING.md §1).
+- `showSongInfo` and `notesSource` are in the usage-counts allow-list (`REPORTED`, as the
+  album's and artist's rows are; the test fails a key in neither list). `npm run usage:keys`
+  wrote the copy to `../DeetsSupport/src/usage-keys.js`. That copy is not committed and not
+  deployed: a deploy is his call. Until the deploy, the worker drops the two keys.
+
+### 8.9 Desk test
+
+Restart `npm run dev:app` (a Rust change).
+
+1. Max, right-click a well-known song (*Cruel Summer*) › **Song Credits**. The cover moves left;
+   the box shows Tags, Listening Stats, *About* (the song's wiki, two sentences), Links. Hover
+   About: *From the song's wiki on Last.fm*.
+2. A small song with no wiki of its own (*Inventing*, Matilda Mann): About reads from the
+   album's wiki under *About the album*, or no About when the album has none.
+3. Click the stats cell: the card fills Max and the counts grow out of it, the title · the
+   artist. Esc goes back.
+4. Midi: the *SONG INFO ›* line; it opens and folds as the album's line does.
+5. Right-click inside the box: *Open Last.fm* · *Hide song info*. Hide: the box goes and a
+   toast with Undo; Undo brings it back.
+6. Settings › Playback › *Notes from* › *Last.fm only*, then *None*: open a song again; the
+   About follows (none: no About, the rest stays). The same on an album page.
+7. Search › a song › Song Credits: the same box.
+8. The log: one `lastfm: listeners for <id>` line on the first open of a song kept before this
+   build (the tags read), none on the second.
+
+### 8.10 Desk test results (2026-10-17, run by Claude on his dev app)
+
+Run with the shots runner on the running dev app (`"source": "dev"`, SHOTS.md §5h), Max, his
+library. The list is [docs/ops/checks/song-box.json](../ops/checks/song-box.json); the probes are
+in its console files, the pictures were read.
+
+| Step | Result |
+|---|---|
+| 1 | **Pass.** *Bohemian Rhapsody* (Queen): Tags (classic rock, rock, Queen, 70s, 80s), Listening Stats (17M plays, 2.3M listeners), About (the song's wiki), Links. The About hint: *From the song's wiki on Last.fm*. *Kill Bill (feat. Doja Cat)*: no tags (Last.fm has none), the rest the same |
+| 2 | **Pass.** *Vivid Light* (Blood Orange) has no wiki of its own: the cell reads **About the album** with *Essex Honey*'s wiki, hint *From the album's wiki on Last.fm*; the album's answer came from the cache (no call). *Wild Thought* (Dark Bardo & Shungudzo): Last.fm knows neither the song under that artist text nor an album wiki, so no box |
+| 3 | **Pass after a fix.** The card fills Max; *Bohemian Rhapsody · Queen*, 16,795,061 plays, 2,334,102 listeners, *Checked with Last.fm just now*. Esc first closed the view AND left the song page; fixed in `list-keys.ts` (§8.7). After the fix: the view closes, the song page and its box stay |
+| 4 | **Pass.** The card in Max's quarter is narrow: the *SONG INFO* line, the box under it |
+| 5 | **Pass.** The menu is *Open Last.fm* · *Hide song info*; Hide: the box goes and *Song info hidden. Settings › Playback brings it back.* with Undo; Undo brings it back |
+| 6 | **Pass.** *Notes from* › *None*, the song opened again: Tags, Listening Stats, Links, no About. Set back to *Apple and Last.fm*. *Last.fm only* was not run (the same path as both, with no Apple notes today) |
+| 7 | **Pass.** Steps 1, 3, 5 and 6 ran in the Search card |
+| 8 | **Pass.** One `lastfm: listeners for 6781024437` line on the first open (the row had NULL tags); none on the later opens; `listen_counts` now holds its tags and wiki |
+
+**Found on the way, not in this work:** the song's Last.fm call asks under Apple's whole artist
+text (*Dark Bardo & Shungudzo*); Last.fm keeps such a song under the main artist. The album
+call already tries Spotify's form first (§7.1 item 3); the song call and the Now Playing badge
+do not. A fork for him.

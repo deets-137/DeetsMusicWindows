@@ -127,8 +127,8 @@ export function setHeroAside(hero: HTMLElement, html: string): void {
 // and its HTML is kept beside its hero; on (Undo, or the row again): it comes back from there.
 const parked = new Map<HTMLElement, { kind: string; html: string }>();
 onSettingsChange((key) => {
-  if (key !== "showArtistInfo" && key !== "showAlbumInfo") return;
-  const kind = key === "showArtistInfo" ? "artist" : "album";
+  if (key !== "showArtistInfo" && key !== "showAlbumInfo" && key !== "showSongInfo") return;
+  const kind = key === "showArtistInfo" ? "artist" : key === "showAlbumInfo" ? "album" : "song";
   for (const hero of [...parked.keys()]) if (!hero.isConnected) parked.delete(hero);
   if (!setting(key)) {
     for (const wrap of document.querySelectorAll<HTMLElement>(`.artist-info-wrap[data-info-box="${kind}"]`)) {

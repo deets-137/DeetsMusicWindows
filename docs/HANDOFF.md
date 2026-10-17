@@ -211,12 +211,6 @@ each step that touches those calls.
   Last.fm's wiki as the fallback (N1 changed 2026-10-17); the full note opens on every surface;
   a song mention plays the song in the album. Every fork closed; three probes before the build
   (§5). ideas/album-notes.md.
-- **The song facts box** (2026-10-17): the 2×2 Last.fm box on the Song Credits page, its stats
-  cell opens presentation mode in Max; the About cell's order (Apple's song part, Last.fm's song
-  wiki, Apple's album note, Last.fm's album wiki) and a Settings row to pick one source or none.
-  Every fork his. Build it before album notes; steps 1 and 3 join when those land.
-  features/LISTENERS.md §8.
-
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
@@ -226,6 +220,16 @@ each step that touches those calls.
   committed there and not deployed. Waits on a release.
 
 ### Built, waiting on a release or a desk test
+
+- **The song facts box** (features/LISTENERS.md §8, 2026-10-17, on `main`): built, desk test
+  passed (§8.10, run by Claude on his dev app with the shots runner). Waits on a release. Open:
+  the song's Last.fm call asks under Apple's whole artist text; a main-artist form, as the
+  album's, is a fork for him (§8.10). The 2×2 Last.fm box on the Song Credits page; its stats
+  cell opens presentation mode in Max; the About cell's order (`notes-order.ts`: Apple's song
+  part, Last.fm's song wiki, Apple's album note, Last.fm's album wiki) and Settings › Playback ›
+  *Notes from* (one source or none). Apple's two steps join when album notes are built.
+  `listen_counts` gained `tags` and `wiki` (not a schema version: the table is a cache). What
+  Claude decided: §8.8.
 
 - **Filter and Rulez Playlists** (features/filter-rules.md, 2026-10-16, committed 3a9d3bf, on
   `main`): built, desk test passed 2026-10-17 (§14.4, his). Waits on a release. The Library's third pill,

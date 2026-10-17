@@ -313,6 +313,8 @@ const SPECS: Spec[] = [
   storeToggle("Playback", "showListeners", "Show play counts from Last.FM"),
   storeToggle("Playback", "showArtistInfo", "Show artist info on the artist's page"),
   storeToggle("Playback", "showAlbumInfo", "Show album info on the album's page"),
+  storeToggle("Playback", "showSongInfo", "Show song info on the song's page"),
+  storeChoice("Playback", "notesSource", "Notes from", [{ value: "both", label: "Apple and Last.fm" }, { value: "apple", label: "Apple only" }, { value: "lastfm", label: "Last.fm only" }, { value: "none", label: "None" }]),
   // Suggest Less (SUGGEST-LESS.md §4): plain toggles, not consent gates, so the agent may turn them on.
   storeToggle("Playback", "suggestSkipStations", "Skip on stations"),
   storeToggle("Playback", "suggestSkipWebs", "Leave out of webs"),

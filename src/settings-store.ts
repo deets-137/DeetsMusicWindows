@@ -277,6 +277,12 @@ export interface Settings {
   /** An album's page shows the Last.fm facts box beside the cover: tags, plays and listeners,
    *  the wiki's first sentences, the Last.fm link (LISTENERS.md §7). Off: no album call. */
   showAlbumInfo: boolean;
+  /** A song's page (Song Credits) shows the Last.fm facts box beside the cover: tags, plays and
+   *  listeners, About, the Last.fm link (LISTENERS.md §8). Off: no song facts are asked. */
+  showSongInfo: boolean;
+  /** Where an About cell's notes come from (LISTENERS.md §8.4): both in the order of §8.2 item
+   *  3 (Apple first, the song before its album), one source, or none (the cell stays empty). */
+  notesSource: "both" | "apple" | "lastfm" | "none";
   /** Settings › About › *Send usage counts* (USAGE-COUNTS.md): a day count, a weekly
    *  settings report and a weekly health report to DeetsSupport, with no ID. Off: nothing is
    *  sent, at once, and a report waiting for its moment is dropped (§2 rule 9). A consent
@@ -573,6 +579,8 @@ export const DEFAULTS: Settings = {
   showListeners: true, // his call 2026-10-12: the badge shows for everyone; one Last.fm call per song, cached a month
   showArtistInfo: true, // his call 2026-10-12: on for everyone, its own row (not the badge's); one Last.fm call per artist, cached a month
   showAlbumInfo: true, // 2026-10-13: its own row (his call), on like the artist's; one or two Last.fm calls per album, cached a month
+  showSongInfo: true, // 2026-10-17: its own row, on like the album's (his artist call); rides the song's one Last.fm call, cached a month
+  notesSource: "both", // his call 2026-10-17: Apple first, then Last.fm; the row is for a user who wants one or none (LISTENERS.md §8.4)
   usageReports: true, // his call 2026-09-29: on by default with a clear off switch; nothing leaves before the user was told (USAGE-COUNTS.md §1, §7)
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   previousReach: "lookback",

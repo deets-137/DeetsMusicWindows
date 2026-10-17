@@ -1,5 +1,6 @@
 // Presentation mode (docs/ideas/PresentationMode.md; his calls 2026-10-13, §7a). A click on
-// the Listening Stats cell of an artist's or an album's facts box, in Max: the card fills Max
+// the Listening Stats cell of an artist's, an album's or a song's facts box (the song's since
+// 2026-10-17, LISTENERS.md §8), in Max: the card fills Max
 // (the grow's Fill, card-grow.ts) and the stats grow from the cell over the whole card, with
 // Last.fm's Plays and Listeners in large type. Now Playing and the Queue stay beside it.
 //
@@ -14,7 +15,7 @@
 
 import { ICON_SHRINK, clipOpen, collapseGrow, fillCard, grownState, hostOf, onGrowChange, slotHolding, type Slot } from "./card-grow";
 import { currentSurface, onSurfaceChange } from "./surface";
-import { albumInfoFresh, albumInfoNow, artistInfoFresh, artistInfoNow } from "./listeners";
+import { albumInfoFresh, albumInfoNow, artistInfoFresh, artistInfoNow, songInfoByKey, songInfoFresh } from "./listeners";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 import * as diag from "./diag";
@@ -125,13 +126,20 @@ export async function openPresent(cell: HTMLElement): Promise<void> {
   const artist = wrap?.dataset.artist;
   if (!wrap || !slot || !host || !artist) return;
   const album = wrap.dataset.album;
-  const kind = wrap.dataset.infoBox === "album" && album ? "album" : "artist";
-  const now = kind === "album" ? albumInfoNow(artist, album!) : artistInfoNow(artist);
+  // A song's box (LISTENERS.md §8) carries its key and title: the view holds no Track.
+  const song = wrap.dataset.song;
+  const songTitle = wrap.dataset.title;
+  const kind =
+    wrap.dataset.infoBox === "song" && song && songTitle ? "song"
+    : wrap.dataset.infoBox === "album" && album ? "album"
+    : "artist";
+  const now = kind === "song" ? songInfoByKey(song!) : kind === "album" ? albumInfoNow(artist, album!) : artistInfoNow(artist);
   if (!now || now.state !== "have") return;
   const read = (): Promise<Counts | null> =>
-    (kind === "album" ? albumInfoFresh(artist, album!, FRESH_MS) : artistInfoFresh(artist, FRESH_MS)).then((v) =>
-      v && v.state === "have" ? v : null,
-    );
+    (kind === "song" ? songInfoFresh(song!, artist, songTitle!, FRESH_MS)
+    : kind === "album" ? albumInfoFresh(artist, album!, FRESH_MS)
+    : artistInfoFresh(artist, FRESH_MS)
+    ).then((v) => (v && v.state === "have" ? v : null));
   const from = cell.getBoundingClientRect();
 
   // The card fills Max first (the layout is final when this returns; its clip is opening).
@@ -140,11 +148,12 @@ export async function openPresent(cell: HTMLElement): Promise<void> {
   if (currentSurface() !== "max" || !host.isConnected) return;
   const grew = !already && grownState()?.slot === slot;
 
-  const title = kind === "album" ? `${esc(album!)}<span class="present__by"> · ${esc(artist)}</span>` : esc(artist);
+  const named = kind === "song" ? songTitle! : kind === "album" ? album! : "";
+  const title = named ? `${esc(named)}<span class="present__by"> · ${esc(artist)}</span>` : esc(artist);
   const el = document.createElement("div");
   el.className = "present";
   el.setAttribute("role", "dialog");
-  el.setAttribute("aria-label", `Listening stats, ${kind === "album" ? `${album}, ${artist}` : artist}`);
+  el.setAttribute("aria-label", `Listening stats, ${named ? `${named}, ${artist}` : artist}`);
   el.innerHTML =
     `<div class="present__head"><div class="present__title"><span class="search__label">Listening Stats</span>` +
     `<span class="present__name">${title}</span></div>` +
@@ -178,7 +187,7 @@ export async function openPresent(cell: HTMLElement): Promise<void> {
   open = o;
   paintAge(o);
   el.querySelector("[data-present-close]")?.addEventListener("click", () => void closePresent("button"));
-  diag.log("present:open", { kind, artist, album, grew });
+  diag.log("present:open", { kind, artist, album, song, grew });
 
   // The view grows out of the cell: a clip from the cell's box to the card's, on the grow's
   // curve (the same idiom as the grow itself); the words fade in once it is mostly open.

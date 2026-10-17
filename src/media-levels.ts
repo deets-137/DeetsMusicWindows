@@ -44,8 +44,10 @@ import {
   libraryArtistInfo, yourPlaylistsFor, checkPlaylists, artistShelvesHTML, artistInfoHTML, playCounts,
   type LibraryArtistInfo, type YourPlaylists, type CheckProgress, type PlayCount,
 } from "./artist-view";
-import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, type ArtistInfo } from "./listeners";
-import { albumInfoHTML } from "./info-box";
+import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, songInfoFor, songInfoKey, songInfoNow, type ArtistInfo } from "./listeners";
+import { albumInfoHTML, songInfoHTML } from "./info-box";
+import { needsAlbumWiki } from "./notes-order";
+import { setting } from "./settings-store";
 import { creditIndex } from "./artist-credit";
 import { tracks } from "./track-store";
 import { reconcileAlbum, reconcilePlaylist, type AlbumFav } from "./favorites";
@@ -939,7 +941,25 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     // Credit order is the order Apple sent, and it carries meaning (the lead writer leads).
     // It is the default sort, so the rows read as Apple wrote them.
     const orderOf = (n: string) => names().indexOf(n);
-    return {
+    // The song facts box (LISTENERS.md §8): the song's Last.fm answer, then the album's facts
+    // only when nothing before the album's wiki fills the About (`needsAlbumWiki`). Each lands
+    // in place beside the cover (hero-slide.ts), as the album's box does.
+    const who = t.artistName ?? "";
+    const albumWanted = (s: ReturnType<typeof songInfoNow>) =>
+      !!who && !!t.albumName && needsAlbumWiki({ lastfmSong: s?.state === "have" ? s.wiki : undefined }, setting("notesSource"));
+    const albumFacts = () => (albumWanted(songInfoNow(t)) ? albumInfoNow(who, t.albumName!) : undefined);
+    const askLfm = () => {
+      if (songInfoNow(t) !== undefined) return void askAlbum();
+      void songInfoFor(t).then(() => {
+        card().heroAside(ctx);
+        askAlbum();
+      });
+    };
+    const askAlbum = () => {
+      if (!albumWanted(songInfoNow(t)) || albumInfoNow(who, t.albumName!) !== undefined) return;
+      void albumInfoFor(who, t.albumName!).then(() => card().heroAside(ctx));
+    };
+    const ctx: Context = {
       title: t.title,
       key: `song:${id}`, // card memory (CARD-MEMORY.md §5)
       headerLabel: "Song",
@@ -948,6 +968,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         title: t.title,
         sub: t.artistName ? { text: t.artistName, run: () => card().drill(artistFrom(t.artistName, t.catalogId)) } : undefined,
         meta: [t.albumName, t.releaseDate?.slice(0, 4), fmtClock(t.durationMs)].filter(Boolean).join(" · "),
+        aside: songInfoHTML(songInfoNow(t), { key: songInfoKey(t), artist: who, title: t.title }, albumFacts()),
       }),
       shelves: () => songFacts(t) + (names().length ? "" : `<p class="credit__note">${esc(gap())}</p>`),
       toolbarBelow: CREDITS_LABEL,
@@ -969,6 +990,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       ],
       defaults: { density: "lines", sortKey: "credit" },
     };
+    askLfm();
+    return ctx;
   }
 
   // Every song the app has collected that credits one writer (CREDITS.md §5.2): one local

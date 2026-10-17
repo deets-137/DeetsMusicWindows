@@ -151,9 +151,10 @@ for word, with RELEASE.md's section numbers.
 - `LISTENERS.md` — BUILT 2026-10-12 (in 0.27.0), desk test passed 2026-10-13: a song's Last.fm
   listener count (its "rarity"); `track.getInfo` cached a month in `listen_counts`,
   `lastfm_listeners`, `src/listeners.ts`; the badge on Now Playing (§4, his design). Genius has
-  no play data (§1). §8 DESIGNED 2026-10-17, not built: the song facts box on the Song Credits
-  page, the About cell's notes order (Apple, then Last.fm; the song, then its album) and a
-  Settings row to pick one source or none.
+  no play data (§1). §8 BUILT 2026-10-17, desk test passed (§8.10, run by Claude): the song
+  facts box on the Song Credits page, the About cell's notes order (`src/notes-order.ts`: the
+  song, then its album; Apple, then Last.fm) and *Notes from* in Settings › Playback to pick
+  one source or none.
 - `LOCAL-RADIO.md` — DESIGNED 2026-10-13, not built: web stations from Radio Browser in the
   Radio card (a Local shelf by the user's city, search for any station), played through a Rust
   loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms

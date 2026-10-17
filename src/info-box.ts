@@ -1,4 +1,5 @@
-// The Last.fm facts boxes beside a hero (LISTENERS.md §6 the artist's, §7 the album's).
+// The Last.fm facts boxes beside a hero (LISTENERS.md §6 the artist's, §7 the album's, §8 the
+// song's on Song Credits: Tags · Listening Stats / About · Links, the About by `pickNote`).
 //
 // One box idiom for both (his sketch, 2026-10-12): a 2×2 grid of sections, each a
 // shelf-style header over its facts; the right column right-aligned. The artist's: Tags ·
@@ -14,8 +15,9 @@
 // box opens its own small menu (info-box-menu.ts). The hints are ONBOARDING.md §1.
 
 import { esc } from "./collection-card";
-import { fmtCount, infoBoxOpen, type AlbumInfo, type ArtistInfo } from "./listeners";
+import { fmtCount, infoBoxOpen, type AlbumInfo, type ArtistInfo, type ListenCount } from "./listeners";
 import { wikiSentences } from "./lastfm-names";
+import { pickNote, type Note, type NoteFrom, type NoteOf } from "./notes-order";
 import { setting } from "./settings-store";
 
 export const ARTIST_INFO_HINTS = {
@@ -28,11 +30,23 @@ export const ARTIST_INFO_HINTS = {
 
 export const ALBUM_INFO_HINTS = {
   tags: "What Last.fm listeners call this album",
-  about: "From the album's wiki on Last.fm",
   counts: "Plays and listeners of this album on Last.fm. In Max, click to show them large",
   lastfm: "Opens the album's page on Last.fm",
   toggle: "Shows or hides Last.fm's facts about this album",
 } as const;
+
+export const SONG_INFO_HINTS = {
+  tags: "What Last.fm listeners call this song",
+  counts: "Plays and listeners of this song on Last.fm. In Max, click to show them large",
+  lastfm: "Opens the song's page on Last.fm",
+  toggle: "Shows or hides Last.fm's facts about this song",
+} as const;
+
+/** The About cell's hint names where its words come from (LISTENERS.md §8.3). */
+export const ABOUT_HINTS: Record<NoteFrom, Record<NoteOf, string>> = {
+  lastfm: { song: "From the song's wiki on Last.fm", album: "From the album's wiki on Last.fm" },
+  apple: { song: "From Apple Music's notes on the album, about this song", album: "From Apple Music's notes on the album" },
+};
 
 /** How many tags a box shows: Last.fm's calls give five. */
 const TAGS_MAX = 5;
@@ -40,6 +54,13 @@ const TAGS_MAX = 5;
 const ABOUT_SENTENCES = 2;
 
 type Hints = { tags: string; counts: string; lastfm: string; toggle: string };
+type Kind = "artist" | "album" | "song";
+const KEY_OF: Record<Kind, "showArtistInfo" | "showAlbumInfo" | "showSongInfo"> = {
+  artist: "showArtistInfo",
+  album: "showAlbumInfo",
+  song: "showSongInfo",
+};
+const LINE_OF: Record<Kind, string> = { artist: "Artist Info", album: "Album Info", song: "Song Info" };
 
 const sec = (where: string, head: string, body: string) =>
   `<div class="artist-info__sec artist-info__sec--${where}"><div class="artist-info__h">${head}</div>${body}</div>`;
@@ -70,16 +91,29 @@ function linksSec(url: string | undefined, h: Hints): string {
     : "";
 }
 
-/** The names a box was asked by: presentation mode re-reads the counts under them. */
-type Names = { artist: string; album?: string };
+/** The About cell: the note `pickNote` chose, its first sentences, a hint naming its source.
+ *  On the song page an album's note is headed *About the album* (his call, 2026-10-17). */
+function aboutSec(note: Note | null, onSong: boolean): string {
+  if (!note) return "";
+  const text = wikiSentences(note.text, ABOUT_SENTENCES);
+  if (!text) return "";
+  const head = onSong && note.of === "album" ? "About the album" : "About";
+  return sec("about", head, `<p class="artist-info__about" title="${ABOUT_HINTS[note.from][note.of]}">${esc(text)}</p>`);
+}
+
+/** The names a box was asked by: presentation mode re-reads the counts under them. A song's
+ *  box carries its key and title too (`song`, `title`). */
+type Names = { artist: string; album?: string; song?: string; title?: string };
+
+const attr = (name: string, v: string | undefined) => (v ? ` data-${name}="${esc(v)}"` : "");
 
 /** The wrap: the fold line, the fold, the box. `kind` names the box for its line, its menu
  *  and its Settings row; `url` rides along for the menu's *Open Last.fm*; `names` for
  *  presentation mode. */
-function boxHTML(kind: "artist" | "album", url: string | undefined, h: Hints, sections: string, names?: Names): string {
+function boxHTML(kind: Kind, url: string | undefined, h: Hints, sections: string, names?: Names): string {
   const open = infoBoxOpen();
-  const line = kind === "artist" ? "Artist Info" : "Album Info";
-  const named = names ? ` data-artist="${esc(names.artist)}"${names.album ? ` data-album="${esc(names.album)}"` : ""}` : "";
+  const line = LINE_OF[kind];
+  const named = names ? attr("artist", names.artist) + attr("album", names.album) + attr("song", names.song) + attr("title", names.title) : "";
   return (
     `<div class="artist-info-wrap" data-open="${open ? 1 : 0}" data-info-box="${kind}"${url ? ` data-url="${esc(url)}"` : ""}${named}>` +
     `<button class="artist-info__toggle" type="button" data-artist-info-toggle aria-expanded="${open}" title="${h.toggle}"><span class="artist-info__h">${line}</span></button>` +
@@ -90,8 +124,8 @@ function boxHTML(kind: "artist" | "album", url: string | undefined, h: Hints, se
 /** Under reduced motion, a box that is still on its way holds its place, empty, so the cover
  *  starts on the left and nothing moves when the facts land (his call, 2026-10-13). With motion
  *  the hero draws centered and the box slides in (hero-slide.ts). */
-function pendingBoxHTML(kind: "artist" | "album"): string {
-  if (!setting(kind === "artist" ? "showArtistInfo" : "showAlbumInfo")) return "";
+function pendingBoxHTML(kind: Kind): string {
+  if (!setting(KEY_OF[kind])) return "";
   let still = false;
   try {
     still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -115,10 +149,36 @@ export function albumInfoHTML(i: AlbumInfo | null | undefined, artist?: string, 
   if (i === undefined) return pendingBoxHTML("album"); // still on its way
   if (!i || i.state !== "have") return "";
   const h = ALBUM_INFO_HINTS;
-  const text = i.wiki ? wikiSentences(i.wiki, ABOUT_SENTENCES) : "";
   // The About text is clamped to a fixed number of lines in a box of a fixed height, so a
-  // long summary and a short one draw the same box (his ask, 2026-10-13).
-  const about = text ? sec("about", "About", `<p class="artist-info__about" title="${h.about}">${esc(text)}</p>`) : "";
+  // long summary and a short one draw the same box (his ask, 2026-10-13). Its source follows
+  // *Notes from* (LISTENERS.md §8.4); Apple's album note joins with album notes.
+  const about = aboutSec(pickNote({ lastfmAlbum: i.wiki }, setting("notesSource")), false);
   const names = artist && album ? { artist, album } : undefined;
   return boxHTML("album", i.url, h, tagsSec(i.tags, h) + statsSec(i.playcount, i.listeners, h) + about + linksSec(i.url, h), names);
+}
+
+/**
+ * The song's box on its page, Song Credits (LISTENERS.md §8). `i` is the song's Last.fm
+ * answer; `album` the album's Last.fm facts when the song page asked for them (only when
+ * nothing before the album's wiki fills the About, `needsAlbumWiki`). A song Last.fm does not
+ * know draws an About-only box when its album has a note, and no box without one.
+ */
+export function songInfoHTML(
+  i: ListenCount | null | undefined,
+  t: { key: string; artist: string; title: string },
+  album?: AlbumInfo | null,
+): string {
+  if (i === undefined) return pendingBoxHTML("song"); // still on its way
+  if (!setting("showSongInfo")) return "";
+  const have = i?.state === "have";
+  const h = SONG_INFO_HINTS;
+  const note = pickNote(
+    { lastfmSong: have ? i.wiki : undefined, lastfmAlbum: album?.state === "have" ? album.wiki : undefined },
+    setting("notesSource"),
+  );
+  const about = aboutSec(note, true);
+  if (!have && !about) return "";
+  const url = have ? i.url : undefined;
+  const facts = have ? tagsSec(i.tags ?? [], h) + statsSec(i.playcount, i.listeners, h) : "";
+  return boxHTML("song", url, h, facts + about + linksSec(url, h), { artist: t.artist, song: t.key, title: t.title });
 }

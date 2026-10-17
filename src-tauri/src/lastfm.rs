@@ -777,7 +777,21 @@ pub fn init_tables(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
             url         TEXT,
             fetched_at  INTEGER NOT NULL
         );",
-    )
+    )?;
+    // The song facts box (LISTENERS.md §8, 2026-10-17): a song's tags and wiki ride the same
+    // `track.getInfo` answer. Additive. A row kept before this has NULL tags: the song page
+    // reads it as stale and asks once (`facts` in `lastfm_listeners`).
+    for col in ["tags", "wiki"] {
+        let has: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('listen_counts') WHERE name = ?1",
+            [col],
+            |r| r.get(0),
+        )?;
+        if has == 0 {
+            conn.execute_batch(&format!("ALTER TABLE listen_counts ADD COLUMN {col} TEXT;"))?;
+        }
+    }
+    Ok(())
 }
 
 /// One song's Last.fm counts, as the renderer sees them.
@@ -793,22 +807,32 @@ pub struct ListenCount {
     /// The song's page on last.fm, for a link.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    /// Last.fm's top tags for the song, most applied first (the song facts box, §8). `None` on a
+    /// row kept before the tags were (2026-10-17): not asked, not "no tags".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    /// The song's wiki summary as Last.fm sends it (HTML); None when the song has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wiki: Option<String>,
     /// When Last.fm answered (ms since the epoch). The UI can say how fresh the number is.
     pub fetched_at: i64,
 }
 
 fn cached_count(conn: &rusqlite::Connection, track_id: &str) -> Option<ListenCount> {
     conn.query_row(
-        "SELECT state, listeners, playcount, url, fetched_at FROM listen_counts WHERE track_id = ?1",
+        "SELECT state, listeners, playcount, url, tags, wiki, fetched_at FROM listen_counts WHERE track_id = ?1",
         [track_id],
         |r| {
             let state: String = r.get(0)?;
+            let tags: Option<String> = r.get(4)?;
             Ok(ListenCount {
                 state: if state == "have" { "have" } else { "none" },
                 listeners: r.get::<_, Option<i64>>(1)?.unwrap_or(0),
                 playcount: r.get::<_, Option<i64>>(2)?.unwrap_or(0),
                 url: r.get(3)?,
-                fetched_at: r.get(4)?,
+                tags: tags.and_then(|t| serde_json::from_str(&t).ok()),
+                wiki: r.get(5)?,
+                fetched_at: r.get(6)?,
             })
         },
     )
@@ -816,11 +840,22 @@ fn cached_count(conn: &rusqlite::Connection, track_id: &str) -> Option<ListenCou
 }
 
 fn store_count(conn: &rusqlite::Connection, track_id: &str, c: &ListenCount) {
+    let tags = c.tags.as_ref().and_then(|t| serde_json::to_string(t).ok());
     let _ = conn.execute(
-        "INSERT OR REPLACE INTO listen_counts(track_id, state, listeners, playcount, url, fetched_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        rusqlite::params![track_id, c.state, c.listeners, c.playcount, c.url, c.fetched_at],
+        "INSERT OR REPLACE INTO listen_counts(track_id, state, listeners, playcount, url, tags, wiki, fetched_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![track_id, c.state, c.listeners, c.playcount, c.url, tags, c.wiki, c.fetched_at],
     );
+}
+
+/// A wiki's `summary`, trimmed; None when it is missing or empty. A song's and an album's.
+fn wiki_of(v: &serde_json::Value) -> Option<String> {
+    v.get("wiki")
+        .and_then(|w| w.get("summary"))
+        .and_then(|s| s.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
 }
 
 /// `track.getInfo` with `autocorrect=1`, so "Beyoncé" and "Beyonce" land on one page. The
@@ -837,6 +872,9 @@ async fn fetch_count(artist: &str, title: &str) -> Result<ListenCount, CallError
         listeners: t.get("listeners").and_then(as_int).unwrap_or(0),
         playcount: t.get("playcount").and_then(as_int).unwrap_or(0),
         url: t.get("url").and_then(|u| u.as_str()).map(str::to_string),
+        // A song's tags are `toptags.tag`, not `tags.tag` as on an artist or album.
+        tags: Some(tags_in(t.get("toptags"))),
+        wiki: wiki_of(t),
         fetched_at: now_ms(),
     })
 }
@@ -844,8 +882,17 @@ async fn fetch_count(artist: &str, title: &str) -> Result<ListenCount, CallError
 /// The Last.fm counts for one song. Cache first; one call when the row is missing or older
 /// than a month. `Ok(None)` means this build has no key, or the song has no artist or title
 /// to ask with. A network failure is an `Err` and caches nothing, so the next open tries again.
+/// `max_age_ms`: a shorter age for the cached row (presentation mode). `facts`: the caller
+/// draws the song facts box (§8), so a known song kept before its tags were is asked again.
 #[tauri::command]
-pub async fn lastfm_listeners(track_id: String, artist: String, title: String, app: AppHandle) -> Result<Option<ListenCount>, String> {
+pub async fn lastfm_listeners(
+    track_id: String,
+    artist: String,
+    title: String,
+    max_age_ms: Option<i64>,
+    facts: Option<bool>,
+    app: AppHandle,
+) -> Result<Option<ListenCount>, String> {
     if API_KEY.is_none() || track_id.is_empty() {
         return Ok(None);
     }
@@ -857,14 +904,17 @@ pub async fn lastfm_listeners(track_id: String, artist: String, title: String, a
     let id = track_id.clone();
     let hit = crate::db_thread::run(&app, move |db| Ok(cached_count(&db.lock(), &id))).await?;
     if let Some(c) = hit {
-        if now_ms() - c.fetched_at < LISTENERS_TTL_MS {
+        let unfed = facts == Some(true) && c.state == "have" && c.tags.is_none();
+        if now_ms() - c.fetched_at < max_age(max_age_ms) && !unfed {
             return Ok(Some(c));
         }
     }
     let count = match fetch_count(&artist, &title).await {
         Ok(c) => c,
         // Track not found: an answer, cached like one.
-        Err(CallError::Api(6, _)) => ListenCount { state: "none", listeners: 0, playcount: 0, url: None, fetched_at: now_ms() },
+        Err(CallError::Api(6, _)) => {
+            ListenCount { state: "none", listeners: 0, playcount: 0, url: None, tags: None, wiki: None, fetched_at: now_ms() }
+        }
         Err(e) => {
             crate::log::warn(&format!("lastfm: listeners for {track_id} failed ({e})"));
             return Err(e.to_string());
@@ -949,8 +999,13 @@ fn store_artist(conn: &rusqlite::Connection, key: &str, a: &ArtistInfo) {
 /// Last.fm's `tags.tag` on an artist or an album: an array, or one object when there is a
 /// single tag; both are read.
 fn tags_of(v: &serde_json::Value) -> Vec<String> {
+    tags_in(v.get("tags"))
+}
+
+/// The `tag` list inside a `tags` or `toptags` object.
+fn tags_in(holder: Option<&serde_json::Value>) -> Vec<String> {
     let tag_name = |t: &serde_json::Value| t.get("name").and_then(|n| n.as_str()).map(str::to_string);
-    match v.get("tags").and_then(|t| t.get("tag")) {
+    match holder.and_then(|t| t.get("tag")) {
         Some(serde_json::Value::Array(list)) => list.iter().filter_map(tag_name).collect(),
         Some(one @ serde_json::Value::Object(_)) => tag_name(one).into_iter().collect(),
         _ => Vec::new(),
@@ -1084,13 +1139,7 @@ async fn fetch_album(artist: &str, album: &str) -> Result<AlbumInfo, CallError> 
     )
     .await?;
     let a = &json["album"];
-    let wiki = a
-        .get("wiki")
-        .and_then(|w| w.get("summary"))
-        .and_then(|s| s.as_str())
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string);
+    let wiki = wiki_of(a);
     Ok(AlbumInfo {
         state: "have",
         listeners: a.get("listeners").and_then(as_int).unwrap_or(0),

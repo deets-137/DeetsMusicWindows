@@ -5,8 +5,8 @@
 // answer for a month; this module is the read side the UI will call. It makes no call of
 // its own and holds a memory map, so a pane opened twice asks Rust once.
 //
-// The song badge on Now Playing reads it (§4), the artist facts box (§6) and the album facts
-// box (§7) too, with their open / folded state on a narrow card.
+// The song badge on Now Playing reads it (§4), the artist facts box (§6), the album facts
+// box (§7) and the song facts box (§8) too, with their open / folded state on a narrow card.
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
@@ -22,6 +22,11 @@ export interface ListenCount {
   playcount: number;
   /** The song's page on last.fm. */
   url?: string;
+  /** Last.fm's top tags for the song (the song facts box, §8). Missing on a row kept before
+   *  2026-10-17; the song page's own ask fills it. */
+  tags?: string[];
+  /** The song's wiki summary as Last.fm sends it (HTML). */
+  wiki?: string;
   /** When Last.fm answered, ms since the epoch. */
   fetchedAt: number;
 }
@@ -177,6 +182,46 @@ export async function albumInfoFresh(artist: string, album: string, maxAgeMs: nu
   if (v) albums.keep(albumKey(artist, album), v);
   return v;
 }
+
+// ── the song facts box (LISTENERS.md §8) ──
+//
+// The same `lastfm_listeners` call the badge makes, asked with `facts`, so a song kept before
+// its tags were is asked once more. Its own memory, beside the badge's: the box reads the
+// answer at once in the first paint (`songInfoNow`), as the album's does.
+
+const songs = asker<ListenCount>();
+
+/** The facts for a song's page. `null` with *Show song info on the song's page*
+ *  (`showSongInfo`) off (no call), no key, no artist or title, or no answer. */
+export function songInfoFor(t: Track): Promise<ListenCount | null> {
+  const key = keyOf(t);
+  if (!key || !setting("showSongInfo")) return Promise.resolve(null);
+  return songs.ask(key, () =>
+    invoke<ListenCount | null>("lastfm_listeners", { trackId: key, artist: t.artistName ?? "", title: t.title, facts: true }),
+  );
+}
+
+/** The song's facts if they have landed already this session; `undefined` and `null` as
+ *  `artistInfoNow` has them. */
+export function songInfoNow(t: Track): ListenCount | null | undefined {
+  const key = keyOf(t);
+  return key && setting("showSongInfo") ? songs.now(key) : null;
+}
+
+/** The song's fresh read for presentation mode, as `artistInfoFresh`. By the names the box
+ *  carries (`data-song`, `data-artist`, `data-title`), since the view holds no Track. */
+export async function songInfoFresh(key: string, artist: string, title: string, maxAgeMs: number): Promise<ListenCount | null> {
+  if (!key || !setting("showSongInfo")) return null;
+  const v = await invoke<ListenCount | null>("lastfm_listeners", { trackId: key, artist, title, maxAgeMs, facts: true }).catch(() => null);
+  if (v) songs.keep(key, v);
+  return v;
+}
+
+/** The song's kept answer by its key, for presentation mode's first paint. */
+export const songInfoByKey = (key: string): ListenCount | null | undefined => (setting("showSongInfo") ? songs.now(key) : null);
+
+/** The key a song's facts are kept under: catalog first, then library (`play_stats`'s). */
+export const songInfoKey = keyOf;
 
 /** A facts box on a narrow card: open or folded under its *Artist Info* / *Album Info* line.
  *  The last choice is kept for the next artist or album and across restarts (his call,
