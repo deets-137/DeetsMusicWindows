@@ -33,6 +33,8 @@
 //     Added 2026-09-23: Tauri's NSIS close matched `DeetsMusic.exe` without case, so it also
 //     closed the dev build and every `deetsmusic` CLI, the MCP servers of open AI apps included.
 //     Since Velopack (2026-10-15) the stop is velo.rs's `stop_clis`.
+// 12. Package identity (IDENTITY.md): the package's publisher is the signing subject, its logos
+//     and resources.pri ship, the exe carries the <msix> element. Added 2026-10-16.
 // Checks 3, 4 and 11 read Velopack's output since 2026-10-15 (docs/ops/VELOPACK.md).
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
@@ -131,7 +133,9 @@ if (!existsSync(feedFile) || !existsSync(`${feedFile}.sig`)) {
 // not the stage folder (found 2026-10-15), so the app exe and Squirrel.exe (installed as
 // Update.exe) are read out of this version's full package.
 const fullPkg = join(vpOut, `${PACK}-${versions["package.json"]}-${CHANNEL}-full.nupkg`);
-const pkgExes = existsSync(fullPkg) ? [`lib/app/${EXE_NAME}.exe`, "lib/app/Squirrel.exe"] : [];
+// The identity package rides in the same check (check 12 reads its subject).
+const pkgExes = existsSync(fullPkg) ? [`lib/app/${EXE_NAME}.exe`, "lib/app/Squirrel.exe", "lib/app/DeetsMusic.identity.msix"] : [];
+const signers = {};
 const signed = [join(root, "cli", "dist", BETA ? "deetsmusic-beta.exe" : "deetsmusic.exe"), setup].filter((f) => existsSync(f));
 if (signed.length) {
   const q = (s) => `'${s.replaceAll("'", "''")}'`;
@@ -142,6 +146,7 @@ if (signed.length) {
   if (!pkgExes.length) failures.push(`no full package at ${fullPkg}: the app exe inside it is not checked`);
   const out = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8" });
   for (const s of [JSON.parse(out)].flat()) {
+    signers[s.file.split(/[\\/]/).pop().replace(/^release-check-/, "")] = s.subject;
     const cn = /CN=([^,]+)/.exec(s.subject)?.[1];
     if (s.status !== "Valid" || cn !== conf.bundle.publisher || !s.stamped) {
       failures.push(`${s.file} is not signed by ${conf.bundle.publisher} (status ${s.status}, CN ${cn ?? "none"}, timestamp ${s.stamped})`);
@@ -374,8 +379,35 @@ let docsNote = "docs check clean";
   }
 }
 
+// ── 12. Package identity (docs/ops/IDENTITY.md §3.1, §3.8) ──────────────────────────────
+// The identity package's Publisher must equal the signing subject EXACTLY: a different one is a
+// different package family, so a different app ID, so every pin and the Start entry split again.
+// The package must ship its logos and resources.pri at the root of current\ (without the index
+// the shell draws a plated icon), and the exe must carry the <msix> element that ties it to them.
+{
+  const id = JSON.parse(readFileSync(join(root, "src-tauri", "identity", "identity.json"), "utf8"));
+  const flavor = id.flavors[BETA ? "beta" : "live"];
+  const subject = signers["DeetsMusic.identity.msix"];
+  if (!subject) failures.push("the package has no signed DeetsMusic.identity.msix (scripts/identity-pack.mjs)");
+  else if (subject !== id.publisher) failures.push(`identity.json publisher "${id.publisher}" is not the signing subject "${subject}" (IDENTITY.md §5)`);
+  if (existsSync(fullPkg)) {
+    const names = execFileSync(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-Command", `Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [System.IO.Compression.ZipFile]::OpenRead('${fullPkg.replaceAll("'", "''")}'); $z.Entries.FullName; $z.Dispose()`],
+      { encoding: "utf8" },
+    ).split(/\r?\n/);
+    for (const want of ["lib/app/resources.pri", "lib/app/Assets/Square44x44Logo.targetsize-24_altform-unplated.png"]) {
+      if (!names.includes(want)) failures.push(`the package has no ${want} (scripts/identity-pack.mjs)`);
+    }
+  }
+  const exeText = existsSync(exe) ? readFileSync(exe).toString("latin1") : "";
+  if (!exeText.includes("urn:schemas-microsoft-com:msix.v1") || !exeText.includes(`packageName="${flavor.name}"`)) {
+    failures.push(`${EXE_NAME}.exe has no <msix> element for ${flavor.name} (build.rs identity_manifest)`);
+  }
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files and the extension; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the feed is signed; the app stops processes by path only; ${docsNote}`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files and the extension; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the feed is signed; the app stops processes by path only; the identity package matches its signer; ${docsNote}`);

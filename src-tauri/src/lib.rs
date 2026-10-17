@@ -16,6 +16,7 @@ mod filter;
 mod friends;
 mod gpu;
 mod heal;
+mod identity;
 mod lastfm;
 mod library;
 mod lock;
@@ -302,6 +303,10 @@ pub fn run() {
             tray::setup(app.handle())?;
             app_icon::set_all(app.handle());
             app_icon::watch_scale(app.handle());
+            // Package identity (IDENTITY.md §3.4): an installed release build checks its
+            // registration and its Start shortcut. COM and deployment calls block, so off the
+            // main thread; a dev build returns at once.
+            tauri::async_runtime::spawn_blocking(identity::on_start);
 
             // A login launch (`--tray`, the Run-key command) starts in the tray.
             if std::env::args().any(|a| a == "--tray") {

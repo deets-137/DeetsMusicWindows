@@ -212,6 +212,12 @@ for word, with RELEASE.md's section numbers.
   feed), `release.mjs` runs `vpk pack`. His calls §1 (no migration path: an NSIS install moves
   by hand, RELEASE.md §4b). Install from a WMI-started process, never from this shell; a
   release build takes a CDP port through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (§12.4).
+- `IDENTITY.md` — BUILT 2026-10-16 on `shixtheenth`, desk test open (§9.2): package identity (a
+  signed sparse `.msix`, `scripts/identity-pack.mjs`, registered against `current\` by
+  `identity.rs` in Velopack's hooks) so the taskbar and Start draw exact-size icons, his city
+  art (`npm run icons`, `icon-template/deets-city-600.png`); `tray.ico` keeps the tray the head.
+  No `.lnk` may carry the package's app ID (§3.5); `vpk --shortcuts None`. The probes §8.1;
+  the as-built §9; release-check 12.
 - `RELEASE-NOTES.md` — the text of each release; `release:publish` copies it into the update offer.
 - `BETA.md` — DeetsMusic Beta: a second installed app beside the full one (`release -- --beta`),
   the data copy and `deetsmusic-beta pull`. Beta-first is PAUSED since 2026-09-24: releases go

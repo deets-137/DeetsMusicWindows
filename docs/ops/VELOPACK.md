@@ -79,6 +79,9 @@ updated: 2026-10-16
   a window with another id does not group with its pinned shortcut. The build leaves Velopack's
   default (`velopack.DeetsMusic`) on both. The media flyout reads the name from the shortcut
   (`--packTitle`). `media.rs`'s `is_self` matches `deetsmusic` and passes.
+  **Since 2026-10-16 (IDENTITY.md):** an installed release build runs with package identity, and
+  the package's app ID wins over Velopack's (IDENTITY.md §8.1 A, X). `--shortcuts None`: the
+  package is the Start entry. Velopack's ID stays on any old `.lnk`, which no longer groups.
 - WebView2: `--framework webview2` installs it when it is missing, as Tauri's NSIS bootstrapper
   does today.
 - The deep link: release builds call `register_all()` on every start (lib.rs), so the

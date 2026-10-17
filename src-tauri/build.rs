@@ -2,7 +2,40 @@ fn main() {
     lastfm_key();
     build_key();
     icons();
-    tauri_build::build()
+    let mut windows = tauri_build::WindowsAttributes::new();
+    if let Some(manifest) = identity_manifest() {
+        windows = windows.app_manifest(manifest);
+    }
+    tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows)).expect("tauri-build");
+}
+
+/// A release build's side-by-side manifest: Tauri's own (the Common-Controls dependency) plus
+/// the `<msix>` element that ties the exe to its identity package (docs/ops/IDENTITY.md §3.2).
+/// The names come from `identity/identity.json`; the Beta flavor (`DEETSMUSIC_FLAVOR=beta`, set
+/// by `release -- --beta`) takes its own. A debug build gets none: the dev app keeps no identity.
+/// With the element but no registered package, the exe runs as an ordinary app (§8 P6).
+fn identity_manifest() -> Option<String> {
+    println!("cargo:rerun-if-env-changed=DEETSMUSIC_FLAVOR");
+    println!("cargo:rerun-if-changed=identity/identity.json");
+    if std::env::var("PROFILE").ok()? != "release" {
+        return None;
+    }
+    let text = std::fs::read_to_string("identity/identity.json").expect("identity/identity.json");
+    let json: serde_json::Value = serde_json::from_str(&text).expect("identity/identity.json is not valid JSON");
+    let flavor = if std::env::var("DEETSMUSIC_FLAVOR").as_deref() == Ok("beta") { "beta" } else { "live" };
+    let f = &json["flavors"][flavor];
+    let (publisher, name, app) = (json["publisher"].as_str()?, f["name"].as_str()?, f["app"].as_str()?);
+    Some(format!(
+        r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*" />
+    </dependentAssembly>
+  </dependency>
+  <msix xmlns="urn:schemas-microsoft-com:msix.v1" publisher="{publisher}" packageName="{name}" applicationId="{app}" />
+</assembly>
+"#
+    ))
 }
 
 /// The exe's icon resource is packed from `icons/icon.ico` (the Beta's from `icons-beta/`) by
@@ -13,6 +46,7 @@ fn icons() {
     for dir in ["icons", "icons-beta"] {
         println!("cargo:rerun-if-changed={dir}/icon.ico");
     }
+    println!("cargo:rerun-if-changed=icons/tray.ico"); // include_bytes! in app_icon.rs
 }
 
 /// The Last.fm API account (docs/integrations/LASTFM.md §2): built into the exe, as Last.fm expects of a

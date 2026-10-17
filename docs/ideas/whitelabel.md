@@ -2,7 +2,7 @@
 status: idea
 desk_test: none
 sources: [src-tauri/tauri.conf.json, src-tauri/tauri.beta.conf.json, index.html, src-tauri/src/provider.rs, src/player.ts, src/styles/themes.css, src/styles/skin.css, docs/ops/BETA.md, docs/features/SKINZ.md, docs/features/HIDE-CARDS.md]
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 # White label — DeetsMusic as the base for another brand's player
 
@@ -410,3 +410,73 @@ His plan: the icon ships with a later release, after other build items. Left:
   the exe still held the old frames. `build.rs` now reruns when `icons/icon.ico` or
   `icons-beta/icon.ico` changes (tauri-build does not watch them, and our own
   `rerun-if-changed` lines turn Cargo's default off).
+- **The live taskbar head is small (2026-10-16, found on 0.28.0).** The live window carries
+  Velopack's app ID `velopack.DeetsMusic`, and so do the Start menu and desktop shortcuts
+  (`velo.rs` keeps that ID, or the pin splits from the window). A window that matches a
+  shortcut's app ID gets the SHORTCUT's icon on the taskbar, pinned or not: Explorer takes the
+  exe's 32 frame and shrinks it to 24. Measured on his screenshot at 100 %: live head 14×11 and
+  soft (the 18×15 head × 0.75), dev head 18×14 and crisp (dev has no shortcut, so
+  `app_icon.rs`'s 24 frame shows). The head ×2 does not fit 32, so no whole-number scale helps.
+- **His call (2026-10-16): a city behind the head** (option C), from his Discord badge
+  (`deetsmusic-discord-icon.png`: the head on the Skyline1 city, `src-tauri/nsis/art/skyline.png`).
+  In the 32 frame: the head ×4/3 (24×20, nearest-neighbor, bottom-centered) on a city. The
+  shrunk Skyline1 is mush at this size, so the city is drawn for 32 by hand (his drawing, as the
+  head was). **The tray stays as it is (his words):** head only. The tray takes the 24 frame at
+  150 %, so the tray gets its own head-only frames apart from the window's.
+  - A drawing template for the city was made the same day and then removed unused: his
+    follow-up below took the city from his Discord art.
+  - **His follow-up (2026-10-16): the city comes from his Discord art, not a new drawing.** In
+    `deetsmusic-discord-icon.png` (600 px) the head is 18×15 cells of 20 px at (120, 165), the
+    city 5 px cells. Each frame is a square crop shrunk so the head lands on whole pixels, the
+    city averaged, his head laid on top pixel-true (the 32: crop 480 at (60, 45), head ×4/3).
+  - **Can the live button be crisp? (probed 2026-10-16).** The installed 0.28.0 exe holds the
+    24 frame (read back: head 18×15). The shell ignores it: asked through
+    `IShellItemImageFactory` for 24 / 30 / 32 it hands the 32 frame shrunk, for 36 / 48 the
+    48 frame (a probe `.ico` with one solid color per frame, 16 to 256). Its 24 px output
+    matches the screenshot (head 14×12). Its shrink is no plain filter (closest: Hamming, mean
+    error 2.4 / 255). So any shortcut-matched window is soft at 100 %, 125 % and 150 %, and
+    exact only at 200 % (48). Other apps look fine because smooth art hides a 0.75 shrink;
+    pixel art does not.
+  - **The one route to exact sizes: package identity** (a sparse package, "packaging with
+    external location", Windows 10 2004+). A process with identity gets the package's
+    `Square44x44Logo` on the taskbar, picked per size from `targetsize-N_altform-unplated` PNGs
+    through `resources.pri`, in place of the window icon (Microsoft Learn, "Grant package
+    identity by packaging with external location"; field reports, not Microsoft: blue corners or
+    a grey plate when `resources.pri` is missing from the install folder). What it takes here: a
+    signed identity `.msix` from `release.mjs` (Artifact Signing signs it); an `<msix>` element
+    in the exe's side-by-side manifest; registration in Velopack's install / update hooks and
+    removal on uninstall (`velo.rs`); `uap10:RuntimeBehavior="win32App"` so nothing is
+    virtualized. The app ID becomes the package's, so Velopack's shortcuts
+    (`velopack.DeetsMusic`) and existing pins no longer match the window: they must be rewritten
+    or replaced, and `media.rs`'s `is_self` reads the app ID. Not proven here: that the sparse
+    taskbar draws `targetsize-24` 1:1 (no source shows it verified). A spike decides it.
+  - **The spike (2026-10-16, his go; worktree `../DeetsMusic-identity`, branch `identity-spike`,
+    files in `spike/identity/`, uncommitted).** A copy of the installed Beta 0.28.0-beta.6 exe in
+    `spike/app/` (not under `%LOCALAPPDATA%`: the Claude app's package redirects writes there, so
+    the first copy was invisible to an outside process). An `<msix>` element merged into the
+    exe's manifest with `mt.exe`; an identity package (`AppListEntry="none"`, `win32App`,
+    mediumIL) with the city PNGs as `Square44x44Logo.targetsize-N_altform-unplated` and a
+    `resources.pri` (`makepri`), packed with `makeappx /nv`, signed by Artifact Signing (its
+    subject is the `Publisher`), registered with `Add-AppxPackage -ExternalLocation` through
+    WMI. The running exe read back `DeetsMusic.IdentitySpike_qj2qnjz744ejt!DeetsMusicSpike`.
+    Taskbar captures on the ultrawide (per-monitor-v2 capture), each asset searched for in the
+    strip (`match.py`):
+    - **100 %: the 24 asset, 0 of 576 pixels differ.** Exact.
+    - **125 %: the 30 asset at its own size**, sharp top to bottom, but at a fractional x
+      (¼ px in one capture, ½ px in the next; bilinear, mean error < 1 / 255 once shifted).
+      Likely the centered taskbar: a 55 px button centers a 30 px icon on a half pixel, and the
+      start point moves with the button count. Not tested: a left-aligned taskbar.
+    - **150 %: the 36 asset, 0 of 1296 pixels differ.** Exact.
+    Cleaned up the same day: the spike exe stopped, the package removed. Not tested by the
+    spike: pinning with `AppListEntry="none"`, Velopack's shortcuts (`velopack.DeetsMusic`) and
+    existing pins against the new app ID, an update (re-registration), an uninstall, the media
+    controls (`media.rs` `is_self`), notifications.
+  - The build on paper: `docs/ops/IDENTITY.md` (2026-10-16), its forks §7 and probes §8.
+  - **The cheap partial: pre-compensated 32 and 48 frames**, tuned so the shell's shrink lands
+    near the 24 and 36 pictures. Sharper, never exact; tuned against this PC's shell; 125 %
+    (32 → 30) gets worse.
+  - Open fork (his): the window's other frames. The live button at 150 % shrinks the 48 frame
+    (today the 24 ×2), and the dev or shortcut-less window shows 24 / 30 / 36. A city there
+    needs a second drawing at 24; without it those places show the head alone. The title bar
+    (16, 20) keeps the head alone, with the tray. The 64 and up frames follow the 32 frame.
+    `npm run icons` learns the city drawings once they exist.

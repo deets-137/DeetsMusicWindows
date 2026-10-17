@@ -144,6 +144,8 @@ cpSync(join(root, "src-tauri", "target", "release", exeName), join(stage, exeNam
 for (const [from, to] of Object.entries({ ...conf.bundle.resources, ...(overlay.bundle?.resources ?? {}) })) {
   if (to !== null) cpSync(join(root, "src-tauri", from), join(stage, to), { recursive: true });
 }
+// The signed identity package, its logos and resources.pri (docs/ops/IDENTITY.md §3.1).
+step("identity package", `node scripts/identity-pack.mjs "${stage}"${BETA ? " --beta" : ""}`, signEnv);
 
 // 4. Pack and sign. The previous full package in `out` makes the delta.
 mkdirSync(out, { recursive: true });
@@ -165,7 +167,10 @@ step(
     `--outputDir "${out}"`,
     `--releaseNotes "${notesFile}"`,
     "--framework webview2",
-    "--shortcuts StartMenuRoot",
+    // No shortcuts: the identity package is the Start entry, and a .lnk carrying the app's ID
+    // would make the taskbar draw it soft (IDENTITY.md §3.5). identity.rs writes a plain one only
+    // when identity cannot be had.
+    "--shortcuts None",
     `--signTemplate "node \\"${SIGN_SCRIPT}\\" {{file...}}"`,
   ].join(" "),
   signEnv,

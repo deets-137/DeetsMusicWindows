@@ -132,5 +132,12 @@ features = [
   # The Velopack spike's CLI stop (velo.rs): a process snapshot. A feature of the crate the app
   # already has; no new download.
   "Win32_System_Diagnostics_ToolHelp",
+  # Package identity (identity.rs, docs/ops/IDENTITY.md): register / find / remove the identity
+  # package, read this process's package, write the plain Start shortcut's app ID. Features of
+  # the crate the app already has; no new download.
+  "ApplicationModel",
+  "Management_Deployment",
+  "Win32_Storage_Packaging_Appx",
+  "Win32_Storage_EnhancedStorage",
 ]
 

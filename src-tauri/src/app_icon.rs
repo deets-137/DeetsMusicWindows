@@ -1,9 +1,11 @@
-//! Each place gets its own hand-drawn frame of `icons/icon.ico` (whitelabel.md §10.6).
+//! Each place gets its own hand-drawn frame (whitelabel.md §10.6, IDENTITY.md §3.3).
 //!
 //! Tauri gives a window ONE picture, the first frame of the `.ico`, and Windows scales it to
 //! every size it needs. That blurs pixel art: the 16 grew to 24 on the taskbar (2026-10-15).
-//! So the window gets two icons from the exe's own icon resource, each loaded at the size it
-//! is drawn at (Windows picks the matching frame), and the tray gets the frame for its size.
+//! So the window's big icon (its taskbar button when the app has no package identity) comes
+//! from the exe's own icon resource, `icons/icon.ico` (the city), loaded at the size it is drawn
+//! at, and its small icon (Alt+Tab) and the tray come from `icons/tray.ico`: the head alone,
+//! filling the box (his words, 2026-10-16: the tray stays the head).
 //!
 //! A scale change while the app is open: the window hears it as `ScaleFactorChanged` (tray.rs
 //! calls `set_window`). The tray has no window of its own that hears it, so the main window is
@@ -24,8 +26,8 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::HiDpi::{GetDpiForSystem, GetDpiForWindow, GetSystemMetricsForDpi};
 use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    FindWindowW, LoadImageW, SendMessageW, ICON_BIG, ICON_SMALL, IMAGE_ICON, LR_DEFAULTCOLOR, SM_CXSMICON,
-    WM_DISPLAYCHANGE, WM_DPICHANGED, WM_SETICON, WM_SETTINGCHANGE,
+    CreateIconFromResourceEx, FindWindowW, LoadImageW, SendMessageW, ICON_BIG, ICON_SMALL, IMAGE_ICON, LR_DEFAULTCOLOR,
+    SM_CXSMICON, WM_DISPLAYCHANGE, WM_DPICHANGED, WM_SETICON, WM_SETTINGCHANGE,
 };
 
 /// The id tauri-build gives the app icon in the exe's resources.
@@ -36,7 +38,8 @@ const TASKBAR_AT_96: u32 = 24;
 /// The tray's id (tray.rs builds it).
 const TRAY_ID: &str = "main";
 
-static ICO: &[u8] = include_bytes!("../icons/icon.ico");
+/// The tray's and the small window icon's frames (`npm run icons` writes it).
+static TRAY_ICO: &[u8] = include_bytes!("../icons/tray.ico");
 /// The tray frame's size now, so a broadcast that changed nothing does nothing.
 static TRAY_SIZE: AtomicU32 = AtomicU32::new(0);
 static APP: OnceLock<AppHandle> = OnceLock::new();
@@ -58,12 +61,31 @@ fn load(size: u32) -> Option<isize> {
     Some(handle.0 as isize)
 }
 
+/// The `tray.ico` frame for `size` as an icon handle (the small window icon): the head alone.
+fn load_tray(size: u32) -> Option<isize> {
+    let dir = ico::IconDir::read(std::io::Cursor::new(TRAY_ICO)).ok()?;
+    let entry = pick(dir.entries(), size)?;
+    // Version 0x00030000 is the icon format; the entry's bytes are its PNG or DIB as stored.
+    let handle = unsafe { CreateIconFromResourceEx(entry.data(), true, 0x0003_0000, size as i32, size as i32, LR_DEFAULTCOLOR) }.ok()?;
+    Some(handle.0 as isize)
+}
+
+/// The frame of `size`; a missing size takes the next larger frame, else the largest.
+fn pick(entries: &[ico::IconDirEntry], size: u32) -> Option<&ico::IconDirEntry> {
+    entries
+        .iter()
+        .filter(|e| e.width() >= size)
+        .min_by_key(|e| e.width())
+        .or_else(|| entries.iter().max_by_key(|e| e.width()))
+}
+
 fn set_for_hwnd(hwnd: HWND, label: &str) {
     let dpi = unsafe { GetDpiForWindow(hwnd) }.max(96);
     let small = unsafe { GetSystemMetricsForDpi(SM_CXSMICON, dpi) }.max(16) as u32;
     let big = (TASKBAR_AT_96 * dpi + 48) / 96;
     for (kind, size) in [(ICON_SMALL, small), (ICON_BIG, big)] {
-        match load(size) {
+        let icon = if kind == ICON_SMALL { load_tray(size) } else { load(size) };
+        match icon {
             // The window keeps the handle; the old one (Tauri's) is still owned by Tauri.
             Some(h) => unsafe {
                 SendMessageW(hwnd, WM_SETICON, Some(WPARAM(kind as usize)), Some(LPARAM(h)));
@@ -104,16 +126,10 @@ fn tray_size() -> u32 {
     unsafe { GetSystemMetricsForDpi(SM_CXSMICON, dpi) }.max(16) as u32
 }
 
-/// The `.ico` frame of `size`; a missing size takes the next larger frame.
+/// The tray's `tray.ico` frame of `size`; a missing size takes the next larger frame.
 fn frame(size: u32) -> Option<Image<'static>> {
-    let dir = ico::IconDir::read(std::io::Cursor::new(ICO)).ok()?;
-    let entry = dir
-        .entries()
-        .iter()
-        .filter(|e| e.width() >= size)
-        .min_by_key(|e| e.width())
-        .or_else(|| dir.entries().iter().max_by_key(|e| e.width()))?;
-    let img = entry.decode().ok()?;
+    let dir = ico::IconDir::read(std::io::Cursor::new(TRAY_ICO)).ok()?;
+    let img = pick(dir.entries(), size)?.decode().ok()?;
     Some(Image::new_owned(img.rgba_data().to_vec(), img.width(), img.height()))
 }
 

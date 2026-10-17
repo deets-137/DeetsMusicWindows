@@ -1,0 +1,10 @@
+{
+  "_doc": "The package identity (docs/ops/IDENTITY.md). Read by build.rs (the exe's <msix> element), scripts/release.mjs (the signed .msix) and identity.rs (registration). `version` is the identity version, NOT the app's: raise it when the manifest or the logos change, so the updated hook registers the new package (§3.4). `publisher` must equal the Artifact Signing subject exactly, or the package family (so the app ID, so every pin) changes; release-check holds it.",
+  "version": "1.0.0.0",
+  "publisher": "CN=Aditya Sundaram, O=Aditya Sundaram, L=San Jose, S=ca, C=US",
+  "publisherDisplay": "Aditya Sundaram",
+  "flavors": {
+    "live": { "name": "DeetsMusic", "app": "DeetsMusic", "display": "DeetsMusic", "exe": "DeetsMusic.exe" },
+    "beta": { "name": "DeetsMusicBeta", "app": "DeetsMusicBeta", "display": "DeetsMusic Beta", "exe": "DeetsMusicBeta.exe" }
+  }
+}

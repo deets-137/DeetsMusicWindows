@@ -35,6 +35,10 @@ const SIZE_CAP: u64 = 50 * 1024 * 1024;
 /// with a downloaded update waiting applies it and restarts first.
 pub fn startup() {
     VelopackApp::build()
+        // Package identity (identity.rs, IDENTITY.md §3.4): register at install, again on an
+        // update only when the identity version rose, remove at uninstall.
+        .on_after_install_fast_callback(|_| crate::identity::on_install())
+        .on_after_update_fast_callback(|_| crate::identity::on_updated())
         .on_before_update_fast_callback(|_| {
             stop_clis();
         })
@@ -70,6 +74,7 @@ pub fn stop_clis() -> usize {
 /// deleted exe, MCP-INSTALL.md fork 6A), stop the CLIs, and remove the start-with-Windows value
 /// when it points into this install. Velopack then deletes the folder; the data folder stays.
 fn before_uninstall() {
+    crate::identity::on_uninstall();
     if let Some(dir) = cli_dir() {
         let exe = dir.join(format!("{}.exe", crate::settings::cli_name()));
         if exe.is_file() {

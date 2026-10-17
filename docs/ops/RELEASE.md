@@ -184,10 +184,14 @@ npm run release     # secrets → cli:build → sign cli → tauri build --no-bu
 3. **`tauri build --no-bundle`** (`bundle.active` is false): the front end into the exe, no
    installer. tauri-build still copies `bundle.resources` next to the exe.
 4. **Stage** — `src-tauri/target/velopack-stage/` gets the exe and every resource
-   (`cli\`, `extension\`, `mcpb\`; the beta's map drops the full CLI).
+   (`cli\`, `extension\`, `mcpb\`; the beta's map drops the full CLI). Then
+   **`scripts/identity-pack.mjs`** adds the signed identity package `DeetsMusic.identity.msix`,
+   its logos (`Assets\`) and `resources.pri` (IDENTITY.md §3.1; `makepri` and `makeappx` from
+   the Windows SDK, signed by `sign.mjs`).
 5. **`vpk pack`** into `installers/velopack/<Id>-<channel>/`, with `--signTemplate` calling
    `sign.mjs` on every exe it packs (§6.9), `--releaseNotes` from RELEASE-NOTES.md,
-   `--framework webview2`, `--shortcuts StartMenuRoot`, `--channel`. The previous full package
+   `--framework webview2`, `--shortcuts None` (since 2026-10-16: the identity package is the
+   Start entry, IDENTITY.md §3.5), `--channel`. The previous full package
    in that folder makes the delta. Then the Portable.zip that `vpk` always writes is deleted:
    nothing publishes it.
 6. **Sign the feed** `releases.<channel>.json` with the updater key (`tauri signer sign`).

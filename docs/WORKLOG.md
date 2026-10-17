@@ -12,6 +12,28 @@ updated: 2026-10-16
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-16 (shixtheenth) — package identity and the city icon, built (uncommitted)
+
+**His asks:** why the live taskbar icon is smaller than dev's; "no way to make it crisp like
+other apps do? … more research"; the city from his Discord icon instead of a new drawing; the
+spike, the design, the probes, then "start the build on the shixtheenth branch itself"; no
+old-pin notice ("im the only user for now"); the tray stays the head.
+- **Cause** (whitelabel.md §10.6): the live window shares Velopack's app ID with its Start
+  shortcut, so the taskbar shows the shortcut's icon, and the shell always shrinks the exe's 32
+  frame to 24 (a solid-color probe `.ico`). No `.ico` change can fix it.
+- **Spike** (worktree `../DeetsMusic-identity`, branch `identity-spike`): a sparse identity
+  package draws the exact logo: 100 % and 150 % pixel for pixel, 125 % the right logo at a
+  fractional x. **Probes** (IDENTITY.md §8.1): any `.lnk` with the package's app ID makes the
+  button soft again, so his F1 A and F3 A were re-opened; the package's own Start entry and a
+  packaged pin work (his pin, his look at Installed apps); the unpin call works (P5′).
+- **Built** (IDENTITY.md §9): `identity.rs`, `identity-pack.mjs`, `identity.json` + the manifest
+  template, `build.rs`'s `<msix>` element, `release.mjs` (`--shortcuts None`), release-check 12,
+  `icons.py` (the city frames from `deets-city-600.png`, `tray.ico`, the logos), `app_icon.rs`
+  (the tray and the small icon from `tray.ico`). Docs: IDENTITY.md, RELEASE.md, VELOPACK.md,
+  CLAUDE.md, HANDOFF. The tray finding came from the "Tray icon size discrepancy" session.
+- **Checked:** `identity-pack.mjs` alone (a valid signed package); cargo check; npm run check.
+  **Not run:** a release build, an install, the desk test (§9.2).
+
 ## 2026-10-16 (shixtheenth) — rooms: a long queue and stations, built
 
 **His go:** "lets start the build (feel free to deploy, commit and push the worker repo as
