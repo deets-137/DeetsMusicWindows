@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: none
 sources: [src/diag.ts, src-tauri/src/log.rs, src-tauri/src/bridge.rs, src-tauri/src/report.rs, src-tauri/src/watchdog.rs]
-updated: 2026-10-14
+updated: 2026-10-17
 ---
 # Logging — the rolling log file
 
@@ -431,3 +431,11 @@ INFO  apple: back-off off
 
 The hourly line is written only when the hour had a call, and once more at quit. Each has a
 `diag` twin (`apple:calls`, `apple:backoffArm`, `apple:backoffSkip`, `apple:backoffOff`).
+
+## The page sample — `page:sample` (BUILT 2026-10-17, telemetry builds only)
+
+A `dev:app` or `dev:app -- --built` window writes one `page:sample` ring line at each song start
+(`why: "song"`), or on `__pageSample.take()` (`why: "hand"`): heap, DOM, animations, live timers
+and the source lines that made the most, the listener set sizes, songs played. Counts only, never a
+title or an id. A failed sample writes `page:sampleErr`. A release has neither line. The fields and
+how to read them: DEBUGGING.md § The page sample.

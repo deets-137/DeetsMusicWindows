@@ -42,6 +42,7 @@ import type { Station } from "./radio";
 import { log, events as diagEvents, flush as diagFlush } from "./diag";
 import { onToast, type ToastKind } from "./toast";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
+import { onSettingsChange } from "./settings-store";
 
 export interface NpState {
   active: boolean;
@@ -406,6 +407,15 @@ export function initNpBus(): void {
       lastMuted = m;
       publish(true);
     }
+  });
+
+  // The record row changed (a hand pick, the agent, the tray's storage event): `/health` follows.
+  // Until 2026-10-17 nothing published here, so a Still → Spin by hand left `vinyl: "still"` on
+  // the hub until the next look or surface change, and the heaviness sampler filed every sample
+  // under it (WORKLOG 2026-10-17 *the stale record*). A microtask: skin-settings.ts writes
+  // `data-press-vinyl` in its own listener, and this reads it after, whichever ran first.
+  onSettingsChange((k) => {
+    if (k === "pressVinyl") queueMicrotask(publishAppearance);
   });
 
   publishAppearance();

@@ -14,6 +14,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { TrackHandle } from "./queue";
 import * as diag from "./diag";
 import { toast } from "./toast";
+import { songStarted, songListened } from "./page-counts";
 
 /** Fraction of a track that must play for it to count as a "full" listen under the
  *  default rule. The rule itself is a setting (SETTINGS.md / FUTURE-SETTINGS §7). */
@@ -162,6 +163,7 @@ function startEvent(cur: TrackHandle): void {
       return null;
     });
   openEvent = { id, msListened: 0, completed: false, lastfm: false };
+  songStarted(); // the page sample, in telemetry builds (page-sample.ts)
 }
 
 /** Finalize the open event row (next-song-starts / app-close). Safe to call bare. */
@@ -170,6 +172,7 @@ export function finalizeEvent(): void {
   openEvent = null;
   if (!ev) return;
   const msListened = Math.round(ev.msListened);
+  songListened(msListened);
   const completed = ev.completed;
   void ev.id.then((id) => {
     if (id === null) return; // the start write failed — nothing to finalize

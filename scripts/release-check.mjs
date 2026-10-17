@@ -163,7 +163,8 @@ if (signed.length) {
   const assets = join(root, "dist", "assets");
   const js = existsSync(assets) ? readdirSync(assets).filter((f) => f.endsWith(".js")) : [];
   // `__marks`: the shots runner's timeline marks (src/marks.ts), on the same gate.
-  const leaked = js.filter((f) => /\[perf\] frames|__marks/.test(readFileSync(join(assets, f), "utf8")));
+  // `page:sample`: the page sample and its timer wrapper (src/page-sample.ts, 2026-10-17).
+  const leaked = js.filter((f) => /\[perf\] frames|__marks|page:sample/.test(readFileSync(join(assets, f), "utf8")));
   if (!js.length) failures.push("dist/assets has no JS — build before release-check");
   else if (leaked.length) failures.push(`dev telemetry shipped in ${leaked.join(", ")} — VITE_PERF was set for this build`);
 }

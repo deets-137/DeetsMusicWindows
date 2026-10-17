@@ -1,4 +1,5 @@
 import { setting } from "./settings-store";
+import { watchSet } from "./page-counts";
 // The playback queue model — the source of truth for what plays, decoupled from
 // MusicKit (player.ts feeds MusicKit a small window of this). Three zones:
 //
@@ -58,6 +59,7 @@ function logPlay(entry: QueueEntry): void {
 // ── Subscriptions (the future queue UI renders off this) ─────────────────────
 type Listener = () => void;
 const listeners = new Set<Listener>();
+watchSet("queue", listeners); // the page sample reads its size (page-counts.ts)
 export function onQueueChange(cb: Listener): () => void {
   listeners.add(cb);
   return () => listeners.delete(cb);

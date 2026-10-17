@@ -12,6 +12,68 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (late afternoon) — the stale record on `/health`
+
+**The ask (a session started from another):** live 0.29.0 (launched 14:42) answered
+`"vinyl":"still"` on `/health` while `deetsmusic settings get pressVinyl` said `spin`. Find where
+"still" comes from and fix the cause. Not committed.
+- **The port is right.** 47825 is the live app (PID 2652, `current\DeetsMusic.exe`); the dev app
+  started at 15:24 holds 47826. The CLI's read at 15:31:12 is in the live log. So one process
+  gave both answers.
+- **The cause:** `publishAppearance()` (np-bus.ts) ran at launch, on a look change and on a surface
+  change, never on a record-row change. The hub kept the value from launch.
+- **The record WAS Still at launch, and since 02:30 last night.** The CPU hunt's agent calls
+  set Record player to Still (#9, 51-byte body = `set pressVinyl still`) and Animate backgrounds
+  to Off (#13, 55 bytes). None set either one back: #10 and #14–16 are 35- and 41-byte `get`s.
+  The live app's localStorage log (`EBWebView\Default\Local Storage\leveldb\000068.log`) holds the
+  settings blob as it was rewritten: spin → still → backgrounds off → (three other writes) →
+  spin. That last write came from no agent call, so it was a hand change (a Settings row change
+  logs nothing). Both launches (02:40 and 14:42) published the store's value, and `/health`
+  said still at 15:08, so the store said Still at 14:42. The hand change to Spin came between
+  14:42 and the first CLI read at 15:22.
+- **So the WORKLOG *CPU hunt* line "after the settings were changed and put back, 33–40 %" was
+  measured with the record Still and Animate backgrounds Off.** Nothing was put back.
+  **Animate backgrounds is still Off on live** (`settings get backgroundMotion` = off at 15:31).
+  It is his setting, so this session left it alone.
+- **The samples it touches** (`scripts/heaviness-samples.log` in the main checkout, all
+  `installed`): 15:08 (37.6 %, renderer 17.5 %) and 15:18 (11.4 %) say `vinyl=still`, and the
+  CPU fits a still record (last night: Still and playing 36 %). **15:29 (94 %, renderer 55.6 %)
+  says `vinyl=still` but fits a spinning record: mislabeled.** Every later live sample says
+  `still` until the live app restarts on a build with this fix (or his look or surface changes).
+  The `dev` rows are right.
+- **The fix:** np-bus.ts publishes on every `pressVinyl` change, in a microtask, so it reads
+  `data-press-vinyl` after skin-settings.ts has written it, whichever listener runs first. The
+  bridge.rs comment named the old values ("plate"); now it names spin | still | off. No unit
+  test: the rule is a listener's wiring, not a pure rule.
+- **Checked on the second dev app** (port 47827, this worktree): launch spin/spin; set still →
+  `/health` still; spin → spin; off → off; spin → spin. Set still, stop the exe, relaunch:
+  `/health` still, store still; set spin → `/health` spin (the live case). `npm run check`: tsc
+  ok, 311 tests pass. docs:check fails 8 links to `../DeetsSolutions` and `../DeetsOTD`; they
+  do not resolve from this nested worktree. Cargo did not run after that, and the Rust change
+  is a comment only.
+- **Desk test (his, after a build with this fix):** 1. Launch, Press skin. `curl
+  http://127.0.0.1:<port>/health` shows the `vinyl` value of Settings › Skin settings › Record
+  player. 2. Change the row to Still, Off, then Spin by hand. After each change, `/health` shows
+  the new value at once. 3. Ask an agent to set Still and then Spin; `/health` follows.
+  4. Quit on Still, launch: `/health` shows still; change to Spin: it shows spin.
+- **The sampler stopped** (his ask, PID 47916, started 15:08). His question: does it help find
+  the CAUSE of the growth? Only partly: it names the process that grows, not what grows in the
+  page, because the installed app has no CDP port.
+- **The page sample, designed and built (his calls):** a dev tool behind `TELEMETRY`, not in a
+  release; the ring and `/health` both; one sample per song start; live timers named by the
+  source line that made them. DEBUGGING.md § The page sample (the design, the as-built record,
+  the desk test). New files: `src/page-sample.ts`, `src/page-counts.ts`, `src/source-map-lite.ts`
+  (+ its test), `docs/ops/checks/page-sample.mjs`. Changed: main.ts, stats.ts, the six listener
+  sets' modules (one `watchSet` line each), bridge.rs and lib.rs, vite.config.ts (hidden maps for
+  `VITE_PERF` only), release-check 5, web/handlers.ts, heaviness-sample.ps1.
+- **Decided inside his calls (for him to see):** the timer lines are the top 3 per kind; the
+  six listener sets named above; a sample still running skips the next ask; the window writes the
+  ring line (not Rust, as the design said); `page-counts.ts` ships in a release (names and
+  counts, read by nothing there); the sampler's CDP line is now `dev1-page`, and `target-second\`
+  counts as `dev`; `x3`, not `×3` (PowerShell 5.1 garbled the sign).
+- **Checked:** 14 checks pass on the second dev app (`--built`); a real song start wrote
+  `why: "song"`; a plain `vite build` carries no map and no sample. Not committed.
+
 ## 2026-10-17 (afternoon) — a slow start on live; the sampler started; HANDOFF pruned for 0.29.0
 
 **His asks:** live took a while to load; is the sync hurting playback? Did the app know about

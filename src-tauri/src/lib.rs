@@ -599,6 +599,7 @@ pub fn run() {
             bridge::np_snapshot,
             bridge::np_command,
             bridge::appearance_publish,
+            bridge::page_sample_publish,
             bridge::bridge_info,
             bridge::bridge_log,
             log::diag_flush,

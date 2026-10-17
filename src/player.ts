@@ -36,6 +36,7 @@ import { resumePoint } from "./resume-point";
 import { idleSkip } from "./idle-skip";
 import { launchMark } from "./launch-perf";
 import { WEB_ROOMS } from "./platform";
+import { watchSet } from "./page-counts";
 
 declare global {
   interface Window {
@@ -516,6 +517,7 @@ function artworkUrlOf(item: any, px: number): string | undefined {
 
 type Listener = (s: PlayerState) => void;
 const listeners = new Set<Listener>();
+watchSet("player.state", listeners); // the page sample reads these sizes (page-counts.ts)
 
 /** Subscribe to playback state. Fires on play/pause and track change. Returns an unsubscribe fn. */
 export function onPlayerState(cb: Listener): () => void {
@@ -557,6 +559,7 @@ export interface PlayerProgress {
 
 type ProgressListener = (p: PlayerProgress) => void;
 const progressListeners = new Set<ProgressListener>();
+watchSet("player.progress", progressListeners);
 
 /** Subscribe to playback position. Fires several times a second while playing. Returns an unsubscribe fn. */
 export function onPlayerProgress(cb: ProgressListener): () => void {
@@ -3651,6 +3654,7 @@ function readStoredLevel(): number {
 
 /** Push the current effective level onto the live instance (no-op pre-init). */
 const volumeListeners = new Set<() => void>();
+watchSet("player.volume", volumeListeners);
 /** Fires after any level/mute change, whoever made it (pill, stage row, tray, agent). */
 export function onVolumeChange(cb: () => void): () => void {
   volumeListeners.add(cb);
