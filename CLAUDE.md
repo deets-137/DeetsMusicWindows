@@ -151,7 +151,9 @@ for word, with RELEASE.md's section numbers.
 - `LISTENERS.md` — BUILT 2026-10-12 (in 0.27.0), desk test passed 2026-10-13: a song's Last.fm
   listener count (its "rarity"); `track.getInfo` cached a month in `listen_counts`,
   `lastfm_listeners`, `src/listeners.ts`; the badge on Now Playing (§4, his design). Genius has
-  no play data (§1).
+  no play data (§1). §8 DESIGNED 2026-10-17, not built: the song facts box on the Song Credits
+  page, the About cell's notes order (Apple, then Last.fm; the song, then its album) and a
+  Settings row to pick one source or none.
 - `LOCAL-RADIO.md` — DESIGNED 2026-10-13, not built: web stations from Radio Browser in the
   Radio card (a Local shelf by the user's city, search for any station), played through a Rust
   loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms
@@ -259,8 +261,8 @@ is open (§10.3); a new `productName` is a second install, moved by hand (§10.4
 Deets-head icon is drawn in `icon-template/` (§10.6). `album-notes.md` — an idea (2026-10-15):
 Apple's editorial notes in the album's facts box (the short note in the About cell, the full note
 on a click, song names as mentions); probed live (§1: albums have notes, sometimes a track-by-track
-interview; artists have none for us); his calls (§3: Apple's notes only, every surface, a mention
-plays the song); §6 a Library album's real artist from the sync's `include=albums`, no extra call.
+interview; artists have none for us); his calls (§3: Apple first then Last.fm since 2026-10-17,
+every surface, a mention plays the song); §6 a Library album's real artist from the sync's `include=albums`, no extra call.
 `apple-calls.md` — an idea (2026-10-15): the ledger of every Apple call site (§2), a measured day
 (§1), the savings (§3: the explained count, mirror dates in one call, new artists from new songs),
 the Library ⟳'s silent refusal (§4), a song's primary artist from Apple at no extra call (§5,

@@ -12,6 +12,20 @@ updated: 2026-10-16
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 — the song facts box, scoped
+
+**His ask:** scope the stats panel on a song's credits page. Designed, not built:
+features/LISTENERS.md §8.
+- **His calls:** the full 2×2 box (Tags, Listening Stats, About, Links); presentation mode for a
+  song in Max; the About cell's order is the song first, then the source (Apple's song part,
+  Last.fm's song wiki, Apple's album note, Last.fm's album wiki); a Settings row to use one
+  source or none; the headings *About* and *About the album*.
+- **Changed:** ideas/album-notes.md §3 N1 ("Apple's notes only", 2026-10-15) is now Apple first,
+  Last.fm as the fallback. The change is dated in that doc.
+- **Probed:** six songs on `track.getInfo`. Large songs have tags and a wiki; small ones often
+  have neither; tags are noisy (a radio station's name in the top five).
+- **Next:** the build, before album notes (§8.3).
+
 ## 2026-10-17 — the Filter desk test passed; read the record before you call a test open
 
 **His asks:** mark the Filter rules desk test passed; check the logs before calling a desk test

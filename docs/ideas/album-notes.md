@@ -2,7 +2,7 @@
 status: idea
 desk_test: none
 sources: [src/info-box.ts, src/present.ts, src/library-model.ts, src/media-levels.ts, src/listeners.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs]
-updated: 2026-10-15
+updated: 2026-10-17
 ---
 # Album notes — Apple's editorial notes in the album's facts box
 
@@ -81,6 +81,11 @@ A sample of his library answers it (§5).
 - **N1: Apple's notes only.** Last.fm's wiki leaves the About cell entirely ("scrub Last.fm's
   notes"). The cell shows Apple's short note, or nothing. Not taken: Apple first with Last.fm as
   the fallback; Last.fm first; both.
+  **Changed 2026-10-17 (his call, in the song box design, LISTENERS.md §8.2):** Apple first,
+  then Last.fm. On the album page the About cell shows Apple's short note, else Last.fm's wiki,
+  else nothing. On the song page the song comes before the album: Apple's part about the song,
+  Last.fm's song wiki, Apple's album note, Last.fm's album wiki. A Settings row lets a user pick
+  one source or none (LISTENERS.md §8.4).
 - **N2: every surface.** In Max, the card fills and the note grows from the cell, as Listening
   Stats does. In Midi and Mini, the note opens over the card's song list, inside the card. Not
   taken: Max only.
@@ -104,10 +109,11 @@ A sample of his library answers it (§5).
 - The hop and its count go through `apple_calls.rs` (APPLE-CALLS.md), as a background job.
 
 **The box.**
-- **Last.fm's wiki goes (N1).** `albumInfoHTML` no longer draws the About from `i.wiki`;
-  `wikiSentences` and `ABOUT_SENTENCES` go if nothing else uses them; `ALBUM_INFO_HINTS.about`
-  becomes Apple's. The `album_info.wiki` column stays (no schema change), unread. LISTENERS.md
-  §7.2 and §7.3 get a line that the About is Apple's since this build.
+- **Last.fm's wiki stays as the fallback (N1 as changed 2026-10-17).** `albumInfoHTML` draws the
+  About from Apple's short note when there is one, else from `i.wiki`, by the source row
+  (LISTENERS.md §8.4). `ALBUM_INFO_HINTS.about` names the source shown. The track-by-track
+  parts of `standard` also feed the song page's About (LISTENERS.md §8.3 step 1), so the
+  parse that finds the song headings for N3 serves both.
 - Today the box draws only when Last.fm answers *have*. With notes, it draws when either source
   has something (Last.fm's tags and counts, Apple's note); a missing section leaves its cell
   empty, as now.

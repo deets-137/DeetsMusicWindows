@@ -207,10 +207,15 @@ each step that touches those calls.
 
 - **The Library ⟳'s hint on a refused click** (2026-10-15): the spin part is built (Build order
   step 1); the hint words and the nudge are a draft for him to edit. ideas/apple-calls.md §4.
-- **Album notes** (2026-10-15): Apple's editorial notes in the album's facts box, Apple's only
-  (Last.fm's wiki leaves the About cell); the full note opens on every surface; a song mention
-  plays the song in the album. Every fork closed; three probes before the build (§5).
-  ideas/album-notes.md.
+- **Album notes** (2026-10-15): Apple's editorial notes in the album's facts box, Apple first,
+  Last.fm's wiki as the fallback (N1 changed 2026-10-17); the full note opens on every surface;
+  a song mention plays the song in the album. Every fork closed; three probes before the build
+  (§5). ideas/album-notes.md.
+- **The song facts box** (2026-10-17): the 2×2 Last.fm box on the Song Credits page, its stats
+  cell opens presentation mode in Max; the About cell's order (Apple's song part, Last.fm's song
+  wiki, Apple's album note, Last.fm's album wiki) and a Settings row to pick one source or none.
+  Every fork his. Build it before album notes; steps 1 and 3 join when those land.
+  features/LISTENERS.md §8.
 
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.

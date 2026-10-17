@@ -2,14 +2,15 @@
 status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
-sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts]
-updated: 2026-10-14
+sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts, src/media-levels.ts, src/present.ts]
+updated: 2026-10-17
 ---
 # Listeners — how rare a song is, from Last.fm
 
 > **Built 2026-10-12.** The read side (§3) and the badge on Now Playing (§4, his design) are
 > built, in 0.27.0; the desk test (§4.3) passed 2026-10-13. §4 is the as-built record: where it disagrees with §1–§3,
-> it is the code.
+> it is the code. **§8, the song facts box on the Song Credits page, is DESIGNED, not built
+> (2026-10-17, every fork his).**
 
 **Terms**
 - **Listeners:** the number of distinct Last.fm users who have scrobbled a song at least once.
@@ -399,3 +400,115 @@ draws it at once.
    Right-click elsewhere on the hero: the album's own menu, as before.
 7. Settings › Playback › *Show album info on the album's page* (wears the N) off: no box, no
    album call.
+
+## 8. The song facts box (on the Song Credits page)
+
+> **Part:** designed · 2026-10-17 · not built. Every fork his (§8.2).
+
+His ask (2026-10-17): the stats panel on a song's credits page. **Terms:** the *song page* is
+the level that **Song Credits** opens (`songLevel` in media-levels.ts; CREDITS.md §7): the
+cover, the title, Details, the Writers rows. The *facts box* is the 2×2 box of §6 and §7.
+
+### 8.0 What the code and Last.fm give (checked 2026-10-17)
+
+- The song page has a hero but no `aside`. The album page puts its box there (§7.3), so the
+  song page can use the same slot. The song page is drawn by the Library and by Search (one
+  drill system since 2026-10-13, CREDITS.md §7.2), so both get the box with no second path.
+- The song's call, `track.getInfo`, already runs (§2) and is cached a month in
+  `listen_counts`. The Now Playing badge reads it. Rust keeps only the counts and the link
+  today (`fetch_count` in lastfm.rs).
+- **Six songs probed live:** a large song has tags and a `wiki` (*Cruel Summer*, *Motion
+  Sickness*, *Juna*, *Weird Fishes/Arpeggi*). A small song often has neither (*Inventing*,
+  Matilda Mann: counts, no tags, no wiki). One song was not on Last.fm (error 6). The tags are
+  noisy: "WSUM 91.7 FM Madison" is in the top five of two songs. The answer also names the
+  song's album.
+- Apple's songs carry no notes of their own (ideas/album-notes.md §1). An Apple album note can
+  be a track-by-track interview: the song's name in bold, then the artist's words on it.
+
+### 8.1 The shape
+
+1. The box sits beside the cover in the song's hero, as the album's does: **Tags** (top left)
+   · **Listening Stats** (top right) · **About** (bottom left) · **Links** (bottom right: the
+   song's Last.fm page). A missing section leaves its cell empty. A song Last.fm does not know
+   and no note for: no box.
+2. It slides in when it lands (hero-slide.ts), folds under a *Song Info* line on a narrow card,
+   and draws in the FIRST paint once its answer is known (a `listenersNow` sync read, as
+   `albumInfoNow`).
+3. **In Max, a click on the stats cell opens presentation mode** for the song
+   (PresentationMode.md), as on albums and artists.
+4. The About cell follows the notes order (§8.3).
+
+### 8.2 His calls (2026-10-17)
+
+1. **The full box**, as on albums: Tags, Listening Stats, About, Links. Not taken: Listening
+   Stats and Links only.
+2. **Presentation mode for a song:** yes, in Max, from the stats cell. Not taken: plain text.
+3. **The notes order, the song first, then the source** (his hierarchy: Apple before Last.fm,
+   the song before its album). The About cell shows the first of:
+   1. Apple's part about this song, from a track-by-track album note
+   2. Last.fm's wiki for the song
+   3. Apple's short note for the album
+   4. Last.fm's wiki for the album
+
+   Not taken: the source first (Apple's song part, Apple's album note, then Last.fm's two).
+   This replaces ideas/album-notes.md §3 N1 ("Apple's notes only"); that doc records the change.
+4. **The album box uses the same order** on its two album steps: Apple's short note, then
+   Last.fm's wiki. Until album notes are built, it shows Last.fm's wiki, as today.
+5. **A Settings row for the source** (§8.4).
+6. **The cell's heading:** *About* for a note about the song; *About the album* for the album's
+   note on the song page. On the album page it stays *About*.
+
+### 8.3 The notes, step by step
+
+| Step | Source | Where it comes from | Cost |
+|---|---|---|---|
+| 1 | Apple, the song's part | the album's `editorialNotes.standard`, the part whose bold heading matches the song (case, accents, quotes and punctuation folded, album-notes.md §1) | the album-notes read: 0 calls from Search and Full, 1 Apple call per Library album the first time (album-notes.md §4), shared with the album page |
+| 2 | Last.fm, the song | `track.wiki.summary` from the `track.getInfo` call already made | 0 new calls |
+| 3 | Apple, the album | `editorialNotes.short` | the same album-notes read |
+| 4 | Last.fm, the album | `album_info.wiki` (§7.3) | one `album.getInfo` per album, the call the album page makes; cached a month |
+
+- Steps 1 and 3 wait on the album-notes build (ideas/album-notes.md). **Build order:** the song
+  box first. Until album notes land, the cell runs steps 2 and 4 only; then 1 and 3 join with
+  no change to the box.
+- Step 4 on the song page asks for the album's Last.fm facts only when steps 1 to 3 gave
+  nothing, and only with the album row on (`showAlbumInfo`).
+- The cell's hover hint names the source and its level: Apple Music or Last.fm, the song or
+  the album. The words are a draft for him.
+- The text: the first two sentences, as the album's About (`wikiSentences`); Apple's note
+  through the same strip of tags.
+
+### 8.4 The source row (his ask, 2026-10-17)
+
+A user who wants only one source, or none, says so in Settings. One row covers every About
+cell (the song's and the album's; the artist box has no About).
+
+- **Its place:** Settings › Playback, beside *Show album info on the album's page*.
+- **Its choices (a draft, his words to edit):** *Notes from* · **Apple and Last.fm** (the
+  default: the order of §8.2 item 3) · **Apple only** · **Last.fm only** · **None** (the About
+  cell stays empty; the rest of the box is unchanged).
+- With one source, the order keeps its song-before-album rule inside that source (Apple only:
+  steps 1, 3; Last.fm only: steps 2, 4).
+- It is a store key with a default and its why, an agent spec and an AGENT.md line, and a
+  `NEW_MARKS` line (CLAUDE.md › the build checklist item 5, 5a). A rule key too, if he wants
+  rules to set it: a fork at build time (RULES.md §19).
+
+### 8.5 What the build touches
+
+- **Rust:** `listen_counts` gains `tags` (JSON) and `wiki` (an `ALTER TABLE … ADD COLUMN`
+  that ignores "duplicate column"). `fetch_count` reads `toptags` and `wiki.summary`. A row
+  cached before this build has NULL tags: the song page treats it as stale and asks once.
+  `lastfm_listeners` takes an optional `max_age_ms`, as the artist and album reads do, for
+  presentation mode's 5-minute re-read.
+- **Front-end:** `ListenCount` gains `tags` and `wiki`; `listenersNow` beside `listenersFor`;
+  `songInfoHTML` and `SONG_INFO_HINTS` in info-box.ts (`data-info-box="song"`, the names for
+  presentation mode); `songLevel` gets `aside` and asks on open, as `albumLevel` does;
+  present.ts gets a song kind and `songInfoFresh`; info-box-menu.ts gets *Hide song info*.
+- **Settings:** its own row, *Show song info on the song's page* (`showSongInfo`, on), as
+  his artist call set (§6: "its own row, not the badge's"), plus the source row (§8.4).
+- **Ledgers:** the hints in ONBOARDING.md §1; the Hide toast in TOASTS.md §5; the new keys in
+  AGENT.md; the motion is the existing slide and present clip (no new motion).
+
+### 8.6 Not in scope
+
+- The user's own play count on the song (not asked for).
+- A background pass over the library (§5 fork 3).
