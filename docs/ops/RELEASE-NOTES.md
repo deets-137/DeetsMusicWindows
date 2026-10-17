@@ -41,6 +41,42 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.29.0 — 2026-10-16
+
+**Suggest Less.** Right-click a song for Suggest Less, Suggest Less of This Artist or Suggest
+Less of This Album. DeetsMusic then skips those songs on stations, in queues and in playlist
+webs (Settings › Playback › Suggest Less), and can tell Apple Music too.
+
+**Library Filter | Rulez Playlists.** The Library's Filter pill picks songs by any condition,
+as a quick filter or a saved one. A Rulez Playlist fills itself from your library, playlists,
+Rewind, Song of the Day, the Diary, loved songs and pins, and stays current: Live, Daily,
+Weekly or Off.
+
+**Rooms: long queues and stations.** A room now plays a queue of any length, your whole
+Library included, and stations. A song that is no longer in Apple's catalog is skipped, and
+the room says so.
+
+**Quick glyphs in right-click menus.** Play, Add to Queue, Add to Library, Favorite and Pin
+sit in a column of glyphs on the right of each song, album and playlist menu.
+
+**Expand Player from Now Playing.** Right-click the cover or the title to open or close the
+full player (Midi and Max).
+
+**An updates button in Max.** Two arrows right of the Compass show when an update is ready.
+Its panel holds the version, Check now, What's new, and Bugs and suggestions.
+
+**New playlist opens Search: On | Never.** Search comes in when you make a playlist, and a new
+row lets it come in where Playlists is the only card too.
+
+**A sharp taskbar icon.** The taskbar button, Start and the media controls now show the Deets
+head on its city, drawn for your exact display scale, no longer shrunk and soft. The tray keeps
+the head alone, and it now fills the tray. **After the update, pin DeetsMusic again:**
+right-click its button › Pin to taskbar, then unpin the old one. The old pin still opens the
+app, but in a second button.
+
+**Fixes.** The line between the two halves of a split pill shows again. A Compass click that
+opens a title bar panel no longer closes it at once.
+
 ## 0.28.0 — 2026-10-16
 
 **Updates in two seconds.** DeetsMusic now updates in place. Press *Restart now* and the app
