@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,34 @@ updated: 2026-10-16
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-17 (afternoon) — a slow start on live; the sampler started; HANDOFF pruned for 0.29.0
+
+**His asks:** live took a while to load; is the sync hurting playback? Did the app know about
+the outage, and would the speed panel have caught it? How far back do the live logs go, and how
+often have plays hung? Write both designs down; start the heaviness sampler; prune HANDOFF.
+- **The slow start (live 0.29.0, launched 14:42:39):** a Library Play click at +6.6 s hung; he
+  pressed Play again at +23.8 s; the queue top-up to `api.music.apple.com` failed at +29.9 s;
+  sound at +40.4 s. In the same second as the top-up failure, Rust's update check failed with
+  `No such host is known` and Last.fm's now-playing send failed. So the PC's name lookups were
+  out for about 30 s. **Not the sync:** the full sync (Apple +4 against 5 found) ran 14:42:42 to
+  14:43:44 with no error and no 429. The blank covers in his screenshot are most likely the same
+  outage (not probed). The `gpu: … kind 4` warning at launch is old and harmless (the renderer
+  is on the Radeon, not WARP).
+- **The app did not know.** The hung play raised no error, so `apple-health.ts` never checked;
+  the top-up failure is only a `console.warn`; `navigator.onLine` stayed true; Rust's Apple
+  calls did not fail. The speed panel as designed (ideas/speedtest.md §2.1) would not have caught
+  it either. Both fixes are one HANDOFF item, his to design later.
+- **Log reach:** two files of 512 KB, so about 3 days (2026-10-14 20:39 on). `play_events` goes
+  back further but has no click time. In those 3 days: 24 play clicks, 22 started in 0.5–2.9 s,
+  one gap of 210 s on 2026-10-14 is a hole in the flushed ring (the songs then played), and
+  today's is the only hang. Also seen: 2 `player:deadNext` (healed), one 8 s AirPlay stall, one
+  8 s stall in a song.
+- **The heaviness sampler** started at 15:08 in a Terminal tab (`-Loop 600`). The planned
+  morning run did not happen; the samples log had stopped on 2026-09-27.
+- **HANDOFF pruned:** live is 0.29.0; the items that shipped in 0.28.0 and 0.29.0 went out
+  (the `twenty-eighth` branch, Velopack, the updates button, Filter's release, the icon's
+  release); the card reveal is committed (`2d3b600`).
 
 ## 2026-10-17 — CPU hunt on live: the record's spin, a paused floor that grows
 
