@@ -30,6 +30,7 @@ import { requestOpenPlaylist } from "./playlists";
 import { requestLibraryDrill } from "./layout-bus";
 import { mosaicHTML } from "./mosaic";
 import * as diag from "./diag";
+import { TILE_PX } from "./art-size";
 
 export type PinKind = HomeKind;
 
@@ -349,8 +350,8 @@ const artURL = (it: HomeItem, px: number): string | null =>
 
 function tileArt(it: HomeItem): string {
   const round = it.round ? " search__tile-art--round" : "";
-  const url = artURL(it, 192);
-  if (url) return `<img class="search__tile-art${round}" src="${esc(url)}" alt="" loading="lazy" decoding="async" />`;
+  const url = artURL(it, TILE_PX);
+  if (url) return `<img class="search__tile-art${round}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
   if (it.mosaic?.length) return mosaicHTML("search__tile-art", it.mosaic, it.mosaicSeed ?? it.key);
   return `<div class="search__tile-art search__tile-art--empty${round}" aria-hidden="true">♪</div>`;
 }

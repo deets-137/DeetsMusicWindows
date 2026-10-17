@@ -3,6 +3,8 @@
 // JPEG, or null when no cover loaded, and where the time went (`Timing`). The fetches ride the webview's HTTP cache: Apple's image
 // server answers with `Access-Control-Allow-Origin: *` and a long max-age.
 
+import { LADDER } from "./art-size";
+
 interface Job {
   id: number;
   urls: string[];
@@ -19,8 +21,9 @@ interface Rect {
 
 const port = self as unknown as Worker;
 
-/** Tile fetch sizes: a few fixed steps, so playlists that share songs share cached images. */
-const FETCH_PX = [60, 120, 240, 480];
+/** Tile fetch sizes: the app's cover ladder (art-size.ts, UX-COVERUPS.md §7.4 part 5), so a
+ *  mosaic's tiles are the same URLs the rows and tiles already loaded: cache hits. */
+const FETCH_PX = LADDER;
 const PARALLEL = 6;
 
 function hash(s: string): number {

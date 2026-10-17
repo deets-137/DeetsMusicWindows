@@ -435,6 +435,11 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `.history`, `.rewind`, `.radio`, `.diary`, `.rulez`, labels "Home in the card picker" and so
   on. On = offered in the slot pickers. A hide that would leave fewer than three everyday cards
   is refused, and the reply says so. Replaced `rewindCard`.
+  The second list (2026-10-17, [UX-COVERUPS.md §7.12](../architecture/UX-COVERUPS.md)): one
+  toggle per card over `instantCards`, keys `instantCards.library`, `.playlists`, `.home`,
+  `.search`, `.queue`, `.history`, `.rewind`, `.radio`, `.diary`, labels "Library cover load
+  animations" and so on. On (the default) = the card holds until its covers are in,
+  then reveals in one wave; off = instant.
 - `graphicsFallback` "If graphics fail" (Save + tell | Tell only | Off, 2026-10-11) is in Motion;
   Save + tell makes the built-in rule `row:graphicsFallback`, which holds the heavy effects off
   while the window draws in software ([GRAPHICS-FALLBACK.md](../features/GRAPHICS-FALLBACK.md)).

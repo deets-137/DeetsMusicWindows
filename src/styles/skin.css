@@ -715,6 +715,18 @@
   /* Card memory (CARD-MEMORY.md §4): how long a card's body may stay hidden while a
      restore waits for its data, so the root never flashes before the open level. */
   --memory-wait: 0.4s;
+  /* A card's first screen (UX-COVERUPS.md §7): the body holds until its first-screen covers
+     are ready, at most --reveal-cap, then the tiles enter as one diagonal wave (row + column)
+     over --reveal-span, whatever the count. Search's sections wait for their own covers at
+     most --search-reveal-cap (his S2 A: the words show at once) and run a shorter wave. A
+     cover that lands after the reveal fades in over --art-in. */
+  --reveal-cap:         1.5s;
+  --reveal-span:        0.5s;
+  --search-reveal-cap:  0.8s;
+  --search-reveal-span: 0.15s;
+  --art-in:             var(--pop-in);
+  --art-in-from:        0.3;  /* a late cover's first frame: its square was the ground, so it
+                                 starts near that weight, not at nothing (desk test 2026-10-17) */
 
   /* -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) --
      Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to /

@@ -38,6 +38,8 @@ import * as diag from "./diag";
 import { emit } from "./rules";
 import { levelLeft, ruleGrowComing } from "./card-grow";
 import { searchField, fieldClearHTML } from "./search-field";
+import { patchHTML, keyRow } from "./keyed";
+import { reveal, revealOf } from "./reveal";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -215,6 +217,10 @@ export interface Context {
   /** The level's own data on its way (Apple's page): a view switch to this level waits for it,
    *  so the level arrives once, full — no empty state, no second redraw (his call, 2026-10-13). */
   ready?: () => Promise<unknown>;
+  /** The level's data is still loading (UX-COVERUPS.md §7.1): the reveal holds while it is
+   *  true, and the empty state ("Nothing here yet.") never shows for a list on its way. The
+   *  card draws again (`reload`) when the data lands. */
+  loading?: () => boolean;
   defaults?: { grouping?: string; density?: Density; sortKey?: string; sortDir?: SortDir };
   emptyText?: string; // shown when the (unfiltered) list is empty, e.g. a fresh playlist's invite
   /** The pane takes dropped songs (an open playlist, DRAG-DROP.md §3). The action gets the
@@ -574,6 +580,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     dropWindower(pane);
     const v = pane?.querySelector<HTMLElement>("[data-view]");
     if (!v) return;
+    revealOf(v)?.cancel(); // a level swapped away or drilled past drops its hold (§7.1)
     stuckObs.get(v)?.ro.disconnect();
     stuckObs.delete(v);
   };
@@ -947,14 +954,16 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       heads.set(view, { top: top + colsHead, html: hero });
     }
     // Put `rows` in the view: after a kept bar, else under a fresh hero.
+    // A keyed patch (keyed.ts, UX-COVERUPS.md §7.7 step 2): a row, a shelf tile or a head part
+    // whose markup is the same keeps its node and its loaded cover, so a background sync, a ♥
+    // or a count never makes the list again.
     const fill = (rows: string) => {
       const bar = keepHead ? view.querySelector<HTMLElement>(":scope > [data-view-bar]") : null;
       if (!bar) {
-        view.innerHTML = hero + rows;
+        patchHTML(view, hero + rows);
         return;
       }
-      while (bar.nextSibling) bar.nextSibling.remove();
-      bar.insertAdjacentHTML("afterend", rows);
+      patchHTML(view, rows, bar);
     };
     // The head is in place: a rebuilt one has new pills, so the Sort / View dropdowns re-bind
     // (wirePops; a kept head keeps its handles), and a new search field gets the query and the
@@ -980,11 +989,14 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       // (`dropInto` below), and now it says so. A filter with no matches is a plain line.
       const msg = f.query ? "No matches." : esc(f.ctx.emptyText ?? "Nothing here yet.");
       fill(
-        !f.query && f.ctx.dropInto
+        !f.query && f.ctx.loading?.()
+          ? "" // on its way: the reveal holds, and nothing says "empty" (§7.1)
+          : !f.query && f.ctx.dropInto
           ? `<div class="lib-empty__slot"><span class="lib-empty__art" aria-hidden="true">♪</span><span class="lib-empty__msg">${msg}</span></div>`
           : `<p class="lib-empty__msg">${msg}</p>`,
       );
       settleHead();
+      revealOf(view)?.check();
       return;
     }
     view.className = f.density === "lines" ? "lib-view lib-list" : "lib-view lib-grid";
@@ -997,13 +1009,37 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       else windowers.set(view, windowView(view, spec));
       settleHead();
       syncRail(pane, f, g);
+      revealOf(view)?.check();
       return;
     }
     dropWindower(pane);
-    fill(items.map((x, i) => renderRow(g, x, f.density, i, cols)).join(""));
+    fill(items.map((x, i) => keyRow(renderRow(g, x, f.density, i, cols), idOf(g, x))).join(""));
     settleHead();
     syncRail(pane, f, g);
+    revealOf(view)?.check();
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
+  };
+
+  // ── the reveal (reveal.ts, UX-COVERUPS.md §7.1–7.2) ──
+  // A level holds when it is first shown: the card opened, a drill, a Back, a View switch, a
+  // restore. The pane's frame and toolbar show at once; its view (the rows) waits for its
+  // first screen, then enters as one diagonal wave. A scroll, a filter, a sort or a
+  // background update never holds: the keyed patch keeps their rows in place.
+  const REVEAL_TILES =
+    ".lib-hero, .lib-actions, .search__label, [data-shelf-item], .lib-view-bar, .lib-cols, [data-idx], .lib-empty__msg, .lib-empty__slot";
+  const holdView = (pane: HTMLElement, why: string) => {
+    if (pane.classList.contains("coll-pane--bare")) return;
+    const view = pane.querySelector<HTMLElement>("[data-view]");
+    if (!view) return;
+    reveal({
+      card: cardId(),
+      body: view,
+      root: opts.root,
+      tiles: () => [...view.querySelectorAll<HTMLElement>(REVEAL_TILES)],
+      // The frame the pane shows, read live: a Full | Lib switch puts a new one in place.
+      loading: () => !!(pane === curPane ? paneFrame : null)?.ctx.loading?.(),
+      why,
+    });
   };
 
   // The view chips (`Context.views`) in the head's `[data-coll-views]` slot. Drawn on every
@@ -1128,7 +1164,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const opens = f.ctx.opens ?? (key.startsWith("album:") ? "album" : key.startsWith("artist:") ? "artist" : null);
     if (opens) emit(`${opens}.open`, { card: cardId(), facts: { cause: "hand" }, depth: stack.length });
     if (opens && ruleGrowComing(cardId())) place(f);
-    else slide(buildPane(f), "push", f);
+    else {
+      const pane = buildPane(f);
+      slide(pane, "push", f);
+      holdView(pane, "drill");
+    }
   };
 
   /** A new level in place, no slide: a rule grow is the motion, and it enters the rows. */
@@ -1391,10 +1431,13 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     pick.clear();
     const prev = stack[stack.length - 2];
     setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title, !!prev.onBack, prev.ctx);
-    slide(buildPane(prev), "pop", prev, () => {
+    const backPane = buildPane(prev);
+    slide(backPane, "pop", prev, () => {
       stack.pop();
       levelLeft(cardId(), stack.length); // a rule grow ends when Back leaves its level
     });
+    // The level comes back rebuilt: warm, it reveals at once, with the same wave (§7.1).
+    holdView(backPane, "back");
   };
 
   /** Every level closes at once, no slide: the root is on screen again (`toRoot`). */
@@ -1504,7 +1547,27 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     }
     lastRestore = { s, resolved: contexts.length };
     const f0 = stack[0];
-    f0.query = typeof rootLevel.query === "string" ? rootLevel.query : "";
+    const query = typeof rootLevel.query === "string" ? rootLevel.query : "";
+    // The root alone, with no deeper level to build: the pane on screen stays, and only its
+    // place and its query come back. Building it again made every cover again and restarted
+    // the reveal (17 covers and a blank 200 ms on a warm Playlists open, 2026-10-17).
+    if (!contexts.length && curPane && paneFrame === f0) {
+      const queryChanged = query !== f0.query;
+      f0.query = query;
+      f0.searchOpen = !!query;
+      f0.scroll = Number(rootLevel.scroll) || 0;
+      if (queryChanged) {
+        const input = curPane.querySelector<HTMLInputElement>("[data-search]");
+        if (input) input.value = query;
+        curPane.querySelector(".lib-searchbar")?.classList.toggle("is-open", f0.searchOpen);
+        markSearchPill();
+        renderViewInto(curPane, f0);
+      }
+      applyScroll(curPane, f0, true);
+      diag.log("memory", { card: opts.storeKey, cause: "restore", levels: 1, kept: true });
+      return !stale;
+    }
+    f0.query = query;
     f0.searchOpen = !!f0.query;
     f0.scroll = Number(rootLevel.scroll) || 0;
     contexts.forEach((ctx, k) => {
@@ -1532,6 +1595,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     paneFrame = top;
     setHeader(stack.length === 1, top.ctx.headerLabel ?? top.ctx.title, !!top.onBack, top.ctx);
     applyScroll(pane, top, true);
+    holdView(pane, "restore");
     diag.log("memory", {
       card: opts.storeKey,
       cause: stale ? "stale-key" : "restore",
@@ -1591,6 +1655,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       // keep the place. The rows are taller or shorter, so the offset lands near where you
       // were, not exactly on it — a windowed list re-anchors on its own row pitch.
       rerenderInPlace(pane, cur());
+      holdView(pane, "density");
       return;
     }
     const gr = t.closest<HTMLElement>("[data-group]");
@@ -1605,6 +1670,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       // Another kind of row: the top row is not in the new list, so this lands at the top —
       // and a windowed list no longer keeps a meaningless scrollTop across the switch.
       renderKeepingPlace(pane, f);
+      holdView(pane, "grouping");
     }
   };
 
@@ -2183,6 +2249,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   paneFrame = f0;
   curPane.dataset.pos = "center";
   viewport.appendChild(curPane);
+  holdView(curPane, "open");
 
   /** Re-render a pane and keep the list where it is. `renderViewInto` replaces the rows'
    *  HTML, which drops scrollTop to 0 — so anything that changes how the SAME rows look

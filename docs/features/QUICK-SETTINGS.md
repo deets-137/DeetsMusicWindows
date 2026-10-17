@@ -344,8 +344,9 @@ section (`headRow`: *Window sizes*, *Growing and drilling*, *Equalizer*).
   (§10). The icon square's own N is unchanged.
 - **A heading with no rows before the next one** does not make an empty group: the two merge,
   and the later heading names the group. Cards is the case: its part heading is followed at
-  once by *Enable / Disable these Cards:*, so in the panel the group is *Enable / Disable these
-  Cards:* with the nine toggles under it.
+  once by *Cards in the picker* (named *Enable / Disable these Cards:* until 2026-10-17, his
+  call: no colons, a direct name), so in the panel the group is *Cards in the picker* with the
+  nine toggles under it. The second group is *Cover load animations* (UX-COVERUPS.md §7.12).
 - **Keys:** the memory is one store of its own (for example `deets.quick.folds`), keyed by the
   section title plus the heading's row id. The ids must be unique: the Cards sub-heading
   reused `g-cards` (Window's *Growing and drilling*), a bug found 2026-10-10 that the build

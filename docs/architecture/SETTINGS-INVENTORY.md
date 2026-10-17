@@ -206,7 +206,8 @@ which restarts the first-run walk.
 
 ### Cards
 
-Added 2026-10-10 ([HIDE-CARDS.md](../features/HIDE-CARDS.md)). One toggle per card: on = the
+Added 2026-10-10 ([HIDE-CARDS.md](../features/HIDE-CARDS.md)). Under the sub-heading *Cards in
+the picker* (until 2026-10-17 *Enable / Disable these Cards:*), one toggle per card: on = the
 card's name is in every slot's picker. A hidden card still opens from Ctrl+Space, its Ctrl
 shortcut, a rule or a link. The quick panel shows this section under the Window icon.
 
@@ -214,6 +215,13 @@ shortcut, a rule or a link. The quick panel shows this section under the Window 
 |---|---|---|
 | Home · Library · Playlists · Search · History · Radio · Diary · Rulez | Offer this card in the card picker. The last three everyday cards lock (*Keep three cards in the picker*). Rulez is offered in Max only | **on** / off |
 | Rewind | The same. Your listening, ranked; it turns itself on once, at 50 plays | on / **off** (until 50 plays) |
+
+Under the sub-heading *Cover load animations* (2026-10-17,
+[UX-COVERUPS.md §7.12](UX-COVERUPS.md)), one toggle per card:
+
+| Control | What it does | Choices |
+|---|---|---|
+| Library · Playlists · Home · Search · Queue · History · Rewind · Radio · Diary | On: the card shows once its covers are in, in one smooth wave (at most 1.5 s; Search shows its words at once and fades each section's covers in). Off: it shows at once, and covers pop in as they load. The artist view and a drill follow the card they open in | **on** / off |
 
 ### Look schedule
 

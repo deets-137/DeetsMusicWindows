@@ -25,6 +25,7 @@ import { THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import { withAppearanceTransition } from "./appearance";
 import { presetOptions, selectPreset } from "./sound";
 import { settingValue } from "./usage-rules";
+import { REVEAL_CARDS } from "./reveal-wave";
 
 type Opt = { value: string; label: string };
 type Reply = Record<string, unknown>;
@@ -387,6 +388,15 @@ const SPECS: Spec[] = [
     },
     // Read before the set: a hide that the three-card minimum refuses says so.
     note: (v) => (v === "off" && !canHide(setting("hiddenCards"), id) ? `It stays: ${HIDE_LOCK_HINT.toLowerCase()}.` : undefined),
+  })),
+  // ── Cards › Cover load animations (UX-COVERUPS.md §7.12): one toggle per card over `instantCards`; on = waits ──
+  ...REVEAL_CARDS.map((id): Spec => ({
+    key: `instantCards.${id}`, label: `${id[0].toUpperCase()}${id.slice(1)} cover load animations`, section: "Cards", kind: "toggle", options: ON_OFF,
+    get: () => (setting("instantCards").includes(id) ? "off" : "on"),
+    set: (v) => {
+      const instant = setting("instantCards").filter((c) => c !== id);
+      setSetting("instantCards", v === "on" ? instant : [...instant, id]);
+    },
   })),
   storeChoice("Rewind", "fullPlayRule", "Count a play at", [{ value: "fraction", label: "90%" }, { value: "end", label: "End" }, { value: "scrobble", label: "Half or 4 min" }]),
   storeToggle("Rewind", "replayAuto", "Weekly Replay"),

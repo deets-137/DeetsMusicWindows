@@ -19,6 +19,7 @@ import type { AirplayCapture, RustSettings } from "./rust-settings";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
 import { HIDEABLE_CARDS, HIDE_LOCK_HINT, canHide } from "./layout-rules";
+import { REVEAL_CARDS } from "./reveal-wave";
 import { setting, setSetting, ownSetting, effective, onOwnChange, onSettingsChange, RULE_KEYS, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type RuleKey, type Settings } from "./settings-store";
 import { currentSkin, onSkinChange, defaultSkin, type SkinName } from "./skin";
 import { pickLook } from "./look";
@@ -206,6 +207,8 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playback", row: "suggestclear" }, // Suggest Less marks › Clear, built 2026-10-16
   { section: "About", row: "usage" }, // Send usage counts, built 2026-10-13 (USAGE-COUNTS.md)
   { section: "Playlists", row: "createsummonsolo" }, // Also when Playlists is the only card, built 2026-10-16 (FUTURE-SETTINGS §16)
+  // Cover load animations, one toggle per card, built 2026-10-17 (UX-COVERUPS.md §7.12)
+  ...["library", "playlists", "home", "search", "queue", "history", "rewind", "radio", "diary"].map((id): NewMark => ({ section: "Cards", row: `wait-${id}` })),
 ];
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
@@ -294,7 +297,7 @@ const FOLD_NEW_BADGE = `<span class="new-badge" role="img" aria-label="New"></sp
 interface QuickGroup { key: string; label: string; rows: Row[] }
 /** Cut a part's rows into groups at each sub-heading. The part's own heading starts the
  *  first; a heading with no rows before the next one merges into it, and the later heading
- *  names the group (Cards: "Enable / Disable these Cards:"). Keyed by section + heading id. */
+ *  names the group (Cards: "Cards in the picker"). Keyed by section + heading id. */
 function quickGroups(title: string, rows: Row[]): QuickGroup[] {
   const out: QuickGroup[] = [];
   let g: QuickGroup = { key: `${title}::`, label: title, rows: [] };
@@ -346,6 +349,26 @@ const cardRow = (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
     locked,
   };
 };
+/** Settings › Cards › Cover load animations (UX-COVERUPS.md §7.12, his W1 A; the name his,
+ *  2026-10-17): one toggle per card
+ *  over the `instantCards` list; on = the card waits for its covers and reveals in one wave
+ *  (the default), off = instant. The words are his draft (§7.12). */
+const WAIT_LABEL: Record<(typeof REVEAL_CARDS)[number], string> = {
+  library: "Library", playlists: "Playlists", home: "Home", search: "Search", queue: "Queue",
+  history: "History", rewind: "Rewind", radio: "Radio", diary: "Diary",
+};
+const WAIT_HINT = "On: the card shows once its covers are in, in one smooth wave. Off: it shows at once, and covers pop in as they load";
+const waitRow = (id: (typeof REVEAL_CARDS)[number]): ToggleRow => ({
+  kind: "toggle",
+  id: `wait-${id}`,
+  label: WAIT_LABEL[id],
+  hint: () => WAIT_HINT,
+  get: () => !setting("instantCards").includes(id),
+  set: (on) => {
+    const instant = setting("instantCards").filter((c) => c !== id);
+    setSetting("instantCards", on ? instant : [...instant, id]);
+  },
+});
 const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => string | undefined): ToggleRow => ({
   key,
   kind: "toggle",
@@ -450,7 +473,7 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
   { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "homeHideLasts", "homeHidden"] },
-  { id: "cards", label: "Cards", hint: "Every card back in the picker. Rewind stays out until 50 plays", keys: ["hiddenCards"] },
+  { id: "cards", label: "Cards", hint: "Every card back in the picker, and every card waits for its covers. Rewind stays out until 50 plays", keys: ["hiddenCards", "instantCards"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
   { id: "diary", label: "Diary", hint: "Rescale scores and Grow on open. Not your entries — those are your writing, not a setting", keys: ["diaryRescale", "diaryGrow"] },
 ];
@@ -1170,7 +1193,14 @@ function mountSettings(
       // per card, on = offered. Hidden from the picker only; Compass and shortcuts still open it.
       title: "Cards",
       // The sub-heading says what the toggles mean (his words, 2026-10-10).
-      rows: [headRow("g-cardlist", "Enable / Disable these Cards:"), ...HIDEABLE_CARDS.map(cardRow)],
+      rows: [
+        // His style (2026-10-17): no colons, a direct name; it was "Enable / Disable these Cards:".
+        headRow("g-cardlist", "Cards in the picker"),
+        ...HIDEABLE_CARDS.map(cardRow),
+        // Each card's wait or instant (UX-COVERUPS.md §7.12, his W1 A: a second list under the first).
+        headRow("g-cardwait", "Cover load animations"),
+        ...REVEAL_CARDS.map(waitRow),
+      ],
     },
     // Look and feel became four sections on 2026-09-18 (fork 1C). RESET_GROUPS had split it
     // this way for months; only the card disagreed. The names match the Reset rows exactly.

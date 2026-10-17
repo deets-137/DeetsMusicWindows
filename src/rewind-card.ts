@@ -30,6 +30,9 @@ import type { CardDef, CardInstance } from "./cards";
 import { makeReplayPlaylist, makePicksPlaylist } from "./replay";
 import { sotdOn, pickMenu, allPicks, onSotdChange, isPosted, withdrawAsking } from "./sotd";
 import { rowDrag } from "./row-drag";
+import { ROW_PX } from "./art-size";
+import { reveal, type Reveal } from "./reveal";
+import { patchHTML } from "./keyed";
 
 const LIST_CAP = 20; // hero + 19 runners-up; a leaderboard's tail is noise
 const STORE_KEY = "deets.rewind";
@@ -119,21 +122,39 @@ function mountRewind(host: HTMLElement): CardInstance {
     onChange: () => render(),
   });
 
+  // The reveal (UX-COVERUPS.md §7.11 part 6): the board holds at the card's open and at a
+  // window or stat switch (a view switch) until its first screen's covers are in. A play or a
+  // refresh after that only patches the board (keyed.ts).
+  let reading = true;
+  let held: Reveal | null = null;
+  const holdBoard = (why: string) => {
+    reading = true;
+    held = reveal({
+      card: "rewind",
+      body: board,
+      root: host,
+      tiles: () => [...board.querySelectorAll<HTMLElement>(".qnow, .qcard__label, .qrow, .qcard__empty")],
+      loading: () => reading,
+      why,
+    });
+  };
   const render = () => {
     const seq = ++renderSeq;
     topBy(pick.stat, pick.window)
       .then((rows) => {
         if (seq !== renderSeq) return; // a newer pick/refresh superseded this one
         view = rows.slice(0, LIST_CAP);
+        reading = false;
         if (!view.length) {
-          board.innerHTML = `<p class="qcard__empty">Nothing played in this window yet.</p>`;
+          patchHTML(board, `<p class="qcard__empty">Nothing played in this window yet.</p>`);
+          held?.check();
           return;
         }
         // Artist rows render round art (the Library card's artist grammar); the art
         // itself is the group's most-listened track's album cover — zero Apple calls.
         const round = pick.stat === "artists" ? " rewind--round" : "";
         const top = view[0];
-        const cover = artURL(top.track, 96);
+        const cover = artURL(top.track, ROW_PX);
         const heroArt = cover
           ? `<img class="qnow__art" src="${esc(cover)}" alt="" data-art />`
           : `<div class="qnow__art qnow__art--empty" aria-hidden="true">♪</div>`;
@@ -148,11 +169,11 @@ function mountRewind(host: HTMLElement): CardInstance {
             ${withdrawHTML(top)}
           </div>`;
         const rows2 = view.slice(1).map((r, i) => {
-          const c = artURL(r.track, 72);
+          const c = artURL(r.track, ROW_PX);
           const art = c
             ? `<img class="qrow__art" src="${esc(c)}" alt="" loading="lazy" data-art />`
             : `<div class="qrow__art qrow__art--empty" aria-hidden="true">♪</div>`;
-          return `<li class="qrow${round}" data-idx="${i + 1}">${art}<div class="qrow__text"><span class="qrow__title">${esc(
+          return `<li class="qrow${round}" data-idx="${i + 1}" data-k="${esc(r.key)}">${art}<div class="qrow__text"><span class="qrow__title">${esc(
             r.title,
           )}</span>${r.subtitle ? `<span class="qrow__artist">${esc(r.subtitle)}</span>` : ""}${metaHTML(r)}</div>${withdrawHTML(r)}</li>`;
         }).join("");
@@ -160,15 +181,17 @@ function mountRewind(host: HTMLElement): CardInstance {
         // is simply what came before it.
         const head = pick.stat === "picks" ? "Earlier" : "Runners-up";
         const label = picks.size() ? `${head} · ${picksText(picks.size(), nounOf())}` : head;
-        board.innerHTML = rows2
-          ? `${hero}<div class="qcard__label">${label}</div><ol class="qcard__list">${rows2}</ol>`
-          : hero;
+        patchHTML(board, rows2 ? `${hero}<div class="qcard__label">${label}</div><ol class="qcard__list">${rows2}</ol>` : hero);
+        held?.check();
         // The card re-renders whole, so one sweep marks what is picked.
         picks.mark(board, "[data-idx]", (el) => view[Number(el.dataset.idx)]);
       })
       .catch((e) => {
         console.error("[rewind] load", e);
-        if (seq === renderSeq) board.innerHTML = `<p class="qcard__empty">Couldn't load stats.</p>`;
+        if (seq !== renderSeq) return;
+        reading = false;
+        patchHTML(board, `<p class="qcard__empty">Couldn't load stats.</p>`);
+        held?.check();
       });
   };
 
@@ -180,6 +203,7 @@ function mountRewind(host: HTMLElement): CardInstance {
     pillOf("stat").querySelector(".lib-pill__label")!.textContent = STAT_LABELS[pick.stat];
     pillOf("window").querySelector(".lib-pill__label")!.textContent = WINDOW_LABELS[pick.window];
     paintSotd();
+    holdBoard("window");
     render();
   };
   const openPicker = <K extends string>(
@@ -417,10 +441,12 @@ function mountRewind(host: HTMLElement): CardInstance {
       if (pick.stat === "picks") render();
     }
   });
+  holdBoard("open");
   render();
 
   return {
     destroy() {
+      held?.cancel();
       renderSeq++; // orphan any in-flight load
       unsubQueue();
       unsubTracks();

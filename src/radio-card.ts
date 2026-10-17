@@ -203,6 +203,7 @@ export const radioCard: CardDef = {
       return {
         title: g.name,
         key: `genre:${g.id}`, // card memory (CARD-MEMORY.md §5)
+        loading: () => pendingGenres.has(g.id), // the drill holds for its stations (§7.1)
         density: true,
         groupings: [
           {
@@ -327,6 +328,7 @@ export const radioCard: CardDef = {
         };
       },
       defaults: { grouping: "shelves", density: "lines", sortKey: "featured", sortDir: "asc" },
+      loading: () => loading, // the reveal holds for the first answer (UX-COVERUPS.md §7.1)
       get emptyText() {
         return loading
           ? "Tuning in…"

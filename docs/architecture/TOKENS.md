@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 50 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 630 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 636 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -708,7 +708,13 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--nav-at-right` | `translateX(100%)` | press, ocean, glass, cyber |  |
 | `--nav-off-opacity` | `1` | press, ocean, glass, cyber | off-screen panes stay opaque |
 | `--memory-wait` | `0.4s` | — | Card memory (CARD-MEMORY.md §4): how long a card's body may stay hidden while a restore waits for its data, so the root never flashes before the open level. |
-| `--swap-dur` | `var(--nav-dur)` | — | -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) -- Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to / --swap-out-fade before the remount. In step: each new card plays from the slot it left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place. --swap-from / --swap-mid shape it at the start and the midpoint (use the same transform functions in both); --swap-fade is its starting opacity; --swap-stagger delays the second card. The base = a straight slide, no out step (Glass uses it). A replace rises in (the pop tokens). |
+| `--reveal-cap` | `1.5s` | — | A card's first screen (UX-COVERUPS.md §7): the body holds until its first-screen covers are ready, at most --reveal-cap, then the tiles enter as one diagonal wave (row + column) over --reveal-span, whatever the count. Search's sections wait for their own covers at most --search-reveal-cap (his S2 A: the words show at once) and run a shorter wave. A cover that lands after the reveal fades in over --art-in. |
+| `--reveal-span` | `0.5s` | — |  |
+| `--search-reveal-cap` | `0.8s` | — |  |
+| `--search-reveal-span` | `0.15s` | — |  |
+| `--art-in` | `var(--pop-in)` | — |  |
+| `--art-in-from` | `0.3` | — | a late cover's first frame: its square was the ground, so it |
+| `--swap-dur` | `var(--nav-dur)` | — | starts near that weight, not at nothing (desk test 2026-10-17) -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) -- Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to / --swap-out-fade before the remount. In step: each new card plays from the slot it left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place. --swap-from / --swap-mid shape it at the start and the midpoint (use the same transform functions in both); --swap-fade is its starting opacity; --swap-stagger delays the second card. The base = a straight slide, no out step (Glass uses it). A replace rises in (the pop tokens). |
 | `--swap-ease` | `var(--nav-ease)` | — |  |
 | `--swap-out-dur` | `0s` | cyber |  |
 | `--swap-out-to` | `scale(1)` | cyber |  |

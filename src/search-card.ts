@@ -44,6 +44,9 @@ const RECENTS_KEY = "deets.search.recents";
 const PINS_KEY = "deets.search.pins"; // NEXT-VERSION §1: { term, types }[] — term + category filter
 import { ICON_PIN } from "./pins"; // one pin glyph for the app (PINS.md)
 import { plainError } from "./plain-error";
+import { patchHTML } from "./keyed";
+import { revealPictures, type PictureWave } from "./reveal";
+import { ROW_PX, TILE_PX } from "./art-size";
 const RECENTS_CAP = 8;
 const MIN_CHARS = 1;
 
@@ -280,14 +283,18 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     `<button class="search__recent-term" type="button" data-recent="${esc(term)}">${esc(term)}</button>` +
     `<button class="search__recent-pin" type="button" data-pin="${esc(term)}" aria-pressed="${pinned}" aria-label="${pinned ? "Unpin" : "Pin"}" title="${pinned ? "Unpin" : "Pin"}">${ICON_PIN}</button>` +
     `</div>`;
+  let pics: PictureWave = { releaseAll: () => {}, cancel: () => {} };
   const renderEmpty = () => {
+    pics.cancel();
     const pins = loadPins();
     const recents = loadRecents().filter((t) => !pins.some((p) => p.term === t));
     const pinned = pins.map((p) => pillHTML(p.term, true)).join("");
     const recent = recents.map((t) => pillHTML(t, false)).join("");
-    root.innerHTML =
-      (pinned ? `<div class="search__label">Pinned</div><div class="search__recents">${pinned}</div>` : "") +
-      (recent ? `<div class="search__label">Recent</div><div class="search__recents">${recent}</div>` : "");
+    patchHTML(
+      root,
+      (pinned ? `<div class="search__label">Pinned</div><div class="search__recents" data-key="pinned">${pinned}</div>` : "") +
+        (recent ? `<div class="search__label">Recent</div><div class="search__recents" data-key="recent">${recent}</div>` : ""),
+    );
   };
   const togglePin = (term: string) => {
     const pins = loadPins();
@@ -304,22 +311,22 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
 
   const songCell = (t: Track): string => {
     const id = t.catalogId ?? "";
-    return `<div class="search__song" data-song="${esc(id)}"${id ? ` data-cid="${esc(id)}"` : ""} role="button" tabindex="0">
-      ${coverHTML(art(t.artwork?.urlTemplate, 72), "search__song-art")}
+    return `<div class="search__song" data-k="song:${esc(id || `${t.title} ${t.artistName}`)}" data-song="${esc(id)}"${id ? ` data-cid="${esc(id)}"` : ""} role="button" tabindex="0">
+      ${coverHTML(art(t.artwork?.urlTemplate, ROW_PX), "search__song-art")}
       <div class="search__song-text"><span class="search__song-title">${esc(t.title)}${explicitBadge(t)}</span><span class="search__song-artist">${esc(t.artistName)}</span></div>
       ${addBtnHTML(t)}
     </div>`;
   };
 
   const tileCell = (kind: "album" | "playlist" | "station", id: string, name: string, sub: string, cover: string | null): string =>
-    `<div class="search__tile" data-${kind}="${esc(id)}" role="button" tabindex="0">
+    `<div class="search__tile" data-k="${kind}:${esc(id || name)}" data-${kind}="${esc(id)}" role="button" tabindex="0">
       ${coverHTML(cover, "search__tile-art")}
       <span class="search__tile-name">${esc(name)}</span>${sub ? `<span class="search__tile-sub">${esc(sub)}</span>` : ""}
     </div>`;
 
   const artistCell = (a: Artist): string =>
-    `<div class="search__artist" data-artist="${esc(a.catalogId ?? "")}" role="button" tabindex="0">
-      ${coverHTML(art(a.artwork?.urlTemplate, 96), "search__artist-art")}
+    `<div class="search__artist" data-k="artist:${esc(a.catalogId ?? a.name)}" data-artist="${esc(a.catalogId ?? "")}" role="button" tabindex="0">
+      ${coverHTML(art(a.artwork?.urlTemplate, TILE_PX), "search__artist-art")}
       <span class="search__artist-name">${esc(a.name)}</span>
     </div>`;
 
@@ -332,30 +339,32 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       songs: () => results!.songs.map(songCell).join(""),
       albums: () =>
         results!.albums
-          .map((a) => tileCell("album", a.catalogId ?? "", a.title, a.artistName, art(a.artwork?.urlTemplate, 128)))
+          .map((a) => tileCell("album", a.catalogId ?? "", a.title, a.artistName, art(a.artwork?.urlTemplate, TILE_PX)))
           .join(""),
       playlists: () =>
         results!.playlists
-          .map((p) => tileCell("playlist", p.catalogId ?? "", p.name, p.curatorName ?? "", art(p.artwork?.urlTemplate, 128)))
+          .map((p) => tileCell("playlist", p.catalogId ?? "", p.name, p.curatorName ?? "", art(p.artwork?.urlTemplate, TILE_PX)))
           .join(""),
       // A station tile plays on tap (radio mode) — no drill, no queue (STATIONS.md §1).
       stations: () =>
         results!.stations
-          .map((s) => tileCell("station", s.id, s.name, s.isLive ? "Live" : s.tagline ?? "", art(s.artwork?.urlTemplate, 128)))
+          .map((s) => tileCell("station", s.id, s.name, s.isLive ? "Live" : s.tagline ?? "", art(s.artwork?.urlTemplate, TILE_PX)))
           .join(""),
     };
     for (const sec of SECTION_ORDER) {
       if (!types.includes(sec)) continue;
       const count = results[sec].length;
       if (!count) continue;
-      sections.push(`<section class="search__sec">
+      sections.push(`<section class="search__sec" data-key="sec:${sec}">
         <h3 class="search__sec-title">${SECTION_LABEL[sec]}</h3>
         <div class="search__scroller search__scroller--${sec}">${bodies[sec]()}</div>
       </section>`);
     }
-    root.innerHTML = sections.length
+    // A keyed patch (keyed.ts, UX-COVERUPS.md §7.7 step 2): an answer that shares results with
+    // the last one keeps those cells and their covers (4–6 made again per answer, 7.13).
+    patchHTML(root, sections.length
       ? sections.join("")
-      : `<p class="search__prompt">No results for “${esc(lastTerm)}”.</p>`;
+      : `<p class="search__prompt">No results for “${esc(lastTerm)}”.</p>`);
     if (atRoot) paintPicks(); // re-mark what is still picked after a redraw
   };
 
@@ -372,6 +381,10 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         if (!loadPins().some((p) => p.term === term)) pushRecent(term); // pins stay out of the ring
         reconcile(r.songs); // ♥ state for hits the mirror has never seen (batched, once)
         renderResults();
+        // His S2 A (UX-COVERUPS.md §7.10): the words are in now; each section's new covers
+        // wait for its own first screen (at most --search-reveal-cap) and fade in as one wave.
+        pics.cancel();
+        pics = revealPictures("search", [...root.querySelectorAll<HTMLElement>(".search__sec")], ".search__song, .search__tile, .search__artist");
       })
       .catch((e) => {
         if (token !== queryToken) return;
@@ -406,7 +419,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     // ↓ from the field: the first result, or the open level's rows.
     first: () =>
       atRoot
-        ? root.querySelector<HTMLElement>("[role='button']")
+        ? (pics.releaseAll(), root.querySelector<HTMLElement>("[role='button']"))
         : levelsHost.querySelector<HTMLElement>('.coll-pane[data-pos="center"] [data-view]'),
     onTerm: (term) => {
       if (toRootFor(term)) runSearch(term);

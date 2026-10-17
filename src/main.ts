@@ -22,6 +22,8 @@ import * as diag from "./diag";
 import { initTrackStore, tracksLoaded } from "./track-store";
 import { surfaceSized } from "./surface";
 import { runBootCover } from "./boot-cover";
+import { bootReadiness } from "./reveal";
+import { warmMosaics } from "./mosaic";
 import { initWalk } from "./walk";
 import { initLayout } from "./layout";
 import { initSkinSettings } from "./skin-settings";
@@ -591,7 +593,11 @@ window.addEventListener("DOMContentLoaded", () => {
   // the cards rise into place.
   let lateDone: () => void = () => {};
   const late = new Promise<void>((r) => (lateDone = r));
-  const covered = boot("runBootCover", () => (runBootCover(restored, [tracksLoaded(), surfaceSized(), late]), true));
+  // Each visible card's first screen joins the wait (UX-COVERUPS.md §7.5): the window shows
+  // once, complete, and the launch lift is the cards' reveal (reveal.ts holds no body under it).
+  const covered = boot("runBootCover", () => (runBootCover(restored, [tracksLoaded(), surfaceSized(), late, ...bootReadiness()]), true));
+  // The mosaics last seen on a card's first screen, drawn at idle before that card opens (§7.4 part 3).
+  window.addEventListener("deets:boot-done", () => requestIdleCallback(() => boot("warmMosaics", () => warmMosaics()), { timeout: 3000 }), { once: true });
   // No cover (it threw): nothing will hand the window its color, so give it now (theme.ts).
   if (!covered) syncWindowBackground(true);
 

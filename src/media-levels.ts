@@ -26,6 +26,7 @@
 // asks when Apple has told it the artist's name.
 
 import type { Artwork, Track } from "./library";
+import { TILE_PX } from "./art-size";
 import type { Playlist } from "./search";
 import type { CollectionCardHandle, Context, Density, Grouping, SortSpec, ViewOption, ViewSwitch } from "./collection-card";
 import { formatTotal, esc } from "./collection-card";
@@ -253,6 +254,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       },
       opens: "album",
       headerLabel: "Album",
+      loading: () => !d.ready(), // the drill holds for its songs (UX-COVERUPS.md §7.1)
       // The row turned on while this album shows: ask again (LISTENERS.md §8.11).
       asideRefresh: () => {
         lfmAsked = false;
@@ -435,7 +437,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       albumList = d.albums().sort((x, y) => (y.releaseDate ?? "").localeCompare(x.releaseDate ?? ""));
       const tiles = albumList
         .map((al, i) => {
-          const url = artURL(al.artwork, 128);
+          const url = artURL(al.artwork, TILE_PX);
           const cover = url
             ? `<img class="search__tile-art" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`
             : `<div class="search__tile-art search__tile-art--empty" aria-hidden="true">♪</div>`;
@@ -457,6 +459,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       },
       opens: "artist",
       headerLabel: "Artist",
+      loading: () => !d.ready(), // the drill holds for its shelves, inside the cap (§7.11 part 5)
       // The row turned on while this artist shows: ask again (LISTENERS.md §8.11).
       asideRefresh: () => {
         if (lfm) return;

@@ -18,12 +18,25 @@ import { onSuggestChange } from "./suggest";
 import { onTracksChange } from "./track-store";
 import { esc } from "./collection-card";
 import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
+import { patchHTML, keyRow } from "./keyed";
+import { ROW_PX } from "./art-size";
 import { addSquareHTML, isAddSquare } from "./add-square";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { songMenu, setMenu } from "./media-menu";
 import { rowPick, picksText } from "./row-pick";
 import type { Track } from "./library";
 import type { CardDef, CardInstance } from "./cards";
+import { reveal, type Reveal } from "./reveal";
+
+// A queue entry is an object that keeps its identity across a reorder and an advance; the
+// same song can sit in the queue twice, so the key is the entry, never the song.
+const entryKeys = new WeakMap<object, string>();
+let nextEntryKey = 0;
+const entryKey = (e: object): string => {
+  let k = entryKeys.get(e);
+  if (!k) entryKeys.set(e, (k = `q${++nextEntryKey}`));
+  return k;
+};
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
 
@@ -51,6 +64,14 @@ function mountQueue(host: HTMLElement): CardInstance {
   // queue takes its pick with it.
   let shownRows: queue.QueueEntry[] = [];
   const pick = rowPick<queue.QueueEntry>({ items: () => shownRows, onChange: () => render() });
+  // The reveal (reveal.ts, UX-COVERUPS.md §7.11 part 3): the card's open, and a queue replaced
+  // whole. The Now Playing row's cover is part of the first screen.
+  let shownKeys = new Set<string>();
+  let rendered = false;
+  let held: Reveal | null = null;
+  const holdQueue = (why: string) => {
+    held = reveal({ card: "queue", body, root: host, tiles: () => [...body.querySelectorAll<HTMLElement>(".qnow, .qcard__label, .qrow")], why });
+  };
 
   const render = () => {
     if (dragging || isDragging()) {
@@ -68,7 +89,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     const loading = !!lastState?.loading;
     const npTitle = (loading ? curTrack?.title : lastState?.title ?? curTrack?.title) ?? "";
     const npArtist = (loading ? curTrack?.artistName : lastState?.artist ?? curTrack?.artistName) ?? "";
-    const npCover = loading ? artURL(curTrack, 96) : lastState?.artworkUrl ?? artURL(curTrack, 96);
+    const npCover = loading ? artURL(curTrack, ROW_PX) : lastState?.artworkUrl ?? artURL(curTrack, ROW_PX);
     const npArt = npCover
       ? `<img class="qnow__art" src="${esc(npCover)}" alt="" data-art />`
       : `<div class="qnow__art qnow__art--empty" aria-hidden="true">♪</div>`;
@@ -78,7 +99,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     const rows = shown
       .map((e, i) => {
         const t = resolve(e);
-        return rowHTML(i, t?.title ?? "Unknown", t?.artistName ?? "", artURL(t, 72), true, "", addSquareHTML(t), t?.catalogId ?? "", suggestSkipped(e));
+        return keyRow(rowHTML(i, t?.title ?? "Unknown", t?.artistName ?? "", artURL(t, ROW_PX), true, "", addSquareHTML(t), t?.catalogId ?? "", suggestSkipped(e)), entryKey(e));
       })
       .join("");
     const more =
@@ -102,7 +123,17 @@ function mountQueue(host: HTMLElement): CardInstance {
       ? `<ol class="qcard__list">${rows}${more}${stationRow}</ol>`
       : `<p class="qcard__empty">...</p>`;
 
-    body.innerHTML = `
+    // A keyed patch (keyed.ts, UX-COVERUPS.md §7.11 part 3): a row still in the queue keeps its
+    // node and its cover, an advance moves the rows up, a new row is added. Every queue change,
+    // track change and player state change came here and made every row and cover again.
+    // Filled from nothing, or replaced whole (a new album or playlist played, a room join, a
+    // Clear then a play): the wait and the wave (§7.11 part 3b). An advance, an Add or a drag
+    // keeps most rows, so it never waits.
+    const keys = new Set(shown.map((e) => entryKey(e)));
+    const whole = rendered && keys.size > 0 && ![...keys].some((k) => shownKeys.has(k));
+    shownKeys = keys;
+    rendered = true;
+    patchHTML(body, `
       <div class="qnow${current ? "" : " qnow--idle"}${loading ? " qnow--loading" : ""}">
         ${npArt}
         <div class="qnow__text">
@@ -112,9 +143,10 @@ function mountQueue(host: HTMLElement): CardInstance {
         ${addSquareHTML(curTrack)}
       </div>
       <div class="qcard__label">${pick.size() ? `Up Next · ${picksText(pick.size())}` : "Up Next"}</div>
-      ${list}`;
+      ${list}`);
     // The pick mark, after the rows exist (the card re-renders whole, so one sweep does it).
     pick.mark(body, ".qrow[data-idx]", (el) => shownRows[Number(el.dataset.idx)]);
+    if (whole) holdQueue("replace");
   };
 
   // Click (or Enter/Space) an Up Next row → jump to it. Delegated on the persistent
@@ -332,6 +364,7 @@ function mountQueue(host: HTMLElement): CardInstance {
     render();
   });
   render();
+  holdQueue("open");
 
   // Which card Ctrl+A acts on: the last press inside this one. A row carries no tabindex,
   // so the focus stays on <body> and a `contains(activeElement)` test would never pass.
@@ -362,6 +395,7 @@ function mountQueue(host: HTMLElement): CardInstance {
 
   return {
     destroy() {
+      held?.cancel();
       unsubTracks();
       unsubQueue();
       unsubSuggest();

@@ -173,6 +173,7 @@ function fillResults(results: HTMLElement, rows: ActionItem[] | string): void {
         img.src = item.art;
         img.alt = "";
         img.decoding = "async";
+        img.dataset.art = ""; // a retry on a failed load, and the late fade (artwork-heal.ts)
         btn.append(img);
       }
       const text = document.createElement("span");

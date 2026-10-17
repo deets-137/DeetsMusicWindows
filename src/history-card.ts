@@ -25,6 +25,8 @@ import type { PlayEvent } from "./rewind";
 import type { Track } from "./library";
 import { esc } from "./collection-card";
 import { artURL, rowHTML } from "./queue-rows";
+import { patchHTML, keyRow } from "./keyed";
+import { ROW_PX } from "./art-size";
 import { addSquareHTML, isAddSquare } from "./add-square";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { songMenu, setMenu } from "./media-menu";
@@ -34,6 +36,7 @@ import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { rowDrag, isDragging, onDragEnd } from "./row-drag";
 import { WEB_ROOMS } from "./platform";
 import { onRoomChange, roomState, type RoomState } from "./room";
+import { reveal } from "./reveal";
 
 const LIST_CAP = 50; // render a bounded slice of the older plays
 const SPAN_MS = 14 * 86_400_000; // how far back the card reads at mount (user's call)
@@ -118,8 +121,10 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   // Multi-select (row-pick.ts, NEXT-VERSION §19). Keyed by the PLAY — its stamp, not its
   // song — so the same song heard three times is three rows, and a tail re-read (which
   // builds fresh objects) keeps what you picked.
+  /** A play's identity: its stamp and its song (a tail re-read builds fresh objects). */
+  const playKey = (p: Play): string => `${p.ts}:${p.handle.catalogId ?? p.handle.libraryId ?? ""}`;
   const pick = rowPick<Play>({
-    id: (p) => `${p.ts}:${p.handle.catalogId ?? p.handle.libraryId ?? ""}`,
+    id: playKey,
     items: () => view as Play[],
     onChange: () => render(),
   });
@@ -134,7 +139,7 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     const latest = view[0];
 
     const t = latest ? trackById(latest.handle.catalogId) ?? trackById(latest.handle.libraryId) : undefined;
-    const cover = artURL(t, 96);
+    const cover = artURL(t, ROW_PX);
     const heroArt = cover
       ? `<img class="qnow__art" src="${esc(cover)}" alt="" data-art />`
       : `<div class="qnow__art qnow__art--empty" aria-hidden="true">♪</div>`;
@@ -159,7 +164,7 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
         const sub = day ? (artist ? `${artist} · ${day}` : day) : artist;
         // A room's history carries no play time (ts 0, the web): the row has no clock.
         const meta = p.ts ? `<div class="qrow__meta">${p.skipped ? SKIP_MARK : ""}<span class="qrow__time">${esc(clock(p.ts))}</span></div>` : "";
-        return rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, 72), true, meta, addSquareHTML(rt), rt?.catalogId ?? "");
+        return keyRow(rowHTML(i + 1, rt?.title ?? "Unknown", sub, artURL(rt, ROW_PX), true, meta, addSquareHTML(rt), rt?.catalogId ?? ""), playKey(p));
       })
       .join("");
     const more =
@@ -169,9 +174,9 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     // Label + list only once there's something OLDER than the hero — a lone play is
     // just the hero; an empty log is the blank idle hero.
     const label = pick.size() ? `Previously · ${picksText(pick.size())}` : "Previously";
-    body.innerHTML = older.length
-      ? `${hero}<div class="qcard__label">${label}</div>${list}`
-      : hero;
+    // A keyed patch (keyed.ts, UX-COVERUPS.md §7.11 part 6): each play moves the rows down one
+    // and adds one; the rows already drawn keep their nodes and covers.
+    patchHTML(body, older.length ? `${hero}<div class="qcard__label">${label}</div>${list}` : hero);
     // The card re-renders whole, so one sweep marks what is picked.
     pick.mark(body, "[data-idx]", (el) => view[Number(el.dataset.idx)]);
   };
@@ -282,7 +287,9 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const loadAll = async () => {
     const since = nowMs() - SPAN_MS;
     fold(await readEvents(since), since);
+    firstRead = false;
     render();
+    held.check();
   };
   const loadTail = async () => {
     const since = nowMs() - TAIL_MS;
@@ -304,6 +311,16 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const unsubLog = WEB_ROOMS ? onRoomChange(fromRoom) : onPlayEvent(() => void loadTail());
   const unsubSettings = onSettingsChange((k) => {
     if (k === "historyShowDay") render();
+  });
+  // The card's open (UX-COVERUPS.md §7.11 part 6): the body holds for the first read and the
+  // covers of its first screen, then enters as one wave. A play after that only patches.
+  let firstRead = !WEB_ROOMS;
+  const held = reveal({
+    card: "history",
+    body,
+    root: host,
+    tiles: () => [...body.querySelectorAll<HTMLElement>(".qnow, .qcard__label, .qrow")],
+    loading: () => firstRead,
   });
   render(); // the empty hero, until the first read lands (one local SQLite call)
   if (WEB_ROOMS) fromRoom(roomState());
@@ -342,6 +359,7 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   return {
     snapshot: () => scrollSnapshot(body),
     destroy() {
+      held.cancel();
       unsubTracks();
       unsubLog();
       unsubSettings();

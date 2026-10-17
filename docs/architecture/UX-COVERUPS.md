@@ -1,8 +1,8 @@
 ---
 status: sop
 desk_test: none
-sources: [src/player.ts, src/perf.ts, src/boot-cover.ts, src/appearance.ts, src/look.ts, src/rules-facts.ts]
-updated: 2026-10-16
+sources: [src/player.ts, src/perf.ts, src/boot-cover.ts, src/appearance.ts, src/look.ts, src/rules-facts.ts, src/reveal.ts, src/reveal-wave.ts, src/keyed.ts, src/art-size.ts, src/mosaic.ts, src/artwork-heal.ts]
+updated: 2026-10-17
 ---
 # UX Cover-ups — latency & jank ledger
 
@@ -382,9 +382,9 @@ One noisy run gave 64–85 % on three skins; a rerun at once was back to these.
 
 ## 7. A card's first screen — **one reveal in reading order** (designed 2026-10-16)
 
-> **Part:** designed · 2026-10-16
+> **Part:** built · 2026-10-17 (steps 2–7, §7.14) · measured (§7.13, the step 7 table) · desk test passed 2026-10-17 (§7.8: run by Claude, his "feels good")
 
-> **Start here (the build session, from 2026-10-17):** build §7.7 steps 2–8 on `shixtheenth`.
+> **Start here (the build session, from 2026-10-17; DONE, §7.14 is the record):** build §7.7 steps 2–8 on `shixtheenth`.
 > The Filter rules desk test passed (3d0b647), so the engine is free. First ask him the two open
 > forks (§7.7 end: S2, the ladder's sizes). Read, in order: 7.1–7.6 (the rules), 7.7 (the steps,
 > with every 7.4 optimization), 7.9–7.12 (the surfaces and the setting), 7.13 (the baseline to
@@ -562,11 +562,14 @@ Steps 2–8 are one build in one session (his plan, 2026-10-17), with a measure 
    (needs `npm run dev:app` with its window on screen), and compare each `loads` line with the
    baseline table (7.13). Write the new numbers under it. Tune the caps with him.
 
-**Asks before the build (his forks, still open):** S2, Search's text first and its pictures as
-one wave (7.10, recommended A); the ladder's sizes (step 4e). W2 is not an ask: the build keeps
-both behind `deets.dev.instantFade`, and he picks after the feel test (7.8 step 8).
+**His calls before the build (2026-10-17):** S2 **A**, Search's text at once and its pictures
+as one wave per section (7.10). The ladder **96 · 192 · 480** (step 4e): a row takes 96, a tile
+192, a hero and a large mosaic 480, and the mosaic worker picks from the same three. The full
+player and the Canvas wallpaper keep their own large sizes. W2 is not an ask: the build keeps
+both behind `deets.dev.instantFade`, and he picks after the feel test (7.8 step 8). The build
+runs in the main checkout on `main` (his call, the same day), beside the song facts box session.
 
-### 7.8 Desk test (his, on the dev app)
+### 7.8 Desk test (his, on the dev app) — passed 2026-10-17
 
 1. Clear the WebView2 cache (or use a fresh `dev:app` data folder). Launch. The window shows
    once, with Playlists complete: no ♪ turns into a picture after the lift.
@@ -578,9 +581,45 @@ both behind `deets.dev.instantFade`, and he picks after the feel test (7.8 step 
 5. Press the card while it holds: it reveals at once.
 6. Turn on Windows' reduced motion. The card still waits, then shows at once.
 7. Press ⟳ (Sync playlists) with the card open. No row blinks, and no wave plays.
-8. Settings › Cards: turn off the wait for Playlists. Clear the cache and open it: it shows at
-   once, and covers pop in as they land (W2 B). Then set `deets.dev.instantFade` to `1` in
-   DevTools and do it again: the late covers fade in (W2 A). Pick one (7.12).
+7a. Search: type an artist. The names show at once; each section's covers fade in left to right
+   together, not one by one. Type one more letter: the cells the two answers share do not blink.
+7b. Play an album with the Queue open: the Queue waits, then waves. Press Next: no wave, no blink.
+8. Settings › Cards › Cover load animations: turn Playlists off. Clear the cache and open it: it
+   shows at once, and covers pop in as they land (W2 B, his pick).
+
+**Run by Claude, 2026-10-17 (his ask: "evaluate how smooth, elegant and graceful", Max with one
+card, under a magnifying glass).** The shots runner on his dev app (`shots/scratch/reveal-desk.json`,
+`reveal-drill.json`, `reveal-search.json`; `maxCards` 1 for each shot, put back after it), 244 Hz,
+read frame by frame. Four faults found and fixed in the same sitting:
+1. **A hitch at the wave's first frame** (38–91 ms; 11–13% of the reveal's frames dropped on
+   Playlists, 8% on Home). Every tile started its animation at once, with a delay; each became a
+   layer and was drawn in that one frame. Now each tile waits at opacity 0 (no drawing) and
+   starts at its turn. After: Playlists cold 0.6% dropped, worst 8 ms; warm 2.6%, worst 8 ms;
+   Home 1.9%, worst 13 ms; the drill's wave 0.6%, worst 9 ms.
+2. **A warm open was blank for ~200 ms and made 17 covers again:** card memory rebuilt the whole
+   root pane with no deeper level to restore. Now a root-only restore keeps the pane and puts its
+   place back. After: 0 made again.
+3. **A playlist's songs came after the hero:** the drill revealed on the hero alone and the songs
+   popped in ~200 ms later, one cover at a time. Now the playlist level, and the Library's album
+   and artist levels, say `loading` until their songs are in. After: the slide, then the hero,
+   Play / Shuffle and the songs as one cascade, each row with its cover.
+4. **Search's held covers showed nothing**, then **square → blank → picture**: a held or late
+   cover was at opacity 0, so there was no placeholder square; then a delayed fade held each at
+   0 until its turn. Now a waiting cover shows its slot's ground (`--surface-hover`, its own
+   pixels moved out of its box), keeps it until its turn, and fades from `--art-in-from` (0.3),
+   not from nothing. After: the words, then squares that fill left to right.
+
+Steps: 1 (launch) passed in the step 8 run (§7.13: ready under the cover, not capped). 2 and 3
+(the wave, the grid in one card) passed. 4 passed after fix 3. 5 (a press ends the hold) not
+driven. 6 (reduced motion) not driven: the runner cannot set the OS setting. 7 (Sync) passed: no
+frame of the card changed in 1.2 s. 7a passed after fix 4. 7b not driven (it plays music). 8:
+instant Playlists showed at once and its covers popped in as they loaded (W2 B); W2 A and the pick
+are his. **His verdict (2026-10-17): "Feels good for now" — passed.** W2: B, his call the same day.
+The last pass, with every fix in (the reveal's frames): Playlists cold 1.9% dropped,
+worst 12 ms; warm 3.2%, 8 ms; the drill 0.6%, 8 ms; Sync 0.6%; Home 9.6%, 25 ms on its first frame
+(1.9% the run before; its 33–38 ms stalls fall under the hold, where nothing shows). The dev app
+renders with DevTools in its GPU process, so these are upper bounds (DEBUGGING.md). His layout and
+settings were put back after the run.
 
 ### 7.9 Home (scoped 2026-10-17)
 
@@ -747,13 +786,13 @@ retry) and the late-cover fade (7.3). Its rows are few and small.
 
 ### 7.12 The setting: wait or instant, per card (his ask, 2026-10-17)
 
-> **Part:** designed · 2026-10-17 · W1 his (A); W2 B for now, his final call after a feel test
+> **Part:** built · 2026-10-17 · W1 his (A); W2 his (B, final, 2026-10-17); the name his: *Cover load animations*
 
-**His calls (2026-10-17):** W1 **A**, Settings › Cards. W2 **B for now**: "instant" turns off
-all loading motion. He decides W2 for good once he has felt both on the dev app, so the build
-keeps both behind one switch (`deets.dev.instantFade` in localStorage, dev only: on = A, the
-late fade kept; off = B) and the desk test (7.8) adds a step to compare them. The switch and
-the losing branch are removed when he decides.
+**His calls (2026-10-17):** W1 **A**, Settings › Cards. W2 **B**: "instant" turns off all
+loading motion; first "for now", then final the same day ("W2B is fine"). The dev switch
+(`deets.dev.instantFade`) and the A branch were removed. The sub-heading is his: *Cover load
+animations* (no colon, a direct name, as the other section names; it replaced the draft
+*Wait for covers before showing:*).
 
 **His ask:** each card has a setting, so a user who wants instant, snappy cards can take the
 pops instead of the extra second or two.
@@ -867,9 +906,156 @@ What it shows:
 - Library's open put no new picture in view (its first screen was song rows with covers already
   in place): no line.
 
+**After steps 2–7 (2026-10-17, `--tag step7`, `shots/reveal-live/0.29.0-step7/`, his go; the same
+list, the same Max layout except Search in slot d).** The runner's "late" still counts a picture
+put in the page before it loaded. Under the reveal that picture is held hidden, so the runner
+can no longer see what was SEEN late. The app's own `reveal` line can (`late` = first-screen
+tiles not ready at the reveal), and it is the second number here.
+
+| Step | New in view | Late (runner) · not ready at the reveal (app) | Reveal after | Out of order (load) | Made again |
+|---|---|---|---|---|---|
+| Launch, cache emptied | 44 (2 mosaics) | 44 · **0** (Queue, History, Playlists ready under the cover; `boot:ready` 1119 ms, not capped) | — | 9 | **5** (was 83) |
+| Playlists, first open (cold) | 6 (1 mosaic, +46) | **0** · 0 | 42 ms | 0 | **0** (was 5) |
+| Playlists, open again (warm) | 6 | **0** · 0 | 12 ms | 0 | 4 (was 5) |
+| A playlist opened (drill) | 1 | 1 · **0** | 18 ms | 0 | 1 |
+| Home, first open (cold) | 16 (1 mosaic, +163) | 14 · **0** | 282 ms | 4 | 2 |
+| Home, open again (warm) | 9 | 9 · **0** | 147 ms | 3 | 0 |
+| Search, 10 artists typed | 8–13 each | 8–13 · **0** in 44 of 47 sections; 1 cover in 3 (capped at 0.8 s) | 17–804 ms after the answer | 1–5 | 0–1 |
+| Search, 5 album names pasted | 0–4 each | 0–4 · 0 | — | 0–1 | 4–6 each (fixed after the run, below) |
+| Library, open | 15 | 9 · **0** | — | 0 | 3 |
+| History, open | 7 | 5 · **0** | 61–91 ms | 1 | 0 |
+| Rewind, open | 5 | 5 · **0** | — | 2 | 0 |
+
+What it shows:
+- **No card open showed a cover late.** Every `reveal` line reads `go: ready, late: 0`, in 12–282
+  ms; none reached the 1.5 s cap. The launch was not capped (1.1 s).
+- **Redraws:** the launch made 5 covers again (83 before), a cold Playlists open 0 (5 before).
+- **Search:** the words show at once; 44 of 47 sections waved in complete, 17–804 ms after the
+  answer; 3 hit the 0.8 s cap with one cover each, which faded in alone.
+- **Search, pasted:** 4–6 covers were still made again per answer: two results with the same
+  cover under different keys (two songs of one album). Fixed after the run: a patch now moves a
+  loaded picture whose row left into a new row with the same source (keyed.ts `gone` pool). Not
+  measured yet.
+- **After the reveal:** Home rebuilds when Apple's lists or an artist's face land (by design,
+  7.9 part 6), and those covers fade in (`reveal:late`). Search logs `reveal:late` for covers
+  in a section past its first screen; the line counts them too, so it is not a seen-late count.
+- **Open:** "made again" 4 on a warm Playlists open and 3 on Library's open (a remount makes the
+  card's DOM new; the HTTP cache serves them, decoded before the reveal, so nothing is seen).
+
 **Safety:** the drive list opens cards, scrolls, types and drills. It plays nothing, loves
 nothing, and changes no setting. A search adds its term to Search's Recents, as a typed search
 does; the run removes the terms it added at its end.
+
+### 7.14 As built (2026-10-17)
+
+> **Part:** built · 2026-10-17 · not committed · desk test passed 2026-10-17 (7.8) · step 8 measured 2026-10-17 (7.13, after the baseline)
+
+Steps 2–7 of 7.7, in the main checkout on `main`, beside the song facts box session (which owned
+lastfm.rs, listeners.ts, info-box*.ts, present.ts, hero-slide.ts; the two shared the three
+settings files by hunk). `npx tsc --noEmit`, `npm test` (307, six new), `npx vite build` and
+`npm run docs:check` pass. A demo shot (`--scratch pl-firstload`, launch) settles with every cover
+in place and no console error from this code; its numbers were taken on a busy CPU (NOISY) and
+do not count.
+
+**Step 2 — the keyed patch.** `src/keyed.ts`: `patchHTML(parent, html, after?)` puts a markup
+string into a container as a patch. A child is matched by `data-key`, else `data-k`, else its tag
+and FIRST class with its place among children of that shape. The same built markup (compared
+with `data-idx` out, and against the markup that was built, never the live DOM that hint.ts
+and the motion change) keeps the node. A changed child with the same tag and only element
+children is patched inside; else it is made new and every loaded `<img>` with the same `src`
+moves into it. An `<img>` with the same `src` is the same picture. Used by: the engine's
+short-list path and its head (hero, Play / Shuffle, shelves: Radio, the artist view, the
+Pinned shelves), Home's shelves (`data-key="shelf:<id>"`; a shelf keeps its sideways scroll
+because it is the same node), the Queue (key = the entry object), History (key = the play),
+Rewind (key = the row), Search's sections and cells and its Recents. The windowed path keeps
+its own edge patch.
+
+**Step 3 — late covers.** artwork-heal.ts: one MutationObserver marks an added `img[data-art]`
+or `img[data-fade]` that is not complete with `data-art-wait` (opacity 0, before the next
+paint); its `load` takes the mark off and fades it in over `--art-in`. A failed cover stays on
+the ground while it is retried. `data-art` added on Home's tiles, the pins, web.ts's three
+pictures and the Compass's menu art; the mosaic `<img>` carries `data-fade` (no retry on a
+blob URL). `onLateArt` lets reveal.ts log `reveal:late`.
+
+**Step 4 — load priority.**
+- a. Mosaics at the size on screen: mosaic.ts takes the slot class's ladder step (a row 96, a
+  tile 192, a hero 480; a large Library tile passes 480). The key includes the size.
+- b. Draws in parallel: three at a time, one worker, an id → callback map (was one at a time).
+  `warmMosaics()` at idle after the launch draws the mosaics each card showed on its last
+  first screen (`deets.mosaic.warm`: card → seed, size and cover URLs; at most 12 a card; only
+  Apple's addresses, never a picture).
+- c. `fetchpriority`: not set on the markup. The held reveal asks for each first-screen cover
+  at once instead: a lazy cover in view is set to eager, and a mosaic in view jumps the queue
+  (`whenMosaic`). A markup attribute would make each redraw's markup differ from the last.
+- d. Decode before showing: a tile is ready only after `img.decode()`.
+- e. The ladder: `src/art-size.ts` (96 · 192 · 480, his call). Library rows and tiles, the hero,
+  the artist view, the album shelf, Home, the pins, Search, the Queue, History, Rewind, the
+  Diary, the playlist web and the mosaic worker. The Now Playing cover, the full player, the
+  wallpaper and album-color's sample keep their own sizes.
+- f. `<link rel="preconnect">` to is1–is5-ssl.mzstatic.com in index.html, and one with
+  `crossorigin` for the worker's CORS fetches.
+
+**Step 5 — reveal.ts and the engine.** `reveal({card, body, root, view, tiles, loading, why})`
+hides `body` (`data-reveal-hold`, visibility: the boxes stay, so the covers load), waits for
+`loading()` to be false (a render calls `check()`), then for every first-screen tile (inside
+the view under a stuck bar, and inside its shelf's visible width) to be ready, at most
+`--reveal-cap`; a press or a wheel on the card ends it. Then the wave (`reveal-wave.ts`, pure,
+tested) over `--reveal-span`. Marks `reveal:hold` / `reveal:go <why> <ready>/<n>`, one
+`diag.log("reveal", {card, why, ms, go, n, late, boot})`, `frames.during("reveal")`.
+`Context.loading` in collection-card.ts: the empty state never shows while it is true.
+Playlists (until its first load), Library (until the track store's first read), Radio (its
+first answer, and a genre's stations) set it. The engine holds at the card's open, a drill, a
+Back, a View density or grouping switch, and a card-memory restore; a level that leaves drops
+its hold. Not held: a sort, a filter, a scroll, a reload, the Full | Lib switch (it keeps its
+own designed motion, FULL-LIB.md), and a drill under a rule grow (the grow is the motion).
+
+**Step 6 — the launch.** A reveal that starts under the launch cover holds nothing and plays
+no wave; its readiness joins `runBootCover`'s list (`bootReadiness()`), inside the cover's own
+2.5 s cap.
+
+**Step 7 — the other cards and the setting.**
+- Home: holds at its open (the shelves in view, the tiles in each shelf's width). "Looking
+  through what you play…" shows only when the cap passes with no shelves; shelves that land
+  after it enter as one block. Apple's two recents lists and the New shelf's releases left the
+  build (`askApple` in home.ts): the shelves draw from local data and the lists in memory, and
+  an answer that changed a list builds again, patched in place; the refresh square turns while
+  a call is out. Read before the build: Rust keeps no copy of the releases, so after a launch
+  the New shelf joins a moment later.
+- Search (S2 A): the answer shows at once. Each section's new covers wait
+  (`data-art-held`) until its first screen is loaded and decoded, at most `--search-reveal-cap`
+  (0.8 s), then fade in left to right over `--search-reveal-span` (0.15 s); ↓ from the field
+  shows every section at once. A drill from a result is an engine level and holds as one.
+- The Queue: holds at its open and when the shown list is replaced whole (no entry kept);
+  an advance, an Add or a drag never holds. History: at its open, until the first read.
+  Rewind: at its open and at a stat or window switch. Diary: its home page at the open.
+- The setting: `instantCards` (default empty), Settings › Cards › *Cover load animations*
+  (his name), nine toggles; agent keys `instantCards.<card>`, labels "Library cover load
+  animations" and so on; a `NEW_MARKS` line per row; the Cards reset group takes it. An instant
+  card never holds and plays no wave; its panel wears `data-instant` and its covers show the
+  frame they load, with no square and no fade (W2 B, his call).
+- Not a rule key: every rule key is one value today; a list key needs a rule row that picks
+  cards. For later, his call.
+
+**Decided by Claude inside his choices (for him to see):**
+1. The ladder's mapping: a large Library tile asks 480 (was 300), a small one 192 (was 160),
+   an artist in Search 192 (was 96), the Queue and History heroes 96.
+2. The warm list keeps each card's last first screen in localStorage (URLs only).
+3. The Full | Lib switch and a rule-grow drill do not hold; Grow and Fill keep their own row
+   entry (CARD-GROW.md §19). The "Grow becomes the wave" part of 7.11 part 1 is not built.
+4. `fetchpriority` replaced by eager first-screen loads during the hold (4c above).
+5. Home's two recents calls left the build too, not only the New shelf's ("Home never waits on
+   Apple to show", 7.9 part 6).
+6. A face that replaces a borrowed cover on Home fades in from the slot's ground, not across
+   the old cover (7.9 part 4: no cut, but not a cross-fade).
+7. The Cards reset hint now reads *Every card back in the picker, and every card waits for its
+   covers. Rewind stays out until 50 plays*.
+8. The Queue's "replaced whole" test: no entry on screen before is on screen after.
+9. Diary holds at its open only; its home page is still drawn whole (`innerHTML`), because its
+   picker field is wired on each draw.
+
+**Step 8 (run 2026-10-17, his go):** the numbers are under 7.13's baseline. One fix followed it
+(a loaded picture moves between keys in one patch); a re-run of the pasted searches would
+measure it.
 
 ---
 

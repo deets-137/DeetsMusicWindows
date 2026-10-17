@@ -239,6 +239,7 @@ export const playlistsCard: CardDef = {
     const unmountWeb = webBtn ? mountWeb(webBtn).destroy : null; // PLAYLIST-WEB.md
 
     let lists: Playlist[] = [];
+    let listed = false; // the first load landed (the reveal holds until then, UX-COVERUPS.md §7.1)
     let folders: PlaylistFolder[] = [];
     const collapsed = loadCollapsed();
     let openPlaylist: Playlist | null = null; // the drilled-into playlist, or null at overview
@@ -292,9 +293,12 @@ export const playlistsCard: CardDef = {
       refreshOnOpen(p)
         .catch(() => false)
         .then(() => tracksOf(p))
-        .then((ts) => { reconcile(ts); card.reload(); }) // ♥ state for rows the mirror hasn't seen
+        .then((ts) => reconcile(ts)) // ♥ state for rows the mirror hasn't seen
         .catch((e) => console.error("[playlists] tracks", e))
-        .finally(() => pending.delete(id));
+        .finally(() => {
+          pending.delete(id);
+          card.reload(); // the songs, or the empty text of a read that failed: the reveal lets go
+        });
     };
 
     // Stale-while-revalidate refetch for a playlist that's ALREADY cached + on-screen
@@ -490,6 +494,9 @@ export const playlistsCard: CardDef = {
         groupings: [grouping],
         dropInto: (pay) => dropFor(p, pay),
         defaults: { density: "lines", sortKey: "order" },
+        // The songs on their way (UX-COVERUPS.md §7.1): the drill's reveal holds for them, so they
+        // arrive with the hero in one wave, never after it (desk test, 2026-10-17).
+        loading: () => pending.has(id),
         emptyText: "Drag songs here, or add them from your Library or Search.",
       };
     };
@@ -883,6 +890,7 @@ export const playlistsCard: CardDef = {
     const rootContext = (): Context => ({
       title: "Playlists",
       density: true,
+      loading: () => !listed,
       shelves: () => pinnedShelfHTML(["playlist"]),
       shelfDrag: pinDragRow, // the grip moves a pinned tile along the shelf (MOVABLE-ROWS.md §5.2)
       shelvesFirst: true,
@@ -1108,9 +1116,12 @@ export const playlistsCard: CardDef = {
         .then(([ps, fs]) => {
           lists = ps;
           folders = fs;
-          card.reload();
         })
-        .catch((e) => console.error("[playlists] load", e));
+        .catch((e) => console.error("[playlists] load", e))
+        .finally(() => {
+          listed = true; // a failed read is the list's own to show (its empty text), not a hold
+          card.reload();
+        });
 
     // Eager count backfill: the flat mirror list carries no track count, so tiles
     // read "Playlist" until a count is learned. Fill the missing ones (one tiny

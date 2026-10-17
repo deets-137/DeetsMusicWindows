@@ -18,7 +18,8 @@
 // the header's refresh square — all from SQLite and the caches already in memory.
 
 import { wireListKeys } from "./list-keys";
-import { homeShelves, hideItem, fillArtistPhotos, refreshApple, type HomeItem, type HomeShelf } from "./home";
+import { homeShelves, hideItem, fillArtistPhotos, refreshApple, onHomeApple, type HomeItem, type HomeShelf } from "./home";
+import { reveal, isInstant } from "./reveal";
 import { playTracks, playStation, onPlayerState } from "./player";
 import { stationMenu, tileMenu } from "./media-menu";
 import { onPlaylistsChange } from "./playlists";
@@ -29,6 +30,7 @@ import { rowDrag, type DragPayload } from "./row-drag";
 import { mosaicHTML } from "./mosaic";
 import { esc } from "./collection-card";
 import { enterRows } from "./pop";
+import { patchHTML } from "./keyed";
 import type { Artwork } from "./library";
 import type { CardDef, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
@@ -37,6 +39,7 @@ import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs } from "
 import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from "./sotd";
 import * as diag from "./diag";
 import { errorOf } from "./dom";
+import { TILE_PX } from "./art-size";
 
 const err = errorOf("home");
 
@@ -59,8 +62,8 @@ const artURL = (art: Artwork | undefined, px: number): string | null =>
 
 function tileArt(it: HomeItem): string {
   const round = it.round ? " search__tile-art--round" : "";
-  const url = artURL(it.art, 192);
-  if (url) return `<img class="search__tile-art${round}" src="${esc(url)}" alt="" loading="lazy" decoding="async" />`;
+  const url = artURL(it.art, TILE_PX);
+  if (url) return `<img class="search__tile-art${round}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
   // A playlist with no artwork of its own (never a round tile, so the base class stands).
   if (it.mosaic?.length) return mosaicHTML("search__tile-art", it.mosaic, it.mosaicSeed ?? it.key);
   return `<div class="search__tile-art search__tile-art--empty${round}" aria-hidden="true">♪</div>`;
@@ -79,7 +82,7 @@ const tileHTML = (it: HomeItem, i: number, pinShelf: boolean): string =>
 // A shelf is one block: its label and the tiles under it move together (§4.1). The label
 // is the header you hold.
 const shelfHTML = (sh: HomeShelf, i: number): string =>
-  `<section class="home-shelf" data-idx="${i}" data-shelf="${sh.id}">` +
+  `<section class="home-shelf" data-idx="${i}" data-shelf="${sh.id}" data-key="shelf:${sh.id}">` +
   `<div class="search__label">${esc(sh.label)}</div>` +
   `<div class="search__scroller">${sh.items.map((it, n) => tileHTML(it, n, sh.id === "pinned")).join("")}</div></section>`;
 
@@ -108,21 +111,23 @@ export const homeCard: CardDef = {
     let shownIds: string[] = [];
     let failed = false; // the last build threw: say so, not "Play something"
 
+    // A keyed patch (keyed.ts, UX-COVERUPS.md §7.9 part 3): a tile still on its shelf keeps its
+    // node and its loaded cover, a play that moves a tile to the front moves the node, and each
+    // shelf keeps its sideways scroll because it is the same element.
     const render = () => {
-      const scrolled = [...shelfBox.querySelectorAll<HTMLElement>(".search__scroller")].map((el) => el.scrollLeft);
       const list = ordered();
       shownIds = list.map((sh) => sh.id);
-      shelfBox.innerHTML = shelves.length
+      // While the first build is on its way the reveal holds an empty body; "Looking through
+      // what you play…" shows only once the cap passes with no shelves yet (§7.9 part 2).
+      patchHTML(shelfBox, shelves.length
         ? list.map(shelfHTML).join("")
+        : loading && !revealed ? ""
         : `<p class="lib-empty__msg">${
             loading ? "Looking through what you play…"
             // A failed read is not an empty Home: "Play something" blamed the user (2026-09-29).
             : failed ? "Home didn't load. Press Refresh to try again."
             : "Play something. Home fills itself."
-          }</p>`;
-      shelfBox.querySelectorAll<HTMLElement>(".search__scroller").forEach((el, i) => {
-        if (scrolled[i]) el.scrollLeft = scrolled[i];
-      });
+          }</p>`);
     };
 
     // Rebuild every shelf. Cheap and local: one log read, one add-stamp read, the
@@ -152,10 +157,12 @@ export const homeCard: CardDef = {
           refreshBtn?.classList.remove("is-busy");
           if (!alive) return;
           render();
-          // The first fill slides its shelves in, as a card's rows do elsewhere.
+          held.check();
+          // The first fill is the reveal's wave (reveal.ts). Shelves that land after the cap
+          // (the message showed) enter as one block with the row-entry motion.
           if (first && shelves.length) {
             first = false;
-            enterRows([...shelfBox.children] as HTMLElement[]);
+            if (revealed && !isInstant("home")) enterRows([...shelfBox.children] as HTMLElement[]);
           }
           // An artist tile with no cached photo: one call each, once ever. Draw again
           // when one lands, so the borrowed album cover swaps for the real face.
@@ -332,6 +339,29 @@ export const homeCard: CardDef = {
     // are unchanged, so this is a render, not a build.
     const offOrder = onRowOrderChange(() => { if (alive) render(); });
 
+    // The card's first screen (UX-COVERUPS.md §7.9): the body holds until the shelves in view
+    // and the tiles in each shelf's visible width have their covers, at most --reveal-cap.
+    let revealed = false;
+    const held = reveal({
+      card: "home",
+      body: shelfBox,
+      root: host,
+      view: body,
+      tiles: () => [...shelfBox.querySelectorAll<HTMLElement>(".search__label, .search__tile, .lib-empty__msg")],
+      loading: () => loading,
+      onReveal: () => {
+        revealed = true;
+        if (!shelves.length) render(); // the cap passed with no shelves: say what is happening
+      },
+    });
+    void held.done.then(() => (revealed = true));
+    // Apple's lists land after the build (home.ts `askApple`): the shelves build again, patched
+    // in place, and the refresh square turns while a call is out.
+    const offApple = onHomeApple((busy, changed) => {
+      if (!alive) return;
+      refreshBtn?.classList.toggle("is-busy", busy || pending);
+      if (!busy && changed) build();
+    });
     render();
     build();
     refreshBtn?.addEventListener("click", () => {
@@ -353,6 +383,8 @@ export const homeCard: CardDef = {
         offPlaylists();
         offPins();
         offOrder();
+        offApple();
+        held.cancel();
         drag.destroy();
         body.removeEventListener("click", onClick);
         body.removeEventListener("keydown", onKey);

@@ -14,7 +14,7 @@
 
 import { librarySync, onSyncBusy, onSyncEvent, syncBusy, syncProgress, type Track, type Artwork } from "./library";
 import { creditIndex } from "./artist-credit";
-import { tracks, onTracksChange, noCatalogCopy, addTransientTracks } from "./track-store";
+import { tracks, onTracksChange, noCatalogCopy, addTransientTracks, tracksLoaded } from "./track-store";
 import { materializeTrack } from "./search";
 import { playTracks, shuffledStart } from "./player";
 import { onLibraryDrill, onLibraryFilter, takeLibraryDrill, takeLibraryFilter } from "./layout-bus";
@@ -40,6 +40,7 @@ import { unreleasedHint } from "./release";
 import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey, fmtClock } from "./library-model";
 import { mediaLevels } from "./media-levels";
 import * as diag from "./diag";
+import { ROW_PX, TILE_PX, HERO_PX } from "./art-size";
 
 // ── derived models ────────────────────────────────────────────────────────────
 // The album model and its pure helpers live in library-model.ts (shared with the album and
@@ -139,7 +140,7 @@ function initials(name: string): string {
 // covers, `mosaic.ts` (PLAYLISTS.md §11). `seed` is the playlist's id.
 function rowThumb(art: Artwork | undefined, round: boolean, name: string, mosaic?: string[], seed?: string): string {
   const r = round ? " lib-row__art--round" : "";
-  const url = artURL(art, 72);
+  const url = artURL(art, ROW_PX);
   if (url) return `<img class="lib-row__art${r}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
   if (mosaic?.length) return mosaicHTML("lib-row__art", mosaic, seed ?? name);
   return `<div class="lib-row__art${r} lib-row__art--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
@@ -148,14 +149,15 @@ function tileCover(art: Artwork | undefined, px: number, round: boolean, name: s
   const r = round ? " lib-tile__cover--round" : "";
   const url = artURL(art, px);
   if (url) return `<img class="lib-tile__cover${r}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
-  if (mosaic?.length) return mosaicHTML("lib-tile__cover", mosaic, seed ?? name);
+  if (mosaic?.length) return mosaicHTML("lib-tile__cover", mosaic, seed ?? name, px);
   return `<div class="lib-tile__cover${r} lib-tile__cover--empty" aria-hidden="true">${round ? esc(initials(name)) : "♪"}</div>`;
 }
-const px = (density: Density) => (density === "large" ? 300 : 160);
+// The cover-size ladder (art-size.ts): a small tile takes the tile step, a large one the hero step.
+const px = (density: Density) => (density === "large" ? HERO_PX : TILE_PX);
 
-/** The detail hero's cover (a real cover, a mosaic, or the ♪ placeholder). Fetched at
- *  2× the token size so it stays crisp on a HiDPI panel. `round` = an artist's photo. */
-const HERO_PX = 360;
+/** The detail hero's cover (a real cover, a mosaic, or the ♪ placeholder). Fetched at the
+ *  ladder's hero step (art-size.ts), over 2× the token size, so it stays crisp on a HiDPI
+ *  panel. `round` = an artist's photo. */
 export function heroCover(art: Artwork | undefined, name: string, mosaic?: string[], seed?: string, round = false): string {
   const cls = round ? "lib-hero__cover lib-hero__cover--round" : "lib-hero__cover";
   const url = artURL(art, HERO_PX);
@@ -683,9 +685,12 @@ export const libraryCard: CardDef = {
         openArtist: () => libNav.drillArtist(it.title),
       });
     };
+    // The first read of the library: the reveal holds until it lands (UX-COVERUPS.md §7.1).
+    let tracksIn = false;
     const rootContext = (): Context => ({
       title: "Library",
       density: true,
+      loading: () => !tracksIn,
       shelves: () => pinnedShelfHTML(["album", "artist", "song"]),
       shelfDrag: pinDragRow, // the grip moves a pinned tile along the shelf (MOVABLE-ROWS.md §5.2)
       shelvesFirst: true,
@@ -762,6 +767,10 @@ export const libraryCard: CardDef = {
     // Library rows come from the synced store only — a transient ingest (a catalog-only
     // playlist/search play) changes nothing this card shows, so it must not re-render.
     const unsubTracks = onTracksChange((why) => why === "library" && card.reload(), "library.reload");
+    void tracksLoaded().then(() => {
+      tracksIn = true;
+      card.reload();
+    });
     const unsubPins = onPinsChange(() => card.reload());
     // An artist or an album asked for from outside (the Compass, COMPASS.md §2).
     const takeDrill = () => {

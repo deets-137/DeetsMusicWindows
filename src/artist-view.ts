@@ -11,6 +11,7 @@ import { playlistsCached, playlistSongIndex, playlistTracks, songs } from "./pla
 import { esc } from "./collection-card";
 import { mosaicHTML } from "./mosaic";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { TILE_PX } from "./art-size";
 
 // ── the Last.fm facts box beside the hero (LISTENERS.md §6) ──────────────────────
 // The markup lives in info-box.ts with the album's box (§7); re-exported here for the
@@ -142,7 +143,7 @@ const artURL = (art: Artwork | undefined, px: number): string | null =>
   art?.urlTemplate ? art.urlTemplate.replace("{w}", String(px)).replace("{h}", String(px)).replace("{f}", "jpg") : null;
 
 function tileArt(p: Playlist, seed: string): string {
-  const url = artURL(p.artwork, 192);
+  const url = artURL(p.artwork, TILE_PX);
   if (url) return `<img class="search__tile-art" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`;
   if (p.coverUrls?.length) return mosaicHTML("search__tile-art", p.coverUrls, seed);
   return `<div class="search__tile-art search__tile-art--empty" aria-hidden="true">♪</div>`;

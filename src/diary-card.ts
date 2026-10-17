@@ -50,6 +50,8 @@ import {
   type DiaryEntry, type DiarySummary, type DiarySong, type DiaryFolder,
 } from "./diary";
 import { sortByOrder, moveTo, writeOrder, onRowOrderChange, sectionsMovable, holdFor } from "./row-order";
+import { ROW_PX, TILE_PX } from "./art-size";
+import { reveal, type Reveal } from "./reveal";
 
 const COLLAPSE_KEY = "deets.diary.collapsed";
 /** The rows the user folded shut (a view preference, as the Playlists folds are). */
@@ -61,8 +63,6 @@ function loadCollapsed(): Set<string> {
   }
 }
 
-const TILE_PX = 240;
-const ROW_PX = 72;
 const PICK_LIB_CAP = 8;
 const PICK_CAT_CAP = 10;
 const NOTE_SAVE_MS = 600;
@@ -312,6 +312,8 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
           `<div class="diary__secs" data-secs>${rows.map(rowHTML).join("")}</div></div>`;
         const rootEl = body.querySelector<HTMLElement>(".diary__root");
         if (rootEl) rootEl.scrollTop = keepScroll;
+        rootRead = true;
+        held?.check();
         if (picking) {
           const input = wirePick();
           input?.focus();
@@ -321,6 +323,8 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       .catch((e) => {
         console.error("[diary] list", e);
         body.innerHTML = `<p class="qcard__empty">Couldn't read your Diary.</p>`;
+        rootRead = true;
+        held?.check();
       });
   };
 
@@ -1484,6 +1488,19 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   // Card memory (CARD-MEMORY.md): the open entry, by id. A held request wins over it.
   const mem = opts?.memory as { entry?: number } | undefined;
   setHeader();
+  // The card's open (UX-COVERUPS.md §7.11 part 8): the home page holds for its list and the
+  // covers of its first screen, then enters as one wave. An entry opened from memory is not held.
+  let rootRead = false;
+  let held: Reveal | null = mem?.entry
+    ? null
+    : reveal({
+        card: "diary",
+        body,
+        root: host,
+        view: body,
+        tiles: () => [...body.querySelectorAll<HTMLElement>("[data-top] > *, .lib-shelf, .search__tile, .search__row, .qcard__empty")],
+        loading: () => !rootRead,
+      });
   if (mem?.entry) void openEntry(mem.entry);
   else renderRoot();
   takeRequest();
@@ -1497,6 +1514,8 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
 
   return {
     destroy() {
+      held?.cancel();
+      held = null;
       flushNote();
       window.removeEventListener("blur", flushNote);
       window.removeEventListener("pagehide", flushNote);

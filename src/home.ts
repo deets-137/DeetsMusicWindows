@@ -825,6 +825,40 @@ function newArtists(counts: Map<string, { full: number; partial: number }>): str
   return seats;
 }
 
+// ── Apple's answers, off the build ────────────────────────────────────────────
+const appleWatch = new Set<(busy: boolean, changed: boolean) => void>();
+/** Hear Apple's lists: busy while a call is out, then whether an answer changed a list. */
+export function onHomeApple(cb: (busy: boolean, changed: boolean) => void): () => void {
+  appleWatch.add(cb);
+  return () => appleWatch.delete(cb);
+}
+let asking: Promise<void> | null = null;
+/** The recents, then the releases (they need the recents), each behind its own floor. A
+ *  floor not passed asks nothing and says nothing, so the build this triggers cannot loop. */
+function askApple(counts: Map<string, { full: number; partial: number }>): void {
+  if (asking || (Date.now() < appleAt && Date.now() < newAt)) return;
+  const before = [applePlayed, appleAdded, newReleases];
+  let told = false;
+  asking = (async () => {
+    // Only a real call wears the busy mark (a signed-out or no-op pass says nothing).
+    const tell = () => {
+      if (told) return;
+      told = true;
+      appleWatch.forEach((cb) => cb(true, false));
+    };
+    const due = Date.now() >= appleAt || Date.now() >= newAt;
+    if (due && setting("homeApple") && trouble() !== "signin") tell();
+    await fetchApple();
+    await fetchNew(counts);
+  })()
+    .catch((e) => console.warn("[home] apple", e))
+    .finally(() => {
+      asking = null;
+      const changed = before[0] !== applePlayed || before[1] !== appleAdded || before[2] !== newReleases;
+      if (told || changed) appleWatch.forEach((cb) => cb(false, changed));
+    });
+}
+
 /** Ask Apple for each artist's newest release, at most once a day. A failure keeps the
  *  list already in hand and retries sooner, exactly as the recents calls do. */
 async function fetchNew(counts: Map<string, { full: number; partial: number }>): Promise<void> {
@@ -898,11 +932,13 @@ export async function homeShelves(): Promise<HomeShelf[]> {
     addedAtMap().catch(() => [] as [string, number][]),
     artistPhotos().catch(() => [] as [string, Artwork][]),
     playCounts().catch(() => new Map()),
-    fetchApple(),
   ]);
-  // The release read needs the recents list, so it follows the fetch above. Its own floor
-  // is a day, so this is a no-op on all but the first build of each day.
-  await fetchNew(counts);
+  // Apple's lists (the recents and the New shelf's releases) never hold a build
+  // (UX-COVERUPS.md §7.9 part 6): the shelves draw from local data and the lists in memory,
+  // and an answer that lands later builds the shelves again, patched in place. After a launch
+  // the lists are empty (Rust keeps no copy of the releases), so the New shelf joins a moment
+  // after the others, as one shelf entering.
+  askApple(counts);
   // Keep anything fetched this session that the cached read does not carry yet.
   photos = new Map([...faces, ...photos]);
   const playlists = new Map(lists.map((p) => [pid(p), p]));

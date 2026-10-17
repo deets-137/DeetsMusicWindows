@@ -40,6 +40,7 @@ import { libraryAlbumGroups } from "./library-albums";
 import { searchField } from "./search-field";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { checkWeb, webKeep } from "./suggest";
+import { ROW_PX } from "./art-size";
 
 interface WebSong {
   track: Track;
@@ -758,11 +759,11 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
   const renderRows = (animate: boolean) => {
     const typing = artistInput.value.trim() !== "";
     if (seed && seed.kind === kind && !typing) {
-      const img = art(seedArt(seed), 64);
+      const img = art(seedArt(seed), ROW_PX);
       const cls = `web__hit-art${seed.kind === "artist" ? "" : " web__hit-art--cover"}`;
       const line = seedLine(seed);
       hitsEl.innerHTML = `<div class="web__hit" role="option" aria-selected="true" data-picked
-        title="The web starts here. Type to pick another ${seed.kind}">${img ? `<img class="${cls}" src="${esc(img)}" alt="" />` : `<span class="${cls}"></span>`}<span class="web__hit-name">${esc(seedName(seed))}</span>${line ? `<span class="web__hit-sub web__hit-sub--line">${esc(line)}</span>` : ""}</div>`;
+        title="The web starts here. Type to pick another ${seed.kind}">${img ? `<img class="${cls}" src="${esc(img)}" alt="" data-art />` : `<span class="${cls}"></span>`}<span class="web__hit-name">${esc(seedName(seed))}</span>${line ? `<span class="web__hit-sub web__hit-sub--line">${esc(line)}</span>` : ""}</div>`;
     } else {
       hitsEl.innerHTML = rows
         .map((r, i) => {
@@ -784,9 +785,9 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
                 : r.kind === "libalbum"
                   ? { kind: "album", album: { title: r.lib.title, artistName: r.lib.artistName, artwork: r.lib.cover, genres: r.lib.genres } }
                   : r.seed;
-            const src = art(seedArt(s), 64);
+            const src = art(seedArt(s), ROW_PX);
             const cls = `web__hit-art${s.kind === "artist" ? "" : " web__hit-art--cover"}`;
-            pic = src ? `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" />` : `<span class="${cls}"></span>`;
+            pic = src ? `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" data-art />` : `<span class="${cls}"></span>`;
             name = esc(seedName(s));
             if (s.kind === "artist") sub = r.kind === "seed" ? "Web before" : esc(s.artist.genres?.[0] ?? "");
             else {
@@ -796,8 +797,8 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
             if (r.kind === "apple") tail = APPLE_SIGIL;
             tip = r.kind === "libsong" || r.kind === "libalbum" ? "In your library. Starts the web here" : "Starts the web here";
           } else {
-            const src = art(photos.get(r.lib.name) ?? r.lib.cover, 64);
-            pic = src ? `<img class="web__hit-art" src="${esc(src)}" alt="" loading="lazy" />` : `<span class="web__hit-art"></span>`;
+            const src = art(photos.get(r.lib.name) ?? r.lib.cover, ROW_PX);
+            pic = src ? `<img class="web__hit-art" src="${esc(src)}" alt="" loading="lazy" data-art />` : `<span class="web__hit-art"></span>`;
             name = esc(r.lib.name);
             sub = `${r.lib.songs} song${r.lib.songs === 1 ? "" : "s"}`;
             tip = "In your library. Starts the web here";

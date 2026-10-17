@@ -436,6 +436,10 @@ export interface Settings {
   hiddenCards: string[];
   /** The Rewind one-shot already fired (so a later hide sticks). */
   rewindAutoShown: boolean;
+  /** The cards that show at once, with no wait for their covers and no wave (Settings › Cards,
+   *  UX-COVERUPS.md §7.12). Card ids from `REVEAL_CARDS` (reveal.ts). An instant card keeps the
+   *  keyed patch (no blinks, no wait); the launch does not wait for it. */
+  instantCards: string[];
   /** Diary (docs/features/DIARY.md §5): when an entry's scale changes and it already holds
    *  scores — "ask" (a toast: Rescale / Keep numbers), "always" (move them in proportion,
    *  7/10 → 3.5/5), "never" (the numbers stay as typed; a score above the top is marked). */
@@ -630,6 +634,7 @@ export const DEFAULTS: Settings = {
   sotdSuggest: false, // user's call 2026-09-17: a suggestion row is off until you ask for it
   hiddenCards: ["rewind"], // Rewind has nothing to show until 50 plays; every other card is offered (his call 2026-10-10)
   rewindAutoShown: false,
+  instantCards: [], // his design (UX-COVERUPS.md §7, 2026-10-16): every card presents once, complete; instant is a choice per card (§7.12)
   diaryRescale: "ask", // user's call 2026-09-24 (7B): never change a number the user typed without telling them
   diaryGrow: "new", // user's call 2026-09-24: a new entry opens with room for its songs and the note panel
   onboardingStep: 1, // a fresh install starts at step 1; an upgrade is caught by migrate()

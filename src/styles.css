@@ -1510,9 +1510,26 @@ body {
 /* A row sliding in (src/pop.ts): a panel's rows on open, the rows a section fold opened. */
 .pop-enter { animation: pop-row-in var(--pop-in) var(--pop-ease) calc(var(--pop-i, 0) * var(--pop-stagger)) both; }
 @keyframes pop-row-in { from { opacity: 0; transform: translateY(calc(-1 * var(--pop-shift))); } }
+/* Late covers (artwork-heal.ts, UX-COVERUPS.md §7.3): a cover still on its way shows its
+   slot's ground, the placeholder square the ♪ slots wear, with its own pixels moved out of
+   its box, and fades in when it lands. At opacity 0 the slot showed nothing: Search's held
+   sections had gaps beside the names, not squares (desk test, 2026-10-17). A card set to
+   instant with every loading motion off (`data-instant`, 7.12) shows each cover the frame
+   it loads, as before. */
+img[data-art-wait], img[data-art-held] { background: var(--surface-hover); object-position: -100000px 0; }
+[data-instant] img[data-art-wait] { background: none; object-position: 50% 50%; }
+img.art-in { animation: art-in var(--art-in) var(--pop-ease) var(--reveal-d, 0s) both; }
+@keyframes art-in { from { opacity: var(--art-in-from); } }
+/* The reveal (reveal.ts, §7.1–7.2): a held body keeps its box and shows nothing; a first-screen
+   tile waits at opacity 0 (no drawing) until its turn on the diagonal wave, then enters. */
+[data-reveal-hold] { visibility: hidden; }
+.reveal-pre { opacity: 0; }
+.reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; }
 @media (prefers-reduced-motion: reduce) {
   .pop, .flyout { transition: none; }
   .pop-enter { animation: none; }
+  img.art-in, .reveal-in { animation: none; }
+  .reveal-pre { opacity: 1; }
   .lib-picked.is-entering { animation: none; }
   .sleep__ring { transition: none; } /* the dial snaps once a minute (sleep.ts rounds the angle) */
   .sleep__fade { animation: none; }
