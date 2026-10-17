@@ -469,6 +469,13 @@ the launch cover (§6) hides all of it.
 1. **The probe first:** where do a mosaic's 0.2–2.8 s go — the worker's downloads or its
    drawing? A 3-cover mosaic fetches large tiles (`FETCH_PX` up to 480) that no row has cached.
    The answer sets parts 2 and 3.
+   **Answered 2026-10-17** (`mosaic:drawn` now logs the split: `waited`, `tiles`, `fetch`,
+   `slowest`, `decode`, `paint`, `encode`, `px`, `kb`; 8 draws on his dev app): **the downloads.**
+   A cold 3-cover mosaic fetches three 480 px covers (235 KB); the tiles phase is a median
+   468 ms (the slowest fetch 462 ms), the decode 9 ms, the drawing 0 ms, the encode 14 ms; the
+   whole draw a median 566 ms (max 757). Warm, the same mosaic is 188 ms. The queue wait before
+   a draw was 9–891 ms. So part 2 (draw at the size on screen) fixes the cause; the older
+   1.5–2.8 s readings included the queue and the cold network.
 2. **Mosaics drawn at the size on screen.** A row shows 36 px; today one 480 px picture serves
    the row, the tile and the hero. The row and the tile get a small picture from small fetches;
    the hero's large one is drawn when a playlist opens. Memory only, never saved, as before
@@ -770,6 +777,39 @@ answer, and the answer to the swap.
 **When:** once on today's code (the baseline), then after each step of 7.7. Three runs each,
 the medians, with the noise gate. A run starts only when he says so: the drive presses his live
 dev app, and he uses it (a press of his would end a hold).
+
+**The baseline (2026-10-17, today's code, `shots/reveal-live/0.29.0/`, made @ 3d0b647 with
+the probe's changes not committed; Max, 1080×950, his library):** "late" = put in before its
+picture loaded; times from the press (a typed term's times include its typing, 120 ms a key).
+
+| Step | New pictures in view | Late | Late from … to | Out of reading order | Made again by a redraw |
+|---|---|---|---|---|---|
+| Launch, cache emptied | 35 (1 mosaic) | 35 | +1472 … +2957 ms | 6 | 83 |
+| Playlists, first open after launch (cold) | 7 (2 mosaics, +756) | 4 | +103 … +777 | 1 | 5 |
+| Playlists, open again (warm) | 6 (1 mosaic, +39) | 2 | +103 … +104 | 1 | 5 |
+| A playlist opened (drill) | 1 | 1 | +278 | 0 | 1 |
+| Home, first open after launch (cold) | 12 (1 mosaic, +1112) | 10 | +1207 … +2282 | 4 | 0 |
+| Home, open again (warm) | 12 | 10 | +207 … +253 | 0 | 0 |
+| Home › Refresh | 0 | 0 | — | 0 | **12** |
+| Search, 10 artists typed | 8–13 each | 8–12 each | +1482 … +3188 | 2–5 each | 0–1 |
+| Search, 5 album names pasted | 0–4 each | 0–4 | +608 … +1759 | 0–2 | 4–6 each |
+| History, open | 5 | 4 | +133 … +186 | 1 | 0 |
+| Rewind, open | 5 | 5 | +92 … +170 | 1 | 0 |
+
+What it shows:
+- **A cover from the disk cache is still "late".** Warm opens put the covers in before they
+  are decoded, and they land 100–250 ms after (Playlists, Home, History, Rewind). So the pops
+  are not only a first-time network fault: the wait (7.1) must count a disk-cached cover too.
+- **Home's first open after a launch shows an empty body for over a second** (its change curve
+  passes 50 % only after +1034 ms; the strip shows the slot blank). Its first build waits on
+  local reads and the New shelf's Apple call (7.9 part 6).
+- **Redraws make covers again:** 83 during a launch, 12 on every Home Refresh, 4–6 on each Search
+  answer that shares covers with the last one, 5 on each Playlists open. The keyed patch (7.7
+  step 2, 7.9 part 3) removes them.
+- **Search's covers land 0.6–1.8 s after the last keystroke or the paste**, out of reading order
+  in most answers.
+- Library's open put no new picture in view (its first screen was song rows with covers already
+  in place): no line.
 
 **Safety:** the drive list opens cards, scrolls, types and drills. It plays nothing, loves
 nothing, and changes no setting. A search adds its term to Search's Recents, as a typed search

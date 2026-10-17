@@ -11,6 +11,7 @@
 // the tile order, so every playlist keeps its own picture across sessions.
 
 import { log } from "./diag";
+import type { Timing } from "./mosaic-worker";
 
 export const MOSAIC_MAX = 100;
 /** One picture serves the row (72), the tile (≤300) and the hero (360, 2× its token). */
@@ -21,6 +22,7 @@ const latest = new Map<string, string>(); // seed → the key it shows now (to f
 const jobs = new Map<string, { urls: string[]; seed: string }>();
 const failed = new Set<string>();
 const waiting: string[] = []; // keys whose slot was on screen, oldest first
+const seenAt = new Map<string, number>(); // when each waiting key's slot came on screen (the probe)
 const watched = new WeakSet<Element>();
 let busy = false;
 let scanQueued = false;
@@ -73,7 +75,10 @@ function onSeen(entries: IntersectionObserverEntry[]): void {
     const key = (e.target as HTMLElement).dataset.mosaic;
     if (!key) continue;
     if (ready.has(key)) fill(key);
-    else if (!waiting.includes(key) && jobs.has(key)) waiting.push(key);
+    else if (!waiting.includes(key) && jobs.has(key)) {
+      waiting.push(key);
+      seenAt.set(key, performance.now());
+    }
   }
   pump();
 }
@@ -105,12 +110,24 @@ document.addEventListener("visibilitychange", pump);
 function draw(key: string, job: { urls: string[]; seed: string }): void {
   const id = ++nextId;
   const started = performance.now();
-  const done = (blob: Blob | null) => {
+  // The probe (UX-COVERUPS.md §7.4.1): how long the slot waited in the queue before its draw
+  // began, then the worker's split of the draw.
+  const waited = Math.round(started - (seenAt.get(key) ?? started));
+  seenAt.delete(key);
+  const split = (t?: Timing) =>
+    t
+      ? {
+          tiles: Math.round(t.tilesMs), fetch: Math.round(t.fetchMs), slowest: Math.round(t.slowestFetchMs),
+          decode: Math.round(t.decodeMs), paint: Math.round(t.drawMs), encode: Math.round(t.encodeMs),
+          px: t.px, kb: Math.round(t.kb), failed: t.failed,
+        }
+      : {};
+  const done = (blob: Blob | null, timing?: Timing) => {
     busy = false;
     jobs.delete(key);
     if (!blob) {
       failed.add(key);
-      log("mosaic:failed", { covers: job.urls.length });
+      log("mosaic:failed", { covers: job.urls.length, waited, ...split(timing) });
     } else {
       const url = URL.createObjectURL(blob);
       ready.set(key, url);
@@ -122,7 +139,7 @@ function draw(key: string, job: { urls: string[]; seed: string }): void {
       }
       latest.set(job.seed, key);
       fill(key);
-      log("mosaic:drawn", { covers: job.urls.length, ms: Math.round(performance.now() - started) });
+      log("mosaic:drawn", { covers: job.urls.length, ms: Math.round(performance.now() - started), waited, ...split(timing) });
     }
     pump();
   };
@@ -133,8 +150,8 @@ function draw(key: string, job: { urls: string[]; seed: string }): void {
     done(null);
     return;
   }
-  worker.onmessage = (e: MessageEvent<{ id: number; blob: Blob | null }>) => {
-    if (e.data.id === id) done(e.data.blob);
+  worker.onmessage = (e: MessageEvent<{ id: number; blob: Blob | null; timing?: Timing }>) => {
+    if (e.data.id === id) done(e.data.blob, e.data.timing);
   };
   worker.onerror = () => done(null);
   // The canvas ground: the same role the ♪ placeholder sits on.

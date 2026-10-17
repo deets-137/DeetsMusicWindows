@@ -1,6 +1,6 @@
 // Mosaic worker (PLAYLISTS.md §11) — draws one playlist's derived cover off the main
-// thread. In: { id, urls (cover templates), seed, size, bg }. Out: { id, blob } — a JPEG,
-// or null when no cover loaded. The fetches ride the webview's HTTP cache: Apple's image
+// thread. In: { id, urls (cover templates), seed, size, bg }. Out: { id, blob, timing } — a
+// JPEG, or null when no cover loaded, and where the time went (`Timing`). The fetches ride the webview's HTTP cache: Apple's image
 // server answers with `Access-Control-Allow-Origin: *` and a long max-age.
 
 interface Job {
@@ -75,18 +75,43 @@ function layout(n: number, size: number, rnd: () => number): Rect[] {
   return out;
 }
 
-async function bitmap(template: string, px: number): Promise<ImageBitmap | null> {
+/** Where one draw's time went (UX-COVERUPS.md §7.4.1, the probe): the sums over every tile of
+ *  the download and the decode (several run at once, so a sum can pass the whole), the
+ *  drawing, the JPEG encode, the whole of the tiles phase, the sizes asked and the bytes. */
+export interface Timing {
+  tilesMs: number;
+  fetchMs: number;
+  decodeMs: number;
+  drawMs: number;
+  encodeMs: number;
+  slowestFetchMs: number;
+  px: Record<number, number>;
+  kb: number;
+  failed: number;
+}
+const newTiming = (): Timing => ({ tilesMs: 0, fetchMs: 0, decodeMs: 0, drawMs: 0, encodeMs: 0, slowestFetchMs: 0, px: {}, kb: 0, failed: 0 });
+
+async function bitmap(template: string, px: number, t: Timing): Promise<ImageBitmap | null> {
   const s = String(px);
+  t.px[px] = (t.px[px] ?? 0) + 1;
   try {
+    const a = performance.now();
     const res = await fetch(template.replace("{w}", s).replace("{h}", s).replace("{f}", "jpg"));
     if (!res.ok) return null;
-    return await createImageBitmap(await res.blob());
+    const blob = await res.blob();
+    const b = performance.now();
+    t.fetchMs += b - a;
+    t.slowestFetchMs = Math.max(t.slowestFetchMs, b - a);
+    t.kb += blob.size / 1024;
+    const bmp = await createImageBitmap(blob);
+    t.decodeMs += performance.now() - b;
+    return bmp;
   } catch {
     return null;
   }
 }
 
-async function draw(job: Job): Promise<Blob | null> {
+async function draw(job: Job, t: Timing): Promise<Blob | null> {
   const rnd = random(hash(job.seed));
   const urls = [...job.urls];
   for (let i = urls.length - 1; i > 0; i--) {
@@ -107,24 +132,35 @@ async function draw(job: Job): Promise<Blob | null> {
       const i = next++;
       const r = rects[i];
       const want = Math.max(r.w, r.h);
-      const bmp = await bitmap(urls[i], FETCH_PX.find((p) => p >= want) ?? FETCH_PX[FETCH_PX.length - 1]);
-      if (!bmp) continue;
+      const bmp = await bitmap(urls[i], FETCH_PX.find((p) => p >= want) ?? FETCH_PX[FETCH_PX.length - 1], t);
+      if (!bmp) {
+        t.failed++;
+        continue;
+      }
       // Center-crop the square cover to the tile's shape.
       const side = Math.min(bmp.width, bmp.height);
       const sw = r.w >= r.h ? side : (side * r.w) / r.h;
       const sh = r.w >= r.h ? (side * r.h) / r.w : side;
+      const d = performance.now();
       ctx.drawImage(bmp, (bmp.width - sw) / 2, (bmp.height - sh) / 2, sw, sh, r.x, r.y, r.w, r.h);
+      t.drawMs += performance.now() - d;
       bmp.close();
       drawn++;
     }
   };
+  const tiles = performance.now();
   await Promise.all(Array.from({ length: Math.min(PARALLEL, urls.length) }, worker));
+  t.tilesMs = performance.now() - tiles;
   if (!drawn) return null;
-  return canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });
+  const enc = performance.now();
+  const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });
+  t.encodeMs = performance.now() - enc;
+  return blob;
 }
 
 port.onmessage = (e: MessageEvent<Job>) => {
-  draw(e.data)
-    .then((blob) => port.postMessage({ id: e.data.id, blob }))
-    .catch(() => port.postMessage({ id: e.data.id, blob: null }));
+  const t = newTiming();
+  draw(e.data, t)
+    .then((blob) => port.postMessage({ id: e.data.id, blob, timing: t }))
+    .catch(() => port.postMessage({ id: e.data.id, blob: null, timing: t }));
 };

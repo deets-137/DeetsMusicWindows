@@ -30,13 +30,19 @@
 // refuses every cross-origin request (WEB-DEMO.md §9.4). Apple's covers and previews do load (images and audio, §15).
 //
 // Steps 2–3 of SHOTS.md §10: pictures and clips from the demo. A clip is an MP4, a poster and
-// a frame strip (one PNG of the motion, for a review by eye). The dev-app source comes later.
+// a frame strip (one PNG of the motion, for a review by eye).
+//
+// `"source": "dev"` (2026-10-17, UX-COVERUPS.md §7.13): the shot runs on the RUNNING dev app
+// (`npm run dev:app`; `--second` for the second one), on the owner's real library. Nothing is
+// seeded or changed; see `shootDev`. A `clearCache` step empties its HTTP cache. Every clip step
+// also reports the pictures it brought (`loads`: ready at once, late, out of reading order,
+// made again), from the recorder's insert and load records.
 
 import { spawn, execFileSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { cpus, tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readStep } from "./readability.mjs";
 
@@ -93,6 +99,85 @@ const VARIANTS = [
     return { label: String.fromCharCode(66 + i), desc: spec, tokens: { ...setSpec.tokens, ...v.tokens }, settings: { ...setSpec.settings, ...v.settings } };
   }),
 ];
+
+// ── staleness (his ask, 2026-10-17): when each shot was made, from what, and when it was read ──
+// Every taken shot gets `<base>.meta.json` beside its files: `made` (the time, the app version,
+// the commit and branch, whether src/ had changes not committed, the list and the flags) and
+// `accessed` (each recorded read). A read is recorded by `--seen <file or folder>` (Claude runs it
+// when it reads a strip; nothing on disk can tell a look in Explorer from a virus scan, so the
+// file times are not used). `--stale` lists every shot under shots/ with its age, the src commits
+// since it was made, and its last read, oldest first.
+const SHOTS_ROOT = join(root, "shots");
+const git = (...a) => {
+  try {
+    return execFileSync("git", a, { cwd: root, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  } catch {
+    return "";
+  }
+};
+const SRC_PATHS = ["src", "src-tauri/src", "demo", "web", "index.html"];
+function madeInfo() {
+  return {
+    commit: git("rev-parse", "--short", "HEAD") || undefined,
+    branch: git("rev-parse", "--abbrev-ref", "HEAD") || undefined,
+    dirty: git("status", "--porcelain", "--", ...SRC_PATHS).length > 0,
+  };
+}
+function metaFiles(dir) {
+  const out = [];
+  const walk = (d) => {
+    let entries = [];
+    try {
+      entries = readdirSync(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith(".meta.json")) out.push(p);
+    }
+  };
+  walk(dir);
+  return out;
+}
+const relPath = (p) => relative(root, p).replaceAll("\\", "/");
+if (argv.includes("--seen")) {
+  // Record a read: of one shot (any of its files) or of every shot in a folder.
+  const target = resolve(oneArg("--seen"));
+  const by = oneArg("--by") ?? "claude";
+  const metas = existsSync(target) && statSync(target).isDirectory()
+    ? metaFiles(target)
+    : metaFiles(dirname(target)).filter((m) => basename(target).startsWith(basename(m, ".meta.json") + "."));
+  if (!metas.length) {
+    console.error(`[shots] no shot found for ${target}`);
+    process.exit(1);
+  }
+  const at = new Date().toISOString();
+  for (const m of metas) {
+    const meta = JSON.parse(readFileSync(m, "utf8"));
+    meta.accessed = [...(meta.accessed ?? []), { at, by }].slice(-20);
+    writeFileSync(m, JSON.stringify(meta, null, 2));
+  }
+  console.log(`[shots] read recorded on ${metas.length} shot(s) by ${by}`);
+  process.exit(0);
+}
+if (argv.includes("--stale")) {
+  const rows = metaFiles(SHOTS_ROOT).map((m) => {
+    const meta = JSON.parse(readFileSync(m, "utf8"));
+    const since = meta.made?.commit ? Number(git("rev-list", "--count", `${meta.made.commit}..HEAD`, "--", ...SRC_PATHS) || NaN) : NaN;
+    const last = meta.accessed?.at(-1);
+    return { m, meta, since, last };
+  });
+  rows.sort((a, b) => String(a.meta.made?.at).localeCompare(String(b.meta.made?.at)));
+  const day = (iso) => (iso ? iso.slice(0, 16).replace("T", " ") : "never");
+  for (const { m, meta, since, last } of rows) {
+    const src = Number.isNaN(since) ? "src ?" : since ? `${since} src commit(s) since` : "src current";
+    console.log(`${day(meta.made?.at)} · ${meta.made?.version ?? "?"} @ ${meta.made?.commit ?? "?"}${meta.made?.dirty ? "+changes" : ""} · ${src} · read ${day(last?.at)}${last ? ` (${last.by})` : ""} · ${relPath(m).replace(/\.meta\.json$/, "")}`);
+  }
+  console.log(`[shots] ${rows.length} shot(s) with metadata under shots/`);
+  process.exit(0);
+}
 
 // The scratchpad (SHOTS.md §5d): `--scratch <name>` runs shots/scratch/<name>.json into
 // shots/scratch/<name>/ (gitignored, like all of shots/). A name with no list gets a starter
@@ -330,6 +415,71 @@ function cdp(wsUrl) {
   };
 }
 
+// ── the dev app (SHOTS.md §4: the owner's real library) ─────────────────────
+
+/** The running dev app's main window, as a CDP websocket URL. dev-app.mjs puts the port in the
+ *  generated config, as webview-eval.mjs reads it; `--second` takes the second dev app. */
+async function devTarget() {
+  const second = argv.includes("--second");
+  let gen;
+  try {
+    gen = JSON.parse(readFileSync(join(root, "src-tauri", second ? ".tauri.dev2.gen.json" : ".tauri.dev.gen.json"), "utf8"));
+  } catch {
+    throw new Error("no generated dev config: start the app with `npm run dev:app`");
+  }
+  const args = gen.app.windows.find((w) => w.label === "main")?.additionalBrowserArgs ?? "";
+  const port = /--remote-debugging-port=(\d+)/.exec(args)?.[1];
+  if (!port) throw new Error("the dev config has no CDP port: restart `npm run dev:app`");
+  let targets;
+  try {
+    targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+  } catch {
+    throw new Error(`nothing answers on CDP port ${port}: is the dev app running?`);
+  }
+  const page = targets.find((t) => t.type === "page" && t.url.startsWith(gen.build.devUrl) && !t.url.includes("tray.html"));
+  if (!page) throw new Error(`no main-window page among ${targets.length} target(s)`);
+  return { url: page.webSocketDebuggerUrl, port };
+}
+
+/**
+ * One shot on the running dev app (UX-COVERUPS.md §7.13). Nothing is seeded and nothing is
+ * changed: no store wipe, no look, no size, no setting, no `--vs`. The page is not reloaded
+ * unless the list has a `reload` step. The recorder goes in now and on any reload, and stays
+ * passive between shots. The window must be on screen: WebView2 paints nothing when minimized.
+ */
+async function shootDev(page, shot, outDir, variant) {
+  if (Object.keys(variant.tokens ?? {}).length || Object.keys(variant.settings ?? {}).length)
+    throw new Error("the dev source takes no --vs or --set: it never changes the owner's look or settings");
+  const base = `${shot.id}.${lookId(DEV_LOOK)}${variant.label ? `.${variant.label}` : ""}`;
+  Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, base, outDir, look: lookId(DEV_LOOK), variant: variant.label || undefined, change: undefined });
+  const install = `(() => { ${RECORDER} })();`;
+  const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: install });
+  try {
+    await evaluate(page, `window.__shotsRec ? true : (${install.slice(0, -1)}, true)`);
+    const size = await evaluate(page, "({ w: innerWidth, h: innerHeight, visible: document.visibilityState })");
+    Object.assign(win, { w: size.w, h: size.h, follow: false, dev: true });
+    note("window", `dev app ${size.w}×${size.h} css px, ${size.visible}`);
+    if (size.visible !== "visible") throw new Error("the dev app's window is hidden or minimized: it paints no frames");
+    if (slow !== 1) await page.send("Animation.setPlaybackRate", { playbackRate: 1 / slow });
+    let out;
+    if (shot.kind === "clip") out = await record(page, shot, base, outDir);
+    else {
+      for (const step of shot.steps ?? []) await runStep(page, step);
+      const { data } = await page.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      writeFileSync(join(outDir, `${base}.png`), Buffer.from(data, "base64"));
+      out = { file: `${base}.png` };
+    }
+    return { ...out, ...consoleFile() };
+  } catch (e) {
+    consoleFile(String(e.message ?? e));
+    throw e;
+  } finally {
+    if (slow !== 1) await page.send("Animation.setPlaybackRate", { playbackRate: 1 }).catch(() => {});
+    await page.send("Page.removeScriptToEvaluateOnNewDocument", { identifier }).catch(() => {});
+  }
+}
+const DEV_LOOK = { theme: "live", skin: "app" };
+
 // ── one shot ─────────────────────────────────────────────────────────────────
 
 /**
@@ -395,13 +545,27 @@ const RECORDER = `const T = (ts) => performance.timeOrigin + ts;
     const loop = (ts) => { if (!rec.on) return; rec.rafs.push(T(ts)); requestAnimationFrame(loop); };
     rec.start = () => { if (rec.on) return; rec.on = true; requestAnimationFrame(loop); };
     rec.stop = () => { rec.on = false; };
-    try { new PerformanceObserver((l) => { if (rec.on) for (const e of l.getEntries()) rec.longtasks.push({ t: T(e.startTime), d: e.duration }); }).observe({ type: "longtask" }); } catch {}`;
+    try { new PerformanceObserver((l) => { if (rec.on) for (const e of l.getEntries()) rec.longtasks.push({ t: T(e.startTime), d: e.duration }); }).observe({ type: "longtask" }); } catch {}
+    rec.added = []; rec.loads = [];
+    rec.reset = () => { rec.inputs = []; rec.rafs = []; rec.longtasks = []; rec.added = []; rec.loads = []; };
+    const kindOf = (s) => (s.startsWith("blob:") ? "mosaic" : s.startsWith("data:") ? "data" : "cover");
+    const boxOf = (el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), seen: r.width > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth }; };
+    document.addEventListener("load", (e) => { const el = e.target; if (rec.on && el instanceof HTMLImageElement) rec.loads.push({ t: T(performance.now()), src: el.src, kind: kindOf(el.src), ...boxOf(el) }); }, true);
+    try { new MutationObserver((list) => {
+      if (!rec.on) return;
+      const t = T(performance.now());
+      for (const m of list) for (const n of m.addedNodes) {
+        if (!(n instanceof Element)) continue;
+        const imgs = n instanceof HTMLImageElement ? [n] : [...n.querySelectorAll("img")];
+        for (const im of imgs) rec.added.push({ t, src: im.src, kind: kindOf(im.src), complete: im.complete && im.naturalWidth > 0, ...boxOf(im) });
+      }
+    }).observe(document, { childList: true, subtree: true }); } catch {}`;
 
 /** What the page recorded (and the app's marks), taken out of the page. */
 async function takeRecord(page) {
-  const json = await evaluate(page, `JSON.stringify({ rec: window.__shotsRec ? { inputs: __shotsRec.inputs, rafs: __shotsRec.rafs, longtasks: __shotsRec.longtasks } : null, marks: window.__marks || [] })`);
+  const json = await evaluate(page, `JSON.stringify({ rec: window.__shotsRec ? { inputs: __shotsRec.inputs, rafs: __shotsRec.rafs, longtasks: __shotsRec.longtasks, added: __shotsRec.added || [], loads: __shotsRec.loads || [] } : null, marks: window.__marks || [] })`);
   const { rec, marks } = JSON.parse(json);
-  return { inputs: rec?.inputs ?? [], rafs: rec?.rafs ?? [], longtasks: rec?.longtasks ?? [], marks };
+  return { inputs: rec?.inputs ?? [], rafs: rec?.rafs ?? [], longtasks: rec?.longtasks ?? [], added: rec?.added ?? [], loads: rec?.loads ?? [], marks };
 }
 /** A clip in progress: a `reload` step keeps what the old page recorded. */
 const recording = { on: false, kept: [] };
@@ -472,6 +636,11 @@ async function runStep(page, step) {
     }
     return;
   }
+  if ("paste" in step) {
+    // The whole text at once, as a paste into the focused field (one input event).
+    await page.send("Input.insertText", { text: step.paste });
+    return;
+  }
   if ("click" in step) {
     const at = await centerOf(page, step.click);
     await mouse(page, "mouseMoved", at);
@@ -534,9 +703,18 @@ async function runStep(page, step) {
     // keeps recording across it.
     if (recording.on) recording.kept.push(await takeRecord(page));
     const loaded = page.once("Page.loadEventFired");
-    await page.send("Page.reload", { ignoreCache: false });
+    // `"reload": "hard"` is Ctrl+F5: the page's resources bypass the cache.
+    await page.send("Page.reload", { ignoreCache: step.reload === "hard" });
     await loaded;
     if (recording.on) await evaluate(page, "__shotsRec.start()");
+    return;
+  }
+  if ("clearCache" in step) {
+    // The page's HTTP cache emptied (covers load from the network again). On the dev app this is
+    // the dev data folder's cache only; the installed app has its own (UX-COVERUPS.md §7.13).
+    await page.send("Network.enable");
+    await page.send("Network.clearBrowserCache");
+    note("cache", "cleared");
     return;
   }
   if ("probe" in step) {
@@ -620,6 +798,7 @@ async function shoot(page, demoUrl, shot, look, outDir, variant) {
   const size = SIZES[shot.size];
   if (!size) throw new Error(`unknown size "${shot.size}"`);
   win.follow = false; // not during the load: the boot's own set_size would move every shot
+  win.dev = false;
   await setWindow(page, size.w, size.h);
   const settings = { ...(shot.settings ?? {}), ...variant.settings };
   const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: seedScript(look, size, settings, shot.badges === true, shot.window === true, variant.tokens, shot.storage ?? {}) });
@@ -695,7 +874,8 @@ async function record(page, shot, base, outDir) {
     casting = true;
     recording.on = true;
     recording.kept = [];
-    await evaluate(page, "__shotsRec.start()");
+    // A dev page keeps one recorder across shots: empty it first (a demo page is fresh).
+    await evaluate(page, "__shotsRec.reset(); __shotsRec.start()");
     const t0 = Date.now() / 1000;
     await sleep(300); // a still lead-in, so the first action is seen from rest
     for (const step of shot.steps ?? []) {
@@ -722,7 +902,11 @@ async function record(page, shot, base, outDir) {
     frames.sort((a, b) => a.t - b.t);
     const rec = mergeRecords(pageRec, marks, t0, frames);
     note("clock", rec.clockLine);
-    const offSize = frames.filter((f) => f.w !== win.w || f.h !== win.h);
+    const loadSets = loadSummary(pageRec, marks, t0);
+    for (const s of loadSets) note("loads", `step ${s.step} (${s.kind}): ${s.line}`);
+    // The dev app's frames come at the window's device pixels; only headless Edge's odd window
+    // is a fault (below).
+    const offSize = win.dev ? [] : frames.filter((f) => f.w !== win.w || f.h !== win.h);
     if (offSize.length) note("window", `${offSize.length} of ${frames.length} frames are ${offSize[0].w}×${offSize[0].h}, not the page's ${win.w}×${win.h}: headless Edge sent its own window. The page is top-left; the change curve reads only its box.`);
 
     // The concat list: each frame lasts until the next; the last one until the end.
@@ -794,7 +978,8 @@ async function record(page, shot, base, outDir) {
       const next = nextAct ? t0 + nextAct.t : Infinity;
       const before = frames.filter((f) => f.t < from).at(-1) ?? picked[0];
       const settled = frames.filter((f) => f.t < next).at(-1) ?? picked.at(-1);
-      const curve = changeCurve(picked, before, settled, m.region, from, { w: win.w, h: win.h });
+      // The viewport crop is for headless Edge's odd window; a dev frame is the window itself.
+      const curve = changeCurve(picked, before, settled, m.region, from, win.dev ? { w: Infinity, h: Infinity } : { w: win.w, h: win.h });
       keepFrames(picked, from, join(outDir, name));
       frameStrip(picked, from, join(outDir, `${name}.png`), shot.strip?.width ?? 240, shot.strip?.cols ?? 6, { rec, curve, prev: before });
       const short = picked.length < m.frames ? ` (asked ${m.frames}; the clip ended or the page stopped painting)` : "";
@@ -818,13 +1003,14 @@ async function record(page, shot, base, outDir) {
           marks: rec.appMarks.map((x) => ({ ...x, t: Math.round(x.t - t0 * 1000) })),
         },
         changes: frameSets.map((s) => ({ step: s.step, ...s.change })),
+        loads: loadSets,
       }),
     );
     const { gaps: _all, marks: _m, ...brief } = stats;
     // --raw: every real frame of the clip, named by its ms from the start.
     if (raw) keepFrames(frames, t0, join(outDir, `${base}.raw`));
 
-    return { file: mp4, poster, strip, stats: { ...brief, drops: stats.gaps.length }, frameSets };
+    return { file: mp4, poster, strip, stats: { ...brief, drops: stats.gaps.length }, frameSets, loadSets };
   } finally {
     if (casting) await page.send("Page.stopScreencast").catch(() => {});
     if (recording.on) {
@@ -891,6 +1077,66 @@ function mergeRecords(parts, marks, t0, frames) {
   const odd = !Number.isFinite(lag) || lag < 0 || lag > 100;
   const clockLine = `page rAF period ${period.toFixed(1)} ms (${Math.round(1000 / period)} Hz) · ${rafs.length} rAF · screencast lag median ${lag} ms${odd ? " — THE CLOCKS DISAGREE: read the frame times as the runner's, not the page's" : ""} · ${appMarks.length} app marks · ${longtasks.length} long tasks`;
   return { inputs, rafs, longtasks, appMarks, period, lag, clockLine };
+}
+
+/**
+ * The pictures each step brought (UX-COVERUPS.md §7.13): every `<img>` the page inserted in view
+ * (in the step's `region` when it has one) between this action and the next, from the recorder's
+ * insert and load records. A picture is "ready" when it was complete as it went in (the cache),
+ * "late" when it loaded after it, "made again" when the same picture had already been put in
+ * during the clip (a redraw that rebuilt it). "Out of reading order": in the late arrivals, in
+ * time order, how many land above, or left on the same line of, the one before them.
+ */
+const LOAD_STEPS = new Set(["key", "click", "rightclick", "type", "paste", "drag", "wheel", "reload", "clearCache"]);
+function loadSummary(parts, marks, t0) {
+  const added = parts.flatMap((p) => p.added ?? []).sort((a, b) => a.t - b.t);
+  const loads = parts.flatMap((p) => p.loads ?? []).sort((a, b) => a.t - b.t);
+  const inside = (x, r) => !r || (x.x < r.x + r.w && x.x + x.w > r.x && x.y < r.y + r.h && x.y + x.h > r.y);
+  const out = [];
+  marks.forEach((m, i) => {
+    if (!LOAD_STEPS.has(m.step)) return;
+    const from = (t0 + m.t) * 1000;
+    const nextAct = marks.slice(i + 1).find((x) => LOAD_STEPS.has(x.step));
+    const until = nextAct ? (t0 + nextAct.t) * 1000 : Infinity;
+    const add = added.filter((x) => x.t >= from - 5 && x.t < until && x.kind !== "data" && x.seen && inside(x, m.region));
+    if (!add.length) return;
+    // A picture put in again (a redraw) is not a cache hit: count only first inserts as ready.
+    const isAgain = (x) => added.some((y) => y.src === x.src && y.t < x.t - 1);
+    const again = add.filter(isAgain).length;
+    const first = add.filter((x) => !isAgain(x));
+    const late = first.filter((x) => !x.complete);
+    const landed = late.map((x) => ({ x, l: loads.find((l) => l.src === x.src && l.t >= x.t - 5) })).filter((p) => p.l);
+    const order = [...landed].sort((a, b) => a.l.t - b.l.t);
+    let outOfOrder = 0;
+    for (let k = 1; k < order.length; k++) {
+      const p = order[k - 1].l;
+      const q = order[k].l;
+      if (q.y < p.y - 8 || (Math.abs(q.y - p.y) <= 8 && q.x < p.x)) outOfOrder++;
+    }
+    const ms = (t) => Math.round(t - from);
+    const times = order.map((p) => ms(p.l.t));
+    const summary = {
+      step: i + 1,
+      kind: m.step,
+      inView: first.length,
+      covers: first.filter((x) => x.kind === "cover").length,
+      mosaics: first.filter((x) => x.kind === "mosaic").length,
+      ready: first.length - late.length,
+      late: late.length,
+      firstLate: times[0] ?? null,
+      lastLate: times.at(-1) ?? null,
+      notLoaded: late.length - landed.length,
+      outOfOrder,
+      madeAgain: again,
+      mosaicAt: first.filter((x) => x.kind === "mosaic").map((x) => ms(x.t)),
+    };
+    summary.line =
+      `${summary.inView} new pictures in view (covers ${summary.covers}, mosaics ${summary.mosaics}${summary.mosaicAt.length ? ` at ${summary.mosaicAt.map((t) => `+${t}`).join(", ")}` : ""}); ` +
+      `ready at once ${summary.ready}; late ${summary.late}${times.length ? ` (+${summary.firstLate} … +${summary.lastLate} ms)` : ""}; ` +
+      `not loaded by the end ${summary.notLoaded}; out of reading order ${outOfOrder}; made again by a redraw ${again}`;
+    out.push(summary);
+  });
+  return out;
 }
 
 /** A frame as small grey pixels (96 px wide), cut to `region` when one is given, else to the
@@ -1049,7 +1295,8 @@ function contactSheet(manifest) {
     const tiles = rows
       .map((r) => {
         if (!r.file) return `<figure class="bad"><figcaption>${esc(r.look)} — ${esc(r.error ?? "not taken")}</figcaption></figure>`;
-        const note = r.ok ? "" : " — kept from an earlier run";
+        const made = r.made ? ` · made ${esc(r.made.at.slice(0, 16).replace("T", " "))} @ ${esc(r.made.commit ?? "?")}${r.made.dirty ? "+changes" : ""}` : "";
+        const note = (r.ok ? "" : " — kept from an earlier run") + made;
         if (r.kind === "clip") {
           const perf =
             (r.perf ?? []).map((p) => `<br><code>${esc(p)}</code>`).join("") +
@@ -1216,37 +1463,63 @@ if (only.size && !shots.length) throw new Error(`[shots] no shot named ${[...onl
 let taken = 0;
 let failed = 0;
 let skipped = 0;
+const MADE = madeInfo(); // once per run: every shot of a run is made from the same tree
 try {
   log(`DeetsMusic ${version} — ${shots.length} shot(s); ${THEMES.length} themes × ${SKINS.length} skins → ${outDir}`);
   if (VARIANTS.length > 1) for (const v of VARIANTS) log(`variant ${v.label}: ${v.desc}`);
   rmSync(join(outDir, "compare.txt"), { force: true }); // this run's comparison only
   if (repeat > 1) log(`each shot ${repeat} times; the log gives the medians`);
   log(`cpu ${await cpuBusy(1000)}% now; a shot waits for under ${noiseLimit}% (--noise)`);
-  const demoUrl = await startDemo();
-  log(`demo on ${demoUrl}`);
-  const page = cdp(await startEdge());
-  await page.ready;
-  await page.send("Page.enable");
-  await page.send("Runtime.enable");
-  await page.send("Log.enable");
-  await page.send("Animation.enable");
-  listenConsole(page);
-  await page.send("Runtime.addBinding", { name: "__shotsWindow" }); // kept across loads
-  listenWindow(page);
-  // Motion on: a picture is taken after it settles, and a clip needs it (SHOTS.md §5).
-  await page.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
+  // The demo and headless Edge start only for a demo shot; the dev app is attached only for a
+  // dev shot (it is never started or stopped here).
+  let demoUrl = null;
+  let page = null;
+  const demoPage = async () => {
+    if (page) return page;
+    demoUrl = await startDemo();
+    log(`demo on ${demoUrl}`);
+    page = cdp(await startEdge());
+    await page.ready;
+    await page.send("Page.enable");
+    await page.send("Runtime.enable");
+    await page.send("Log.enable");
+    await page.send("Animation.enable");
+    listenConsole(page);
+    await page.send("Runtime.addBinding", { name: "__shotsWindow" }); // kept across loads
+    listenWindow(page);
+    // Motion on: a picture is taken after it settles, and a clip needs it (SHOTS.md §5).
+    await page.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
+    return page;
+  };
+  let devPage = null;
+  const devPageGet = async () => {
+    if (devPage) return devPage;
+    const t = await devTarget();
+    devPage = cdp(t.url);
+    await devPage.ready;
+    await devPage.send("Page.enable");
+    await devPage.send("Runtime.enable");
+    await devPage.send("Log.enable");
+    await devPage.send("Animation.enable");
+    listenConsole(devPage);
+    log(`dev app on CDP port ${t.port}`);
+    return devPage;
+  };
 
   for (const shot of shots) {
-    if (shot.source !== "demo") {
-      log(`skip ${shot.id}: the ${shot.source} source is not built yet`);
+    if (shot.source !== "demo" && shot.source !== "dev") {
+      log(`skip ${shot.id}: no source "${shot.source}"`);
       skipped++;
       continue;
     }
     // `"*"` in a look is every theme or every skin: `{ "theme": "moonlight", "skin": "*" }` is
-    // one theme in each skin, the set for motion (a skin owns its motion tokens).
-    const looks = (shot.looks ?? list.looks ?? ALL_LOOKS)
-      .flatMap((l) => (l.theme === "*" ? THEMES : [l.theme]).flatMap((theme) => (l.skin === "*" ? SKINS : [l.skin]).map((skin) => ({ theme, skin }))))
-      .filter((l) => !lookFilter.size || lookFilter.has(lookId(l)));
+    // one theme in each skin, the set for motion (a skin owns its motion tokens). A dev shot has
+    // one look: the app as it is.
+    const looks = shot.source === "dev"
+      ? [DEV_LOOK]
+      : (shot.looks ?? list.looks ?? ALL_LOOKS)
+          .flatMap((l) => (l.theme === "*" ? THEMES : [l.theme]).flatMap((theme) => (l.skin === "*" ? SKINS : [l.skin]).map((skin) => ({ theme, skin }))))
+          .filter((l) => !lookFilter.size || lookFilter.has(lookId(l)));
     for (const look of looks) {
       const rows = [];
       for (const variant of VARIANTS) {
@@ -1257,13 +1530,16 @@ try {
           for (let r = 1; r <= repeat; r++) {
             // The noise gate (§5f): wait for a quiet CPU; a shot taken over the limit is marked.
             const cpu = await quietCpu();
-            const out = await shoot(page, demoUrl, shot, look, outDir, variant);
-            runs.push({ cpu, perf: out.perf ?? [], changes: (out.frameSets ?? []).map((s) => ({ step: s.step, ...s.change })) });
+            const out = shot.source === "dev"
+              ? await shootDev(await devPageGet(), shot, outDir, variant)
+              : await shoot(await demoPage(), demoUrl, shot, look, outDir, variant);
+            runs.push({ cpu, perf: out.perf ?? [], changes: (out.frameSets ?? []).map((s) => ({ step: s.step, ...s.change })), loads: out.loadSets ?? [] });
             Object.assign(row, out, { cpu, noisy: cpu > noiseLimit || undefined });
             const tagLine = `${variant.label ? ` [${variant.label}]` : ""}${repeat > 1 ? ` run ${r}/${repeat}` : ""} · cpu ${cpu}%${cpu > noiseLimit ? " NOISY" : ""}`;
             log(`ok   ${row.file}${tagLine}${row.consoleErrors ? ` — ${row.consoleErrors} console error(s), see ${row.console}` : ""}`);
             for (const p of row.perf ?? []) log(`       frames ${p}`);
             for (const s of row.frameSets ?? []) log(`       step ${s.step} (${s.kind}, from ${s.anchor}): ${s.count}/${s.asked} real frames → ${s.strip}${s.change?.visible ? ` · ${changeText(s.change)}` : ""}`);
+            for (const s of row.loadSets ?? []) log(`       loads step ${s.step} (${s.kind}): ${s.line}`);
           }
           if (repeat > 1) {
             row.repeat = medianOfRuns(runs);
@@ -1272,6 +1548,11 @@ try {
           }
           row.ok = true;
           row.at = new Date().toISOString();
+          // Staleness (above): a new take starts with no reads; the old take's reads were of
+          // the old files.
+          row.made = { at: row.at, version, ...MADE, list: relPath(listFile), args: argv.join(" ") };
+          const base = String(row.console).replace(/\.console\.txt$/, "");
+          writeFileSync(join(outDir, `${base}.meta.json`), JSON.stringify({ id: row.id, look: row.look, variant: row.variant, source: row.source, covers: row.covers, made: row.made, accessed: [] }, null, 2));
           taken++;
         } catch (e) {
           // The last good capture stays, and the report says this one failed (SHOTS.md §6).
@@ -1287,7 +1568,8 @@ try {
       if (VARIANTS.length > 1) compareRows(rows, outDir);
     }
   }
-  page.close();
+  page?.close();
+  devPage?.close(); // the socket only: the dev app keeps running
 } finally {
   cleanup();
 }

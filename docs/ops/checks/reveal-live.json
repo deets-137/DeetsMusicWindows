@@ -1,0 +1,240 @@
+{
+  "about": "The first load of each card on the owner's LIVE dev app (his library, his Max layout: Home, Settings, Playlists, Library), cold and warm: what is on screen, how many pictures were late, in what order they landed, and what a redraw made again. The baseline for UX-COVERUPS.md §7, run again after each build step.",
+  "desk_test": "architecture/UX-COVERUPS.md §7.13",
+  "made": "2026-10-17",
+  "pass": "Today's code is the baseline: no pass. After the reveal is built: no late picture in view after the reveal at a warm open, 'out of reading order' 0, 'made again' 0 after a sync or refresh.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/reveal-live.json --noise 60   (needs `npm run dev:app` running and its window on screen; it plays nothing and changes no setting)",
+  "shots": [
+    {
+      "id": "launch-cold",
+      "about": "The page again from nothing with an empty HTTP cache: the launch cover and the cards under it.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 10,
+      "steps": [
+        { "clearCache": true },
+        { "reload": true, "frames": 120 },
+        { "wait": 7000 }
+      ]
+    },
+    {
+      "id": "playlists-cold",
+      "about": "Playlists opened from the card picker, first time after a launch, empty cache (History stands in its slot until then).",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "prepare": [
+        { "click": "[data-slot=\"c\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"c\"] .flyout__item[data-card-id=\"history\"]" },
+        { "wait": 1500 },
+        { "clearCache": true },
+        { "reload": true },
+        { "wait": 7000 }
+      ],
+      "steps": [
+        { "click": "[data-slot=\"c\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"c\"] .flyout__item[data-card-id=\"playlists\"]", "frames": 90, "region": "[data-slot=\"c\"]" },
+        { "wait": 4000 }
+      ]
+    },
+    {
+      "id": "playlists-warm",
+      "about": "The same open again at once: covers in the cache, mosaics in memory.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "prepare": [
+        { "click": "[data-slot=\"c\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"c\"] .flyout__item[data-card-id=\"history\"]" },
+        { "wait": 1500 }
+      ],
+      "steps": [
+        { "click": "[data-slot=\"c\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"c\"] .flyout__item[data-card-id=\"playlists\"]", "frames": 90, "region": "[data-slot=\"c\"]" },
+        { "wait": 4000 }
+      ]
+    },
+    {
+      "id": "playlist-drill",
+      "about": "The first playlist tile opened (the drill), then Back; then two screens of scroll in the list.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 9,
+      "steps": [
+        { "click": "[data-slot=\"c\"] .lib-tile", "frames": 90, "region": "[data-slot=\"c\"]" },
+        { "wait": 3500 },
+        { "click": "[data-slot=\"c\"] .panel__back" },
+        { "wait": 1200 },
+        { "wheel": "[data-slot=\"c\"] [data-view]", "dy": 400, "times": 4, "frames": 60, "region": "[data-slot=\"c\"]" },
+        { "wait": 2500 }
+      ]
+    },
+    {
+      "id": "home-cold",
+      "about": "Home opened from the card picker, first time after a launch, empty cache.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "prepare": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"history\"]" },
+        { "wait": 1500 },
+        { "clearCache": true },
+        { "reload": true },
+        { "wait": 7000 }
+      ],
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"home\"]", "frames": 90, "region": "[data-slot=\"left\"]" },
+        { "wait": 4000 }
+      ]
+    },
+    {
+      "id": "home-warm",
+      "about": "Home again at once (warm), then its Refresh: the shelves built again.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 10,
+      "prepare": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"history\"]" },
+        { "wait": 1500 }
+      ],
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"home\"]", "frames": 90, "region": "[data-slot=\"left\"]" },
+        { "wait": 3500 },
+        { "click": "#home-refresh", "frames": 60, "region": "[data-slot=\"left\"]" },
+        { "wait": 4000 }
+      ]
+    },
+    {
+      "id": "search-recent",
+      "about": "Search in the Settings slot: ten of his newest library artists typed one key at a time (120 ms), five album names pasted, then the first album result opened. His Recents are saved first and put back at the end; Settings goes back in its slot.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 75,
+      "prepare": [
+        { "eval": "window.__recentsBackup = localStorage.getItem('deets.search.recents')" },
+        { "click": "[data-slot=\"right\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"right\"] .flyout__item[data-card-id=\"search\"]" },
+        { "wait": 1500 },
+        { "click": "[data-slot=\"right\"] .search__input" }
+      ],
+      "steps": [
+        { "type": "Dark Bardo", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "David Norland", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "Chiiild", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "Shungudzo", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "Brainstory", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "Marian Hill", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "Butter Bath", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "Tom Misch", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "Girl Ultra", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "type": "Amalyn", "delay": 120, "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "paste": "Shoebox Days", "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "paste": "Full Circle Tom Misch", "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "paste": "Rrromeo", "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "paste": "La Source David Norland", "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "key": "Escape" },
+        { "paste": "Better Luck In The Next Life", "region": "[data-slot=\"right\"]" },
+        { "wait": 2500, "frames": 40, "region": "[data-slot=\"right\"]" },
+        { "click": "[data-slot=\"right\"] .search__tile[data-album]", "frames": 90, "region": "[data-slot=\"right\"]" },
+        { "wait": 3500 },
+        { "eval": "window.__recentsBackup == null ? localStorage.removeItem('deets.search.recents') : localStorage.setItem('deets.search.recents', window.__recentsBackup)" },
+        { "click": "[data-slot=\"right\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"right\"] .flyout__item[data-card-id=\"settings\"]" },
+        { "wait": 1200 }
+      ]
+    },
+    {
+      "id": "library-cold",
+      "about": "Library opened from the card picker, first time after a launch, empty cache.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "prepare": [
+        { "click": "[data-slot=\"d\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"d\"] .flyout__item[data-card-id=\"history\"]" },
+        { "wait": 1500 },
+        { "clearCache": true },
+        { "reload": true },
+        { "wait": 7000 }
+      ],
+      "steps": [
+        { "click": "[data-slot=\"d\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"d\"] .flyout__item[data-card-id=\"library\"]", "frames": 90, "region": "[data-slot=\"d\"]" },
+        { "wait": 4000 }
+      ]
+    },
+    {
+      "id": "history-rewind",
+      "about": "History, then Rewind, opened in the Settings slot (warm); Settings goes back at the end.",
+      "covers": "architecture/UX-COVERUPS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 12,
+      "steps": [
+        { "click": "[data-slot=\"right\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"right\"] .flyout__item[data-card-id=\"history\"]", "frames": 90, "region": "[data-slot=\"right\"]" },
+        { "wait": 3500 },
+        { "click": "[data-slot=\"right\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"right\"] .flyout__item[data-card-id=\"rewind\"]", "frames": 90, "region": "[data-slot=\"right\"]" },
+        { "wait": 3500 },
+        { "click": "[data-slot=\"right\"] .panel__title" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"right\"] .flyout__item[data-card-id=\"settings\"]" },
+        { "wait": 1200 }
+      ]
+    }
+  ]
+}

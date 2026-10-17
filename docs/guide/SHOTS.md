@@ -2,7 +2,7 @@
 status: project
 desk_test: none
 sources: [scripts/shots.mjs, src/marks.ts, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts]
-updated: 2026-10-14
+updated: 2026-10-17
 ---
 # DeetsMusic — Shots: pictures and clips of each feature
 
@@ -433,6 +433,51 @@ tool cost reruns or left a step out. Each gap and a proposal:
 
 **A note for probes:** hint.ts moves every `title` into `data-hint` and removes the attribute.
 A probe reads `aria-label` or `data-hint`, never `title` (an empty `title` here is not a bug).
+
+## 5h. The dev source, the loads, and staleness (2026-10-17)
+
+> **Part:** built · 2026-10-17
+
+His asks: measure loading on his live dev app with his own library (UX-COVERUPS.md §7.13), and
+mark each shot with when it was made and read, so a stale shot shows.
+
+**`"source": "dev"`.** The shot runs on the running dev app (`npm run dev:app`; `--second` for
+the second one). The runner reads the CDP port from `src-tauri/.tauri.dev.gen.json`, as
+webview-eval.mjs does, and attaches to the main window. It starts nothing and stops nothing.
+Nothing is seeded or changed: no store wipe, no look, no size, no setting; `--vs` and `--set` are
+refused. The page is reloaded only by a `reload` step. A dev shot has one look, `live-app`. The
+window must be on screen: WebView2 paints no frames when it is minimized, and the shot fails at
+once if it is hidden. Frames come at the window's device pixels; the change curve scales its
+region by the frame width over the page's CSS width.
+
+**New steps:** `{ "clearCache": true }` empties the page's HTTP cache (on the dev app, the dev
+data folder's cache only). `{ "paste": "text" }` inserts the whole text at once. `{ "reload":
+"hard" }` is Ctrl+F5.
+
+**The loads of each step.** While a clip records, the page records every `<img>` put in (its box,
+whether it was already complete) and every image `load` (on `document`: a load event's path does
+not reach `window`). For each action step, up to the next one, the log and the console file give:
+- **new pictures in view** (in the step's `region` when it has one), covers and mosaics apart,
+  with the times the mosaics went in;
+- **ready at once** (complete as it went in: a cache hit) and **late** (loaded after it), with
+  the first and last late time;
+- **out of reading order**: in the late arrivals in time order, how many land above, or left on
+  the same line of, the one before;
+- **made again by a redraw**: a picture put in again after the same picture was put in earlier
+  in the clip. Two rows that share one cover also count here; read it as an upper bound.
+`.frames.json` holds the same as `loads`.
+
+**Staleness.** Every taken shot gets `<base>.meta.json`: `made` (the time, the app version, the
+commit and branch, `dirty` when src/, src-tauri/src, demo/ or web/ had changes not committed, the
+list and the flags) and `accessed` (the recorded reads). The manifest row carries `made` too, and
+the contact sheet prints it under each shot.
+- `node scripts/shots.mjs --seen <file or folder> [--by name]` records a read of one shot (any of
+  its files) or of every shot in a folder. Claude runs it each time it reads a strip.
+- `node scripts/shots.mjs --stale` lists every shot under `shots/` with metadata, oldest first:
+  when it was made, from which version and commit, how many src commits have landed since, and
+  when it was last read.
+- File times are not used for reads: on this PC something (likely the virus scanner) reads every
+  file in a build folder every few days, so a last-access time says nothing (2026-10-16).
 
 ## 6. Coverage — no shipped feature without a shot
 

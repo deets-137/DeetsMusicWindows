@@ -366,6 +366,11 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
   a harness to build: it exists, so use it. The limits (not WebView2, a fake MusicKit, no OS
   window): DEBUGGING.md §Seeing it. **Check the strip, not only "ok":** a clip passed while
   its click did nothing, because the Glass background kept painting (SHOTS.md §5b).
+  **`"source": "dev"` (2026-10-17)** runs a shot on the RUNNING dev app (WebView2, his real
+  library), changing nothing, and every clip step reports the pictures it brought (late, out of
+  reading order, made again by a redraw). Each shot has a `.meta.json` (made: time, version,
+  commit; accessed: reads). **After you read a strip, run `node scripts/shots.mjs --seen <file>`;**
+  `--stale` lists the shots oldest first with the src commits since. SHOTS.md §5h.
 - **Heaviness + profiling:** `scripts/heaviness-sample.ps1 -Loop 3600` logs both apps' memory
   and CPU hourly; `scripts/webview-profile.mjs [--trace] "<expr>"` profiles the dev page. How
   to read all of it: DEBUGGING.md §Reviewing the telemetry.
