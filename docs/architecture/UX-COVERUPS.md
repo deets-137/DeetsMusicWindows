@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/player.ts, src/perf.ts, src/boot-cover.ts, src/appearance.ts, src/look.ts, src/rules-facts.ts]
-updated: 2026-10-14
+updated: 2026-10-16
 ---
 # UX Cover-ups — latency & jank ledger
 
@@ -377,6 +377,403 @@ One noisy run gave 64–85 % on three skins; a rerun at once was back to these.
    gap is the snapshot, and the fix is a separate fork.
 4. A Live Theming song change (a rule): the fade keeps its slow start and slow end.
 5. Pick a skin from the title menu: the menu closes under the cover, as before.
+
+---
+
+## 7. A card's first screen — **one reveal in reading order** (designed 2026-10-16)
+
+> **Part:** designed · 2026-10-16
+
+**Terms:**
+- **First screen** — the rows or tiles whose box is inside the card's visible list area (the
+  view, under its sticky bar) when the level's data is drawn, at the card's size of that moment
+  (Grow and Fill included). A tile cut by the bottom edge counts: it is seen.
+- **Ready** — a first-screen tile whose picture can show at once: a cover loaded and decoded
+  (`img.decode()`), a mosaic drawn, a cover that failed (artwork-heal.ts retries it later), or a
+  slot with no picture (the ♪ or the initials).
+- **Reveal** — the moment the first screen shows, in reading order (left to right, then top to
+  bottom, from each tile's box on screen).
+- **Cap** — the longest time a card holds before it reveals.
+- **Late cover** — a picture that is not ready at the reveal, or that loads after it (a row
+  scrolled into view, a cover a background sync brought).
+
+**Why (his question, 2026-10-16):** does a card's first load have a cover-up, or do things
+pop in a jumble? The recording (`shots/scratch/pl-firstload.json`, Glass, Midi, the demo):
+the Playlists rows rise with the swap at +169 ms, each with a ♪; the three mosaics then replace
+their ♪ in one frame each at +547, +796 and +1002 ms. In his dev app a mosaic takes 0.2–2.8 s
+(`mosaic:drawn`, often 1.5 s or more). Each Playlists load also draws the list again (the cached
+list, the Apple sync, the count backfill), and each draw rebuilds every row and `<img>`
+(`view.innerHTML`, collection-card.ts). Before the cached list lands, the root level shows
+"Nothing here yet." (the pane is built empty, collection-card.ts `buildPane` at init). At launch
+the launch cover (§6) hides all of it.
+
+**His calls (2026-10-16):**
+- **Present once, complete.** The card holds until its first screen is ready, as the launch
+  cover does for the window. He accepts a delay of a second or two for it.
+- **Reading order:** left to right, then top to bottom, for a grid as for a list.
+- **Only what is on screen counts.** A row below the fold (the 47th) never holds the reveal.
+- **Shape: the diagonal wave.** A tile's delay is its row plus its column, so the wave moves
+  left to right and top to bottom at once. In a one-column list it is one by one.
+- **All cached: the same reveal plays, with no hold.** Every open looks the same.
+- **Cap: 1.5 s.** To be checked against the loading-set clips at his p90 timings
+  (guide/LOADING-SET.md).
+- **Load priority first** (below, part 3): it makes most opens ready long before the cap.
+- These replace the two forks shown earlier the same day (each late cover fades in when it
+  lands / a top-to-bottom wave; the ♪ or a 2×2 preview while a mosaic draws).
+
+### 7.1 The hold
+
+- A level holds when it is first shown: a card opened (the picker, a swap, a summon, a restore),
+  a drill (the slide), a Back to a level that was rebuilt, a view or grouping switch that
+  changes what is on screen. The card's frame and title bar show at once; the body (the view
+  under its bar) waits.
+- **No hold** for a scroll, a typed filter or search, a sort, or a background update (the Apple
+  sync, a ♥, a count). Those keep their rows in place (part 1), and a late cover fades in alone.
+- **Data first.** A level whose data is still loading says so: `Context.loading?: () => boolean`
+  (collection-card.ts). The engine holds while it is true, so "Nothing here yet." never shows
+  for a list that is still on its way. Playlists sets it until its first `load()` lands; an
+  empty list that has loaded shows its empty state at once.
+- **Then the pictures.** With the data drawn, the engine lists the first-screen tiles and waits
+  for each one to be ready. A cover that is already complete is decoded and counts at once.
+- **The cap (1.5 s)** starts when the hold starts. At the cap the reveal runs with what is ready.
+- **A press or a wheel on the card ends the hold at once** (the reveal runs), as `card.hold()`
+  does for card memory. The hold reuses that primitive and its listeners.
+- A level that is held when the card is swapped away, or drilled past, drops its hold.
+
+### 7.2 The reveal
+
+- The first-screen tiles are sorted by their box on screen (top, then left; a tile whose top
+  is within half a tile of another's is on the same line).
+- **The diagonal wave:** tile delay = (line + column) ÷ (lines + columns − 2) × the reveal span.
+  The span is a fixed total (`--reveal-span`, 0.5 s to start), so a 40-tile Fill and a 6-row
+  list reveal in the same time.
+- Each tile uses the row-entry motion (`--pop-in`, `--pop-shift`, `--pop-ease`; pop.ts
+  `enterRows`), with its delay set from the wave instead of `--pop-stagger`.
+- A tile that was not ready at the cap enters with the wave, with its placeholder (the ♪, or
+  the slot's ground), and its picture fades in alone when it lands (7.3).
+- Tiles below the first screen enter with no motion; they are not seen.
+- **Reduced motion:** the same hold; the first screen shows at once, with no wave.
+
+### 7.3 Late covers
+
+- A late cover fades in (`--art-in`, an alias of `--pop-in`) from its slot's ground. One rule
+  for the whole app, in the capture-phase `load` listener artwork-heal.ts already has: a cover
+  that was not complete when it was drawn gets the fade; a complete one shows at once.
+- `data-art` goes on the covers that lack it (they also get no retry today): the Home shelves
+  (home-card.ts), pinned tiles (pins.ts), the playlist web (web.ts), and the mosaic `<img>`
+  (mosaic.ts). The mosaic fades on its own image's `load`, not on `fill()`, so a frame still
+  decoding never shows blank.
+
+### 7.4 Load priority
+
+1. **The probe first:** where do a mosaic's 0.2–2.8 s go — the worker's downloads or its
+   drawing? A 3-cover mosaic fetches large tiles (`FETCH_PX` up to 480) that no row has cached.
+   The answer sets parts 2 and 3.
+2. **Mosaics drawn at the size on screen.** A row shows 36 px; today one 480 px picture serves
+   the row, the tile and the hero. The row and the tile get a small picture from small fetches;
+   the hero's large one is drawn when a playlist opens. Memory only, never saved, as before
+   (PLAYLISTS.md §11.3).
+3. **Mosaics ready before the card opens.** At idle after launch, the mosaics of the first
+   screen of Playlists (its current sort, grouping and density, from the cached list) are
+   drawn, two or three at a time, in reading order. The visible-slot queue stays for the rest.
+4. **The first screen's covers asked for first:** `fetchpriority="high"` on first-screen covers,
+   `loading="lazy"` on the rest. DOM order is reading order, so the requests start in it.
+
+### 7.5 The launch
+
+The launch cover already waits on a list of promises, capped at 2.5 s (`runBootCover`,
+boot-cover.ts). Each visible card's first-screen readiness joins that list. At launch the cards
+do not play their own reveal: the launch lift is the reveal, and the window shows complete.
+
+### 7.6 Where it lives
+
+- `src/reveal.ts` — the primitive: given a view and its first-screen tiles, wait for ready or
+  the cap, then run the wave; marks `reveal:hold` and `reveal:go <ready|cap|press> <n>/<total>`
+  (marks.ts) and one `diag.log("reveal", …)` per reveal, with the hold time and the count not
+  ready at the cap.
+- collection-card.ts calls it at each held moment (7.1), so Library, Playlists, Radio, the
+  artist view and every drill level get it. Home's shelves and the Search results are not on the
+  engine; they call reveal.ts in a later step.
+- Tokens in skin.css base: `--reveal-cap: 1.5s`, `--reveal-span: 0.5s`, `--art-in:
+  var(--pop-in)`. A skin overrides only what it changes.
+- The reveal sets `dataset.frames` so frames.ts times it.
+
+### 7.7 Build order
+
+1. The probe (7.4.1).
+2. **A redraw keeps the rows that did not change.** In the short-list path of `renderViewInto`,
+   a row whose markup is the same as the one on screen keeps its node and its loaded cover (the
+   windowed path already does). This is the root fix for the redraws, and the reveal needs it:
+   a background sync must not rebuild the first screen.
+3. Late covers (7.3), with the missing `data-art` markers.
+4. Load priority (7.4.2–4).
+5. reveal.ts, `Context.loading`, the engine's held moments (7.1, 7.2).
+6. The launch (7.5).
+7. Home (7.9) and Search (7.10) adopt reveal.ts; then the Queue, History, Rewind, Diary, the
+   playlist web and the Compass (7.11). The per-card setting (7.12) lands with the first card
+   that waits, so no build ships a wait that cannot be turned off.
+8. Measure on his live dev app (7.13), before step 2 and after each step. Tune the cap with him.
+
+### 7.8 Desk test (his, on the dev app)
+
+1. Clear the WebView2 cache (or use a fresh `dev:app` data folder). Launch. The window shows
+   once, with Playlists complete: no ♪ turns into a picture after the lift.
+2. Swap Playlists out and back in. The body waits, then the tiles arrive as one diagonal wave.
+3. Fill Playlists in Max at a grid view. The wave runs left to right and top to bottom across
+   the whole grid in about half a second. Scroll down: the rows below arrive with no wave.
+4. Open a playlist you have not opened this session. The slide runs at once; the songs arrive
+   as a wave when their covers are in.
+5. Press the card while it holds: it reveals at once.
+6. Turn on Windows' reduced motion. The card still waits, then shows at once.
+7. Press ⟳ (Sync playlists) with the card open. No row blinks, and no wave plays.
+8. Settings › Cards: turn off the wait for Playlists. Clear the cache and open it: it shows at
+   once, and covers pop in as they land (W2 B). Then set `deets.dev.instantFade` to `1` in
+   DevTools and do it again: the late covers fade in (W2 A). Pick one (7.12).
+
+### 7.9 Home (scoped 2026-10-17)
+
+> **Part:** designed · 2026-10-17
+
+**How Home loads today (read 2026-10-17):** home-card.ts is not on the collection engine. It
+shows "Looking through what you play…" until `homeShelves()` (home.ts) answers, then sets
+`shelfBox.innerHTML` and slides the shelves in (`enterRows`) on the first fill. The first build
+of a session can wait on Apple: `fetchNew` calls `artist_new_releases` for the New shelf when
+its floor has passed. After the first fill, `fillArtistPhotos` builds every shelf again when a
+face lands. Every play, track change, playlist change, pin and Song of the Day change builds
+every shelf again too (`onTracksChange`, `onPlaylistsChange`, …). Each build replaces the whole
+`innerHTML`, so every `<img>` is made again. Home's covers carry no `data-art` (no retry, no late
+fade).
+
+**The scope:**
+1. **The first screen** is each shelf in the body's view, and in each shelf the tiles inside the
+   scroller's visible width. A tile scrolled out to the right never holds the reveal.
+2. **The hold and the reveal** as 7.1 and 7.2 (cap 1.5 s, the diagonal wave). The wave reads the
+   tile boxes, so it runs left to right along each shelf and down the shelves. "Looking through
+   what you play…" shows only when the cap passes with no shelves yet.
+3. **Shelves kept in place** (the keyed patch, shared with the engine; see below). A build
+   patches each shelf by tile: a tile whose item (`it.key`)
+   is still there keeps its node and its loaded cover; a new tile is added; a gone tile is
+   removed. A play that moves a tile to the front moves its node, with its picture. No blink.
+   This is the Home form of 7.7 step 2, and the reveal needs it.
+4. **A face that replaces a borrowed cover** (`fillArtistPhotos`) fades over it (`--art-in`),
+   not a cut.
+5. **`data-art`** on Home's covers (7.3).
+6. **Priority:** `fetchpriority="high"` on the first-screen tiles. The New shelf's Apple call
+   moves out of the first build: the first build draws the shelves from local data and the
+   New list held in memory (`newReleases`, empty after a launch), and the call's answer
+   patches the New shelf in place when it lands (step 3). Home then never waits on Apple to
+   show; after a launch the New shelf joins a moment later, as one shelf entering. Whether
+   Rust keeps the answer on disk (so a launch could show the last list at once) is to be read
+   before the build.
+
+**Home on the collection engine? (his question, 2026-10-17; read against the code):**
+- The engine already draws shelves: `Context.shelves` (collection-card.ts), used by Radio, the
+  artist view and the Pinned shelf. But it draws them as one HTML string and makes the whole
+  block again when it changes. So a move alone does not fix Home's rebuilds: the engine's shelf
+  path has the same fault.
+- **What the loading work needs is two shared primitives, not the move:** `reveal.ts` (7.6) and
+  a keyed patch (keep a child whose key is still there, add, remove, move). The engine's rows
+  (7.7 step 2), the engine's shelves (Radio, the artist view, Pinned) and Home's shelves all use
+  the same patch. That also fixes Radio's and the artist view's shelf redraws, which Home's
+  move would not.
+- **What a move would add for the user:** an album, playlist or artist opened from Home would
+  open inside Home (a drill with Back), as in Search and Radio. Today Home has no level of its
+  own, and an Open hops to the card that holds the item (home-card.ts `activate`). That is a
+  product choice, his, separate from the loading work (HANDOFF › His to decide).
+- The rest Home already has on its own: list keys (`wireListKeys`), right-click menus, drags
+  (`rowDrag`), card memory (`scrollSnapshot`).
+
+### 7.10 Search (scoped 2026-10-17)
+
+> **Part:** designed · 2026-10-17
+
+**How Search loads today (read 2026-10-17):** the field waits `SEARCH_DELAY_MS` (300 ms) after
+the last keystroke (search-field.ts), then `searchCatalog` asks Apple. A newer term cancels an
+older answer (`queryToken`). Each answer replaces the whole results box (`root.innerHTML`):
+the Artists, Songs, Albums, Playlists and Stations sections, each a sideways scroller. Covers
+are 72 px (songs), 96 px (artists) and 128 px (tiles), with `loading="lazy"`. A drill from a
+result (an album, an artist) is a collection-engine level, so 7.1's drill hold applies there.
+
+**Why it differs from a card:** a search answer is the reply to typing. A 1.5 s hold would read
+as a slow search. The person is also still looking at the last results while they type.
+
+**His calls (2026-10-17):** at most **200 ms** after the answer, and **each section reveals on
+its own**: Artists, Songs, Albums, Playlists and Stations each wait for their own covers, so a
+heavy section never holds back a light one.
+
+**The scope:**
+1. **The new results build hidden, in place.** The answer draws into a second results box
+   with `visibility: hidden` over the shown one. It has a real layout, so each section's first
+   screen is known (the cells inside its scroller's visible width), and its covers load, with
+   `fetchpriority="high"` on each section's first screen.
+2. **Each section has its own ready.** A section is ready when the covers of its own first
+   screen are ready (7's "ready"), or at the Search cap: 200 ms after the answer
+   (`--search-reveal-cap`). The cap is one clock for every section, so the last section shows at
+   most 200 ms after the answer.
+3. **The swap is the first ready section.** At that moment the old results leave and the new
+   box shows whole: every section's title and its scroller's box, in its place. The sections not
+   ready yet hold their box empty (its height is set by its kind, so nothing below moves), and
+   each one reveals when it is ready. Old and new results are never on screen together: two
+   terms' results side by side would mislead.
+4. **Each section's reveal** is a short wave left to right along its scroller (7.2's rule over
+   that section's boxes, span `--search-reveal-span`, 150 ms to start). A cell not ready at the
+   cap enters with its placeholder, and its cover fades in alone (7.3).
+5. **A new keystroke during the wait** drops the hidden box (the existing `queryToken`). ↓ or
+   Enter into the results swaps at once and reveals every section.
+6. **The first term** (Recents shown, no results yet) uses the same swap, from Recents.
+7. **"No results"** and the error line show at once. They have no pictures.
+8. **The cost:** none on Apple. The calls and the 300 ms delay are unchanged; only the swap waits.
+9. **The measurement (7.13)** reports per section: answer → reveal, and the cells not ready at
+   the cap. It sets the final numbers of the two tokens.
+
+### 7.11 The other surfaces with many covers (scoped 2026-10-17)
+
+> **Part:** designed · 2026-10-17
+
+**His calls (2026-10-17):**
+- In scope: Library, the Queue, the artist view, Rewind and History, the playlist web, and the
+  small ones (Diary, the Compass, Song of the Day, the Pinned shelves).
+- **Out:** the Glass › Canvas covers (wallpaper.ts): a picture behind the cards cannot take the
+  diagonal wave.
+- **Mosaics:** if the measurement (7.13) shows them too slow, a playlist with no artwork shows
+  a Note cover first (the Note drawing of PLAYLISTS.md §11.2, made at once in the theme), then
+  the mosaic.
+- **Every card gets a setting** to turn the wait off (7.12).
+
+**1. Library** — on the engine, so 7.1 and 7.2 apply as written. Its held moments: the card
+opening, a grouping or View switch, the Full | Lib chips (FULL-LIB.md: the level's data is a
+wait of its own, `Context.loading`), and a Grow or Fill (the grow's row entry, CARD-GROW.md §19,
+becomes the wave, with the ready wait inside the grow's own timing). A long list is windowed
+(collection-window.ts, over 200 items): its first screen is the windowed rows in view. A scroll
+never holds; a cover the windower adds late fades in alone (7.3).
+
+**3. The Queue** — qcard.ts, not on the engine. **Today:** every queue change, track change,
+Suggest Less mark and player state change sets the whole body (`body.innerHTML`), so every row
+and its cover is made again, many times a minute while music plays. **Scope:** (a) the keyed
+patch by queue entry: a row still there keeps its node and cover, an advance moves rows, a new
+row is added; this is the main fix. (b) The wait and the wave only when the Queue fills from
+nothing or is replaced whole: the card opening, a new album or playlist played, a room join, a
+Clear. A song advance, an Add or a drag never waits. (c) The Now Playing row's large cover
+(`qnow__art`) is part of the first screen.
+
+**5. The artist view** — an engine level (media-levels.ts), so the drill hold applies. Its first
+screen: the round photo, the shelves in view (Featured, Your Playlists, the albums shelf) and
+the rows in view. The shelves wait on data of their own (`d.ready()`); the hold waits for it
+inside the cap. Shelves that land after the cap enter as one block with the row-entry motion,
+and the rows under them move down with it (no jump). The facts box (Last.fm, info-box.ts)
+keeps its own place-holder (`data-info-pending`) and is not part of the wait.
+
+**6. Rewind and History** — their own cards. **History:** it reads `play_events_since`, then
+sets the whole body; each play reads the tail and sets it again (`onPlayEvent`). Scope: the
+keyed patch by play; the wait and the wave at the card's open only. **Rewind:** it reads its
+stats, then sets the board (`board.innerHTML`). Scope: the wait and the wave at the open and
+at a window switch (week, month, year), which is a view switch; the large cover is in the first
+screen.
+
+**7. The playlist web** (web.ts) — a panel of hits under a field, like a search as you type.
+**No wait:** the hits answer typing. Scope: `data-art` on its pictures (today none, so no
+retry) and the late-cover fade (7.3). Its rows are few and small.
+
+**8. The small ones:**
+- **Diary:** the card's open uses the wait and the wave (its covers are album covers).
+- **The Compass:** answers typing: no wait; `data-art` where a result has a picture
+  (context-menu.ts makes its own `<img>`), and the late fade.
+- **Song of the Day:** its shelf sits on Home (7.9).
+- **The Pinned shelves:** engine shelves in Library, Playlists and Radio, and Home's own: each
+  follows the card it is in, with the keyed patch.
+
+### 7.12 The setting: wait or instant, per card (his ask, 2026-10-17)
+
+> **Part:** designed · 2026-10-17 · W1 his (A); W2 B for now, his final call after a feel test
+
+**His calls (2026-10-17):** W1 **A**, Settings › Cards. W2 **B for now**: "instant" turns off
+all loading motion. He decides W2 for good once he has felt both on the dev app, so the build
+keeps both behind one switch (`deets.dev.instantFade` in localStorage, dev only: on = A, the
+late fade kept; off = B) and the desk test (7.8) adds a step to compare them. The switch and
+the losing branch are removed when he decides.
+
+**His ask:** each card has a setting, so a user who wants instant, snappy cards can take the
+pops instead of the extra second or two.
+
+**What follows (no choice):**
+- One key, a list of the cards set to instant (`instantCards: string[]`), default empty: every
+  card waits, his design (7). The default carries its why in settings-store.ts, a spec in
+  agent-settings.ts and a line in AGENT.md; a `NEW_MARKS` line; a row in
+  SETTINGS-INVENTORY.md. The Compass reaches the row by itself (COMPASS.md §9).
+- The cards it lists: Library, Playlists, Home, Search, Queue, History, Rewind, Radio, Diary.
+  The artist view and a drill follow the card they open in. The Compass and the playlist web
+  never wait, so they have no toggle.
+- **An instant card never holds and plays no wave.** The keyed patch stays (it removes blinks
+  and adds no wait). The launch (7.5) does not wait for an instant card.
+- **A rule may set it** (RULES.md §19), for example Battery saver, if the rules engine takes a
+  list value for a rule key; to read in the code before the build.
+- Reduced motion keeps the wait and drops the wave (7.2); an instant card has neither.
+
+**Fork W1 — where the setting sits:**
+- **A (recommended): Settings › Cards**, as a second list under the existing *Enable / Disable
+  these Cards:* toggles (HIDE-CARDS.md §8), one toggle per card. The section already lists
+  the cards one per row, so a user finds a card's own setting beside it.
+- B: Settings › Motion, beside *Animate card swaps*: a choice about motion lives with motion.
+
+**Fork W2 — what "instant" turns off:**
+- **A (recommended): the wait and the wave only.** A late cover still fades in (7.3): it adds no
+  wait, it only softens a picture that lands after the rows.
+- B: all loading motion. A cover shows the frame it loads, as today. The most literal
+  "instant", with every pop.
+
+**Draft for him to edit (the words):** the sub-heading *Wait for covers before showing:*, one
+toggle per card named as the card is (*Library*, *Playlists*, …), on by default; the hover hint
+*On: the card shows once its covers are in, in one smooth wave. Off: it shows at once, and
+covers pop in as they load.*
+
+### 7.13 The measurement on his live dev app (planned 2026-10-17, his ask)
+
+His ask: test on the live dev app, with his own playlists, his Home, and searches for his
+recent additions. The demo's numbers (one second of mock data) do not count for this.
+
+**The tools:**
+- **App numbers, in the dev log and the live diag ring:** `reveal` (hold ms, the reason
+  ready / cap / press, first-screen tiles, not ready at the reveal), `reveal:late` (a late
+  cover's time after the reveal), `coll:render` and `home:build` (each redraw), and
+  `[perf] frames reveal` (the wave's frames, frames.ts). Read with `deetsmusic diag` or the log.
+- **Frames:** the shots runner gets its `dev` source (SHOTS.md §4, §10): it attaches to the
+  running dev app's CDP port (dev-app.mjs records it), seeds nothing, and changes no look or
+  setting. The steps drive the real UI. The strips, the marks and the change curve then come
+  from WebView2 itself, on his data.
+- **Cold runs:** `Network.clearBrowserCache` on the dev app's CDP target (the dev data folder
+  only; the installed app is not touched), then a restart of the dev exe, so the mosaics and the
+  covers are cold. **Warm runs:** the same steps again, with no clear.
+- **The search terms:** his ten newest library additions (the `query` tool over the library's
+  added dates), one artist and one album name each, typed one key at a time at 120 ms a key,
+  and once pasted whole.
+
+**The drive list** (`docs/ops/checks/reveal-live.json`, kept for regression runs,
+checks/README.md):
+1. The launch: restart the dev exe; read `boot:ready` and each visible card's `reveal`.
+2. Playlists: open it from the card picker (Midi); Fill it in Max at a grid view; open a
+   playlist not opened this session; scroll down two screens.
+3. Home: open it from the card picker; press ⟳ (Home refresh).
+4. Search: the terms above, typed and pasted; open the first album result (a drill).
+5. Library: open it; switch to the album grid; Fill it in Max; switch grouping; Full | Lib on
+   an album; open an artist (the artist view).
+6. The Queue: open it with a long queue (a played playlist of 100+ songs); the Next button
+   (an advance: no wave, no blink).
+7. History and Rewind: open each; switch Rewind's window.
+8. The playlist web and the Compass: type a term; count the late covers.
+9. Each run again with every card in `instantCards`, as the comparison.
+
+**Each step gives:** the time from the press to the reveal; the hold and its reason; the tiles
+not ready at the reveal; the late covers after it and their times; the pops in the card's box
+(the change curve); the redraws; the frames the wave dropped. Search adds: the keystroke to the
+answer, and the answer to the swap.
+
+**When:** once on today's code (the baseline), then after each step of 7.7. Three runs each,
+the medians, with the noise gate. A run starts only when he says so: the drive presses his live
+dev app, and he uses it (a press of his would end a hold).
+
+**Safety:** the drive list opens cards, scrolls, types and drills. It plays nothing, loves
+nothing, and changes no setting. A search adds its term to Search's Recents, as a typed search
+does; the run removes the terms it added at its end.
 
 ---
 

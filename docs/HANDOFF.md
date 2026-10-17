@@ -189,6 +189,13 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
+- **A card's first screen: one reveal in reading order** (2026-10-16): the card holds until the
+  covers on screen are ready (cap 1.5 s), then shows them as a diagonal wave; late covers fade
+  in alone; mosaics drawn early and at the size on screen; the launch waits for it. Every fork
+  his. The first step is a probe of the 0.2–2.8 s mosaic time. UX-COVERUPS.md §7.
+- **The loading set** (2026-10-16): replay his real command and cover timings (p90) in the demo,
+  one clip per loading wait. Step 1 is the recorder. guide/LOADING-SET.md.
+
 - **Rooms: a long queue and stations** (2026-10-16): **BUILT the same day.** The worker is
   deployed and pushed (`4f61445`); the app side is committed on `shixtheenth` (his call: he
   tests it once it is live). Claude's two-app desk run passed 11 rows without sound (one Apple
@@ -246,6 +253,11 @@ each step that touches those calls.
   (§10.6).
 
 ### His to design or decide (asks and ideas, not built)
+
+- **Open an item inside Home** (2026-10-17): today an album, playlist or artist opened from Home
+  hops to the card that holds it. On the collection engine it would open inside Home, with
+  Back, as in Search and Radio. A product choice; the loading work does not need it.
+  UX-COVERUPS.md §7.9.
 
 - **Fewer Apple calls, and a song's primary artist** (2026-10-15): ideas/apple-calls.md. The
   ledger, five savings (about 110 → 15 library calls a day for him), the ⟳'s silent refusal, and
