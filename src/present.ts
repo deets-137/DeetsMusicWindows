@@ -255,12 +255,15 @@ export async function closePresent(cause: string, withMotion = true): Promise<vo
 /** True while a view is open (Escape goes to it first). */
 export const isPresenting = (): boolean => !!open;
 
-// Escape closes the view before the grow sees it (the grow skips a key already spent).
+// Escape closes the view before the grow sees it (the grow skips a key already spent). A
+// right-click menu or the Compass on top takes the Escape first.
 window.addEventListener(
   "keydown",
   (e) => {
     if (e.key !== "Escape" || !open || closing || e.defaultPrevented) return;
     if (document.querySelector(".ctx-menu")) return;
+    // The Compass over the view takes its Esc first (2026-10-17: one Esc closed both).
+    if (document.getElementById("compass")?.hidden === false) return;
     e.preventDefault();
     void closePresent("esc");
   },

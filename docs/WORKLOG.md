@@ -12,6 +12,25 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (late afternoon) — the song box's edge run passed; the runner's invoke fixed
+
+**His asks:** run the song box's edge cases (LISTENERS.md §8.11); why was the record "still"
+when it spins; does the heaviness sampler capture settings?
+- **The edge run:** all 20 shots pass on his dev app (§8.11 › *The run*). On the way: the
+  runner's `invoke` rules never worked on the dev app (Tauri's `invoke` is read-only; now done
+  over the IPC requests, SHOTS.md §5i); song A moved to Kill Bill (Bohemian Rhapsody is not in
+  the library); every shot starts with a reload; Midi shots aim at the right slot. Two app
+  faults fixed: one Esc closed the Compass and the presentation view (`present.ts`), and a
+  long tag ran out of the box (styles.css, an ellipsis chip). Not committed. song-box.json
+  (§8.10) was not run again: it needs the Search card in slot d.
+- **"vinyl=still":** the sampler's first line read `vinyl=still` from the live app's `/health`
+  while `pressVinyl` is Spin and the record spins. The value is wrong, cause not found: no rule
+  holds the key, and no change came today. `publishAppearance` does not run on a record row's
+  change (a known gap). A separate session is proposed to find it. Until then the sampler's
+  vinyl column is not to be trusted.
+- **The sampler's context** is what `/health` gives: skin, theme, surface, playing, airplay,
+  sound, vinyl, tray. No other setting (not the spin speed, the Max layout, the motion rows).
+
 ## 2026-10-17 (afternoon) — a slow start on live; the sampler started; HANDOFF pruned for 0.29.0
 
 **His asks:** live took a while to load; is the sync hurting playback? Did the app know about

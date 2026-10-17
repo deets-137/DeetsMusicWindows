@@ -756,6 +756,7 @@ async function runStep(page, step) {
   }
   if ("probe" in step) {
     // A question to the page for the record: its answer goes in the shot's console file.
+    if (ipc.on) await evaluate(page, `window.__shotsInvoke = { calls: ${JSON.stringify(ipc.calls)} }`).catch(() => {});
     const v = await evaluate(page, step.probe).catch((e) => `threw: ${e.message}`);
     note("probe", `${step.probe} → ${JSON.stringify(v)}`);
     // `"expect"` makes the answer an assertion (DESK-TESTS.md §6): the shot runs on, and fails
@@ -775,6 +776,12 @@ async function runStep(page, step) {
     // `{ ... { "patch": { field: value } } }` or `{ "invoke": "reset" }`: the page's Tauri `invoke` delays, fails or patches the named commands, so a
     // race (an answer after the view left, a failure) can be scripted. Rust's own network is not
     // the webview's, so `network` cannot slow a Rust call; this can. Undone at the shot's end.
+    // In the real app the page cannot be patched (ipc below); the demo's stand-in can.
+    if (ipc.on || (await evaluate(page, `Object.getOwnPropertyDescriptor(window.__TAURI_INTERNALS__ ?? {}, "invoke")?.writable === false`))) {
+      await ipcRules(page, step.invoke);
+      note("invoke", JSON.stringify(step.invoke) + " (ipc)");
+      return;
+    }
     await evaluate(page, `(() => {
       const I = window.__TAURI_INTERNALS__;
       const s = (window.__shotsInvoke ??= { orig: I.invoke, rules: {}, calls: {} });
@@ -892,8 +899,97 @@ function failOnExpects() {
   if (journal.fails.length) throw new Error(`${journal.fails.length} expect(s) failed — ${journal.fails.join(" · ")}`);
 }
 
+// ── `invoke` rules in the real app (2026-10-17) ──────────────────────────────
+// Tauri defines `__TAURI_INTERNALS__.invoke` read-only, and the object on `window` too, so the
+// page wrapper of the `invoke` step never took hold in WebView2: on the dev app its delay, fail
+// and patch did nothing, and its call count stayed 0 (found on the song box's edge run). Each
+// command is a POST to http://ipc.localhost/<cmd>, so the debugging protocol does it instead:
+// Network events count the calls, and Fetch holds a request (delay) or rewrites its reply
+// (fail: `Tauri-Response: error`; patch: fields laid over the JSON). Only the named commands
+// are caught. Never a network failure: Tauri's page script would then send every later call
+// by postMessage for the rest of the page's life.
+const IPC = "http://ipc.localhost/";
+const ipc = { on: false, rules: {}, calls: {}, offs: [] };
+const ipcCmd = (url) => decodeURIComponent(url.slice(IPC.length).split("?")[0]);
+
+async function ipcRules(page, want) {
+  if (!ipc.on) {
+    ipc.on = true;
+    await page.send("Network.enable");
+    ipc.offs.push(
+      page.on("Network.requestWillBeSent", (e) => {
+        if (e.request.method !== "POST" || !e.request.url.startsWith(IPC)) return;
+        const cmd = ipcCmd(e.request.url);
+        ipc.calls[cmd] = (ipc.calls[cmd] ?? 0) + 1;
+      }),
+      page.on("Fetch.requestPaused", (e) => void ipcPaused(page, e).catch((err) => note("invoke", `ipc rule failed: ${err.message}`))),
+    );
+  }
+  if (want === "reset") {
+    ipc.rules = {};
+    ipc.calls = {};
+  } else Object.assign(ipc.rules, want);
+  const patterns = [];
+  for (const [cmd, r] of Object.entries(ipc.rules)) {
+    const urlPattern = IPC + encodeURIComponent(cmd) + "*";
+    if (r.delay) patterns.push({ urlPattern, requestStage: "Request" });
+    if (r.fail || r.patch) patterns.push({ urlPattern, requestStage: "Response" });
+  }
+  if (patterns.length) await page.send("Fetch.enable", { patterns });
+  else await page.send("Fetch.disable").catch(() => {});
+}
+
+async function ipcPaused(page, e) {
+  const { requestId } = e;
+  const atResponse = e.responseStatusCode !== undefined;
+  const r = e.request.method === "POST" ? ipc.rules[ipcCmd(e.request.url)] : undefined;
+  const pass = () =>
+    atResponse
+      ? page.send("Fetch.continueResponse", { requestId }).catch(() => page.send("Fetch.continueRequest", { requestId }))
+      : page.send("Fetch.continueRequest", { requestId });
+  if (!r) return pass();
+  if (!atResponse) {
+    if (r.delay) await new Promise((ok) => setTimeout(ok, r.delay));
+    return pass();
+  }
+  // The reply's own headers are kept (CORS, the exposed Tauri-Response), so the page reads it
+  // as Tauri's.
+  const headers = (e.responseHeaders ?? []).filter((h) => !/^content-length$/i.test(h.name));
+  if (r.fail) {
+    const msg = typeof r.fail === "string" ? r.fail : `shots: forced failure of ${ipcCmd(e.request.url)}`;
+    const h = headers.filter((x) => !/^(tauri-response|content-type)$/i.test(x.name));
+    h.push({ name: "Tauri-Response", value: "error" }, { name: "Content-Type", value: "text/plain" });
+    return page.send("Fetch.fulfillRequest", { requestId, responseCode: 200, responseHeaders: h, body: Buffer.from(msg).toString("base64") });
+  }
+  const b = await page.send("Fetch.getResponseBody", { requestId });
+  let v;
+  try {
+    v = JSON.parse(b.base64Encoded ? Buffer.from(b.body, "base64").toString("utf8") : b.body);
+  } catch {
+    return pass();
+  }
+  const out = v && typeof v === "object" ? { ...v, ...r.patch } : v;
+  return page.send("Fetch.fulfillRequest", {
+    requestId,
+    responseCode: e.responseStatusCode,
+    responseHeaders: headers,
+    body: Buffer.from(JSON.stringify(out)).toString("base64"),
+  });
+}
+
+async function ipcOff(page) {
+  if (!ipc.on) return;
+  ipc.offs.splice(0).forEach((off) => off());
+  ipc.rules = {};
+  ipc.calls = {};
+  ipc.on = false;
+  await page.send("Fetch.disable").catch(() => {});
+  await evaluate(page, "delete window.__shotsInvoke").catch(() => {});
+}
+
 /** At a shot's end: the page's `invoke` and network as they were. */
 async function undoShaping(page) {
+  await ipcOff(page);
   await evaluate(page, `(() => { const s = window.__shotsInvoke; if (s) { s.rules = {}; s.calls = {}; window.__TAURI_INTERNALS__.invoke = s.orig; } })()`).catch(() => {});
   if (journal.shaped) await page.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }).catch(() => {});
   if (journal.emulated) await page.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "" }] }).catch(() => {});

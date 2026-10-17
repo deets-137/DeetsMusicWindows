@@ -3042,6 +3042,9 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   border: 1px solid var(--panel-border); border-radius: var(--web-chip-radius);
   padding: var(--space-1) var(--space-2);
   white-space: nowrap;
+  /* One line, as every chip: a long tag ends in an ellipsis inside the tags column instead of
+     running under the counts (2026-10-17, LISTENERS.md §8.11). */
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 .artist-info__tour { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-subtext); font-weight: var(--fw-title); color: var(--title); }
 .artist-info__dot { width: var(--artist-info-dot); height: var(--artist-info-dot); border-radius: 50%; background: var(--title); }

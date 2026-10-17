@@ -595,8 +595,8 @@ do not. A fork for him.
 
 ### 8.11 Edge cases and races (fixed 2026-10-17; to test 2026-10-18)
 
-> **Part:** built · 2026-10-17 · desk test open (the list below; his call: "we'll test them
-> tomorrow")
+> **Part:** built · 2026-10-17 · desk test passed 2026-10-17 (run by Claude on his dev app; the
+> results under the list)
 
 After §8.10, his asks: script the edge cases and races, and ask Sonnet agents how a user might
 break the feature (DESK-TESTS.md §6). Two agents read the code (one on workflows, one on data and
@@ -645,6 +645,31 @@ node docs/ops/checks/song-box-edges.mjs && node scripts/shots.mjs --list docs/op
 
 Also run [ops/checks/song-box.json](../ops/checks/song-box.json) again (§8.10), and read the
 pictures of edge-grown-skins and edge-midi-fold. A fail is fixed and run again.
+
+**The run (2026-10-17, afternoon; Claude, his dev app, Max, the Library in slot d): all 20 pass**
+(16 shots; edge-grown-skins is 5). Three faults in the test and two in the app came first:
+- **The runner's `invoke` rules did nothing on the dev app.** Tauri defines
+  `__TAURI_INTERNALS__.invoke` read-only, so the page wrapper never took hold: no delay, no
+  failure, no patch, and the call count stayed 0. So the night before, "no call" passed for
+  the wrong reason. Fixed in `scripts/shots.mjs` (SHOTS.md §5i): the debugging protocol counts
+  each `http://ipc.localhost/<cmd>` request and holds or rewrites the named ones. Checked in
+  this run: the delayed and failed calls count 1, a patch reads "1.0M".
+- **Song A was not in the library.** Bohemian Rhapsody is a "seen" song, so only the Search
+  card finds it. A is now Kill Bill (SZA), a library song with a song wiki.
+- **The page keeps each answer for the session**, so a song an earlier shot opened drew with
+  no call. Every shot now starts with a reload. In Midi the shots aim at the right slot.
+- **Fault: one Esc closed the Compass AND the presentation view** (edge-present-compass). The
+  view's Escape (capture phase on `window`) ran first. Fixed in `present.ts`: it steps aside
+  while the Compass is open, as it does for a right-click menu.
+- **Fault: a long tag ran out of the box** (edge-long-tags-midi, the picture: under the counts
+  and past the border). Fixed in styles.css: a tag chip is at most its column's width and ends
+  in an ellipsis, one line as every chip. The album and artist boxes share the rule.
+
+Read: the grown card in Glass and Cyber (beside the cover, nothing out), the Midi fold (open,
+closed, open), A then B (B's box), the long tags before and after. Kill Bill has no Last.fm
+tags, so its Tags cell is empty unless patched. **Not run again:** song-box.json (§8.10). It
+needs the Search card in slot d (its song is Bohemian Rhapsody); his dev layout has the
+Library there, and the edge list covers the same paths.
 
 **Found, not fixed: his forks, or faults older than this feature.**
 - **The name form** (§8.10): the song call and the badge ask under Apple's whole artist text,

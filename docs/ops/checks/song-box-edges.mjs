@@ -6,14 +6,17 @@
 //   node scripts/shots.mjs --list docs/ops/checks/song-box-edges.json --noise 80
 //
 // Needs `npm run dev:app`, its window on screen, in Max, with the Library or the Search card in
-// slot d (either). Every setting a shot changes is put back after it (shots.mjs `devState`).
+// slot d (either), and in Midi in the right slot. Every setting a shot changes is put back after
+// it (shots.mjs `devState`).
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const D = '[data-slot="d"] ';
 // Songs in his library with Last.fm pages: a song wiki (A), no song wiki but an album wiki (B).
-const A = { q: "Bohemian Rhapsody", cid: "6781024437", title: "Bohemian Rhapsody" };
+// A was Bohemian Rhapsody until 2026-10-17: a "seen" song, not in the library, so the Library
+// card never found it (only the Search card did).
+const A = { q: "Kill Bill", cid: "1682342495", title: "Kill Bill" };
 const B = { q: "Vivid Light", cid: "1825903913", title: "Vivid Light" };
 
 /** Back to the card's top level, then its search set to `q` (by script: never a click on a
@@ -38,6 +41,12 @@ const credits = (s, extra = {}) => [
 ];
 const open = (s, extra) => [find(s), ...credits(s, extra)];
 const back = { eval: `document.querySelector('${D}.panel__back')?.click()` };
+/** Midi has two card slots, and his Library sits in the right one (read 2026-10-17): a Midi
+ *  shot's steps aim there instead of Max's slot d. */
+const inMidi = (s, steps) =>
+  s.size === "midi" ? JSON.parse(JSON.stringify(steps).replaceAll(JSON.stringify(D).slice(1, -1), JSON.stringify('[data-slot="right"] ').slice(1, -1))) : steps;
+/** A reload, so the page's memory of Last.fm answers is empty. */
+const FRESH = [{ reload: true }, { wait: `${D}.panel__title` }, { wait: 2500 }];
 
 /** One probe of the page's state: the card, the box, its sections, the About, the view. */
 const STATE = `JSON.stringify((() => {
@@ -137,7 +146,7 @@ const shots = [
       { wait: 3000 },
       { click: `${D}[data-present]` },
       { wait: 1500 },
-      probe("presenting", { present: true, presentName: "/Bohemian Rhapsody/" }),
+      probe("presenting", { present: true, presentName: `/${A.title}/` }),
       { eval: "window.__store.set('showSongInfo', false)" },
       { wait: 1500 },
       { snap: "after-off" },
@@ -305,8 +314,18 @@ const list = {
   desk_test: "features/LISTENERS.md §8.11",
   made: "2026-10-17",
   pass: "Every shot ok: each probe's `expect` holds (the runner fails a shot on a mismatch and names it). Read the snaps of edge-grown-skins (5 skins), edge-midi-fold and edge-a-then-b.",
-  run: "node docs/ops/checks/song-box-edges.mjs && node scripts/shots.mjs --list docs/ops/checks/song-box-edges.json --noise 80   (dev app running, on screen, Max, Library or Search in slot d; ask other sessions first)",
-  shots: shots.map((s) => ({ covers: "features/LISTENERS.md", kind: "clip", source: "dev", seconds: 6, ...s })),
+  run: "node docs/ops/checks/song-box-edges.mjs && node scripts/shots.mjs --list docs/ops/checks/song-box-edges.json --noise 80   (dev app running, on screen, Max, the Library or Search in slot d, and in Midi in the right slot; ask other sessions first)",
+  // Every shot starts on a fresh page (2026-10-17): the page keeps each song's Last.fm answer
+  // for the session, so a song an earlier shot opened draws with no call, and a delay, a
+  // failure or a patch never reaches it.
+  shots: shots.map((s) => ({
+    covers: "features/LISTENERS.md",
+    kind: "clip",
+    source: "dev",
+    seconds: 6,
+    ...s,
+    steps: inMidi(s, s.steps[0]?.reload ? s.steps : [...FRESH, ...s.steps]),
+  })),
 };
 writeFileSync(join(dirname(fileURLToPath(import.meta.url)), "song-box-edges.json"), JSON.stringify(list, null, 2) + "\n");
 console.log(`song-box-edges.json: ${shots.length} shots`);

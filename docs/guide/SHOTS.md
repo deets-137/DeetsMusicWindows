@@ -509,6 +509,15 @@ test that anyone can run.
   `window.__shotsInvoke.calls` (a probe proves "no call"). `{ "invoke": "reset" }`, and the
   shot's end, undo it. Rust's own HTTP is not the webview's network: this is how a Last.fm or
   Apple call is slowed or failed.
+  **On the dev app (since 2026-10-17)** the page cannot be wrapped: Tauri makes
+  `__TAURI_INTERNALS__.invoke` read-only, and the wrapper failed without a word (no delay, no
+  failure, count 0). The runner sees that and works on the IPC requests instead
+  (`http://ipc.localhost/<cmd>`, `ipcRules` in shots.mjs): Network events count every command,
+  and Fetch holds a named one (delay) or rewrites its reply (fail = a `Tauri-Response: error`
+  reply, never a network failure, which would move the page to postMessage; patch = fields
+  over the JSON). The count reaches a probe as `window.__shotsInvoke.calls`, as before. The
+  page still keeps its own answers (`listeners.ts`): a shot that needs a call starts with a
+  `reload`.
 - `{ "network": "offline" | "slow" | "online" | { latency, down, up } }`: the webview's network
   (MusicKit, covers). Back to online at the shot's end.
 - `{ "reducedMotion": true }`: prefers-reduced-motion reads "reduce". Undone at the shot's end.
