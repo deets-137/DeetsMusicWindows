@@ -899,3 +899,17 @@ export function onOwnedSettingChange(cb: () => void): () => void {
   return () => ownedListeners.delete(cb);
 }
 export const notifyOwnedSettingChange = (): void => ownedListeners.forEach((cb) => cb());
+
+declare global {
+  interface Window {
+    /** The shots runner's handle on the dev app (DESK-TESTS.md §6, SHOTS.md §5h): it reads a
+     *  key, sets it for a shot, and puts it back after. Dev builds only. */
+    __store?: { get: (key: string) => unknown; set: (key: string, value: unknown) => void };
+  }
+}
+// `?.`: the unit tests load this module in Node, where `import.meta.env` does not exist.
+if (import.meta.env?.DEV && typeof window !== "undefined")
+  window.__store = {
+    get: (key) => ownSetting(key as keyof Settings),
+    set: (key, value) => setSetting(key as keyof Settings, value as never),
+  };

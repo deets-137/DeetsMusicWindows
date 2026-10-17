@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/webview-eval.mjs, scripts/dev-app.mjs, src/diag.ts]
-updated: 2026-10-14
+updated: 2026-10-17
 ---
 # Desk tests — the runbook for an agent
 
@@ -325,3 +325,109 @@ Summary: *8 pass · 2 partial · 1 fail (adjacent copies) · 2 noisy.* A slip du
 | Launch 1–6 | 2026-10-13 | pass (his eye) | DEBUGGING.md § Launch |
 | B14 on live | 2026-10-13 | pass (log) | `[apple] calls 1h` every hour on the installed 0.27.0 |
 | B23 | 2026-10-15 | pass (his) | Media flyout from a Start Menu start; update beta.4 → beta.6 in 2.0 s; uninstall and first install "seamless and quite fast". The Access is denied wait is inside Update.exe and harmless (VELOPACK.md §12.6) |
+
+## 6. Verify while you build (2026-10-17, his ask)
+
+His ask, after the song facts box: when Claude builds a feature, it tests and verifies the
+feature itself with scripts: the desk test, the edge cases and the race conditions. Then it
+hands the feature over. The first run is LISTENERS.md §8.10. Its review (below) says what that
+run did not cover.
+
+This is the builder's own check. It is not the runbook of §2: a fault the builder finds in its
+own feature is part of the build. Fix it and record it in the as-built (§2 rule 4 still holds
+for a desk test of someone else's work).
+
+### 6.1 The method
+
+1. **Write the desk test first** (CLAUDE.md › the build checklist item 8), then a shots list
+   that runs it (SHOTS.md §3, §5d, §5h). Build it in `shots/scratch/`, then keep it in
+   `docs/ops/checks/` with its `pass` field ([checks/README.md](checks/README.md), "How to add one").
+2. **Two sources, two jobs.**
+   - **The demo** (`"source": "demo"`) is hermetic. Run every skin and theme (`looks`), every
+     surface (Mini, Midi, Max) and the grown card. Use it for layout, motion and reduced motion.
+   - **The dev app** (`"source": "dev"`) is his real library, with real Apple and Last.fm
+     answers. Use it for the data paths, the log lines and the cache.
+3. **A probe is the assertion.** After each step, a `probe` returns the DOM facts that decide
+   pass or fail: the sections, the text, `data-hint`, the counts. Write the expected answer
+   into the list's `pass` field before the run.
+4. **Look at the part under test.** A snap of the card is not a look at the box. Scroll the part
+   into view (`eval` with `scrollIntoView`) and `snap` it. Run `--seen` on each picture you
+   read.
+5. **The edge cases.** List them in the doc's desk test, and give each one a step:
+   - every answer the data can give (a full answer, a partial one, "none", no key, a failure);
+   - the feature's off switch (count the log lines: an off switch makes no call);
+   - long text and empty text;
+   - a narrow and a wide card, each surface, each skin;
+   - the keyboard (Esc, Tab, arrows) with the focus in each place it can be;
+   - a setting changed while the view is open.
+6. **The race conditions.** Script each one with `eval`, `wait` and `frames`:
+   - leave the view before its answer lands;
+   - open two items fast, so the second answer lands first;
+   - an answer that lands after the card redrew;
+   - a page reload in flight;
+   - the network dropped (`checks/drop.mjs`) or slow;
+   - two cards or two windows on the same item.
+   Read the `diag` ring and the log after each run, not only the pictures.
+7. **Pure rules get unit tests** (`tests/*.test.ts`). A Rust parse gets a `cargo test` on a
+   recorded answer, so a new shape fails a test and not a user.
+8. **Restore and record.** Set back every setting the run changed. Put the results table in
+   the feature doc's desk test section and one line in WORKLOG.md.
+
+### 6.2 Safety on the dev app
+
+The dev source is not hermetic: every step changes his app.
+- **Never `click` a text field.** Set it by script (`value` and an `input` event). On
+  2026-10-17 a click on the Library's search field landed on a pinned tile under it and played
+  a song.
+- Play nothing that the test does not need. If a step plays, say so in the report.
+- Read his layout first (which card is in which slot). It can change during the run: a reload
+  from another session's edit moved a slot to Search.
+- **One driver at a time.** Before a run, ask the other sessions that share the checkout. While
+  a run is in progress, do not reload or drive the dev app from another session.
+- Read `ui:act` before you call a result a mystery (§2 rule 2).
+
+### 6.3 Review of the first run (the song facts box, 2026-10-17)
+
+**What it covered well:** the data paths on real answers (a song wiki, the album fallback, no
+box), presentation mode and the way out, the box menu, *Notes from › None*, the Search card, the
+cache re-read once and only once. It found one real bug: Esc also went Back (list-keys.ts).
+
+**What it did not cover (UI):**
+- The box itself was never seen in a picture. In Max's narrow quarter card, the box sits under
+  the cover, below the fold. The pictures show the *SONG INFO* line, and the probes read the
+  box. Its layout, spacing and long-text clamp were not seen.
+- One look only (his live theme and skin), one surface (Max). No grown card (the box beside
+  the cover), no Midi, no Mini, no other skin, no reduced motion.
+- The slide-in motion was captured in frames but not judged. The *SONG INFO* fold
+  (open and close) was not pressed. The hover hints were read from `data-hint`, not shown.
+- *Notes from* on an album page, and *Last.fm only*, were not run.
+
+**What it did not cover (technical):**
+- No race was scripted: leaving the song page before Last.fm answers (the answer then calls
+  `heroAside` on a page that is gone), two song pages fast, a network drop.
+- The off switch was not proven to make no call: the run tested Hide and Undo, but not a song
+  opened with the row off.
+- Presentation mode's 5-minute re-read was not waited for.
+- No `cargo test` on `track.getInfo`'s `toptags` shapes (a list, one object, none).
+- The run was on a moving tree: the other session's edits reloaded the page twice.
+
+### 6.4 Gaps in the tools (closed 2026-10-17)
+
+His call the same day: "why use the demo when we can use the dev app?" So the dev app got what
+the demo had, and the gaps closed in the runner (SHOTS.md §5i):
+- **Looks, surfaces and settings on the dev app**, put back after each shot. A recorded Last.fm
+  fixture for the demo is not needed.
+- **`"expect"` on a probe**: a mismatch fails the shot, so a kept list is a regression test.
+- **`invoke`** (delay, fail, patch and count a Tauri command: Rust's own calls, which the
+  webview's network does not reach), **`network`** and **`reducedMotion`** steps for races.
+
+### 6.5 Ask how a user would break it (his permission, 2026-10-17)
+
+Once a feature is built, Claude may ask Sonnet agents (`model: "sonnet"`) how a user might break
+it from a UX or workflow view, as solution engineers test a developer's build (not an
+adversarial review). Give each agent the feature doc and its files, and give each a different
+view (workflows and keyboard; data and timing). Ask each for concrete steps, what should happen
+against what the code suggests, likelihood × impact, and whether CDP can script it. Then check
+each scenario against the code yourself: an agent reads, it does not run. A real fault becomes a
+fix and a shot with an `expect`. A fork goes to him. A fault older than the feature is noted.
+The first run: two agents, 39 scenarios, 7 fixes (LISTENERS.md §8.11).

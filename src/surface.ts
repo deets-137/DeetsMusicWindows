@@ -343,6 +343,18 @@ export function currentSurface(): SurfaceName {
   return active;
 }
 
+declare global {
+  interface Window {
+    /** The shots runner's handle on the dev app (DESK-TESTS.md §6): the surface now, and a
+     *  deliberate pick (as the Window row makes one), so a shot can run in Mini, Midi or Max and
+     *  put the window back. Dev builds only. */
+    __surface?: { now: () => { surface: SurfaceName; view: MiniView }; set: (s: SurfaceName, view?: MiniView) => Promise<void> };
+  }
+}
+// `?.`: the unit tests load this module in Node, where `import.meta.env` does not exist.
+if (import.meta.env?.DEV && typeof window !== "undefined")
+  window.__surface = { now: () => ({ surface: active, view: miniView }), set: (s, view) => applySurface(s, view) };
+
 // The launch resize (initSurface): the launch cover (boot-cover.ts) waits for it, so the
 // window shows already at its size.
 let sized: Promise<void> = Promise.resolve();

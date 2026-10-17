@@ -251,9 +251,15 @@ export function toggleInfoBox(btn: HTMLElement): void {
   }
 }
 
-/** 1234 → "1.2K", 4 567 890 → "4.6M"; under a thousand as is. For the row, when it exists. */
+/** 1234 → "1.2K", 4 567 890 → "4.6M"; under a thousand as is. One decimal under 10 of a unit,
+ *  none from 10. A count that rounds up to the next unit takes it: 999 999 is "1.0M", not
+ *  "1000K" (a test of the song box, 2026-10-17; tests/fmt-count.test.ts). */
 export function fmtCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  const unit = (v: number, s: string) => {
+    const one = Math.round(v * 10) / 10;
+    return one >= 10 ? `${Math.round(v)}${s}` : `${one.toFixed(1)}${s}`;
+  };
+  if (n >= 999_500) return unit(n / 1_000_000, "M");
+  if (n >= 1_000) return unit(n / 1_000, "K");
   return String(n);
 }

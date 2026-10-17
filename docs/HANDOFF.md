@@ -222,7 +222,9 @@ each step that touches those calls.
 ### Built, waiting on a release or a desk test
 
 - **The song facts box** (features/LISTENERS.md §8, 2026-10-17, on `main`): built, desk test
-  passed (§8.10, run by Claude on his dev app with the shots runner). Waits on a release. Open:
+  passed (§8.10, run by Claude on his dev app with the shots runner). **To test (2026-10-18):
+  the 16 edge cases and races of §8.11** (`ops/checks/song-box-edges.json`), and the seven
+  fixes they cover (F1–F7, in code, unit-tested, not yet run on the app). Then a release. Open:
   the song's Last.fm call asks under Apple's whole artist text; a main-artist form, as the
   album's, is a fork for him (§8.10). The 2×2 Last.fm box on the Song Credits page; its stats
   cell opens presentation mode in Max; the About cell's order (`notes-order.ts`: Apple's song

@@ -35,7 +35,15 @@ export function albumForms(artist: string, album: string): Array<[string, string
   return spotify[0] === apple[0] && spotify[1] === apple[1] ? [apple] : [spotify, apple];
 }
 
-const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'" };
+const ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'",
+  // The named ones a Last.fm wiki uses beyond those (2026-10-17: `&eacute;` showed as text).
+  ndash: "–", mdash: "—", hellip: "…", lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", laquo: "«", raquo: "»",
+  copy: "©", reg: "®", trade: "™", deg: "°", middot: "·", bull: "•",
+  aacute: "á", eacute: "é", iacute: "í", oacute: "ó", uacute: "ú", agrave: "à", egrave: "è", ograve: "ò",
+  acirc: "â", ecirc: "ê", ocirc: "ô", auml: "ä", euml: "ë", iuml: "ï", ouml: "ö", uuml: "ü", ntilde: "ñ", ccedil: "ç",
+  aring: "å", oslash: "ø", szlig: "ß",
+};
 
 /** A wiki summary as plain text: Last.fm's "Read more on Last.fm" link and every tag
  *  removed, the common entities decoded, the spaces collapsed. */
@@ -46,7 +54,7 @@ export function wikiText(html: string): string {
     .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
       if (/^#x/i.test(e)) return String.fromCodePoint(parseInt(e.slice(2), 16));
       if (e.startsWith("#") && e !== "#39") return String.fromCodePoint(Number(e.slice(1)));
-      return ENTITIES[e.toLowerCase()] ?? m;
+      return ENTITIES[e] ?? ENTITIES[e.toLowerCase()] ?? m;
     })
     .replace(/\s+/g, " ")
     .trim();
@@ -59,5 +67,19 @@ export function wikiSentences(html: string, n = 2): string {
   const text = wikiText(html);
   if (!text) return "";
   const parts = text.split(/(?<=[.!?]["”’)]?)\s+(?=["“‘(]?[A-Z0-9])/);
-  return parts.slice(0, n).join(" ").trim();
+  // A title or a short form ends with a period but not a sentence: "Dr. Dre", "Vol. 2",
+  // "St. Louis" (2026-10-17, a test of the song facts box). Join it to the part after it.
+  const sentences: string[] = [];
+  for (const p of parts) {
+    const last = sentences.length - 1;
+    if (last >= 0 && ABBREV.test(sentences[last])) sentences[last] += ` ${p}`;
+    else sentences.push(p);
+  }
+  return sentences.slice(0, n).join(" ").trim();
 }
+const ABBREV = /(?:^|[\s(“"])(?:Mr|Mrs|Ms|Dr|St|Mt|Jr|Sr|Vol|No|Op|Pt|feat|ft|vs|Prof|Rev|Gen|Lt|Col|Sgt|Capt|[A-Z])\.$/;
+
+/** A wiki as a note for an About cell (LISTENERS.md §8.3): its plain text, or undefined when
+ *  it holds no words. A stub page's summary is only the "Read more on Last.fm" link, which is
+ *  not a note: the next step of the order fills the cell (2026-10-17). */
+export const noteText = (html: string | undefined): string | undefined => (html ? wikiText(html) || undefined : undefined);

@@ -444,8 +444,9 @@ mark each shot with when it was made and read, so a stale shot shows.
 **`"source": "dev"`.** The shot runs on the running dev app (`npm run dev:app`; `--second` for
 the second one). The runner reads the CDP port from `src-tauri/.tauri.dev.gen.json`, as
 webview-eval.mjs does, and attaches to the main window. It starts nothing and stops nothing.
-Nothing is seeded or changed: no store wipe, no look, no size, no setting; `--vs` and `--set` are
-refused. The page is reloaded only by a `reload` step. A dev shot has one look, `live-app`. The
+Nothing is seeded: no store wipe; `--vs` and `--set` are refused. The page is reloaded only by a
+`reload` step. A dev shot is the app as it is (one look, `live-app`) unless it names its own
+`looks`, `size` or `settings` (§5i): those are set for the shot and put back after it. The
 window must be on screen: WebView2 paints no frames when it is minimized, and the shot fails at
 once if it is hidden. Frames come at the window's device pixels; the change curve scales its
 region by the frame width over the page's CSS width.
@@ -478,6 +479,42 @@ the contact sheet prints it under each shot.
   when it was last read.
 - File times are not used for reads: on this PC something (likely the virus scanner) reads every
   file in a build folder every few days, so a last-access time says nothing (2026-10-16).
+
+## 5i. Tests on the dev app: assertions, looks, races (2026-10-17)
+
+> **Part:** built · 2026-10-17
+
+His asks: test a feature on the dev app, not the demo ("why use the demo when we can use the dev
+app?"), and script its edge cases and races (DESK-TESTS.md §6). The first user is
+[ops/checks/song-box-edges.mjs](../ops/checks/song-box-edges.mjs).
+
+**Looks, surfaces and settings on the dev app.** A dev shot may name `looks` (with `"*"`, as on
+the demo), `size` (mini, player, midi, max) and `settings`. The runner reads each one's value now,
+sets the shot's through the app's own store and surface pick, runs the shot, and puts every value
+back, also when the shot fails. A look turns the owner's look schedule off for the shot. The page
+handles are dev-only: `window.__store` (`settings-store.ts`: `get`, `set`) and `window.__surface`
+(`surface.ts`: `now`, `set`). A dev app started before them says so and the shot fails.
+
+**`"expect"` on a probe.** The probe's answer (a JSON string is parsed) is checked against
+`expect`. An object checks only its own keys; an array is checked whole; a string `"/…/flags"`
+is a regex; `{ "$has": x }`, `{ "$not": x }`, `{ "$len": n }` check a list (or a value). A
+mismatch is noted (`EXPECT FAIL …` in the console file), the shot runs on, and at its end it
+fails with every mismatch named. `"name"` on the step labels it. A kept list is then a regression
+test that anyone can run.
+
+**Races and data edges, scripted.**
+- `{ "invoke": { "<command>": { "delay": ms, "fail": true, "patch": { … } } } }` wraps the page's
+  Tauri `invoke`: a named command answers late, fails, or has fields laid over its real answer
+  (a data edge with no database write). Every command is counted in
+  `window.__shotsInvoke.calls` (a probe proves "no call"). `{ "invoke": "reset" }`, and the
+  shot's end, undo it. Rust's own HTTP is not the webview's network: this is how a Last.fm or
+  Apple call is slowed or failed.
+- `{ "network": "offline" | "slow" | "online" | { latency, down, up } }`: the webview's network
+  (MusicKit, covers). Back to online at the shot's end.
+- `{ "reducedMotion": true }`: prefers-reduced-motion reads "reduce". Undone at the shot's end.
+
+**One driver.** A dev run changes his app while it runs. Before it, ask the other sessions in the
+checkout; never `click` a text field (set it by `eval`; DESK-TESTS.md §6.2).
 
 ## 6. Coverage — no shipped feature without a shot
 

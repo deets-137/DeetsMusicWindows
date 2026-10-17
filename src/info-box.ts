@@ -16,7 +16,7 @@
 
 import { esc } from "./collection-card";
 import { fmtCount, infoBoxOpen, type AlbumInfo, type ArtistInfo, type ListenCount } from "./listeners";
-import { wikiSentences } from "./lastfm-names";
+import { noteText, wikiSentences } from "./lastfm-names";
 import { pickNote, type Note, type NoteFrom, type NoteOf } from "./notes-order";
 import { setting } from "./settings-store";
 
@@ -152,7 +152,7 @@ export function albumInfoHTML(i: AlbumInfo | null | undefined, artist?: string, 
   // The About text is clamped to a fixed number of lines in a box of a fixed height, so a
   // long summary and a short one draw the same box (his ask, 2026-10-13). Its source follows
   // *Notes from* (LISTENERS.md §8.4); Apple's album note joins with album notes.
-  const about = aboutSec(pickNote({ lastfmAlbum: i.wiki }, setting("notesSource")), false);
+  const about = aboutSec(pickNote({ lastfmAlbum: noteText(i.wiki) }, setting("notesSource")), false);
   const names = artist && album ? { artist, album } : undefined;
   return boxHTML("album", i.url, h, tagsSec(i.tags, h) + statsSec(i.playcount, i.listeners, h) + about + linksSec(i.url, h), names);
 }
@@ -173,7 +173,7 @@ export function songInfoHTML(
   const have = i?.state === "have";
   const h = SONG_INFO_HINTS;
   const note = pickNote(
-    { lastfmSong: have ? i.wiki : undefined, lastfmAlbum: album?.state === "have" ? album.wiki : undefined },
+    { lastfmSong: have ? noteText(i.wiki) : undefined, lastfmAlbum: album?.state === "have" ? noteText(album.wiki) : undefined },
     setting("notesSource"),
   );
   const about = aboutSec(note, true);

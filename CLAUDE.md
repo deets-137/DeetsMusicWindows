@@ -291,6 +291,15 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
   compiles, then hand it to the user to try.
 - Cheap checks that ARE worth running (not harnesses): `npx tsc --noEmit` and
   `npx vite build` to catch type/compile/bundle errors before handing off.
+- **Verify while you build (2026-10-17, his ask).** Before you hand a feature over, run its
+  desk test yourself as a shots list on the dev app (his call: the dev app, not the demo; a
+  shot's `looks`, `size` and `settings` are set and put back). Script its edge cases and race
+  conditions too (`invoke` delays, fails or patches a command). A probe with `expect` is the
+  assertion; look at the part under test, not only the card; keep the list in
+  `docs/ops/checks/`. Never `click` a text field on the dev app (set it by script), and be the
+  only session driving it. The method, its safety rules and the first run's review:
+  DESK-TESTS.md §6; the runner's steps: SHOTS.md §5i. A shots list is the existing tool, not a
+  throwaway harness.
 - **Unit tests on pure logic (2026-09-25):** `npm test` runs `tests/*.test.ts` on Node's
   built-in runner, no test dependency. `npm run check` = tsc + tests + docs:check + cargo
   check + cargo test (~15 s), and the pre-push hook (`.githooks/pre-push`) runs it. A test
@@ -494,6 +503,10 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
 - **Do NOT delegate to subagents (the `Agent` tool) for this codebase.** It's small
   enough to hold in context directly — explore, read, and edit files yourself so you
   keep the full picture while building. Only exception: if he explicitly asks for one.
+  **Standing permission (his, 2026-10-17):** once a feature is built, ask Sonnet agents
+  (`model: "sonnet"`) how a user might break it from a UX or workflow view, as solution
+  engineers would test a developer's build (not an adversarial review). Then script those
+  cases and run them (DESK-TESTS.md §6.5). Building and exploring stay in the main context.
 
 ## How to explain things to me
 - Write in ASD-STE100 (Simplified Technical English): short sentences, active

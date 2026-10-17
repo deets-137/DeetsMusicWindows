@@ -15,6 +15,7 @@
 
 import { ICON_SHRINK, clipOpen, collapseGrow, fillCard, grownState, hostOf, onGrowChange, slotHolding, type Slot } from "./card-grow";
 import { currentSurface, onSurfaceChange } from "./surface";
+import { onSettingsChange, setting } from "./settings-store";
 import { albumInfoFresh, albumInfoNow, artistInfoFresh, artistInfoNow, songInfoByKey, songInfoFresh } from "./listeners";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
@@ -24,6 +25,9 @@ export const PRESENT_HINTS = {
   close: "Back to the card (Esc)",
   checked: "When the app last asked Last.fm. Last.fm updates its counts in batches",
 } as const;
+
+/** The Settings row of each kind of box: off ends a view of that kind. */
+const ROW_OF = { artist: "showArtistInfo", album: "showAlbumInfo", song: "showSongInfo" } as const;
 
 /** How often an open view asks Last.fm again. */
 const POLL_MS = 5 * 60 * 1000;
@@ -48,6 +52,7 @@ interface Open {
   tick: number;
   offGrow: () => void;
   offSurface: () => void;
+  offRow: () => void;
 }
 
 let open: Open | null = null;
@@ -183,6 +188,11 @@ export async function openPresent(cell: HTMLElement): Promise<void> {
     offSurface: onSurfaceChange(() => {
       if (open === o) void closePresent("surface", false);
     }),
+    // Its box's row going off (Settings, the box's Hide, the agent) ends the view: its re-read
+    // would answer nothing and leave frozen numbers (a test of the song box, 2026-10-17).
+    offRow: onSettingsChange((key) => {
+      if (open === o && key === ROW_OF[kind] && !setting(key)) void closePresent("row");
+    }),
   };
   open = o;
   paintAge(o);
@@ -215,6 +225,7 @@ export async function closePresent(cause: string, withMotion = true): Promise<vo
   window.clearInterval(o.tick);
   o.offGrow();
   o.offSurface();
+  o.offRow();
   try {
     const cell = o.wrap.isConnected ? o.wrap.querySelector<HTMLElement>("[data-present]") : null;
     const dur = withMotion && !reduced() ? tokenMs("--grow-collapse-dur") || tokenMs("--grow-dur") : 0;

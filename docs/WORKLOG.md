@@ -12,6 +12,25 @@ updated: 2026-10-16
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 — verify while you build: the runner on the dev app, the song box's edges
+
+**His asks:** after the song facts box's desk test, review how complete it was; write down the
+method (build, then test it with scripts: edge cases, races); "why use the demo when we can use
+the dev app?"; fix up the shots runner and close the test gaps; ask Sonnet agents how a user
+might break a feature (his standing permission); make the fixes now, test tomorrow.
+- **The review:** DESK-TESTS.md §6.3 (the box was never seen in a picture; one look, one
+  surface; no race scripted). The method: §6.1–§6.2 and §6.5; CLAUDE.md › How to verify.
+- **The runner** (SHOTS.md §5i): dev shots take `looks`, `size`, `settings` and put them back
+  (dev-only `window.__store`, `window.__surface`); `expect` on a probe; `invoke` (delay, fail,
+  patch, count a Tauri command); `network`; `reducedMotion`.
+- **Two Sonnet agents** gave 39 scenarios; Claude checked them in the code. Seven fixes
+  (LISTENERS.md §8.11 F1–F7): a stub wiki, two wasted album calls, a row turned on while a page
+  shows (songs, albums, artists), presentation mode with its row off, "1000K", wiki entities and
+  "Dr. Dre". Unit tests for the pure parts; three Rust tests for `lastfm.rs`.
+- **Not run on the dev app** (his call: tomorrow): the 16 shots of
+  `ops/checks/song-box-edges.json`. The reveal session held the dev app meanwhile; each session
+  told the other before a src edit.
+
 ## 2026-10-17 — the song facts box, scoped
 
 **His ask:** scope the stats panel on a song's credits page. Designed, not built:

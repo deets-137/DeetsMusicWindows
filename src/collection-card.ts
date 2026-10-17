@@ -27,7 +27,7 @@ import { isAddSquare } from "./add-square";
 import { rowPick, canPick, picksText, objectId } from "./row-pick";
 import { randomIndex } from "./queue";
 import { isShuffleOn, shuffledPlay } from "./player";
-import { setting } from "./settings-store";
+import { onSettingsChange, setting } from "./settings-store";
 import { enterRows } from "./pop";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { setHeroAside } from "./hero-slide";
@@ -172,6 +172,9 @@ export interface Context {
    *  the title itself. Absent → the header shows `title`, as before. */
   headerLabel?: string;
   hero?: () => Hero;
+  /** Ask again for the hero's Last.fm box: a box row turned on while the level shows, with no
+   *  box drawn yet (LISTENERS.md §8.11). The answer lands through `heroAside`, as on open. */
+  asideRefresh?: () => void;
   /** Shelves under the hero (ARTIST-VIEW.md §2.2): HTML drawn right after the hero, inside
    *  the block the windower measures. A function, so async facts fill in on `reload()`.
    *  Items carry `data-shelf-item`: a click goes to `onShelf`, a right-click to `shelfMenu`. */
@@ -2235,6 +2238,20 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   // (2026-10-13). Mid-slide it waits for the slide's end, so the drill arrives, then the cover
   // moves. When something else in the hero changed since its draw (the photo landed), the
   // plain redraw, as before.
+  // A box's row changed while a level shows (LISTENERS.md §8.11, a test of the song box,
+  // 2026-10-17). On: hero-slide.ts brings back a box it parked; a level drawn with the row off
+  // has none parked, so it asks now. *Notes from*: the About is drawn again from the answers in
+  // hand. Off is hero-slide's alone. A tick later, so hero-slide's own move goes first.
+  const offBoxRows = onSettingsChange((key) => {
+    if (key !== "showArtistInfo" && key !== "showAlbumInfo" && key !== "showSongInfo" && key !== "notesSource") return;
+    if (key !== "notesSource" && !setting(key)) return;
+    window.setTimeout(() => {
+      const ctx = cur()?.ctx;
+      if (!ctx?.hero) return;
+      ctx.asideRefresh?.();
+      heroAside(ctx);
+    }, 0);
+  });
   let asidePending: Context | null = null;
   function heroAside(ctx: Context) {
     if (!curPane || cur().ctx !== ctx) return; // not on screen: the level draws it when it comes back
@@ -2354,6 +2371,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       document.removeEventListener("scroll", onPopAway, true);
       window.removeEventListener("resize", onPopAway);
       document.removeEventListener("keydown", onDocKey);
+      offBoxRows();
       unwireKeys();
       document.removeEventListener("pointerdown", onDocDown);
     },

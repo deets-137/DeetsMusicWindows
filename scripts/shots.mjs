@@ -203,7 +203,8 @@ function starter(name) {
   return {
     help: [
       "A scratch list for one bug (SHOTS.md §5d). Run: node scripts/shots.mjs --scratch " + name,
-      "Steps: click, rightclick, hover, key ('Ctrl+Space'), type, wait (ms or a selector), drag {from,to}, wheel (+dy, times), resize [w,h] (+over, steps), reload, eval, probe, snap, read (+scroll: the readability check, docs/ops/checks/README.md §2b).",
+      "Steps: click, rightclick, hover, key ('Ctrl+Space'), type, paste, wait (ms or a selector), drag {from,to}, wheel (+dy, times), resize [w,h] (+over, steps), reload, clearCache, eval, probe (+expect: the assertion), invoke ({cmd: {delay, fail, patch}} or 'reset'; calls counted in window.__shotsInvoke.calls), reducedMotion (true|false), network ('offline', 'slow', 'online'), snap, read (+scroll: the readability check, docs/ops/checks/README.md §2b).",
+      "Dev source (\"source\": \"dev\", the running dev app): looks, size and settings are set for the shot and put back after it. Never click a text field there: set it by eval (DESK-TESTS.md §6.2).",
       "On any step: \"frames\": N keeps the next N real paints after it (a folder + a labeled PNG with marks, stalls and the change curve); \"region\": selector measures the curve in that box; \"strip\": true starts the strip there.",
       "Shot keys: size (mini, player, midi, max), seconds, prepare (steps before the recording), window (follow the app's set_size), settings, storage (raw localStorage keys, e.g. a DevTools flag), strip {fps, seconds, cols, width}.",
       "Flags: --slow 4 (CSS motion 4x slower), --raw (keep every real frame), --look theme-skin, --tag name (a folder of its own), --vs \"--token=value\" (a second run beside the first), --set, --repeat n (medians), --noise pct.",
@@ -442,19 +443,24 @@ async function devTarget() {
 }
 
 /**
- * One shot on the running dev app (UX-COVERUPS.md §7.13). Nothing is seeded and nothing is
- * changed: no store wipe, no look, no size, no setting, no `--vs`. The page is not reloaded
+ * One shot on the running dev app (UX-COVERUPS.md §7.13). Nothing is seeded: no store wipe, no
+ * `--vs`. A shot may ask for a look (`looks`), a surface (`size`: mini, player, midi, max) and
+ * `settings`; they are set through the app's own store and surface pick (`window.__store`,
+ * `window.__surface`, dev builds only) and PUT BACK after the shot, whatever happened in it
+ * (DESK-TESTS.md §6, his ask 2026-10-17: the dev app, not the demo). The page is not reloaded
  * unless the list has a `reload` step. The recorder goes in now and on any reload, and stays
  * passive between shots. The window must be on screen: WebView2 paints nothing when minimized.
  */
-async function shootDev(page, shot, outDir, variant) {
+async function shootDev(page, shot, outDir, variant, look = DEV_LOOK) {
   if (Object.keys(variant.tokens ?? {}).length || Object.keys(variant.settings ?? {}).length)
-    throw new Error("the dev source takes no --vs or --set: it never changes the owner's look or settings");
-  const base = `${shot.id}.${lookId(DEV_LOOK)}${variant.label ? `.${variant.label}` : ""}`;
-  Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, base, outDir, look: lookId(DEV_LOOK), variant: variant.label || undefined, change: undefined });
+    throw new Error("the dev source takes no --vs or --set: a shot's own `looks`, `size` and `settings` are put back after it; a token is not");
+  const base = `${shot.id}.${lookId(look)}${variant.label ? `.${variant.label}` : ""}`;
+  Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, fails: [], base, outDir, look: lookId(look), variant: variant.label || undefined, change: undefined });
   const install = `(() => { ${RECORDER} })();`;
   const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: install });
+  let undo = null;
   try {
+    undo = await devState(page, shot, look);
     await evaluate(page, `window.__shotsRec ? true : (${install.slice(0, -1)}, true)`);
     const size = await evaluate(page, "({ w: innerWidth, h: innerHeight, visible: document.visibilityState })");
     Object.assign(win, { w: size.w, h: size.h, follow: false, dev: true });
@@ -469,16 +475,47 @@ async function shootDev(page, shot, outDir, variant) {
       writeFileSync(join(outDir, `${base}.png`), Buffer.from(data, "base64"));
       out = { file: `${base}.png` };
     }
+    failOnExpects();
     return { ...out, ...consoleFile() };
   } catch (e) {
     consoleFile(String(e.message ?? e));
     throw e;
   } finally {
     if (slow !== 1) await page.send("Animation.setPlaybackRate", { playbackRate: 1 }).catch(() => {});
+    await undoShaping(page);
+    if (undo) await undo().catch((e) => log(`WARN could not put the dev app back: ${e.message} — check its look, surface and settings by hand`));
     await page.send("Page.removeScriptToEvaluateOnNewDocument", { identifier }).catch(() => {});
   }
 }
 const DEV_LOOK = { theme: "live", skin: "app" };
+
+/**
+ * Set a dev shot's look, surface and settings, and return the function that puts each one back
+ * as it was. Nothing is touched for a shot that asks for none of them. The owner's look schedule
+ * goes off for the shot (it would change the look under it) and comes back with the rest.
+ */
+async function devState(page, shot, look) {
+  const settings = { ...(shot.settings ?? {}) };
+  if (look !== DEV_LOOK) Object.assign(settings, { lookSchedule: "off", theme: look.theme, skin: look.skin });
+  const size = shot.size ? SIZES[shot.size] : null;
+  if (shot.size && !size) throw new Error(`unknown size "${shot.size}"`);
+  const keys = Object.keys(settings);
+  if (!keys.length && !size) return null;
+  const has = await evaluate(page, "!!window.__store && !!window.__surface");
+  if (!has) throw new Error("the dev app has no __store / __surface handle: it predates them (restart `npm run dev:app`)");
+  const before = await evaluate(page, `({ settings: Object.fromEntries(${JSON.stringify(keys)}.map((k) => [k, window.__store.get(k)])), surface: window.__surface.now() })`);
+  const set = (values) => evaluate(page, `(() => { const v = ${JSON.stringify(values)}; for (const k of Object.keys(v)) window.__store.set(k, v[k]); })()`);
+  await set(settings);
+  if (size) await evaluate(page, `window.__surface.set(${JSON.stringify(size.surface)}, ${JSON.stringify(size.miniView ?? undefined)})`);
+  note("state", `set ${JSON.stringify({ ...settings, ...(size ? { surface: size.surface } : {}) })}; was ${JSON.stringify(before)}`);
+  await sleep(1500); // a look's fade, a surface's resize and its cards' arrival
+  return async () => {
+    if (size) await evaluate(page, `window.__surface.set(${JSON.stringify(before.surface.surface)}, ${JSON.stringify(before.surface.view)})`);
+    await set(before.settings);
+    note("state", "put back");
+    await sleep(800);
+  };
+}
 
 // ── one shot ─────────────────────────────────────────────────────────────────
 
@@ -721,6 +758,62 @@ async function runStep(page, step) {
     // A question to the page for the record: its answer goes in the shot's console file.
     const v = await evaluate(page, step.probe).catch((e) => `threw: ${e.message}`);
     note("probe", `${step.probe} → ${JSON.stringify(v)}`);
+    // `"expect"` makes the answer an assertion (DESK-TESTS.md §6): the shot runs on, and fails
+    // at its end with every mismatch named. A JSON string answer is parsed first.
+    if ("expect" in step) {
+      const got = parseMaybe(v);
+      const miss = mismatch(got, step.expect, "");
+      if (miss) {
+        journal.fails.push(`${step.name ?? step.probe.slice(0, 60)}: ${miss}`);
+        note("EXPECT", `FAIL ${miss}`);
+      } else note("EXPECT", "ok");
+    }
+    return;
+  }
+  if ("invoke" in step) {
+    // `{ "invoke": { "lastfm_listeners": { "delay": 3000 } } }`, `{ ... { "fail": true } }`, or
+    // `{ ... { "patch": { field: value } } }` or `{ "invoke": "reset" }`: the page's Tauri `invoke` delays, fails or patches the named commands, so a
+    // race (an answer after the view left, a failure) can be scripted. Rust's own network is not
+    // the webview's, so `network` cannot slow a Rust call; this can. Undone at the shot's end.
+    await evaluate(page, `(() => {
+      const I = window.__TAURI_INTERNALS__;
+      const s = (window.__shotsInvoke ??= { orig: I.invoke, rules: {}, calls: {} });
+      if (I.invoke === s.orig) I.invoke = async (cmd, args, opts) => {
+        s.calls[cmd] = (s.calls[cmd] ?? 0) + 1; // a probe reads window.__shotsInvoke.calls
+        const r = s.rules[cmd];
+        if (r?.delay) await new Promise((ok) => setTimeout(ok, r.delay));
+        if (r?.fail) throw new Error(typeof r.fail === "string" ? r.fail : "shots: forced failure of " + cmd);
+        const v = await s.orig(cmd, args, opts);
+        // "patch": fields laid over the real answer (a data edge case with no database write).
+        return r?.patch && v && typeof v === "object" ? { ...v, ...r.patch } : v;
+      };
+      const want = ${JSON.stringify(step.invoke)};
+      if (want === "reset") { s.rules = {}; s.calls = {}; I.invoke = s.orig; } else Object.assign(s.rules, want);
+    })()`);
+    note("invoke", JSON.stringify(step.invoke));
+    return;
+  }
+  if ("reducedMotion" in step) {
+    // `{ "reducedMotion": true }`: the page's prefers-reduced-motion reads "reduce" (the app's
+    // own still paths); false puts it back. Undone at the shot's end.
+    await page.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: step.reducedMotion ? "reduce" : "" }] });
+    journal.emulated = !!step.reducedMotion;
+    note("media", `reduced motion ${step.reducedMotion ? "on" : "off"}`);
+    return;
+  }
+  if ("network" in step) {
+    // The webview's network (MusicKit, covers; not Rust's): "offline", "slow", "online", or
+    // `{ latency, down, up }` (ms, bytes/s). Back to online at the shot's end.
+    const n = step.network;
+    const c =
+      n === "offline" ? { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 }
+      : n === "slow" ? { offline: false, latency: 800, downloadThroughput: 50_000, uploadThroughput: 20_000 }
+      : n === "online" ? { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }
+      : { offline: false, latency: n.latency ?? 0, downloadThroughput: n.down ?? -1, uploadThroughput: n.up ?? -1 };
+    await page.send("Network.enable");
+    await page.send("Network.emulateNetworkConditions", c);
+    journal.shaped = n !== "online";
+    note("network", JSON.stringify(n));
     return;
   }
   if ("read" in step) {
@@ -743,8 +836,70 @@ async function runStep(page, step) {
 // ── the console record (SHOTS.md §5b) ───────────────────────────────────────
 
 /** What the page said during one shot: console lines, uncaught errors, probe answers. Each
- *  line carries its ms from the shot's navigation, so it lines up with `.frames.json`. */
-const journal = { t0: 0, lines: [], errors: 0, base: "", outDir: "" };
+ *  line carries its ms from the shot's navigation, so it lines up with `.frames.json`.
+ *  `fails`: the `expect` mismatches, which fail the shot at its end. */
+const journal = { t0: 0, lines: [], errors: 0, base: "", outDir: "", fails: [], shaped: false };
+
+/** A probe's answer: a JSON string is read as the value it holds. */
+function parseMaybe(v) {
+  if (typeof v !== "string") return v;
+  try {
+    return JSON.parse(v);
+  } catch {
+    return v;
+  }
+}
+
+/**
+ * Why `got` does not satisfy `want`, or "" when it does. An object in `want` is a subset: only
+ * its keys are checked. An array is checked whole, in order. A string "/…/flags" is a regex
+ * against the text of `got`. `{ "$len": n }` checks a length, `{ "$has": x }` that an array holds
+ * x, `{ "$not": x }` that it does not hold x (or is not x).
+ */
+function mismatch(got, want, at) {
+  const where = at || "answer";
+  if (want && typeof want === "object" && !Array.isArray(want)) {
+    if ("$len" in want) return got?.length === want.$len ? "" : `${where}: length ${got?.length}, expected ${want.$len}`;
+    if ("$has" in want) return Array.isArray(got) && got.some((g) => !mismatch(g, want.$has, "")) ? "" : `${where}: ${JSON.stringify(got)} has no ${JSON.stringify(want.$has)}`;
+    if ("$not" in want) {
+      const hit = Array.isArray(got) ? got.some((g) => !mismatch(g, want.$not, "")) : !mismatch(got, want.$not, "");
+      return hit ? `${where}: ${JSON.stringify(got)} holds ${JSON.stringify(want.$not)}` : "";
+    }
+    if (!got || typeof got !== "object") return `${where}: ${JSON.stringify(got)}, expected an object`;
+    for (const [k, w] of Object.entries(want)) {
+      const m = mismatch(got[k], w, at ? `${at}.${k}` : k);
+      if (m) return m;
+    }
+    return "";
+  }
+  if (Array.isArray(want)) {
+    if (!Array.isArray(got) || got.length !== want.length) return `${where}: ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`;
+    for (let i = 0; i < want.length; i++) {
+      const m = mismatch(got[i], want[i], `${where}[${i}]`);
+      if (m) return m;
+    }
+    return "";
+  }
+  if (typeof want === "string") {
+    const re = /^\/(.*)\/([a-z]*)$/s.exec(want);
+    if (re) return new RegExp(re[1], re[2]).test(String(got ?? "")) ? "" : `${where}: ${JSON.stringify(got)} does not match ${want}`;
+  }
+  return Object.is(got, want) ? "" : `${where}: ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`;
+}
+
+/** At a shot's end: an `expect` that missed fails the shot (its files are written already). */
+function failOnExpects() {
+  if (journal.fails.length) throw new Error(`${journal.fails.length} expect(s) failed — ${journal.fails.join(" · ")}`);
+}
+
+/** At a shot's end: the page's `invoke` and network as they were. */
+async function undoShaping(page) {
+  await evaluate(page, `(() => { const s = window.__shotsInvoke; if (s) { s.rules = {}; s.calls = {}; window.__TAURI_INTERNALS__.invoke = s.orig; } })()`).catch(() => {});
+  if (journal.shaped) await page.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }).catch(() => {});
+  if (journal.emulated) await page.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "" }] }).catch(() => {});
+  journal.shaped = false;
+  journal.emulated = false;
+}
 
 // ── the window (SHOTS.md §5c) ────────────────────────────────────────────────
 
@@ -803,7 +958,7 @@ async function shoot(page, demoUrl, shot, look, outDir, variant) {
   const settings = { ...(shot.settings ?? {}), ...variant.settings };
   const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: seedScript(look, size, settings, shot.badges === true, shot.window === true, variant.tokens, shot.storage ?? {}) });
   const base = `${shot.id}.${lookId(look)}${variant.label ? `.${variant.label}` : ""}`;
-  Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, base, outDir, look: lookId(look), variant: variant.label || undefined, change: variant.label ? variant.desc : undefined });
+  Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, fails: [], base, outDir, look: lookId(look), variant: variant.label || undefined, change: variant.label ? variant.desc : undefined });
   try {
     const loaded = page.once("Page.loadEventFired");
     await page.send("Page.navigate", { url: demoUrl });
@@ -820,11 +975,13 @@ async function shoot(page, demoUrl, shot, look, outDir, variant) {
       writeFileSync(join(outDir, `${base}.png`), Buffer.from(data, "base64"));
       out = { file: `${base}.png` };
     }
+    failOnExpects();
     return { ...out, ...consoleFile() };
   } catch (e) {
     consoleFile(String(e.message ?? e)); // a failed shot keeps what the page said: that is the evidence
     throw e;
   } finally {
+    await undoShaping(page);
     await page.send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
   }
 }
@@ -1513,13 +1670,15 @@ try {
       continue;
     }
     // `"*"` in a look is every theme or every skin: `{ "theme": "moonlight", "skin": "*" }` is
-    // one theme in each skin, the set for motion (a skin owns its motion tokens). A dev shot has
-    // one look: the app as it is.
+    // one theme in each skin, the set for motion (a skin owns its motion tokens). A dev shot is
+    // the app as it is, unless the shot itself names `looks` (each one is put back after).
+    const expand = (ls) =>
+      ls
+        .flatMap((l) => (l.theme === "*" ? THEMES : [l.theme]).flatMap((theme) => (l.skin === "*" ? SKINS : [l.skin]).map((skin) => ({ theme, skin }))))
+        .filter((l) => !lookFilter.size || lookFilter.has(lookId(l)));
     const looks = shot.source === "dev"
-      ? [DEV_LOOK]
-      : (shot.looks ?? list.looks ?? ALL_LOOKS)
-          .flatMap((l) => (l.theme === "*" ? THEMES : [l.theme]).flatMap((theme) => (l.skin === "*" ? SKINS : [l.skin]).map((skin) => ({ theme, skin }))))
-          .filter((l) => !lookFilter.size || lookFilter.has(lookId(l)));
+      ? (shot.looks ? expand(shot.looks) : [DEV_LOOK])
+      : expand(shot.looks ?? list.looks ?? ALL_LOOKS);
     for (const look of looks) {
       const rows = [];
       for (const variant of VARIANTS) {
@@ -1531,7 +1690,7 @@ try {
             // The noise gate (§5f): wait for a quiet CPU; a shot taken over the limit is marked.
             const cpu = await quietCpu();
             const out = shot.source === "dev"
-              ? await shootDev(await devPageGet(), shot, outDir, variant)
+              ? await shootDev(await devPageGet(), shot, outDir, variant, look)
               : await shoot(await demoPage(), demoUrl, shot, look, outDir, variant);
             runs.push({ cpu, perf: out.perf ?? [], changes: (out.frameSets ?? []).map((s) => ({ step: s.step, ...s.change })), loads: out.loadSets ?? [] });
             Object.assign(row, out, { cpu, noisy: cpu > noiseLimit || undefined });

@@ -1215,3 +1215,52 @@ pub async fn lastfm_album_info(
     .await?;
     Ok(Some(info))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    // `track.getInfo`'s tags come as a list, one object, or not at all (LISTENERS.md §8,
+    // 2026-10-17: the shapes a song's `toptags` was seen in).
+    #[test]
+    fn song_tags_in_every_shape() {
+        let list = json!({ "tag": [{ "name": "classic rock" }, { "name": "rock" }] });
+        assert_eq!(tags_in(Some(&list)), vec!["classic rock", "rock"]);
+        let one = json!({ "tag": { "name": "rock" } });
+        assert_eq!(tags_in(Some(&one)), vec!["rock"]);
+        let empty = json!({ "tag": [] });
+        assert!(tags_in(Some(&empty)).is_empty());
+        let blank = json!("");
+        assert!(tags_in(Some(&blank)).is_empty()); // Last.fm sends "toptags": "" for a song with none
+        assert!(tags_in(None).is_empty());
+    }
+
+    #[test]
+    fn wiki_is_trimmed_and_empty_is_none() {
+        assert_eq!(wiki_of(&json!({ "wiki": { "summary": "  A song.  " } })).as_deref(), Some("A song."));
+        assert_eq!(wiki_of(&json!({ "wiki": { "summary": "   " } })), None);
+        assert_eq!(wiki_of(&json!({})), None);
+    }
+
+    // A database from before 2026-10-17: the two columns are added, the old row reads with
+    // no tags (so the song page asks once more), and a new row keeps an empty tag list as [].
+    #[test]
+    fn old_listen_counts_gain_tags_and_wiki() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE listen_counts (track_id TEXT PRIMARY KEY, state TEXT NOT NULL, listeners INTEGER,
+             playcount INTEGER, url TEXT, fetched_at INTEGER NOT NULL);
+             INSERT INTO listen_counts VALUES ('old', 'have', 5, 9, NULL, 1);",
+        )
+        .unwrap();
+        init_tables(&conn).unwrap();
+        init_tables(&conn).unwrap(); // twice: the second run adds nothing
+        let old = cached_count(&conn, "old").unwrap();
+        assert_eq!((old.listeners, old.tags.is_none(), old.wiki.is_none()), (5, true, true));
+        let new = ListenCount { state: "have", listeners: 1, playcount: 2, url: None, tags: Some(vec![]), wiki: Some("W".into()), fetched_at: 3 };
+        store_count(&conn, "new", &new);
+        let back = cached_count(&conn, "new").unwrap();
+        assert_eq!((back.tags, back.wiki.as_deref()), (Some(vec![]), Some("W")));
+    }
+}

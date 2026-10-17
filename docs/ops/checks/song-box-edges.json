@@ -1,0 +1,877 @@
+{
+  "about": "The song facts box's edge cases and races on his LIVE dev app (LISTENERS.md §8.11). Made by song-box-edges.mjs; edit that, not this.",
+  "desk_test": "features/LISTENERS.md §8.11",
+  "made": "2026-10-17",
+  "pass": "Every shot ok: each probe's `expect` holds (the runner fails a shot on a mismatch and names it). Read the snaps of edge-grown-skins (5 skins), edge-midi-fold and edge-a-then-b.",
+  "run": "node docs/ops/checks/song-box-edges.mjs && node scripts/shots.mjs --list docs/ops/checks/song-box-edges.json --noise 80   (dev app running, on screen, Max, Library or Search in slot d; ask other sessions first)",
+  "shots": [
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-leave-early",
+      "about": "Race: Last.fm answers 2.5 s late; the user leaves the song page first. The late answer must not draw on the list, and nothing throws.",
+      "steps": [
+        {
+          "invoke": {
+            "lastfm_listeners": {
+              "delay": 2500
+            },
+            "lastfm_album_info": {
+              "delay": 2500
+            }
+          }
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"d\"] .panel__back')?.click()"
+        },
+        {
+          "wait": 3500,
+          "frames": 20
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "left early",
+          "expect": {
+            "card": "/^(Library|Search)$/",
+            "box": false,
+            "present": false
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-a-then-b",
+      "about": "Race: song A's answer is late; the user goes back and opens song B. B's page shows B's box, never A's.",
+      "steps": [
+        {
+          "invoke": {
+            "lastfm_listeners": {
+              "delay": 2500
+            }
+          }
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"d\"] .panel__back')?.click()"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Vivid Light\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1825903913\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Vivid Light');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1825903913\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 4500
+        },
+        {
+          "snap": "b"
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "B's box",
+          "expect": {
+            "card": "Song",
+            "box": true,
+            "boxTitle": "Vivid Light"
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-off-no-call",
+      "about": "The row off: no box and no lastfm_listeners call from the song page.",
+      "settings": {
+        "showSongInfo": false
+      },
+      "steps": [
+        {
+          "invoke": {}
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Vivid Light\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1825903913\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Vivid Light');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1825903913\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "off",
+          "expect": {
+            "card": "Song",
+            "box": false,
+            "calls": 0
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-on-while-open",
+      "about": "The row turned on while a song page is open (Settings, Compass or the agent). The box should come.",
+      "settings": {
+        "showSongInfo": false
+      },
+      "steps": [
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "eval": "window.__store.set('showSongInfo', true)"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "on while open",
+          "expect": {
+            "card": "Song",
+            "box": true
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-fail-then-retry",
+      "about": "Last.fm fails: no box, no error toast, the page works. Back and open again: the box comes (a failure is not kept).",
+      "steps": [
+        {
+          "invoke": {
+            "lastfm_listeners": {
+              "fail": true
+            }
+          }
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Vivid Light\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1825903913\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Vivid Light');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1825903913\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "failed",
+          "expect": {
+            "card": "Song",
+            "box": false
+          }
+        },
+        {
+          "invoke": "reset"
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"d\"] .panel__back')?.click()"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Vivid Light\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1825903913\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Vivid Light');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1825903913\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "retried",
+          "expect": {
+            "card": "Song",
+            "box": true
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-present-row-off",
+      "about": "Presentation mode open, then the row goes off (Settings, the agent). The view should close, not freeze.",
+      "steps": [
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-present]"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "presenting",
+          "expect": {
+            "present": true,
+            "presentName": "/Bohemian Rhapsody/"
+          }
+        },
+        {
+          "eval": "window.__store.set('showSongInfo', false)"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "snap": "after-off"
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "after off",
+          "expect": {
+            "present": false
+          }
+        },
+        {
+          "eval": "window.__store.set('showSongInfo', true)"
+        },
+        {
+          "key": "Escape"
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-present-compass",
+      "about": "Presentation mode open, then Ctrl+Space and Esc: the Compass closes and the view stays; a second Esc closes the view and keeps the song page.",
+      "steps": [
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-present]"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "key": "Ctrl+Space"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "compass closed",
+          "expect": {
+            "present": true
+          }
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "view closed",
+          "expect": {
+            "present": false,
+            "card": "Song",
+            "box": true
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-grown-skins",
+      "about": "The box on a grown card (beside the cover) in every skin: seen, and nothing overflows the box.",
+      "looks": [
+        {
+          "theme": "moonlight",
+          "skin": "*"
+        }
+      ],
+      "steps": [
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "eval": "window.__grow.grow('d', 'full', 'shots')"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"d\"] .artist-info-wrap')?.scrollIntoView({ block: 'center' })"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "snap": "grown"
+        },
+        {
+          "probe": "JSON.stringify((() => { const w = document.querySelector('[data-slot=\"d\"] .artist-info-wrap'); const b = w?.querySelector('.artist-info'); const tags = [...(w?.querySelectorAll('.artist-info__tag') ?? [])]; return { box: !!b, fits: !!b && b.scrollWidth <= b.clientWidth + 1, tagsFit: tags.every((t) => t.getBoundingClientRect().right <= b.getBoundingClientRect().right + 1), beside: !!w && w.getBoundingClientRect().left > document.querySelector('[data-slot=\"d\"] .lib-hero__main')?.getBoundingClientRect().left + 40 }; })())",
+          "name": "grown box",
+          "expect": {
+            "box": true,
+            "fits": true,
+            "tagsFit": true,
+            "beside": true
+          }
+        },
+        {
+          "eval": "window.__grow.collapse('shots')"
+        },
+        {
+          "wait": 800
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-midi-fold",
+      "about": "Midi: the SONG INFO line folds and opens the box; the choice is kept.",
+      "size": "midi",
+      "steps": [
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"d\"] .artist-info-wrap')?.scrollIntoView({ block: 'center' })"
+        },
+        {
+          "snap": "midi"
+        },
+        {
+          "probe": "document.querySelector('[data-slot=\"d\"] .artist-info-wrap')?.dataset.open",
+          "name": "open before"
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-artist-info-toggle]"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ open: document.querySelector('[data-slot=\"d\"] .artist-info-wrap')?.dataset.open })",
+          "name": "after one press"
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-artist-info-toggle]"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "snap": "midi-again"
+        },
+        {
+          "probe": "JSON.stringify({ open: document.querySelector('[data-slot=\"d\"] .artist-info-wrap')?.dataset.open })",
+          "name": "after two presses"
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-notes-lastfm-only",
+      "about": "Notes from › Last.fm only: the song's own wiki (B has none: the album's, headed About the album).",
+      "settings": {
+        "notesSource": "lastfm"
+      },
+      "steps": [
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Vivid Light\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1825903913\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Vivid Light');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1825903913\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "lastfm only",
+          "expect": {
+            "card": "Song",
+            "box": true,
+            "heads": {
+              "$has": "About the album"
+            },
+            "aboutHint": "/album's wiki on Last\\.fm/"
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-notes-apple-only",
+      "about": "Notes from › Apple only: no About today (Apple's notes are not built); the rest of the box stays.",
+      "settings": {
+        "notesSource": "apple"
+      },
+      "steps": [
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "apple only",
+          "expect": {
+            "card": "Song",
+            "box": true,
+            "about": null,
+            "heads": {
+              "$has": "Listening Stats"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-readmore-only",
+      "about": "The song's wiki is only Last.fm's 'Read more' link (a stub page): it is not a note; the album's wiki (or nothing) shows, never an empty About.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "invoke": {
+            "lastfm_listeners": {
+              "patch": {
+                "wiki": "<a href=\"https://www.last.fm/music/x\">Read more on Last.fm</a>"
+              }
+            }
+          }
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "stub wiki",
+          "expect": {
+            "card": "Song",
+            "box": true,
+            "heads": {
+              "$not": "About"
+            },
+            "about": {
+              "$not": ""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-off-no-album-call",
+      "about": "The song row off, Show album info on: the song page asks Last.fm for nothing, the album included.",
+      "settings": {
+        "showSongInfo": false,
+        "showAlbumInfo": true,
+        "notesSource": "both"
+      },
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "invoke": {}
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Vivid Light\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1825903913\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Vivid Light');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1825903913\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "no calls",
+          "expect": {
+            "card": "Song",
+            "box": false,
+            "calls": 0,
+            "albumCalls": 0
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-big-counts",
+      "about": "Counts at the edge of a unit: 999,999 reads 1M (not 1000K); 0 plays still draws.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "invoke": {
+            "lastfm_listeners": {
+              "patch": {
+                "listeners": 999999,
+                "playcount": 999950
+              }
+            }
+          }
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "units",
+          "expect": {
+            "card": "Song",
+            "box": true,
+            "counts": {
+              "$not": "/1000K/"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-long-tags-midi",
+      "about": "Long and noisy tags in Midi: the chips stay inside the box.",
+      "size": "midi",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "invoke": {
+            "lastfm_listeners": {
+              "patch": {
+                "tags": [
+                  "WSUM 91.7 FM Madison",
+                  "songs that make me feel like the main character in a coming of age film",
+                  "rock",
+                  "Queen",
+                  "70s"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Bohemian Rhapsody\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"6781024437\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Bohemian Rhapsody');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"6781024437\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"d\"] .artist-info-wrap')?.scrollIntoView({ block: 'center' })"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "snap": "tags"
+        },
+        {
+          "probe": "JSON.stringify((() => { const b = document.querySelector('[data-slot=\"d\"] .artist-info'); const r = b?.getBoundingClientRect(); return { box: !!b, tagsFit: [...(b?.querySelectorAll('.artist-info__tag') ?? [])].every((t) => t.getBoundingClientRect().right <= r.right + 1) }; })())",
+          "name": "tags fit",
+          "expect": {
+            "box": true,
+            "tagsFit": true
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/LISTENERS.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "edge-reduced-motion",
+      "about": "Reduced motion: the box's place is held from the first paint, nothing slides; a song Last.fm does not know lets the place go.",
+      "steps": [
+        {
+          "reducedMotion": true
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    const top = () => ['Library', 'Search'].includes(document.querySelector(s + '.panel__title')?.textContent);\n    for (let k = 0; k < 6 && !top(); k++) { document.querySelector(s + '.panel__back')?.click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field in slot d');\n    i.value = \"Vivid Light\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1825903913\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Vivid Light');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1825903913\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === 'Song Credits').click()",
+          "frames": 30
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "snap": "still"
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box=\"song\"]');\n  const about = document.querySelector(s + '.artist-info__about');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    hero: document.querySelector(s + '.lib-hero__title, ' + s + '.lib-hero h2, ' + s + '.lib-hero [class*=\"title\"]')?.textContent?.trim(),\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    boxTitle: box?.dataset.title ?? null,\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 40) : null,\n    aboutHint: about?.dataset.hint ?? null,\n    present: !!document.querySelector('.present'),\n    presentName: document.querySelector('.present__name')?.textContent ?? null,\n    calls: window.__shotsInvoke?.calls?.lastfm_listeners ?? 0,\n    albumCalls: window.__shotsInvoke?.calls?.lastfm_album_info ?? 0,\n    counts: document.querySelector(s + '.artist-info__counts')?.textContent ?? null,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "still",
+          "expect": {
+            "card": "Song",
+            "box": true
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -538,7 +538,8 @@ cell (the song's and the album's; the artist box has no About).
 - The row words *Show song info on the song's page* and its hint; the *Notes from* row's place
   (after the song row) and its hint; the four labels are the draft of §8.4 as written.
 - *Notes from* applies the next time a page draws its box (an open page keeps its box until
-  you open it again or the card redraws).
+  you open it again or the card redraws). **Changed 2026-10-17 (§8.11):** it applies at once to
+  the page on screen.
 - *Apple only* shows no About today: Apple's notes wait on album notes.
 - A song Last.fm does not know, whose album has a Last.fm wiki, draws a box with only About
   and no link.
@@ -591,3 +592,69 @@ in its console files, the pictures were read.
 text (*Dark Bardo & Shungudzo*); Last.fm keeps such a song under the main artist. The album
 call already tries Spotify's form first (§7.1 item 3); the song call and the Now Playing badge
 do not. A fork for him.
+
+### 8.11 Edge cases and races (fixed 2026-10-17; to test 2026-10-18)
+
+> **Part:** built · 2026-10-17 · desk test open (the list below; his call: "we'll test them
+> tomorrow")
+
+After §8.10, his asks: script the edge cases and races, and ask Sonnet agents how a user might
+break the feature (DESK-TESTS.md §6). Two agents read the code (one on workflows, one on data and
+timing) and gave 39 scenarios. Claude checked each against the code. Six were real faults in this
+feature, and are fixed. The rest are below: a test, a known fork, or a fault that is older than
+this feature.
+
+**Fixed (in code, unit-tested where the rule is pure; not yet run on the dev app):**
+
+| # | The fault | The fix |
+|---|---|---|
+| F1 | A stub wiki (only Last.fm's *Read more* link) counted as a note: the About was empty and the album's wiki was never asked | `noteText` (lastfm-names.ts): a wiki with no words is no note; used by `songInfoHTML`, `albumInfoHTML` and the song page. tests/lastfm-names.test.ts |
+| F2 | With *Show song info* off, the song page still asked Last.fm for the album | `askLfm` returns with the row off; `albumWanted` needs a song answer (media-levels.ts) |
+| F3 | After a failed song call, the album was asked for a box that could not draw | the same: no song answer, no album call |
+| F4 | A box row turned on while its page shows: no box until the page was opened again (songs, albums and artists) | `asideRefresh` on the three levels; collection-card.ts asks again and redraws the hero (`offBoxRows`). *Notes from* now redraws the open page too |
+| F5 | The row turned off while presentation mode shows: the view stayed, with frozen numbers | present.ts closes the view when its kind's row goes off |
+| F6 | 999,999 read "1000K"; 9,999,999 read "10.0M" | `fmtCount` rounds into the next unit (tests/fmt-count.test.ts). The badge and every box |
+| F7 | A wiki's `&eacute;`, `&ndash;`, `&rsquo;` showed as text; "Dr. Dre", "St. Louis", "Vol. 2" ended a sentence | more named entities and a short-form rule in `wikiText` / `wikiSentences` (album and artist boxes too) |
+
+**To test on the dev app (2026-10-18).** The list is
+[ops/checks/song-box-edges.json](../ops/checks/song-box-edges.json), made by `song-box-edges.mjs`
+beside it. Every probe has an `expect`, so a shot fails by itself on a wrong answer. Run it with:
+
+```
+node docs/ops/checks/song-box-edges.mjs && node scripts/shots.mjs --list docs/ops/checks/song-box-edges.json --noise 80
+```
+
+| Shot | Checks |
+|---|---|
+| edge-leave-early | Last.fm 2.5 s late, the user leaves first: nothing draws on the list, nothing throws |
+| edge-a-then-b | A's answer late, the user opens B: B's page shows B's box |
+| edge-off-no-call | the row off: no box, no `lastfm_listeners` call |
+| edge-on-while-open | F4 for a song |
+| edge-fail-then-retry | a failure draws nothing and is not kept; the next open draws the box |
+| edge-present-row-off | F5 |
+| edge-present-compass | Esc closes the Compass first, then the view, and the song page stays |
+| edge-grown-skins | the box beside the cover on a grown card, in all 5 skins: nothing overflows (pictures to read) |
+| edge-midi-fold | Midi: the *SONG INFO* line folds and opens the box (pictures to read) |
+| edge-notes-lastfm-only | *Last.fm only*: *About the album* for a song with no wiki |
+| edge-notes-apple-only | *Apple only*: no About today, the rest stays |
+| edge-readmore-only | F1 (a patched answer) |
+| edge-off-no-album-call | F2 |
+| edge-big-counts | F6 in the box |
+| edge-long-tags-midi | long and noisy tags stay inside the box in Midi |
+| edge-reduced-motion | the held place, no slide |
+
+Also run [ops/checks/song-box.json](../ops/checks/song-box.json) again (§8.10), and read the
+pictures of edge-grown-skins and edge-midi-fold. A fail is fixed and run again.
+
+**Found, not fixed: his forks, or faults older than this feature.**
+- **The name form** (§8.10): the song call and the badge ask under Apple's whole artist text,
+  and a "none" is kept a month. A fork for him (try the main artist, as `albumForms` does).
+- **The stats cell has no keyboard path:** `[data-present]` is a plain `div` in all three boxes,
+  so a keyboard user cannot open presentation mode. It was already like this for albums and artists.
+- **The badge and the box can show different counts** after presentation mode re-reads (two
+  memories: `held` and `songs`). Low impact.
+- **A future `fetched_at`** (a clock that was wrong) keeps a row past its month. Low impact.
+- **Noisy tags** (a radio station's name in the top five): shown as Last.fm gives them, as on
+  albums (his call, §7.1 item 2).
+- **A song with no catalog id** is kept under its library id: the Library and Search can each
+  ask once. Low impact.

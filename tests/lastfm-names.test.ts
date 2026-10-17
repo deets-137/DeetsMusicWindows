@@ -2,7 +2,7 @@
 // (LISTENERS.md §7; probed live 2026-10-12).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { albumForms, mainArtist, stripReleaseSuffix, wikiSentences, wikiText } from "../src/lastfm-names.ts";
+import { albumForms, mainArtist, noteText, stripReleaseSuffix, wikiSentences, wikiText } from "../src/lastfm-names.ts";
 
 test("Apple's release suffix comes off", () => {
   assert.equal(stripReleaseSuffix("THREAD 27 - EP"), "THREAD 27");
@@ -59,4 +59,23 @@ test("About is the first two sentences", () => {
 test("a decimal or an initial does not end a sentence", () => {
   assert.equal(wikiSentences("It sold 2.5 million copies. It won awards. Later."), "It sold 2.5 million copies. It won awards.");
   assert.equal(wikiSentences("Made with the help of producer e.g. someone. Then more. End."), "Made with the help of producer e.g. someone. Then more.");
+});
+
+// A test of the song facts box (2026-10-17): titles and short forms, more entities, a stub wiki.
+test("a title or a short form does not end a sentence (2026-10-17)", () => {
+  assert.equal(wikiSentences("Produced by Dr. Dre in St. Louis. It charted. Later."), "Produced by Dr. Dre in St. Louis. It charted.");
+  assert.equal(wikiSentences("From Vol. 2 of the series. It charted. Later."), "From Vol. 2 of the series. It charted.");
+  assert.equal(wikiSentences("Mr. Brightside is a song. It charted. Later."), "Mr. Brightside is a song. It charted.");
+});
+
+test("the named entities a wiki uses are decoded (2026-10-17)", () => {
+  assert.equal(wikiText("Beyonc&eacute; &ndash; caf&eacute; &hellip; it&rsquo;s"), "Beyoncé – café … it’s");
+  assert.equal(wikiText("&unknown; stays"), "&unknown; stays");
+});
+
+test("a stub wiki (only the Read more link) is no note (2026-10-17)", () => {
+  assert.equal(noteText(`<a href="https://www.last.fm/music/x">Read more on Last.fm</a>`), undefined);
+  assert.equal(noteText(""), undefined);
+  assert.equal(noteText(undefined), undefined);
+  assert.equal(noteText("A song. <a href=\"x\">Read more on Last.fm</a>"), "A song.");
 });

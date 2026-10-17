@@ -47,6 +47,7 @@ import {
 import { albumInfoFor, albumInfoNow, artistInfoFor, artistInfoNow, songInfoFor, songInfoKey, songInfoNow, type ArtistInfo } from "./listeners";
 import { albumInfoHTML, songInfoHTML } from "./info-box";
 import { needsAlbumWiki } from "./notes-order";
+import { noteText } from "./lastfm-names";
 import { setting } from "./settings-store";
 import { creditIndex } from "./artist-credit";
 import { tracks } from "./track-store";
@@ -252,6 +253,11 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       },
       opens: "album",
       headerLabel: "Album",
+      // The row turned on while this album shows: ask again (LISTENERS.md §8.11).
+      asideRefresh: () => {
+        lfmAsked = false;
+        askLfm();
+      },
       // The hero: cover, name, the artist as a tappable subtitle (→ the artist level), and
       // year · songs · length. Read live, so a sync that adds a song updates the line.
       hero: () => {
@@ -451,6 +457,12 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       },
       opens: "artist",
       headerLabel: "Artist",
+      // The row turned on while this artist shows: ask again (LISTENERS.md §8.11).
+      asideRefresh: () => {
+        if (lfm) return;
+        lfmFor = "";
+        askLfm();
+      },
       hero: () => {
         // The artist's own menu, without Go to Artist (you are there): on a left-click of the
         // photo, and on a right-click anywhere on the hero (his calls, 2026-10-13 and 1A).
@@ -944,11 +956,15 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     // The song facts box (LISTENERS.md §8): the song's Last.fm answer, then the album's facts
     // only when nothing before the album's wiki fills the About (`needsAlbumWiki`). Each lands
     // in place beside the cover (hero-slide.ts), as the album's box does.
+    // The album is asked only once the song has an answer ("have" or "none"): not with the row
+    // off (null), not after a failure or while the song's call is out (undefined) — a box that
+    // cannot draw asked Last.fm for nothing (a test of this box, 2026-10-17).
     const who = t.artistName ?? "";
     const albumWanted = (s: ReturnType<typeof songInfoNow>) =>
-      !!who && !!t.albumName && needsAlbumWiki({ lastfmSong: s?.state === "have" ? s.wiki : undefined }, setting("notesSource"));
+      !!s && !!who && !!t.albumName && needsAlbumWiki({ lastfmSong: s.state === "have" ? noteText(s.wiki) : undefined }, setting("notesSource"));
     const albumFacts = () => (albumWanted(songInfoNow(t)) ? albumInfoNow(who, t.albumName!) : undefined);
     const askLfm = () => {
+      if (!setting("showSongInfo")) return;
       if (songInfoNow(t) !== undefined) return void askAlbum();
       void songInfoFor(t).then(() => {
         card().heroAside(ctx);
@@ -970,6 +986,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         meta: [t.albumName, t.releaseDate?.slice(0, 4), fmtClock(t.durationMs)].filter(Boolean).join(" · "),
         aside: songInfoHTML(songInfoNow(t), { key: songInfoKey(t), artist: who, title: t.title }, albumFacts()),
       }),
+      asideRefresh: askLfm, // the row turned on while this song shows (LISTENERS.md §8.11)
       shelves: () => songFacts(t) + (names().length ? "" : `<p class="credit__note">${esc(gap())}</p>`),
       toolbarBelow: CREDITS_LABEL,
       density: false,
