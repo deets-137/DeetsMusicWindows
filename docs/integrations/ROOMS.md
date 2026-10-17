@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.10.0
 desk_test: passed 2026-09-19
 sources: [src/room.ts, src/room-panel.ts, src/player.ts, src/queue.ts, src-tauri/src/rooms.rs, src-tauri/src/lib.rs]
-updated: 2026-09-22
+updated: 2026-10-16
 ---
 # DeetsMusic — DeetsMusicRooms (listening rooms)
 
@@ -348,7 +348,7 @@ The play's context is `room:<code>`, so a later filter can find them.
 | Play Next / Add to Up Next / drag to Up Next | Room `add`. |
 | Remove / reorder Up Next | Room commands. |
 | Clicking a song in a list ("play from here") | Host: replaces the room's Up Next with that list from that song (same as today). Guest: allowed only if **Change Up Next** is Everyone, else **Play Next**. |
-| Stations | **Not in a room** in v1: a station has no song list that the other apps can follow. Starting a station asks "Leave the room?" |
+| Stations | **Not in a room** in v1: a station has no song list that the other apps can follow. Starting a station asks "Leave the room?" **Since 2026-10-16 (built):** the member who starts it feeds it, and the room follows (§21.8, §21.10). The web port still says no. |
 | Repeat | Off in a room, button disabled with a hint. |
 | Shuffle (the button) | Off. **Shuffle** on a collection is still allowed: it adds the songs in shuffled order. |
 | Sleep timer | Acts on your own app only. When it fires, you leave the room. For the host, the room ends (§7). |
@@ -1488,3 +1488,288 @@ the shape of the work has changed:
   the same either way.
 - **The blocker is the one-feature-in-flight rule, not a doubt.** FRIENDS.md §17 is open, so
   §20.5a starts after it passes.
+
+## 21. A long queue: the host holds the list, the worker holds a window (BUILT 2026-10-16, desk test open)
+
+> **Part:** built · 2026-10-16 · the worker deployed and pushed; the app committed, his desk test after a release (§21.10)
+
+### 21.1 The fault (live app, 2026-10-16)
+
+The owner started a room and clicked a song in his Library (4,046 rows). Every click did nothing,
+and a toast said "1 of those songs are only in your library, so the room left them out."
+
+- **The real failure.** `playHandles` sent every song from the clicked row to the end of the
+  library (about 4,035 entries) in one `add`. The worker refuses a message over
+  `MAX_MESSAGE_BYTES` (256 KB, `room.js:190`) with `error too-large`. The app only logs that error
+  (`room:error`, `room.ts` `case "error"`), so the user saw nothing. The room's first seed failed
+  the same way (`room:seed 4034` → `too-large`). Even a message that fit would be cut to
+  `MAX_QUEUE` (500).
+- **Apple is not involved.** In a room each app gives MusicKit one song at a time
+  (`player:loadWindow ids:1`).
+- **The toast.** 11 of his library songs come from Apple with no `catalogId` (no ISRC either):
+  songs Apple no longer links to its catalog, not uploads. `entriesFrom` skips them (§5.3)
+  correctly, but "only in your library" is wrong for them. The new words are open (§21.6).
+
+### 21.2 The shape (his calls, 2026-10-16)
+
+- **The host is the source of truth for the full list.** The host's app keeps every upcoming song.
+- **The worker holds a window of 100 songs** (his call, 1A; "not worried about too many calls to
+  the worker"). Its broadcasts stay small. When the window runs low, the host sends the next part
+  with a host-only top-up that never starts a song.
+- **Guests get the full list in packets.** The host sends the list beyond the window in packets of
+  about 300 entries, each far below 256 KB. The worker relays each packet and does NOT store it:
+  storing a list of about 1.5 MB would rewrite it on every command, against the row budget (§3.2).
+  A packet may arrive a second or two late; that is fine (his words: "doesn't have to be
+  instantaneous").
+- **A late joiner** gets the full list from the host in packets on join.
+- **Guest edits anywhere in the list** (move, remove, add) follow the host's *Change the queue*
+  control (§8). The worker relays each edit to the host; the host applies it and sends the result.
+  A change number on each list version keeps every app applying changes in the same order.
+
+### 21.3 A guest's *Add to Queue* (his call, 2A)
+
+It goes to the **end of the full list**: the bottom of the Up Next the guest sees. *Play Next* is
+the way to hear a song soon. His reason: a room queue rarely gets that long day to day, since people
+play a playlist or add a few songs.
+
+### 21.4 The host drops off (his call, 4A)
+
+A guest who holds the full list takes over the top-ups. The worker picks the member who has been in
+the room longest. When the host comes back, the host takes that guest's copy, with every change made
+while the host was away. With no member holding the list, the room plays to the end of the window
+(about 6 hours at 100 songs) and stops.
+
+### 21.5 What changes where
+
+- **App (`room.ts`, `player.ts`):** the host's full list and its change number; the top-up when the
+  window runs low; the packet send and receive; late-join send; the takeover; a toast for any
+  worker refusal, so a refusal is never silent again (a new row in TOASTS.md §5). The seed uses
+  the same window.
+- **Worker (`../DeetsMusicRooms`):** a host-only top-up (adds to the end of the window, never starts
+  a song); a relay for list packets; a relay for list edits to the host; the takeover pick. A worker
+  deploy drops every live room, so the deploy is the owner's call.
+
+### 21.6 Forks (all closed 2026-10-16)
+
+- **The toast for songs with no catalog ID** — his call: "1 song isn't in Apple's catalog anymore,
+  so the room skipped it." (he answered "That works").
+- ~~Stations in a room~~ — **closed 2026-10-16**: no undocumented Apple call (§21.7); the feeder
+  plays the station and the room follows it through the look-ahead (§21.8).
+
+He said build after the checkout is clean, then "let's start the build" the same day, with leave
+to deploy, commit and push the worker. §21.10 is the as-built record.
+
+### 21.7 Stations: the terms and the probe (2026-10-16)
+
+**The call.** MusicKit JS v3 plays a station with `POST /v1/me/stations/next-tracks/{id}?limit=N`
+(its internal `itemLoader.loadStationNextTracks`, found in `musickit.js` on Apple's CDN). It is
+**not in Apple's public Apple Music API reference**: the Stations page lists the station object and
+its genres, no next-songs endpoint.
+
+**The terms (DPLA, read 2026-10-16 on developer.apple.com):**
+
+| Clause | Quoted text | Against this use |
+|---|---|---|
+| §3.3.1(A) | "Applications may only use Documented APIs in the manner prescribed by Apple and must not use or call any private APIs." | The call is not documented. §1.2 defines "Application" as software "for specific use with an Apple-branded product running iOS, iPadOS, macOS, tvOS, visionOS, or watchOS". A Windows app is outside those words, but this is a reading, not a permission. The real cost: Apple can change or remove the call with no notice. |
+| §3.3.6(D) purpose | "not to call the MusicKit APIs … for purposes unrelated to facilitating access to Your end users' Apple Music subscriptions" | Each member plays the songs from their own subscription. Inside the purpose. |
+| §3.3.6(D) rendering | "You may play MusicKit Content only as rendered by the MusicKit APIs or MusicKit JS" | Each song still plays through MusicKit JS as a normal catalog song. Clear. |
+| §3.3.6(D) user metadata | "Metadata from users … may be used only to provide a service or function that is clearly disclosed to end users" | The station's songs are picked for the host (a `/me/` call) and shown to the room, like the host's queue today (§12.2 f). Clear, with the room panel's disclosure. |
+
+The app already uses one undocumented Apple behaviour (the Discovery station scan, STATIONS.md
+§Risks), with a graceful hide if Apple changes it. This would need the same fallback.
+
+**The probe (the live app's tokens, 2026-10-16, a one-off Python call, not kept):**
+
+- `ra.6796147226` (a song-seeded station), no limit: 200, 2 songs (the seed song first).
+- `limit=25`: 400, "Value must be an integer less than or equal to 10". **The cap is 10.**
+- `limit=10`, three calls in a row: 200 each, **10 new songs per call**, no repeats across the 30.
+  The station moves on with each call. 0.8 s to 2.3 s per call.
+- Each song comes as a full catalog `songs` resource: id, name, artist, `durationInMillis`, ISRC.
+  That is everything a room entry needs (§5.3).
+- `ra.978194965` (Apple Music 1, a live broadcast): 200, **0 songs**. A live station has no songs
+  to follow, so it stays out of a room.
+
+**His call (2026-10-16): do not use it**, because Apple does not document it. A station in a room,
+if it comes, uses documented MusicKit only: the host's app plays the station and the room follows
+the host's song (designed next, not yet written).
+
+**The look-ahead check (2026-10-16, the dev app, documented MusicKit only).** Can the host see the
+station's next song before it plays, through `music.queue.items`?
+
+- `setQueue({ station })` with no play: `queue.items` holds **2 songs**, the first song and the next.
+- MusicKit's own code (`musickit.js`, the station controller) keeps one song ahead: on every
+  `queuePositionDidChange`, when the queue has no next playable item, it fetches 1 more song and
+  appends it (`queueNextTracks`, limit 1). A song change or a skip moves the position, so the song
+  after the new one arrives about 1 to 2 s after the change (the fetch took 0.8 to 2.3 s in §21.7's
+  probe). `queueItemsDidChange` fires when it lands.
+- So during each song, the next song is known for nearly the whole song. The host can send it to the
+  room as the next entry, and every member starts it together at the boundary, with no gap and no
+  missed opening, like a normal room song (§5.5).
+- **Not seen in playback.** The dev app could not stream during the check: each play ended at 0:00
+  (`player:pause songEnd at 0`, then `player:stall`), most likely because the live app was playing
+  on the same Apple ID. A skip while paused moved the position but fetched nothing (the controller
+  fetches only while active). The refill above is read from MusicKit's code. A desk test confirms it:
+  play a station with no other app playing, and watch `queue.items` grow to 3 at the first song
+  change.
+- A second skip within 1 to 2 s of the first can beat the refill: the host has no next song yet.
+  The room then follows the host's new song as it starts (guests about 1 to 2 s behind, then in
+  step). A single skip lands on the song already known.
+
+**What it would have cost.** 10 songs is about 35 minutes of music, so about 2 Apple calls an hour while
+a station plays in a room, from the host only. If the call fails or returns nothing, the room plays
+what it has and the host gets a toast.
+
+### 21.8 Stations in a room: the feeder (BUILT 2026-10-16, his calls)
+
+> **Part:** built · 2026-10-16 · desk test rows 1, 2, 4, 6, 7 open (real playback, §21.10)
+
+Replaces §10's "Stations — not in a room" once built. Documented MusicKit only (his call, §21.7).
+
+- **The feeder.** The member who starts a station is the room's **feeder** while it plays. The
+  feeder's app plays the station with its own MusicKit (`setQueue({ station })`, as outside a room).
+  **The host keeps the host role** (Remove, the guest controls, ending the room) — his call
+  2026-10-16, over making the guest the host. The panel names it: "{Name}'s station". The role
+  ends when anyone plays a normal list, song or album.
+- **Who may start one.** The host always. A guest under the host's *Change the queue* control (§8),
+  because a station replaces Up Next.
+- **How the room follows.** On `queueItemsDidChange` the feeder reads the song after the current one
+  from `music.queue.items` (§21.7, the look-ahead) and sends it to the room as the next entry (the
+  host-only top-up of §21.5, open to the feeder). At the song boundary the worker starts it for
+  everyone, as it starts any room song (§5.5): no gap, no missed opening. The feeder's own app
+  follows the room clock for the start, like every member.
+- **No look-ahead yet** (a second skip inside 1 to 2 s, §21.7): on `nowPlayingItemDidChange` the
+  feeder sends the song as playing now, with its start time. Guests start it at the right position
+  (about 1 to 2 s behind) and the sub-second sync (§18.8) brings them into step.
+- **Controls.** Skip, Pause and Seek from anyone go through the worker to the feeder's MusicKit,
+  under the host's controls (§8). Apple's station skip limits apply to the feeder.
+- **A song added during a station** breaks out at the end of the current song, then the station
+  resumes. This is the solo behavior (STATIONS.md §1, `resumeStation`).
+- **Up Next** shows the next song, then the station row ("Apple Music picks what's next"), as in
+  solo radio mode (STATIONS.md §3, *The radio-mode display*).
+- **The feeder drops off.** A song or artist station (`ra.<id>`) plays the same for anyone, so the
+  member who takes over (§21.4) starts the same station on their own app and becomes the feeder. A
+  personal station ("My Station", Discovery) differs per person: the room stops at the end of the
+  current song.
+- **Live broadcasts** (Apple Music 1; 0 songs in §21.7): each member tunes in live on their own app.
+  No look-ahead and no song boundary to share. The room shows the broadcast as its current item.
+- **Log lines** (CLAUDE.md › Working style 6): `room:feeder` (on / off / handed over), `room:feed`
+  (each song sent, look-ahead or late).
+
+**Desk test, before the build is called done:**
+
+| # | Step | Pass |
+|---|---|---|
+| 1 | Host: play a song station in a room, with no other app on the same Apple ID playing. | `queue.items` grows from 2 to 3 at the first song change (§21.7's unseen check). Both apps play the same song. |
+| 2 | Let a station song end. | The next song starts on both apps together, with no gap. |
+| 3 | Guest: start an artist station (Change the queue = Everyone). | The panel reads "{Guest}'s station"; the host keeps Remove and the controls. |
+| 4 | Anyone: Skip twice fast. | The room catches up within about 2 s and stays in step. |
+| 5 | Guest: add a song during the station. | It plays after the current song; the station resumes after it. |
+| 6 | Feeder: close the app (song station). | Another member becomes the feeder; the station plays on. |
+| 7 | Feeder: close the app (My Station). | The room stops at the end of the song. |
+| 8 | Host: play Apple Music 1. | Every member hears the live broadcast. |
+
+### 21.9 Build order (for the build session)
+
+One branch, after the checkout is clean (his words). The long-queue part first, because the
+feeder's top-up is §21.5's top-up:
+1. Worker: the host-only top-up, the packet relay, the edit relay, the takeover pick (§21.5).
+   Deploy is his call (it drops every live room).
+2. App: the window and the full list, the packets, late join, edits with the change number, the
+   takeover, the refusal toast (§21.2 to §21.5).
+3. App: the feeder (§21.8).
+4. TOASTS.md rows, ONBOARDING.md for any new hint, the desk tests §16.4 rows 7 and 8 again plus
+   §21.8's table.
+
+### 21.10 As built (2026-10-16)
+
+> **Part:** built · 2026-10-16
+
+**Where it differs from the design above, this section is the code.**
+
+**The keeper, not only the host.** The member who SET the list keeps it: the host by default (its
+seed), a guest who plays a list or jumps far down it, or a station's feeder. This is the feeder
+rule (§21.8, his call) applied to every list, so one role covers the long list, the takeover
+(§21.4) and stations. The host still gets the list back after its own connection drops
+(`reclaim` → `takeList`, §21.4). The worker's `queue.list` = `{ keeper, rev, len, fed }`; the
+keeper's list L counts the first song, so `fed` = the window plus the current song.
+
+**The worker (`../DeetsMusicRooms`, commit `4f61445`, deployed version `bd520705`).**
+- `src/list.js` (new): `readList`, `keptEntry` (an entry rebuilt by `sanitizeEntry` that keeps
+  the keeper's id, "added by" and time), `readStation` (`shareable` = `ra.<digits>`),
+  `readPacket`, `readEdit`.
+- `room.js`: `add` with `list` or `station` makes the sender the keeper (a replace, or the host's
+  seed); `topUp`, `listMeta`, `list` (relayed, never stored), `listWant`, `tailEdit`, `takeList`;
+  an `add` at the end with a tail goes to the keeper as `tailAdd` (2A); `pickKeeper` on the
+  keeper's close (the host, else the longest-present member; a personal station is cleared with
+  the window); a late joiner makes the keeper send the list to them (`listWant { from }`).
+- List packets ride their own limit (`PACKET_LIMIT` 80 per 10 s), so 14 packets never trip the
+  20-command limit. `MAX_WINDOW` 100; an app from before §21 may still send up to 500.
+- `scripts/check.mjs`: 17 new checks (46 in all), a `SLOW` multiplier for the live host, and
+  the song-end wait on the room's clock (the live runs failed on this PC's clock before). All 46
+  pass against `wrangler dev` and against rooms.deets.solutions (`SLOW=3`).
+- That deploy also carried the repo's earlier, never-deployed commit `a6e449e` (the web port's
+  member field and the deets.solutions origin, WebRooms.md §10.6). `src/sanitize.js` has an
+  uncommitted change (Apple's image host only) that was already live since 2026-09-29; it is
+  left for its owner to commit.
+
+**The app.**
+- `src/room-list.ts` (new, pure) + `tests/room-list.test.ts` (10 tests): the tail, gathering
+  a whole-list send, a change on its base, a tail edit, the next top-up.
+- `src/room.ts`: the list copy (`list` = L[offset..] at `rev`), `playList` (window + packets of
+  300, ids minted per list), `maybeTopUp` (at 50 or fewer, back to 100), `applyPacket`,
+  `wantList` (after 2 s behind), `keeperEdit`, `keeperAppend`, `tailEdit`; Up Next = window +
+  tail (`RoomState.upcoming`, `windowLen`, `keeper`, `station`); the bridge maps an index in the
+  tail to a tail edit.
+- **Jump to a song** past the 4th song replays the list from that song (the jumper keeps it). The
+  old way sent one remove per skipped song and passed the worker's 20 commands in 10 s from the
+  20th song on (found while planning this test).
+- **Every worker refusal now has a toast** (`rate`, `too-large`, `bad-packet`, `bad-json`,
+  `bad-message`), TOASTS.md §5.
+- **The feeder** (`startStation`, `feedLookAhead`, `restartFeed`): the player's
+  `roomStationLoad`, `roomStationQueue`, `roomStationHas`, `roomStationGoTo`, `roomLive`,
+  `onRoomStationItems`, `setRoomStationRow`. `roomStationLoaded()` is set only by a station load
+  and cleared by any model load, so a one-song room queue is never read as a station's.
+  `restartFeed` first starts a song MusicKit already holds after the room's last song; if none, it
+  moves MusicKit onto that song so its refill runs (waits up to 4 s); only a lost station queue is
+  reloaded (8 s limit, 3 tries, then the toast). The restart runs in the follower's own chain:
+  side by side, one's pause cut off the other's play (AbortError).
+- **A live broadcast**: every member calls `roomLive` once per station; Pause is Stop listening.
+- The Queue card shows the room's station row; the room panel names the feeder.
+
+**What Claude decided inside his calls (check these):**
+- The words "1 song has no length yet" / "N songs have no length yet" for a song the track store
+  has no length for (the room's clock needs one). Before, these were counted as "only in your
+  library".
+- The panel line "{Name}'s station: {station}" (or "Your station: …"), under the status lines.
+- "Couldn't start “{station}” in the room." and the two refusal toasts' words.
+- A jump past the 4th song replays the list; Add Next and Move to top still go to the window's top;
+  a window song moved to the bottom goes to the end of the full list.
+- The window tops up at 50; packets of 300; a list of at most 10,000 songs.
+
+**Log lines** (`diag`): `room:list`, `room:listSend`, `room:listGot`, `room:listWant`,
+`room:listLost`, `room:topUp`, `room:keeper`, `room:dropped`, `room:feeder`, `room:feed`
+(`late`, `held`), `room:feederFailed`, `player:roomStation`, `player:roomStationRetry`,
+`player:roomStationGoTo`, `player:roomLive`.
+
+**The desk run (Claude, 2026-10-16, two hidden dev apps).** Both apps share one Apple ID, and the
+live app held the account's stream, so no song played aloud: this run proves the queue, the list,
+the feeder and the worker, not the sound.
+
+| # | What | Result |
+|---|---|---|
+| 1 | Host plays the 4,046-song Library from row 2 (the live fault) | **Pass.** Window 99 + 3,934 in 14 packets; both apps show 4,033 upcoming; the toast "11 songs aren't in Apple's catalog anymore, so the room skipped them."; no refusal. Again against the deployed worker: pass. |
+| 2 | Guest: Add to Queue | **Pass.** At the end of the full list on both apps (2A). |
+| 3 | Guest: remove a tail song; a tail song to the top; a window song to the bottom | **Pass**, both apps agree. |
+| 4 | Guest: jump to song 1,000 | **Pass.** The guest keeps the list; 3,032 left on both. |
+| 5 | The window runs down to 50 | **Pass.** Topped back to 100. |
+| 6 | The keeper leaves | **Pass.** The host takes over with the full list; the guest rejoins late and gets all 2,980; the new keeper's edits reach it. |
+| 7 | Host starts a song station | **Pass.** Feeder named; the look-ahead in the window; a skip moves the feeder's MusicKit, its refill lands (3 songs; §21.7's unseen check, now seen) and the next song is fed. |
+| 8 | Two fast skips | **Pass** after two fixes: the room is idle about 0.5 s, then the next station song starts. |
+| 9 | A song added during the station | **Pass.** It plays, then the look-ahead song, then the station reloads (about 3 s idle) and resumes. |
+| 10 | Guest starts a station, then leaves | **Pass** after the `roomStationLoaded` fix: the host stays host, then takes over the feed; the room is idle about 1.5 s. |
+| 11 | Apple Music 1 | **Pass.** Both apps tune in; a list played after it leaves live mode. |
+
+**Still for the owner's desk test (real playback, two subscriptions or no live app playing):**
+§21.8 rows 1, 2, 4, 6 and 7 with sound; the host's own connection dropping and coming back with
+the list (`takeList`, not reachable from a script); Pause / Listen again on a live broadcast;
+the Queue card's station row and the panel line on screen.

@@ -98,7 +98,7 @@ function exitRadio(): void {
  * (idle, or already on a station) it simply starts now.
  */
 export function queueStationAfter(s: Station): Promise<void> {
-  if (roomBridge && !roomBridge.station()) return Promise.resolve();
+  if (roomBridge && !roomBridge.station(s)) return Promise.resolve();
   if (mode === "radio" || (!queue.getCurrent() && !queue.getUpcoming().length)) return playStation(s);
   diag.log("player:queueStation", { id: s.id });
   resumeStation = s;
@@ -672,7 +672,12 @@ function emit(): void {
     album: item?.albumName ?? item?.attributes?.albumName,
     artworkUrl: artworkUrlOf(item, coverArtPx()),
     loading: isLoading,
-    station: mode === "radio" && radioStation ? stationInfo(radioStation) : undefined,
+    station:
+      mode === "radio" && radioStation
+        ? stationInfo(radioStation)
+        : mode === "room" && roomStationRow
+          ? stationInfo(roomStationRow)
+          : undefined,
     resume: resumeStation ? stationInfo(resumeStation) : undefined,
     repeat: getRepeat(),
     shuffle: isShuffleOn(),
@@ -1867,6 +1872,7 @@ interface LoadOpts {
 }
 
 function loadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Promise<void> {
+  roomStationOn = null; // the model's songs replace a room station's queue (ROOMS.md §21.8)
   const gen = ++loadGen;
   const run = loadChain.then(() => {
     if (gen !== loadGen) {
@@ -2239,7 +2245,7 @@ async function setStationQueue(m: any, s: Station): Promise<void> {
  * explicit departure). Exit = Stop Station, any finite-context play, or a break-out.
  */
 export async function playStation(s: Station): Promise<void> {
-  if (roomBridge && !roomBridge.station()) return;
+  if (roomBridge && !roomBridge.station(s)) return;
   playIntent();
   await requireSignIn();
   const m = await initPlayer();
@@ -2696,8 +2702,9 @@ export interface RoomBridge {
   jumpTo(index: number): void;
   removeAt(index: number): void;
   moveTo(index: number, to: "top" | "bottom"): void;
-  /** A station cannot play in a room (§10). Returns false: the caller stops. */
-  station(): boolean;
+  /** A station in a room: this app feeds it to the room (§21.8). Returns false: the
+   *  caller's own station play stops, because the room plays it, not radio mode. */
+  station(s: Station): boolean;
 }
 
 let roomBridge: RoomBridge | null = null;
@@ -2720,6 +2727,7 @@ export async function roomEnter(): Promise<void> {
 /** Back to the app's own player. */
 export function roomExit(): void {
   if (mode === "room") mode = "queue";
+  roomStationOn = null;
   diag.log("player:roomExit", {});
   emit();
 }
@@ -2824,6 +2832,138 @@ export function roomPlayingSame(catalogId: string): boolean {
 /** False once MusicKit's one-song queue has played out and gone quiet (§5.5). */
 export function roomHasSong(): boolean {
   return !!music?.nowPlayingItem;
+}
+
+// ── A station in a room: the feeder's MusicKit (ROOMS.md §21.8) ─────────────────
+// The feeder's MusicKit holds the STATION queue, not one song, so it can read the next song
+// before it plays: MusicKit keeps one song ahead in `queue.items` (§21.7, its own refill on
+// each position change). Documented MusicKit only — `setQueue({ station })`, `queue.items`,
+// `queue.position`, `changeToMediaAtIndex`, `queueItemsDidChange`. The other members play
+// each song the normal room way, one song at a time.
+
+/** A station song as the room needs it. */
+export interface RoomStationSong {
+  catalogId: string;
+  title: string;
+  artistName: string;
+  albumName: string;
+  durationMs: number;
+  artworkUrl: string | null;
+  isrc: string | null;
+}
+
+function stationSongOf(item: any): RoomStationSong | null {
+  const id = item?.id;
+  if (!id || String(id).startsWith("ra.")) return null;
+  const a = item.attributes ?? {};
+  const durationMs = Number(a.durationInMillis ?? (item.playbackDuration ?? 0));
+  return {
+    catalogId: String(id),
+    title: String(item.title ?? a.name ?? ""),
+    artistName: String(item.artistName ?? a.artistName ?? ""),
+    albumName: String(item.albumName ?? a.albumName ?? ""),
+    durationMs: Number.isFinite(durationMs) ? Math.round(durationMs) : 0,
+    artworkUrl: a.artwork?.url ?? item.artwork?.url ?? null,
+    isrc: a.isrc ?? null,
+  };
+}
+
+/**
+ * The station whose queue MusicKit holds, or null. Set by `roomStationLoad`, cleared by any
+ * load from the model, so a one-song room queue is never read as a station's.
+ */
+let roomStationOn: string | null = null;
+export const roomStationLoaded = (): string | null => roomStationOn;
+
+/** MusicKit's station queue now: where it is, and every song it holds (none when it holds
+ *  no station queue). */
+export function roomStationQueue(): { position: number; songs: (RoomStationSong | null)[] } {
+  if (!roomStationOn) return { position: -1, songs: [] };
+  const q = music?.queue;
+  const items: any[] = q?.items ?? [];
+  return { position: typeof q?.position === "number" ? q.position : -1, songs: items.map(stationSongOf) };
+}
+
+/**
+ * Load a station into MusicKit WITHOUT playing it: the room starts it at its own moment.
+ * Returns the songs MusicKit holds (the first one, and usually the next).
+ */
+export async function roomStationLoad(s: Station): Promise<RoomStationSong[]> {
+  const m = await initPlayer();
+  notePause("room-station");
+  // MusicKit's pause rejects with a pending play's AbortError; the pause itself still lands.
+  if (m.isPlaying && typeof m.pause === "function") await Promise.resolve(m.pause()).catch(() => {});
+  try {
+    await setStationQueue(m, s);
+  } catch (e) {
+    // A play the room asked for and MusicKit had not finished is cut off by this setQueue,
+    // and MusicKit rejects with that AbortError. The play is gone now: once more.
+    if (!/AbortError|interrupted/i.test(String(e))) throw e;
+    diag.log("player:roomStationRetry", { id: s.id });
+    await setStationQueue(m, s);
+  }
+  roomStationOn = s.id;
+  diag.log("player:roomStation", { id: s.id, mkLen: m.queue?.items?.length ?? 0 });
+  return roomStationQueue().songs.filter((x): x is RoomStationSong => !!x);
+}
+
+/** MusicKit's station queue holds this song at or after where it is. */
+export function roomStationHas(catalogId: string): boolean {
+  const { position, songs } = roomStationQueue();
+  return songs.some((x, i) => i >= Math.max(0, position) && x?.catalogId === catalogId);
+}
+
+/**
+ * Move the feeder's station queue onto `catalogId` (a song change in the room, or a skip).
+ * Paused: the room's own step starts it at the room's moment.
+ */
+export async function roomStationGoTo(catalogId: string): Promise<boolean> {
+  const m = music;
+  if (!m) return false;
+  if (m.nowPlayingItem?.id === catalogId) return true;
+  const { position, songs } = roomStationQueue();
+  const index = songs.findIndex((x, i) => i >= Math.max(0, position) && x?.catalogId === catalogId);
+  if (index < 0 || typeof m.changeToMediaAtIndex !== "function") return false;
+  // MusicKit starts the song as it moves; the room starts it at its own moment instead. A
+  // pause that cuts that start off rejects with an AbortError, which is the point here.
+  await Promise.resolve(m.changeToMediaAtIndex(index)).catch(() => {});
+  if (m.isPlaying && typeof m.pause === "function") {
+    notePause("room-station");
+    await Promise.resolve(m.pause()).catch(() => {});
+  }
+  diag.log("player:roomStationGoTo", { id: catalogId, index });
+  return true;
+}
+
+/** A live broadcast in a room: each member tunes in on their own app (§21.8). */
+export async function roomLive(s: Station): Promise<void> {
+  const m = await initPlayer();
+  roomStationOn = null; // a broadcast, not a queue of songs to feed
+  await setStationQueue(m, s);
+  if (!m.isPlaying) await m.play();
+  diag.log("player:roomLive", { id: s.id });
+}
+
+/** The room's station, for the Queue card's station row ("Apple Music picks what's next"). */
+let roomStationRow: Station | null = null;
+export function setRoomStationRow(s: Station | null): void {
+  if (roomStationRow?.id === s?.id) return;
+  roomStationRow = s;
+  emit();
+}
+
+/** MusicKit's station queue changed (its one-ahead refill landed). room.ts feeds it on. */
+let stationItemsWired = false;
+export function onRoomStationItems(cb: () => void): void {
+  void initPlayer().then((m) => {
+    if (stationItemsWired || !m) return;
+    const E = window.MusicKit?.Events;
+    if (!E?.queueItemsDidChange) return;
+    stationItemsWired = true;
+    m.addEventListener(E.queueItemsDidChange, () => {
+      if (mode === "room") cb();
+    });
+  });
 }
 
 // ── Transport ────────────────────────────────────────────────────────────────

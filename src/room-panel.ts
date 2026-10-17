@@ -628,6 +628,12 @@ function renderInRoom(state: RoomState, into: HTMLElement): void {
   if (state.phase === "reconnecting") into.append(note("Reconnecting…"));
   else if (!state.hostConnected) into.append(note("Waiting for the host"));
   if (state.stopped) into.append(note("You stopped listening. The room plays on."));
+  // A station in the room names its feeder; the host keeps the host role (ROOMS.md §21.8).
+  if (state.station) {
+    const feeder = state.members.find((m) => m.memberId === state.keeper);
+    const who = feeder?.memberId === state.memberId ? "Your" : `${feeder?.name ?? state.station.by?.name ?? "A"}'s`;
+    into.append(note(`${who} station: ${state.station.name}`));
+  }
 
   // The members.
   into.append(el("div", "room__section", state.members.length === 1 ? "Listening" : `Listening (${state.members.length})`));

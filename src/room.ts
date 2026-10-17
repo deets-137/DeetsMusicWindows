@@ -33,8 +33,18 @@ import {
   roomHasSong,
   roomPlayingSame,
   isPlayingNow,
+  roomStationLoad,
+  roomStationHas,
+  roomStationGoTo,
+  roomStationQueue,
+  roomLive,
+  onRoomStationItems,
+  setRoomStationRow,
   type RoomBridge,
+  type RoomStationSong,
 } from "./player";
+import type { Station } from "./radio";
+import { applyChange, editTail, gather, tailOf, topUpOf } from "./room-list";
 import { toast } from "./toast";
 import { busy, busyOver, causeOf } from "./busy";
 import * as diag from "./diag";
@@ -99,6 +109,30 @@ export interface RoomMember {
   client?: string;
 }
 
+/**
+ * The long list's numbers (ROOMS.md §21). The KEEPER's app holds the full list L, in play
+ * order with the first song included; the room was given `fed` of it (its window), and the
+ * rest, L[fed..], is the tail. `len` is L's length. The worker stores only these numbers.
+ */
+export interface RoomListInfo {
+  keeper: string | null;
+  rev: number;
+  len: number;
+  fed: number;
+}
+const NO_LIST: RoomListInfo = { keeper: null, rev: 0, len: 0, fed: 0 };
+
+/** A station in the room (§21.8): the keeper is its feeder. */
+export interface RoomStation {
+  id: string;
+  name: string;
+  artworkUrl: string | null;
+  live: boolean;
+  /** A song, artist or genre station: another member can take over its feed. */
+  shareable: boolean;
+  by: { memberId: string; name: string } | null;
+}
+
 /** A member offered you their friend code (FRIENDS.md §18). The worker sends it to you alone. */
 export interface FriendOffer {
   from: string;
@@ -117,7 +151,14 @@ export interface RoomState {
   guestControls: GuestControls;
   members: RoomMember[];
   current: RoomEntry | null;
+  /** The whole Up Next: the room's window, then the keeper's tail (§21.2). */
   upcoming: RoomEntry[];
+  /** How many of `upcoming` are the room's window (the rest is the keeper's tail). */
+  windowLen: number;
+  /** Who holds the full list and tops the window up (§21): a member id, or "". */
+  keeper: string;
+  /** A station in the room, fed by the keeper (§21.8). */
+  station: RoomStation | null;
   /** What the room played, oldest first: the worker keeps the last 50 (ROOMS.md §5.2). The
    *  web History card reads it (WebRooms.md §9.3 E). */
   history: RoomEntry[];
@@ -138,6 +179,9 @@ const OFF: RoomState = {
   members: [],
   current: null,
   upcoming: [],
+  windowLen: 0,
+  keeper: "",
+  station: null,
   history: [],
   playing: false,
   stopped: false,
@@ -213,6 +257,368 @@ let lastTransport: Transport | null = null;
 let keepPlayingUntil = 0;
 /** The worker's scheduled-start lead (DeetsMusicRooms protocol.js LEAD_MS). */
 const ROOM_LEAD_MS = 1500;
+
+// ── the long list (ROOMS.md §21) ─────────────────────────────────────────────
+// The room's Up Next is a WINDOW of up to MAX_WINDOW songs. The keeper's app holds the full
+// list and tops the window up when it runs low; every member gets the rest (the tail) in
+// packets the worker relays and never stores. A click on a 4,000-song Library is one window
+// and ~14 packets, where it used to be one message the worker refused as too large.
+
+/** The room's window (DeetsMusicRooms protocol.js MAX_WINDOW). */
+const MAX_WINDOW = 100;
+/** Top the window up when it holds this many songs or fewer. */
+const TOPUP_AT = 50;
+/** Entries per list packet: ~300 real entries are ~120 KB, under the worker's 256 KB. */
+const PACKET_SIZE = 300;
+/** The longest list a room carries (his Library is 4,046). */
+const MAX_LIST = 10_000;
+/** Ask the keeper for the list again when ours is still behind after this long. */
+const LIST_WANT_MS = 2000;
+/** A jump this near the top walks there by removes and Next; further down replays the list. */
+const JUMP_BY_REMOVES = 4;
+
+/**
+ * This app's copy of the list: L[offset..], at version `rev`. The keeper holds it from 0;
+ * a member holds the tail it was sent. `assembling` gathers the parts of a whole-list send.
+ */
+let list: { rev: number; offset: number; items: RoomEntry[] } = { rev: 0, offset: 0, items: [] };
+let assembling: { rev: number; offset: number; parts: number; got: Map<number, RoomEntry[]> } | null = null;
+/** The room's list numbers from the last state. */
+let listInfo: RoomListInfo = { ...NO_LIST };
+/** A top-up in flight: the `fed` it asked for, so the next state does not send it twice. */
+let pendingFed = 0;
+let listWantTimer: number | undefined;
+/** The host's app held the list before its connection dropped: take it back on return (§21.4). */
+let reclaim = false;
+
+const isKeeper = (): boolean => !!state.memberId && listInfo.keeper === state.memberId;
+
+/** Ids for this app's list entries: unique in the room, and short (each one rides every packet). */
+function mintIds(entries: Record<string, unknown>[]): RoomEntry[] {
+  const prefix = Math.random().toString(36).slice(2, 8);
+  return entries.map((e, i) => ({ ...(e as object), entryId: `${prefix}${i.toString(36)}` }) as RoomEntry);
+}
+
+/** The tail as this app knows it: L[fed..] when our copy is the room's version. */
+const tailNow = (): RoomEntry[] => tailOf(list, listInfo);
+
+/** Send the tail (or the whole list from `from`) in packets, to one member or to everyone. */
+function sendList(to?: string): void {
+  if (!isKeeper()) return;
+  const from = Math.max(listInfo.fed, list.offset);
+  const tail = list.items.slice(from - list.offset);
+  if (!tail.length) return;
+  const parts = Math.ceil(tail.length / PACKET_SIZE);
+  for (let part = 0; part < parts; part++) {
+    send({
+      type: "list",
+      op: "set",
+      rev: list.rev,
+      part,
+      parts,
+      offset: from + part * PACKET_SIZE,
+      len: list.offset + list.items.length,
+      entries: tail.slice(part * PACKET_SIZE, (part + 1) * PACKET_SIZE),
+      ...(to ? { to } : {}),
+    });
+  }
+  diag.log("room:listSend", { rev: list.rev, songs: tail.length, parts, to: to ? "one" : "all" });
+}
+
+/** The keeper changed the list: the change goes out first, then the numbers, so members
+ *  have the packet before the state that names its version. */
+function listChanged(packet: Record<string, unknown>): void {
+  send({ type: "list", rev: list.rev, base: list.rev - 1, ...packet });
+  send({ type: "listMeta", list: { rev: list.rev, len: list.offset + list.items.length, fed: listInfo.fed } });
+}
+
+/** Keeper: fill the room's window from the list when it runs low. */
+function maybeTopUp(windowLen: number): void {
+  if (!isKeeper() || state.station) return;
+  if (pendingFed && listInfo.fed >= pendingFed) pendingFed = 0;
+  if (pendingFed) return;
+  const next = topUpOf(list, listInfo, windowLen, MAX_WINDOW, TOPUP_AT);
+  if (!next) return;
+  pendingFed = next.fed;
+  diag.log("room:topUp", { songs: next.entries.length, fed: pendingFed, len: list.offset + list.items.length });
+  send({
+    type: "topUp",
+    entries: next.entries,
+    list: { rev: list.rev, len: list.offset + list.items.length, fed: pendingFed },
+    start: !state.current,
+  });
+}
+
+/**
+ * Play `entries` as the room's new list, from its first song: this app becomes the keeper.
+ * The window goes in the replace; the rest goes out in packets.
+ */
+function playList(entries: Record<string, unknown>[], seed = false): void {
+  const items = mintIds(entries.slice(0, MAX_LIST));
+  if (!items.length) return;
+  const rev = Math.max(list.rev, listInfo.rev) + 1;
+  list = { rev, offset: 0, items };
+  assembling = null;
+  pendingFed = 0;
+  const fed = Math.min(items.length, MAX_WINDOW);
+  // The worker answers with the state that names us keeper; `sendList` reads these numbers.
+  listInfo = { keeper: state.memberId, rev, len: items.length, fed };
+  send({
+    type: "add",
+    entries: items.slice(0, fed),
+    list: { rev, len: items.length, fed },
+    ...(seed ? { where: "end", seed: true } : { replace: true }),
+  });
+  diag.log("room:list", { rev, songs: items.length, seed });
+  sendList();
+}
+
+/** A list packet from the keeper. A whole-list send arrives in parts; a change applies on its base. */
+function applyPacket(p: any): void {
+  if (isKeeper()) return;
+  const rev = Number(p.rev);
+  if (p.op === "set") {
+    const got = gather(assembling, {
+      rev,
+      part: Number(p.part),
+      parts: Number(p.parts),
+      offset: Number(p.offset),
+      entries: (p.entries ?? []) as RoomEntry[],
+    });
+    assembling = got.assembly;
+    if (!got.done) return;
+    list = got.done;
+  } else {
+    const next = applyChange(list, {
+      op: p.op,
+      rev,
+      base: Number(p.base),
+      entries: p.entries as RoomEntry[] | undefined,
+      entryId: p.entryId,
+      toIndex: typeof p.toIndex === "number" ? p.toIndex : undefined,
+    });
+    if (!next) return void wantList(); // missed one: ask for it all
+    list = next;
+  }
+  diag.log("room:listGot", { rev, op: p.op, songs: list.items.length });
+  redraw();
+}
+
+/** Our copy is behind the room's: ask the keeper once things settle. */
+function wantList(): void {
+  window.clearTimeout(listWantTimer);
+  listWantTimer = window.setTimeout(() => {
+    if (!inRoom() || isKeeper() || list.rev === listInfo.rev || listInfo.len <= listInfo.fed) return;
+    diag.log("room:listWant", { have: list.rev, want: listInfo.rev });
+    send({ type: "listWant" });
+  }, LIST_WANT_MS);
+}
+
+/** Keeper: a change to the tail, asked by a member or by this app (§21.2). */
+function keeperEdit(op: string, entryId: string, toIndex?: number): void {
+  if (!isKeeper()) return;
+  const edit = editTail(list, listInfo.fed, op, entryId, toIndex);
+  if (edit.kind === "none") return;
+  // Play from here: the list from this song on becomes the room's new list.
+  if (edit.kind === "jump") return playList(edit.from as unknown as Record<string, unknown>[]);
+  list = edit.copy;
+  listChanged(edit.packet);
+  if (edit.top) send({ type: "add", entries: [edit.top], where: "next" });
+}
+
+/** Keeper: songs added at the end while the list has a tail (his call 2A). */
+function keeperAppend(entries: RoomEntry[]): void {
+  if (!isKeeper() || !entries.length) return;
+  const room = MAX_LIST - list.items.length;
+  const add = entries.slice(0, Math.max(0, room));
+  if (!add.length) return;
+  list = { ...list, rev: list.rev + 1, items: [...list.items, ...add] };
+  listChanged({ op: "append", entries: add });
+}
+
+/** A tail change from this app: the keeper does it, anyone else asks the keeper. */
+function tailEdit(op: "remove" | "move" | "top" | "jump", entry: RoomEntry, toIndex?: number): void {
+  if (isKeeper()) return keeperEdit(op, entry.entryId, toIndex);
+  send({ type: "tailEdit", op, entryId: entry.entryId, ...(toIndex !== undefined ? { toIndex } : {}) });
+}
+
+// ── a station in the room (ROOMS.md §21.8) ───────────────────────────────────
+// The member who starts a station is its FEEDER (the keeper while it plays); the host keeps
+// the host role (his call, 2026-10-16). The feeder's MusicKit holds the station queue and
+// knows the next song before it plays (§21.7); it sends that song to the room's window, so
+// every member starts it together at the song boundary. Documented MusicKit only.
+
+/** The longest a station reload may take before the feeder gives up and tries again. */
+const FEED_LOAD_MS = 8000;
+/** How long the feeder waits for MusicKit's refill after moving onto a song. */
+const FEED_REFILL_MS = 4000;
+/** A failed restart tries again after this, while the room is still dry, this many times. */
+const FEED_RETRY_MS = 3000;
+const FEED_TRIES = 3;
+let feedTries = 0;
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(`no answer in ${ms} ms`)), ms);
+    p.then(
+      (v) => {
+        window.clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        window.clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** The last station song this app fed, so a repeated refill event does not send it twice. */
+let fedKey = "";
+/** A station restart in flight (the room ran dry, or this app just took over the feed). */
+let feedRestarting = false;
+/** The live broadcast this app tuned in to, so each state does not tune in again. */
+let liveOn = "";
+
+const amFeeder = (): boolean => !!state.station && !state.station.live && isKeeper();
+
+function stationOf(s: RoomStation): Station {
+  return {
+    id: s.id,
+    name: s.name,
+    isLive: s.live,
+    artwork: s.artworkUrl ? { urlTemplate: s.artworkUrl, width: 0, height: 0 } : undefined,
+  };
+}
+
+function entryOfSong(s: RoomStationSong): Record<string, unknown> | null {
+  if (!s.durationMs) return null;
+  return {
+    catalogId: s.catalogId,
+    isrc: s.isrc,
+    title: s.title,
+    artist: s.artistName,
+    album: s.albumName,
+    artworkUrl: s.artworkUrl,
+    durationMs: s.durationMs,
+  };
+}
+
+/** Start a station in the room: this app becomes its feeder (§21.8). */
+async function startStation(s: Station): Promise<void> {
+  const station = {
+    id: s.id,
+    name: s.name,
+    artworkUrl: s.artwork?.urlTemplate ?? null,
+    live: s.isLive,
+  };
+  diag.log("room:feeder", { on: true, id: s.id, live: s.isLive });
+  wireFeed();
+  if (s.isLive) {
+    send({ type: "add", replace: true, entries: [], station });
+    return;
+  }
+  try {
+    const songs = await roomStationLoad(s);
+    const entries = mintIds(songs.slice(0, 2).map(entryOfSong).filter((e): e is Record<string, unknown> => !!e));
+    if (!entries.length) throw new Error("the station sent no songs");
+    fedKey = `${entries.length - 1}:${String(entries[entries.length - 1].catalogId)}`;
+    list = { rev: 0, offset: 0, items: [] };
+    send({ type: "add", replace: true, entries, station });
+  } catch (e) {
+    diag.warn("room:feederFailed", { id: s.id, e: String(e) });
+    toast({ kind: "warn", text: `Couldn't start “${s.name}” in the room.` });
+  }
+}
+
+/**
+ * Feeder: send the station's next song to the room when the window is empty (§21.7: MusicKit
+ * keeps one song ahead of where it is). Runs on each room state and on MusicKit's refill.
+ */
+function feedLookAhead(): void {
+  if (!amFeeder() || feedRestarting || state.windowLen > 0 || !state.current) return;
+  const { songs } = roomStationQueue();
+  const at = songs.findIndex((x) => x?.catalogId === state.current?.catalogId);
+  if (at < 0) return; // the room plays a song from outside the station (a break-out)
+  const next = songs[at + 1];
+  const entry = next ? entryOfSong(next) : null;
+  if (!next || !entry) return; // MusicKit's refill has not landed yet: its event calls us again
+  const key = `${at + 1}:${next.catalogId}`;
+  if (key === fedKey) return;
+  fedKey = key;
+  diag.log("room:feed", { id: next.catalogId, late: false });
+  send({ type: "topUp", entries: mintIds([entry]) });
+}
+
+/**
+ * Feeder: the room ran dry while a station is on — two skips beat MusicKit's refill, a song
+ * added during the station played out, or this app just took over the feed (§21.4). Load the
+ * station again and start its next song in the room.
+ */
+/**
+ * The restart drives MusicKit, so it waits its turn behind the follower's steps: run side by
+ * side, one's pause cut off the other's play (AbortError, the two-app desk run, 2026-10-16).
+ */
+function queueRestartFeed(): void {
+  following = following.then(() => restartFeed()).catch((e) => diag.warn("room:follow", { e: String(e) }));
+}
+
+async function restartFeed(): Promise<void> {
+  if (!amFeeder() || feedRestarting || state.current || !state.station) return;
+  feedRestarting = true;
+  try {
+    // Two quick skips: MusicKit's station queue holds the last song the room played, and
+    // usually the one after it. If not yet, move MusicKit onto that last song: its own refill
+    // (one song ahead, on each position change, §21.7) then fetches the next one.
+    const last = state.history[state.history.length - 1]?.catalogId;
+    const after = (): RoomStationSong | undefined => {
+      const { songs } = roomStationQueue();
+      const at = last ? songs.findIndex((x) => x?.catalogId === last) : -1;
+      return at >= 0 ? (songs.slice(at + 1).find((x) => !!x && !!entryOfSong(x)) ?? undefined) : undefined;
+    };
+    let ready = after();
+    if (!ready && last && roomStationHas(last)) {
+      await roomStationGoTo(last);
+      for (let waited = 0; !ready && waited < FEED_REFILL_MS; waited += 250) {
+        await sleep(250);
+        ready = after();
+      }
+    }
+    if (ready) {
+      if (!amFeeder() || state.current) return;
+      fedKey = `${roomStationQueue().songs.indexOf(ready)}:${ready.catalogId}`;
+      diag.log("room:feed", { id: ready.catalogId, late: true, held: true });
+      send({ type: "topUp", entries: mintIds([entryOfSong(ready)!]), start: true });
+      feedTries = 0;
+      return;
+    }
+    // The station queue is gone (a song added during the station replaced it): load it again.
+    // MusicKit's setQueue can stall while a play it was asked for is still pending (seen
+    // 2026-10-16), so it gets a time limit and the next state tries again.
+    const songs = await withTimeout(roomStationLoad(stationOf(state.station)), FEED_LOAD_MS);
+    const entries = mintIds(songs.slice(0, 2).map(entryOfSong).filter((e): e is Record<string, unknown> => !!e));
+    if (!entries.length || !amFeeder()) return;
+    fedKey = `${entries.length - 1}:${String(entries[entries.length - 1].catalogId)}`;
+    diag.log("room:feed", { id: String(entries[0].catalogId), late: true });
+    send({ type: "topUp", entries, start: true });
+    feedTries = 0;
+  } catch (e) {
+    diag.warn("room:feederFailed", { id: state.station?.id, e: String(e), tries: feedTries + 1 });
+    // Still dry and still ours: try again shortly rather than leave the room silent — but a
+    // few times only, since each reload asks Apple for the station's songs.
+    if (++feedTries < FEED_TRIES) window.setTimeout(queueRestartFeed, FEED_RETRY_MS);
+    else toast({ kind: "warn", text: `Couldn't start “${state.station?.name ?? "the station"}” in the room.` });
+  } finally {
+    feedRestarting = false;
+  }
+}
+
+/** MusicKit's refill event, wired the first time this app feeds a station. */
+let feedWired = false;
+function wireFeed(): void {
+  if (feedWired) return;
+  feedWired = true;
+  onRoomStationItems(() => feedLookAhead());
+}
 
 const listeners = new Set<(s: RoomState) => void>();
 /** Subscribe to the room state. The panel and the title bar item render from this. */
@@ -314,7 +720,8 @@ export async function startRoom(controls?: GuestControls, opts?: { keepPlaying?:
     // first add auto-advances and sets playing). The host's own Play is what starts a
     // room — otherwise the room is already playing before the host has pressed anything,
     // and their Play button is really a Pause button (the owner's call, 2026-09-18).
-    if (seed.length) send({ type: "add", entries: seed, where: "end", seed: true });
+    // A long Up Next goes as the window plus the list (§21.2): the host keeps the list.
+    if (seed.length) playList(seed as Record<string, unknown>[], true);
     // Listen Along starts FROM WHERE YOU ARE. The room's start is one lead away, so it is set
     // one lead ahead: when the lead ends, the room and your music are at the same place, and
     // `step` only lines them up. Paused, it holds at your position instead of 0:00.
@@ -473,6 +880,8 @@ function onClose(code: string): void {
   socket = null;
   if (closing || state.phase === "off") return;
   // The host's app reconnects with its host token; a guest simply comes back (§7).
+  // The host held the list: once back in, it takes it from whoever fed it meanwhile (§21.4).
+  if (state.isHost && isKeeper() && !state.station) reclaim = true;
   state = { ...state, phase: "reconnecting" };
   emit();
   const wait = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
@@ -531,6 +940,25 @@ function onMessage(raw: string): void {
         offerFailedListeners.forEach((cb) => cb(String(message.code)));
       }
       diag.warn("room:error", { code: message.code });
+      // The worker refused a change: say so, never leave a click doing nothing (2026-10-16,
+      // a 4,000-song click refused as too large with no sign, ROOMS.md §21.1).
+      if (message.code === "rate") toast({ kind: "warn", text: "That was too fast for the room. Try again in a few seconds." });
+      else if (message.code === "too-large" || message.code === "bad-packet" || message.code === "bad-json" || message.code === "bad-message") {
+        toast({ kind: "warn", text: "The room didn't take that change. Try again." });
+      }
+      return;
+    case "list":
+      applyPacket(message);
+      return;
+    case "listWant":
+      // A member's copy is behind, or a member just joined: send them the list (§21.2).
+      sendList(typeof message.from === "string" ? message.from : undefined);
+      return;
+    case "tailEdit":
+      if (typeof message.entryId === "string") keeperEdit(String(message.op), message.entryId, typeof message.toIndex === "number" ? message.toIndex : undefined);
+      return;
+    case "tailAdd":
+      keeperAppend(Array.isArray(message.entries) ? (message.entries as RoomEntry[]) : []);
       return;
     case "friendOffer":
       if (typeof message.from !== "string" || typeof message.code !== "string") return;
@@ -585,6 +1013,18 @@ function teardown(why: string): void {
   playingEntryId = "";
   stopped = false;
   keepPlayingUntil = 0;
+  // The long list and the station (§21) end with the room.
+  window.clearTimeout(listWantTimer);
+  list = { rev: 0, offset: 0, items: [] };
+  assembling = null;
+  listInfo = { ...NO_LIST };
+  windowEntries = [];
+  pendingFed = 0;
+  tailTracksRev = -1;
+  reclaim = false;
+  fedKey = "";
+  liveOn = "";
+  setRoomStationRow(null);
   diag.log("room:left", { why });
   roomHold().catch(() => {});
   roomExit();
@@ -608,11 +1048,18 @@ function send(message: Record<string, unknown>): void {
 
 // ── the room state lands ─────────────────────────────────────────────────────
 
+/** The room's window from the last state (the tail is this app's own copy, `list`). */
+let windowEntries: RoomEntry[] = [];
+
 function applyState(message: any): void {
   clockOffset = Number(message.serverNow) - Date.now();
   const transport = message.transport as Transport;
   lastTransport = transport; // the drift tick and Listen again read it
-  const upcoming = (message.queue?.upcoming ?? []) as RoomEntry[];
+  windowEntries = (message.queue?.upcoming ?? []) as RoomEntry[];
+  const wasKeeper = isKeeper();
+  const info = message.queue?.list as Partial<RoomListInfo> | undefined;
+  listInfo = info ? { ...NO_LIST, ...info } : { ...NO_LIST };
+  const station = (message.queue?.station ?? null) as RoomStation | null;
 
   const first = state.phase !== "in";
   state = {
@@ -626,7 +1073,10 @@ function applyState(message: any): void {
     guestControls: { ...DEFAULT_CONTROLS, ...(message.meta.guestControls ?? {}) },
     members: message.members ?? [],
     current: transport.current,
-    upcoming,
+    upcoming: windowEntries,
+    windowLen: windowEntries.length,
+    keeper: listInfo.keeper ?? "",
+    station,
     history: (message.queue?.history ?? []) as RoomEntry[],
     playing: transport.playing,
     error: "",
@@ -638,10 +1088,43 @@ function applyState(message: any): void {
   // A late joiner never had the room's earlier songs as current or upcoming, so their names
   // come from the entries themselves, as the queue's do (the web History card reads them).
   if (state.history.length) addTransientTracks(state.history.map(trackOf));
-  writeModel(transport.current, upcoming);
-  emit();
+  if (isKeeper() !== wasKeeper) diag.log("room:keeper", { on: isKeeper(), rev: listInfo.rev, have: list.rev });
+  // Our copy of the list is behind the room's (a missed packet, a reconnect): ask again.
+  if (!isKeeper() && listInfo.len > listInfo.fed && list.rev !== listInfo.rev) wantList();
+  // Took over the list (§21.4) holding an older copy than the room's: the songs past the
+  // window are lost with the keeper that had them, so the room's numbers say so.
+  if (isKeeper() && !wasKeeper && !station && list.rev !== listInfo.rev && listInfo.len > listInfo.fed) {
+    diag.warn("room:listLost", { have: list.rev, want: listInfo.rev });
+    send({ type: "listMeta", list: { rev: listInfo.rev, len: listInfo.fed, fed: listInfo.fed } });
+  }
+  // The host is back with the list again: it keeps it from here (his call 4A, §21.4).
+  if (reclaim && state.isHost && !isKeeper() && !station && list.rev === listInfo.rev) {
+    reclaim = false;
+    send({ type: "takeList" });
+  }
+  redraw(false);
+  setRoomStationRow(station && !station.live ? stationOf(station) : null);
+  maybeTopUp(windowEntries.length);
+  if (amFeeder()) {
+    wireFeed();
+    if (!state.current) queueRestartFeed();
+    else feedLookAhead();
+  }
   void follow(transport);
 }
+
+/** Up Next = the window, then the tail; the model and the panel follow. */
+function redraw(emitOnly = true): void {
+  if (emitOnly && !inRoom()) return;
+  const upcoming = [...windowEntries, ...tailNow()];
+  state = { ...state, upcoming, windowLen: windowEntries.length };
+  writeModel(state.current, upcoming);
+  emit();
+}
+
+/** Tail tracks already given to the track store, by list version: a state message must not
+ *  re-add 4,000 tracks each time. */
+let tailTracksRev = -1;
 
 /**
  * The room's queue becomes this app's queue model, so Now Playing, Up Next and the
@@ -650,7 +1133,12 @@ function applyState(message: any): void {
  */
 function writeModel(current: RoomEntry | null, upcoming: RoomEntry[]): void {
   const all = [...(current ? [current] : []), ...upcoming];
-  addTransientTracks(all.map(trackOf));
+  const tail = tailNow();
+  if (tail.length && tailTracksRev !== list.rev) {
+    tailTracksRev = list.rev;
+    addTransientTracks(tail.map(trackOf));
+  }
+  addTransientTracks([...(current ? [current] : []), ...windowEntries].map(trackOf));
   const handles: TrackHandle[] = all.map((entry) => ({
     catalogId: entry.catalogId,
     // Room plays count everywhere, and this context marks them (§9.5).
@@ -720,6 +1208,19 @@ async function step(t: Transport): Promise<void> {
     }
   }
 
+  // A live broadcast (§21.8): no songs and no shared clock. Each member tunes in on their
+  // own app; Pause is "Stop listening" here, as under a host-only Play/pause.
+  const live = state.station?.live ? state.station : null;
+  if (live) {
+    if (liveOn !== live.id) {
+      liveOn = live.id;
+      playingEntryId = "";
+      await roomLive(stationOf(live));
+    }
+    return;
+  }
+  liveOn = "";
+
   const entry = t.current;
   if (!entry) {
     playingEntryId = "";
@@ -735,6 +1236,9 @@ async function step(t: Transport): Promise<void> {
     playingEntryId = entry.entryId;
     const startsIn = t.playing && t.leadUntil ? t.leadUntil - roomNow() : 0;
     diag.log("room:song", { id: entry.catalogId, startsIn: Math.round(startsIn), at: Math.round(position) });
+    // The feeder's MusicKit holds the station queue, which already has this song: move onto
+    // it rather than load it alone, or the station (and its next song) would be lost (§21.8).
+    if (amFeeder() && roomStationHas(entry.catalogId)) await roomStationGoTo(entry.catalogId);
     // Buffer during the lead, then play on the room's moment (§5.5).
     await roomShow(handle, position, false);
     if (!t.playing) return;
@@ -848,6 +1352,7 @@ export function stopListening(): void {
   if (!inRoom() || stopped) return;
   stopped = true;
   playingEntryId = "";
+  liveOn = ""; // Listen again tunes back in to a live broadcast
   diag.log("room:stopListening", {});
   void roomHold();
   emit();
@@ -891,14 +1396,26 @@ export const inviteLink = (): string => (WEB_ROOMS ? `${baseUrl()}/j/${state.cod
 
 // ── the bridge player.ts calls (§10) ─────────────────────────────────────────
 
+/** What the last `entriesFrom` left out, and why (the toast says which, §21.6). */
+let dropped = { noCatalog: 0, noLength: 0 };
+
 /** Build room entries from queue handles, with what the track store knows. */
 function entriesFrom(handles: readonly TrackHandle[]): unknown[] {
   const out: unknown[] = [];
+  dropped = { noCatalog: 0, noLength: 0 };
   for (const handle of handles) {
     const id = handle.catalogId;
-    if (!id) continue; // a library-only song has no id the others can play (§5.3)
+    // No catalog id: Apple sends some library songs without one — songs it no longer links
+    // to its catalog (11 in his library, 2026-10-16). The others could not play them (§5.3).
+    if (!id) {
+      dropped.noCatalog++;
+      continue;
+    }
     const track = trackById(id);
-    if (!track?.durationMs) continue;
+    if (!track?.durationMs) {
+      dropped.noLength++; // the room's clock needs a length
+      continue;
+    }
     out.push({
       catalogId: id,
       isrc: track.isrc,
@@ -912,15 +1429,30 @@ function entriesFrom(handles: readonly TrackHandle[]): unknown[] {
   return out;
 }
 
-/** What was dropped on the way in: songs the room cannot carry (§5.3). */
-function noteDropped(asked: number, sent: number): void {
-  if (sent >= asked) return;
+/**
+ * What was dropped on the way in: songs the room cannot carry (§5.3). His words for the
+ * catalog case (2026-10-16, ROOMS.md §21.6); the old "only in your library" was wrong for
+ * songs that come from Apple.
+ */
+function noteDropped(sent: number): void {
+  const { noCatalog, noLength } = dropped;
+  if (!noCatalog && !noLength) return;
+  diag.log("room:dropped", { noCatalog, noLength, sent });
+  const parts: string[] = [];
+  if (noCatalog) {
+    parts.push(
+      noCatalog === 1
+        ? "1 song isn't in Apple's catalog anymore"
+        : `${noCatalog} songs aren't in Apple's catalog anymore`,
+    );
+  }
+  if (noLength) parts.push(noLength === 1 ? "1 song has no length yet" : `${noLength} songs have no length yet`);
+  const total = noCatalog + noLength;
   toast({
     kind: "info",
-    text:
-      sent === 0
-        ? "Those songs are only in your library, so the room cannot play them."
-        : `${asked - sent} of those songs are only in your library, so the room left them out.`,
+    text: sent === 0
+      ? `${parts.join(" and ")}, so the room can't play ${total === 1 ? "it" : "them"}.`
+      : `${parts.join(" and ")}, so the room skipped ${total === 1 ? "it" : "them"}.`,
   });
 }
 
@@ -928,6 +1460,8 @@ const bridge: RoomBridge = {
   playPause(): void {
     // Pause is always here, whatever the host allows (§12.3).
     if (stopped) return listenAgain();
+    // A live broadcast has no room clock to pause: Pause stops this app (§21.8).
+    if (state.station?.live) return stopListening();
     if (may("playPause")) {
       send({ type: state.playing ? "pause" : "play" });
       return;
@@ -947,17 +1481,28 @@ const bridge: RoomBridge = {
     send({ type: "seek", positionMs: Math.max(0, Math.round(seconds * 1000)) });
   },
   playHandles(handles: readonly TrackHandle[], startIndex: number): void {
-    const list = handles.slice(startIndex);
-    const entries = entriesFrom(list);
-    noteDropped(list.length, entries.length);
+    const wanted = handles.slice(startIndex);
+    const entries = entriesFrom(wanted);
+    noteDropped(entries.length);
     if (!entries.length) return;
-    send({ type: "add", entries, replace: true });
+    if (!may("changeQueue")) {
+      toast({ kind: "info", text: "The host keeps that control in this room." });
+      return;
+    }
+    // The list goes as a window plus packets; this app keeps it (§21.2).
+    playList(entries as Record<string, unknown>[]);
   },
   enqueue(handles: readonly TrackHandle[], where: "next" | "later"): void {
     const entries = entriesFrom(handles);
-    noteDropped(handles.length, entries.length);
+    noteDropped(entries.length);
     if (!entries.length) return;
-    send({ type: "add", entries, where: where === "next" ? "next" : "end" });
+    // The keeper adding at the end puts the songs on its own list when there is a tail.
+    if (where === "later" && isKeeper() && tailNow().length) {
+      keeperAppend(mintIds(entries as Record<string, unknown>[]));
+      return;
+    }
+    // "end" with a tail is relayed to the keeper by the worker (his call 2A).
+    send({ type: "add", entries: entries.slice(0, MAX_WINDOW), where: where === "next" ? "next" : "end" });
   },
   insertAt(_at: number, handles: readonly TrackHandle[]): void {
     // The room's add takes "next" or "end"; a drop between two rows lands at the top.
@@ -966,6 +1511,16 @@ const bridge: RoomBridge = {
   jumpTo(index: number): void {
     const entry = state.upcoming[index];
     if (!entry) return;
+    // Further down: play the list from that song, so this app keeps it (§21.2). One remove
+    // per skipped song would pass the worker's 20 commands in 10 s from the 20th song on.
+    if (index >= JUMP_BY_REMOVES) {
+      if (!may("changeQueue")) {
+        toast({ kind: "info", text: "The host keeps that control in this room." });
+        return;
+      }
+      playList(state.upcoming.slice(index).map(({ entryId: _id, ...rest }) => rest));
+      return;
+    }
     // Remove the songs before it, then Next: the room walks to the song you picked.
     for (const skipped of state.upcoming.slice(0, index)) {
       send({ type: "remove", entryId: skipped.entryId });
@@ -974,20 +1529,42 @@ const bridge: RoomBridge = {
   },
   removeAt(index: number): void {
     const entry = state.upcoming[index];
-    if (entry) send({ type: "remove", entryId: entry.entryId });
+    if (!entry) return;
+    if (index >= state.windowLen) return tailEdit("remove", entry);
+    send({ type: "remove", entryId: entry.entryId });
   },
   moveTo(index: number, to: "top" | "bottom"): void {
     const entry = state.upcoming[index];
     if (!entry) return;
-    send({ type: "move", entryId: entry.entryId, toIndex: to === "top" ? 0 : state.upcoming.length - 1 });
+    if (index >= state.windowLen) {
+      // A tail song to the top goes into the window; to the bottom stays in the tail.
+      if (to === "top") return tailEdit("top", entry);
+      return tailEdit("move", entry, Number.MAX_SAFE_INTEGER);
+    }
+    if (to === "bottom" && tailNow().length) {
+      // The bottom of the FULL list is the keeper's: out of the window, then added at the end.
+      send({ type: "remove", entryId: entry.entryId });
+      send({ type: "add", entries: [entry], where: "end" });
+      return;
+    }
+    send({ type: "move", entryId: entry.entryId, toIndex: to === "top" ? 0 : state.windowLen - 1 });
   },
-  station(): boolean {
-    // A station has no song list the other apps can follow (§10).
-    toast({
-      kind: "info",
-      text: "A station cannot play in a room. Leave the room first.",
-      actions: [{ label: "Leave room", run: () => leaveRoom() }],
-    });
-    return false;
+  station(s: Station): boolean {
+    // The web port has no feeder (its MusicKit plays the room's songs one at a time).
+    if (WEB_ROOMS) {
+      toast({
+        kind: "info",
+        text: "A station cannot play in a room. Leave the room first.",
+        actions: [{ label: "Leave room", run: () => leaveRoom() }],
+      });
+      return false;
+    }
+    // A station replaces Up Next, so it follows Change the queue (§21.8).
+    if (!may("changeQueue")) {
+      toast({ kind: "info", text: "The host keeps that control in this room." });
+      return false;
+    }
+    void startStation(s);
+    return false; // the room plays it; the caller's radio mode stays off
   },
 };

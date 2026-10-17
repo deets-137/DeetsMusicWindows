@@ -184,6 +184,12 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
+- **Rooms: a long queue and stations** (2026-10-16): **BUILT the same day.** The worker is
+  deployed and pushed (`4f61445`); the app side is committed on `shixtheenth` (his call: he
+  tests it once it is live). Claude's two-app desk run passed 11 rows without sound (one Apple
+  ID). Open: a release, then his desk test with real playback, and the list of what Claude
+  decided (ROOMS.md §21.10).
+
 - **The Library ⟳'s hint on a refused click** (2026-10-15): the spin part is built (Build order
   step 1); the hint words and the nudge are a draft for him to edit. ideas/apple-calls.md §4.
 - **Album notes** (2026-10-15): Apple's editorial notes in the album's facts box, Apple's only
@@ -211,7 +217,6 @@ each step that touches those calls.
   passed (§8.1, run by Claude; his own look still welcome). The Max title bar button right of the Compass and its panel (version row, What's
   new, Bugs and suggestions). The next release entry is the first under the lead rule (§6.3,
   docs:check 31).
-
 - **Branch `twenty-eighth` (2026-10-15, cut from `main` at `c11ecd2`, pushed, not merged):**
   Build order steps 1, 2, 3, 4 and 6, every desk test passed (his). The Library ⟳ spins for the
   whole sync; the Press record has no sheen; a song's primary artist, an album's real artist and

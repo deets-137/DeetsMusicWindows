@@ -12,7 +12,44 @@ updated: 2026-10-16
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
-## 2026-10-16 (shixtheenth) — filter rules: the Library's Filter and Rulez Playlists
+## 2026-10-16 (shixtheenth) — rooms: a long queue and stations, built
+
+**His go:** "lets start the build (feel free to deploy, commit and push the worker repo as
+necessary)", and the toast words recommended in §21.6 ("That works").
+- **Worker** (`../DeetsMusicRooms`): the keeper, the window of 100, the relays (list packets,
+  tail edits, Add to Queue at the end), the takeover, stations and live broadcasts.
+  `src/list.js` new. 46 checks pass locally and against the live host. **Deployed** (version
+  `bd520705`, with the never-deployed `a6e449e` riding along) **and pushed** (`4f61445`).
+  `src/sanitize.js` (already live since 2026-09-29) is left uncommitted for its owner.
+- **App** (committed; he tests it once it is live): `room-list.ts` + 10 tests, `room.ts` (the list copy, packets, top-up,
+  tail edits, the feeder, live), `player.ts` (the station helpers, the Queue card's station row),
+  `room-panel.ts` (the feeder line), TOASTS.md rows. tsc, the 297 tests, vite build and
+  docs:check pass.
+- **Desk run** (Claude, two hidden dev apps, no sound): 11 rows pass (ROOMS.md §21.10). It found
+  and fixed: a jump past the 20th song tripping the rate limit; the feeder's restart racing the
+  follower; a one-song room queue read as a station's; MusicKit's AbortError on pause.
+- **Left:** his desk test with sound; the host's own drop-and-return; the list of Claude's
+  decisions in §21.10.
+
+## 2026-10-16 (shixtheenth) — rooms: a long queue and stations, designed
+
+**His report:** in a room, a click on a Library song gave a toast that 1 song was only in his
+library, though every library song comes from Apple.
+- **Read on live:** each click sent about 4,035 songs in one `add`; the rooms worker refused it
+  (`room:error too-large`, over 256 KB) and the app only logged it, so the click did nothing. The
+  room's seed failed the same way. The toast was a side issue: 11 library songs come from Apple
+  with no catalog ID (no ISRC), and the words "only in your library" are wrong for them.
+- **Designed, every fork his** (ROOMS.md §21): the host holds the full list; the worker a window of
+  100 (1A); guests get the full list in relayed packets; a guest's Add to Queue goes to the end of
+  the full list (2A); a guest takes over the top-ups when the host drops (4A); a station in a room
+  through a feeder, the host keeping the host role.
+- **Stations, terms and probes:** Apple's station next-songs call (`/v1/me/stations/next-tracks`)
+  works (10 songs a call, cap 10) but is undocumented, so it is out (his call). MusicKit's documented
+  `queue.items` holds the next station song (2 on load; MusicKit refills one ahead on each position
+  change, read from its code). Not seen in playback: the dev app could not stream while the live
+  app played. §21.7, with the DPLA clauses quoted.
+- **Left:** the toast words (§21.6); the build (§21.9) after the checkout is clean. Nothing built,
+  nothing committed.
 
 **His ask:** a rule over the whole library: custom filters, and playlists made from a rule and
 sources that refresh at an interval. Documented as an idea, then every fork his the same sitting
