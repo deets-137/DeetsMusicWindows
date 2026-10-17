@@ -147,8 +147,14 @@ Library's Sort pop: the text options, and the direction arrows in a column besid
 ### 3.1 Song — `songMenu`
 Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist (▸ when several, in
 the Library) · Go to Album · Song Credits · Start Station · Start a Web · Copy Link · Add to
-Library · Favorite · Mark as Song of the Day · Pin.
+Library · Favorite · Suggest Less · Suggest Less of This Artist · Suggest Less of This Album ·
+Mark as Song of the Day · Pin.
 
+- **Suggest Less** (2026-10-16, SUGGEST-LESS.md §4): each label follows the state ("Undo
+  Suggest Less …"). The artist is Apple's primary artist of the song when known, else its
+  artist line; the album row needs the song's album name. Always shown, the gate off too: the
+  mark then stays in DeetsMusic. Home's tiles and the Pinned shelves leave all three out
+  (`noSuggest`): a Hide is never a Suggest Less.
 - A song has no song view, so it never shows "Go to Song". It goes to its artist and album.
 - **Pin pins the song**, wherever the row sits — inside an album view too (fork 3A).
 - **The song that is playing** (Now Playing, the Queue's now hero) has no Play group, and adds

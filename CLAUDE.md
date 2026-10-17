@@ -265,6 +265,12 @@ plays the song); §6 a Library album's real artist from the sync's `include=albu
 (§1), the savings (§3: the explained count, mirror dates in one call, new artists from new songs),
 the Library ⟳'s silent refusal (§4), a song's primary artist from Apple at no extra call (§5,
 his calls P1 A, P2 A). The counter itself is `ops/APPLE-CALLS.md`.
+`speedtest.md` — an idea (2026-10-16): his race car title bar button and a panel of network
+health rows (Internet, Wi-Fi, Apple Music, Stream, AirPlay), mostly from signals the app has
+already (§1: the AirPlay crate's RTT and resends stay in Rust today); §5 his calls (2026-10-16:
+song downloads first, a test file of at most 2 MB that is never stored, Max title bar, the glyph warns).
+§5.2 the probe: Apple's song server hides download sizes from Resource Timing; §5.3 his call: a
+header-only `fetch` wrap reads `Content-Length`; §6 its A/B test on every change.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
@@ -272,12 +278,6 @@ feature, made by a script from the demo; for the guide, a marketing overview, an
 debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins. `marketing.md` — the
 shipped features as a tech spec, with the shot of each, for the intro video; he directs it (§1).
 
-`speedtest.md` — an idea (2026-10-16): his race car title bar button and a panel of network
-health rows (Internet, Wi-Fi, Apple Music, Stream, AirPlay), mostly from signals the app has
-already (§1: the AirPlay crate's RTT and resends stay in Rust today); §5 his calls (2026-10-16:
-song downloads first, a test file of at most 2 MB that is never stored, Max title bar, the glyph warns).
-§5.2 the probe: Apple's song server hides download sizes from Resource Timing; §5.3 his call: a
-header-only `fetch` wrap reads `Content-Length`; §6 its A/B test on every change.
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
   feedback. **Do NOT build throwaway test harnesses, mock pages, or one-off tooling to
