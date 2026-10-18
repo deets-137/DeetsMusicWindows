@@ -275,6 +275,7 @@ pub fn run() {
             enrich::migrate_v19(&conn).expect("v19 migration failed");
             suggest::migrate_v20(&conn).expect("v20 migration failed");
             filter::migrate_v21(&conn).expect("v21 migration failed");
+            playlists::migrate_v22(&conn).expect("v22 migration failed");
             conn
             }));
             let conn = match opened {
@@ -523,6 +524,7 @@ pub fn run() {
             playlists::playlist_import,
             playlists::apple_playlist_add,
             playlists::playlist_delete,
+            playlists::playlist_names,
             playlists::playlist_keep,
             playlists::playlists_expire,
             playlists::playlist_restore,

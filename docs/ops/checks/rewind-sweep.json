@@ -680,7 +680,7 @@
           "wait": 600
         },
         {
-          "probe": "JSON.stringify(window.__mon)",
+          "probe": "JSON.stringify((() => {\n      const m = window.__mon;\n      const mine = (h) => h[1].startsWith(\"c:\");\n      const holds = m.flash.filter((h) => \"c:rewind__board\" && h[1] === \"c:rewind__board\").map((h) => h[0]);\n      const designed = (h) => holds.some((t) => Math.abs(h[0] - t) <= 30) || (/__art/.test(h[1]) && h[2] === 0.3);\n      // The hold's release: the list (visibility) and the rows below the first screen (off the\n      // list's visible part, so not on the wave) come back in one frame, together with the\n      // list. A row ON the first screen waits at 0 for its turn, so it never snaps there.\n      const releases = m.snap.filter((h) => \"c:rewind__board\" && h[1] === \"c:rewind__board\").map((h) => h[0]);\n      const released = (h) => releases.some((t) => Math.abs(h[0] - t) <= 30);\n      // The wave's entrance: each row rises --pop-shift (4 px) as it fades in, within about a\n      // second of the hold. A move of up to `rise` px there is the entrance, not a jitter.\n      const entering = (h) => h[2] <= 5 && holds.some((t) => h[0] >= t && h[0] - t <= 1200);\n      return {\n        flash: m.flash.filter((h) => mine(h) && !designed(h)),\n        snap: m.snap.filter((h) => mine(h) && !released(h)),\n        jitter: m.jitter.filter((h) => mine(h) && !entering(h)),\n        raw: { flash: m.flash.length, snap: m.snap.length, jitter: m.jitter.length, frames: m.frames },\n      };\n    })())",
           "name": "motion: choices",
           "expect": {
             "flash": [],
@@ -764,7 +764,7 @@
           "wait": 600
         },
         {
-          "probe": "JSON.stringify(window.__mon)",
+          "probe": "JSON.stringify((() => {\n      const m = window.__mon;\n      const mine = (h) => h[1].startsWith(\"c:\");\n      const holds = m.flash.filter((h) => \"c:rewind__board\" && h[1] === \"c:rewind__board\").map((h) => h[0]);\n      const designed = (h) => holds.some((t) => Math.abs(h[0] - t) <= 30) || (/__art/.test(h[1]) && h[2] === 0.3);\n      // The hold's release: the list (visibility) and the rows below the first screen (off the\n      // list's visible part, so not on the wave) come back in one frame, together with the\n      // list. A row ON the first screen waits at 0 for its turn, so it never snaps there.\n      const releases = m.snap.filter((h) => \"c:rewind__board\" && h[1] === \"c:rewind__board\").map((h) => h[0]);\n      const released = (h) => releases.some((t) => Math.abs(h[0] - t) <= 30);\n      // The wave's entrance: each row rises --pop-shift (4 px) as it fades in, within about a\n      // second of the hold. A move of up to `rise` px there is the entrance, not a jitter.\n      const entering = (h) => h[2] <= 5 && holds.some((t) => h[0] >= t && h[0] - t <= 1200);\n      return {\n        flash: m.flash.filter((h) => mine(h) && !designed(h)),\n        snap: m.snap.filter((h) => mine(h) && !released(h)),\n        jitter: m.jitter.filter((h) => mine(h) && !entering(h)),\n        raw: { flash: m.flash.length, snap: m.snap.length, jitter: m.jitter.length, frames: m.frames },\n      };\n    })())",
           "name": "motion: song change",
           "expect": {
             "flash": [],
@@ -817,13 +817,25 @@
           "wait": 1200
         },
         {
+          "eval": "document.head.insertAdjacentHTML('beforeend', '<style id=\"sweep-no-hint\">.hint { display: none !important; }</style>')"
+        },
+        {
           "read": "rewind-songs"
+        },
+        {
+          "eval": "document.getElementById('sweep-no-hint')?.remove()"
         },
         {
           "eval": "(async () => { const b = document.querySelector('[data-slot=\"c\"] #rewind-sotd'); if (b && !b.hidden) { b.click(); await new Promise((r) => setTimeout(r, 1800)); } })()"
         },
         {
+          "eval": "document.head.insertAdjacentHTML('beforeend', '<style id=\"sweep-no-hint\">.hint { display: none !important; }</style>')"
+        },
+        {
           "read": "rewind-picks"
+        },
+        {
+          "eval": "document.getElementById('sweep-no-hint')?.remove()"
         },
         {
           "eval": "(async () => { const b = document.querySelector('[data-slot=\"c\"] #rewind-sotd'); if (b?.getAttribute('aria-pressed') === 'true') b.click(); })()"

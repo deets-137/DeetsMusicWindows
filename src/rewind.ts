@@ -18,6 +18,7 @@ import { primaryOf } from "./primary-artist";
 import { playlistsCached } from "./playlists";
 import type { Playlist } from "./search";
 import { allPicks, dayLabel } from "./sotd";
+import { windowStart, dayInWindow, type RewindWindow } from "./rewind-window";
 
 /** Mirrors Rust's `PlayEvent` (library.rs). `msListened: null` = never finalized. */
 export interface PlayEvent {
@@ -29,7 +30,8 @@ export interface PlayEvent {
 }
 
 export type RewindStat = "songs" | "artists" | "albums" | "playlists" | "picks";
-export type RewindWindow = "day" | "week" | "month" | "ytd" | "year";
+export type { RewindWindow };
+export { windowStart };
 
 export const STAT_LABELS: Record<RewindStat, string> = {
   songs: "Songs",
@@ -67,20 +69,12 @@ export interface RewindRow {
    *  Picks view measures nothing, so `ms` and `plays` stay 0 there. */
   meta?: string;
   pickId?: number;
+  /** Playlists only: the playlist no longer exists (its plays stay; nothing to play or drag). */
+  gone?: boolean;
 }
 
-const DAY_MS = 86_400_000;
-
-/** Window start in epoch-ms. Rolling for all but YTD (local Jan 1), per design. */
-export function windowStart(w: RewindWindow, now = Date.now()): number {
-  switch (w) {
-    case "day": return now - DAY_MS;
-    case "week": return now - 7 * DAY_MS;
-    case "month": return now - 30 * DAY_MS;
-    case "year": return now - 365 * DAY_MS;
-    case "ytd": return new Date(new Date(now).getFullYear(), 0, 1).getTime();
-  }
-}
+/** The one row for plays of deleted playlists whose names were never kept (before v22). */
+export const DELETED_KEY = "deleted:";
 
 /** The windowed log, oldest first. Shared with the Home card (home.ts). */
 export const playEventsSince = (sinceTs: number): Promise<PlayEvent[]> =>
@@ -113,12 +107,21 @@ export async function topBy(stat: RewindStat, window: RewindWindow): Promise<Rew
   // window, newest first (R1, owner 2026-09-17).
   if (stat === "picks") return picksIn(window);
   const events = await playEventsSince(windowStart(window));
-  // Playlist names resolve from the cached list (local + Apple mirrors). A tag whose
-  // playlist was since deleted renders as "Unknown Playlist" rather than vanishing.
+  // Playlist names resolve from the cached list (local + Apple mirrors). A playlist deleted
+  // since keeps the name its plays remembered (schema v22: "Name (deleted)", his call
+  // 2026-10-18); plays older than that memory share one "Deleted playlists" row. Nothing
+  // reads "Unknown Playlist" any more (DEETS-REWIND.md §8, F1).
   const playlistNames = new Map<string, string>();
+  let keptNames: Record<string, string> = {};
   if (stat === "playlists") {
-    for (const p of await playlistsCached()) playlistNames.set(pid(p), p.name);
+    const [live, kept] = await Promise.all([
+      playlistsCached(),
+      invoke<Record<string, string>>("playlist_names").catch(() => ({})),
+    ]);
+    for (const p of live) playlistNames.set(pid(p), p.name);
+    keptNames = kept;
   }
+  const gone = new Set<string>();
 
   const groups = new Map<string, Group>();
   for (const e of events) {
@@ -149,7 +152,14 @@ export async function topBy(stat: RewindStat, window: RewindWindow): Promise<Rew
       case "playlists": {
         if (!e.context?.startsWith("playlist:")) continue;
         key = e.context.slice("playlist:".length);
-        title = playlistNames.get(key) ?? "Unknown Playlist";
+        const live = playlistNames.get(key);
+        if (live !== undefined) title = live;
+        else {
+          const kept = keptNames[key];
+          if (kept === undefined) key = DELETED_KEY;
+          title = kept === undefined ? "Deleted playlists" : `${kept} (deleted)`;
+          gone.add(key);
+        }
         break;
       }
     }
@@ -181,7 +191,7 @@ export async function topBy(stat: RewindStat, window: RewindWindow): Promise<Rew
     }
     rows.push({
       key, title: g.title, subtitle: g.subtitle, ms: g.ms, plays: g.plays,
-      track: rep, tracks: [...resolved],
+      track: rep, tracks: [...resolved], gone: gone.has(key) || undefined,
     });
   }
   rows.sort((a, b) => b.ms - a.ms || b.plays - a.plays || a.title.localeCompare(b.title));
@@ -190,9 +200,8 @@ export async function topBy(stat: RewindStat, window: RewindWindow): Promise<Rew
 
 /** The Picks view's rows: every pick whose day falls in the window, newest first. Local. */
 function picksIn(window: RewindWindow): RewindRow[] {
-  const from = windowStart(window);
   return allPicks()
-    .filter((p) => new Date(`${p.day}T12:00:00`).getTime() >= from)
+    .filter((p) => dayInWindow(p.day, window))
     .map((p) => ({
       key: `pick:${p.id}`,
       title: p.meta.title,

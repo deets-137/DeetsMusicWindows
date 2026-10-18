@@ -1523,8 +1523,12 @@ img.art-in { animation: art-in var(--art-in) var(--pop-ease) var(--reveal-d, 0s)
 /* The reveal (reveal.ts, §7.1–7.2): a held body keeps its box and shows nothing; a first-screen
    tile waits at opacity 0 (no drawing) until its turn on the diagonal wave, then enters. */
 [data-reveal-hold] { visibility: hidden; }
-.reveal-pre { opacity: 0; }
-.reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; }
+/* No transition while a tile waits or enters (2026-10-18, DEETS-REWIND.md §8 V1). A row with
+   `transition: opacity` (.qrow) FADED to the wait's 0 instead of starting there: it showed at
+   full as the hold lifted, faded out, then entered: a flash in Rewind and the Queue. `body`
+   lifts the rule over a card sheet loaded after this one. */
+body .reveal-pre { opacity: 0; transition: none; }
+body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .pop, .flyout { transition: none; }
   .pop-enter { animation: none; }

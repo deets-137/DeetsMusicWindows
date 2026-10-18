@@ -1,8 +1,8 @@
 ---
 status: shipped
 shipped_in: 0.4.3
-desk_test: none
-sources: [src/stats.ts, src/player.ts, src-tauri/src/library.rs, src/rewind.ts, src/rewind-card.ts, src/library.ts, src/replay.ts, docs/ops/checks/rewind-sweep.mjs]
+desk_test: open
+sources: [src/stats.ts, src/player.ts, src-tauri/src/library.rs, src/rewind.ts, src/rewind-card.ts, src/library.ts, src/replay.ts, src/rewind-window.ts, src-tauri/src/playlists.rs, docs/ops/checks/rewind-sweep.mjs]
 updated: 2026-10-18
 ---
 # DeetsRewind — listening stats & the data-viz card
@@ -294,7 +294,6 @@ time span (Past Day … Past Year).
 | V1 | At every change of the first or second dropdown the list goes blank for about 40 ms, then the rows that stay show at once, fade out and fade in again one by one (the reveal's wave and the keyed redraw disagree about which rows are new: the lead for the fix, not proven) | the motion monitor (a flash on `rewind__board`, `qnow`, every `qrow` and its art, each switch) and the frame strip of each step | 3×2 | `visual-choices` fails |
 | F2 | The list misses the minutes of the song that just ended until the song after it ends: at a song change the queue changes first, so the list reads the log before the finished song's row is written. Rewind listens to the queue; History listens to the log write (`onPlayEvent`) | confirmed: 70 s listened, the row read "<1 min" 3 s after the skip | 3×1 | `fault-minutes-after-skip` fails |
 | V2 | The hover hint of a row that is gone stays over the blank list during a redraw, then jumps to the row now under the pointer | the frames of `visual-choices` (the hint "Sunshine / Jungle" over the empty list); the monitor's flash on `hint--row` | 2×1 | `visual-choices` fails |
-| V3 | Readability, the card's own: in Press, the minutes and date line (`rewind__meta`, "Wed, Sep 16" on the SOTD list) is under the bar in all five themes (lowest 3.05, bar 4.5); in Moonlight Glass, the row titles are 3.60 | `sweep-read.mjs` over `visual-read`: only Rewind fails these roles in these looks | 2×2 | `visual-read` (read with `sweep-read.mjs`) |
 | F4 | The last song before a close or a crash keeps 0 minutes: the close path sends the final write without waiting | live: 92 plays with no minutes (2.5 %), 51 in the past 30 days | 2×2 | none (a close is not a shot); read the count again after the fix |
 | F3 | A song played again from a new list right after it played counts once, and both listens' minutes go on one play (`recordStart` drops a start with the last start's ID) | confirmed: 1 play, expected 2; live: 4 plays over twice the song's length | 2×1 | `fault-same-song-again` fails |
 | F5 | SOTD, Past Day drops yesterday's pick after midday (a pick's time is noon of its day) | the code (`picksIn`) | 2×1 | a unit test with the fix (K3) |
@@ -318,7 +317,11 @@ song on live).
 - **Readability:** 103 of 1,182 text boxes on the card miss WCAG AA in 14 of 30 looks. 96 are
   shared: `--subtext` (the artist line, the minutes line, "Runners-up") and the title row in
   Glass and Ocean, lowest 2.77, where the same role fails on other cards in the same look. That
-  is HANDOFF's open readability item (Ocean's see-through card, Glass). The other 7 are V3.
+  is HANDOFF's open readability item (Ocean's see-through card, Glass). The other 7 were first
+  filed as a fault (V3), then read in the pictures: each one was a row under the hover hint the
+  test's pointer left up, or the last row in the list's bottom fade. A test artifact, not a
+  fault: the readability step now runs with the hints off (`read` in `sweep-helpers.mjs`), and
+  the run after the fixes has no failure in any of the 30 looks.
 - **The Queue card at a song change:** its top row and runners-up fade out and in (the monitor
   in `visual-song-change`). For the Queue's own sweep: designed or not.
 - **Keyboard picks:** no keyboard-only way to pick rows or use Ctrl+A. The shared `row-pick.ts`.
@@ -330,3 +333,42 @@ song on live).
   start write fails (DB-HEALTH covers the write); Home, SOTD and Rewind reads delaying the play
   writes; Make playlist after the card closes; no menu on an Unknown row (nothing to play); the
   unlock seed's count near 50.
+
+### 8.5 The fixes (2026-10-18)
+
+> **Part:** built · 2026-10-18 · desk test: his
+
+His ask: fix all of them, here, in one sitting (not one at a time, QUALITY-SWEEP.md C4 set
+aside by him for this sweep). His calls for F1 and F4 (2026-10-18): a deleted playlist keeps its
+name; the 575 old plays with no name share one "Deleted playlists" row; minutes saved every 30 s.
+
+| # | The fix | Where | Proof |
+|---|---|---|---|
+| F1 | The weekly Replay keeps its one playlist and replaces its songs (no new ID each week). A play from a playlist keeps the playlist's name in `playlist_names` (schema **v22**), so a deleted one reads "Name (deleted)"; plays from before v22 with no name left share one "Deleted playlists" row. Those rows have no menu and no drag (nothing to play). The migration named the playlists that exist and have plays | `playlists.rs` (`migrate_v22`, `remember_name`, `playlist_names`), `library.rs` (`record_event_start`), `rewind.ts`, `replay.ts`, `rewind-card.ts` | `fault-unknown-playlist` passes; the dev log: `migration: v22 added playlist_names (6 named …)`; new plays named (`local:28`, `local:29`) |
+| V1 | No transition while a row waits for or plays its entrance: `.qrow`'s `transition: opacity` made the wait's 0 a fade-out, so rows showed, faded and entered. One rule for every list on the reveal (the Queue's rows flashed the same way) | `styles.css` (`body .reveal-pre`, `body .reveal-in`) | `visual-choices` passes; the frames show the old list, the hold, the wave, and no row twice |
+| F2 | The list re-reads when a play's row is written (`stats.onPlayEvent`, as History does), not when the queue moves. It also no longer re-reads a year of plays on every queue reorder | `rewind-card.ts` | `fault-minutes-after-skip` passes (1 min shown 3 s after the skip) |
+| V2 | A list going on hold hides the hover hint of a row inside it | `hint.ts` (`hideHintIn`), `reveal.ts` | the frames: the hint leaves with the held list |
+| F4 | The open play's minutes are saved every 30 s of playing, 2 s after the ticks stop (a pause) and when the window hides; the end of the play writes the last value | `stats.ts` (`checkpoint`) | no play without minutes in the dev log since; `rewind-data.mjs` reads the count on live after the release |
+| F3 | A start of the song already playing waits for the next tick: back near the start (more than 1.5 s back, under 3 s in) is a new listen with its own play; a rebuild carries on and changes nothing | `stats.ts` (`sameStart`) | `fault-same-song-again` passes; dev plays 366 and 367 |
+| F5 | A Song of the Day pick is in a time span when any part of its day is (K3). The time spans moved to a pure file with a test | `rewind-window.ts`, `tests/rewind-window.test.ts` | 5 tests pass |
+| F7 | Make playlist is all or nothing: a failure deletes the half-made playlist and the button says "Couldn't make it"; "Nothing to add" is kept for an empty time span or pick | `replay.ts` (`createReplay`, `NothingToAdd`), `rewind-card.ts` | `fault-make-half-fails` passes |
+| F6 | The list re-reads when the window comes back into view, and every 15 minutes while it is in view | `rewind-card.ts` | none (time); read by eye in the desk test |
+| F8 | A playlist row's menu opens only if the view is the same and the row is still in the list; a failed read clears the row's highlight | `rewind-card.ts` | `fault-slow-playlist-menu` passes |
+| K1 | Make playlist with rows picked makes "Replay — <time span>, picked, <date>" from their songs, in the order shown, each song once; the hover hint says what a press makes now | `replay.ts` (`makePickedPlaylist`), `rewind-card.ts`, ONBOARDING.md §1 | desk test |
+| K2 | Rewind shown or hidden by hand before 50 plays (any path: Settings › Cards, the picker's Hide and its Undo, the agent) marks the unlock done | `stats.ts` (watches `hiddenCards`) | desk test |
+
+**What Claude decided inside his calls** (for his look): the button's failure words, "Couldn't
+make it"; the picked playlist's name, "Replay — Past Week, picked, 18 Oct 2026"; the hint texts
+(ONBOARDING.md §1); 15 minutes for F6; F3's rule (1.5 s back, under 3 s); the hold-and-wave hits
+counted as designed by the motion report (`sweep-helpers.mjs`, `motionReport`); Settings ›
+Cards › reset to default shows Rewind once the unlock is marked done, also after a hand choice.
+
+**The desk test (his):**
+1. Rewind › Playlists, Past Year: no "Unknown Playlist"; a "Deleted playlists" row; delete a
+   playlist you have played from and see "Name (deleted)".
+2. Change both dropdowns a few times: the list goes blank for a moment, then the rows come in one
+   after another, none twice. Hover a row first: its hint goes with the list.
+3. Play a song for over a minute, skip: its row reads at least "1 min" within a few seconds.
+4. Play a song, then the same song again from another list: two plays.
+5. Ctrl-click three rows, press Make playlist: a "picked" playlist of their songs under Replay.
+6. Play for a minute, close the app from the tray mid-song, reopen: that play has its minutes.

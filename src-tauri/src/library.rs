@@ -566,7 +566,13 @@ pub async fn record_event_start(catalog_id: Option<String>, library_id: Option<S
                 rusqlite::params![track_id, now_ms, context],
             )
             .map_err(|e| e.to_string())?;
-            conn.last_insert_rowid()
+            let id = conn.last_insert_rowid();
+            // The playlist's name, so its plays keep it after a delete (v22). A failure here
+            // costs only the name: the play itself is written.
+            if let Err(e) = crate::playlists::remember_name(&conn, context.as_deref()) {
+                crate::log::warn(&format!("playlist name not kept: {e}"));
+            }
+            id
         };
         // The profile's "listening now" line (LASTFM.md §5). Returns at once; the call runs apart.
         crate::lastfm::now_playing(&app_db, track_id);

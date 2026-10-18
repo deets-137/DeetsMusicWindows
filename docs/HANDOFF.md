@@ -201,26 +201,6 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
-- **The quality sweep** (2026-10-18, [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md)): every
-  shipped feature stress-tested one at a time, with a visual pass (his call C9). The first sweep,
-  **Rewind**, is done (DEETS-REWIND.md §8; `checks/rewind-sweep.mjs`). Its faults, ranked, each
-  fix its own piece of work with its fault shot as the test (one at a time, C4):
-  1. F1: "Unknown Playlist" rows (72 % of live local-playlist plays).
-  2. V1: the list blanks and its rows flash at every dropdown change.
-  3. F2: a finished song's minutes are one song late.
-  4. V2: a gone row's hover hint stays over the list.
-  5. V3: the minutes and date line under the readability bar in Press; row titles in Moonlight
-     Glass.
-  6. F4: the last song before a close keeps 0 minutes (92 on live).
-  7. F3: the same song again from a new list counts once.
-  8. F5 with K3: SOTD picks at the edge of a time span.
-  9. F7: Make playlist half-made on a failure.
-  10. F6, F8: small.
-
-  His calls to build with them: K1 (Make playlist: picked rows win, else the top 25 with the
-  hint saying so), K2 (the 50-play unlock respects a hand choice), K3. Next sweep: his pick, or
-  the ledger's order (§7).
-
 - **The loading set** (2026-10-16): BUILT 2026-10-17 on `seventheenth`, all five steps, kept as
   a back-pocket tool (his words). guide/LOADING-SET.md §7, §8; how to use it: DEBUGGING.md § The
   loading set. Open: the first `latency.json` is thin (my reloads, n ≈ 5); run
@@ -240,6 +220,16 @@ each step that touches those calls.
   DeetsSupport `9f49f84` and `67b6dc0`, pushed).
 
 ### Built, waiting on a release or a desk test
+
+- **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
+  [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8
+  faults and 2 visual faults (a third, V3, was a test artifact); his ask was to fix all of them in
+  one sitting. Every guard and fault shot in `checks/rewind-sweep.mjs` passes, and so do the
+  motion shots and readability in all 30 looks. **Schema v22** (`playlist_names`). His calls:
+  K1–K3, a deleted playlist keeps its name, one "Deleted playlists" row, saves every 30 s.
+  **Open:** his desk test (DEETS-REWIND.md §8.5) and his look at what Claude decided there. V1's
+  rule (`styles.css`) also changes the Queue's and every revealed list's entrance: watch them.
+  Next sweep: his pick, or the ledger's order (QUALITY-SWEEP.md §7).
 
 - **The Library ⟳'s hint on a refused click** (ideas/apple-calls.md §4, committed `f0d5cfd` on
   `seventheenth`): desk test passed 2026-10-17 (§4.1, Claude's run and his word). **Open:** merge

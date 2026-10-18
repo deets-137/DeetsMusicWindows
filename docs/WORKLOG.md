@@ -12,6 +12,28 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-18, evening — Rewind: every sweep fault fixed
+
+**His ask:** fix all the faults from the Rewind sweep, here (C4's one-at-a-time set aside for
+this). His calls first: a deleted playlist keeps its name (schema v22), one "Deleted playlists"
+row for the 575 old plays with no name, minutes saved every 30 s. The weekly Replay keeps its
+playlist (one option, no fork).
+
+**Built** (DEETS-REWIND.md §8.5, each with its proof): F1 (`playlist_names`, v22; Replay in
+place), V1 (one CSS rule: no transition on a waiting or entering row; it flashed the Queue's rows
+too), F2 (re-read on `onPlayEvent`), V2 (`hideHintIn` at the hold), F4 (30 s checkpoints), F3 (a
+same-song start judged by the next tick), F5 + K3 (`rewind-window.ts`, 5 tests), F7 (all or
+nothing; "Couldn't make it"), F6 (re-read on show and every 15 min), F8, K1 (picked rows make
+the playlist), K2 (a hand choice ends the unlock). V3 was a test artifact: the readability read
+saw rows through a hover hint; `read()` in the helpers now turns hints off.
+
+**Checked:** `npm run check` passes (344 tests, docs, cargo). On the dev app, every guard and
+fault shot passes, the motion shots pass once `motionReport` takes out the reveal's designed
+hold, release, rise and cover fade (the strips read by eye), and readability has no failure in
+30 looks. Plays 366–367 are the same song twice; new plays keep their playlist names. Nothing
+committed. Open: his desk test (§8.5).
+
+
 ## 2026-10-18, later — The live app paused: a license heal
 
 **His question:** why did the live app pause? The log: at 12:40:05 MusicKit raised

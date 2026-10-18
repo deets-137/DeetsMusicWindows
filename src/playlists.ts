@@ -114,7 +114,7 @@ export function playlistAddNewTracks(id: number, tracks: Track[], read?: { apple
 }
 
 /** The local-vs-mirror id seam: local playlists ride a synthetic `local:{rowid}`. */
-const localId = (p: Playlist): number | null => {
+export const localId = (p: Playlist): number | null => {
   const m = /^local:(\d+)$/.exec(p.libraryId ?? "");
   return m ? Number(m[1]) : null;
 };

@@ -224,7 +224,7 @@ nothing about authoring changed when the box did.
 | Hero | cover button | Opens the menu for this cover | collection-card.ts |
 | History | skip mark | You skipped this one (the Next glyph on a song you cut short) | history-card.ts |
 | Song rows (2026-09-17): Search, Playlists (Lines), Queue rows + hero, History rows + hero | the Add-to-Library square (hover) | Add to Library · *In your library* (only with Show ✓ on songs you have on) | add-square.ts |
-| Rewind | Make playlist | A playlist of this window's top songs, filed under Replay | rewind-card.ts (pre-existing) |
+| Rewind (2026-10-18, his call K1) | Make playlist | Your top 25 songs of this time span, filed under Replay · with rows picked: *A playlist of the picked rows' songs, filed under Replay* · on the SOTD list: *A playlist of this time span's Songs of the Day, filed under Replay* | rewind-card.ts |
 | Rewind (2026-09-18) | **SOTD** (header, top right) | The songs you marked, newest first · pressed: *Back to your listening*. `aria-label` *Your Songs of the Day*. Hidden while Song of the Day is off | rewind-card.ts |
 | Rewind (2026-09-18) | the withdraw square on a posted pick (always visible, not on hover) | Takes the Discord post down. Your pick stays. `aria-label` *Withdraw the post* | rewind-card.ts |
 | Settings › Song of the Day (2026-09-18) | Withdraw, on a posted line of the record | Takes the post down. Your pick stays | settings-card.ts |

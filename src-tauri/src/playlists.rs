@@ -504,6 +504,81 @@ pub fn migrate_v17(conn: &Connection) -> Result<(), String> {
     crate::library::meta_set(conn, "schema_version", "17")
 }
 
+/// v22 (2026-10-18): `playlist_names`, the name of each playlist a play came from, keyed like a
+/// play's context (`local:<id>`, or an Apple library playlist's id). A play keeps only the key,
+/// so a playlist deleted or remade later left its plays as "Unknown Playlist" in Rewind (72 % of
+/// the local-playlist plays on live; DEETS-REWIND.md §8, F1). The name is written when a play
+/// from the playlist starts (`remember_name`), so any later deletion keeps it. Additive; the
+/// backfill names every playlist that exists now and has plays. Idempotent.
+pub fn migrate_v22(conn: &Connection) -> Result<(), String> {
+    let had: i64 = conn
+        .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'playlist_names'", [], |r| r.get(0))
+        .map_err(err)?;
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS playlist_names (
+            key     TEXT PRIMARY KEY,
+            name    TEXT NOT NULL,
+            seen_at INTEGER NOT NULL
+        );",
+    )
+    .map_err(|e| format!("create playlist_names: {e}"))?;
+    if had == 0 {
+        let now = now_ms();
+        let n = conn
+            .execute(
+                "INSERT OR IGNORE INTO playlist_names(key, name, seen_at)
+                 SELECT 'local:' || id, name, ?1 FROM local_playlists
+                 WHERE EXISTS (SELECT 1 FROM play_events WHERE context = 'playlist:local:' || local_playlists.id)",
+                [now],
+            )
+            .map_err(err)?
+            + conn
+                .execute(
+                    "INSERT OR IGNORE INTO playlist_names(key, name, seen_at)
+                     SELECT playlist_id, json_extract(json, '$.name'), ?1 FROM apple_playlists
+                     WHERE json_extract(json, '$.name') IS NOT NULL
+                       AND EXISTS (SELECT 1 FROM play_events WHERE context = 'playlist:' || apple_playlists.playlist_id)",
+                    [now],
+                )
+                .map_err(err)?;
+        crate::log::info(&format!("migration: v22 added playlist_names ({n} named from today's playlists)"));
+    }
+    crate::library::meta_set(conn, "schema_version", "22")
+}
+
+/// Keep the name of the playlist a play starts from (v22). `context` is the play's tag; only a
+/// `playlist:` tag names one. The name is the playlist's name now, so a rename is followed.
+pub fn remember_name(conn: &Connection, context: Option<&str>) -> Result<(), String> {
+    let Some(key) = context.and_then(|c| c.strip_prefix("playlist:")) else { return Ok(()) };
+    let name: Option<String> = match key.strip_prefix("local:").and_then(|id| id.parse::<i64>().ok()) {
+        Some(id) => conn.query_row("SELECT name FROM local_playlists WHERE id = ?1", [id], |r| r.get(0)).ok(),
+        None => conn
+            .query_row("SELECT json_extract(json, '$.name') FROM apple_playlists WHERE playlist_id = ?1", [key], |r| r.get(0))
+            .ok()
+            .flatten(),
+    };
+    let Some(name) = name else { return Ok(()) };
+    conn.execute(
+        "INSERT INTO playlist_names(key, name, seen_at) VALUES(?1, ?2, ?3)
+         ON CONFLICT(key) DO UPDATE SET name = excluded.name, seen_at = excluded.seen_at",
+        rusqlite::params![key, name, now_ms()],
+    )
+    .map_err(err)?;
+    Ok(())
+}
+
+/// Every remembered playlist name, by key (v22): Rewind names a deleted playlist's plays with it.
+#[tauri::command]
+pub async fn playlist_names(app: tauri::AppHandle) -> Result<std::collections::HashMap<String, String>, String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut stmt = conn.prepare_cached("SELECT key, name FROM playlist_names").map_err(err)?;
+        let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))).map_err(err)?;
+        rows.collect::<Result<_, _>>().map_err(err)
+    })
+    .await
+}
+
 /// The baseline taken from this Apple copy, or None (never saved, or saved from another copy).
 fn baseline_get(conn: &Connection, id: i64, apple_id: &str) -> Option<Vec<String>> {
     let (from, ids): (String, String) = conn

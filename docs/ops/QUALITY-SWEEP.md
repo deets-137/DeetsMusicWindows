@@ -119,6 +119,11 @@ read, so every sweep also measures those, on the feature's own movements:
   AA (checks/README.md, part 2b). Read per card with `sweep-read.mjs` (C14): it splits the
   card's own failures (faults of this sweep) from a role that fails on other cards in the same
   look (one line to the open readability item).
+- **Designed motion in the report**: `motionReport(name, { only, hold, artFrom, rise })` in the
+  helpers takes out what the reveal is meant to do (a list's hold and release, the wave's 4 px
+  rise, a cover's fade-in from 30 %) and keeps the raw counts in the console file. Everything
+  else fails the shot. Use `read(label)` from the helpers, not a bare `read` step: it turns the
+  hover hints off for the read (seven false failures on Rewind came from a hint left up).
 - **Frames by eye**: the monitor names the part and the time, not what the user sees. Read the
   frame strip of each hit before you call it. Crop the card when the strip is too small to read.
 
@@ -201,7 +206,7 @@ it: mark them `re-sweep` and clear them in the next baseline.
 | CREDITS | | | | | |
 | SOUND · AUDIO-QUALITY | | | | | one Web Audio graph |
 | VINYL | | | | | the spin has its own telemetry (VINYL.md §8) |
-| DEETS-REWIND | 2026-10-18 | 31 | 8 + 3 visual | rewind-sweep.json | the first full sweep: three lenses and the visual pass; DEETS-REWIND.md §8 |
+| DEETS-REWIND | 2026-10-18 | 31 | 8 + 2 visual, all fixed 2026-10-18 | rewind-sweep.json | the first full sweep: three lenses and the visual pass; DEETS-REWIND.md §8; his desk test open |
 | DIARY | | | | | |
 | LOOK-SCHEDULE | | | | | |
 | COMPASS | | | | | |

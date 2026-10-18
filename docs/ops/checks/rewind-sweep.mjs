@@ -16,7 +16,7 @@
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { INV, SLEEP as sleep, save, restore, cardIn, menuPick, PLAY, key, ctrlClick, watch as watchParts, motionReport as report } from "./sweep-helpers.mjs";
+import { INV, SLEEP as sleep, save, restore, cardIn, menuPick, PLAY, key, ctrlClick, watch as watchParts, motionReport as report, read, ALL_LOOKS } from "./sweep-helpers.mjs";
 
 const C = '[data-slot="c"] ';
 const DAY = 86_400_000;
@@ -330,7 +330,7 @@ const shots = [
       { ...key("Escape"), frames: 30 },
       { wait: 300 },
       { ...key("Escape"), frames: 20, region: '[data-slot="c"]' },
-      ...report("choices"),
+      ...report("choices", { only: "c:", hold: "c:rewind__board" }),
     ],
   },
   {
@@ -353,7 +353,7 @@ const shots = [
       { wait: 4000 },
       { eval: "window.__music.skipToNextItem()", frames: 60, region: '[data-slot="c"]' },
       { wait: 4000 },
-      ...report("song change"),
+      ...report("song change", { only: "c:", hold: "c:rewind__board" }),
       { eval: "window.__music.pause()" },
     ],
   },
@@ -361,15 +361,15 @@ const shots = [
     id: "visual-read",
     about: "VISUAL: the readability check on the card (Songs, then the SOTD list) in every theme and skin. Every text box scored against the pixels behind it (WCAG AA, README.md §2b).",
     kind: "shot",
-    looks: [{ theme: "*", skin: "*" }],
+    looks: ALL_LOOKS,
     steps: [
       ...OPEN,
       choose("stat", "Songs"),
       choose("window", "Past Year"),
       { wait: 1200 },
-      { read: "rewind-songs" },
+      ...read("rewind-songs"),
       { eval: `(async () => { const b = document.querySelector('${C}#rewind-sotd'); if (b && !b.hidden) { b.click(); await new Promise((r) => setTimeout(r, 1800)); } })()` },
-      { read: "rewind-picks" },
+      ...read("rewind-picks"),
       { eval: `(async () => { const b = document.querySelector('${C}#rewind-sotd'); if (b?.getAttribute('aria-pressed') === 'true') b.click(); })()` },
     ],
   },

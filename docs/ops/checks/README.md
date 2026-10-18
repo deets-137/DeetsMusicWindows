@@ -101,6 +101,7 @@ same in every run. A hit not in this list is new, and it needs a look at that sh
 | fullplayer-midi (all) | JITTER 4 px on `np__times`, `np__vol` | the rows' `enterRows` rise |
 | surface-mini-to-midi (all) | JITTER ~20 px on `np__center`, back in ~25 ms | not painted: Now Playing's ResizeObserver puts the row right before the paint (the frames show no jump) |
 | boot (all) | no report | the shot reloads the page; read its strip |
+| rewind-sweep `visual-choices` (dev app, 2026-10-18) | FLASH on the list (`rewind__board`) and its rows at each view change; SNAP of the list and its off-screen rows one frame later; JITTER ≤ 4 px on each row; FLASH of a cover to 0.3 | the reveal: the list holds blank while it reloads, then lifts, and the first screen's rows enter on the wave (4 px rise) and covers fade in from `--art-in-from`. `motionReport` in `sweep-helpers.mjs` takes these out; a row that shows, fades and enters again (V1, fixed) still fails |
 
 **Found and fixed with it (2026-10-14):** the full player's rows flashed after the open; the Max close ended with a jump (an empty resting place, then a last sliver)
 (fullscreen-player.md §13); the close square popped in beside the rows' fade; the hover hint

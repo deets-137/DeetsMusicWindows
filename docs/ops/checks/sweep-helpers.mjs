@@ -123,10 +123,53 @@ export const watch = (parts, ms) => [
   { eval: `window.__monExtra = ${JSON.stringify(parts)}; window.__monMs = ${ms}` },
   { probe: MONITOR },
 ];
-export const motionReport = (name) => [
+/** The report, with the assertion of no hit left once the designed motion is taken out:
+ *  - `only`: a part-name prefix (`"c:"`, the slot) — hits on other cards are theirs to judge;
+ *  - `hold`: a list's part name (`"c:rewind__board"`) — the reveal holds that list blank while it
+ *    reloads, then its rows enter on the wave (UX-COVERUPS.md §7.11): a dip that starts within
+ *    30 ms of the list's own dip is that hold, not a flash;
+ *  - `artFrom`: a cover's own fade-in starts at `--art-in-from` (0.3): a dip of an `__art` part
+ *    to exactly that value is the cover arriving;
+ *  - `rise`: the wave's entrance moves each row `--pop-shift` (4 px); a move of up to `rise` px
+ *    within 1.2 s of a hold is that entrance. The hold's release is a one-frame return of the
+ *    list and its off-screen rows, also designed.
+ *  The raw findings stay in the console file (the `raw` field) for the strip review. */
+export const motionReport = (name, { only = "", hold = "", artFrom = 0.3, rise = 5 } = {}) => [
   { wait: 600 },
-  { probe: "JSON.stringify(window.__mon)", name: `motion: ${name}`, expect: { flash: [], snap: [], jitter: [] } },
+  {
+    probe: `JSON.stringify((() => {
+      const m = window.__mon;
+      const mine = (h) => h[1].startsWith(${JSON.stringify(only)});
+      const holds = m.flash.filter((h) => ${JSON.stringify(hold)} && h[1] === ${JSON.stringify(hold)}).map((h) => h[0]);
+      const designed = (h) => holds.some((t) => Math.abs(h[0] - t) <= 30) || (/__art/.test(h[1]) && h[2] === ${artFrom});
+      // The hold's release: the list (visibility) and the rows below the first screen (off the
+      // list's visible part, so not on the wave) come back in one frame, together with the
+      // list. A row ON the first screen waits at 0 for its turn, so it never snaps there.
+      const releases = m.snap.filter((h) => ${JSON.stringify(hold)} && h[1] === ${JSON.stringify(hold)}).map((h) => h[0]);
+      const released = (h) => releases.some((t) => Math.abs(h[0] - t) <= 30);
+      // The wave's entrance: each row rises --pop-shift (4 px) as it fades in, within about a
+      // second of the hold. A move of up to \`rise\` px there is the entrance, not a jitter.
+      const entering = (h) => h[2] <= ${rise} && holds.some((t) => h[0] >= t && h[0] - t <= 1200);
+      return {
+        flash: m.flash.filter((h) => mine(h) && !designed(h)),
+        snap: m.snap.filter((h) => mine(h) && !released(h)),
+        jitter: m.jitter.filter((h) => mine(h) && !entering(h)),
+        raw: { flash: m.flash.length, snap: m.snap.length, jitter: m.jitter.length, frames: m.frames },
+      };
+    })())`,
+    name: `motion: ${name}`,
+    expect: { flash: [], snap: [], jitter: [] },
+  },
 ];
 
 /** Every theme in every skin, for a readability shot (`"looks"`). Read it with sweep-read.mjs. */
 export const ALL_LOOKS = [{ theme: "*", skin: "*" }];
+
+/** A readability read with the hover hints off. A hint left up by the pointer sits over a row,
+ *  and the check scored the row's text through it: seven false failures on the Rewind sweep
+ *  (2026-10-18). The hints come back after the read. */
+export const read = (label) => [
+  { eval: "document.head.insertAdjacentHTML('beforeend', '<style id=\"sweep-no-hint\">.hint { display: none !important; }</style>')" },
+  { read: label },
+  { eval: "document.getElementById('sweep-no-hint')?.remove()" },
+];

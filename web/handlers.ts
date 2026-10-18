@@ -138,6 +138,7 @@ const H: Record<string, Handler> = {
   record_event_end: () => null,
   play_event_count: () => 0,
   play_events_since: () => [],
+  playlist_names: () => ({}),
   play_counts: () => [],
   lastfm_heard: () => false,
   favorites_cached: () => [],

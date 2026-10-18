@@ -10,7 +10,7 @@
 import { setting } from "./settings-store";
 import { topBy, WINDOW_LABELS, type RewindRow, type RewindWindow } from "./rewind";
 import {
-  playlistsCached, playlistCreate, playlistDelete, playlistAddTracks,
+  playlistsCached, playlistCreate, playlistDelete, playlistAddTracks, playlistTracks, playlistRemovePositions, localId,
   foldersList, folderCreate, folderAssign,
 } from "./playlists";
 import type { Track } from "./library";
@@ -20,6 +20,10 @@ import { cancelled, registerEvent } from "./rules";
 import { toast } from "./toast";
 
 export const REPLAY_SIZE = 25;
+
+/** Make playlist found nothing to put in it (an empty window or pick): the user's to see, not a
+ *  failure of the app. The Rewind button tells the two apart. */
+export class NothingToAdd extends Error {}
 const REPLAY_MIN = 5; // a quieter week than this skips (the button never skips)
 const FOLDER = "Replay";
 const ROLLING_NAME = "Replay";
@@ -58,11 +62,20 @@ async function fileUnderReplay(rowid: number): Promise<void> {
   if (p) await folderAssign(p, fid);
 }
 
-/** Create a dated local playlist from `tracks`, filed under Replay. Returns its rowid. */
+/** Create a dated local playlist from `tracks`, filed under Replay. Returns its rowid. All or
+ *  nothing: when adding the songs or filing it fails, the half-made playlist is deleted and the
+ *  error goes on to the caller (DEETS-REWIND.md §8, F7). */
 async function createReplay(name: string, tracks: Track[]): Promise<number> {
   const id = await playlistCreate(name, "replay");
-  await playlistAddTracks(id, tracks);
-  await fileUnderReplay(id);
+  try {
+    await playlistAddTracks(id, tracks);
+    await fileUnderReplay(id);
+  } catch (e) {
+    await playlistDelete({ libraryId: `local:${id}`, name } as Playlist).catch((e2) =>
+      diag.log("replay", `could not undo the half-made "${name}": ${String(e2)}`),
+    );
+    throw e;
+  }
   return id;
 }
 
@@ -73,7 +86,7 @@ async function createReplay(name: string, tracks: Track[]): Promise<number> {
 export async function makeReplayPlaylist(window: RewindWindow): Promise<number> {
   const rows = await topBy("songs", window);
   const tracks = tracksOf(rows, REPLAY_SIZE);
-  if (!tracks.length) throw new Error("nothing played in this window");
+  if (!tracks.length) throw new NothingToAdd("nothing played in this window");
   const name = `Replay — ${WINDOW_LABELS[window]}, ${fmtDate(Date.now())}`;
   const id = await createReplay(name, tracks);
   diag.log("replay", `made "${name}" (${tracks.length} songs)`);
@@ -88,10 +101,24 @@ export async function makeReplayPlaylist(window: RewindWindow): Promise<number> 
 export async function makePicksPlaylist(window: RewindWindow): Promise<number> {
   const rows = await topBy("picks", window);
   const tracks = tracksOf([...rows].reverse(), Number.MAX_SAFE_INTEGER);
-  if (!tracks.length) throw new Error("no picks in this window");
+  if (!tracks.length) throw new NothingToAdd("no picks in this window");
   const name = `Songs of the Day — ${WINDOW_LABELS[window]}, ${fmtDate(Date.now())}`;
   const id = await createReplay(name, tracks);
   diag.log("replay", `made "${name}" (${tracks.length} picks)`);
+  return id;
+}
+
+/**
+ * Make playlist with rows picked on the Rewind card (his call K1, 2026-10-18): the picked rows'
+ * songs in the order shown, each song once, filed under Replay like the others. The window is
+ * in the name so the list says where the picks came from.
+ */
+export async function makePickedPlaylist(window: RewindWindow, picked: Track[]): Promise<number> {
+  const tracks = tracksOf(picked.map((t) => ({ key: "", title: "", ms: 0, plays: 0, track: t, tracks: [t] })), Number.MAX_SAFE_INTEGER);
+  if (!tracks.length) throw new NothingToAdd("the picked rows hold no songs");
+  const name = `Replay — ${WINDOW_LABELS[window]}, picked, ${fmtDate(Date.now())}`;
+  const id = await createReplay(name, tracks);
+  diag.log("replay", `made "${name}" (${tracks.length} picked songs)`);
   return id;
 }
 
@@ -136,13 +163,19 @@ export async function runWeeklyReplay(force = false): Promise<void> {
   if (setting("replayKeep")) {
     await createReplay(`Replay — ${fmtDate(due)}`, tracks);
   } else {
-    // Rolling: drop the previous "Replay" (local, marked replay) and remake it, so the rowid
-    // changes but the name and the folder stay put. The role check keeps a playlist the user
-    // named "Replay" by hand safe.
+    // Rolling: the one "Replay" (local, marked replay) gets this week's songs in place of
+    // last week's. The playlist stays the same one (its ID, pin, folder, place), so its plays
+    // keep counting under one name in Rewind. Deleting and remaking it gave it a new ID each
+    // week and left last week's plays nameless (DEETS-REWIND.md §8, F1). The role check keeps a
+    // playlist the user named "Replay" by hand safe.
     const all = await playlistsCached();
     const old: Playlist | undefined = all.find((p) => p.source === "local" && p.role === "replay" && p.name === ROLLING_NAME);
-    if (old) await playlistDelete(old);
-    await createReplay(ROLLING_NAME, tracks);
+    const id = old ? localId(old) : null;
+    if (old && id != null) {
+      const n = (await playlistTracks(old)).length;
+      if (n) await playlistRemovePositions(old, [...Array(n).keys()]);
+      await playlistAddTracks(id, tracks);
+    } else await createReplay(ROLLING_NAME, tracks);
   }
   try { localStorage.setItem(LAST_RUN_KEY, String(Date.now())); } catch { /* session-only */ }
   diag.log("replay", `weekly made (${tracks.length} songs, keep=${setting("replayKeep")})`);
