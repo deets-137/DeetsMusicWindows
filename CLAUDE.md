@@ -234,6 +234,12 @@ for word, with RELEASE.md's section numbers.
   the data copy and `deetsmusic-beta pull`. Beta-first is PAUSED since 2026-09-24: releases go
   straight to live.
 - `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes.
+- `QUALITY-SWEEP.md` — SOP (2026-10-18): stress-test every shipped feature, one at a time, the
+  way LISTENERS.md §8.11 was: light Sonnet agents list how a user might break it (three lenses:
+  workflow and keyboard; data and timing; neighbors and load), the main session triages each
+  case against the code, scripts the real ones as guards (`checks/<feature>-sweep.json`, every
+  probe with an `expect`) and ranks the faults into HANDOFF. §1 his calls; §7 the ledger; one
+  fix at a time, never a batch.
 - `DESK-TESTS.md` — the open desk tests as one runbook for an agent in its own session: the
   setup, the rules, the list with who can run each (agent / owner), the results table.
 - `checks/README.md` — the archive of re-runnable test scripts (his ask, 2026-10-01): a shots
