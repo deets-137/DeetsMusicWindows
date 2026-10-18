@@ -134,7 +134,9 @@ function adopt(el: Element): void {
     const named = el.hasAttribute("aria-label") || el.hasAttribute("aria-labelledby");
     if (!named && !(el.textContent ?? "").trim()) el.setAttribute("aria-label", text);
   }
-  if (anchor === host && showing) fill(host); // a hint that changed under the pointer (Play → Pause)
+  // A hint that changed under the pointer (Play → Pause, the ⟳'s count): new words, and the
+  // box centred again for its new width.
+  if (anchor === host && showing && fill(host)) place(host, NaN);
 }
 
 function sweep(root: ParentNode): void {
@@ -233,6 +235,19 @@ function show(el: HTMLElement, px: number): void {
   void b.offsetWidth; // the box was display:none — start the fade from 0
   b.classList.add("is-on");
   showing = true;
+}
+
+/** Shows `el`'s written hint now, with no wait, even right after a press. For a click that
+ *  starts nothing and must say why (the Library ⟳ while a sync runs, ideas/apple-calls.md
+ *  §4). It shows when Settings › Hover hints is off too: that setting is about hover, and a
+ *  click must get an answer. It goes as any hint does (the pointer moves off, a scroll, Esc),
+ *  and a `title` write while it is up changes its words (`adopt`). */
+export function showHintNow(el: HTMLElement): void {
+  if (!el.isConnected || !el.dataset.hint) return;
+  hide();
+  anchor = el;
+  pressed = el; // the press that brought it must not take it down on the next pointerover
+  show(el, NaN);
 }
 
 /** Takes the hint down now. For code that opens a menu over a control it just focused

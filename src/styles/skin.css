@@ -547,6 +547,11 @@
   --pop-shift:      var(--space-1); /* how far a panel and a new row travel in */
   --pop-scale:      0.97;           /* a panel's size as it starts to arrive */
   --pop-ease:       cubic-bezier(0.2, 0.8, 0.2, 1); /* fast start, soft stop */
+  /* A click that starts nothing (the Library ⟳ while a sync runs, ideas/apple-calls.md §4):
+     the button dips once and comes back, in the pop family's time and ease. */
+  --nudge-dur:      var(--pop-in);
+  --nudge-ease:     var(--pop-ease);
+  --nudge-scale:    0.86;           /* the dip; an icon square must read it, a panel's 0.97 does not */
   /* settings card (SETTINGS.md) */
   --set-section-gap: var(--space-3);
   --set-row-h:       var(--icon-lg);   /* one consistent row height (matches a panel action) */

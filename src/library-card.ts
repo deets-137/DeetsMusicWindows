@@ -12,7 +12,9 @@
 // Artists group by PARSED credit (artist-credit.ts), so collabs/features land
 // under every credited artist instead of fragmenting into one tile per credit.
 
-import { librarySync, onSyncBusy, onSyncEvent, syncBusy, syncProgress, type Track, type Artwork } from "./library";
+import { librarySync, onSyncBusy, onSyncEvent, onSyncStatus, syncBusy, syncStatus, type Track, type Artwork } from "./library";
+import { syncHint } from "./sync-hint";
+import { showHintNow } from "./hint";
 import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange, noCatalogCopy, addTransientTracks, tracksLoaded } from "./track-store";
 import { materializeTrack } from "./search";
@@ -830,6 +832,12 @@ export const libraryCard: CardDef = {
     // The ⟳ spins while any sync holds the lock, the launch's and the ⟳'s own alike, from
     // the lock to its release (library.ts `onSyncBusy`; a card that mounts mid-sync spins too).
     const unsubBusy = onSyncBusy((b) => refreshBtn?.classList.toggle("is-busy", b));
+    // Its hover hint says what runs and how far (sync-hint.ts); hint.ts takes the new words
+    // while the box is up, so the count moves under a resting pointer.
+    const unsubStatus = onSyncStatus((s) => {
+      const words = syncHint(s);
+      if (refreshBtn && refreshBtn.dataset.hint !== words) refreshBtn.title = words;
+    });
     const syncUnlisten = onSyncEvent((e) => {
       if (e.phase === "done") console.log(`[sync] cached ${e.count}/${e.total} songs`);
       if (e.phase === "error") console.error(`[sync] incomplete (${e.count}/${e.total} cached): ${e.message}`);
@@ -849,8 +857,21 @@ export const libraryCard: CardDef = {
     refreshBtn?.addEventListener("click", () => {
       // A sync runs (the ⟳ spins): Rust would refuse the click, so it does not go out
       // (ideas/apple-calls.md §4). Logged, not a console error: the refusal is expected.
+      // The click shows the hint at once and the ⟳ dips once: the answer sits on the control.
       if (syncBusy()) {
-        diag.log("library:refreshBusy", syncProgress());
+        diag.log("library:refreshBusy", syncStatus());
+        if (refreshBtn) {
+          showHintNow(refreshBtn);
+          refreshBtn.classList.remove("is-nudged");
+          void refreshBtn.offsetWidth; // a second click while it dips starts the dip again
+          refreshBtn.classList.add("is-nudged");
+          const off = (e: AnimationEvent) => {
+            if (e.animationName !== "action-nudge") return; // not the glyph's spin
+            refreshBtn.classList.remove("is-nudged");
+            refreshBtn.removeEventListener("animationend", off);
+          };
+          refreshBtn.addEventListener("animationend", off);
+        }
         return;
       }
       expireArtistInfo();
@@ -872,6 +893,7 @@ export const libraryCard: CardDef = {
         unregisterDrop();
         syncUnlisten.then((un) => un()).catch(() => {});
         unsubBusy();
+        unsubStatus();
         card.destroy();
         host.innerHTML = "";
       },

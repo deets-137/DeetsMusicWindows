@@ -1,7 +1,7 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/shots.mjs, scripts/readability.mjs, docs/ops/checks/readability.mjs, docs/ops/checks/readability-sheet.mjs, scripts/webview-eval.mjs, docs/ops/checks/drop.mjs, docs/ops/checks/smooth.mjs, docs/ops/checks/smooth-monitor.js, docs/ops/checks/mb-support-probe.mjs, docs/ops/checks/lastfm-refresh-probe.mjs, docs/ops/checks/cpu-split.ps1, docs/ops/checks/spin-rate.ps1, docs/ops/checks/page-sample.mjs]
+sources: [scripts/shots.mjs, scripts/readability.mjs, docs/ops/checks/readability.mjs, docs/ops/checks/readability-sheet.mjs, scripts/webview-eval.mjs, docs/ops/checks/drop.mjs, docs/ops/checks/smooth.mjs, docs/ops/checks/smooth-monitor.js, docs/ops/checks/mb-support-probe.mjs, docs/ops/checks/lastfm-refresh-probe.mjs, docs/ops/checks/cpu-split.ps1, docs/ops/checks/spin-rate.ps1, docs/ops/checks/page-sample.mjs, docs/ops/checks/refresh-hint.mjs]
 updated: 2026-10-17
 ---
 # Checks — the archive of re-runnable test scripts
@@ -51,6 +51,7 @@ version apart; `--vs "--token=value"` runs a variant beside the first (SHOTS.md 
 | [song-box-edges.mjs](song-box-edges.mjs) → song-box-edges.json | shots list (dev source), made by a script | The song facts box's 16 edge cases and races: late and failed Last.fm answers, the row off and on, presentation mode's exits, all skins on a grown card, Midi, *Notes from*, patched data (a stub wiki, big counts, long tags), reduced motion. Every probe has an `expect` (SHOTS.md §5i) | [LISTENERS.md §8.11](../../features/LISTENERS.md) | 2026-10-17 |
 | [cpu-split.ps1](cpu-split.ps1) | probe script | The CPU of one app tree over N seconds, split by process type (renderer, GPU, audio, CDM…); 100 = one core. The live app by default, `-Exe` for a dev app | none — any CPU question (WORKLOG 2026-10-17 *CPU hunt*) | 2026-10-17 |
 | [spin-rate.ps1](spin-rate.ps1) | drive script | The Press record's spin at full rate, 120, 60 and 30 fps on the second dev app, the CPU of each; `-Hold 120` / `-Hold full` leaves one spinning for an eye test, `-Hold off` stops it | HANDOFF › Open now, *The record's spin rate* | 2026-10-17 |
+| [refresh-hint.mjs](refresh-hint.mjs) | probe script | The Library ⟳ on a running dev app: one full sync from the ⟳ and three clicks while it spins (the hint at once, the dip, three `library:refreshBusy`, no second sync), the words through a full pass and a launch-type pass, the box taking new words, the dip class cleared. About 45 Apple calls. Exit code = failures | [apple-calls.md §4.1](../../ideas/apple-calls.md) | 2026-10-17 |
 | [page-sample.mjs](page-sample.mjs) | probe script | The page sample on a running dev app (second by default, `--first`): every count present, the six listener sets, no title or id, timers counted and named and cleared back, animation frames, the ring line and `/health`'s `page`, two samples at once, `src/` names in `--built`. Exit code = failures | [DEBUGGING.md § The page sample](../DEBUGGING.md) | 2026-10-17 |
 | [drop.mjs](drop.mjs) | drive script | `net <s>`: the webview offline and the Apple check held out for s seconds, on one CDP socket. `battery on\|off`: the page's `BatteryManager.charging` and a `chargingchange`. Prints the ring lines the drop caused | DESK-TESTS.md §1 (a network drop, held; unplug on a desktop) | 2026-10-01 |
 

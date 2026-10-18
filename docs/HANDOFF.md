@@ -187,8 +187,9 @@ each step that touches those calls.
   (`4f61445`). Claude's two-app desk run passed 11 rows without sound (one Apple ID). Open: his
   desk test with real playback, and the list of what Claude decided (ROOMS.md §21.10).
 
-- **The Library ⟳'s hint on a refused click** (2026-10-15): the spin part is built (Build order
-  step 1); the hint words and the nudge are a draft for him to edit. ideas/apple-calls.md §4.
+- **The Library ⟳'s hint on a refused click** (2026-10-15): the spin shipped in 0.28.0; the hint
+  words and the nudge BUILT 2026-10-17 on `seventheenth` (his OK of the words). Desk test open:
+  ideas/apple-calls.md §4.1; what Claude decided inside his OK is in §4.
 
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.

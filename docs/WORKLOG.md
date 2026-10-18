@@ -12,6 +12,17 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (night) — the Library ⟳'s hint on a refused click
+
+**His ask:** the ⟳'s hint words from ideas/apple-calls.md §4, then the small build. He OK'd the
+words as drafted, without "Already".
+- **Found in the code:** an incremental pass's `fetched` is its new songs, so "1,200 of 4,042"
+  would read "3 of 4,042"; and the lock holds after the last page (the artist pass, the heal).
+  So five states of words, and each `progress` event now carries `kind`.
+- **Built:** `src/sync-hint.ts` + 5 tests, `onSyncStatus` in library.ts, `showHintNow` in
+  hint.ts, the nudge (`--nudge-*` tokens, `.is-nudged`), the ONBOARDING.md §1 row.
+- **Left:** the desk test, apple-calls.md §4.1.
+
 ## 2026-10-17 (evening) — album notes: probed, M1 his, built, desk test passed
 
 **His asks:** leave the vinyl fix to its session; tackle album notes; M1 = A ("a bold name or a

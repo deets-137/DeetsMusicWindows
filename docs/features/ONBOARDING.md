@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: none
 sources: [src/hint.ts, src/walk.ts, src/context-menu.ts, src/styles/hint.css, src/styles/walk.css, scripts/dev-app.mjs]
-updated: 2026-10-12
+updated: 2026-10-17
 ---
 # Onboarding — how the app explains itself
 
@@ -185,7 +185,7 @@ nothing about authoring changed when the box did.
 | Settings › Window | Card on drill | A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot | settings-card.ts |
 | Settings › Window | Bring a card already open | A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits | settings-card.ts |
 | Settings › Window | Keep card places on restart | Opens each card where you left it, also after you restart DeetsMusic | settings-card.ts |
-| Library | Refresh | Reads your library from Apple Music again | library-card.ts |
+| Library | Refresh | Reads your library from Apple Music again · while a sync runs (2026-10-17, ideas/apple-calls.md §4): *Reading your library…* / *Reading your library… 1,200 of 4,042 songs* (a full pass) / *Checking for new songs…* (*… 3 new*, an incremental pass) / *Finishing up your library…* (the artist pass, the heal). A click while it spins shows the hint at once | library-card.ts, sync-hint.ts |
 | Library album or artist level (2026-09-24, FULL-LIB.md) | Full · Lib chips | Shows the whole album or artist from Apple Music · Shows only the songs in your library · when Lib cannot be picked: *None of these songs are in your library* (album) / *No songs by this artist are in your library* (artist) / *Loading…* | collection-card.ts (`paintViews`), media-levels.ts |
 | Library Full view rows (2026-09-24) | the Add-to-Library square | Add to Library · *In your library* (the ✓ shows at rest here, whatever Show ✓ on songs you have says) · an unreleased row: the release hint, as in Search | add-square.ts (`mark`) |
 | A grown album's mark column (2026-10-01, CARD-GROW.md §9b), Lib and Full views | the ♥ square | Add to Favorites (hollow) · Remove from Favorites (filled; in the Full view only while the song is in your library and loved) | add-square.ts (`markCellHTML`) |

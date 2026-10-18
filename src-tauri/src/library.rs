@@ -1361,10 +1361,12 @@ async fn library_sync_run(
     }
     crate::log::info(&format!("library: full sync start ({why})"));
 
+    // `kind` tells the Library ⟳'s hint which words fit: here `fetched` counts every song
+    // read (ideas/apple-calls.md §4).
     let progress = |fetched: usize, total: u32| {
         app.emit(
             "library-sync",
-            serde_json::json!({ "phase": "progress", "fetched": fetched, "total": total }),
+            serde_json::json!({ "phase": "progress", "kind": "full", "fetched": fetched, "total": total }),
         )
         .ok();
     };
@@ -1556,7 +1558,8 @@ async fn sync_incremental(
             (known, page.items.len() - known)
         };
         new_total += fresh as u32;
-        app.emit("library-sync", serde_json::json!({ "phase": "progress", "fetched": new_total, "total": total })).ok();
+        // `fetched` counts the NEW songs only, not the songs read (the ⟳'s hint, §4).
+        app.emit("library-sync", serde_json::json!({ "phase": "progress", "kind": "incremental", "fetched": new_total, "total": total })).ok();
         let next = page.next_offset;
         if known > 0 || next.is_none() || offset + 100 >= total {
             break;
