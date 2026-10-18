@@ -1,0 +1,857 @@
+{
+  "about": "The Rewind card's quality sweep on his LIVE dev app (QUALITY-SWEEP.md; DEETS-REWIND.md § Sweep): guards that pass today and fault shots that fail today until their fix lands. Made by rewind-sweep.mjs; edit that, not this.",
+  "desk_test": "features/DEETS-REWIND.md § Sweep",
+  "made": "2026-10-18",
+  "pass": "Every guard-… shot ok. Each fault-… shot fails today with its EXPECT FAIL line, and passes once its fix lands. Read the snaps of guard-midi-fits and fault-unknown-playlist. The run plays music twice (about 80 s and 12 s).",
+  "run": "node docs/ops/checks/rewind-sweep.mjs && node scripts/shots.mjs --list docs/ops/checks/rewind-sweep.json --noise 80   (dev app running and on screen; it plays music; ask other sessions first)",
+  "shots": [
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "guard-escape-keeps-picks",
+      "about": "Two rows picked, the picked set's right-click menu open, Escape: the menu closes and the picks stay (the menu takes Escape first, in the capture phase).",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "document.querySelector(\"[data-slot=\\\"c\\\"] .qrow[data-idx=\\\"1\\\"]\").dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }))"
+        },
+        {
+          "eval": "document.querySelector(\"[data-slot=\\\"c\\\"] .qrow[data-idx=\\\"2\\\"]\").dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }))"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "rightclick": "[data-slot=\"c\"] .qrow[data-idx=\"1\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"c\"] ';\n  const titles = [...document.querySelectorAll(s + '.qnow__title, ' + s + '.qrow__title')].map((t) => t.textContent);\n  return {\n    stat: document.querySelector(s + '[data-pick=\"stat\"] .lib-pill__label')?.textContent,\n    window: document.querySelector(s + '[data-pick=\"window\"] .lib-pill__label')?.textContent,\n    rows: titles.length,\n    unknown: titles.filter((t) => /^Unknown/.test(t)).length,\n    picked: document.querySelectorAll(s + '[data-picked]').length,\n    menu: !!document.querySelector('.ctx-menu'),\n    held: !!document.querySelector(s + '[data-reveal-hold]'),\n    empty: document.querySelector(s + '.qcard__empty')?.textContent ?? null,\n  };\n})())",
+          "name": "menu open",
+          "expect": {
+            "menu": true,
+            "picked": 2
+          }
+        },
+        {
+          "eval": "document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"c\"] ';\n  const titles = [...document.querySelectorAll(s + '.qnow__title, ' + s + '.qrow__title')].map((t) => t.textContent);\n  return {\n    stat: document.querySelector(s + '[data-pick=\"stat\"] .lib-pill__label')?.textContent,\n    window: document.querySelector(s + '[data-pick=\"window\"] .lib-pill__label')?.textContent,\n    rows: titles.length,\n    unknown: titles.filter((t) => /^Unknown/.test(t)).length,\n    picked: document.querySelectorAll(s + '[data-picked]').length,\n    menu: !!document.querySelector('.ctx-menu'),\n    held: !!document.querySelector(s + '[data-reveal-hold]'),\n    empty: document.querySelector(s + '.qcard__empty')?.textContent ?? null,\n  };\n})())",
+          "name": "after Escape",
+          "expect": {
+            "menu": false,
+            "picked": 2
+          }
+        },
+        {
+          "eval": "document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"c\"] ';\n  const titles = [...document.querySelectorAll(s + '.qnow__title, ' + s + '.qrow__title')].map((t) => t.textContent);\n  return {\n    stat: document.querySelector(s + '[data-pick=\"stat\"] .lib-pill__label')?.textContent,\n    window: document.querySelector(s + '[data-pick=\"window\"] .lib-pill__label')?.textContent,\n    rows: titles.length,\n    unknown: titles.filter((t) => /^Unknown/.test(t)).length,\n    picked: document.querySelectorAll(s + '[data-picked]').length,\n    menu: !!document.querySelector('.ctx-menu'),\n    held: !!document.querySelector(s + '[data-reveal-hold]'),\n    empty: document.querySelector(s + '.qcard__empty')?.textContent ?? null,\n  };\n})())",
+          "name": "second Escape drops the picks",
+          "expect": {
+            "picked": 0
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "guard-fast-choices",
+      "about": "The first dropdown changed three times fast (Albums, Artists, Songs, 30 ms apart): the list settles on Songs, with rows, and is not left on hold.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n          const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n          for (const label of ['Albums', 'Artists', 'Songs']) {\n            document.querySelector('[data-slot=\"c\"] [data-pick=\"stat\"]').click();\n            await sleep(30);\n            [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === label)?.click();\n            await sleep(30);\n          }\n        })()",
+          "frames": 40,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"c\"] ';\n  const titles = [...document.querySelectorAll(s + '.qnow__title, ' + s + '.qrow__title')].map((t) => t.textContent);\n  return {\n    stat: document.querySelector(s + '[data-pick=\"stat\"] .lib-pill__label')?.textContent,\n    window: document.querySelector(s + '[data-pick=\"window\"] .lib-pill__label')?.textContent,\n    rows: titles.length,\n    unknown: titles.filter((t) => /^Unknown/.test(t)).length,\n    picked: document.querySelectorAll(s + '[data-picked]').length,\n    menu: !!document.querySelector('.ctx-menu'),\n    held: !!document.querySelector(s + '[data-reveal-hold]'),\n    empty: document.querySelector(s + '.qcard__empty')?.textContent ?? null,\n  };\n})())",
+          "name": "settled",
+          "expect": {
+            "stat": "Songs",
+            "held": false,
+            "empty": null
+          }
+        },
+        {
+          "probe": "JSON.stringify({ rows: document.querySelectorAll('[data-slot=\"c\"] .qnow, [data-slot=\"c\"] .qrow').length > 1 })",
+          "name": "has rows",
+          "expect": {
+            "rows": true
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "guard-boot-no-unknown",
+      "about": "Albums, Past Year, then a reload: the first list drawn has no more 'Unknown Album' rows than the settled one (no rows drawn before the song store has loaded).",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Albums\");\n    if (!it) throw new Error('no menu item Albums');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "reload": true
+        },
+        {
+          "probe": "(async () => {\n          const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n          const read = () => [...document.querySelectorAll('[data-slot=\"c\"] .qnow__title, [data-slot=\"c\"] .qrow__title')].map((t) => t.textContent);\n          let first = null;\n          for (let k = 0; k < 300 && !first; k++) { const t = read(); if (t.length) first = t; else await sleep(30); }\n          await sleep(4000);\n          const last = read();\n          const unk = (a) => (a ?? []).filter((t) => /^Unknown/.test(t)).length;\n          return JSON.stringify({ drawn: !!first, flash: unk(first) > unk(last), firstUnknown: unk(first), lastUnknown: unk(last) });\n        })()",
+          "name": "first draw",
+          "expect": {
+            "drawn": true,
+            "flash": false
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "midi",
+      "id": "guard-midi-fits",
+      "about": "Midi, the Rewind card in the right slot: the dropdowns and Make playlist stay inside the card.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"right\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"right\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot right');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "snap": "midi"
+        },
+        {
+          "probe": "JSON.stringify((() => {\n          const s = '[data-slot=\"right\"] ';\n          const card = document.querySelector(s + '.rewind')?.getBoundingClientRect();\n          const parts = [...document.querySelectorAll(s + '.rewind__pills > *')].map((e) => e.getBoundingClientRect());\n          return { card: !!card, fits: !!card && parts.every((r) => r.right <= card.right + 1 && r.left >= card.left - 1) };\n        })())",
+          "name": "fits",
+          "expect": {
+            "card": true,
+            "fits": true
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "guard-year-read",
+      "about": "Reading a year of the play log (what Past Year asks for on each song change) stays quick: the median of three reads under 150 ms.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "probe": "(async () => {\n          \n  const since = (ms) => window.__TAURI_INTERNALS__.invoke('play_events_since', { sinceTs: Date.now() - ms });\n  const fmt = (ms) => { const m = Math.round(ms / 60000); if (m < 1) return '<1 min'; if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return r ? h + ' hr ' + r + ' min' : h + ' hr'; };\n\n          const t = [];\n          let n = 0;\n          for (let k = 0; k < 3; k++) { const a = performance.now(); n = (await since(365 * 86400000)).length; t.push(performance.now() - a); }\n          t.sort((x, y) => x - y);\n          return JSON.stringify({ rows: n, medianMs: Math.round(t[1]), fast: t[1] < 150 });\n        })()",
+          "name": "year read",
+          "expect": {
+            "fast": true
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "fault-unknown-playlist",
+      "about": "FAULT F1 (fails today): Playlists, Past Year. A play keeps its playlist's ID; a playlist deleted or remade (the weekly Replay) leaves its plays as 'Unknown Playlist'. Passes when no row reads Unknown.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Playlists\");\n    if (!it) throw new Error('no menu item Playlists');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "snap": "playlists"
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"c\"] ';\n  const titles = [...document.querySelectorAll(s + '.qnow__title, ' + s + '.qrow__title')].map((t) => t.textContent);\n  return {\n    stat: document.querySelector(s + '[data-pick=\"stat\"] .lib-pill__label')?.textContent,\n    window: document.querySelector(s + '[data-pick=\"window\"] .lib-pill__label')?.textContent,\n    rows: titles.length,\n    unknown: titles.filter((t) => /^Unknown/.test(t)).length,\n    picked: document.querySelectorAll(s + '[data-picked]').length,\n    menu: !!document.querySelector('.ctx-menu'),\n    held: !!document.querySelector(s + '[data-reveal-hold]'),\n    empty: document.querySelector(s + '.qcard__empty')?.textContent ?? null,\n  };\n})())",
+          "name": "no unknown playlist",
+          "expect": {
+            "stat": "Playlists",
+            "unknown": 0
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "shot",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "fault-minutes-after-skip",
+      "about": "FAULT F2 (fails today), PLAYS about 80 s: a song not played today is played for 70 s, then skipped, with the list on Past Day. 3 s later its row must read '1 min'. Today the list reads the log before the finished song's minutes are written, and shows '<1 min' until the next song change.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n          \n  const since = (ms) => window.__TAURI_INTERNALS__.invoke('play_events_since', { sinceTs: Date.now() - ms });\n  const fmt = (ms) => { const m = Math.round(ms / 60000); if (m < 1) return '<1 min'; if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return r ? h + ' hr ' + r + ' min' : h + ' hr'; };\n\n          const today = new Set((await since(86400000)).map((e) => e.trackId));\n          const rows = [...document.querySelectorAll('[data-slot=\"c\"] .qrow[data-k]')].filter((r) => !today.has(r.dataset.k));\n          if (rows.length < 2) throw new Error('fewer than two songs not played today');\n          window.__rwSweep = { a: rows[0].dataset.k, b: rows[1].dataset.k };\n          for (const r of rows.slice(0, 2)) r.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));\n        })()"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"c\"] .qrow[data-k=\"' + window.__rwSweep.a + '\"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 600, clientY: 400 }))"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "(() => {\n    const q = document.querySelector('.ctx-menu__quick-btn[data-quick=\"play\"]');\n    const it = q ?? [...document.querySelectorAll('.ctx-menu__item')].find((b) => /^Play (Now|\\d)/.test(b.textContent.trim()));\n    if (!it) throw new Error('no play in the menu: ' + [...document.querySelectorAll('.ctx-menu__item')].map((b) => b.textContent.trim()).join(' | '));\n    it.click();\n  })()"
+        },
+        {
+          "wait": 5000
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Day\");\n    if (!it) throw new Error('no menu item Past Day');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "wait": 70000
+        },
+        {
+          "eval": "window.__music.skipToNextItem()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "probe": "(async () => {\n          \n  const since = (ms) => window.__TAURI_INTERNALS__.invoke('play_events_since', { sinceTs: Date.now() - ms });\n  const fmt = (ms) => { const m = Math.round(ms / 60000); if (m < 1) return '<1 min'; if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return r ? h + ' hr ' + r + ' min' : h + ' hr'; };\n\n          const a = window.__rwSweep.a;\n          const ms = (await since(86400000)).filter((e) => e.trackId === a).reduce((s, e) => s + (e.msListened ?? 0), 0);\n          const row = document.querySelector('[data-slot=\"c\"] .qrow[data-k=\"' + a + '\"]') ?? document.querySelector('[data-slot=\"c\"] .qnow');\n          const shown = row?.querySelector('.rewind__meta')?.textContent ?? null;\n          return JSON.stringify({ logged: fmt(ms), shown, match: !!shown && shown.startsWith(fmt(ms) + ' ') });\n        })()",
+          "name": "the finished song's minutes",
+          "expect": {
+            "logged": "1 min",
+            "match": true
+          }
+        },
+        {
+          "eval": "window.__music.pause()"
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "shot",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "fault-same-song-again",
+      "about": "FAULT F3 (fails today), PLAYS about 12 s: a song is played, then played again from a new list (it and the next row, picked, Play Now). That is two listens, so two plays in the log. Today the second start is dropped as a repeat of the first.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "window.__rwSweep = { t0: Date.now(), a: document.querySelector('[data-slot=\"c\"] .qrow[data-idx=\"1\"]').dataset.k }"
+        },
+        {
+          "rightclick": "[data-slot=\"c\"] .qrow[data-idx=\"1\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "(() => {\n    const q = document.querySelector('.ctx-menu__quick-btn[data-quick=\"play\"]');\n    const it = q ?? [...document.querySelectorAll('.ctx-menu__item')].find((b) => /^Play (Now|\\d)/.test(b.textContent.trim()));\n    if (!it) throw new Error('no play in the menu: ' + [...document.querySelectorAll('.ctx-menu__item')].map((b) => b.textContent.trim()).join(' | '));\n    it.click();\n  })()"
+        },
+        {
+          "wait": 5000
+        },
+        {
+          "eval": "(() => { for (const i of [1, 2]) { const r = [...document.querySelectorAll('[data-slot=\"c\"] .qrow[data-k]')].find((x) => x.dataset.k === window.__rwSweep.a); const rows = [...document.querySelectorAll('[data-slot=\"c\"] .qrow[data-k]')]; const at = rows.indexOf(r); rows[at + i - 1].dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true })); } })()"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"c\"] .qrow[data-k=\"' + window.__rwSweep.a + '\"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 600, clientY: 400 }))"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "(() => {\n    const q = document.querySelector('.ctx-menu__quick-btn[data-quick=\"play\"]');\n    const it = q ?? [...document.querySelectorAll('.ctx-menu__item')].find((b) => /^Play (Now|\\d)/.test(b.textContent.trim()));\n    if (!it) throw new Error('no play in the menu: ' + [...document.querySelectorAll('.ctx-menu__item')].map((b) => b.textContent.trim()).join(' | '));\n    it.click();\n  })()"
+        },
+        {
+          "wait": 5000
+        },
+        {
+          "probe": "(async () => {\n          const ev = await window.__TAURI_INTERNALS__.invoke('play_events_since', { sinceTs: window.__rwSweep.t0 });\n          return JSON.stringify({ plays: ev.filter((e) => e.trackId === window.__rwSweep.a).length });\n        })()",
+          "name": "two plays",
+          "expect": {
+            "plays": 2
+          }
+        },
+        {
+          "eval": "window.__music.pause()"
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "fault-slow-playlist-menu",
+      "about": "FAULT F8 (fails today): Playlists, a right-click while the playlists read is slow (2 s), then Songs from the first dropdown at once. No menu may open afterwards for a row that is gone.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Playlists\");\n    if (!it) throw new Error('no menu item Playlists');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "invoke": {
+            "playlists_cached": {
+              "delay": 2000
+            }
+          }
+        },
+        {
+          "rightclick": "[data-slot=\"c\"] .qnow"
+        },
+        {
+          "wait": 200
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"c\"] ';\n  const titles = [...document.querySelectorAll(s + '.qnow__title, ' + s + '.qrow__title')].map((t) => t.textContent);\n  return {\n    stat: document.querySelector(s + '[data-pick=\"stat\"] .lib-pill__label')?.textContent,\n    window: document.querySelector(s + '[data-pick=\"window\"] .lib-pill__label')?.textContent,\n    rows: titles.length,\n    unknown: titles.filter((t) => /^Unknown/.test(t)).length,\n    picked: document.querySelectorAll(s + '[data-picked]').length,\n    menu: !!document.querySelector('.ctx-menu'),\n    held: !!document.querySelector(s + '[data-reveal-hold]'),\n    empty: document.querySelector(s + '.qcard__empty')?.textContent ?? null,\n  };\n})())",
+          "name": "no late menu",
+          "expect": {
+            "stat": "Songs",
+            "menu": false
+          }
+        },
+        {
+          "eval": "document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))"
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "fault-make-half-fails",
+      "about": "FAULT F7 (fails today): Make playlist while adding the songs fails. No half-made 'Replay —' playlist may stay. The shot deletes any it finds, so it leaves nothing behind.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Week\");\n    if (!it) throw new Error('no menu item Past Week');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => { window.__rwSweep = { before: (await window.__TAURI_INTERNALS__.invoke('playlists_cached')).map((p) => p.libraryId) }; })()"
+        },
+        {
+          "invoke": {
+            "playlist_add_tracks": {
+              "fail": true
+            }
+          }
+        },
+        {
+          "click": "[data-slot=\"c\"] .rewind__make"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "(async () => {\n          const all = await window.__TAURI_INTERNALS__.invoke('playlists_cached');\n          const made = all\n            .filter((p) => /^local:/.test(p.libraryId ?? '') && !window.__rwSweep.before.includes(p.libraryId))\n            .map((p) => Number(p.libraryId.slice(6)));\n          window.__rwSweep.made = made;\n          return JSON.stringify({ leftBehind: made.length, button: document.querySelector('[data-slot=\"c\"] .rewind__make').textContent });\n        })()",
+          "name": "nothing left behind",
+          "expect": {
+            "leftBehind": 0
+          }
+        },
+        {
+          "invoke": "reset"
+        },
+        {
+          "eval": "(async () => { for (const id of window.__rwSweep.made ?? []) await window.__TAURI_INTERNALS__.invoke('playlist_delete', { id }); })()"
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 4,
+      "size": "max",
+      "id": "visual-choices",
+      "about": "VISUAL: the motion monitor over every choice the card offers: the first dropdown through each view, the time span, the SOTD button and back, two rows picked, the menu open and closed. Expect no flash, snap or jitter.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "eval": "window.__monExtra = [\".rewind__pills > *\",\".rewind__board > *\",\".qcard__list > li\",\".qnow\",\".qnow__art\",\".qrow__art\",\"#rewind-sotd\"]; window.__monMs = 30000"
+        },
+        {
+          "probe": "(() => {\n  // The motion monitor (docs/ops/checks/README.md, smooth.mjs). A probe expression for\n  // scripts/shots.mjs, not a module: smooth.mjs reads this file and sends it as the first step\n  // of each shot. Every frame (rAF) for 14 s, for each watched part, it reads the opacity as\n  // painted (its own × its ancestors'; visibility hidden or display none count as 0) and its box.\n  //   flash  — fully shown (≥ 0.98), then under 0.85, then fully shown again within 700 ms.\n  //   snap   — the opacity rises by 0.6 or more in one frame: a fade-in that skips, or a\n  //            fade-out that ends by snapping back (2026-10-14: a flash that runs on from an\n  //            intended hide reads as one long dip, so only the snap shows it).\n  //   jitter — the box moves 3 px or more and comes back within 1 px inside 250 ms.\n  // The findings go to window.__mon; the last step of the shot prints them (\"MON {…}\").\n  // rAF runs before ResizeObserver callbacks, so a layout an observer corrects in the same frame\n  // can read as a jitter that never paints: check the shot's frames before calling one real.\n  const SEL = [\n    \".bento > .panel\", \".bento > .panel > *\", \".panel__body > *\", \".np > *\", \".np__center > *\",\n    \".toast\", \".pop:not([hidden])\", \".ctx-menu\", \".compass\", \".hint\", \".np__art img\", \".panel__title\",\n    // A feature's own parts (QUALITY-SWEEP.md § the visual pass): a step before this one sets\n    // `window.__monExtra` to more selectors, and `window.__monMs` to a longer watch than 14 s.\n    ...(window.__monExtra ?? []),\n  ].join(\",\");\n  const WATCH_MS = window.__monMs ?? 14000;\n  const ids = new WeakMap();\n  let next = 0;\n  const idOf = (e) => (ids.has(e) ? ids.get(e) : (ids.set(e, ++next), next));\n  const name = (e) => {\n    const slot = e.closest(\"[data-slot]\")?.dataset.slot;\n    const c = (e.className && e.className.baseVal === undefined ? e.className : e.tagName).toString().split(\" \").filter((x) => x && !x.startsWith(\"pop-\")).slice(0, 2).join(\".\");\n    return (slot ? slot + \":\" : \"\") + (c || e.tagName.toLowerCase());\n  };\n  const hist = new Map();\n  const out = (window.__mon = { flash: [], jitter: [], snap: [], frames: 0 });\n  const t0 = performance.now();\n  const tick = () => {\n    const now = performance.now() - t0;\n    out.frames++;\n    const cache = new Map();\n    const own = (n) => {\n      if (cache.has(n)) return cache.get(n);\n      const cs = getComputedStyle(n);\n      const v = cs.visibility === \"hidden\" || cs.display === \"none\" ? 0 : parseFloat(cs.opacity);\n      cache.set(n, v);\n      return v;\n    };\n    document.querySelectorAll(SEL).forEach((e) => {\n      const r = e.getBoundingClientRect();\n      if (!r.width || !r.height) return;\n      let o = 1;\n      for (let n = e; n && n !== document.documentElement; n = n.parentElement) o *= own(n);\n      const id = idOf(e);\n      let h = hist.get(id);\n      if (!h) hist.set(id, (h = { name: name(e), full: -1, low: null, x: r.left, y: r.top, moved: null }));\n      if (h.o !== undefined && o - h.o >= 0.6) out.snap.push([Math.round(now), h.name, +h.o.toFixed(2)]);\n      h.o = o;\n      if (o >= 0.98) {\n        if (h.low && now - h.low.t <= 700) out.flash.push([Math.round(h.low.t), h.name, +h.low.o.toFixed(2), Math.round(now - h.low.t)]);\n        h.low = null;\n        h.full = now;\n      } else if (o < 0.85 && h.full >= 0) {\n        if (!h.low || o < h.low.o) h.low = { t: h.low ? h.low.t : now, o };\n      }\n      const dx = r.left - h.x, dy = r.top - h.y;\n      if (h.moved) {\n        if (Math.abs(r.left - h.moved.x) <= 1 && Math.abs(r.top - h.moved.y) <= 1) {\n          if (now - h.moved.t <= 250) out.jitter.push([Math.round(h.moved.t), h.name, Math.round(h.moved.d), Math.round(now - h.moved.t)]);\n          h.moved = null;\n        } else if (now - h.moved.t > 250) h.moved = null;\n      } else if (Math.hypot(dx, dy) >= 3) {\n        h.moved = { t: now, x: h.x, y: h.y, d: Math.hypot(dx, dy) };\n      }\n      h.x = r.left;\n      h.y = r.top;\n    });\n    if (now < WATCH_MS) requestAnimationFrame(tick);\n  };\n  requestAnimationFrame(tick);\n  return \"monitor armed\";\n})()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Albums\");\n    if (!it) throw new Error('no menu item Albums');\n    it.click();\n    await sleep(1500);\n  })()",
+          "frames": 40,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Artists\");\n    if (!it) throw new Error('no menu item Artists');\n    it.click();\n    await sleep(1500);\n  })()",
+          "frames": 40,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Playlists\");\n    if (!it) throw new Error('no menu item Playlists');\n    it.click();\n    await sleep(1500);\n  })()",
+          "frames": 40,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()",
+          "frames": 40,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Month\");\n    if (!it) throw new Error('no menu item Past Month');\n    it.click();\n    await sleep(1500);\n  })()",
+          "frames": 40,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()",
+          "frames": 40,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "eval": "(async () => { const b = document.querySelector('[data-slot=\"c\"] #rewind-sotd'); if (b && !b.hidden) { b.click(); await new Promise((r) => setTimeout(r, 1500)); b.click(); await new Promise((r) => setTimeout(r, 1500)); } })()",
+          "frames": 60,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "eval": "document.querySelector(\"[data-slot=\\\"c\\\"] .qrow[data-idx=\\\"1\\\"]\").dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }))",
+          "frames": 20,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "eval": "document.querySelector(\"[data-slot=\\\"c\\\"] .qrow[data-idx=\\\"2\\\"]\").dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }))",
+          "frames": 20,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "wait": 300
+        },
+        {
+          "rightclick": "[data-slot=\"c\"] .qrow[data-idx=\"1\"]",
+          "frames": 30
+        },
+        {
+          "wait": 600
+        },
+        {
+          "eval": "document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))",
+          "frames": 30
+        },
+        {
+          "wait": 300
+        },
+        {
+          "eval": "document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))",
+          "frames": 20,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "probe": "JSON.stringify(window.__mon)",
+          "name": "motion: choices",
+          "expect": {
+            "flash": [],
+            "snap": [],
+            "jitter": []
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 4,
+      "size": "max",
+      "id": "visual-song-change",
+      "about": "VISUAL, PLAYS about 15 s: the list redraws at a song change (Songs, Past Day). Two skips under the motion monitor. Expect no flash, snap or jitter on the rows.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"c\"] .qrow[data-idx=\"3\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "(() => {\n    const q = document.querySelector('.ctx-menu__quick-btn[data-quick=\"play\"]');\n    const it = q ?? [...document.querySelectorAll('.ctx-menu__item')].find((b) => /^Play (Now|\\d)/.test(b.textContent.trim()));\n    if (!it) throw new Error('no play in the menu: ' + [...document.querySelectorAll('.ctx-menu__item')].map((b) => b.textContent.trim()).join(' | '));\n    it.click();\n  })()"
+        },
+        {
+          "wait": 4000
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Day\");\n    if (!it) throw new Error('no menu item Past Day');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "wait": 1000
+        },
+        {
+          "eval": "window.__monExtra = [\".rewind__pills > *\",\".rewind__board > *\",\".qcard__list > li\",\".qnow\",\".qnow__art\",\".qrow__art\",\"#rewind-sotd\"]; window.__monMs = 14000"
+        },
+        {
+          "probe": "(() => {\n  // The motion monitor (docs/ops/checks/README.md, smooth.mjs). A probe expression for\n  // scripts/shots.mjs, not a module: smooth.mjs reads this file and sends it as the first step\n  // of each shot. Every frame (rAF) for 14 s, for each watched part, it reads the opacity as\n  // painted (its own × its ancestors'; visibility hidden or display none count as 0) and its box.\n  //   flash  — fully shown (≥ 0.98), then under 0.85, then fully shown again within 700 ms.\n  //   snap   — the opacity rises by 0.6 or more in one frame: a fade-in that skips, or a\n  //            fade-out that ends by snapping back (2026-10-14: a flash that runs on from an\n  //            intended hide reads as one long dip, so only the snap shows it).\n  //   jitter — the box moves 3 px or more and comes back within 1 px inside 250 ms.\n  // The findings go to window.__mon; the last step of the shot prints them (\"MON {…}\").\n  // rAF runs before ResizeObserver callbacks, so a layout an observer corrects in the same frame\n  // can read as a jitter that never paints: check the shot's frames before calling one real.\n  const SEL = [\n    \".bento > .panel\", \".bento > .panel > *\", \".panel__body > *\", \".np > *\", \".np__center > *\",\n    \".toast\", \".pop:not([hidden])\", \".ctx-menu\", \".compass\", \".hint\", \".np__art img\", \".panel__title\",\n    // A feature's own parts (QUALITY-SWEEP.md § the visual pass): a step before this one sets\n    // `window.__monExtra` to more selectors, and `window.__monMs` to a longer watch than 14 s.\n    ...(window.__monExtra ?? []),\n  ].join(\",\");\n  const WATCH_MS = window.__monMs ?? 14000;\n  const ids = new WeakMap();\n  let next = 0;\n  const idOf = (e) => (ids.has(e) ? ids.get(e) : (ids.set(e, ++next), next));\n  const name = (e) => {\n    const slot = e.closest(\"[data-slot]\")?.dataset.slot;\n    const c = (e.className && e.className.baseVal === undefined ? e.className : e.tagName).toString().split(\" \").filter((x) => x && !x.startsWith(\"pop-\")).slice(0, 2).join(\".\");\n    return (slot ? slot + \":\" : \"\") + (c || e.tagName.toLowerCase());\n  };\n  const hist = new Map();\n  const out = (window.__mon = { flash: [], jitter: [], snap: [], frames: 0 });\n  const t0 = performance.now();\n  const tick = () => {\n    const now = performance.now() - t0;\n    out.frames++;\n    const cache = new Map();\n    const own = (n) => {\n      if (cache.has(n)) return cache.get(n);\n      const cs = getComputedStyle(n);\n      const v = cs.visibility === \"hidden\" || cs.display === \"none\" ? 0 : parseFloat(cs.opacity);\n      cache.set(n, v);\n      return v;\n    };\n    document.querySelectorAll(SEL).forEach((e) => {\n      const r = e.getBoundingClientRect();\n      if (!r.width || !r.height) return;\n      let o = 1;\n      for (let n = e; n && n !== document.documentElement; n = n.parentElement) o *= own(n);\n      const id = idOf(e);\n      let h = hist.get(id);\n      if (!h) hist.set(id, (h = { name: name(e), full: -1, low: null, x: r.left, y: r.top, moved: null }));\n      if (h.o !== undefined && o - h.o >= 0.6) out.snap.push([Math.round(now), h.name, +h.o.toFixed(2)]);\n      h.o = o;\n      if (o >= 0.98) {\n        if (h.low && now - h.low.t <= 700) out.flash.push([Math.round(h.low.t), h.name, +h.low.o.toFixed(2), Math.round(now - h.low.t)]);\n        h.low = null;\n        h.full = now;\n      } else if (o < 0.85 && h.full >= 0) {\n        if (!h.low || o < h.low.o) h.low = { t: h.low ? h.low.t : now, o };\n      }\n      const dx = r.left - h.x, dy = r.top - h.y;\n      if (h.moved) {\n        if (Math.abs(r.left - h.moved.x) <= 1 && Math.abs(r.top - h.moved.y) <= 1) {\n          if (now - h.moved.t <= 250) out.jitter.push([Math.round(h.moved.t), h.name, Math.round(h.moved.d), Math.round(now - h.moved.t)]);\n          h.moved = null;\n        } else if (now - h.moved.t > 250) h.moved = null;\n      } else if (Math.hypot(dx, dy) >= 3) {\n        h.moved = { t: now, x: h.x, y: h.y, d: Math.hypot(dx, dy) };\n      }\n      h.x = r.left;\n      h.y = r.top;\n    });\n    if (now < WATCH_MS) requestAnimationFrame(tick);\n  };\n  requestAnimationFrame(tick);\n  return \"monitor armed\";\n})()"
+        },
+        {
+          "eval": "window.__music.skipToNextItem()",
+          "frames": 60,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "wait": 4000
+        },
+        {
+          "eval": "window.__music.skipToNextItem()",
+          "frames": 60,
+          "region": "[data-slot=\"c\"]"
+        },
+        {
+          "wait": 4000
+        },
+        {
+          "wait": 600
+        },
+        {
+          "probe": "JSON.stringify(window.__mon)",
+          "name": "motion: song change",
+          "expect": {
+            "flash": [],
+            "snap": [],
+            "jitter": []
+          }
+        },
+        {
+          "eval": "window.__music.pause()"
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "shot",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "visual-read",
+      "about": "VISUAL: the readability check on the card (Songs, then the SOTD list) in every theme and skin. Every text box scored against the pixels behind it (WCAG AA, README.md §2b).",
+      "looks": [
+        {
+          "theme": "*",
+          "skin": "*"
+        }
+      ],
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "eval": "(() => {\n    if (localStorage.getItem(\"shots:rewind-sweep\")) return;\n    const card = (s) => document.querySelector('[data-slot=\"' + s + '\"]')?.dataset.mounted ?? null;\n    localStorage.setItem(\"shots:rewind-sweep\", JSON.stringify({\n      slots: Object.fromEntries([\"c\"].map((s) => [s, card(s)])),\n      local: Object.fromEntries([\"deets.rewind\",\"deets.layout.midi\"].map((k) => [k, localStorage.getItem(k)])),\n    }));\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"c\"] ';\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    if (document.querySelector(s + \".rewind\")) return;\n    document.querySelector(s + '.panel__title').click();\n    await sleep(400);\n    const b = document.querySelector(s + '.flyout__item[data-card-id=\"rewind\"]');\n    if (!b) throw new Error('no rewind in the card menu of slot c');\n    b.click();\n    for (let k = 0; k < 40 && !document.querySelector(s + \".rewind\"); k++) await sleep(100);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"stat\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Songs\");\n    if (!it) throw new Error('no menu item Songs');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "eval": "(async () => {\n    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n    document.querySelector(\"[data-slot=\\\"c\\\"] [data-pick=\\\"window\\\"]\").click();\n    await sleep(250);\n    const it = [...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Past Year\");\n    if (!it) throw new Error('no menu item Past Year');\n    it.click();\n    await sleep(1500);\n  })()"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "read": "rewind-songs"
+        },
+        {
+          "eval": "(async () => { const b = document.querySelector('[data-slot=\"c\"] #rewind-sotd'); if (b && !b.hidden) { b.click(); await new Promise((r) => setTimeout(r, 1800)); } })()"
+        },
+        {
+          "read": "rewind-picks"
+        },
+        {
+          "eval": "(async () => { const b = document.querySelector('[data-slot=\"c\"] #rewind-sotd'); if (b?.getAttribute('aria-pressed') === 'true') b.click(); })()"
+        }
+      ]
+    },
+    {
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "size": "max",
+      "id": "restore",
+      "about": "Puts back what the run changed: the saved slots' cards and the saved localStorage keys.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"c\"] .panel__title"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "eval": "(async () => {\n        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n        const kept = JSON.parse(localStorage.getItem(\"shots:rewind-sweep\") ?? 'null');\n        if (!kept) return;\n        for (const [k, v] of Object.entries(kept.local)) v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v);\n        for (const [s, id] of Object.entries(kept.slots)) {\n          const host = document.querySelector('[data-slot=\"' + s + '\"]');\n          if (!id || !host || host.dataset.mounted === id) continue;\n          host.querySelector('.panel__title')?.click();\n          await sleep(400);\n          host.querySelector('.flyout__item[data-card-id=\"' + id + '\"]')?.click();\n          await sleep(800);\n        }\n        localStorage.removeItem(\"shots:rewind-sweep\");\n      })()"
+        }
+      ]
+    }
+  ]
+}

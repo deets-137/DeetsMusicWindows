@@ -12,6 +12,34 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-18 — The quality sweep starts: Rewind, with a visual pass
+
+**Repo:** `seventheenth` pushed and merged into `main` with the QUALITY-SWEEP.md doc (from
+`claude/quality-sweep-doc`, then deleted). The pre-push check failed on `main` alone: the
+usage-keys test reads `../DeetsSupport`'s copy, which already had seventheenth's keys; the
+merge fixed it. A fresh worktree also needs the gitignored `mcpb/dist/deetsmusic.mcpb` and
+`cli/dist/deetsmusic.exe` for `cargo check` (`npm run cli:build`). New branch `v-thirty`.
+
+**His calls:** F1 → C7 (the guards run in the release check for a big release, his call at
+release time); F2 → C8 (dev-only guards marked and skipped there); C9, a visual pass in every
+sweep (QUALITY-SWEEP.md §3a); Rewind's K1–K3 (DEETS-REWIND.md §8.1). He picked the oldest shipped
+feature to start with.
+
+**Rewind swept** (DEETS-REWIND.md §8): 3 Sonnet agents, 45 scenarios, 31 after duplicates,
+triaged against the code and the live database (read-only). 8 faults and 3 visual faults, 5
+guards; the shared readability failures filed under HANDOFF's open readability item.
+`checks/rewind-sweep.mjs` (14 shots; the fault shots fail until their fix). The motion monitor
+(`smooth-monitor.js`) now takes `window.__monExtra` and `window.__monMs`, so a sweep watches
+its own feature's parts on the dev app. The fixes are in HANDOFF › Decided, not built.
+
+**The process, after his review (his OK to all five, 2026-10-18; QUALITY-SWEEP.md C10–C14):**
+read the live database as a fixed step (`checks/rewind-data.mjs` is the first probe); the visual
+pass kept; shared steps in `checks/sweep-helpers.mjs` (the Rewind list moved onto them, checked
+with a guard and the restore on the dev app); a run order with a warning before music; the
+per-card readability report `checks/sweep-read.mjs`. That report found V3, which the shared
+count had hidden.
+
+
 ## 2026-10-17 (late night) — album counts from songs designed; Diary renamed Album Reviews
 
 **His asks:** doc listening stats summed from a library album's songs, and a row per song in

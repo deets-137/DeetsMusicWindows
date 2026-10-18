@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: none
-sources: [src/stats.ts, src/player.ts, src-tauri/src/library.rs, src/rewind.ts, src/rewind-card.ts, src/library.ts]
-updated: 2026-09-29
+sources: [src/stats.ts, src/player.ts, src-tauri/src/library.rs, src/rewind.ts, src/rewind-card.ts, src/library.ts, src/replay.ts, docs/ops/checks/rewind-sweep.mjs]
+updated: 2026-10-18
 ---
 # DeetsRewind — listening stats & the data-viz card
 
@@ -260,3 +260,73 @@ ships, the deeper the first Rewind.**
 - [FUTURE-SETTINGS.md](../FUTURE-SETTINGS.md) §7 — making the 90% threshold user-configurable.
 - [QUEUE.md](QUEUE.md) — `played` flag & `getRecentlyPlayed()` (session recency vs. our durable `last_played`).
 - [SURFACES-AND-CARDS.md](../architecture/SURFACES-AND-CARDS.md) — the card system the viz mounts into.
+
+---
+
+## 8. Sweep (2026-10-18)
+
+> **Part:** swept · 2026-10-18
+
+The first quality sweep ([QUALITY-SWEEP.md](../ops/QUALITY-SWEEP.md)). Three Sonnet agents
+(workflow and keyboard; data and timing; neighbors and load) gave 45 scenarios, 31 after
+duplicates. Each one was checked against the code and his live database (read-only, 3,660
+plays). Then came the visual pass (QUALITY-SWEEP.md §3a). The guards and the fault shots are
+[ops/checks/rewind-sweep.mjs](../ops/checks/rewind-sweep.mjs) (→ `rewind-sweep.json`, 14 shots,
+dev app).
+
+Terms: **the list** is the ranked rows on the card (the top row large, up to 19 below it). **The
+first dropdown** picks what is ranked (Songs, Artists, Albums, Playlists); **the second** picks the
+time span (Past Day … Past Year).
+
+### 8.1 His calls (2026-10-18)
+
+| | Call |
+|---|---|
+| K1 | **Make playlist: picked rows win.** With rows picked (Ctrl / Shift), the playlist is their songs (a picked album gives all its songs). With none picked, it stays the top 25 songs of the time span, and the button's hover hint says so: "Your top 25 songs of this time span." |
+| K2 | **The 50-play unlock respects a hand choice.** It does nothing when the user has already shown or hidden Rewind by hand in Settings › Cards. |
+| K3 | **SOTD picks in a time span:** a pick is in the span when any part of its day is in it (fixes F5). |
+
+### 8.2 Faults (ranked likelihood × impact; each fix is its own piece of work)
+
+| # | Fault | Evidence | L×I | Shot |
+|---|---|---|---|---|
+| F1 | Playlists view: plays of a playlist that was deleted or remade read "Unknown Playlist". A play keeps the playlist's ID; the weekly Replay deletes and remakes its playlist with a new ID | live: 575 of 804 local-playlist plays (72 %) point to 35 playlists that no longer exist; dev: 4 Unknown rows | 3×2 | `fault-unknown-playlist` fails |
+| V1 | At every change of the first or second dropdown the list goes blank for about 40 ms, then the rows that stay show at once, fade out and fade in again one by one (the reveal's wave and the keyed redraw disagree about which rows are new: the lead for the fix, not proven) | the motion monitor (a flash on `rewind__board`, `qnow`, every `qrow` and its art, each switch) and the frame strip of each step | 3×2 | `visual-choices` fails |
+| F2 | The list misses the minutes of the song that just ended until the song after it ends: at a song change the queue changes first, so the list reads the log before the finished song's row is written. Rewind listens to the queue; History listens to the log write (`onPlayEvent`) | confirmed: 70 s listened, the row read "<1 min" 3 s after the skip | 3×1 | `fault-minutes-after-skip` fails |
+| V2 | The hover hint of a row that is gone stays over the blank list during a redraw, then jumps to the row now under the pointer | the frames of `visual-choices` (the hint "Sunshine / Jungle" over the empty list); the monitor's flash on `hint--row` | 2×1 | `visual-choices` fails |
+| V3 | Readability, the card's own: in Press, the minutes and date line (`rewind__meta`, "Wed, Sep 16" on the SOTD list) is under the bar in all five themes (lowest 3.05, bar 4.5); in Moonlight Glass, the row titles are 3.60 | `sweep-read.mjs` over `visual-read`: only Rewind fails these roles in these looks | 2×2 | `visual-read` (read with `sweep-read.mjs`) |
+| F4 | The last song before a close or a crash keeps 0 minutes: the close path sends the final write without waiting | live: 92 plays with no minutes (2.5 %), 51 in the past 30 days | 2×2 | none (a close is not a shot); read the count again after the fix |
+| F3 | A song played again from a new list right after it played counts once, and both listens' minutes go on one play (`recordStart` drops a start with the last start's ID) | confirmed: 1 play, expected 2; live: 4 plays over twice the song's length | 2×1 | `fault-same-song-again` fails |
+| F5 | SOTD, Past Day drops yesterday's pick after midday (a pick's time is noon of its day) | the code (`picksIn`) | 2×1 | a unit test with the fix (K3) |
+| F7 | Make playlist that fails halfway leaves an empty or unfiled playlist and says "Nothing to add" | confirmed: 1 playlist left behind (the shot deletes it) | 1×2 | `fault-make-half-fails` fails |
+| F6 | A list left open does not move with time (paused overnight; This Year on 1 January) | the code | 1×1 | none |
+| F8 | A slow right-click on a Playlists row opens its menu after the first dropdown has moved on | confirmed: the menu opened after the switch | 1×1 | `fault-slow-playlist-menu` fails |
+
+### 8.3 Guards (pass today)
+
+Escape with a menu open keeps the picked rows (the menu takes Escape first); fast changes of
+the first dropdown settle on the last one, never left on hold; no "Unknown" rows flash at
+launch; the dropdowns and Make playlist fit in Midi; a year of the log (3,660 rows on live)
+reads in well under 150 ms. A song change redraws the list with no flash, snap or jitter on
+Rewind's own parts (`visual-song-change`; its hits are the Queue card's rows and the Now
+Playing cover, see 8.4). Read from the data, no shot: a song under two IDs (0 on live and dev:
+every key is a catalog ID); minutes against song length (completed plays average 1.003× the
+song on live).
+
+### 8.4 Older (not Rewind's own) and drops
+
+- **Readability:** 103 of 1,182 text boxes on the card miss WCAG AA in 14 of 30 looks. 96 are
+  shared: `--subtext` (the artist line, the minutes line, "Runners-up") and the title row in
+  Glass and Ocean, lowest 2.77, where the same role fails on other cards in the same look. That
+  is HANDOFF's open readability item (Ocean's see-through card, Glass). The other 7 are V3.
+- **The Queue card at a song change:** its top row and runners-up fade out and in (the monitor
+  in `visual-song-change`). For the Queue's own sweep: designed or not.
+- **Keyboard picks:** no keyboard-only way to pick rows or use Ctrl+A. The shared `row-pick.ts`.
+- **Drops** (not reachable, or not worth a script): a second Rewind card (a card has one
+  instance); a hidden card still mounted (Hide cards hides from the picker only); a clock set
+  by hand; a new song's first ticks on the old row (the ID check and `loadingContext`); two Make
+  playlist clicks across two cards; the withdraw button after a redraw (the keyed patch); the
+  read cost per song change (small: the year-read guard watches it); a lost scrobble when the
+  start write fails (DB-HEALTH covers the write); Home, SOTD and Rewind reads delaying the play
+  writes; Make playlist after the card closes; no menu on an Unknown row (nothing to play); the
+  unlock seed's count near 50.

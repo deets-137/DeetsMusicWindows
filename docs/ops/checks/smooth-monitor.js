@@ -14,7 +14,11 @@
   const SEL = [
     ".bento > .panel", ".bento > .panel > *", ".panel__body > *", ".np > *", ".np__center > *",
     ".toast", ".pop:not([hidden])", ".ctx-menu", ".compass", ".hint", ".np__art img", ".panel__title",
+    // A feature's own parts (QUALITY-SWEEP.md § the visual pass): a step before this one sets
+    // `window.__monExtra` to more selectors, and `window.__monMs` to a longer watch than 14 s.
+    ...(window.__monExtra ?? []),
   ].join(",");
+  const WATCH_MS = window.__monMs ?? 14000;
   const ids = new WeakMap();
   let next = 0;
   const idOf = (e) => (ids.has(e) ? ids.get(e) : (ids.set(e, ++next), next));
@@ -66,7 +70,7 @@
       h.x = r.left;
       h.y = r.top;
     });
-    if (now < 14000) requestAnimationFrame(tick);
+    if (now < WATCH_MS) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
   return "monitor armed";
