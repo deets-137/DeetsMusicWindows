@@ -287,6 +287,10 @@ already (§1: the AirPlay crate's RTT and resends stay in Rust today); §5 his c
 song downloads first, a test file of at most 2 MB that is never stored, Max title bar, the glyph warns).
 §5.2 the probe: Apple's song server hides download sizes from Resource Timing; §5.3 his call: a
 header-only `fetch` wrap reads `Content-Length`; §6 its A/B test on every change.
+`SpotifyRooms.md` — an idea (2026-10-18): a Spotify user in a room, through their OWN Spotify
+desktop app (a `spotify:` link opens each song; the Windows media session reads the position,
+seeks, pauses); no Spotify key, no Web API, no librespot (§1 why). Odesli maps the Apple song.
+Three probes come first (§6, `ops/checks/spotify-probe.ps1`, he runs it); §7 the forks.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
