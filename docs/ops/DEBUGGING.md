@@ -1,8 +1,8 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/perf-report.mjs, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
-updated: 2026-10-14
+sources: [scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
+updated: 2026-10-17
 ---
 # DeetsMusic — Debugging tools
 
@@ -1200,8 +1200,85 @@ named. Each row now carries:
   and never what it is playing — a title on an unauthenticated route would leak the
   listening. An app built before this change answers `skin` and `theme` only and the rest
   of the line is left out.
-- Only one app can hold a bridge port, so with both apps running the context belongs to
-  whichever bound it first (normally the installed one, which starts at login).
+- Every bridge port is asked, and each answer is filed under the process that holds that port,
+  so with both apps running each row gets its own app's context.
+
+### The page sample — what grows inside the page (built 2026-10-17)
+
+> **Part:** built · 2026-10-17
+
+**Why.** The sampler names the PROCESS that grows (on live after 7.8 h, the paused renderer used
+20–25 % of one core; a fresh app uses 0 %). It cannot say what grows INSIDE the page: no heap,
+DOM, animation, timer or listener count reaches it from the installed app, which has no CDP port.
+
+**His calls (2026-10-17):**
+1. **A dev tool.** It sits behind `TELEMETRY` (`src/telemetry-on.ts`): on in `dev:app` and
+   `dev:app -- --built`, compiled out of every release (`release:check` asserts it). To find the
+   growth, he listens for some hours on the FIRST dev app with `--built` (the second dev app
+   cannot play: Apple refuses its license). `--built` is the honest stand-in for live.
+2. **Both places.** The main window sends each sample to Rust. Rust writes it to the ring as one
+   `page:sample` line, so it sits beside the songs, clicks and drills before it in the log. Rust
+   also keeps the newest one for `/health`, under a `page` key, so the sampler prints it on that
+   app's row with no CDP port. A build without the telemetry has no `page` key.
+3. **At each song start**, not on a clock: growth per song is the question (a paused app does
+   not grow, WORKLOG 2026-10-17 *CPU hunt*). The hook is the play event's start (`stats.ts`,
+   where `stats:event-start` is logged). About 15–20 lines per hour.
+4. **Timers with their source.** No browser API counts timers, so a small wrapper over
+   `setInterval` / `clearInterval`, `setTimeout` / `clearTimeout` and `requestAnimationFrame`,
+   installed first at launch, counts the live ones and files each under the module that made it
+   (one stack read per new timer). Behind `TELEMETRY` only, so the cost never reaches a user.
+
+**One sample holds** (a draft; he edits it):
+- JS heap used and total, MB (`performance.memory`)
+- DOM nodes, `<img>` and `<canvas>` counts
+- Animations: running, paused, finished but still held (`document.getAnimations()`)
+- Timers: live intervals and pending timeouts, each with its top 3 source modules; animation-
+  frame calls in the last 10 s
+- The app's own listener sets (`onSettingsChange`, `onTracksChange`, `onPlayerState`,
+  `onQueueChange`, `onVolumeChange`, …): each set registers itself with the sampler module by
+  name, so the line names a set that only grows
+- Songs played and minutes playing since launch; surface, card count, window visible
+
+**Rules it keeps:** counts only, never a title, artist or id (`/health` is unauthenticated).
+A new log line kind in LOGGING.md. No thread of its own: it runs inside the song-start event.
+The sampler's `dev-page` line (CDP, `webview-eval.mjs` with no flag) reads the first dev app
+whichever app it samples; it must say which app it read, or read the `page` key instead.
+
+**As built (2026-10-17).** Where this disagrees with the design above, this is the code.
+- **`src/page-sample.ts`** (telemetry only): the timer wrapper, the sample, the `__pageSample`
+  handle (`read()` returns one sample; `take()` logs and publishes one, `why: "hand"`). main.ts
+  imports it second, right after boot-prefetch. **The window writes the ring line** (`diag.log`),
+  not Rust; Rust only keeps the newest sample (`page_sample_publish`, `Hub.page` in bridge.rs)
+  and adds it to `/health` as `page`.
+- **`src/page-counts.ts`** (no imports, ships in a release too): the listener-set registry
+  (`watchSet`), the song counts and the song-start hook. A release keeps only these names and
+  counts; nothing reads them there. Registered: `settings`, `player.state`, `player.progress`,
+  `player.volume`, `queue`, `tracks`. Another set joins with one `watchSet("name", set)` line.
+- **`src/source-map-lite.ts`** (pure, `tests/source-map-lite.test.ts`): decodes a chunk's map.
+  vite.config.ts writes hidden maps only when `VITE_PERF=1`.
+- **Song start** = `stats.ts` `startEvent` (one per distinct song, as the play count). A sample
+  still naming its timers when the next one is asked skips that one.
+- **Timer lines** are the 3rd stack frame (the code that called `setTimeout`). A timer made
+  through a shared helper is filed under the helper. A CDP eval shows as `<anonymous>:1`.
+  MusicKit's own timers count too and show their `node_modules/` file (or the CDN script's URL).
+- **The sampler** prints `| page songs=… heap=… dom=… anims=running/paused/finished/held
+  intervals=… timeouts=… raf10s=… sets=… intervalTop=[…] timeoutTop=[…]` on that app's row, and
+  now labels the second dev app (`target-second\`) `dev`. Its CDP line is `dev1-page`.
+- **release-check 5** fails a bundle with `page:sample` in it.
+
+**Desk test (run by Claude 2026-10-17 on the second dev app, `--built`; all passed).**
+`node docs/ops/checks/page-sample.mjs` (`--first` for the first dev app): 14 checks. Every
+listed count is present; the six sets are named; no title or id; 3 intervals made by the check
+count +3 under one line and clear back; a fired timeout and one cleared by the other clear both
+leave the count; 60 animation-frame calls show in `raf10s`; `take()` writes the ring line and
+`/health` answers it; two `take()`s at once write one line; in `--built`, the timer lines are
+`src/` lines through the map (checked by hand: `src/player.ts:152`, `src/presence.ts:288`,
+`src/usage.ts:83`, `src/frames.ts:242`, `src/updater.ts:309` are each a `setInterval` or a
+`setTimeout`). A real song start (`deetsmusic play`) wrote `why: "song"` with `songs: 1`. A plain
+`vite build` has no `.map`, no `page:sample`, no `__pageSample`.
+**His run:** `npm run dev:app -- --built` (the first dev app, so it can play), listen for some
+hours as on live, with `scripts/heaviness-sample.ps1 -Loop 600` running. A count that rises with
+`songs` and not back is the lead: read its `…Top` lines, or the set's name.
 
 ## What the tools cannot yet see — the 2026-09-17 review
 

@@ -224,7 +224,7 @@ export const NULL_ON_PURPOSE = new Set([
   "outlet_connect", "outlet_disconnect", "outlet_set_on",
   "report_clear", "report_close", "report_log", "report_open", "report_refresh", "report_send",
   // The tray panel and the extension hub, Discord presence, Last.fm sign-in
-  "np_publish", "appearance_publish", "presence_clear", "presence_close", "presence_set",
+  "np_publish", "appearance_publish", "page_sample_publish", "presence_clear", "presence_close", "presence_set",
   "lastfm_begin_auth", "lastfm_cancel_auth", "lastfm_disconnect", "lastfm_open_profile",
   // Updates (the site is the update), loudness memory, usage counts (USAGE-COUNTS.md: the app's)
   "update_status", "update_check", "update_download", "update_install", "update_discard", "loudness_forget", "loudness_save",

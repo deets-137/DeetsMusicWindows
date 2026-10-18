@@ -13,6 +13,11 @@ export default defineConfig(async () => ({
 
   // Two pages: the player (index.html) and the tray panel (tray.html, TRAY.md).
   build: {
+    // A `--built` dev app (VITE_PERF=1) writes hidden source maps beside the chunks: the page
+    // sample names a timer's line through them (page-sample.ts). Hidden = no comment in the JS,
+    // so the code is the same bytes. A release (no VITE_PERF) writes none.
+    // @ts-expect-error process is a nodejs global
+    sourcemap: process.env.VITE_PERF === "1" ? "hidden" : false,
     rollupOptions: {
       input: { main: "index.html", tray: "tray.html" },
     },

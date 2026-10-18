@@ -11,6 +11,7 @@
 import { defaultSkin, defaultTheme, resolveSkin, resolveTheme, type SkinName, type ThemeName } from "./look-ids";
 import type { EqPreset } from "./sound-presets";
 import type { Stored } from "./rules-eval";
+import { watchSet } from "./page-counts";
 
 export interface Settings {
   // ── window ──
@@ -779,6 +780,7 @@ function seedOnboarding(stored: Partial<Settings>): void {
 
 let state: Settings = load();
 const listeners = new Set<(changed: keyof Settings) => void>();
+watchSet("settings", listeners); // the page sample reads its size (page-counts.ts)
 
 // ── the rules overlay (docs/architecture/RULES.md §7) ────────────────────────
 // A state rule lays its value on top of yours while its condition holds; it never replaces

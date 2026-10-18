@@ -25,7 +25,11 @@
 # An app older than this change answers skin and theme only, and the rest is left out. No
 # token is read and no title or artist is asked for.
 #
-# Then, if the DEV app answers on its CDP port, the page JS heap, DOM node count and
+# A telemetry build (dev:app, dev:app -- --built) also answers `page` on /health: the page
+# sample taken at its last song start (heap, DOM, animations, timers and where they come from,
+# listener sets, songs played). The row prints it after `| page`.
+#
+# Then, if the FIRST dev app answers on its CDP port, the page JS heap, DOM node count and
 # <img> count (via scripts/webview-eval.mjs) — the leak signal: a heap or DOM that only
 # ever grows across samples while the app is used.
 param([int]$Loop = 0)
@@ -73,6 +77,17 @@ function Get-Context {
     if ($null -ne $h.sound) { $bits += "sound=$(if ($h.sound) { 'on' } else { 'off' })" }
     if ($h.vinyl) { $bits += "vinyl=$($h.vinyl)" }
     if ($null -ne $h.tray) { $bits += "tray=$(if ($h.tray) { 'hidden' } else { 'shown' })" }
+    # The page sample (telemetry builds only, DEBUGGING.md § The page sample): the newest one,
+    # taken at the last song start, so its own `songs` count says how old it is.
+    if ($h.page) {
+      $p = $h.page
+      $a = $p.anims
+      $sets = ($p.sets.PSObject.Properties | ForEach-Object { "$($_.Name):$($_.Value)" }) -join ','
+      $bits += "| page songs=$($p.songs) played=$($p.minPlayed)min heap=$($p.heapMB)MB dom=$($p.dom) imgs=$($p.imgs) canvas=$($p.canvases)"
+      $bits += "anims=$($a.running)/$($a.paused)/$($a.finished)/$($a.held) intervals=$($p.intervals) timeouts=$($p.timeouts) raf10s=$($p.raf10s) sets=$sets"
+      if ($p.intervalTop) { $bits += "intervalTop=[$($p.intervalTop -join '; ')]" }
+      if ($p.timeoutTop) { $bits += "timeoutTop=[$($p.timeoutTop -join '; ')]" }
+    }
     if ($owner) { $out[[int]$owner] = ($bits -join ' ') }
   }
   return $out
@@ -101,7 +116,8 @@ function Sample-Once {
     $kids = @($tree.Keys | Where-Object { $tree[$_] -eq $rootId })
     if ($kids.Count -lt 3) { continue }
     $rootProc = Get-Process -Id $rootId -ErrorAction SilentlyContinue
-    $label = if ($rootProc -and ($rootProc.Path -match '\\target\\')) { 'dev' } else { 'installed' }
+    # `target\` or the second dev app's `target-second\` (dev-app.mjs --second).
+    $label = if ($rootProc -and ($rootProc.Path -match '\\target[^\\]*\\')) { 'dev' } else { 'installed' }
     $ws = 0.0; $cpu = 0.0; $ren = 0.0; $gpu = 0.0; $up = 0
     $bw = @{}; $bc = @{}; $bn = @{}
     foreach ($id in $kids) {
@@ -131,7 +147,9 @@ function Sample-Once {
   }
   $evalJs = "(() => { const m = performance.memory; return 'heap=' + (m.usedJSHeapSize/1048576).toFixed(1) + 'MB dom=' + document.getElementsByTagName('*').length + ' imgs=' + document.images.length + ' up=' + (performance.now()/60000).toFixed(0) + 'min'; })()"
   $page = & node (Join-Path $PSScriptRoot "webview-eval.mjs") $evalJs 2>$null
-  if ($LASTEXITCODE -eq 0 -and $page) { $lines += "$stamp dev-page $($page -replace '"','')" }
+  # webview-eval.mjs with no flag reads the FIRST dev app's CDP port, whichever app the rows
+  # above sampled, so the line says so. The `| page` part of a row is that row's own app.
+  if ($LASTEXITCODE -eq 0 -and $page) { $lines += "$stamp dev1-page (first dev app, CDP) $($page -replace '"','')" }
   return $lines
 }
 

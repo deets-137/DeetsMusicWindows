@@ -1,6 +1,9 @@
 // FIRST: the launch reads leave before any other module's calls, so the library is the
 // database thread's first job (boot-prefetch.ts, DEBUGGING.md §Launch).
 import "./boot-prefetch";
+// SECOND, in telemetry builds: it wraps the timer functions, so it must load before any module
+// can start a timer (page-sample.ts; DEBUGGING.md § The page sample). It makes no call.
+import "./page-sample";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { type ThemeName, syncWindowBackground } from "./theme";
 import { initLook, pickLook } from "./look";

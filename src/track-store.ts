@@ -14,6 +14,7 @@ import * as diag from "./diag";
 import { launchMark } from "./launch-perf";
 import { takeBootRead } from "./boot-prefetch";
 import { loadPrimaries, loadSongArtists } from "./primary-artist";
+import { watchSet } from "./page-counts";
 
 let all: Track[] = [];
 let byId = new Map<string, Track>();
@@ -22,6 +23,7 @@ let byId = new Map<string, Track>();
 export type TracksChange = "library" | "transient";
 // cb → label; the label names the subscriber in the dev perf spans (perf.ts).
 const listeners = new Map<(why: TracksChange) => void, string>();
+watchSet("tracks", listeners); // the page sample reads its size (page-counts.ts)
 function notify(why: TracksChange): void {
   listeners.forEach((label, cb) => perf.span(label, () => cb(why)));
 }

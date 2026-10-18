@@ -135,7 +135,8 @@ pub struct Appearance {
     pub surface: String,
     /// Advanced EQ / DeetsAdaptiveSound is routing audio (SOUND.md).
     pub sound: bool,
-    /// Press "Record player": "off" | "spin" | "plate" — whatever `data-press-vinyl` holds.
+    /// Press "Record player": "spin" | "still" | "off" — whatever `data-press-vinyl` holds.
+    /// np-bus.ts publishes it at launch and on every `pressVinyl` change (since 2026-10-17).
     pub vinyl: String,
 }
 
@@ -144,6 +145,16 @@ pub struct Hub {
     pub np: Mutex<NpState>,
     pub appearance: Mutex<Appearance>,
     pub port: Mutex<Option<u16>>,
+    /// The newest page sample (DEBUGGING.md § The page sample): counts only, sent at each song
+    /// start by a telemetry build's page-sample.ts. A release never sends one, so it stays None
+    /// and `/health` has no `page` key.
+    pub page: Mutex<Option<serde_json::Value>>,
+}
+
+/// page-sample.ts: keep the newest sample for `/health`. No I/O, so it may stay sync.
+#[tauri::command]
+pub fn page_sample_publish(sample: serde_json::Value, hub: tauri::State<'_, Hub>) {
+    *hub.page.lock_or_recover() = Some(sample);
 }
 
 #[tauri::command]
@@ -739,18 +750,18 @@ async fn handle(app: AppHandle, mut req: Request) {
                 .and_then(|w| w.is_visible().ok())
                 .map(|v| !v)
                 .unwrap_or(false);
-            json(
-                req,
-                200,
-                serde_json::json!({
-                    "ok": true, "app": crate::beta::app_name(), "version": env!("CARGO_PKG_VERSION"),
-                    "connected": connected, "paired": paired, "theme": a.theme, "skin": a.skin,
-                    "agent": settings.agent_control,
-                    "surface": a.surface, "sound": a.sound, "vinyl": a.vinyl,
-                    "playing": playing, "airplay": air, "tray": hidden,
-                }),
-                origin,
-            )
+            let mut body = serde_json::json!({
+                "ok": true, "app": crate::beta::app_name(), "version": env!("CARGO_PKG_VERSION"),
+                "connected": connected, "paired": paired, "theme": a.theme, "skin": a.skin,
+                "agent": settings.agent_control,
+                "surface": a.surface, "sound": a.sound, "vinyl": a.vinyl,
+                "playing": playing, "airplay": air, "tray": hidden,
+            });
+            // Telemetry builds only: the newest page sample, counts only (DEBUGGING.md § The page sample).
+            if let Some(page) = app.state::<Hub>().page.lock_or_recover().clone() {
+                body["page"] = page;
+            }
+            json(req, 200, body, origin)
         }
         (_, "/health") => json(req, 405, serde_json::json!({ "error": "method" }), origin),
         _ if !paired => json(req, 401, serde_json::json!({ "error": "unpaired" }), origin),
