@@ -42,6 +42,10 @@ timing, document the stall lines, leave the switch timing out.
 - **Pushed (his OK):** DeetsAirplay `bafd19f..44ac6bb`; the `rev` bumped, the `[patch]` file
   deleted, `Cargo.lock` on the pushed rev. `npm run check` passes (333 TS tests, 99 Rust tests).
   Not run: the §13.2b desk test.
+- **Optimization items documented (his call, from a side session's thread count of live 0.29.0
+  paused: 37 Rust threads, only `main` working, 9.6 wakes/s):** four items in his order in
+  HANDOFF › Open now (the growing paused floor first, then `main`'s wakes, the canary thread's
+  name, the threads that only sleep, merged with the old line), and what not to do. No code.
 
 ## 2026-10-17 (night, later) — the ⟳ hint passed; the spin-rate eye test
 

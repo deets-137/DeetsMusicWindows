@@ -147,25 +147,44 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   desk test). His desk test runs on live: IDENTITY.md §9.2 (the taskbar at 100 / 125 / 150 %, a
   new pin, the tray, the media flyout, the next update, an uninstall on the Beta). The spike's
   files are in the worktree `../DeetsMusic-identity` (branch `identity-spike`).
-- **CPU on live, the sampler run (his ask, 2026-10-17):** the morning run did not happen (the
-  samples log stopped on 2026-09-27). It started at 15:08 on 2026-10-17 in a Terminal tab
-  (`scripts/heaviness-sample.ps1 -Loop 600`, into `scripts/heaviness-samples.log`); its first
-  sample, 26 min after launch, playing, record still: 37.6 % CPU, renderer 17.5 %, GPU 16.7 %.
-  It must answer two questions. 1. After 7.8 h on 0.29.0, the paused renderer used 20–25 % of
-  one core, but a fresh app uses 0 % paused, even after 40 skips. What grows while music plays?
-  2. Does the spin cost grow over the hours? The method, the numbers and the session prompt are
-  in WORKLOG 2026-10-17 *CPU hunt*. Memory is good: a 308 MB private working set.
-- **Spin FPS (VINYL.md §12): BUILT 2026-10-17 on `seventheenth`, not committed.** His calls: a
-  120 FPS cap by default after a blind test, and a Settings › Skin settings row *Spin FPS*
-  (60 · 120 · 144 · 240). `display.rs` (the monitor's rate), `display-hz.ts`, `spin-steps.ts`
-  (+ tests), vinyl.ts, the flight copy. `ops/checks/spin-fps.mjs` passes 7 of 7 with sound on
-  a dev app he started (§12, Claude's run). **Open:** his eye on it, rows 4–6 of §12 (another
-  monitor, the tray disc, the flight, the CPU split), a commit.
+- **Optimization, in his order (his call, 2026-10-17).** The measurement, from a side session on
+  live 0.29.0, paused, 20 s: the Rust process has 37 threads (main, watchdog, 16
+  `tokio-rt-worker` (one per logical core), db, deets-bridge, audio-out, apple-calls,
+  airplay-np, presence, 2 WebView2 host threads (EBWorkerThread, MojoThread), and 11 unnamed
+  Windows threads: thread pool, COM, tray, the dbhealth canary). Only `main` works at rest: 9.6
+  wakes/s, 15.6 ms of CPU in 20 s (about 0.08 % of a core); the watchdog wakes 0.6 /s; every
+  other thread slept. The other 211 of the app's 248 threads are WebView2's (GPU process 83,
+  browser 45, renderer 32, services 51).
+  1. **The paused CPU floor that grows over hours: the top item.** After 7.8 h on 0.29.0 the
+     paused renderer used 20–25 % of one core; a fresh app uses 0 % paused, even after 40 skips.
+     Find what grows with the page sample (DEBUGGING.md § The page sample). The sampler run that
+     started this (his ask): it started at 15:08 on 2026-10-17 in a Terminal tab
+     (`scripts/heaviness-sample.ps1 -Loop 600`, into `scripts/heaviness-samples.log`; the
+     morning run did not happen, the log had stopped on 2026-09-27); its first sample, 26 min
+     after launch, playing, record still: 37.6 % CPU, renderer 17.5 %, GPU 16.7 %. It also asks
+     whether the spin cost grows over the hours. The method and the numbers: WORKLOG 2026-10-17
+     *CPU hunt*. Memory is good: a 308 MB private working set.
+  2. **What wakes `main` 9.6 times a second while paused.** Run the dev command recorder
+     (`src/ipc-timing.ts`) on a paused dev app to name the callers; fix only a caller that has no
+     reason to run while paused. Can ride along with item 1.
+  3. **Name the dbhealth thread** (`Builder::name`, for example `db-canary`): the only long-lived
+     thread of ours with no name. Update its row in the DEBUGGING.md § Threads ledger.
+  4. **Threads that only sleep:** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` become Tokio
+     timers (DEBUGGING.md § Threads).
+
+  **Not to do:** fewer Tokio workers (an idle worker costs no CPU, and one blocking task holds
+  more of a smaller pool); the watchdog's wakes (the price of freeze detection); WebView2's
+  threads (not ours).
+- **Spin FPS (VINYL.md §12): BUILT 2026-10-17, committed `005955e` on `seventheenth`.** His
+  calls: a 120 FPS cap by default after a blind test, and a Settings › Skin settings row *Spin
+  FPS* (60 · 120 · 144 · 240). `display.rs` (the monitor's rate), `display-hz.ts`,
+  `spin-steps.ts` (+ tests), vinyl.ts, the flight copy. `ops/checks/spin-fps.mjs` passes 7 of 7
+  with sound on a dev app he started (§12, Claude's run). **Open:** his eye on it, rows 4–6 of
+  §12 (another monitor, the tray disc, the flight, the CPU split). `pressVinylFps` joined the
+  usage allow-list; the DeetsSupport copy waits for his deploy with Suggest Less's.
 - **A dev app Claude starts cannot play (since 2026-10-16):** Apple refuses Widevine inside the
   Claude package (-42585 / -1021); his own launch plays. Sound tests run on his launch.
   DEBUGGING.md § Sign-in. Why it began on 2026-10-16 is not known.
-  `pressVinylFps` joined the usage allow-list; the DeetsSupport copy waits for his deploy with
-  Suggest Less's.
 
 ### Build order (recommended 2026-10-15, for his next sessions)
 
@@ -312,8 +331,6 @@ each step that touches those calls.
   the end of a song. Not designed.
 - **Rewind has no card memory:** it opens at the top after a swap or a restart; the one gap
   in the card-systems table (SURFACES-AND-CARDS.md §5). Close it or leave it.
-- **Threads that only sleep:** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` could be Tokio
-  timers (DEBUGGING.md § Threads).
 - **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;
   ask him what is wrong first); Song of the Day "in the sidebar" (ask which sidebar first).
 - **AirPlay tracking (AIRPLAY.md §13.2a–b, his calls 2026-10-17):** `sound:switch` and the
