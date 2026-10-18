@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.1
 desk_test: passed 2026-10-11
 sources: [src/full-player.ts, src/full-player-layout.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-14
+updated: 2026-10-18
 ---
 # Full player — grow the Now Playing card
 
@@ -294,9 +294,13 @@ While one card is grown, only that card's strips act.
 | Max | right | the gap between the stage and the four cards | see 10.3 | **the Fill strips of `left` and `c`** (the whole gap) |
 
 When full, the same rules give the close strips: Midi top (12 px) and bottom (the window
-edge, 7 px); Max left (the gap beside the Queue column, 12 px, the Queue's side of it is
-dead) and right (the window edge, 7 px). Each grows or closes Now Playing; the side you click
-does not change the result (Midi grows down, Max opens over the four cards).
+edge, 7 px); Max all four sides (his ask, 2026-10-18; before it, left and right only): left
+(the gap beside the left column, 12 px, the column's side of it is dead), right (the window
+edge, 7 px; the gap beside the side column, 12 px, while it shows), top (the padding under
+the title bar, 12 px) and bottom (the window edge, 7 px). Stacked in Max (a tall window):
+top and bottom (the gap over the cards) at 12 px, left and right at the window edge, 7 px;
+stacked in Midi keeps top and bottom only. Each grows or closes Now Playing; the side you
+click does not change the result (Midi grows down, Max opens over the four cards).
 
 Rules that follow from the existing ones (not forks): the bar shape is the skin's own
 `--grow-zone-bar-*`; while another card is grown, Now Playing's strips are hidden (changed
