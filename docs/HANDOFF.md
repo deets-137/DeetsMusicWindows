@@ -155,12 +155,17 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   one core, but a fresh app uses 0 % paused, even after 40 skips. What grows while music plays?
   2. Does the spin cost grow over the hours? The method, the numbers and the session prompt are
   in WORKLOG 2026-10-17 *CPU hunt*. Memory is good: a 308 MB private working set.
-- **The record's spin rate (his fork, open):** the Press record redraws at the display's full
-  rate, 240 Hz on both of his monitors. The cost is per frame, about 1.2 ms of CPU across the GPU,
-  Viz and Compositor threads. A simpler disc saves almost nothing, and a 60 fps step cuts the cost
-  to about ⅓. He likes the smooth spin. Next (his plan, the morning of 2026-10-17): he compares a
-  120 fps record and a full-rate record by eye on a dev app, then picks a 120 fps cap or the full
-  rate. The choices and the eye-test prompt are in WORKLOG 2026-10-17 *CPU hunt*. Not built.
+- **Spin FPS (VINYL.md §12): BUILT 2026-10-17 on `seventheenth`, not committed.** His calls: a
+  120 FPS cap by default after a blind test, and a Settings › Skin settings row *Spin FPS*
+  (60 · 120 · 144 · 240). `display.rs` (the monitor's rate), `display-hz.ts`, `spin-steps.ts`
+  (+ tests), vinyl.ts, the flight copy. `ops/checks/spin-fps.mjs` passes 7 of 7 with sound on
+  a dev app he started (§12, Claude's run). **Open:** his eye on it, rows 4–6 of §12 (another
+  monitor, the tray disc, the flight, the CPU split), a commit.
+- **A dev app Claude starts cannot play (since 2026-10-16):** Apple refuses Widevine inside the
+  Claude package (-42585 / -1021); his own launch plays. Sound tests run on his launch.
+  DEBUGGING.md § Sign-in. Why it began on 2026-10-16 is not known.
+  `pressVinylFps` joined the usage allow-list; the DeetsSupport copy waits for his deploy with
+  Suggest Less's.
 
 ### Build order (recommended 2026-10-15, for his next sessions)
 
@@ -190,10 +195,6 @@ each step that touches those calls.
   (`4f61445`). Claude's two-app desk run passed 11 rows without sound (one Apple ID). Open: his
   desk test with real playback, and the list of what Claude decided (ROOMS.md §21.10).
 
-- **The Library ⟳'s hint on a refused click** (2026-10-15): the spin shipped in 0.28.0; the hint
-  words and the nudge BUILT 2026-10-17 on `seventheenth` (his OK of the words). Desk test open:
-  ideas/apple-calls.md §4.1; what Claude decided inside his OK is in §4.
-
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
@@ -202,6 +203,10 @@ each step that touches those calls.
   (`src/usage-keys.js` there has uncommitted edits, 2026-10-17).
 
 ### Built, waiting on a release or a desk test
+
+- **The Library ⟳'s hint on a refused click** (ideas/apple-calls.md §4, committed `f0d5cfd` on
+  `seventheenth`): desk test passed 2026-10-17 (§4.1, Claude's run and his word). **Open:** merge
+  into `main`, then a release.
 
 - **Album notes** (features/album-notes.md, 2026-10-17, committed on `main`): built, desk test
   passed (§8.3, 10 shots, run by Claude on his dev app). Apple's short note in the album box's
@@ -226,7 +231,8 @@ each step that touches those calls.
 - **The song facts box** (features/LISTENERS.md §8, 2026-10-17, on `main`): built, desk test
   passed (§8.10, run by Claude on his dev app with the shots runner). The edge cases and races
   of §8.11 passed 2026-10-17 (all 20 shots, run by Claude), with two more fixes (one Esc closed
-  the Compass and the view; a long tag ran out of the box). Not committed. Then a release. Open:
+  the Compass and the view; a long tag ran out of the box). Committed (`21baa9e`, `2710677`).
+  Then a release. Open:
   the song's Last.fm call asks under Apple's whole artist text; a main-artist form, as the
   album's, is a fork for him (§8.10). The 2×2 Last.fm box on the Song Credits page; its stats
   cell opens presentation mode in Max; the About cell's order (`notes-order.ts`: Apple's song

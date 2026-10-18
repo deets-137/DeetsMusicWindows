@@ -286,6 +286,7 @@ const SPECS: Spec[] = [
   storeChoice("Skin settings", "pressVinyl", "Record player", [{ value: "spin", label: "Spin" }, { value: "still", label: "Still" }, { value: "off", label: "Off" }], { only: "Press only", note: skinNote("press", "Press") }),
   storeChoice("Skin settings", "pressVinylWhere", "Show record on", [{ value: "stage", label: "Stage" }, { value: "card", label: "Stage + card" }, { value: "everywhere", label: "Everywhere" }], { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
   storeChoice("Skin settings", "pressVinylSpeed", "Spin speed", [{ value: "16", label: "16⅔" }, { value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
+  storeChoice("Skin settings", "pressVinylFps", "Spin FPS", [{ value: "60", label: "60" }, { value: "120", label: "120" }, { value: "144", label: "144" }, { value: "240", label: "240" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
   storeToggle("Skin settings", "pressVinylPlate", "Show record plate", { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
   {
     key: "menuMode", label: "Open menus on hover", section: "Menus, hints and notices", kind: "toggle", options: ON_OFF,

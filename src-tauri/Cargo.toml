@@ -128,6 +128,9 @@ features = [
   # scale change for the tray. Features of the crate the app already has.
   "Win32_System_LibraryLoader",
   "Win32_UI_HiDpi",
+  # The refresh rate of a window's monitor (display.rs, VINYL.md §12): MonitorFromWindow,
+  # GetMonitorInfoW, EnumDisplaySettingsW. A feature of the crate the app already has.
+  "Win32_Graphics_Gdi",
   "Win32_UI_Shell",
   # The Velopack spike's CLI stop (velo.rs): a process snapshot. A feature of the crate the app
   # already has; no new download.

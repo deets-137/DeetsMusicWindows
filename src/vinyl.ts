@@ -17,6 +17,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { setting, onSettingsChange } from "./settings-store";
 import { TELEMETRY } from "./telemetry-on";
+import { spinEasing } from "./spin-steps";
+import { displayHz, onDisplayHz } from "./display-hz";
 
 // Dev-only telemetry (VINYL.md §Telemetry), gated on Vite's DEV flag like frames.ts: a
 // `[perf] vinyl snap …` line for every jump and one `[perf] vinyl song …` summary per song,
@@ -96,6 +98,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
   let gen = 0; // bumps on every song change: a slide still waiting on a decode checks it
   const recent: string[] = []; // songs shown, newest last — a return to the one before is Previous
   let anim: Animation | null = null;
+  let easing = ""; // the easing `anim` has: the Spin FPS row's steps, or linear (spin-steps.ts)
   let period = turnS();
   let dur = 0;
   let pos = 0; // the best position now, in seconds
@@ -231,16 +234,23 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
     }
     const pMs = period * 1000;
     const target = (pos * 1000) % pMs;
+    // The Spin FPS row: n steps a turn at a rate that divides the display's (VINYL.md §12).
+    const want = spinEasing(period, displayHz(), Number(setting("pressVinylFps")) || 120);
     if (!anim || (anim.effect as KeyframeEffect | null)?.target !== el) {
       anim = el.animate([{ transform: "rotate(0turn)" }, { transform: "rotate(1turn)" }], {
         duration: pMs,
         iterations: Infinity,
-        easing: "linear",
+        easing: want,
       });
+      easing = want;
       anim.pause();
       anim.currentTime = started ? target : 0;
-    } else if (anim.effect?.getTiming().duration !== pMs) {
-      anim.effect?.updateTiming({ duration: pMs });
+    } else {
+      if (anim.effect?.getTiming().duration !== pMs) anim.effect?.updateTiming({ duration: pMs });
+      if (easing !== want) {
+        anim.effect?.updateTiming({ easing: want });
+        easing = want;
+      }
     }
     if (scrubbing) return;
     // A seek that leaves the disc nearly right is not worth a visible hop (the log showed a
@@ -360,7 +370,10 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
       period = periodFor(dur);
       sync("seek");
     }
+    if (k === "pressVinylFps") sync();
   });
+  // A move to a monitor at another rate changes the steps (display-hz.ts).
+  const unsubHz = onDisplayHz(() => sync());
 
   box.replaceChildren();
   slot = build(undefined);
@@ -531,6 +544,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
       window.clearTimeout(pendingTimer);
       observer.disconnect();
       unsubSettings();
+      unsubHz();
     },
   };
   return vinyl;

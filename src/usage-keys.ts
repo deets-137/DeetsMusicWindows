@@ -35,7 +35,7 @@ export const REPORTED: readonly string[] = [
   "appearanceMotion", "cardSwapMotion", "fancyScrubber", "backgroundMotion", "graphicsFallback",
   // Skin settings (the choices and toggles; the sliders are not sent)
   "oceanEdges", "glassCanvas", "glassTiles", "glassAuroraColor", "glassFancy",
-  "pressVinyl", "pressVinylWhere", "pressVinylSpeed", "pressVinylPlate",
+  "pressVinyl", "pressVinylWhere", "pressVinylSpeed", "pressVinylPlate", "pressVinylFps",
   // Playback
   "streamQuality", "playNowScope", "pinNewAct", "dropPlayQueue", "previousReach", "restoreQueue",
   "listEndWeb", "shuffleStays", "shuffleOff", "shuffleManual", "historyShowDay", "showListeners",

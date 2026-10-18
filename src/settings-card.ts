@@ -69,6 +69,8 @@ import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
 import { restartWalk } from "./walk";
 import { hiddenCount, clearHidden } from "./home";
+import { displayHz } from "./display-hz";
+import { spinFps } from "./spin-steps";
 import { clearMarks, countText, markCount, onSuggestChange } from "./suggest";
 import {
   sotdSettings, outletStatuses, refreshSotdSettings, onSotdChange,
@@ -97,7 +99,8 @@ interface ChoiceRow {
   kind: "choice";
   id: string;
   label: string;
-  hint?: string;
+  /** A function when the words depend on the moment (Spin FPS names the display's rate). */
+  hint?: string | (() => string | undefined);
   /** A store key — or `get`/`set` for a value another owner holds (the Rust settings). */
   key?: keyof Settings;
   get?: () => string;
@@ -209,7 +212,11 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playlists", row: "createsummonsolo" }, // Also when Playlists is the only card, built 2026-10-16 (FUTURE-SETTINGS §16)
   // Cover load animations, one toggle per card, built 2026-10-17 (UX-COVERUPS.md §7.12)
   ...["library", "playlists", "home", "search", "queue", "history", "rewind", "radio", "diary"].map((id): NewMark => ({ section: "Cards", row: `wait-${id}` })),
+  { section: "Skin settings", row: "pressvinylfps", skin: "press", via: { row: "pressvinyl", values: ["spin"] } }, // Spin FPS, built 2026-10-17 (VINYL.md §12)
 ];
+/** A choice or range row's hint: its words, or the function that gives them now. */
+const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
+  typeof r.hint === "function" ? r.hint() : r.hint;
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
 /** An unseen mark that can lead you somewhere: its row's skin is the one on now. */
@@ -443,7 +450,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "motion", label: "Motion", hint: "The three Animate rows, Fancy scrubber, and If graphics fail", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
   {
     id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, and the Press record player",
-    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
+    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -544,7 +551,7 @@ export function settingsRows(): SettingEntry[] {
       .filter((r) => r.kind !== "html" && r.kind !== "head")
       .map((r): SettingEntry => {
         const label = r.label;
-        const hint = r.kind === "choice" || r.kind === "range" ? () => r.hint : (r.hint ?? (() => undefined));
+        const hint = r.kind === "choice" || r.kind === "range" ? () => rowHint(r) : (r.hint ?? (() => undefined));
         const when = r.when ?? (() => true);
         let control: SettingEntry["control"];
         if (r.kind === "toggle" && r.key) {
@@ -1391,6 +1398,17 @@ function mountSettings(
           kind: "choice", id: "pressvinylspeed", label: "Spin speed", key: "pressVinylSpeed",
           hint: "Press only. How fast the record turns, in turns each minute. 33⅓ is an LP, 45 a single",
           options: [{ value: "16", label: "16⅔" }, { value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }],
+          when: () => currentSkin() === "press" && setting("pressVinyl") === "spin",
+        },
+        {
+          kind: "choice", id: "pressvinylfps", label: "Spin FPS", key: "pressVinylFps", menu: true,
+          hint: () => {
+            const hz = displayHz();
+            const fps = Math.round(spinFps(hz, Number(setting("pressVinylFps")) || 120));
+            const now = hz ? `. On this ${hz} Hz display: ${fps} FPS` : "";
+            return `Press only. The most times a second the record redraws. A lower number uses less power${now}`;
+          },
+          options: [{ value: "60", label: "60" }, { value: "120", label: "120" }, { value: "144", label: "144" }, { value: "240", label: "240" }],
           when: () => currentSkin() === "press" && setting("pressVinyl") === "spin",
         },
         {
@@ -2399,7 +2417,7 @@ function mountSettings(
   const rowHTML = (r: Row): string => {
     if (r.kind === "html") return r.html();
     if (r.kind === "head") return `<h4 class="set__sub-head">${esc(r.label)}</h4>`;
-    const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.hint?.();
+    const hint = r.kind === "choice" || r.kind === "range" ? rowHint(r) : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
     const chipSlot = "key" in r && r.key && (RULE_KEYS as readonly string[]).includes(r.key) ? `<span data-rule-chip="key:${r.key}"></span>` : "";
     const label = `<span class="set__label">${esc(r.label)}${newRow(r.id) ? newBadge(`row:${r.id}`) : ""}${chipSlot}</span>`;
@@ -2604,7 +2622,7 @@ function mountSettings(
   // shown, so a hit on it is a dead end (§10.4).
   const rowText = (s: Section, r: Row): string => {
     if (r.kind === "html") return ""; // markup, no label and no hint: never a match
-    const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.kind === "head" ? undefined : r.hint?.();
+    const hint = r.kind === "choice" || r.kind === "range" ? rowHint(r) : r.kind === "head" ? undefined : r.hint?.();
     return `${r.label} ${s.title} ${hint ?? ""}`.toLowerCase();
   };
   const matchRow = (s: Section, r: Row): boolean => {

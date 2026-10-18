@@ -12,6 +12,65 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (night, later) — the ⟳ hint passed; the spin-rate eye test
+
+- **The Library ⟳'s hint:** desk test passed (his word). ideas/apple-calls.md §4.1, HANDOFF.
+- **HANDOFF:** the song facts box line said "Not committed"; it is (`21baa9e`, `2710677`).
+- **The spin-rate eye test** (prompt 2 of *CPU hunt*): on the FIRST dev app (`dev:built`; his
+  call, I had started the second by mistake), Press, Max, portrait monitor. Playback did not
+  start there (MusicKit "stopped, no item"), so the hand-made spin of `spin-rate.ps1` ran
+  (3.6 s a turn). A random draw hid the rates as A and B; Claude did not know them either.
+  He guessed A = full rate; A was 120 fps, B the full rate. One round, then **his pick: the
+  120 fps cap.**
+- **The build plan (brought to him as a fork, not built):**
+  1. Rust tells the page the refresh rate of the monitor the window is on (Windows' own display
+     mode, an exact whole number), again when the window moves to another monitor. The
+     page's rAF sampler (frames.ts) is dev-only and noisy (it reads 244 Hz for 240).
+  2. A pure rule (`spin-steps.ts`, with tests): the cap applies only where it divides the
+     display rate evenly: fps = Hz ÷ floor(Hz ÷ 120), so 240 → 120, 360 → 120, and 144, 165
+     and 60 Hz stay at the full rate. A plain 120 on a 144 Hz display would hold one frame in
+     six: a visible judder.
+  3. vinyl.ts sets the spin's easing to `steps(period × fps)`; the tray disc (same
+     `mountVinyl`) and the full player's flying copy (full-player.ts copies the easing) follow.
+  4. One diag line when the cap changes; VINYL.md section and desk test; the CPU split again
+     (expected about 21 % of one core in place of 31–44 %).
+  **Open fork:** the cap is a Press skin token only (Claude's pick), or a token plus a Settings ›
+  Skin settings row to go back to the full rate.
+- **His calls:** a token plus a row; then the row is **Spin FPS**, a dropdown of 60 · 120 · 144 ·
+  240. With the row holding the value, no skin token was needed.
+- **Built (VINYL.md §12):** `src-tauri/src/display.rs` (`display_hz`, the `display-hz` event,
+  `Win32_Graphics_Gdi`), `src/display-hz.ts`, `src/spin-steps.ts` + 5 tests, vinyl.ts, the
+  flight copy in full-player.ts, the row (a choice row's hint may be a function now: `rowHint`),
+  the key and its why, the agent spec, AGENT.md, SETTINGS.md, `NEW_MARKS`, the usage allow-list
+  (+ `npm run usage:keys` into `../DeetsSupport`, not deployed), `display_hz` in the demo and web
+  handlers.
+- **Checked:** `npm run check` passes (333 tests). `ops/checks/spin-fps.mjs` on the first dev app:
+  7 of 7, easing `steps(432)` · `steps(216)` · `steps(432)` · `linear` · `steps(92)` at 78 rpm,
+  the angle does not move. The log says `display: main on 240 Hz`, `display: tray on 240 Hz`.
+- **Not run:** a turning disc with sound. The dev app's plays all fail with `mediaPlaybackError`
+  (Widevine), at 16:26 and 16:30 too, before this change, and in `dev:built` too. Also not run:
+  a move to another monitor, the tray disc, the flight, the CPU split.
+- **The dev app's plays (his ask: look into it).** Apple's license call
+  (`acquireWebPlaybackLicense`) answers `{"errorCode":-42585,"status":-1021}`; the `webPlayback`
+  call before it is fine. Cider tracks the same pair as a Widevine refusal (Cider-2 #2015).
+  **Ruled out, each by a test:** the developer token (the live app's token, same refusal); the
+  Widevine version (both apps load 4.10.3112.0); the dev profile's Widevine store (a fresh one,
+  same refusal; the old one put back); two streams on one Apple ID (the live app quit for 3 min,
+  same refusal); the user token (he signed out and in again, same refusal); the CDP port (a
+  launch without it, same refusal; the test flag taken out again).
+  **The window:** the last good dev play 2026-10-16 13:05, the first refusal 13:53. The dev
+  profile's Widevine took 4.10.3112.0 at 12:59, and its store was last written at 13:53. The live
+  app loads the same version and plays; its Widevine store dates from 2026-09-09.
+  **Lead, not tested:** every refused dev app was started from Claude's shell, inside the Claude
+  desktop app's MSIX package (its profile also shows under `Packages\Claude_…\LocalCache\Local\
+  com.deetsmusic.dev`); the live app starts outside it. The test: he starts `npm run dev:app`
+  from a normal terminal, and one play runs.
+- **Confirmed:** he started `npm run dev:app` from his own terminal and it plays (his word; the
+  page read paused at 0:03 of a song he started). So a dev app inside the Claude package cannot
+  get a license since 2026-10-16. Why that changed on 2026-10-16 is not known (the new Widevine
+  module is the one change in the window). Written into DEBUGGING.md § Sign-in and CLAUDE.md ›
+  How to verify. A WMI launch from the package is refused, so sound tests run on his launch.
+
 ## 2026-10-17 (night) — the Library ⟳'s hint on a refused click
 
 **His ask:** the ⟳'s hint words from ideas/apple-calls.md §4, then the small build. He OK'd the

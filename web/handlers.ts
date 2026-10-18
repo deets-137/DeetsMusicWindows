@@ -115,6 +115,7 @@ const H: Record<string, Handler> = {
 
   library_sync: () => 0,
   library_sync_busy: () => false,
+  display_hz: () => null, // the display's rate is unknown in a browser: the record spins plainly (VINYL.md §12)
   artist_primaries: () => [],
   song_artists: () => [],
   seen_tracks: () => [],

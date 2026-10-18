@@ -393,6 +393,7 @@ const H: Record<string, Handler> = {
   artist_primaries: () => [],
   song_artists: () => [],
   library_sync_busy: () => false,
+  display_hz: () => null, // the display's rate is unknown in a browser: the record spins plainly (VINYL.md §12)
   artist_new_releases: () => cat.albums.filter((a) => (a.releaseDate ?? "") >= String(new Date().getFullYear() - 1)),
 
   // Playlists

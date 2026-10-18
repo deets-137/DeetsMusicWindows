@@ -1,6 +1,6 @@
 ---
 status: idea
-desk_test: open
+desk_test: passed 2026-10-17
 sources: [src-tauri/src/apple.rs, src-tauri/src/library.rs, src-tauri/src/playlists.rs, src-tauri/src/enrich.rs, src-tauri/src/favorites.rs, src-tauri/src/web.rs, src/track-store.ts, src/library-card.ts, src/artist-credit.ts, src/rewind.ts, src/media-menu.ts]
 updated: 2026-10-17
 ---
@@ -291,6 +291,8 @@ call, before Rust picks the pass), then *Checking for new songs…* for one inst
 *Finishing up…*. So on a quiet launch the incremental words are seldom seen; the words are right
 in every state. **Not run:** rows 4 and 5 (the setting and reduced motion; by code: `showHintNow`
 reads no setting, the CSS rule drops the dip), and his eye on the dip itself.
+
+**Desk test passed (2026-10-17, his word: "mark library hint as desk tested").**
 
 ## 5. A song's primary artist (his question, 2026-10-15)
 

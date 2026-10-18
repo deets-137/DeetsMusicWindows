@@ -1659,6 +1659,19 @@ failure: <reason>`, `user token captured`.
   terminal once (it registers at launch), or write the same four values through WMI
   (`powershell -EncodedCommand …` as the command line). Keep a shell `start` test as a
   test of Windows → app only: it cannot prove what a browser sees.
+- **A dev app started from a Claude session cannot play (2026-10-17).** Since 2026-10-16
+  (the Widevine module 4.10.3112.0 arrived at 12:59; the last good play 13:05, the first
+  refusal 13:53), every play on a dev app started inside the Claude package fails: MusicKit's
+  `mediaPlaybackError`, and Apple's `acquireWebPlaybackLicense` answers
+  `{"errorCode":-42585,"status":-1021}`. The same dev app started by him from a normal terminal
+  plays. Ruled out by tests: the developer token, the Widevine version, the profile's Widevine
+  store, a second stream on the Apple ID, the user token, the CDP port (WORKLOG 2026-10-17
+  *night, later*). WMI cannot start a process from inside the package either (return value 2,
+  access denied). **So a desk test that needs sound runs on a dev app HE starts**; Claude drives
+  it over CDP (`webview-eval.mjs`, the shots runner) and the bridge, which work across the
+  package. Also: a shell inside the package reads the package's copy of `%APPDATA%` and
+  `%LOCALAPPDATA%` (`Packages\Claude_…\LocalCache\`), so the log of a dev app he started is
+  not the file Claude's shell sees; read his app's live state with `deetsmusic diag` instead.
 - **Seeing what Edge looks up:** Process Monitor (`winget install
   Microsoft.Sysinternals.ProcessMonitor`), filter *Path contains* the scheme, click the link
   from a page console (`location.href = "<scheme>://x"`). `/Runtime` did not stop an
