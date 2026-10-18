@@ -55,6 +55,21 @@ presentation mode; what Last.fm's calls cost; rename "Diary" to "Album Reviews".
   `pressVinylFps`, `showSongInfo`; committed `67b6dc0`, pushed `velopack`, deployed
   (version `b5908b04`; `/status` up, `/signin` 200). The Suggest Less keys went with it. The
   sign-in icon and the Beta scheme were already live from the 2026-10-16 deploy.
+- **The sign-in mark (his pick of three: snap per display):** DeetsSupport `16f8f45`, pushed,
+  deployed (`0105f7f5`). Headless Edge at 100 / 125 / 150 / 200 %: 32 / 51 / 43 / 48 px, 5
+  colors in each crop, art pixels 1, 2 or 3 device pixels wide. He will redesign the sign-in
+  flow before a public release (HANDOFF › His to design).
+- **Optimization items 3–4:** `db-canary` named; `bridge.rs:ask_for` uses `tokio::time::timeout`
+  (before, each agent request held a sleeping thread for 15 or 90 s); the 1 s wait in
+  `apple.rs` is `tokio::time::sleep`. `npm run check` passes. On a dev app: `GET /grow` answers
+  in 5 ms; 20 calls left the thread count at 49.
+- **The dev database broke (not from this code).** Two dev apps from Claude shells (another
+  session's at 23:30:19, mine at 23:30:57) could not open `com.deetsmusic.dev\deetsmusic.db`:
+  a duplicate `idx_tracks_sort` row, from the WAL only. On his word the `-wal` and `-shm` were
+  renamed to `.bad`; the next start was clean. The other session ("Library album listening
+  stats accuracy") found the cause: Claude's MSIX private copy of the dev folder against the
+  real one his own 21:05 dev app seeded, whose WAL a packaged open applied to the wrong file.
+  The fix options are that session's to bring him.
 
 ## 2026-10-17 (late night) — repo cleanup; the old AirPlay tracking build sorted
 

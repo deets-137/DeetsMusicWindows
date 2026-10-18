@@ -140,9 +140,9 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   Glass in Moonlight and Black-Red. Run the check again after any fix.
 
 - **The Deets head icon:** live since 0.28.0, and DeetsSolutions `38abe54` is pushed. The sign-in
-  icon (DeetsSupport `201bd06`) is live since the 2026-10-16 deploy. Left: the Discord art asset
-  (his upload) and the sign-in page's blurred mark (`signin.js` has no uncommitted edits now).
-  whitelabel.md §10.6 › *Before it goes live*, items 3–4.
+  icon (DeetsSupport `201bd06`) is live since the 2026-10-16 deploy. The sign-in page's mark is
+  sharp at every display scale since 2026-10-17 (DeetsSupport `16f8f45`, deployed). Left: the
+  Discord art asset (his upload). whitelabel.md §10.6 › *Before it goes live*, item 3.
 - **Optimization, in his order (his call, 2026-10-17).** The measurement, from a side session on
   live 0.29.0, paused, 20 s: the Rust process has 37 threads (main, watchdog, 16
   `tokio-rt-worker` (one per logical core), db, deets-bridge, audio-out, apple-calls,
@@ -163,10 +163,10 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   2. **What wakes `main` 9.6 times a second while paused.** Run the dev command recorder
      (`src/ipc-timing.ts`) on a paused dev app to name the callers; fix only a caller that has no
      reason to run while paused. Can ride along with item 1.
-  3. **Name the dbhealth thread** (`Builder::name`, for example `db-canary`): the only long-lived
-     thread of ours with no name. Update its row in the DEBUGGING.md § Threads ledger.
-  4. **Threads that only sleep:** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` become Tokio
-     timers (DEBUGGING.md § Threads).
+  3. ~~Name the dbhealth thread~~ **done 2026-10-17:** `db-canary`.
+  4. ~~Threads that only sleep~~ **done 2026-10-17:** `ask_for` and the 1 s wait are Tokio timers;
+     20 agent calls on a dev app left the thread count at 49 (DEBUGGING.md § Threads). Committed in
+     `8188179` on `seventheenth`; open: merge, then a release.
 
   **Not to do:** fewer Tokio workers (an idle worker costs no CPU, and one blocking task holds
   more of a smaller pool); the watchdog's wakes (the price of freeze detection); WebView2's
@@ -268,6 +268,10 @@ each step that touches those calls.
   (§10.6).
 
 ### His to design or decide (asks and ideas, not built)
+
+- **Redesign the sign-in flow before a public release** (2026-10-17, his words: "I wanted to
+  redesign the login flow eventually before public (non-friends) release anyway"). The mark's
+  size snap (DeetsSupport `16f8f45`) is "for now". The flow: DATA-ARCHITECTURE.md §2a, HOP-IN.md.
 
 - **Open an item inside Home** (2026-10-17): today an album, playlist or artist opened from Home
   hops to the card that holds it. On the collection engine it would open inside Home, with
