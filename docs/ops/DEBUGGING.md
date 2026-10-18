@@ -1758,17 +1758,15 @@ name shows in a debugger and in a crash dump.
 | `bridge.rs:start` | `deets-bridge` | the whole run | The loopback HTTP bridge: the extension, the CLI, the MCP (AGENT.md) |
 | `watchdog.rs:start` | `watchdog` | the whole run | Asks the UI thread to answer; logs `ui: the window stopped answering` (LOGGING.md) |
 | `audio_out.rs:setup` | `audio-out` | the whole run | Holds the Windows audio COM objects; reads the default output and its volume on a change (SOUND.md §2.2) |
-| `dbhealth.rs:start` | none | the whole run | The database canary, every 10 minutes (DB-HEALTH.md) |
+| `dbhealth.rs:start` | `db-canary` | the whole run | The database canary, every 10 minutes (DB-HEALTH.md) |
 | `apple_calls.rs:start` | `apple-calls` | the whole run | The hourly Apple call count line (APPLE-CALLS.md) |
 | `apple_calls.rs:watch_for_end` | `apple-backoff` | while a 429 back-off holds | Logs `back-off off` when the hold ends |
 | `presence.rs:request` | `presence` | from the first use | Owns the Discord pipe; every presence write goes through it (FRIENDS.md §8.11) |
 | `airplay.rs:post` | `airplay-np` | from the first publish | Sends now playing and the cover to the AirPlay speaker, newest first (AIRPLAY.md §13.6) |
 | `lib.rs:run` | none | one per request | The `cover`, `wallpaper` and `user` link schemes: reads the file and answers off the webview thread |
-| `bridge.rs:ask_for` | none | one per agent request, up to its time-out | Sleeps for the time-out, then fails the request if the window has not answered |
 | `apple.rs:handle_link` | none | one sign-in | Checks the token the sign-in link carried and stores it |
 | `apple.rs:begin_hosted` | none | 5 minutes | Ends a hosted sign-in link that was not used |
 | `apple.rs:apple_begin_auth` | none | one sign-in | Serves the loopback sign-in page (the fallback to the hosted page) |
-| `apple.rs:tokio_sleep_1s` | none | 1 s | A one-second wait between two token checks |
 | `tray.rs:reveal_fallback` | none | 3 s | Shows the window if the page never said it was ready |
 | `update.rs:airplay_shutdown_bounded` | none | up to 3 s | Stops AirPlay before an install or a quit; the caller waits 3 s at most |
 | `velo.rs:download` | none | one update download | The Velopack spike only (`--features velopack`): passes the download's progress to the status (VELOPACK.md §8) |
@@ -1787,8 +1785,11 @@ name shows in a debugger and in a crash dump.
   sound*. They end with the session.
 - **WebView2's processes**: the browser, the renderer, the GPU process.
 
-**Open (2026-10-13, not changed):** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` start a
-thread only to sleep. A Tokio timer does the same with no thread.
+**Changed 2026-10-17 (his order, optimization items 3–4):** the canary's thread is named
+`db-canary`. `bridge.rs:ask_for` and the one-second wait in `apple.rs:capture_rejected_by_apple`
+started a thread only to sleep; they are Tokio timers now (`tokio::time::timeout`,
+`tokio::time::sleep`). Before, every agent request left a thread asleep for its whole time-out
+(15 s, or 90 s for a long playlist request), even after the window answered.
 
 ## Recipe — debugging a player issue
 1. Reproduce the bad behaviour.

@@ -91,7 +91,8 @@ for word, with RELEASE.md's section numbers.
 - `AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker.
 - `VINYL.md` — the Press record player.
 - `DEETS-REWIND.md` — listening stats and the Rewind card.
-- `DIARY.md` — the Diary card: an album journal, a note and a score per song, the scale rule.
+- `DIARY.md` — the Album Reviews card (named the Diary until 2026-10-17; the code keeps `diary`):
+  an album journal, a note and a score per song, the scale rule.
 - `LOOK-SCHEDULE.md` — the day / night look and its pre-paint in `index.html`.
 - `COMPASS.md` — Ctrl+Space: places, settings, verbs, library items, the calculator.
 - `COMPASS-TERMS.md` — every word the bar answers to; update it with `SYNONYMS` in compass.ts.
@@ -154,7 +155,8 @@ for word, with RELEASE.md's section numbers.
   no play data (§1). §8 BUILT 2026-10-17, desk test passed (§8.10, run by Claude): the song
   facts box on the Song Credits page, the About cell's notes order (`src/notes-order.ts`: the
   song, then its album; Apple, then Last.fm) and *Notes from* in Settings › Playback to pick
-  one source or none.
+  one source or none. §9 DESIGNED 2026-10-17: a library album's plays as the sum of its songs',
+  and a row per song in presentation mode (the probe §9.1; forks §9.6).
 - `LOCAL-RADIO.md` — DESIGNED 2026-10-13, not built: web stations from Radio Browser in the
   Radio card (a Local shelf by the user's city, search for any station), played through a Rust
   loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms

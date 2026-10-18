@@ -69,7 +69,7 @@ const ctx: CondCtx = {
 const WINDOW_LABEL: Record<Window, string> = { day: "the last day", week: "the last 7 days", month: "the last 30 days", year: "the last 365 days", ytd: "this year" };
 const SOURCE_LABEL: Record<string, string> = {
   library: "Your library", seen: "Songs you played outside your library", history: "Everything you have played",
-  loved: "Loved songs", sotd: "Songs of the Day", diary: "Your Diary", pins: "Pinned songs",
+  loved: "Loved songs", sotd: "Songs of the Day", diary: "Your album reviews", pins: "Pinned songs",
 };
 const sourceLabel = (s: SourceId): string => {
   if (s.startsWith("rewind:")) return `Played in ${WINDOW_LABEL[s.slice(7) as Window]}`;
@@ -81,7 +81,7 @@ const ORDERS: { by: OrderBy; label: string; dir: "asc" | "desc" }[] = [
   { by: "added", label: "Newest added first", dir: "desc" },
   { by: "plays", label: "Most played first", dir: "desc" },
   { by: "lastPlayed", label: "Played longest ago first", dir: "desc" },
-  { by: "diaryScore", label: "Highest Diary score first", dir: "desc" },
+  { by: "diaryScore", label: "Highest review score first", dir: "desc" },
   { by: "listeners", label: "Rarest first (Last.fm)", dir: "asc" },
   { by: "year", label: "Oldest first", dir: "asc" },
   { by: "length", label: "Shortest first", dir: "asc" },

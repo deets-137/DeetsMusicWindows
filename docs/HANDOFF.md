@@ -123,12 +123,10 @@ live; the work committed after it waits on the next release.
 
 Every hand and desk test listed here before closed on 2026-10-13 (his report, WORKLOG
 2026-10-13 *desk tests closed*; the rows are DESK-TESTS.md §5). What is left:
-- **The web demo** (WEB-DEMO.md §15.7): the page lede says "everything mocked" (his words to
-  change); the Demos picture (`max-full-player` in guide/shots.json) types the old album "Salt &
-  Signal" and needs his pick of a cover with no printed title. The album-mark check is fixed.
 - **Playback, watch the live ring:** the music stopped at a song change and the catalog heal
   (`player:retryCurrent`, `keyRetry`, `recoverSilent`; QUEUE.md); a healed library id's old
-  play counts may stay on the old key (not checked). None of these fired on live from
+  play counts may stay on the old key (read 2026-10-17: the 5 healed songs on live have no
+  plays under either id yet, so there is nothing to check). None of these fired on live from
   2026-10-08 to 2026-10-17. (The dead-next heal fired on live 2026-10-17 and played the song
   once: QUEUE.md § The healed song played twice, passed.)
 - **Data:** the next song's colors one ahead (ALBUM-COLOR.md, data path item 4). The `db: slow`
@@ -141,9 +139,10 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   opaque skins pass, live since 0.28.0. Open: Ocean's see-through card (50 % under the bar) and
   Glass in Moonlight and Black-Red. Run the check again after any fix.
 
-- **The Deets head icon:** live since 0.28.0, and DeetsSolutions `38abe54` is pushed. Left
-  (not checked 2026-10-17): the DeetsSupport deploy of the sign-in icon, the Discord art asset,
-  and the sign-in page's blurred mark. whitelabel.md §10.6 › *Before it goes live*, items 2–4.
+- **The Deets head icon:** live since 0.28.0, and DeetsSolutions `38abe54` is pushed. The sign-in
+  icon (DeetsSupport `201bd06`) is live since the 2026-10-16 deploy. Left: the Discord art asset
+  (his upload) and the sign-in page's blurred mark (`signin.js` has no uncommitted edits now).
+  whitelabel.md §10.6 › *Before it goes live*, items 3–4.
 - **Optimization, in his order (his call, 2026-10-17).** The measurement, from a side session on
   live 0.29.0, paused, 20 s: the Rust process has 37 threads (main, watchdog, 16
   `tokio-rt-worker` (one per logical core), db, deets-bridge, audio-out, apple-calls,
@@ -178,7 +177,7 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   `spin-steps.ts` (+ tests), vinyl.ts, the flight copy. `ops/checks/spin-fps.mjs` passes 7 of 7
   with sound on a dev app he started (§12, Claude's run); rows 4–6 passed on his word
   (2026-10-17). **Open:** merge into `main`, then a release. `pressVinylFps` joined the usage
-  allow-list; the DeetsSupport copy waits for his deploy with Suggest Less's.
+  allow-list; the DeetsSupport copy is deployed (`67b6dc0`, 2026-10-17).
 - **A dev app Claude starts cannot play (since 2026-10-16):** Apple refuses Widevine inside the
   Claude package (-42585 / -1021); his own launch plays. Sound tests run on his launch.
   DEBUGGING.md § Sign-in. Why it began on 2026-10-16 is not known.
@@ -216,8 +215,8 @@ each step that touches those calls.
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
 - **Suggest Less and proactive skips** (SUGGEST-LESS.md): live since 0.29.0; schema **v20**.
-  §12 is the as-built record. Open: the DeetsSupport usage allow-list copy is not deployed
-  (`src/usage-keys.js` there has uncommitted edits, 2026-10-17).
+  §12 is the as-built record. The DeetsSupport usage allow-list copy is deployed (2026-10-17,
+  DeetsSupport `9f49f84` and `67b6dc0`, pushed).
 
 ### Built, waiting on a release or a desk test
 
@@ -285,6 +284,11 @@ each step that touches those calls.
   2026-10-13 (§9.3). The view's picture is his to draw, the goal marker is paused, and a live
   stream from Last.fm is his idea for later. §7a, §7b.
 
+- **An album's counts from its songs, and a row per song** (features/LISTENERS.md §9,
+  designed 2026-10-17, not built): the plays of the library album's songs added up, "at least N"
+  listeners, and one row per song in presentation mode. Forks F1–F6 (§9.6) are his; probe §9.4
+  (Apple's song names over his library) comes before a build.
+
 - **Network errors in plain words** (2026-10-12): a transport error in an Apple call shows raw
   text (`Failed to load: error sending request…`, three `.catch` sites in search-card.ts). Five
   forks: one classifier into `apple-health`; what a card shows instead; toast at once or after
@@ -336,14 +340,12 @@ each step that touches those calls.
   `sound:output` reason committed (`9197156`). The stall / drop lines BUILT on a Tokio task (his
   pick) with crate 0.4.2 (the quiet keep-alive, five readings), committed in DeetsAirplay as
   `44ac6bb`, pushed, and pinned in Cargo.toml. Desk tests §13.2a and §13.2b passed on his word
-  (2026-10-17). **Open:** merge into `main`, then a release; the `../DeetsMusic-aptel` worktree
-  goes. The switch timing is left out.
+  (2026-10-17). **Open:** merge into `main`, then a release. The `../DeetsMusic-aptel` worktree
+  and its branch were removed 2026-10-17 (his word). The switch timing is left out.
 - **Designed earlier:**
   the web demo's album light (WEB-DEMO.md §10); deploy a worker without dropping connections
   (ideas/WorkerDeploy.md); SECOND-SEARCH.md, ROOMS.md §19–§20, DeetsOTD.md §9,
-  CREDITS.md §5; DOCS-ORG.md steps 6–8 and its open forks. The DeetsSupport sign-in scheme
-  change (BETA.md §5) is written, uncommitted in `../DeetsSupport`, and HELD by his call.
-
+  CREDITS.md §5; DOCS-ORG.md steps 6–8 and its open forks.
 ### deetsmeter: the judge (M3), desk test partly run
 
 `scripts/compare/`, `tools/deetsmeter/`; music-app-comp.md §17.15–§17.17. Play, scroll, search

@@ -213,7 +213,7 @@ shortcut, a rule or a link. The quick panel shows this section under the Window 
 
 | Control | What it does | Choices |
 |---|---|---|
-| Home · Library · Playlists · Search · History · Radio · Diary · Rulez | Offer this card in the card picker. The last three everyday cards lock (*Keep three cards in the picker*). Rulez is offered in Max only | **on** / off |
+| Home · Library · Playlists · Search · History · Radio · Album Reviews · Rulez | Offer this card in the card picker. The last three everyday cards lock (*Keep three cards in the picker*). Rulez is offered in Max only | **on** / off |
 | Rewind | The same. Your listening, ranked; it turns itself on once, at 50 plays | on / **off** (until 50 plays) |
 
 Under the sub-heading *Cover load animations* (2026-10-17,
@@ -221,7 +221,7 @@ Under the sub-heading *Cover load animations* (2026-10-17,
 
 | Control | What it does | Choices |
 |---|---|---|
-| Library · Playlists · Home · Search · Queue · History · Rewind · Radio · Diary | On: the card shows once its covers are in, in one smooth wave (at most 1.5 s; Search shows its words at once and fades each section's covers in). Off: it shows at once, and covers pop in as they load. The artist view and a drill follow the card they open in | **on** / off |
+| Library · Playlists · Home · Search · Queue · History · Rewind · Radio · Album Reviews | On: the card shows once its covers are in, in one smooth wave (at most 1.5 s; Search shows its words at once and fades each section's covers in). Off: it shows at once, and covers pop in as they load. The artist view and a drill follow the card they open in | **on** / off |
 
 ### Look schedule
 
@@ -433,12 +433,14 @@ Who can see what you play. A status line under the rows says what is shared now.
 | Weekly Replay | A playlist of the past week's most-played songs, made on this weekday | **on**, **Mon** |
 | Keep every Replay | Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly | on / **off** |
 
-### Diary
+### Album Reviews
+
+(The section was *Diary* until 2026-10-17.)
 
 | Control | What it does | Choices |
 |---|---|---|
 | Rescale scores | When you change an album's scale, whether the scores on it move too. 7/10 becomes 3.5/5. **Ask** shows a notice with Rescale and Keep numbers | **Ask** / Always / Never |
-| Grow on open | The Diary grows over the card beside it when an album opens: taller in Max, wider in Midi. Back collapses it | **New entries** / Every entry / Never |
+| Grow on open | Album Reviews grows over the card beside it when an album opens: taller in Max, wider in Midi. Back collapses it | **New reviews** / Every review / Never |
 
 ### Song of the Day
 Mark one song a day ([DeetsOTD.md](../integrations/DeetsOTD.md)).
@@ -461,7 +463,7 @@ Mark one song a day ([DeetsOTD.md](../integrations/DeetsOTD.md)).
 | Agent control | Lets a command line or an AI app drive DeetsMusic on this PC. **Guide** opens the setup page | on / off |
 | Agent changes settings | An agent changing these settings. Agents can never change this row itself | Allow / **Ask** / Off |
 | Agents read play history | Lets a connected agent see what you played, when, and what you skipped | on / off |
-| Agents use the Diary | Lets a connected agent read your Diary and write notes, scores and dates in it. Only you can turn it on | on / **off** |
+| Agents use Album Reviews | Lets a connected agent read your album reviews and write notes, scores and dates in them. Only you can turn it on | on / **off** |
 | Set up the DeetsMusic MCP (2026-10-11) | One line per AI app found on this PC with its state and *last used*; its button connects, disconnects, repairs, replaces a hand-made entry, or (Claude Desktop) opens the extension. **Refresh** looks again. No setting: the state is in each app's own file (MCP-INSTALL.md) | Connect / Disconnect / Repair / Replace / Install |
 | Copy setup info | Copies the exact setup text for an AI app the list above does not connect | Claude Desktop / **Claude Code** / Cursor / Other (Full) / Other (Small) |
 | The extension block | Whether the browser bridge and the agent are running | — |
@@ -478,7 +480,7 @@ Mark one song a day ([DeetsOTD.md](../integrations/DeetsOTD.md)).
 One **Reset** button for each group. Each one asks first, and offers Undo after.
 
 Look and feel › (Theme and skin · Look schedule · Motion · Skin settings) · Menus, hints and
-notices · Window · Playback · Playlists · Sound · Sleep · Home · Rewind · Diary · **Everything**.
+notices · Window · Playback · Playlists · Sound · Sleep · Home · Rewind · Album Reviews · **Everything**.
 
 The four Look and feel groups now match four real sections of the card (2026-09-18); the Reset
 row keeps them together because you usually want the whole look back at once.

@@ -136,8 +136,10 @@ pub fn check(db: &Db) -> Result<(), String> {
 /// Start the timer. Called once from `lib.rs` `setup()`, after the DB is managed.
 /// The first run is immediate: a database that is already unwritable at startup is
 /// exactly the case the user must hear about before an hour of listening goes missing.
+/// Its own named thread (`db-canary`), not a Tokio timer: each check holds the DB lock,
+/// which blocks.
 pub fn start(app: tauri::AppHandle) {
-    std::thread::spawn(move || loop {
+    let spawned = std::thread::Builder::new().name("db-canary".into()).spawn(move || loop {
         {
             use tauri::Manager;
             let db = app.state::<Db>();
@@ -145,6 +147,9 @@ pub fn start(app: tauri::AppHandle) {
         }
         std::thread::sleep(CANARY_EVERY);
     });
+    if let Err(e) = spawned {
+        crate::log::warn(&format!("dbhealth: the canary thread did not start: {e}"));
+    }
 }
 
 // -- Reading it back ---------------------------------------------------------

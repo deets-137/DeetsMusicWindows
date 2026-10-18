@@ -252,15 +252,14 @@ async fn ask_for(
     log(&format!("agent #{id} {kind} ({}b)", payload.to_string().len()));
     app.emit_to("main", "agent-request", AgentRequest { id, kind: kind.into(), payload: payload.clone() })
         .map_err(|e| e.to_string())?;
-    std::thread::spawn(move || {
-        std::thread::sleep(timeout);
-        if let Some(tx) = PENDING.lock_or_recover().remove(&id) {
-            let _ = tx.send(Err("the app window did not answer".into()));
+    // A Tokio timer, not a thread that sleeps out the whole time-out after the answer came.
+    match tokio::time::timeout(timeout, rx).await {
+        Ok(Ok(r)) => r,
+        Ok(Err(_)) => Err("request dropped".into()),
+        Err(_) => {
+            PENDING.lock_or_recover().remove(&id);
+            Err("the app window did not answer".into())
         }
-    });
-    match rx.await {
-        Ok(r) => r,
-        Err(_) => Err("request dropped".into()),
     }
 }
 

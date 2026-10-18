@@ -640,8 +640,8 @@ retune came after it, so its 399 lines do not apply).
   diagnostic. Cost: a stall is seen 2–4 s after it starts and timed to 2 s, and none is seen
   while the page hangs or is held.
 
-**Step 3: tidy up.** After step 1 is pushed and step 2 merged, the worktree `../DeetsMusic-aptel`
-and its branch go, and `../DeetsAirplay` has no uncommitted work left.
+**Step 3: tidy up.** Done 2026-10-17 (his word): the worktree `../DeetsMusic-aptel` and its
+branch `airplay-telemetry` are removed. Only the switch timing was not ported, by his call.
 
 **Desk test (on a dev app HE starts, with a speaker; DEBUGGING.md § Sign-in):** play on the
 speaker; `node docs/ops/checks/drop.mjs net 20` takes the webview offline (Rust and the speaker

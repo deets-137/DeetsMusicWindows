@@ -84,8 +84,8 @@ Any other row opens the Settings card at that row. Examples: **hover hints**, **
 | **full player** (full screen, fullscreen, big cover, large cover) | Opens or closes the full player: Now Playing grows so the cover is as large as the window allows (fullscreen-player.md, 2026-10-11). Midi and Max only |
 | **pin this song** / **unpin this song** (pin, pinned) | Pins the playing song: a tile on Home's Pinned shelf and the Library's (PINS.md, 2026-09-18) |
 | **reset row order** (arrange, rearrange, move, order, sections) | Opens Settings › Reset › Row order — the way back to the built-in order of every section and every pinned item (MOVABLE-ROWS.md, 2026-09-20). Shown only when you have moved something |
-| **add to diary** (diary, review, journal, rate album, write about) | Puts the playing song's album in the Diary and opens its entry (DIARY.md §10, 2026-09-24). Shown while a song plays |
-| an album in your **Diary** (diary, entry, review) | Opens its entry in the Diary; **Ctrl+Enter** copies its Export (DIARY.md §10, 2026-09-24) |
+| **review this album** (add to diary, diary, review, album reviews, journal, rate album, write about) | Opens the playing song's album in Album Reviews, made the first time (DIARY.md §10, 2026-09-24; *Add to Diary* until 2026-10-17). Shown while a song plays |
+| an album in your **Album Reviews** (album reviews, diary, entry, review) | Opens its review; **Ctrl+Enter** copies its Export (DIARY.md §10, 2026-09-24) |
 | a saved **filter** or **Rulez Playlist** by its name (filter, rule, rulez playlist, smart playlist) | Puts the filter in force in the Library and opens its Filter panel; a Rulez Playlist's rule opens there to edit (features/filter-rules.md, 2026-10-16) |
 | **refresh playlists now** (refresh, stale, update playlists, re-read playlists) | Re-reads the playlists that are DUE — the day-change check, on demand (PLAYLIST-REFRESH.md, 2026-09-20) |
 | **start a listening room** (room, listen together, share) | Starts a room from what you play now |
@@ -150,6 +150,7 @@ The same table as `SYNONYMS` in `src/compass.ts`; change both.
 | bento, grid | layout (Layout for Max, 2026-10-11) |
 | small | mini |
 | np, nowplaying | player |
+| diary, journal | reviews (Album Reviews was *Diary* until 2026-10-17) |
 | large | max |
 | lib, songs, music | library |
 | list, lists | playlists |

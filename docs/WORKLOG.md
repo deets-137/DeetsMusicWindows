@@ -12,6 +12,27 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (late night) — album counts from songs designed; Diary renamed Album Reviews
+
+**His asks:** doc listening stats summed from a library album's songs, and a row per song in
+presentation mode; what Last.fm's calls cost; rename "Diary" to "Album Reviews".
+- **Designed, not built:** LISTENERS.md §9. A live probe of 4 albums
+  ([album-sum-probe.mjs](ops/checks/album-sum-probe.mjs)): *THREAD 27*'s songs have 7× its
+  album page's plays; listeners cannot be summed (*SOS*: 21 M summed, 2.8 M real); 8 of
+  *Essex Honey*'s 14 songs land on tiny pages (a name-form problem, §8.11). Cost: one
+  `track.getInfo` per song, kept a month, shared with the badge; no money; ~5 calls a second
+  per IP. Forks F1–F6 are his (§9.6); probe §9.4 comes before a build.
+- **Renamed (his wording, *Review This Album* his pick):** every word a user reads says
+  Album Reviews / review; the CLI command and MCP tool are `reviews` with no `diary` alias
+  (no live users, his word); internal ids stay `diary`. DIARY.md's banner has the list. Two
+  Haiku agents read it for workflows and risks (33 cases): one real fault, the old
+  "diary:" / "entry" words in CLI and agent errors, fixed. The others were carry-over losses
+  (fold memory and section order keyed by the old title), not wanted.
+- **Not run:** the shots list on the dev app. Its database broke at 21:25 (a duplicate
+  `idx_tracks_sort` schema row in the `-wal`; the main file was clean). The *Session status
+  check* session kept the bad files as `.bad` and restarted on the main file. The cause is
+  being read.
+
 ## 2026-10-17 (night) — five desk tests closed on his word; the live watches read
 
 **His asks:** mark the open desk tests passed; work on the watches and small fixes.
@@ -29,6 +50,11 @@ updated: 2026-10-17
   the Discord art), the `../DeetsMusic-aptel` worktree (it still holds uncommitted files of the
   2026-09-25 build). The next song's colors one ahead: `albumColor:next` runs on live (335
   lookups in the log); whether the colors change with the song is his eye.
+- **Then (his word):** `../DeetsMusic-aptel` and its branch removed (all but the switch timing
+  was on `seventheenth`). DeetsSupport: `npm run usage:keys` added `notesSource`,
+  `pressVinylFps`, `showSongInfo`; committed `67b6dc0`, pushed `velopack`, deployed
+  (version `b5908b04`; `/status` up, `/signin` 200). The Suggest Less keys went with it. The
+  sign-in icon and the Beta scheme were already live from the 2026-10-16 deploy.
 
 ## 2026-10-17 (late night) — repo cleanup; the old AirPlay tracking build sorted
 

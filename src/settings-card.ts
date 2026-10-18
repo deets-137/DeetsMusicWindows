@@ -181,7 +181,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
   { section: "Skin settings", row: "oceancards", skin: "ocean" }, // Ocean card opacity, built 2026-09-23
   { section: "Skin settings", row: "oceanlight", skin: "ocean" }, // Ocean album light, built 2026-09-23
-  { section: "Diary" }, // the Diary card's section, built 2026-09-24
+  { section: "Album Reviews" }, // the card's section, built 2026-09-24 as "Diary"
   { section: "Connections", row: "agentdiary" }, // Agents use the Diary, built 2026-09-24
   { section: "Skin settings", row: "glasswallpaper", skin: "glass" }, // Glass Canvas (Cover Wallpaper), built 2026-09-24
   { section: "Skin settings", row: "glasstiles", skin: "glass", via: { row: "glasswallpaper", values: ["covers"] } },
@@ -336,7 +336,7 @@ const CARD_ROWS: Record<(typeof HIDEABLE_CARDS)[number], { label: string; hint: 
   history: { label: "History", hint: () => "What you played, day by day" },
   rewind: { label: "Rewind", hint: () => (setting("rewindAutoShown") ? "Your listening, ranked" : "Shows after 50 plays") },
   radio: { label: "Radio", hint: () => "Apple's stations" },
-  diary: { label: "Diary", hint: () => "Your album journal" },
+  diary: { label: "Album Reviews", hint: () => "Your notes and scores on albums, song by song" },
   rulez: { label: "Rulez", hint: () => "Your own rules (Max only)" },
 };
 const cardRow = (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
@@ -362,7 +362,7 @@ const cardRow = (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
  *  (the default), off = instant. The words are his draft (§7.12). */
 const WAIT_LABEL: Record<(typeof REVEAL_CARDS)[number], string> = {
   library: "Library", playlists: "Playlists", home: "Home", search: "Search", queue: "Queue",
-  history: "History", rewind: "Rewind", radio: "Radio", diary: "Diary",
+  history: "History", rewind: "Rewind", radio: "Radio", diary: "Album Reviews",
 };
 const WAIT_HINT = "On: the card shows once its covers are in, in one smooth wave. Off: it shows at once, and covers pop in as they load";
 const waitRow = (id: (typeof REVEAL_CARDS)[number]): ToggleRow => ({
@@ -482,7 +482,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "homeHideLasts", "homeHidden"] },
   { id: "cards", label: "Cards", hint: "Every card back in the picker, and every card waits for its covers. Rewind stays out until 50 plays", keys: ["hiddenCards", "instantCards"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
-  { id: "diary", label: "Diary", hint: "Rescale scores and Grow on open. Not your entries — those are your writing, not a setting", keys: ["diaryRescale", "diaryGrow"] },
+  { id: "diary", label: "Album Reviews", hint: "Rescale scores and Grow on open. Not your reviews — those are your writing, not a setting", keys: ["diaryRescale", "diaryGrow"] },
 ];
 /** The groups the Look and feel row resets; LOOK_PARTS get their own indented rows (menus does not). */
 const LOOK_AND_FEEL = ["look", "schedule", "motion", "skinrows", "menus"];
@@ -1989,8 +1989,8 @@ function mountSettings(
       ],
     },
     {
-      // The Diary card (docs/features/DIARY.md §5). His call 7B: a score is the number you typed.
-      title: "Diary",
+      // The Album Reviews card (docs/features/DIARY.md §5). His call 7B: a score is the number you typed.
+      title: "Album Reviews",
       rows: [
         {
           kind: "choice", id: "diaryrescale", label: "Rescale scores", key: "diaryRescale",
@@ -1999,8 +1999,8 @@ function mountSettings(
         },
         {
           kind: "choice", id: "diarygrow", label: "Grow on open", key: "diaryGrow",
-          hint: "The Diary grows over the card beside it when an album opens: taller in Max, wider in Midi",
-          options: [{ value: "new", label: "New entries" }, { value: "every", label: "Every entry" }, { value: "never", label: "Never" }],
+          hint: "Album Reviews grows over the card beside it when an album opens: taller in Max, wider in Midi",
+          options: [{ value: "new", label: "New reviews" }, { value: "every", label: "Every review" }, { value: "never", label: "Never" }],
         },
       ],
     },
@@ -2127,8 +2127,8 @@ function mountSettings(
         {
           kind: "toggle",
           id: "agentdiary",
-          label: "Agents use the Diary",
-          hint: () => "Lets a connected agent read your Diary and write notes, scores and dates in it",
+          label: "Agents use Album Reviews",
+          hint: () => "Lets a connected agent read your album reviews and write notes, scores and dates in them",
           get: () => agentDiary,
           set: (on) => {
             agentDiary = on;

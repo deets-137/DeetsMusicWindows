@@ -54,7 +54,7 @@ import { onDiag } from "./diag";
 // ── the built-in rows (locked): their Settings row, by the rule's source ──
 const ROWS: Record<string, { name: string; row: string | null }> = {
   drillGrow: { name: "Grow on album or artist", row: "drillgrow" },
-  diaryGrow: { name: "Diary: Grow on open", row: "diarygrow" },
+  diaryGrow: { name: "Album Reviews: Grow on open", row: "diarygrow" },
   cog: { name: "The cog", row: null },
   lookSchedule: { name: "Look schedule", row: "lookschedule" },
   alwaysOnTop: { name: "Keep on top", row: "aot" },

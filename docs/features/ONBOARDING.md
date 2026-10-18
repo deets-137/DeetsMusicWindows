@@ -104,7 +104,7 @@ nothing about authoring changed when the box did.
 | Compass bar | a theme, skin or surface row | the title menu button's own hint | compass.ts |
 | Compass bar | Open · Play (a song, album, artist or playlist row) | Enter · Ctrl+Enter | compass.ts |
 | Settings › Connections | Agents read play history | Lets a connected agent see what you played, when, and what you skipped | settings-card.ts |
-| Settings › Connections (2026-09-24) | Agents use the Diary | Lets a connected agent read your Diary and write notes, scores and dates in it | settings-card.ts (DIARY.md §10) |
+| Settings › Connections (2026-09-24) | Agents use Album Reviews | Lets a connected agent read your album reviews and write notes, scores and dates in them | settings-card.ts (DIARY.md §10) |
 | Title menu › Account | Last.fm | Connects your Last.fm account in your browser. Songs you hear go to your Last.fm profile · connected: Disconnects Last.fm. Songs you hear stop going to your profile · no key: Last.fm is not in this build of DeetsMusic | index.html / lastfm.ts |
 | Title menu › Account | the Last.fm name ("Connected as *name*") | Opens your Last.fm profile in your browser | lastfm.ts |
 | Settings › Last.fm | Scrobble plays · Show now playing | Sends each song to your Last.fm profile once you hear half of it or 4 minutes · Your Last.fm profile shows the song while it plays | settings-card.ts |
@@ -180,7 +180,7 @@ nothing about authoring changed when the box did.
 | Card headers | Back, on a level a grown card's drill opened | Goes back to *<card>* | collection-card.ts `setHeader`, search-card.ts `pushPane` (CARD-GROW.md §14.4) |
 | Settings › Window | Keep view when grown | A card that grows keeps the view you are in; the tile size still follows the card's size | settings-card.ts |
 | Settings › Window | Grow on album or artist | An album or artist opens with more room: taller in Max, wider in Midi. Back returns it | settings-card.ts |
-| Settings › Cards (2026-10-10) | one toggle per card | Home: Your shelves of recent and new music · Library: Your songs, albums and artists · Playlists: Your playlists and Apple's · Search: Find anything in Apple Music · History: What you played, day by day · Rewind: Shows after 50 plays → Your listening, ranked · Radio: Apple's stations · Diary: Your album journal · Rulez: Your own rules (Max only). A locked toggle: Keep three cards in the picker | settings-card.ts `CARD_ROWS` (HIDE-CARDS.md §5) |
+| Settings › Cards (2026-10-10) | one toggle per card | Home: Your shelves of recent and new music · Library: Your songs, albums and artists · Playlists: Your playlists and Apple's · Search: Find anything in Apple Music · History: What you played, day by day · Rewind: Shows after 50 plays → Your listening, ranked · Radio: Apple's stations · Album Reviews: Your notes and scores on albums, song by song · Rulez: Your own rules (Max only). A locked toggle: Keep three cards in the picker | settings-card.ts `CARD_ROWS` (HIDE-CARDS.md §5) |
 | Settings › Reset | Cards | Every card back in the picker. Rewind stays out until 50 plays | settings-card.ts `RESET_GROUPS` |
 | Settings › Window | Card on drill | A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot | settings-card.ts |
 | Settings › Window | Bring a card already open | A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits | settings-card.ts |
@@ -200,8 +200,8 @@ nothing about authoring changed when the box did.
 | Diary (2026-09-24) | the + cover · the picker's × (since 2026-10-12 it clears, as every field's ×) | Pick an album to write about · Clears the search | diary-card.ts (DIARY.md §4, SEARCH-FIELDS.md §3) |
 | Every search field (2026-10-12): Library filter · Settings · Playlist web · Compass | the × | Clears the search | search-field.ts `fieldClearHTML` (SEARCH-FIELDS.md §3) |
 | Diary | an entry tile | the album and its artist ("OPIA — VITA") | diary-card.ts `tileHTML` |
-| Diary home (2026-09-26) | the playing album's box | Starts an entry for the album that is playing → has an entry: Opens your entry for the album that is playing | diary-card.ts `nowHTML` (DIARY.md §4c) |
-| Diary header (2026-09-24) | the + (home) · the check (entry) | Starts a new entry or makes a new folder · Marks this entry done and copies its Export. It moves to Completed → pressed: Done. Press again to put it back in progress | diary-card.ts (DIARY.md §4b, §7) |
+| Album Reviews home (2026-09-26; renamed from Diary 2026-10-17) | the playing album's box | Starts a review of the album that is playing → has a review: Opens your review of the album that is playing | diary-card.ts `nowHTML` (DIARY.md §4c) |
+| Album Reviews header (2026-09-24) | the + (home) · the check (review) | Starts a new review or makes a new folder · Marks this review done and copies its Export. It moves to Completed → pressed: Done. Press again to put it back in progress | diary-card.ts (DIARY.md §4b, §7) |
 | Diary home | a row header (In progress, Completed, a folder) | Click to open or close. Hold to move this row. New folders appear at the end → hold off: Click to open or close | diary-card.ts `rowHTML` |
 | Diary entry | the score pill's right half ("/ 10 ▾") · the review-date pill · the score pill's number field | The scale for this album: its songs and the album use it · The day of this review · Score for the album: any number from 0 to 10 → marked: Type a number from 0 to 10 / Above this scale's top of 5. Type a new score, or rescale | diary-card.ts |
 | Diary entry | a song row | Shows this song's note below. Double-click plays the album from here → unreleased: the Search pane's "Not out yet" hint | diary-card.ts `songRowHTML` |

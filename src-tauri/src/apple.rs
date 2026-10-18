@@ -1358,7 +1358,7 @@ fn capture_rejected_by_apple(mut_tok: &str) -> bool {
     tauri::async_runtime::block_on(async {
         for attempt in 0..2 {
             if attempt > 0 {
-                tokio_sleep_1s().await;
+                tokio::time::sleep(Duration::from_secs(1)).await;
             }
             match status_only(&client, &dev, Some(mut_tok), ME_STOREFRONT_URL).await {
                 Ok(403) => continue,
@@ -1369,14 +1369,6 @@ fn capture_rejected_by_apple(mut_tok: &str) -> bool {
     })
 }
 
-async fn tokio_sleep_1s() {
-    let (tx, rx) = futures::channel::oneshot::channel::<()>();
-    std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_secs(1));
-        let _ = tx.send(());
-    });
-    let _ = rx.await;
-}
 
 /// POST an Apple Music API URL with no body, returning (http_status, parsed_body).
 /// Same auth headers as `api_get`; used for library writes (add-to-library).

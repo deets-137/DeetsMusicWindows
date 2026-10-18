@@ -116,7 +116,7 @@ function libraryAlbums(): { album: Album; tracks: Track[] }[] {
 
 export const diaryCard: CardDef = {
   id: "diary",
-  title: "Diary",
+  title: "Album Reviews",
   mount: (host, opts) => mountDiary(host, opts),
 };
 
@@ -124,8 +124,8 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   host.innerHTML = `
     <header class="panel__head">
       <button class="panel__back" id="diary-back" type="button" aria-label="Back" title="Goes back one step" hidden>${ICON_BACK}</button>
-      <h2 class="panel__title">Diary</h2>
-      <button class="panel__action" id="diary-add" type="button" aria-label="New" aria-haspopup="true" title="Starts a new entry or makes a new folder">${ICON_PLUS}</button>
+      <h2 class="panel__title">Album Reviews</h2>
+      <button class="panel__action" id="diary-add" type="button" aria-label="New" aria-haspopup="true" title="Starts a new review or makes a new folder">${ICON_PLUS}</button>
       <button class="panel__action" id="diary-done" type="button" aria-pressed="false" hidden>${ICON_CHECK}</button>
     </header>
     <div class="panel__body diary"></div>`;
@@ -150,16 +150,17 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
 
   const setHeader = () => {
     const atRoot = !entry;
-    // His call (2026-09-24): "Diary: <album name>" while an entry is open. The title's own
-    // ellipsis cuts a long name, so the header never wraps.
-    titleEl.textContent = atRoot || !entry ? "Diary" : `Diary: ${entry.album.title}`;
+    // His call (2026-09-24): "<card name>: <album name>" while an entry is open; "Review:" since
+    // the rename to Album Reviews (2026-10-17). The title's own ellipsis cuts a long name, so
+    // the header never wraps.
+    titleEl.textContent = atRoot || !entry ? "Album Reviews" : `Review: ${entry.album.title}`;
     titleEl.title = atRoot ? "" : titleEl.textContent;
     backEl.hidden = atRoot && !picking; // the album picker is left by Back too (SEARCH-FIELDS.md §3)
     // The + is the home page's (new entry, new folder); the check is the entry's (Done).
     addBtn.hidden = !atRoot;
     doneBtn.hidden = atRoot;
     paintDone();
-    headerSubs.forEach((cb) => cb({ title: titleEl.textContent ?? "Diary", atRoot }));
+    headerSubs.forEach((cb) => cb({ title: titleEl.textContent ?? "Album Reviews", atRoot }));
   };
 
   // ── the root: the + cover (or the picker), then the rows (DIARY.md §9) ─────────
@@ -177,13 +178,13 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     const byRow = (key: string, xs: DiarySummary[]) => sortByOrder(rowScope(key), xs, (s) => String(s.id));
     const built: Row[] = [
       { key: "progress", label: "In progress", items: byRow("progress", list.filter((s) => !s.doneAt)), empty: "Nothing in progress. Add an album to start." },
-      { key: "done", label: "Completed", items: byRow("done", list.filter((s) => s.doneAt)), empty: "Press the check on an entry when you finish it." },
+      { key: "done", label: "Completed", items: byRow("done", list.filter((s) => s.doneAt)), empty: "Press the check on a review when you finish it." },
       ...folders.map((f) => ({
         key: `folder:${f.id}`,
         label: f.name,
         folderId: f.id,
         items: byRow(`folder:${f.id}`, list.filter((s) => s.folderId === f.id)),
-        empty: "Drag an entry here, or right-click one › Move to Folder.",
+        empty: "Drag a review here, or right-click one › Move to Folder.",
       })),
     ];
     return sortByOrder("diary.sections", built, (r) => r.key);
@@ -259,7 +260,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     const t = playingTrack();
     if (!t) return "";
     const has = entryFor(t);
-    const hint = has ? "Opens your entry for the album that is playing" : "Starts an entry for the album that is playing";
+    const hint = has ? "Opens your review of the album that is playing" : "Starts a review of the album that is playing";
     return `<button class="diary__new diary__now" type="button" data-now title="${esc(hint)}">
       ${coverHTML(art(t.artwork?.urlTemplate, TILE_PX), "diary__new-art diary__now-art")}
       <span class="diary__new-label">${has ? "Continue" : "Listening now"}</span>
@@ -322,7 +323,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       })
       .catch((e) => {
         console.error("[diary] list", e);
-        body.innerHTML = `<p class="qcard__empty">Couldn't read your Diary.</p>`;
+        body.innerHTML = `<p class="qcard__empty">Couldn't read your album reviews.</p>`;
         rootRead = true;
         held?.check();
       });
@@ -554,7 +555,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       .then((e) => showEntry(e))
       .catch((e) => {
         console.error("[diary] open", e);
-        toast({ kind: "warn", text: `Couldn't open “${a.album.title}” in your Diary.` });
+        toast({ kind: "warn", text: `Couldn't open “${a.album.title}” in your album reviews.` });
         entry = null;
         setHeader();
         renderRoot();
@@ -818,7 +819,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   };
   function saveFailed(e: unknown) {
     console.error("[diary] save", e);
-    toast({ kind: "warn", text: "Couldn't save that to your Diary." });
+    toast({ kind: "warn", text: "Couldn't save that to your album review." });
   }
 
   // ── the scale (fork 7B) ────────────────────────────────────────────────────────
@@ -942,7 +943,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     toast({
       kind: "warn",
       sticky: true,
-      text: `Delete your Diary entry for “${title}”? Its notes and scores go with it.`,
+      text: `Delete your review of “${title}”? Its notes and scores go with it.`,
       actions: [
         {
           label: "Delete",
@@ -982,7 +983,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
           { label: s.doneAt ? "Mark in Progress" : "Mark as Done", run: () => void setDone(s.id, !s.doneAt) },
           { label: "Move to Folder", sub: () => folderSub(s.id, s.folderId) },
         ],
-        away: [{ label: "Delete Entry", run: () => askDelete(s.id, s.album.title) }],
+        away: [{ label: "Delete Review", run: () => askDelete(s.id, s.album.title) }],
       },
     );
   /** A folder row's header: rename it, delete it (its entries stay, in In progress or Completed). */
@@ -999,7 +1000,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       .then(() =>
         toast({
           kind: "info",
-          text: `Deleted the folder “${f.name}”. Its entries stay.`,
+          text: `Deleted the folder “${f.name}”. Its reviews stay.`,
           actions: [
             {
               label: "Undo",
@@ -1021,7 +1022,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     doneBtn.classList.toggle("is-active", on);
     doneBtn.setAttribute("aria-pressed", String(on));
     doneBtn.setAttribute("aria-label", on ? "Mark in Progress" : "Mark as Done");
-    doneBtn.title = on ? "Done. Press again to put it back in progress" : "Marks this entry done and copies its Export. It moves to Completed";
+    doneBtn.title = on ? "Done. Press again to put it back in progress" : "Marks this review done and copies its Export. It moves to Completed";
   }
   const setDone = (id: number, done: boolean) => {
     diag.log("ui:act", { at: "diary", do: done ? "done" : "undone" });
@@ -1058,7 +1059,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       [
         {
           input: {
-            label: "Entry",
+            label: "Review",
             placeholder: "Find an album or an artist",
             onInput: menuSearch,
             onSubmit: () => {
@@ -1536,7 +1537,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     },
     onHeaderChange(cb) {
       headerSubs.add(cb);
-      cb({ title: titleEl.textContent ?? "Diary", atRoot: !entry });
+      cb({ title: titleEl.textContent ?? "Album Reviews", atRoot: !entry });
       return () => headerSubs.delete(cb);
     },
     snapshot: () => (entry ? { entry: entry.id } : undefined),
