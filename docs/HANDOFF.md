@@ -169,11 +169,10 @@ Working style). Each step is its own branch and session, desk-tested before the 
 
 Steps 1–4 and 6 (the sheen, the Library ⟳'s spin, a song's primary artist and its guests, S1
 and S3, Max for a new install, the tray hover text) shipped in 0.28.0; WORKLOG 2026-10-15
-(twenty-eighth). Two steps are left:
+(twenty-eighth). Step 7, album notes, was built 2026-10-17 (below, *Built, waiting*). One step
+is left:
 
 5. **Hop in** (HOP-IN.md): decided. **Skipped for now (his call, 2026-10-15).**
-7. **Album notes** (ideas/album-notes.md): large (a model field, a table, UI on every surface).
-   Step 2's album artist is in. Its three read-only probes (§5) may run any time before.
 
 **Now, with no code:** S2's week of mirror dates (apple-calls.md S2): one read-only call a day,
 run from a script, so the evidence is ready when S2 is built. S5 (`fields[…]`) rides along with
@@ -190,10 +189,6 @@ each step that touches those calls.
 
 - **The Library ⟳'s hint on a refused click** (2026-10-15): the spin part is built (Build order
   step 1); the hint words and the nudge are a draft for him to edit. ideas/apple-calls.md §4.
-- **Album notes** (2026-10-15): Apple's editorial notes in the album's facts box, Apple first,
-  Last.fm's wiki as the fallback (N1 changed 2026-10-17); the full note opens on every surface;
-  a song mention plays the song in the album. Every fork closed; three probes before the build
-  (§5). ideas/album-notes.md.
 
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
@@ -203,6 +198,14 @@ each step that touches those calls.
   (`src/usage-keys.js` there has uncommitted edits, 2026-10-17).
 
 ### Built, waiting on a release or a desk test
+
+- **Album notes** (features/album-notes.md, 2026-10-17, committed on `main`): built, desk test
+  passed (§8.3, 10 shots, run by Claude on his dev app). Apple's short note in the album box's
+  About; a click opens the full note on every surface; song headings and quoted names play
+  their songs. `notes.rs` (a new cache table, no schema version), `album-notes.ts`,
+  `album-notes-parse.ts`, `openNotes` in present.ts. What Claude decided (§8.2) stands (his
+  call). **Open:** a release. Not run: card memory with a note open, the Search album pane,
+  Mini (§8.3).
 
 - **A card's first screen: one reveal in reading order** (UX-COVERUPS.md §7.14, 2026-10-17,
   committed `2d3b600` on `main`): steps 2–7 built. The keyed patch (`keyed.ts`) on the engine, Home,

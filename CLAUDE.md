@@ -186,6 +186,14 @@ for word, with RELEASE.md's section numbers.
   suggestions. `src/updates-btn.ts`, `src/release-leads.ts`, `virtual:release-notes` in
   vite.config.ts. **Every RELEASE-NOTES.md paragraph after 0.28.0 starts with a short bold
   lead** (§6.3; docs:check 31). §7 is the as-built record.
+- `album-notes.md` — BUILT 2026-10-17, desk test passed (§8.3, run by Claude): Apple's editorial
+  notes. The album box's About shows Apple's short note (Apple, then Last.fm); a click opens the
+  full note on every surface (Max grows it like the stats; Midi and Mini inside the card); song
+  headings and names in bold or curly quotes are mentions that play the song (his calls §3, M1
+  §5.1). `album_notes` in `notes.rs` (cached a month; 0 calls on a Full album, 1 on a library
+  album), `album-notes.ts`, the pure parse `album-notes-parse.ts`, `openNotes` in present.ts.
+  §5.1 the probes (46 % of real albums have notes, singles none); §6 a Library album's real
+  artist; §8 the as-built record, and what Claude decided (§8.2, his OK).
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
@@ -259,11 +267,8 @@ no public fan API, local files are the clean path (§4); §9 the forks. §10 (20
 calls): the rename to DeetsBeats — display name only, the identifier stays, the MCP renamed in
 full, the CLI keeps `deetsmusic` as an alias; the name check found "Beats" unsafe, so the new name
 is open (§10.3); a new `productName` is a second install, moved by hand (§10.4); his
-Deets-head icon is drawn in `icon-template/` (§10.6). `album-notes.md` — an idea (2026-10-15):
-Apple's editorial notes in the album's facts box (the short note in the About cell, the full note
-on a click, song names as mentions); probed live (§1: albums have notes, sometimes a track-by-track
-interview; artists have none for us); his calls (§3: Apple first then Last.fm since 2026-10-17,
-every surface, a mention plays the song); §6 a Library album's real artist from the sync's `include=albums`, no extra call.
+Deets-head icon is drawn in `icon-template/` (§10.6). (`album-notes.md` moved to
+`features/` when it was built, 2026-10-17.)
 `apple-calls.md` — an idea (2026-10-15): the ledger of every Apple call site (§2), a measured day
 (§1), the savings (§3: the explained count, mirror dates in one call, new artists from new songs),
 the Library ⟳'s silent refusal (§4), a song's primary artist from Apple at no extra call (§5,

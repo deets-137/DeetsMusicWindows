@@ -89,7 +89,7 @@ pub struct Track {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub library_artist: Option<String>,
     /// The library album's own artist (`include=albums`), which names the album when its
-    /// songs credit different guests (ideas/album-notes.md §6.2).
+    /// songs credit different guests (features/album-notes.md §6.2).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub album_artist: Option<String>,
     /// The library album's id (`l.…`), for the album's true identity later.

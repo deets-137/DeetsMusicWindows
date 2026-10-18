@@ -4,8 +4,8 @@
 // The song before its album, then Apple before Last.fm: Apple's part about the song (from a
 // track-by-track album note), Last.fm's song wiki, Apple's album note, Last.fm's album wiki.
 // The source row (*Notes from*, `notesSource`, §8.4) keeps one source or none, and the order
-// inside it. Apple's two steps wait on album notes (ideas/album-notes.md); until then they are
-// never given, and the cell runs Last.fm's two.
+// inside it. Apple's two steps come from Apple's album notes (features/album-notes.md, built
+// 2026-10-17): the song's part of a track-by-track note, and the album's short note.
 
 export type NotesSource = "both" | "apple" | "lastfm" | "none";
 export type NoteFrom = "apple" | "lastfm";

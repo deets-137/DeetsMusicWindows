@@ -1,0 +1,625 @@
+{
+  "about": "Apple's album notes on his LIVE dev app (features/album-notes.md §8). Made by album-notes.mjs; edit that, not this.",
+  "desk_test": "features/album-notes.md §8",
+  "made": "2026-10-17",
+  "pass": "Every shot ok: each probe's `expect` holds. Read the snaps of notes-lib-max (box, note), notes-quoted-mentions, notes-song-page and notes-midi.",
+  "run": "node docs/ops/checks/album-notes.mjs && node scripts/shots.mjs --list docs/ops/checks/album-notes.json --noise 80   (dev app running, on screen, Max, the Library in slot d, and in Midi in the right slot; ask other sessions first; one shot plays a song)",
+  "shots": [
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-lib-max",
+      "about": "A library album with a track-by-track note, in Max: the About shows Apple's short note and opens the note; the note has its songs as rows, the tagline, From Apple Music; Esc goes back into the cell.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "invoke": {}
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"Hurt\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1535799403\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Hurt');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1535799403\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "box",
+          "expect": {
+            "card": "Album",
+            "box": true,
+            "opens": true,
+            "about": "/rainbows/",
+            "aboutHint": "From Apple Music's notes on this album"
+          }
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"d\"] .artist-info-wrap')?.scrollIntoView({ block: 'center' })"
+        },
+        {
+          "snap": "box"
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-notes]",
+          "frames": 30
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "note open",
+          "expect": {
+            "view": true,
+            "songs": {
+              "$not": 0
+            },
+            "from": "From Apple Music",
+            "short": "/rainbows/",
+            "rawTags": false
+          }
+        },
+        {
+          "snap": "note"
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "closed",
+          "expect": {
+            "view": false,
+            "card": "Album",
+            "box": true
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-quoted-mentions",
+      "about": "M1 = A: Romance's note names its songs in curly quotes; those that are songs of the album are mentions.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"My Oh My\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1490344644\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for My Oh My');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1490344644\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-notes]"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "mentions",
+          "expect": {
+            "view": true,
+            "mentions": {
+              "$not": 0
+            },
+            "songs": 0
+          }
+        },
+        {
+          "eval": "document.querySelector('.notes__mention')?.scrollIntoView({ block: 'center' })"
+        },
+        {
+          "snap": "mentions"
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-play-mention",
+      "about": "A song heading plays its song with the album after it, and the note stays open (N3 = A). PLAYS A SONG.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"Hurt\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1535799403\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Hurt');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1535799403\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-notes]"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "eval": "[...document.querySelectorAll('.notes__song')].find((b) => /Hurt/.test(b.textContent))?.click()"
+        },
+        {
+          "wait": 4000
+        },
+        {
+          "probe": "JSON.stringify({ view: !!document.querySelector('.present--notes'), np: document.querySelector('.np__title')?.textContent })",
+          "name": "playing",
+          "expect": {
+            "view": true,
+            "np": "/Hurt/"
+          }
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-compass",
+      "about": "The Compass over the note takes its Esc first; a second Esc closes the note.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"Hurt\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1535799403\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Hurt');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1535799403\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-notes]"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "key": "Ctrl+Space"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "compass closed",
+          "expect": {
+            "view": true
+          }
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "note closed",
+          "expect": {
+            "view": false,
+            "card": "Album"
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-row-off-no-call",
+      "about": "Show album info off: no box, and Apple's notes are not asked.",
+      "settings": {
+        "showAlbumInfo": false
+      },
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "invoke": {}
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"My Oh My\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1490344644\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for My Oh My');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1490344644\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "off",
+          "expect": {
+            "card": "Album",
+            "box": false,
+            "calls": 0
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-lastfm-only",
+      "about": "Notes from › Last.fm only: no Apple note in the About and no call; the About, if any, is Last.fm's and opens nothing.",
+      "settings": {
+        "notesSource": "lastfm"
+      },
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "invoke": {}
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"Hurt\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1535799403\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Hurt');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1535799403\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "lastfm only",
+          "expect": {
+            "card": "Album",
+            "opens": false,
+            "calls": 0
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-fail",
+      "about": "Apple's notes fail: the box draws from Last.fm alone, nothing throws, and the next open asks again.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "invoke": {
+            "album_notes": {
+              "fail": true
+            }
+          }
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"My Oh My\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1490344644\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for My Oh My');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1490344644\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "failed",
+          "expect": {
+            "card": "Album",
+            "opens": false,
+            "calls": 1,
+            "errors": 0
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-song-page",
+      "about": "The song page: a track-by-track note's part about the song is its About (Apple, the song first).",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"Hurt\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1535799403\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Hurt');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1535799403\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Song Credits\").click()"
+        },
+        {
+          "wait": 4000
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "song about",
+          "expect": {
+            "card": "Song",
+            "box": true,
+            "aboutHint": "From Apple Music's notes on the album, about this song"
+          }
+        },
+        {
+          "eval": "document.querySelector('[data-slot=\"d\"] .artist-info-wrap')?.scrollIntoView({ block: 'center' })"
+        },
+        {
+          "snap": "song"
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-midi",
+      "about": "Midi: the note opens over the song list inside the card, under the hero; Esc closes it.",
+      "size": "midi",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"right\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"right\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"Hurt\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1535799403\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Hurt');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"right\"] [data-cid=\"1535799403\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "eval": "(() => { const w = document.querySelector('[data-slot=\"right\"] .artist-info-wrap'); if (w && w.dataset.open !== '1') w.querySelector('[data-artist-info-toggle]')?.click(); })()"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "click": "[data-slot=\"right\"] [data-notes]"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"right\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "midi note",
+          "expect": {
+            "view": true,
+            "topOver": {
+              "$not": 0
+            }
+          }
+        },
+        {
+          "snap": "midi"
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"right\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "midi closed",
+          "expect": {
+            "view": false
+          }
+        }
+      ]
+    },
+    {
+      "covers": "features/album-notes.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "id": "notes-reduced-motion",
+      "about": "Reduced motion: the note shows and closes with no clip motion.",
+      "steps": [
+        {
+          "reload": true
+        },
+        {
+          "wait": "[data-slot=\"d\"] .panel__title"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "reducedMotion": true
+        },
+        {
+          "eval": "(async () => {\n    const s = '[data-slot=\"d\"] ';\n    for (let k = 0; k < 6 && document.querySelector(s + '.panel__back:not([hidden])')?.offsetParent; k++) { document.querySelector(s + '.panel__back').click(); await new Promise((r) => setTimeout(r, 700)); }\n    const i = document.querySelector(s + 'input.search__input') || document.querySelector(s + 'input.lib-search__input');\n    if (!i) throw new Error('no search field');\n    i.value = \"Hurt\"; i.dispatchEvent(new Event('input', { bubbles: true }));\n    for (let k = 0; k < 50; k++) { if (document.querySelector(s + '[data-cid=\"1535799403\"]')) return; await new Promise((r) => setTimeout(r, 100)); }\n    throw new Error('no row for Hurt');\n  })()"
+        },
+        {
+          "rightclick": "[data-slot=\"d\"] [data-cid=\"1535799403\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "eval": "[...document.querySelectorAll('.ctx-menu__item')].find((b) => b.textContent.trim() === \"Go to Album\").click()"
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "click": "[data-slot=\"d\"] [data-notes]",
+          "frames": 20
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify((() => {\n  const s = '[data-slot=\"d\"] ';\n  const box = document.querySelector(s + '[data-info-box]');\n  const about = document.querySelector(s + '.artist-info__about');\n  const view = document.querySelector('.present--notes');\n  const host = view?.closest('.panel');\n  return {\n    card: document.querySelector(s + '.panel__title')?.textContent,\n    box: !!box && !box.hasAttribute('data-info-pending'),\n    heads: [...document.querySelectorAll(s + '.artist-info__sec .artist-info__h')].map((h) => h.textContent),\n    about: about ? about.textContent.slice(0, 50) : null,\n    aboutHint: about?.dataset.hint ?? about?.getAttribute('title') ?? null,\n    opens: about?.hasAttribute('data-notes') ?? false,\n    view: !!view,\n    tagline: view?.querySelector('.present__title .search__label')?.textContent ?? null,\n    short: view?.querySelector('.notes__short')?.textContent?.slice(0, 50) ?? null,\n    songs: view ? view.querySelectorAll('.notes__song').length : 0,\n    mentions: view ? view.querySelectorAll('.notes__mention:not(.notes__mention--elsewhere)').length : 0,\n    from: view?.querySelector('.notes__from')?.textContent ?? null,\n    topOver: view && host ? Math.round(view.getBoundingClientRect().top - host.getBoundingClientRect().top) : null,\n    rawTags: view ? /<[a-z]/i.test(view.querySelector('.notes__body')?.textContent ?? '') : false,\n    calls: window.__shotsInvoke?.calls?.album_notes ?? 0,\n    errors: (window.__diag?.events?.() ?? []).filter((e) => /error|unhandled/i.test(e.tag)).length,\n  };\n})())",
+          "name": "still",
+          "expect": {
+            "view": true
+          }
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "wait": 800
+        }
+      ]
+    }
+  ]
+}

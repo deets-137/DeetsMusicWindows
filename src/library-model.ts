@@ -31,7 +31,7 @@ export const albumKey = (t: Track) => {
 
 export function groupAlbums(tracks: Track[]): AlbumGroup[] {
   // Album's displayed artist = Apple's own album artist when its songs carry one (the sync's
-  // `include=albums`, ideas/album-notes.md §6.2: Rrromeo is Girl Ultra's on every run). Else
+  // `include=albums`, features/album-notes.md §6.2: Rrromeo is Girl Ultra's on every run). Else
   // its DOMINANT track artist (a featured guest on one track shouldn't relabel the whole
   // album), tracked via per-artist counts.
   const map = new Map<string, AlbumGroup & { artistCounts: Map<string, number>; albumArtist?: string }>();

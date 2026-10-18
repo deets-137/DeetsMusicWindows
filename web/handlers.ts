@@ -206,6 +206,8 @@ export const NULL_ON_PURPOSE = new Set([
   "friend_add", "friend_key_export", "friend_key_import", "friend_me", "friend_pin", "friend_remove", "friend_rename", "friend_sign",
   "pick_delete_posts", "pick_mark", "pick_note", "pick_post", "pick_skip", "pick_today", "pick_unmark", "pick_withdraw", "picks_missed_skip",
   "lastfm_album_info", "lastfm_artist_info", "lastfm_listeners",
+  // Apple's album notes (desktop only: the cache is Rust's, ideas/album-notes.md)
+  "album_notes",
   // Stations and the playlist web (a station leaves a room)
   "radio_genre_stations", "radio_my_station", "radio_seed_station", "web_build",
   // Your own files, the log file, the launch cover

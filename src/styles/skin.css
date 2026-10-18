@@ -693,6 +693,11 @@
   --present-num:      clamp(40px, 11cqi, 128px); /* the counts: they follow the card's width (cqi) */
   --present-roll-dur: 1.2s;                    /* a count that moved rolls up to its new value */
   --present-in-delay: calc(var(--grow-dur) * 0.4); /* the words fade in once the clip is mostly open (--grow-rows-at's fraction) */
+  /* An album's full Apple note (present.ts openNotes, features/album-notes.md): the same view, words in place of counts. */
+  --notes-gap:        var(--space-3);          /* paragraph ↔ paragraph, song row ↔ its words */
+  --notes-measure:    68ch;                    /* the longest line: a wide grown card still reads as a column */
+  --notes-short-fs:   var(--fs-title);         /* the short note, the first line in larger type (his draft §7) */
+  --notes-lh:         var(--lh-text);          /* the note's line height */
   --lib-stuck-h:         0px;                   /* the height of a list's stuck header (.lib-view-bar / .lib-cols), its scroll-padding-top; the engine sets the measured value on each view, this is a list with none */
   --sticky-bar-surface:  var(--panel);          /* a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box */
   --sticky-bar-backdrop: var(--panel-backdrop); /* the card's own frost (Glass); a see-through skin without one adds a blur */

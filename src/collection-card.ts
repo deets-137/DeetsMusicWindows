@@ -15,7 +15,7 @@ import { handleUnpin } from "./pins";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { toggleInfoBox } from "./listeners";
 import { infoBoxAt, openInfoBoxMenu } from "./info-box-menu";
-import { openPresent } from "./present";
+import { notesOpenIn, openNotes, openPresent, type NotesViewData } from "./present";
 import { currentSurface } from "./surface";
 import * as frames from "./frames";
 import { wireListKeys } from "./list-keys";
@@ -177,6 +177,9 @@ export interface Context {
   /** Ask again for the hero's Last.fm box: a box row turned on while the level shows, with no
    *  box drawn yet (LISTENERS.md §8.11). The answer lands through `heroAside`, as on open. */
   asideRefresh?: () => void;
+  /** An album's full Apple note (features/album-notes.md): what its view needs from the level,
+   *  the songs a mention plays. A click on the box's About opens it (present.ts `openNotes`). */
+  notesView?: () => NotesViewData;
   /** Shelves under the hero (ARTIST-VIEW.md §2.2): HTML drawn right after the hero, inside
    *  the block the windower measures. A function, so async facts fill in on `reload()`.
    *  Items carry `data-shelf-item`: a click goes to `onShelf`, a right-click to `shelfMenu`. */
@@ -397,6 +400,8 @@ export interface LevelSnapshot {
   sortDir?: SortDir;
   density?: Density;
   query?: string;
+  /** An album's full note open on this level (features/album-notes.md): its catalog album id. */
+  notes?: string;
 }
 const isSnapshot = (s: unknown): s is CardSnapshot =>
   !!s && typeof s === "object" && (s as CardSnapshot).v === 1 && Array.isArray((s as CardSnapshot).levels) && (s as CardSnapshot).levels.length > 0;
@@ -1483,7 +1488,24 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       });
       return true;
     });
+    // An open full note comes back open (CARD-MEMORY.md), on the level that showed it.
+    const notes = notesOpenIn(opts.root);
+    if (notes && levels.length > 1 && levels.length === stack.length) levels[levels.length - 1].notes = notes;
     return { v: 1, levels };
+  };
+
+  /** After a restore: open the note the snapshot had open, once its About is drawn (the notes
+   *  land in place, so it may take a moment). No motion. Gives up after --memory-wait. */
+  const reopenNotes = (id: string, ctx: Context) => {
+    const until = Date.now() + Math.max(tokenMs("--memory-wait"), 1500);
+    const tryOpen = () => {
+      if (cur().ctx !== ctx) return;
+      const cell = curPane?.querySelector<HTMLElement>(`[data-notes="${CSS.escape(id)}"]`);
+      if (cell) return void openNotes(cell, ctx.notesView?.(), true);
+      if (Date.now() < until) window.setTimeout(tryOpen, 150);
+      else diag.log("memory", { card: opts.storeKey, cause: "notes-gone", id });
+    };
+    tryOpen();
   };
 
   // While a restore waits for the card's data, the viewport stays hidden, for at most
@@ -1602,6 +1624,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       levels: stack.length,
       late: !wasHeld && deeper.length > 0,
     });
+    const openNote = !stale ? deeper[contexts.length - 1]?.notes : undefined;
+    if (typeof openNote === "string" && openNote) reopenNotes(openNote, top.ctx);
     // A stale key means the data is not here (yet): the caller may hold and try again.
     return !stale;
   };
@@ -1951,6 +1975,16 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     },
   });
 
+  // The album box's About is a press (role="button"): Enter and Space open the note, as a click.
+  viewport.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const about = (e.target as HTMLElement).closest?.<HTMLElement>("[data-notes]");
+    if (!about || about !== e.target) return;
+    e.preventDefault();
+    e.stopPropagation();
+    void openNotes(about, cur().ctx.notesView?.());
+  });
+
   viewport.addEventListener("click", (e) => {
     if (drag.consumeClick()) return; // the tail of a drag, not a play
     const t = e.target as HTMLElement;
@@ -2043,6 +2077,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     // The box's Listening Stats cell, in Max: presentation mode (present.ts, PresentationMode.md).
     const stats = t.closest<HTMLElement>("[data-present]");
     if (stats && currentSurface() === "max") return void openPresent(stats);
+    // The album box's About, when Apple has a full note: the note, on every surface
+    // (features/album-notes.md §2, his call N2).
+    const about = t.closest<HTMLElement>("[data-notes]");
+    if (about) return void openNotes(about, cur().ctx.notesView?.());
     // the hero's tappable subtitle (an album's artist) → its own drill
     if (t.closest("[data-hero-sub]")) {
       cur().ctx.hero?.()?.sub?.run?.();

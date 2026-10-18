@@ -424,7 +424,7 @@ cover, the title, Details, the Writers rows. The *facts box* is the 2×2 box of 
   Matilda Mann: counts, no tags, no wiki). One song was not on Last.fm (error 6). The tags are
   noisy: "WSUM 91.7 FM Madison" is in the top five of two songs. The answer also names the
   song's album.
-- Apple's songs carry no notes of their own (ideas/album-notes.md §1). An Apple album note can
+- Apple's songs carry no notes of their own (features/album-notes.md §1). An Apple album note can
   be a track-by-track interview: the song's name in bold, then the artist's words on it.
 
 ### 8.1 The shape
@@ -453,9 +453,9 @@ cover, the title, Details, the Writers rows. The *facts box* is the 2×2 box of 
    4. Last.fm's wiki for the album
 
    Not taken: the source first (Apple's song part, Apple's album note, then Last.fm's two).
-   This replaces ideas/album-notes.md §3 N1 ("Apple's notes only"); that doc records the change.
+   This replaces features/album-notes.md §3 N1 ("Apple's notes only"); that doc records the change.
 4. **The album box uses the same order** on its two album steps: Apple's short note, then
-   Last.fm's wiki. Until album notes are built, it shows Last.fm's wiki, as today.
+   Last.fm's wiki. Built 2026-10-17 with album notes (album-notes.md §8).
 5. **A Settings row for the source** (§8.4).
 6. **The cell's heading:** *About* for a note about the song; *About the album* for the album's
    note on the song page. On the album page it stays *About*.
@@ -469,9 +469,10 @@ cover, the title, Details, the Writers rows. The *facts box* is the 2×2 box of 
 | 3 | Apple, the album | `editorialNotes.short` | the same album-notes read |
 | 4 | Last.fm, the album | `album_info.wiki` (§7.3) | one `album.getInfo` per album, the call the album page makes; cached a month |
 
-- Steps 1 and 3 wait on the album-notes build (ideas/album-notes.md). **Build order:** the song
-  box first. Until album notes land, the cell runs steps 2 and 4 only; then 1 and 3 join with
-  no change to the box.
+- Steps 1 and 3 joined on 2026-10-17 with the album-notes build (album-notes.md §8): step 1 is
+  `songPart` (album-notes-parse.ts), the paragraphs under the song's heading in a track-by-track
+  note; step 3 is the album's short note. The song page asks Apple by the song (one call per
+  album the first time, cached a month), and the album's Last.fm facts wait for that answer.
 - Step 4 on the song page asks for the album's Last.fm facts only when steps 1 to 3 gave
   nothing, and only with the album row on (`showAlbumInfo`).
 - The cell's hover hint names the source and its level: Apple Music or Last.fm, the song or
@@ -540,7 +541,8 @@ cell (the song's and the album's; the artist box has no About).
 - *Notes from* applies the next time a page draws its box (an open page keeps its box until
   you open it again or the card redraws). **Changed 2026-10-17 (§8.11):** it applies at once to
   the page on screen.
-- *Apple only* shows no About today: Apple's notes wait on album notes.
+- *Apple only* shows Apple's notes only (since 2026-10-17, album-notes.md); an album with none
+  has no About.
 - A song Last.fm does not know, whose album has a Last.fm wiki, draws a box with only About
   and no link.
 - The album's Last.fm facts are asked from the song page only with *Show album info* on; with

@@ -1547,7 +1547,7 @@ function mountSettings(
         // The artist facts box (LISTENERS.md §6; his calls 2026-10-12: its own row, on by default).
         storeToggle("artistinfo", "Show artist info on the artist's page", "showArtistInfo", () => "The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked"),
         // The album facts box (LISTENERS.md §7; his call 2026-10-13: its own row).
-        storeToggle("albuminfo", "Show album info on the album's page", "showAlbumInfo", () => "The album's page shows Last.fm's tags, plays and listeners, a few words about it, and a link. Off: Last.fm is not asked"),
+        storeToggle("albuminfo", "Show album info on the album's page", "showAlbumInfo", () => "The album's page shows Last.fm's tags, plays and listeners, a few words about it from Apple Music or Last.fm, and a link. Off: neither is asked"),
         // The song facts box (LISTENERS.md §8; 2026-10-17: its own row, as the album's).
         storeToggle("songinfo", "Show song info on the song's page", "showSongInfo", () => "Song Credits shows Last.fm's tags, plays and listeners, a few words about the song or its album, and a link"),
         // Where the About cells' words come from (LISTENERS.md §8.4, his ask 2026-10-17).

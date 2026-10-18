@@ -2016,6 +2016,10 @@ pub async fn catalog_collection_tracks(
         let out: Vec<Track> = tracks.iter().filter(|t| !t.unreleased).cloned().collect();
         let conn = db.lock();
         crate::enrich::cache_tracks(&conn, &out)?;
+        // The album's notes came with it: kept at no call (notes.rs, the Full level's About).
+        if kind == "albums" {
+            crate::notes::seed(&conn, &body["data"][0], None);
+        }
     }
     Ok(tracks)
 }
@@ -2581,6 +2585,11 @@ pub async fn catalog_related(
         return Err(format!("{kind}/{id} include={rel} HTTP {status}"));
     }
     let node = &body["data"][0]["relationships"][rel.as_str()]["data"][0];
+    // The song → album hop brings the album's attributes: its notes are kept at no call
+    // (notes.rs), so the album page's About finds them.
+    if kind == "songs" && rel == "albums" {
+        crate::notes::seed(&db.lock(), node, Some(&id));
+    }
     Ok(node["id"].as_str().map(|id| NamedRef {
         id: id.to_string(),
         name: node["attributes"]["name"].as_str().unwrap_or_default().to_string(),

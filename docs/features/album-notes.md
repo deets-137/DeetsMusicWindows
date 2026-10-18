@@ -1,12 +1,16 @@
 ---
-status: idea
-desk_test: none
-sources: [src/info-box.ts, src/present.ts, src/library-model.ts, src/media-levels.ts, src/listeners.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs]
+status: built
+desk_test: passed 2026-10-17
+sources: [src/album-notes.ts, src/album-notes-parse.ts, src/info-box.ts, src/present.ts, src/media-levels.ts, src/collection-card.ts, src-tauri/src/notes.rs, src-tauri/src/apple.rs, src/library-model.ts, src/listeners.ts, src-tauri/src/model.rs]
 updated: 2026-10-17
 ---
 # Album notes — Apple's editorial notes in the album's facts box
 
-> An idea (2026-10-15), not built; every fork closed the same day (§3). His sketch: the album's
+> **BUILT 2026-10-17, desk test passed (§8.3, run by Claude on his dev app).** §8 is the as-built
+> record: read it first; where it differs from the design above it, it is the code.
+> Committed, not released.
+>
+> An idea (2026-10-15); every fork closed the same day (§3), M1 on 2026-10-17 (§5.1). His sketch: the album's
 > facts box shows Apple's short note from the start, in the empty cell under Tags. A click on it
 > opens the full note, the same way a click on Listening Stats opens presentation mode. Where the
 > note names a song, the song's name is a mention you can act on. §1 is what Apple gives (probed
@@ -161,6 +165,51 @@ whole and naming Apple is the reading the app already uses for covers. Not cut, 
    note translated, missing, or the same English text?
 3. **Other tags.** Look for any tag but `<i>` and `<b>` (a `<br>`, a link) in the sample.
 
+### 5.1 The probes' answers (run 2026-10-17)
+
+> **Part:** probed · 2026-10-17 (4 read-only calls: the sample twice, Rrromeo in `mx` twice)
+
+**1. How common notes are.** 100 library songs, one per album, at random (seed 17) from his
+2,511 library albums with a catalog id; one call (`catalog/us/songs?ids=…&include=albums&
+fields[albums]=name,artistName,editorialNotes,releaseDate,trackCount`, 100 KB, 0.2–0.4 s). 96
+albums came back.
+
+| | Albums | With notes | Short only | Short + full | Track-by-track |
+|---|---|---|---|---|---|
+| Singles and EPs of 1–3 songs | 39 | 0 | 0 | 0 | 0 |
+| Albums of 4 or more songs | 57 | 26 (46 %) | 10 | 16 | 3 |
+| All | 96 | 26 (27 %) | 10 | 16 | 3 |
+
+By release year: 2010s 10 of 22, 2020s 16 of 74 (the 2020s hold most of the singles). The
+taglines seen: *New Album*, *New EP*, *New Album in Spatial Audio*, *Recommended Album*. A short
+note is at most 76 characters (fits the About cell's 4 lines) and holds no tags. The full notes
+run 77 to 2,036 words.
+
+**2. Other storefronts.** Rrromeo in `mx` has its own note **in Spanish**, a different text
+(short: "“Me gusta ese deseo femenino explícito”."; the full note is 6,202 characters). `l=es-MX`
+gives the same. So the note follows the storefront, as the catalog does; the app reads the
+user's own storefront, so a user in Mexico sees the Spanish note. Nothing to build for it.
+
+**3. Other tags, and the format (corrects §1).** Only `<i>`, `<b>` and `<br />` occur. The
+paragraphs are split two ways: `\n\n` (6 of 16 full notes) or `<br />\n` (4 of 16), so the parse
+takes both, and a lone `\n` too. **A song heading is a line that holds only `<b>Name</b>`**,
+with the words on the next line (Arlo Parks, *Collapsed in Sunbeams*: `…track by track.<br />\n
+<b>Collapsed in Sunbeams</b>\n“I knew that…`). **No full note in the sample has a `<b>` inside a
+sentence**: Rrromeo's inline bold names (§1) are the exception. In running text, a song's name
+sits in curly quotes (14 of 16 full notes: Romance, *“Dream of You” and “Living Proof” are…*).
+So §4's inline mention (a `<b>` inside a sentence) would almost never fire; see the fork below.
+
+**Fork M1 — his call (2026-10-17): A.** A bold name or a name in curly quotes that folds to a
+song of this album is a mention. The §7 draft wording stands. Build it.
+
+**Fork M1 (as it was put to him): what counts as an inline mention.**
+- **A (recommended): a bold name, or a name in curly quotes, that folds to a song of this
+  album.** “Dream of You” in Romance becomes a mention. A quote that is not a song name (most
+  quotes are the artist's words, much longer) does not fold to a track name, so it stays text.
+  Cost: one more pattern in the parse, and a unit test on the sample's notes.
+- **B: bold names only (§4 as written).** Mentions appear only in the 3 track-by-track notes
+  (as headings) and in notes like Rrromeo's.
+
 ## 6. A second finding: the album's artist line
 
 **His question (2026-10-15):** the screenshot's hero says *Girl Ultra, Buscabulla & Chromeo*,
@@ -245,3 +294,111 @@ fields: 99 ids in one call, 99 songs back, 137 KB, 0.36 s. That is a bulk path f
 - The full view: the tagline (*New Album and Interview*) small above the album's title; the
   short note as the first line in larger type; the full note; "From Apple Music" at the end.
 - Cache: a month, as Last.fm's counts.
+
+## 8. As built (2026-10-17)
+
+> **Part:** built · 2026-10-17 · desk test passed (§8.3, run by Claude)
+
+### 8.1 The parts
+
+- **Rust, `src-tauri/src/notes.rs`.** The command `album_notes(albumId?, songId?)`: cache first
+  (`album_notes`: album id, state *have* / *none*, short, standard, tagline, `fetched_at`; a
+  month), else one call. By album: `albums/{id}?fields[albums]=name,editorialNotes`. By song (a
+  library album): `songs/{id}?include=albums&fields[albums]=name,editorialNotes&fields[songs]=name`,
+  and `album_note_songs` keeps song → album. A background job (`apple_calls::background`, `BUSY`
+  while the back-off holds). A 404 keeps nothing and answers null; a failure is an error and
+  keeps nothing. Logs `notes: <album> have|none`. Tables made by `init_tables` at launch (a
+  cache: no schema version, as `listen_counts`). Three unit tests.
+- **Seeds at no call:** `catalog_collection_tracks` (an album's read: the Full level, Search)
+  and `catalog_related` (the song → album hop) keep the album's notes from the answer they have
+  anyway, on the lock they already hold.
+- **`src/album-notes.ts`.** `notesFor(ref)` (one shared ask per album; a failure is not kept),
+  `notesNow(ref)` (the first paint), `notesByAlbum(id)`, `appleNotesWanted()` (*Notes from* is
+  *Both* or *Apple only*; otherwise nothing is asked).
+- **`src/album-notes-parse.ts`** (pure; `tests/album-notes-parse.test.ts`, 8 tests on cuts of the
+  real notes). `parseNote(html, songNames)` → blocks: a paragraph ends at `<br />` or a blank
+  line; a line with only `<b>Name</b>` is a song heading; `<i>` stays italic; any other tag goes,
+  its text kept; entities decoded (`decodeEntities`, now shared with `lastfm-names.ts`).
+  Mentions (M1 = A): a bold name or a name in curly quotes that `foldName`s to a song of the
+  album; a bold name that is no song here is `maybe` (searched at the click). `songPart(html,
+  title)` (the song page's step 1) and `shortText`. Run over the 16 real full notes of the probe:
+  the headings found (Arlo Parks 12, Noah Cyrus 8, JP Saxe 13), no tag left in the text.
+- **The box (`info-box.ts`).** `albumInfoHTML(i, artist, album, notes)` draws when Last.fm has
+  facts OR Apple's short note fills the About (before: Last.fm only). The About is `pickNote`'s:
+  Apple's short note, else Last.fm's wiki. With a full note it carries `data-notes`, `role=button`
+  and a tab stop; Enter and Space open it as a click does (collection-card.ts). `songInfoHTML`
+  gains Apple's two steps (the song's part, the album's short note).
+- **The levels (`media-levels.ts`).** A library album asks by its first catalog song; a Full
+  album by its id once its read ended (the read kept the notes: 0 calls). The song page asks by
+  the song, and the album's Last.fm facts wait for that answer (a cell Apple fills asks Last.fm
+  nothing more). `Context.notesView` hands the view the album's songs and how a mention plays.
+- **The view (`present.ts` `openNotes`)** — a second kind of presentation beside the stats, on
+  the same mechanics (clip from the cell, the way back into it, Escape, a row going off).
+  Max: the card fills Max. Midi and Mini: over the song list, inside the card, its top under the
+  hero, or under the card's head when the hero would leave less than half the card (in Midi the
+  hero takes most of the card, so the note sits under the head). Built from text nodes only.
+  The tagline (when Apple gives one) small above the title, the short note large, the note,
+  "From Apple Music". A song heading is a row (number, name, play mark); a mention is a span
+  with the button role (a `<button>` let a line break between a name and its comma). Its
+  press plays; its right-click is the song's own menu; `wireListKeys` over the songs and
+  mentions. The focus starts on the shrink square.
+- **Card memory:** `LevelSnapshot.notes` (the album id) when a note is open on the top level;
+  a restore opens it again, still, once the About is drawn (`reopenNotes`, within
+  `--memory-wait`). CARD-MEMORY.md §2.
+- **A card that leaves the page** with a view open (a swap) no longer blocks the next open
+  (`dropStale`, for the stats too).
+- **The tokens:** `--notes-gap`, `--notes-measure` (68ch: the words keep a column, the scroller
+  keeps the card's width), `--notes-short-fs`, `--notes-lh` (skin.css).
+- **Ledgers:** ONBOARDING.md §1 (the About's hint, the note's three hints, the box's toggle
+  hint, the Settings row hint), SETTINGS.md and SETTINGS-INVENTORY.md (`showAlbumInfo`,
+  `notesSource`), apple-calls.md §2 (the call), `web/handlers.ts` (`album_notes` answers null on
+  the web), docs-check's PLACERS (the note's `top` in Midi and Mini).
+
+### 8.2 What Claude decided inside his choices (his call 2026-10-17: they stand)
+
+1. **A mention plays your copy when you have the song:** on a library album, a mention plays
+   your album from your copy (the album's own row press); a song you do not have plays Apple's
+   album from it. On a Full album, always Apple's album (its rows).
+2. **A library album reads Apple's whole album when its note opens** (one call, kept for the
+   session; the same read as the Full chip), so the songs you do not have are mentions too.
+3. **A bold name that is no song here** (`maybe`) searches Apple by the artist and the name at
+   the click and plays the first song whose name folds the same and whose artist line holds
+   the album's artist; with no match it turns to plain bold text.
+4. **In Midi, the note opens under the card's head** (the half-card rule above), so it covers
+   the hero too.
+5. **Hint words** not in his draft: the song row and mention "Plays this song, with the album
+   after it"; a `maybe` name "Finds this song on Apple Music and plays it"; the box's toggle
+   "Shows or hides the facts about this album from Last.fm and Apple Music"; the Settings row
+   "…a few words about it from Apple Music or Last.fm, and a link. Off: neither is asked". The
+   copy editor (Alt+E) edits any of them.
+6. **No tagline, no kicker:** a note without a tagline shows the title alone (no stand-in word).
+
+### 8.3 The desk test (2026-10-17, run by Claude on his dev app)
+
+[ops/checks/album-notes.json](../ops/checks/album-notes.json), made by `album-notes.mjs` beside
+it; 10 shots, **all pass** (the second run, after the three fixes below). One shot plays a song
+(*Hurt*); the app was paused after.
+
+| Shot | Checks | Result |
+|---|---|---|
+| notes-lib-max | a library album (*Collapsed in Sunbeams (Deluxe)*): the About is Apple's short note with its hint and opens the note; 12 song rows, "From Apple Music", no tag in the text; Esc back into the cell | pass |
+| notes-quoted-mentions | *Romance*: 11 quoted names are mentions; *“Havana”* (not on the album) is text | pass |
+| notes-play-mention | the *Hurt* row plays *Hurt*; the note stays open | pass |
+| notes-compass | the Compass over the note takes the first Esc; the second closes the note | pass |
+| notes-row-off-no-call | *Show album info* off: no box, no `album_notes` call | pass |
+| notes-lastfm-only | *Notes from › Last.fm only*: no Apple About, no call | pass |
+| notes-fail | the read fails: Last.fm's wiki in the About, nothing thrown | pass |
+| notes-song-page | Song Credits on *Hurt*: the About is Apple's words about the song, its hint "…about this song" | pass |
+| notes-midi | Midi: the note inside the card, from its top; Esc closes it | pass |
+| notes-reduced-motion | reduced motion: the note shows with no clip | pass |
+
+**Found and fixed in the run:** a mention's comma broke onto the next line (a `<button>` is an
+atomic inline box: now a span); the scrollbar sat mid-card at the text column's edge (the column
+is now on the children); the Midi note opened scrolled to its first song (the focus went to the
+body, and list-keys handed it to the first row: it now starts on the shrink square).
+
+**Not run:** card memory (a swap or a restart with a note open), the Search card's album pane,
+Mini, a `maybe` name (none in the sample but Rrromeo's *“BOMBAY”*), a note with a tagline.
+The command answered real data before the UI run: three library songs → `have`, 126–136 ms
+each, then from the cache.
+

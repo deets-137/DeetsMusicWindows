@@ -32,7 +32,10 @@ import type { CollectionCardHandle, Context, Density, Grouping, SortSpec, ViewOp
 import { formatTotal, esc } from "./collection-card";
 import type { LibNav, SongOpts } from "./library-card";
 import type { MenuItem } from "./context-menu";
-import { catalogRelated, collectionTracks, artistDetail, type ArtistDetail } from "./search";
+import { catalogRelated, collectionTracks, artistDetail, searchCatalog, materializeTrack, type ArtistDetail } from "./search";
+import { notesFor, notesNow, type NotesRef } from "./album-notes";
+import { foldName, shortText, songPart } from "./album-notes-parse";
+import type { NotesViewData } from "./present";
 import { playTracks } from "./player";
 import {
   creditsFor, primeCredits, songsByWriter, fetchCredits, searchAppleForWriter,
@@ -51,7 +54,7 @@ import { needsAlbumWiki } from "./notes-order";
 import { noteText } from "./lastfm-names";
 import { setting } from "./settings-store";
 import { creditIndex } from "./artist-credit";
-import { tracks } from "./track-store";
+import { tracks, addTransientTracks } from "./track-store";
 import { reconcileAlbum, reconcilePlaylist, type AlbumFav } from "./favorites";
 import { albumMenu, artistMenu, playlistMenu, songMenu, type ArtistSubject } from "./media-menu";
 import { handOff } from "./handoff";
@@ -148,6 +151,11 @@ interface AlbumData {
   ready: () => boolean;
   /** The names the facts box asks Last.fm by: [artist, album]. */
   lfm: () => [string, string];
+  /** How Apple's notes name this album (features/album-notes.md): its catalog id, or a catalog song
+   *  of it. Null while it is not known yet (a Full level before its read). */
+  notes: () => NotesRef | null;
+  /** The full note's songs and plays: Apple's whole album where it can be read, else these. */
+  noteSongs: () => Pick<NotesViewData, "songs" | "play" | "menu">;
   /** The ♥ question (asked once per install, favorites.ts); null until it can be asked. */
   fav: () => AlbumFav | null;
   /** The hero's subtitle: the artist's own level, in this card. */
@@ -197,6 +205,29 @@ interface ShelfAlbum {
 }
 
 const yearOf = (d?: string) => d?.slice(0, 4);
+
+/** Apple's songs join the store before they play, as the Library's Full rows do
+ *  (library-card.ts `joinStore`): the play's stats resolve to the song. */
+const joinStore = (ts: Track[]) => {
+  const out = ts.filter((t) => !t.unreleased);
+  addTransientTracks(out);
+  out.forEach(materializeTrack);
+};
+
+/** A bold name in a full note that is no song of its album (*“BOMBAY”*, features/album-notes.md
+ *  §4): one catalog search by the artist and the name, at the click. A song whose name folds to
+ *  it and whose artist line holds the album's artist plays alone. False: nothing matched. */
+async function playElsewhere(artist: string, name: string): Promise<boolean> {
+  const want = foldName(name);
+  if (!want) return false;
+  const res = await searchCatalog(`${artist} ${name.replace(/[“”"]/g, "")}`, ["songs"]).catch(() => null);
+  const who = foldName(artist);
+  const hit = res?.songs.find((s) => foldName(s.title) === want && (!who || foldName(s.artistName).includes(who)));
+  if (!hit) return false;
+  joinStore([hit]);
+  await playTracks([hit], 0, "search").catch((e) => console.error("[notes] play elsewhere", e));
+  return true;
+}
 const inLibrary = (name: string) => creditIndex(tracks()).tracksFor(name).length > 0;
 const songCount = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
 
@@ -238,11 +269,26 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
   function albumLevel(d: AlbumData): Context {
     let lfmAsked = false;
     const askLfm = () => {
+      askNotes();
       const [who, what] = d.lfm();
       if (lfmAsked || !who || !what || albumInfoNow(who, what)) return;
       lfmAsked = true;
       // It slides in beside the cover when it lands, in place (hero-slide.ts).
       void albumInfoFor(who, what).then(() => card().heroAside(ctx));
+    };
+    // Apple's notes (features/album-notes.md): asked beside Last.fm, with the box's row on. A Full
+    // level asks once its read named the album (the read kept the notes: no call).
+    let notesAsked = false;
+    const askNotes = () => {
+      const ref = d.notes();
+      if (notesAsked || !ref || !setting("showAlbumInfo") || notesNow(ref) !== undefined) return;
+      notesAsked = true;
+      void notesFor(ref).then(() => card().heroAside(ctx));
+    };
+    /** The notes as the box reads them: `undefined` while a Full level has not named its album. */
+    const notesHere = () => {
+      const ref = d.notes();
+      return ref ? notesNow(ref) : undefined;
     };
     const group = songRows(d.songs, () => ({ ...d.rows(), hideCover: true, numbered: true }));
     const ctx: Context = {
@@ -258,8 +304,16 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       // The row turned on while this album shows: ask again (LISTENERS.md §8.11).
       asideRefresh: () => {
         lfmAsked = false;
+        notesAsked = false;
         askLfm();
       },
+      // The full note's view (present.ts `openNotes`): the songs a mention plays.
+      notesView: () => ({
+        title: d.name(),
+        artist: d.artist(),
+        ...d.noteSongs(),
+        playElsewhere: (name) => playElsewhere(d.artist(), name),
+      }),
       // The hero: cover, name, the artist as a tappable subtitle (→ the artist level), and
       // year · songs · length. Read live, so a sync that adds a song updates the line.
       hero: () => {
@@ -285,7 +339,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
           // Right-click anywhere on the hero: the album's own menu, without Go to Album
           // (you are there) — CONTEXT-MENUS.md §3a.
           menu: d.hasMenu() ? d.menu : undefined,
-          aside: lw && la ? albumInfoHTML(albumInfoNow(lw, la), lw, la) : undefined,
+          aside: lw && la ? albumInfoHTML(albumInfoNow(lw, la), lw, la, notesHere()) : undefined,
         };
       },
       get groupings() {
@@ -577,6 +631,41 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       songs: list,
       ready: () => true,
       lfm: () => [artist(), a.name],
+      // Apple's notes by the album's first catalog song (the hop, once; Rust keeps the pair).
+      notes: () => {
+        const songId = albumOrder(list()).find((t) => t.catalogId)?.catalogId;
+        return songId ? { songId } : {};
+      },
+      // The full note's songs: Apple's whole album (one call, kept for the session), so a song
+      // you do not have is a mention too. A mention plays your copy in this album when you have
+      // it, else Apple's album from it.
+      noteSongs: () => {
+        const mine = () => albumOrder(list());
+        const songId = mine().find((t) => t.catalogId)?.catalogId;
+        const albumId = () => (songId ? notesNow({ songId })?.albumId : undefined);
+        const copyIn = (lib: Track[], t: Track) =>
+          lib.findIndex((x) => x === t || (!!t.catalogId && x.catalogId === t.catalogId) || (!!t.isrc && x.isrc === t.isrc));
+        return {
+          songs: async () => {
+            const id = albumId();
+            return id ? await collectionTracks("albums", id).catch(() => mine()) : mine();
+          },
+          play: (t, all) => {
+            const lib = mine();
+            const i = copyIn(lib, t);
+            if (i >= 0) return void playTracks(lib, i, context).catch((e) => console.error("[notes] play", e));
+            joinStore(all);
+            void playTracks(all, Math.max(0, all.indexOf(t)), `search-albums:${albumId() ?? ""}`).catch((e) => console.error("[notes] play", e));
+          },
+          menu: (t, all) => {
+            const lib = mine();
+            const i = copyIn(lib, t);
+            return i >= 0
+              ? songMenu(lib[i], { context, nav: libNav, listFrom: { items: lib, idx: i } })
+              : songMenu(t, { context: `search-albums:${albumId() ?? ""}`, nav: fullNav, listFrom: { items: all, idx: Math.max(0, all.indexOf(t)) }, catalog: true });
+          },
+        };
+      },
       // The seed is the album's first song, as `albumMenu` picks it.
       fav: () => ({ seed: albumOrder(list()).find((t) => t.catalogId)?.catalogId, name: a.name }),
       openArtist: (who) => libNav.drillArtist(who),
@@ -721,6 +810,19 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       // Asked by the names the level opened with (the Lib level's own, so its answer is
       // shared), else by the songs' once they land.
       lfm: () => [src.artist || artistName(), src.name || name()],
+      // Apple's notes by the album's id, once the read named it: the read kept them (no call).
+      notes: () => (songs || failed ? (id ? { albumId: id } : {}) : null),
+      noteSongs: () => {
+        const ctxTag = `search-albums:${id ?? ""}`;
+        return {
+          songs: async () => rows(),
+          play: (t, all) => {
+            joinStore(all);
+            void playTracks(all, Math.max(0, all.indexOf(t)), ctxTag).catch((e) => console.error("[notes] play", e));
+          },
+          menu: (t, all) => songMenu(t, { context: ctxTag, nav: fullNav, listFrom: { items: all, idx: Math.max(0, all.indexOf(t)) }, catalog: true }),
+        };
+      },
       fav: () => (id && songs ? { id, seed: songs.find((t) => t.catalogId)?.catalogId, name: name() } : null),
       // The artist in the Full view too: Apple's page, through the album's own relationship.
       // The song's credit may name several artists: Apple's own name answers Last.fm.
@@ -963,11 +1065,37 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     // off (null), not after a failure or while the song's call is out (undefined) — a box that
     // cannot draw asked Last.fm for nothing (a test of this box, 2026-10-17).
     const who = t.artistName ?? "";
-    const albumWanted = (s: ReturnType<typeof songInfoNow>) =>
-      !!s && !!who && !!t.albumName && needsAlbumWiki({ lastfmSong: s.state === "have" ? noteText(s.wiki) : undefined }, setting("notesSource"));
+    // Apple's notes on the song's album (features/album-notes.md), by the song: its own part of a
+    // track-by-track note, then the album's short note, come before Last.fm's album wiki. The
+    // album's Last.fm facts wait for them, so a cell Apple fills asks Last.fm nothing more.
+    const notesRef: NotesRef = t.catalogId ? { songId: t.catalogId } : {};
+    const appleNotes = () => {
+      const n = notesNow(notesRef);
+      return n?.state === "have" ? n : undefined;
+    };
+    const albumWanted = (s: ReturnType<typeof songInfoNow>) => {
+      if (!s || !who || !t.albumName || notesNow(notesRef) === undefined) return false;
+      const n = appleNotes();
+      return needsAlbumWiki(
+        {
+          appleSong: n?.standard ? songPart(n.standard, t.title) : undefined,
+          lastfmSong: s.state === "have" ? noteText(s.wiki) : undefined,
+          appleAlbum: shortText(n?.short),
+        },
+        setting("notesSource"),
+      );
+    };
     const albumFacts = () => (albumWanted(songInfoNow(t)) ? albumInfoNow(who, t.albumName!) : undefined);
+    let notesAsked = false;
     const askLfm = () => {
       if (!setting("showSongInfo")) return;
+      if (!notesAsked && notesNow(notesRef) === undefined) {
+        notesAsked = true;
+        void notesFor(notesRef).then(() => {
+          card().heroAside(ctx);
+          askAlbum();
+        });
+      }
       if (songInfoNow(t) !== undefined) return void askAlbum();
       void songInfoFor(t).then(() => {
         card().heroAside(ctx);
@@ -987,9 +1115,13 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         title: t.title,
         sub: t.artistName ? { text: t.artistName, run: () => card().drill(artistFrom(t.artistName, t.catalogId)) } : undefined,
         meta: [t.albumName, t.releaseDate?.slice(0, 4), fmtClock(t.durationMs)].filter(Boolean).join(" · "),
-        aside: songInfoHTML(songInfoNow(t), { key: songInfoKey(t), artist: who, title: t.title }, albumFacts()),
+        aside: songInfoHTML(songInfoNow(t), { key: songInfoKey(t), artist: who, title: t.title }, albumFacts(), notesNow(notesRef)),
       }),
-      asideRefresh: askLfm, // the row turned on while this song shows (LISTENERS.md §8.11)
+      // The row turned on while this song shows (LISTENERS.md §8.11): ask again.
+      asideRefresh: () => {
+        notesAsked = false;
+        askLfm();
+      },
       shelves: () => songFacts(t) + (names().length ? "" : `<p class="credit__note">${esc(gap())}</p>`),
       toolbarBelow: CREDITS_LABEL,
       density: false,

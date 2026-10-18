@@ -74,6 +74,7 @@ const PLACERS = {
   "src/layout.ts": "the card-swap copy (CARD-SWAP.md)",
   "src/full-player.ts": "the cover's flight copy (features/fullscreen-player.md §12.4)",
   "src/copy-edit.ts": "the dev-only hint field under any element (COPY-EDIT.md §1); never in a release",
+  "src/present.ts": "an album's full note in Midi and Mini: its top under the hero, inside its own card (features/album-notes.md §4); not a popover",
 };
 // Check 26: the cards whose body is not a list of rows, so list-keys.ts does not apply.
 const NO_LIST_CARDS = {

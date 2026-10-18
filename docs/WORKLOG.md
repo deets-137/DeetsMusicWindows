@@ -12,6 +12,26 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (evening) — album notes: probed, M1 his, built, desk test passed
+
+**His asks:** leave the vinyl fix to its session; tackle album notes; M1 = A ("a bold name or a
+name in curly quotes that folds to a song of this album is a mention"), the §7 draft stands,
+build it.
+- **The probes (features/album-notes.md §5.1, 4 calls):** 100 random library albums: 27 % have
+  notes, 46 % of the albums of 4 songs or more, no single or short EP; 3 track-by-track. Only
+  `<i>`, `<b>`, `<br />`; paragraphs end at `<br />\n` as often as at a blank line; in running
+  text a song's name sits in curly quotes, not in bold (so M1). The `mx` storefront has its own
+  Spanish note. A connection timeout to Apple at about 16:03 (the network blip again; one retry
+  worked).
+- **Built:** `notes.rs` (the command, the month cache, the no-call seeds from the album read and
+  the hop), `album-notes.ts`, the pure parse with 8 tests, the box's About and its press,
+  `openNotes` (Max, Midi, Mini), mentions, the song page's Apple steps, card memory, the
+  tokens, the ledgers. The doc moved from `ideas/` to `features/` (`docs-move.mjs`).
+- **The desk test:** `ops/checks/album-notes.json`, 10 shots, all pass on the second run; three
+  faults fixed after the first (a comma broke off a mention, the scrollbar mid-card, the Midi
+  note opened scrolled). One shot plays *Hurt*; the dev app was paused after.
+- **What Claude decided inside his choices:** album-notes.md §8.2 (six points); his call: they stand. Committed.
+
 ## 2026-10-17 (late afternoon) — the song box's edge run passed; the runner's invoke fixed
 
 **His asks:** run the song box's edge cases (LISTENERS.md §8.11); why was the record "still"

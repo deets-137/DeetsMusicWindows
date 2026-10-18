@@ -87,6 +87,7 @@ a key or an agent.
 | `library_artist_info` (apple.rs) | `catalog/{sf}/songs/{song}?include=artists`, then `artists/{id}?views=featured-playlists,top-songs` | a Library artist view (cached in `artist_catalog`) | 0–2 |
 | `catalog_song_artist` (apple.rs) | `catalog/{sf}/songs/{id}?include=artists` | Go to Artist from a catalog song | 1 |
 | `catalog_related` (apple.rs) | `catalog/{sf}/{kind}/{id}?include={rel}` | a Search drill (song → album, album → artist) | 1 |
+| `album_notes` (notes.rs, 2026-10-17) | `catalog/{sf}/songs/{id}?include=albums&fields[albums]=name,editorialNotes` (a library album), or `albums/{id}?fields[albums]=…` | an album page, a song page: Apple's editorial notes (features/album-notes.md), cached a month in `album_notes`. A background job. 0 on a Full album (its read and the hop keep the notes) | 0–1 per album a month |
 | `artist_new_releases_run` (apple.rs) | `catalog/{sf}/artists?ids=<25>&views=latest-release` | background: Home's New shelf, once a day | 1 per 25 artists |
 | `radio_live`, `radio_my_station`, `radio_genres`, `radio_genre_stations`, `radio_seed_station` (apple.rs) | `catalog/{sf}/stations…`, `station-genres…`, `{kind}/{id}/station` | the Radio card, a "Start station" | 1 each |
 | `read_artists`, `read_album`, `seed_parts` (web.rs) | `catalog/{sf}/artists?ids&views`, `artists/{id}/view/{view}`, `albums?ids&include=tracks`, `albums/{id}`, `songs/{id}/albums`, `songs/{id}?include=artists` | building a playlist web (PLAYLIST-WEB.md), cached per seed | several per web |

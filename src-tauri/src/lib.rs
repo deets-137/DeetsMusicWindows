@@ -26,6 +26,7 @@ mod loudness;
 mod mcp_install;
 mod model;
 mod media;
+mod notes;
 mod playlists;
 mod presence;
 mod provider;
@@ -249,6 +250,7 @@ pub fn run() {
             web::init_tables(&conn).expect("init web tables");
             credits::init_tables(&conn).expect("init credit tables");
             lastfm::init_tables(&conn).expect("init listen_counts table");
+            notes::init_tables(&conn).expect("init album_notes tables");
             dbhealth::init_tables(&conn).expect("init db health tables");
             if migrate {
                 library::migrate_v2(&mut conn).expect("v2 migration failed (backup intact)");
@@ -405,6 +407,7 @@ pub fn run() {
             apple::radio_seed_station,
             apple::catalog_song_artist,
             apple::catalog_related,
+            notes::album_notes,
             apple::library_artist_info,
             apple::library_artists_expire,
             web::web_build,

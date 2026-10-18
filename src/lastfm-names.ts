@@ -45,17 +45,19 @@ const ENTITIES: Record<string, string> = {
   aring: "å", oslash: "ø", szlig: "ß",
 };
 
+/** The entities a wiki or an Apple note uses, decoded (numbers and the common names). */
+export function decodeEntities(s: string): string {
+  return s.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
+    if (/^#x/i.test(e)) return String.fromCodePoint(parseInt(e.slice(2), 16));
+    if (e.startsWith("#") && e !== "#39") return String.fromCodePoint(Number(e.slice(1)));
+    return ENTITIES[e] ?? ENTITIES[e.toLowerCase()] ?? m;
+  });
+}
+
 /** A wiki summary as plain text: Last.fm's "Read more on Last.fm" link and every tag
  *  removed, the common entities decoded, the spaces collapsed. */
 export function wikiText(html: string): string {
-  return html
-    .replace(/<a\b[^>]*>\s*Read more on Last\.fm\s*<\/a>\.?/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
-      if (/^#x/i.test(e)) return String.fromCodePoint(parseInt(e.slice(2), 16));
-      if (e.startsWith("#") && e !== "#39") return String.fromCodePoint(Number(e.slice(1)));
-      return ENTITIES[e] ?? ENTITIES[e.toLowerCase()] ?? m;
-    })
+  return decodeEntities(html.replace(/<a\b[^>]*>\s*Read more on Last\.fm\s*<\/a>\.?/gi, "").replace(/<[^>]+>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
 }

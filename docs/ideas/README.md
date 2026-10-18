@@ -55,7 +55,7 @@ the app can do any of these things.
   §2); the service layer is the real work (§3); Bandcamp has no public fan API (§4); a brand
   config as the first step (§8); the forks (§9); the planned rename to DeetsBeats and the
   Deets-head icon (§10, 2026-10-15).
-- [album-notes.md](album-notes.md) — an idea (2026-10-15): Apple's editorial notes in the album's
+- [album-notes.md](../features/album-notes.md) — an idea (2026-10-15): Apple's editorial notes in the album's
   facts box, the short note in the About cell and the full note on a click, song names as
   mentions; what Apple gives, probed live on Rrromeo (§1); his calls (§3); and a Library album's
   real artist from the library sync's `include=albums`, at no extra call (§6).

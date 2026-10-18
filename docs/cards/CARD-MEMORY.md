@@ -58,6 +58,9 @@ interface LevelSnapshot {
   sortDir?: "asc" | "desc";
   density?: "lines" | "small" | "large";
   query?: string;            // the level's filter text
+  notes?: string;            // an album's full Apple note open on the top level: its album id
+                             // (2026-10-17, features/album-notes.md); opened again, still, once
+                             // its About is drawn (collection-card.ts reopenNotes)
 }
 ```
 
