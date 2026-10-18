@@ -10,6 +10,7 @@
 // every word in the panel plain: "Play on", "This computer", "Playing on X".
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { setVolumeSink, reflectExternalVolume, pausePlayback, isPlayingNow, playPause } from "./player";
 import { enterRows } from "./pop";
@@ -286,6 +287,12 @@ const disconnect = async () => {
 /** Boot: learn whether a session survived a reload and start following it. */
 export function initAirplay(): void {
   void refresh();
+  // `airplay:stall`, `airplay:stallEnd` and `airplay:drop` (AIRPLAY.md §13.2b), copied into the
+  // ring so the `diag` tool sees them live. Rust already wrote the log line.
+  void listen<Record<string, unknown> & { tag: string }>("airplay-diag", (e) => {
+    const { tag, ...rest } = e.payload;
+    diag.log(tag, rest);
+  }).catch(() => {});
 }
 
 // ── a panel on one square ──

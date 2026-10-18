@@ -316,10 +316,12 @@ each step that touches those calls.
   timers (DEBUGGING.md § Threads).
 - **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;
   ask him what is wrong first); Song of the Day "in the sidebar" (ask which sidebar first).
-- **AirPlay tracking (AIRPLAY.md §13.2a, his calls 2026-10-17):** `sound:switch` and the
-  `sound:output` reason ported to `main` (desk test open, §13.2a); the stall / drop lines and the
-  crate's quiet keep-alive documented, not built (the 2026-09-25 build in `../DeetsMusic-aptel`
-  and `../DeetsAirplay`, uncommitted, is the reference); the switch timing left out.
+- **AirPlay tracking (AIRPLAY.md §13.2a–b, his calls 2026-10-17):** `sound:switch` and the
+  `sound:output` reason committed (`9197156`; desk test open). The stall / drop lines BUILT on
+  a Tokio task (his pick) with crate 0.4.2 (the quiet keep-alive, five readings), committed in
+  DeetsAirplay as `44ac6bb`, pushed, and pinned in Cargo.toml. **Open:** the desk test
+  (§13.2b, on a dev app he starts, with a speaker), then the `../DeetsMusic-aptel` worktree goes.
+  The switch timing is left out.
 - **Designed earlier:**
   the web demo's album light (WEB-DEMO.md §10); deploy a worker without dropping connections
   (ideas/WorkerDeploy.md); SECOND-SEARCH.md, ROOMS.md §19–§20, DeetsOTD.md §9,

@@ -32,6 +32,16 @@ timing, document the stall lines, leave the switch timing out.
   stay as they are, as that reference.
 - **Checked:** tsc, `npm test`, docs:check. Not run: the §13.2a desk test (a Windows output
   change while playing).
+- **Part 1, the stall and drop lines (his call: a Tokio task, after the thread / task / poll
+  walkthrough):** built (AIRPLAY.md §13.2b as built). Crate 0.4.2 committed in DeetsAirplay
+  (`44ac6bb`, master, not pushed); the host's `StallWatch` + 4 tests, the watch task, the drop
+  line, `airplay-diag` into the ring. With the local `[patch]`, `cargo test airplay` passes (5).
+  **Found:** `npm run check` runs cargo from the repo root, where `src-tauri/.cargo/config.toml`
+  does not apply, so it builds the pinned 0.4.1 and fails (and it put `Cargo.lock` back). The
+  push and the `rev` bump are the way through, as the Cargo.toml comment says.
+- **Pushed (his OK):** DeetsAirplay `bafd19f..44ac6bb`; the `rev` bumped, the `[patch]` file
+  deleted, `Cargo.lock` on the pushed rev. `npm run check` passes (333 TS tests, 99 Rust tests).
+  Not run: the §13.2b desk test.
 
 ## 2026-10-17 (night, later) — the ⟳ hint passed; the spin-rate eye test
 

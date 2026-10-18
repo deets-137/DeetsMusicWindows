@@ -16,6 +16,7 @@
 
 use crate::lock::LockExt;
 use std::net::Ipv4Addr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Condvar, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -74,6 +75,8 @@ pub struct AirplayState {
     tap: Mutex<Option<std::sync::Arc<Ring>>>,
     /// What the `airplay-np` thread sends to the speaker next (see `post`).
     outbox: Outbox,
+    /// Bumped each time a session is put in place; a stall watch ends when it moves on.
+    generation: AtomicU64,
 }
 
 /// The `airplay-np` thread's inbox. Each slot keeps only the newest value: a publish that
@@ -339,6 +342,209 @@ fn publish_tap(state: &AirplayState) {
     }
 }
 
+/// Put a new session in place and start its stall watch (AIRPLAY.md §13.2b).
+fn install_live(app: &AppHandle, state: &AirplayState, live: Live) {
+    *state.live.lock_or_recover() = Some(live);
+    let gen = state.generation.fetch_add(1, Ordering::Relaxed) + 1;
+    start_watch(app, gen);
+}
+
+// ── the stall watch (AIRPLAY.md §13.2b) ──────────────────────────────────
+
+/// Connected, the player playing, and no packet with sound for this long: `airplay: stall`.
+const STALL_AFTER: Duration = Duration::from_secs(2);
+/// How often the watch reads the session, so a stall is timed to about this.
+const WATCH_TICK: Duration = Duration::from_millis(250);
+
+/// The session's packet counts at one reading.
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
+struct Counts {
+    /// Packets louder than ±1 LSB (the crate's `sound_packets`).
+    sound: u64,
+    packets: u64,
+    /// Padded packets: the source gave nothing.
+    starved: u64,
+}
+
+/// Why no sound reached the speaker, from what moved since the last sound.
+fn stall_reason(at_last_sound: Counts, now: Counts) -> &'static str {
+    if now.packets == at_last_sound.packets {
+        "no packet sent" // the pacer stopped
+    } else if now.starved > at_last_sound.starved {
+        "the source ran dry" // the tap sent nothing
+    } else {
+        "the source sends silence" // packets went, none with sound
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum WatchLine {
+    Stall(&'static str),
+    /// Seconds since the last sound, and why it ended ("" = the sound came back).
+    End(f64, &'static str),
+}
+
+/// One session's stall state. Pure: `tick` takes the readings, so the tests drive it.
+struct StallWatch {
+    last: Counts,
+    moved_at: Instant,
+    /// The last sound before an open stall.
+    open: Option<Instant>,
+}
+
+impl StallWatch {
+    fn new(c: Counts, now: Instant) -> Self {
+        Self { last: c, moved_at: now, open: None }
+    }
+
+    /// `held`: why the clock restarts now (the player stopped, the PC slept), or None.
+    fn tick(&mut self, c: Counts, held: Option<&'static str>, now: Instant) -> Option<WatchLine> {
+        if held.is_some() || c.sound != self.last.sound {
+            let end = self.close(now, held.unwrap_or(""));
+            self.last = c;
+            self.moved_at = now;
+            return end;
+        }
+        if self.open.is_none() && now.duration_since(self.moved_at) >= STALL_AFTER {
+            self.open = Some(self.moved_at);
+            return Some(WatchLine::Stall(stall_reason(self.last, c)));
+        }
+        None
+    }
+
+    fn close(&mut self, now: Instant, why: &'static str) -> Option<WatchLine> {
+        self.open.take().map(|since| WatchLine::End(now.duration_since(since).as_secs_f64(), why))
+    }
+}
+
+/// A line for the log, and the same as an `airplay-diag` event for the window's ring.
+fn airplay_diag(app: &AppHandle, payload: serde_json::Value) {
+    let _ = app.emit_to("main", "airplay-diag", payload);
+}
+
+fn write_watch_line(app: &AppHandle, line: WatchLine, rtt_p95: f64, last_error: Option<&str>) {
+    match line {
+        WatchLine::Stall(why) => {
+            let err = last_error.map(|e| format!(" · last error: {e}")).unwrap_or_default();
+            log(&format!("stall: no sound to the speaker for {} s, {why} · rtt p95 {rtt_p95:.0} ms{err}", STALL_AFTER.as_secs()));
+            airplay_diag(
+                app,
+                serde_json::json!({ "tag": "airplay:stall", "s": STALL_AFTER.as_secs(), "why": why, "rttP95": rtt_p95.round(), "lastError": last_error.map(mask_ipv4) }),
+            );
+        }
+        WatchLine::End(s, why) => {
+            let tail = if why.is_empty() { String::new() } else { format!(" ({why})") };
+            log(&format!("stall-end after {s:.1} s{tail}"));
+            airplay_diag(app, serde_json::json!({ "tag": "airplay:stallEnd", "s": (s * 10.0).round() / 10.0, "why": why }));
+        }
+    }
+}
+
+/// The stall watch for session `gen`: a Tokio task, no thread of its own (DEBUGGING.md §
+/// Threads), that reads the session every 250 ms and ends with it. It runs in Rust, so a hung
+/// page (whose tap then starves) cannot stop it, unlike the page's 2 s status poll.
+fn start_watch(app: &AppHandle, gen: u64) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut tick = tokio::time::interval(WATCH_TICK);
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        let mut watch: Option<StallWatch> = None;
+        let mut last_tick = Instant::now();
+        loop {
+            tick.tick().await;
+            let now = Instant::now();
+            // Our own tick came late (a PC sleep): nothing measured across the gap is real.
+            let slept = now.duration_since(last_tick) > WATCH_TICK + Duration::from_secs(1);
+            last_tick = now;
+            let state = app.state::<AirplayState>();
+            if state.generation.load(Ordering::Relaxed) != gen {
+                if let Some(line) = watch.as_mut().and_then(|w| w.close(now, "a new session")) {
+                    write_watch_line(&app, line, 0.0, None);
+                }
+                return;
+            }
+            // Never wait on the lock on a runtime worker: a connect may hold it for seconds.
+            let read = |l: &Live| {
+                let st = l.session.stats();
+                let c = Counts { sound: l.session.sound_packets(), packets: st.packets_sent, starved: st.starved_packets };
+                (c, st.rtt_p95_ms, l.session.last_error())
+            };
+            let reading = match state.live.try_lock() {
+                Ok(g) => g.as_ref().map(read),
+                Err(std::sync::TryLockError::Poisoned(p)) => p.into_inner().as_ref().map(read),
+                Err(std::sync::TryLockError::WouldBlock) => continue,
+            };
+            let Some((counts, rtt_p95, last_error)) = reading else {
+                let why = if *state.reconnecting.lock_or_recover() { "a reconnect" } else { "the session ended" };
+                if let Some(line) = watch.as_mut().and_then(|w| w.close(now, why)) {
+                    write_watch_line(&app, line, 0.0, None);
+                }
+                return;
+            };
+            let playing = app.state::<bridge::Hub>().np.lock_or_recover().playing;
+            let held = if slept {
+                Some("the PC slept")
+            } else if !playing {
+                Some("the player stopped")
+            } else {
+                None
+            };
+            let w = watch.get_or_insert_with(|| StallWatch::new(counts, now));
+            if let Some(line) = w.tick(counts, held, now) {
+                write_watch_line(&app, line, rtt_p95, last_error.as_deref());
+            }
+        }
+    });
+}
+
+#[cfg(test)]
+mod stall_tests {
+    use super::*;
+
+    const fn c(sound: u64, packets: u64, starved: u64) -> Counts {
+        Counts { sound, packets, starved }
+    }
+    fn at(t0: Instant, ms: u64) -> Instant {
+        t0 + Duration::from_millis(ms)
+    }
+
+    #[test]
+    fn a_stall_opens_after_2_s_without_sound_and_closes_when_it_returns() {
+        let t0 = Instant::now();
+        let mut w = StallWatch::new(c(10, 10, 0), t0);
+        assert_eq!(w.tick(c(10, 20, 10), None, at(t0, 1750)), None);
+        assert_eq!(w.tick(c(10, 22, 12), None, at(t0, 2000)), Some(WatchLine::Stall("the source ran dry")));
+        assert_eq!(w.tick(c(10, 30, 20), None, at(t0, 3000)), None, "one stall line, not one per tick");
+        assert_eq!(w.tick(c(11, 31, 20), None, at(t0, 4500)), Some(WatchLine::End(4.5, "")));
+    }
+
+    #[test]
+    fn the_reason_names_what_moved() {
+        assert_eq!(stall_reason(c(5, 100, 0), c(5, 100, 0)), "no packet sent");
+        assert_eq!(stall_reason(c(5, 100, 0), c(5, 140, 40)), "the source ran dry");
+        assert_eq!(stall_reason(c(5, 100, 0), c(5, 140, 0)), "the source sends silence");
+    }
+
+    #[test]
+    fn a_pause_or_a_sleep_is_no_stall_and_ends_an_open_one() {
+        let t0 = Instant::now();
+        let mut w = StallWatch::new(c(10, 10, 0), t0);
+        assert_eq!(w.tick(c(10, 10, 0), Some("the player stopped"), at(t0, 5000)), None);
+        assert_eq!(w.tick(c(10, 10, 0), None, at(t0, 6000)), None, "the clock restarted at the pause");
+        assert_eq!(w.tick(c(10, 10, 0), None, at(t0, 7000)), Some(WatchLine::Stall("no packet sent")));
+        assert_eq!(w.tick(c(10, 10, 0), Some("the PC slept"), at(t0, 8000)), Some(WatchLine::End(3.0, "the PC slept")));
+    }
+
+    #[test]
+    fn a_session_that_ends_closes_its_open_stall() {
+        let t0 = Instant::now();
+        let mut w = StallWatch::new(c(1, 1, 0), t0);
+        let _ = w.tick(c(1, 9, 0), None, at(t0, 2500));
+        assert_eq!(w.close(at(t0, 3000), "a reconnect"), Some(WatchLine::End(3.0, "a reconnect")));
+        assert_eq!(w.close(at(t0, 3500), "a reconnect"), None);
+    }
+}
+
 fn stop_live(state: &AirplayState) {
     if let Some(live) = state.live.lock_or_recover().take() {
         live.session.disconnect();
@@ -388,7 +594,7 @@ fn connect_speaker(app: &AppHandle, speaker: AirplaySpeaker) -> Result<(), Strin
     *state.connecting.lock_or_recover() = None;
     match result {
         Ok(live) => {
-            *state.live.lock_or_recover() = Some(live);
+            install_live(app, &state, live);
             publish_tap(&state);
             app.state::<Settings>().update(|d| d.airplay_last_speaker = Some(speaker)).ok();
             // The speaker learns the current song right away.
@@ -421,7 +627,7 @@ fn reconnect(app: &AppHandle, latency: Option<u32>) -> Result<(), String> {
     live.session.disconnect();
     publish_tap(&state); // between sessions: no ring
     match start_live(app, speaker, latency, true) {
-        Ok(live) => *state.live.lock_or_recover() = Some(live),
+        Ok(live) => install_live(app, &state, live),
         Err(e) => {
             // The poll's recover (airplay.ts) reconnects on a "Lost" error.
             *state.error.lock_or_recover() = Some(format!("Lost {name}."));
@@ -700,15 +906,26 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
         // Drop a session whose threads died (the speaker went away).
         let dead = state.live.lock_or_recover().as_ref().map(|l| !l.session.alive()).unwrap_or(false);
         if dead {
-            let (name, secs) = state
+            let (name, secs, failures, since_reply, last_error) = state
                 .live
                 .lock_or_recover()
                 .as_ref()
-                .map(|l| (l.speaker.name.clone(), l.session.stats().seconds))
+                .map(|l| {
+                    let s = &l.session;
+                    (l.speaker.name.clone(), s.stats().seconds, s.keepalive_failures(), s.since_reply().map(|d| d.as_secs()), s.last_error())
+                })
                 .unwrap_or_default();
             // AIRPLAY.md §13.3: the crate ends a session after 3 failed keep-alives, so this
             // is how a speaker that dropped us (a PC sleep) is found. airplay.ts reconnects.
-            log(&format!("drop {name} after {secs} s (the session's threads ended)"));
+            // §13.2b: how it was found, how long the speaker had been quiet, the last error.
+            let how = if failures >= 3 { "no reply" } else { "threads" };
+            let quiet = since_reply.map_or(String::new(), |s| format!(", last reply {s} s ago"));
+            let err = last_error.as_deref().map(|e| format!(" · last error: {e}")).unwrap_or_default();
+            log(&format!("drop {name} after {secs} s: found by {how}{quiet}{err}"));
+            airplay_diag(
+                &app,
+                serde_json::json!({ "tag": "airplay:drop", "s": secs, "how": how, "sinceReply": since_reply, "lastError": last_error.as_deref().map(mask_ipv4) }),
+            );
             stop_live(&state);
             *state.error.lock_or_recover() = Some(format!("Lost {name}."));
         }
