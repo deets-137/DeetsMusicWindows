@@ -33,6 +33,17 @@ hold, release, rise and cover fade (the strips read by eye), and readability has
 30 looks. Plays 366–367 are the same song twice; new plays keep their playlist names. Nothing
 committed. Open: his desk test (§8.5).
 
+## 2026-10-18, evening — Disk writes, and a counter for every net call
+
+**His questions.** (1) Do local database writes wear the SSD or load the network? No: read from
+the code, a heavy day (300 songs) is about 10–30 MB of writes with the log, in WAL mode; nothing
+in the database goes over the network. Not measured. (2) Is there a counter for Apple, Last.fm
+and other calls? Apple only (`apple_calls.rs`). Last.fm, MusicKit, covers, our workers and
+Discord have none.
+
+**Designed, not built:** [ops/NET-CALLS.md](ops/NET-CALLS.md): one table, service × group ×
+class, from each Rust choke point and a release-build Resource Timing watch in the webview. §1
+lists the eight services; forks F1–F4 (§5) and probes N1–N2 (§6) are open.
 
 ## 2026-10-18, later — The live app paused: a license heal
 
@@ -93,6 +104,17 @@ with a guard and the restore on the dev app); a run order with a warning before 
 per-card readability report `checks/sweep-read.mjs`. That report found V3, which the shared
 count had hidden.
 
+## 2026-10-18 — Profiles: the idea doc
+
+**His ask:** can the app hold profiles, so a family or friends on one PC or TV can switch
+between their settings and accounts? Written as [ideas/PROFILES.md](ideas/PROFILES.md), not
+built. His calls (§1): a subfolder per profile; settings saved on disk and applied live
+through the CLI's `setSetting` path; a shared `profiles.db` for the profile list and shared
+data (AirPlay); Discord left out; no lock; a switch changes the look and pauses and resets the
+music. Claude's calls inside his (his OK needed, §4–§5): the Apple catalog caches go to the
+shared database, keyed by storefront; a switch calls `setSetting` directly, not the HTTP route
+(the agent consent gate); jobs that write the database carry a profile epoch. Open: forks
+P1–P4 (§8), the draft table of shared and personal settings (§4.2), the probes (§9).
 
 ## 2026-10-17 (late night) — album counts from songs designed; Diary renamed Album Reviews
 

@@ -249,6 +249,9 @@ for word, with RELEASE.md's section numbers.
   regression run later. `checks/drop.mjs` holds a network drop or an unplug on the dev app.
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.
+- `NET-CALLS.md` — DESIGNED 2026-10-18, not built: one counter for every outside call (Apple,
+  MusicKit, covers, Last.fm, our workers, Discord): service × group × class, timing, a day table;
+  §1 what talks to the network; §5 forks F1–F4 open.
 - `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (`apple_calls.rs`); which
   commands are background jobs.
 
@@ -287,6 +290,11 @@ already (§1: the AirPlay crate's RTT and resends stay in Rust today); §5 his c
 song downloads first, a test file of at most 2 MB that is never stored, Max title bar, the glyph warns).
 §5.2 the probe: Apple's song server hides download sizes from Resource Timing; §5.3 his call: a
 header-only `fetch` wrap reads `Content-Length`; §6 its A/B test on every change.
+`PROFILES.md` — an idea (2026-10-18): profiles for a family or friends on one PC or TV. His
+calls §1: a subfolder per profile, settings saved on disk and applied live through the CLI's
+`setSetting` path, a shared `profiles.db` (the profile list, AirPlay, the catalog caches), no
+Discord, no lock, a switch pauses and resets the music. §4 what is shared (a draft); §8 forks
+P1–P4; §9 the probes. After the CPU floor; design it with Backup.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
