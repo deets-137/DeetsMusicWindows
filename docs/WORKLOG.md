@@ -116,6 +116,20 @@ shared database, keyed by storefront; a switch calls `setSetting` directly, not 
 (the agent consent gate); jobs that write the database carry a profile epoch. Open: forks
 P1–P4 (§8), the draft table of shared and personal settings (§4.2), the probes (§9).
 
+## 2026-10-18 — Spotify in rooms: researched, an idea doc and a probe
+
+**His ask:** coordinate room queues across Apple and Spotify; first through a Spotify CLI on the
+worker, then a librespot CLI inside DeetsMusic, then the user's own Spotify app.
+- **Set aside, with reasons ([SpotifyRooms.md](ideas/SpotifyRooms.md) §1):** a worker cannot run a
+  CLI; the Web API route hits the 5-user Development Mode cap and Policy III.5; librespot breaks
+  Spotify's user terms and borrows a client ID.
+- **Kept as an idea:** the user's own Spotify desktop app, driven by `spotify:track:` links and the
+  Windows media session; Odesli maps the Apple song. No key, no Web API.
+- **The probe** ([spotify-probe.ps1](ops/checks/spotify-probe.ps1)): P0–P6, Windows PowerShell 5.1,
+  ASCII only (5.1 reads a file with no BOM as ANSI). Not run: it needs his PC and Spotify app.
+- **Found on the way:** Spotify restored track `external_ids` (the ISRC) in its March 2026
+  changelog; PROVIDERS.md §9 still says it is gone. Not edited (his call).
+
 ## 2026-10-17 (late night) — album counts from songs designed; Diary renamed Album Reviews
 
 **His asks:** doc listening stats summed from a library album's songs, and a row per song in

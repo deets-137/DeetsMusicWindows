@@ -71,6 +71,9 @@ the app can do any of these things.
   panel that rates the network for music (Internet, Wi-Fi, Apple Music, Stream, AirPlay), mostly
   from signals the app already has (§1); a test file of at most 2 MB on our own worker, never stored (§2.3); §5 his calls (2026-10-16); §5.2 the probe of
   what Apple sends; §5.3 the header-only `fetch` wrap; §6 its test on every change.
+- [SpotifyRooms.md](SpotifyRooms.md) — an idea (2026-10-18): Spotify users in a room through their
+  own Spotify desktop app (a link opens each song; the Windows media session reads and seeks);
+  no Spotify key; the Web API and librespot routes set aside (§1); the probes first (§6).
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
   its first part was built (the stats cell grows over the card in Max).
 - [WebRooms.md](../features/WebRooms.md) — moved to features/ on 2026-10-13, when its app side
