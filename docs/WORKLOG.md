@@ -28,10 +28,19 @@ presentation mode; what Last.fm's calls cost; rename "Diary" to "Album Reviews".
   Haiku agents read it for workflows and risks (33 cases): one real fault, the old
   "diary:" / "entry" words in CLI and agent errors, fixed. The others were carry-over losses
   (fold memory and section order keyed by the old title), not wanted.
-- **Not run:** the shots list on the dev app. Its database broke at 21:25 (a duplicate
-  `idx_tracks_sort` schema row in the `-wal`; the main file was clean). The *Session status
-  check* session kept the bad files as `.bad` and restarted on the main file. The cause is
-  being read.
+- **The dev database break, read:** two dev folders. Claude's shells see a private merged
+  copy of `%APPDATA%` (the MSIX package's `LocalCache`); his terminal's dev app at 21:05 made
+  the REAL folder and seeded it from the installed app. A dev app from a Claude shell then
+  opened the private `deetsmusic.db` with the real folder's `-wal` (change counter 3, pages to
+  7,797, against 295 and 3,553). DEBUGGING.md § Sign-in, *The two dev folders*.
+- **Fixed (his pick):** `dev-app.mjs` detects the redirect and starts itself outside the
+  package through WMI; the app uses the real folder and plays (11 → 14 s probed; the
+  -42585 refusal from a Claude shell is gone). CLAUDE.md's playback rule updated.
+- **The rename's shots ran:** [album-reviews.json](ops/checks/album-reviews.json), 4 of 4
+  pass on the dev app; snaps read. On the way: `shots.mjs` `shootDev` called the demo's
+  `replayOff` (from the loading set), so every dev shot failed; the two lines are gone.
+- **Open:** the private copies of the dev folders (Claude's `LocalCache`: `com.deetsmusic.dev`
+  18 MB + 271 MB WebView, `second.dev` 12 MB + 470 MB). His call which profile stays.
 
 ## 2026-10-17 (night) — five desk tests closed on his word; the live watches read
 

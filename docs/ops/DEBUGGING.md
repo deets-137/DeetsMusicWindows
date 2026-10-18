@@ -1659,7 +1659,8 @@ failure: <reason>`, `user token captured`.
   terminal once (it registers at launch), or write the same four values through WMI
   (`powershell -EncodedCommand …` as the command line). Keep a shell `start` test as a
   test of Windows → app only: it cannot prove what a browser sees.
-- **A dev app started from a Claude session cannot play (2026-10-17).** Since 2026-10-16
+- **A dev app started from a Claude session cannot play (2026-10-17; fixed the same night:
+  `dev:app` now starts outside the package, the next item).** Since 2026-10-16
   (the Widevine module 4.10.3112.0 arrived at 12:59; the last good play 13:05, the first
   refusal 13:53), every play on a dev app started inside the Claude package fails: MusicKit's
   `mediaPlaybackError`, and Apple's `acquireWebPlaybackLicense` answers
@@ -1672,6 +1673,23 @@ failure: <reason>`, `user token captured`.
   package. Also: a shell inside the package reads the package's copy of `%APPDATA%` and
   `%LOCALAPPDATA%` (`Packages\Claude_…\LocalCache\`), so the log of a dev app he started is
   not the file Claude's shell sees; read his app's live state with `deetsmusic diag` instead.
+- **The two dev folders broke the dev library (2026-10-17).** The package's copy is a merged
+  view: a file the package has written is read from `LocalCache`, any other file from the real
+  folder. At 21:05 he started a dev app from his terminal; the REAL
+  `%APPDATA%\com.deetsmusic.dev` did not exist, so it seeded a 31.9 MB library from the
+  installed app and left its `deetsmusic.db-wal` there. At 23:30 a dev app from a Claude shell
+  opened the PACKAGE's `deetsmusic.db` (14.5 MB, no `-wal` of its own) with the real folder's
+  `-wal`: SQLite applied a WAL from another file, and the open failed with *malformed database
+  schema (idx_tracks_sort) - index idx_tracks_sort already exists*. The proof: the WAL's
+  page-1 frames carry change counter 3 and pages up to 7,797; the package's file has 295 and
+  3,553. **The fix (2026-10-17, his pick):** `scripts/dev-app.mjs` tests whether its own
+  `%APPDATA%` writes land in a package's `LocalCache` (a Claude shell has no package
+  identity, so `GetCurrentPackageFullName` cannot tell), and if so starts itself again
+  through WMI (`Win32_Process.Create`, return value 0) and streams that copy's output from
+  `node_modules/.dev-app/<time>-<pid>.log`. The app then uses the real folder, and it
+  **plays**: probed the same night, playback time 11 → 14 s. Ctrl+C on the script ends the
+  app's whole tree; a hard kill of the script leaves it running. To read the real folder
+  from a Claude shell, use a WMI-started `cmd` (`dir`, `copy` to a file outside AppData).
 - **Seeing what Edge looks up:** Process Monitor (`winget install
   Microsoft.Sysinternals.ProcessMonitor`), filter *Path contains* the scheme, click the link
   from a page console (`location.href = "<scheme>://x"`). `/Runtime` did not stop an

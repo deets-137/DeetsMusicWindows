@@ -519,8 +519,6 @@ async function shootDev(page, shot, outDir, variant, look = DEV_LOOK) {
       writeFileSync(join(outDir, `${base}.png`), Buffer.from(data, "base64"));
       out = { file: `${base}.png` };
     }
-    await replayOff(); // its summary line goes in this shot's console file
-    replayOff = async () => {};
     failOnExpects();
     return { ...out, ...consoleFile() };
   } catch (e) {

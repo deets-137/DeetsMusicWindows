@@ -322,10 +322,13 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
 - If something genuinely can't be reasoned through and the user is away, ask them to
   test rather than scaffolding a harness.
 - **Playback can be driven and measured from the session (2026-09-12).** **Since
-  2026-10-16 a dev app started from Claude's shell cannot play** (Apple refuses its Widevine
-  license, -42585 / -1021; DEBUGGING.md § Sign-in, *A dev app started from a Claude session*):
-  for sound, ask him to start `npm run dev:app` from his own terminal, then drive it over CDP
-  and the bridge. Without sound, start the dev app (`npm run dev:app`, in the background), then use the `deetsmusic` MCP tools
+  2026-10-17 `npm run dev:app` from a Claude shell starts the app OUTSIDE the Claude package**
+  (through WMI; `[dev:app] inside the Claude package: started outside it`), so it plays and
+  uses the same real dev folder as his terminal. Inside the package it could not play
+  (-42585), and its private copy of `%APPDATA%` once broke the dev library (DEBUGGING.md
+  § Sign-in, *The two dev folders*). A Claude shell still READS `%APPDATA%` through the
+  package's copy: read the dev app through the bridge, CDP or a WMI-started `cmd`. Start the
+  dev app (`npm run dev:app`, in the background), then use the `deetsmusic` MCP tools
   (`search` / `list` → `play`, `queue`, `control`, `now_playing`). A `play` call returns
   after the song has started, and every play writes one `[perf] click→sound …` line to
   `%APPDATA%\com.deetsmusic.dev\deetsmusic.log` with the stage split, MusicKit's own
