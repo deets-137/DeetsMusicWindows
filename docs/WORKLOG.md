@@ -39,8 +39,13 @@ presentation mode; what Last.fm's calls cost; rename "Diary" to "Album Reviews".
 - **The rename's shots ran:** [album-reviews.json](ops/checks/album-reviews.json), 4 of 4
   pass on the dev app; snaps read. On the way: `shots.mjs` `shootDev` called the demo's
   `replayOff` (from the loading set), so every dev shot failed; the two lines are gone.
-- **Open:** the private copies of the dev folders (Claude's `LocalCache`: `com.deetsmusic.dev`
-  18 MB + 271 MB WebView, `second.dev` 12 MB + 470 MB). His call which profile stays.
+- **One dev profile (his call: keep Claude's):** the private `com.deetsmusic.dev` and
+  `second.dev` (Roaming and Local) copied into the real folders by a WMI-started robocopy, 0
+  failed; `quick_check` ok on both (4,990 and 4,433 tracks); the private copies deleted, so a
+  Claude shell now reads the real files. The 21:05 seed is kept as
+  `com.deetsmusic.dev.seed-2026-10-17.bak` (Roaming and Local), the broken `-wal` / `-shm`
+  under it in `corrupt-wal-2026-10-17`. A dev app on it opens with Last.fm and both friends,
+  and plays (5 → 7 s). The live app was not touched.
 
 ## 2026-10-17 (night) — five desk tests closed on his word; the live watches read
 
