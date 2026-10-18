@@ -1,12 +1,13 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-17
 sources: [src-tauri/src/identity.rs, src-tauri/src/velo.rs, src-tauri/src/media.rs, src-tauri/src/app_icon.rs, src-tauri/build.rs, src-tauri/identity/identity.json, src-tauri/identity/AppxManifest.template.xml, scripts/identity-pack.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/icons.py, docs/ops/VELOPACK.md, docs/ideas/whitelabel.md]
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 # Package identity — exact-size taskbar icons for the installed app
 
-> **Built 2026-10-16 on `shixtheenth`, desk test open (§9.2).** His ask: the live taskbar button
+> **Built 2026-10-16 on `shixtheenth`, live in 0.29.0; desk test passed 2026-10-17 (§9.2, his
+> word).** His ask: the live taskbar button
 > is small and soft, the dev one is crisp. The cause, the measurements and the spike are
 > whitelabel.md §10.6. §3–§7 are the design, §8 the probes that changed it, **§9 the as-built
 > record** (where it differs from the design above, §9 is the code). Not released: a release

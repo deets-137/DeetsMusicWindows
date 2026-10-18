@@ -192,7 +192,7 @@ subset a tool server needs, no SDK. Tools:
 | `folder` | `action: list\|create\|rename\|delete`, `name`, `new_name?` | full | by name |
 | `settings` | `action: list\|get\|set`, `key?`, `value?`, `section?` | full | §6: key or label; off-only gates; may be `pending` |
 | `rules` | `action: list\|words\|show\|add\|remove\|on\|off`, `id?`, `rule?` (an object) | full | §8: the rules ([RULEZ.md](../features/RULEZ.md) §7). `words` before `add`; a write may be `pending` |
-| `diary` | `action: list\|show\|add\|note\|score\|date\|done`, `id?`, `album?`, `song?`, `value?` | full | The Diary ([DIARY.md](../features/DIARY.md) §10). Refused unless the user turned on Agents use the Diary |
+| `reviews` (`diary` until 2026-10-17) | `action: list\|show\|add\|note\|score\|date\|done`, `id?`, `album?`, `song?`, `value?` | full | Album Reviews ([DIARY.md](../features/DIARY.md) §10). Refused unless the user turned on Agents use Album Reviews |
 | `picks` | `action: list\|mark\|unmark`, `id?`, `index?`, `note?`, `window?` | full | Song of the Day ([DeetsOTD.md](DeetsOTD.md) §8.8). `mark` takes a `song:…` id or `current`; `unmark` takes the row from `list`. Refused while the feature is off; the first mark is `pending` until the user allows it in the window |
 | `query` | `sql` | full | one read-only SELECT over songs · playlists · playlist_songs · plays · play_counts; the description lists every column; 2 s, 500 rows ([LOCAL-DATA.md](LOCAL-DATA.md) §5, §7) |
 | `diag` | `limit?` (1–300, default 100), `since?`, `tag?`, `flush?` (also write to the log file) | full | the window's live diag ring, oldest first (`GET /diag`, §3); what the app just did, with no flush or restart. CLI: `deetsmusic diag` |
@@ -398,7 +398,8 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   Diary verb, and the entries are not in the `query` export.
 - The Press record rows (2026-09-15): `pressVinyl` (Spin | Still | Off), `pressVinylWhere`
   (Stage | Stage + card | Everywhere), `pressVinylPlate` (on | off),
-  `pressVinylSpeed` (16⅔ | 33⅓ | 45 | 78, the record speed in turns each minute) — each `[Press only]`; a set
+  `pressVinylSpeed` (16⅔ | 33⅓ | 45 | 78, the record speed in turns each minute),
+  `pressVinylFps` (60 | 120 | 144 | 240, the most redraws a second; 2026-10-17) — each `[Press only]`; a set
   under another skin is stored, and the reply says it shows while Press is the skin.
 - A slider takes a whole number 0–100 (`oceanSand`, `glassBacklight`, `glassTint`,
   `glassCanvasGlow`, `glassCanvasDim`), with or without `%`. The four Glass sliders are

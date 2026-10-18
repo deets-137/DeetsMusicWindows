@@ -64,7 +64,7 @@ test("an unreleased song: Go to Artist alone", () => {
 });
 
 const album = { title: "Album", artistName: "Artist", known: [song] };
-const ALBUM = ["Play Now", "Shuffle", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Go to Album", "Start a Web", "Copy Link", "Add to Library", "Add to Diary", "Favorite", "Suggest Less of This Album", "Pin"];
+const ALBUM = ["Play Now", "Shuffle", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Go to Album", "Start a Web", "Copy Link", "Add to Library", "Review This Album", "Favorite", "Suggest Less of This Album", "Pin"];
 
 test("an album: the §3.2 rows, Shuffle second, no station", () => {
   assert.deepEqual(labels(m.albumMenu(album, { context: "t" })), ALBUM);
@@ -73,7 +73,7 @@ test("an album: the §3.2 rows, Shuffle second, no station", () => {
 test("an album's hero (here), inside its artist (inArtist), inside the Diary (inDiary): the row that would go where you are is left out", () => {
   assert.ok(!labels(m.albumMenu(album, { context: "t", here: true })).includes("Go to Album"));
   assert.ok(!labels(m.albumMenu(album, { context: "t", inArtist: true })).includes("Go to Artist"));
-  assert.ok(!labels(m.albumMenu(album, { context: "t", inDiary: true })).includes("Add to Diary"));
+  assert.ok(!labels(m.albumMenu(album, { context: "t", inDiary: true })).includes("Review This Album"));
 });
 
 test("a Home New tile (pinKey null): no Pin row", () => {

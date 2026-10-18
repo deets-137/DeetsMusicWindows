@@ -131,7 +131,8 @@ He picks which, and draws where.
 1. **The refresh period.** A script reads one hot song and one small album every 5 min for
    3 hours and logs when each number moves. Kept in `docs/ops/checks/` (his ask, 2026-10-01).
    It decides if A is "updated a minute ago" or "updated today".
-2. **Per-song drop-off.** `track.getInfo` over three albums he plays (a big one, an EP, a
+2. **Per-song drop-off.** *Run 2026-10-17 on four albums; the rows tell a story. The design of
+   a row per song is LISTENERS.md §9.3, its forks §9.6.* `track.getInfo` over three albums he plays (a big one, an EP, a
    single), to see if B's bars tell a story or sit flat.
 3. **His library.** How many of his albums have a Last.fm page at all (the box shows `none`
    for some; the `album_info` table has the count today).

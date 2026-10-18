@@ -91,7 +91,8 @@ for word, with RELEASE.md's section numbers.
 - `AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker.
 - `VINYL.md` — the Press record player.
 - `DEETS-REWIND.md` — listening stats and the Rewind card.
-- `DIARY.md` — the Diary card: an album journal, a note and a score per song, the scale rule.
+- `DIARY.md` — the Album Reviews card (named the Diary until 2026-10-17; the code keeps `diary`):
+  an album journal, a note and a score per song, the scale rule.
 - `LOOK-SCHEDULE.md` — the day / night look and its pre-paint in `index.html`.
 - `COMPASS.md` — Ctrl+Space: places, settings, verbs, library items, the calculator.
 - `COMPASS-TERMS.md` — every word the bar answers to; update it with `SYNONYMS` in compass.ts.
@@ -154,7 +155,8 @@ for word, with RELEASE.md's section numbers.
   no play data (§1). §8 BUILT 2026-10-17, desk test passed (§8.10, run by Claude): the song
   facts box on the Song Credits page, the About cell's notes order (`src/notes-order.ts`: the
   song, then its album; Apple, then Last.fm) and *Notes from* in Settings › Playback to pick
-  one source or none.
+  one source or none. §9 DESIGNED 2026-10-17: a library album's plays as the sum of its songs',
+  and a row per song in presentation mode (the probe §9.1; forks §9.6).
 - `LOCAL-RADIO.md` — DESIGNED 2026-10-13, not built: web stations from Radio Browser in the
   Radio card (a Local shelf by the user's city, search for any station), played through a Rust
   loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms
@@ -165,7 +167,7 @@ for word, with RELEASE.md's section numbers.
   in large type, re-read every 5 min (`src/present.ts`). His calls §7a: a party on personal
   accounts (the café product documented only), Last.fm's number, the card grow; the goal
   marker paused. HE designs the picture.
-- `WebRooms.md` — app side BUILT 2026-10-13, desk test open (§10.5): the rooms web port. A
+- `WebRooms.md` — app side BUILT 2026-10-13, desk test passed 2026-10-17 (§10.5, his word): the rooms web port. A
   friend on a Mac joins a room by its code and listens in a browser on deets.solutions with
   their own Apple Music subscription (no preview tier). The app's Search, Queue, History and
   Now Playing cards on a Tauri stand-in (`web/`, `npm run listen`), `src/platform.ts`'s
@@ -223,7 +225,7 @@ for word, with RELEASE.md's section numbers.
   feed), `release.mjs` runs `vpk pack`. His calls §1 (no migration path: an NSIS install moves
   by hand, RELEASE.md §4b). Install from a WMI-started process, never from this shell; a
   release build takes a CDP port through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (§12.4).
-- `IDENTITY.md` — BUILT 2026-10-16 on `shixtheenth`, desk test open (§9.2): package identity (a
+- `IDENTITY.md` — BUILT 2026-10-16 on `shixtheenth`, desk test passed 2026-10-17 (§9.2, his word): package identity (a
   signed sparse `.msix`, `scripts/identity-pack.mjs`, registered against `current\` by
   `identity.rs` in Velopack's hooks) so the taskbar and Start draw exact-size icons, his city
   art (`npm run icons`, `icon-template/deets-city-600.png`); `tray.ico` keeps the tray the head.
@@ -290,9 +292,12 @@ user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or 
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
 feature, made by a script from the demo; for the guide, a marketing overview, and visual
 debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins. `LOADING-SET.md` —
-DESIGNED 2026-10-16, not built: a dev-only recorder of each command's round trip, a profile
-from his log (`latency.json`), the demo replaying it plus his cover load times, and one clip
-per loading wait that counts the pops; L1–L2 open (§5). `marketing.md` — the
+BUILT 2026-10-17, a back-pocket tool (his words): a dev-only recorder of each command's
+round trip (`src/ipc-timing.ts`, the `ipc-timing` Vite plugin → `src/ipc-core.ts`), a profile
+from his log (`npm run latency:profile` → `latency.json`), the demo replaying it plus his cover
+load times (`shots.mjs --latency p90 --cold`, `demo/latency.ts`), and `loading.json`, one clip
+per wait with its pops and settled time. L1 p90, L2 in the repo (his calls, §5); §7 the as-built
+record; how to use it: DEBUGGING.md § The loading set. `marketing.md` — the
 shipped features as a tech spec, with the shot of each, for the intro video; he directs it (§1).
 
 ## How to verify your work
@@ -322,8 +327,16 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
   `tests/media-menu.test.ts` are the reference (2026-09-27).
 - If something genuinely can't be reasoned through and the user is away, ask them to
   test rather than scaffolding a harness.
-- **Playback can be driven and measured from the session (2026-09-12).** Start the dev
-  app (`npm run dev:app`, in the background), then use the `deetsmusic` MCP tools
+- **Playback can be driven and measured from the session (2026-09-12).** **Since
+  2026-10-17 `npm run dev:app` from a Claude shell starts the app OUTSIDE the Claude package**
+  (through WMI; `[dev:app] inside the Claude package: started outside it`), so it plays and
+  uses the same real dev folder as his terminal. Inside the package it could not play
+  (-42585), and its private copy of `%APPDATA%` once broke the dev library (DEBUGGING.md
+  § Sign-in, *The two dev folders*). The package's copies of the dev profiles were
+  deleted the same night, so a Claude shell reads the real dev files; a file a Claude shell
+  WRITES under `%APPDATA%` goes to the package's copy again, so write there only from a
+  WMI-started `cmd`. Start the
+  dev app (`npm run dev:app`, in the background), then use the `deetsmusic` MCP tools
   (`search` / `list` → `play`, `queue`, `control`, `now_playing`). A `play` call returns
   after the song has started, and every play writes one `[perf] click→sound …` line to
   `%APPDATA%\com.deetsmusic.dev\deetsmusic.log` with the stage split, MusicKit's own
@@ -503,6 +516,9 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
      the thread ledger (DEBUGGING.md § Threads): what it does, how long it lives, its name.
      A long-lived one gets `Builder::name`. Prefer `spawn_blocking` or a Tokio timer to a new
      thread that only waits. docs:check 30 fails a start with no row.
+  17. **Loading (2026-10-17):** a new card or view that waits for data gets a clip in
+     `docs/guide/loading.json` (LOADING-SET.md §3.6), so its wait can be replayed at his real
+     timings. A new command it calls needs a demo handler (`demo/handlers.ts`).
 - **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
   change since the last release is low risk to the app's integrity (no hang, music plays).
   Otherwise stop and ask him for a hand test. The lists are RELEASE.md §0b.

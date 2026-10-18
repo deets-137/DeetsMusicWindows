@@ -2213,6 +2213,11 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   stroke-linejoin: round;
 }
 .panel__action.is-busy svg { animation: acct-spin var(--dur-spin) linear infinite; }
+/* One dip on a click that starts nothing (the Library ⟳ while a sync runs). On the button,
+   so the glyph's spin goes on inside it. None under reduced motion. */
+.panel__action.is-nudged { animation: action-nudge var(--nudge-dur) var(--nudge-ease); }
+@keyframes action-nudge { 40% { transform: scale(var(--nudge-scale)); } }
+@media (prefers-reduced-motion: reduce) { .panel__action.is-nudged { animation: none; } }
 
 /* Collection card body holds a clipping viewport; contexts are panes that slide
    horizontally (push/pop). Within a pane: fixed toolbar, scrolling view. */

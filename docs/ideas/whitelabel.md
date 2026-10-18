@@ -384,10 +384,11 @@ His plan: the icon ships with a later release, after other build items. Left:
 3. **Discord:** the Rich Presence badge is the asset `deetsmusic` in the Discord Developer
    Portal › Rich Presence › Art Assets (`src/presence.ts`). It is still the old icon until he
    uploads `app-icon.png` there under the same name.
-4. **The sign-in page's mark** shows the 1024 px icon at 40 px (`.mark` in DeetsSupport's
-   `signin.js`), which a browser blurs. The fix is the site's: exact-size files and
-   `image-rendering: pixelated`. `signin.js` holds his own uncommitted edits, so it waits.
-   Its comments still say "the DM mark".
+4. **The sign-in page's mark: done 2026-10-17** (DeetsSupport `16f8f45`, deployed; his pick,
+   "for now"). Exact-size files at 40 px cannot work: the head is a 32-pixel drawing. The box
+   takes the size nearest 40 px that gives whole device pixels per art pixel (32 / 51 / 43 /
+   48 px at 100 / 125 / 150 / 200 %), with `image-rendering: pixelated`. The comment says the
+   Deets head.
 5. **Update desk test:** install the release over 0.27.x and look at the pinned taskbar button,
    the Start menu and Installed apps. Windows caches shortcut icons; if the old one stays, the
    installer may need to refresh the shell (`SHChangeNotify`).

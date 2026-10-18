@@ -25,6 +25,14 @@
 //   --noise <pct>   the CPU load a shot waits for before it starts (default 35); over it, the
 //                   row is marked noisy
 //
+// The loading set (docs/guide/LOADING-SET.md, SHOTS.md §5j):
+//   --latency <p>   p50 | p90 | max: a demo shot waits the owner's real round trip per command
+//                   and holds each Apple cover for a time drawn from his misses
+//                   (docs/guide/latency.json); off (default) = the demo answers at once
+//   --cold          the HTTP cache off for each demo shot (a first load after install)
+// A step with "region" and "frames" also reports its pops (frames that change over 8 % of the
+// region's whole change at once) and its settled time (the last command end, cover load or mosaic).
+//
 // Headless: Edge opens no window and uses a throwaway profile, so nothing on the desktop moves
 // and no real Edge profile or app data is touched. No Apple API call: the demo
 // refuses every cross-origin request (WEB-DEMO.md §9.4). Apple's covers and previews do load (images and audio, §15).
@@ -66,6 +74,42 @@ const noiseLimit = Number(oneArg("--noise") ?? 35);
 const tagArg = oneArg("--tag");
 const tag = tagArg === "now" ? new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-") : tagArg;
 if (tag !== undefined && !/^[a-z0-9][a-z0-9-]*$/i.test(tag)) throw new Error("[shots] --tag takes a plain name: letters, digits, dashes (or `now`)");
+
+// The loading set (docs/guide/LOADING-SET.md §3.3–§3.4): the owner's waits, replayed in the demo.
+// `--latency p50|p90|max` makes each command wait its value from docs/guide/latency.json (the
+// first call of a page life its cold value, later calls the warm one) and holds each Apple cover
+// for a time drawn from his cover misses. `off` (the default) is the demo as it always was.
+// `--cold` turns the HTTP cache off for the shot, as on a first load after install.
+const latencyMode = oneArg("--latency") ?? "off";
+if (!["off", "p50", "p90", "max"].includes(latencyMode)) throw new Error("[shots] --latency takes p50, p90, max or off");
+const coldCache = argv.includes("--cold");
+const LATENCY_FILE = join(root, "docs", "guide", "latency.json");
+/** The profile cut to one cold and one warm value per command, and the cover deciles. */
+function latencyReplay() {
+  if (latencyMode === "off") return null;
+  if (!existsSync(LATENCY_FILE)) throw new Error("[shots] --latency needs docs/guide/latency.json: run `npm run latency:profile` first");
+  const p = JSON.parse(readFileSync(LATENCY_FILE, "utf8"));
+  const commands = {};
+  for (const [cmd, c] of Object.entries(p.commands ?? {})) commands[cmd] = { cold: c.cold?.[latencyMode], warm: c.warm?.[latencyMode] };
+  return { mode: latencyMode, commands, deciles: p.art?.deciles ?? null, hitShare: p.art?.hitShare ?? null, from: p.from, to: p.to, version: p.version };
+}
+const REPLAY = latencyReplay();
+/** A seeded draw in [0, 1) for one key: the same shot, run and cover give the same wait. */
+function seeded(key) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0x5bd1e995);
+  return ((h ^ (h >>> 15)) >>> 0) / 2 ** 32;
+}
+/** A cover's hold: a point between two deciles of his misses, picked by the seeded draw. */
+function coverHold(deciles, u) {
+  if (!deciles?.length) return 0;
+  const pts = [deciles[0], ...deciles]; // below p10 the profile has no point: hold at p10
+  const x = u * deciles.length;
+  const k = Math.min(deciles.length - 1, Math.floor(x));
+  return Math.round(pts[k] + (pts[k + 1] - pts[k]) * (x - k));
+}
 
 /** A change for `--set` / `--vs`: `--token=value` sets a CSS custom property on <html> (it beats
  *  every theme and skin rule); any other key is a setting (the value read as JSON, else text). */
@@ -1045,7 +1089,87 @@ async function settle(page) {
   await sleep(1500);
 }
 
-async function shoot(page, demoUrl, shot, look, outDir, variant) {
+// ── the loading set's cover holds (LOADING-SET.md §3.3) ──────────────────────
+// Each Apple cover (`*mzstatic*` image) is paused at the request. The runner fetches its bytes
+// once per run (kept in memory) and answers after a time drawn from his misses, so the wait is
+// the replay's and not this machine's network. Without --cold, a share of the covers equal to
+// his hit share answers at once (a cache hit); with --cold, every cover waits.
+const holds = { on: false, seed: "", n: 0, waited: [], hits: 0 };
+const coverBytes = new Map();
+async function coverPaused(page, e) {
+  const { requestId } = e;
+  const url = e.request.url;
+  if (!holds.on || !/mzstatic/.test(url)) return page.send("Fetch.continueRequest", { requestId }).catch(() => {});
+  const t0 = Date.now();
+  const u = seeded(`${holds.seed}|${url}`);
+  const hit = !coldCache && REPLAY.hitShare !== null && seeded(`hit|${holds.seed}|${url}`) < REPLAY.hitShare;
+  const ms = hit ? 0 : coverHold(REPLAY.deciles, u);
+  let got = coverBytes.get(url);
+  if (!got) {
+    try {
+      const r = await fetch(url);
+      got = { status: r.status, type: r.headers.get("content-type") ?? "image/jpeg", body: Buffer.from(await r.arrayBuffer()).toString("base64") };
+      if (r.ok) coverBytes.set(url, got);
+    } catch {
+      return page.send("Fetch.failRequest", { requestId, errorReason: "Failed" }).catch(() => {});
+    }
+  }
+  const left = ms - (Date.now() - t0);
+  if (left > 0) await sleep(left);
+  holds.n++;
+  if (hit) holds.hits++;
+  else holds.waited.push(ms);
+  return page
+    .send("Fetch.fulfillRequest", { requestId, responseCode: got.status, responseHeaders: [{ name: "Content-Type", value: got.type }, { name: "Access-Control-Allow-Origin", value: "*" }], body: got.body })
+    .catch(() => {});
+}
+/** Turn the replay on for one demo shot; the returned function turns it off. */
+async function replayOn(page, shot, look, variant, run) {
+  const undo = [];
+  if (REPLAY) {
+    const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: `window.__deetsLatency = ${JSON.stringify({ mode: REPLAY.mode, commands: REPLAY.commands })};` });
+    undo.push(() => page.send("Page.removeScriptToEvaluateOnNewDocument", { identifier }));
+    Object.assign(holds, { on: true, seed: `${shot.id}|${lookId(look)}|${variant.label}|${run}`, n: 0, waited: [], hits: 0 });
+    if (REPLAY.deciles) {
+      await page.send("Fetch.enable", { patterns: [{ urlPattern: "*mzstatic*", resourceType: "Image", requestStage: "Request" }] });
+      undo.push(() => page.send("Fetch.disable"));
+    }
+    undo.push(() => {
+      holds.on = false;
+      const w = [...holds.waited].sort((a, b) => a - b);
+      if (holds.n) note("latency", `${holds.n} covers: ${holds.hits} at once (hits), ${w.length} held ${w[0]}–${w.at(-1)} ms (median ${w[w.length >> 1] ?? 0})`);
+    });
+    note("latency", `replaying ${REPLAY.mode} from latency.json (${REPLAY.from} → ${REPLAY.to}, ${REPLAY.version})${coldCache ? " · cache off" : ""} · seed ${holds.seed}`);
+  }
+  if (coldCache) {
+    await page.send("Network.enable");
+    await page.send("Network.clearBrowserCache");
+    await page.send("Network.setCacheDisabled", { cacheDisabled: true });
+    undo.push(() => page.send("Network.setCacheDisabled", { cacheDisabled: false }));
+  }
+  return async () => {
+    for (const f of undo.reverse()) await Promise.resolve().then(f).catch(() => {});
+  };
+}
+
+/** With the replay on, the launch reads wait their cold values (seconds, at p90), so a shot
+ *  starts once no replayed command has been in flight for 500 ms (at most 20 s). */
+async function replayQuiet(page) {
+  const until = Date.now() + 20_000;
+  let quietSince = 0;
+  while (Date.now() < until) {
+    const open = await evaluate(page, `(() => { const m = (window.__marks || []).filter((x) => x.name.startsWith("ipc:")); const ends = new Set(m.filter((x) => x.name.endsWith(":end")).map((x) => x.detail)); return m.filter((x) => x.name.endsWith(":begin") && !ends.has(x.detail)).length; })()`);
+    if (open === 0) {
+      quietSince ||= Date.now();
+      if (Date.now() - quietSince >= 500) return;
+    } else quietSince = 0;
+    await sleep(100);
+  }
+  note("latency", "the launch's replayed commands were still in flight after 20 s; the shot starts anyway");
+}
+
+let demoLoads = 0;
+async function shoot(page, demoUrl, shot, look, outDir, variant, run = 1) {
   const size = SIZES[shot.size];
   if (!size) throw new Error(`unknown size "${shot.size}"`);
   win.follow = false; // not during the load: the boot's own set_size would move every shot
@@ -1055,11 +1179,16 @@ async function shoot(page, demoUrl, shot, look, outDir, variant) {
   const { identifier } = await page.send("Page.addScriptToEvaluateOnNewDocument", { source: seedScript(look, size, settings, shot.badges === true, shot.window === true, variant.tokens, shot.storage ?? {}) });
   const base = `${shot.id}.${lookId(look)}${variant.label ? `.${variant.label}` : ""}`;
   Object.assign(journal, { t0: Date.now(), lines: [], errors: 0, fails: [], base, outDir, look: lookId(look), variant: variant.label || undefined, change: variant.label ? variant.desc : undefined });
+  let replayOff = async () => {};
   try {
-    const loaded = page.once("Page.loadEventFired");
+    replayOff = await replayOn(page, shot, look, variant, run);
+    // The first load of a run waits for the demo server's first compile: over 30 s at times on a
+    // busy machine (the loading set's first shot, 2026-10-17).
+    const loaded = page.once("Page.loadEventFired", demoLoads++ ? 30_000 : 90_000);
     await page.send("Page.navigate", { url: demoUrl });
     await loaded;
     await settle(page);
+    if (REPLAY) await replayQuiet(page);
     win.follow = shot.window === true;
     // --slow: the page's animation clock (CSS and Web Animations; not requestAnimationFrame code).
     if (slow !== 1) await page.send("Animation.setPlaybackRate", { playbackRate: 1 / slow });
@@ -1077,6 +1206,7 @@ async function shoot(page, demoUrl, shot, look, outDir, variant) {
     consoleFile(String(e.message ?? e)); // a failed shot keeps what the page said: that is the evidence
     throw e;
   } finally {
+    await replayOff();
     await undoShaping(page);
     await page.send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
   }
@@ -1238,7 +1368,9 @@ async function record(page, shot, base, outDir) {
       const short = picked.length < m.frames ? ` (asked ${m.frames}; the clip ended or the page stopped painting)` : "";
       note("frames", `step ${i + 1} (${m.step}): ${picked.length} frames → ${name}/ and ${name}.png${short}`);
       if (curve) note("change", `step ${i + 1} (${m.step})${m.region ? ` in ${m.region.selector}` : ""}: ${curve.line}`);
-      frameSets.push({ step: i + 1, kind: m.step, count: picked.length, asked: m.frames, dir: name, strip: `${name}.png`, anchor: m.anchored ?? "runner", change: curve?.summary ?? null });
+      const done = settledOf(rec, pageRec, from, next, m.region);
+      if (done) note("settled", `step ${i + 1} (${m.step}): settled +${done.ms} ms (last: ${done.last}) · ${done.ends} command ends, ${done.covers} cover loads, ${done.mosaics} mosaics, ${done.renders} list redraws`);
+      frameSets.push({ step: i + 1, kind: m.step, count: picked.length, asked: m.frames, dir: name, strip: `${name}.png`, anchor: m.anchored ?? "runner", change: curve?.summary ? { ...curve.summary, settled: done?.ms ?? null } : null });
     });
     stats.marks = marks.map(({ pageT: _p, ...m }) => ({ ...m, t: Math.round(m.t * 1000) }));
     writeFileSync(
@@ -1273,6 +1405,26 @@ async function record(page, shot, base, outDir) {
     off();
     rmSync(work, { recursive: true, force: true });
   }
+}
+
+/**
+ * When a step's loading ends (LOADING-SET.md §3.5): the last command end (`ipc:*:end`), mosaic
+ * (`mosaic:drawn`) and cover load in the step's region (all the page when it has none), from the
+ * step's input to the next action. `from` / `until` are epoch seconds. Null when none came.
+ */
+function settledOf(rec, parts, from, until, region) {
+  const lo = from * 1000;
+  const hi = Number.isFinite(until) ? until * 1000 : Infinity;
+  const inside = (x) => !region || (x.x < region.x + region.w && x.x + x.w > region.x && x.y < region.y + region.h && x.y + x.h > region.y);
+  const inWin = (t) => t >= lo && t < hi;
+  const ends = rec.appMarks.filter((x) => /^ipc:.*:end$/.test(x.name) && inWin(x.t));
+  const mosaics = rec.appMarks.filter((x) => x.name === "mosaic:drawn" && inWin(x.t));
+  const renders = rec.appMarks.filter((x) => x.name === "coll:render" && inWin(x.t));
+  const covers = parts.flatMap((p) => p.loads ?? []).filter((x) => x.kind === "cover" && x.seen && inWin(x.t) && inside(x));
+  const all = [...ends.map((x) => ({ t: x.t, what: x.name.slice(4, -4) })), ...mosaics.map((x) => ({ t: x.t, what: "a mosaic" })), ...covers.map((x) => ({ t: x.t, what: "a cover" }))];
+  if (!all.length) return null;
+  const last = all.reduce((a, b) => (b.t > a.t ? b : a));
+  return { ms: Math.round(last.t - lo), last: last.what, ends: ends.length, covers: covers.length, mosaics: mosaics.length, renders: renders.length };
 }
 
 /** An element's box in CSS px, with the page width it was read at (frames are scaled to it). */
@@ -1420,6 +1572,7 @@ const distance = (a, b) => {
  * the next step). `onset` is the first frame 5 % of the way; 50 % and 90 % the first to reach
  * them. Times are ms from the step's input. A frame set with no visible change says so.
  */
+const POP_SHARE = 0.08; // start value (LOADING-SET.md §3.5); tune it on the first loading run
 function changeCurve(list, before, settled, region, from, view) {
   const greyOf_ = (f) => greyOf(f, region, view);
   try {
@@ -1427,9 +1580,25 @@ function changeCurve(list, before, settled, region, from, view) {
     const z = greyOf_(settled);
     const total = distance(a, z);
     const ms = (f) => Math.round((f.t - from) * 1000);
-    if (!(total >= 0.3)) return { per: list.map(() => null), summary: { visible: false }, line: "no visible change between the picture before the step and the one it settles on" };
-    const per = list.map((f) => {
-      const g = greyOf_(f);
+    const greys = list.map(greyOf_);
+    // A step that ends where it began (a reload: the card comes back as it was) has no whole
+    // change; its pops are then measured against its largest move away from the first picture.
+    const away = Math.max(0, ...greys.map((g) => distance(a, g)).filter(Number.isFinite));
+    const scale = total >= 0.3 ? total : away;
+    // A pop (LOADING-SET.md §3.5): a frame that differs from the one before it by POP_SHARE of
+    // the step's whole change or more, so a large part of the box changed at once. A fade
+    // spreads the same change over many frames and makes few pops or none.
+    const jumps = greys.map((g, i) => {
+      const j = distance(i ? greys[i - 1] : a, g) / scale;
+      return Number.isFinite(j) ? j : null;
+    });
+    const pops = scale >= 0.3 ? jumps.flatMap((j, i) => (j !== null && j >= POP_SHARE ? [i] : [])) : [];
+    const popText = ` · pops ${pops.length}${pops.length ? ` (${pops.map((i) => `+${ms(list[i])}`).join(", ")})` : ""}`;
+    if (!(total >= 0.3)) {
+      const line = scale >= 0.3 ? `no change at the end (the box comes back as it was; it moved up to ${away.toFixed(1)} grey levels on the way)${popText}` : "no visible change between the picture before the step and the one it settles on";
+      return { per: list.map(() => null), pops: new Set(pops), summary: { visible: false, pops: pops.map((i) => ms(list[i])) }, line };
+    }
+    const per = greys.map((g) => {
       const fromStart = distance(a, g) / total;
       const toEnd = distance(g, z) / total;
       // A frame of another size (a resize, the window fault above) cannot be compared: no value.
@@ -1439,9 +1608,9 @@ function changeCurve(list, before, settled, region, from, view) {
       const i = per.findIndex((v) => v !== null && v >= p);
       return i < 0 ? null : ms(list[i]);
     };
-    const summary = { visible: true, onset: at(0.05), p50: at(0.5), p90: at(0.9), lastFrame: ms(list.at(-1)), settledAt: ms(settled), size: +total.toFixed(1) };
+    const summary = { visible: true, onset: at(0.05), p50: at(0.5), p90: at(0.9), lastFrame: ms(list.at(-1)), settledAt: ms(settled), size: +total.toFixed(1), pops: pops.map((i) => ms(list[i])) };
     const t = (v) => (v === null ? `past +${summary.lastFrame}` : `+${v}`);
-    return { per, summary, line: `onset ${t(summary.onset)} ms · 50% ${t(summary.p50)} · 90% ${t(summary.p90)} (from the input; change size ${summary.size} grey levels)` };
+    return { per, pops: new Set(pops), summary, line: `onset ${t(summary.onset)} ms · 50% ${t(summary.p50)} · 90% ${t(summary.p90)}${popText} (from the input; change size ${summary.size} grey levels)` };
   } catch (e) {
     return { per: list.map(() => null), summary: { visible: false, error: String(e.message ?? e) }, line: `no curve: ${e.message ?? e}` };
   }
@@ -1502,7 +1671,8 @@ function frameStrip(list, from, out, width, cols, ctx = null) {
         if (events.length) lines.push(events.join(", ").slice(0, 34));
       } else if (gap !== null && gap > 25) color = "0xff6b6b";
       const p = ctx?.curve?.per?.[i];
-      if (p !== null && p !== undefined) lines.push(`change ${Math.round(p * 100)}%`);
+      if (p !== null && p !== undefined) lines.push(`change ${Math.round(p * 100)}%${ctx.curve.pops?.has(i) ? "  POP" : ""}`);
+      else if (ctx?.curve?.pops?.has(i)) lines.push("POP");
       const txt = join(tmp, `t${String(i).padStart(3, "0")}.txt`);
       writeFileSync(txt, [line1, ...lines].join("\n"));
       const bar = p !== null && p !== undefined ? `,drawbox=x=0:y=ih-5:w=iw*${p.toFixed(3)}:h=5:color=0x4cc9f0:t=fill` : "";
@@ -1604,9 +1774,12 @@ async function quietCpu() {
 }
 
 const changeText = (c) => {
-  if (!c?.visible) return "no visible change";
+  const tail = `${c?.pops ? ` · pops ${c.pops.length}` : ""}${c?.settled !== undefined && c?.settled !== null ? ` · settled +${c.settled}` : ""}`;
+  if (!c?.visible) return `no change at the end${tail}`;
   const t = (v) => (v === null || v === undefined ? `>${c.lastFrame}` : `+${v}`);
-  return `onset ${t(c.onset)} · 50% ${t(c.p50)} · 90% ${t(c.p90)} ms`;
+  const pops = c.pops ? ` · pops ${c.pops.length}` : "";
+  const settled = c.settled !== undefined && c.settled !== null ? ` · settled +${c.settled}` : "";
+  return `onset ${t(c.onset)} · 50% ${t(c.p50)} · 90% ${t(c.p90)} ms${pops}${settled}`;
 };
 
 const PERF_LINE = /^(.*?) (\d+) ms · (\d+) frames @\d+ Hz · dropped \d+ \(([\d.]+)%\) · worst (\d+) ms/;
@@ -1739,6 +1912,7 @@ try {
     await page.send("Animation.enable");
     listenConsole(page);
     await page.send("Runtime.addBinding", { name: "__shotsWindow" }); // kept across loads
+    page.on("Fetch.requestPaused", (e) => void coverPaused(page, e)); // --latency's cover holds
     listenWindow(page);
     // Motion on: a picture is taken after it settles, and a clip needs it (SHOTS.md §5).
     await page.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
@@ -1787,13 +1961,13 @@ try {
             const cpu = await quietCpu();
             const out = shot.source === "dev"
               ? await shootDev(await devPageGet(), shot, outDir, variant, look)
-              : await shoot(await demoPage(), demoUrl, shot, look, outDir, variant);
+              : await shoot(await demoPage(), demoUrl, shot, look, outDir, variant, r);
             runs.push({ cpu, perf: out.perf ?? [], changes: (out.frameSets ?? []).map((s) => ({ step: s.step, ...s.change })), loads: out.loadSets ?? [] });
             Object.assign(row, out, { cpu, noisy: cpu > noiseLimit || undefined });
             const tagLine = `${variant.label ? ` [${variant.label}]` : ""}${repeat > 1 ? ` run ${r}/${repeat}` : ""} · cpu ${cpu}%${cpu > noiseLimit ? " NOISY" : ""}`;
             log(`ok   ${row.file}${tagLine}${row.consoleErrors ? ` — ${row.consoleErrors} console error(s), see ${row.console}` : ""}`);
             for (const p of row.perf ?? []) log(`       frames ${p}`);
-            for (const s of row.frameSets ?? []) log(`       step ${s.step} (${s.kind}, from ${s.anchor}): ${s.count}/${s.asked} real frames → ${s.strip}${s.change?.visible ? ` · ${changeText(s.change)}` : ""}`);
+            for (const s of row.frameSets ?? []) log(`       step ${s.step} (${s.kind}, from ${s.anchor}): ${s.count}/${s.asked} real frames → ${s.strip}${s.change ? ` · ${changeText(s.change)}` : ""}`);
             for (const s of row.loadSets ?? []) log(`       loads step ${s.step} (${s.kind}): ${s.line}`);
           }
           if (repeat > 1) {

@@ -436,13 +436,14 @@ function makeFlight(art: HTMLElement, at: DOMRect, src: string | null): HTMLElem
   const spin = real.querySelector<HTMLElement>(".vinyl__spin");
   const still = disc.querySelector<HTMLElement>(".vinyl__spin");
   if (spin && still) {
-    // The copy turns on with the real disc (vinyl.ts): the same turn, angle and rate, so the
-    // record lands at the angle the real one has then. A paused disc flies still.
+    // The copy turns on with the real disc (vinyl.ts): the same turn, angle, rate and steps
+    // (the Spin FPS row), so the record lands at the angle the real one has then. A paused
+    // disc flies still.
     const real = spin.getAnimations()[0];
     const timing = real?.effect?.getTiming();
     if (real && timing && real.currentTime !== null) {
       const copy = still.animate([{ transform: "rotate(0turn)" }, { transform: "rotate(1turn)" }], {
-        duration: timing.duration, iterations: Infinity, easing: "linear",
+        duration: timing.duration, iterations: Infinity, easing: timing.easing ?? "linear",
       });
       copy.currentTime = real.currentTime;
       copy.playbackRate = real.playbackRate;

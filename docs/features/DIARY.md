@@ -3,12 +3,22 @@ status: shipped
 shipped_in: 0.14.5
 desk_test: open
 sources: [src/diary-card.ts, src/diary.ts, src/styles/diary.css, src-tauri/src/diary.rs, src/layout-bus.ts, src/media-menu.ts]
-updated: 2026-10-14
+updated: 2026-10-17
 ---
-# DeetsMusic — the Diary card
+# DeetsMusic — the Album Reviews card (the Diary until 2026-10-17)
 
 > An album journal. You pick an album, you listen, and you keep a note and a score for each
 > song and for the whole album. Everything stays on this PC.
+
+> **Renamed 2026-10-17 (his call):** the card, its Settings section, its rows and its menu row
+> read **Album Reviews**; an entry reads **review**; the album menu's *Add to Diary* reads
+> **Review This Album**; the entry header reads **Review: <album name>**. The internal names stay
+> (the `diary` card id, `diary.ts`, `diary_*` tables and commands, the `diaryGrow` /
+> `diaryRescale` / `agentDiary` keys, the `inDiary` / `diaryScore` facts, `/diary`), so saved
+> layouts, card memory, rules and settings carry over. The agent tool and the CLI command are
+> `reviews`, with no `diary` alias: the card had no live users (his word), so nothing else
+> carries over. The Compass still finds the card by "diary" and "journal". Below, the text
+> before this date keeps the old words.
 
 **Terms.** An **entry** is one album in the Diary. A **scale** is the top of the score range for
 one entry ("out of 10"). The **foot** is the note panel fixed under the song list.
@@ -278,8 +288,9 @@ Export; the entry is then re-keyed by that id (`open_entry` looks under the old 
 - **Add to Diary** in Actions while a song plays: the playing album, as the album menu's row.
 
 **Agents and the CLI** (his call: **read and write, behind a switch**). Settings › Connections ›
-**Agents use the Diary** (Rust `agent_diary`, off by default; an agent may only turn it off).
-Route `GET/POST /diary` (AGENT.md), CLI `deetsmusic diary`, MCP tool `diary` (full pack):
+**Agents use Album Reviews** (Rust `agent_diary`, off by default; an agent may only turn it off).
+Route `GET/POST /diary` (AGENT.md), CLI `deetsmusic reviews`, MCP tool `reviews` (full pack;
+both `diary` until 2026-10-17):
 list · show (the export text) · add (album:…) · note · score · date · done. `song` is a track
 number; without it, the album. A write emits `diary-changed`, and the window redraws.
 

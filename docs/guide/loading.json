@@ -1,0 +1,143 @@
+{
+  "about": "The loading set (docs/guide/LOADING-SET.md §3.6): one clip per wait, the demo replaying the owner's real round trips and cover times from latency.json. Each clip opens the card with its real control and keeps the next real paints on the card with its change curve, its pops and its settled time. Run: node scripts/shots.mjs --list docs/guide/loading.json --latency p90 --cold → shots/loading/<version>/. Without --latency the demo answers at once: the same clips are then the 'no wait' baseline.",
+  "looks": [{ "theme": "moonlight", "skin": "glass" }, { "theme": "moonlight", "skin": "press" }],
+  "shots": [
+    {
+      "id": "load-home",
+      "about": "Home at launch (the left card in Midi): the page loads from nothing, with every command cold.",
+      "covers": "features/HOME.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 6,
+      "strip": { "seconds": 4, "fps": 15, "cols": 12, "width": 160 },
+      "steps": [{ "reload": true, "strip": true, "frames": 240, "region": "[data-slot=\"left\"]" }]
+    },
+    {
+      "id": "load-library",
+      "about": "The Library at launch (the right card in Midi): the songs and their covers, every command cold.",
+      "covers": "architecture/LIBRARY-VIRTUALIZATION.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 6,
+      "strip": { "seconds": 4, "fps": 15, "cols": 12, "width": 160 },
+      "steps": [{ "reload": true, "strip": true, "frames": 240, "region": "[data-slot=\"right\"]" }]
+    },
+    {
+      "id": "load-playlists",
+      "about": "Playlists, first open: the title menu › Playlists. The list, the sync, the counts, the mosaics (the §1 recording).",
+      "covers": "features/PLAYLISTS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 6,
+      "strip": { "seconds": 4, "fps": 15, "cols": 12, "width": 160 },
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"playlists\"]", "strip": true, "frames": 240, "region": "[data-slot=\"left\"]" }
+      ]
+    },
+    {
+      "id": "load-playlist",
+      "about": "A playlist: a click on the first playlist row. Its songs, the covers, the hero mosaic.",
+      "covers": "features/PLAYLISTS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 5,
+      "strip": { "seconds": 3, "fps": 15, "cols": 12, "width": 160 },
+      "prepare": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"playlists\"]" },
+        { "wait": 5000 }
+      ],
+      "steps": [{ "click": "[data-slot=\"left\"] .lib-row", "strip": true, "frames": 240, "region": "[data-slot=\"left\"]" }]
+    },
+    {
+      "id": "load-album",
+      "about": "An album: the Library grouped by album, a click on the first one. Its songs and covers.",
+      "covers": "architecture/UI-ARCHITECTURE.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 5,
+      "strip": { "seconds": 3, "fps": 15, "cols": 12, "width": 160 },
+      "prepare": [
+        { "wait": 2500 },
+        { "click": "[data-slot=\"right\"] .lib-pill[data-pop=\"view\"]" },
+        { "wait": 500 },
+        { "click": ".lib-pop__opt[data-group=\"albums\"]" },
+        { "wait": 2500 },
+        { "key": "Escape" }
+      ],
+      "steps": [{ "click": "[data-slot=\"right\"] [data-idx=\"0\"]", "strip": true, "frames": 240, "region": "[data-slot=\"right\"]" }]
+    },
+    {
+      "id": "load-artist",
+      "about": "The artist view: the Library grouped by artist, a click on the first one. The hero photo, the shelves, the Last.fm box.",
+      "covers": "features/ARTIST-VIEW.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 6,
+      "strip": { "seconds": 4, "fps": 15, "cols": 12, "width": 160 },
+      "prepare": [
+        { "wait": 2500 },
+        { "click": "[data-slot=\"right\"] .lib-pill[data-pop=\"view\"]" },
+        { "wait": 500 },
+        { "click": ".lib-pop__opt[data-group=\"artists\"]" },
+        { "wait": 2500 },
+        { "key": "Escape" }
+      ],
+      "steps": [{ "click": "[data-slot=\"right\"] [data-idx=\"0\"]", "strip": true, "frames": 240, "region": "[data-slot=\"right\"]" }]
+    },
+    {
+      "id": "load-search",
+      "about": "Search: the title menu › Search, then type a word. The results and their covers. The field is found wherever Search lands: an earlier clip can leave the cards in another order (the demo keeps local storage between shots).",
+      "covers": "features/SEARCH.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 6,
+      "strip": { "seconds": 4, "fps": 15, "cols": 12, "width": 160 },
+      "prepare": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"search\"]" },
+        { "wait": 1500 },
+        { "click": "input.search__input" }
+      ],
+      "steps": [{ "type": "honey", "strip": true, "frames": 240, "region": "[data-slot]:has(input.search__input)" }]
+    },
+    {
+      "id": "load-next",
+      "about": "Now Playing, the next song: Next. The cover and the Listeners badge.",
+      "covers": "features/LISTENERS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 5,
+      "strip": { "seconds": 3, "fps": 15, "cols": 12, "width": 160 },
+      "prepare": [{ "wait": 3000 }],
+      "steps": [{ "click": ".np__btn[aria-label=\"Next\"]", "strip": true, "frames": 240, "region": "[data-slot=\"np\"]" }]
+    },
+    {
+      "id": "load-rewind",
+      "about": "Rewind: the title menu › Rewind. The stats.",
+      "covers": "features/DEETS-REWIND.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 5,
+      "strip": { "seconds": 3, "fps": 15, "cols": 12, "width": 160 },
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"rewind\"]", "strip": true, "frames": 240, "region": "[data-slot=\"left\"]" }
+      ]
+    },
+    {
+      "id": "load-radio",
+      "about": "Radio: the title menu › Radio. The stations.",
+      "covers": "features/STATIONS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 5,
+      "strip": { "seconds": 3, "fps": 15, "cols": 12, "width": 160 },
+      "steps": [
+        { "click": "[data-slot=\"left\"] .panel__title" },
+        { "wait": 500 },
+        { "click": "[data-slot=\"left\"] .flyout__item[data-card-id=\"radio\"]", "strip": true, "frames": 240, "region": "[data-slot=\"left\"]" }
+      ]
+    },
+    {
+      "id": "load-credits",
+      "about": "Credits: Ctrl+Space › Song credits for the song in Now Playing. The song pane and its writers.",
+      "covers": "features/CREDITS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 5,
+      "strip": { "seconds": 3, "fps": 15, "cols": 12, "width": 160 },
+      "prepare": [{ "wait": 2500 }],
+      "steps": [
+        { "key": "Ctrl+Space" },
+        { "wait": ".compass__input" },
+        { "type": "credits" },
+        { "wait": 400 },
+        { "key": "Enter", "strip": true, "frames": 240 }
+      ]
+    }
+  ]
+}

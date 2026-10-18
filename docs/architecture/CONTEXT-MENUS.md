@@ -48,15 +48,15 @@ The same in every menu. The groups never change places.
 | 2 | File | Add to Playlist ▸ |
 | 3 | Go to | Go to Artist · Go to Album · Go to Playlist · Song Credits |
 | 4 | Seed | Start Station · Start a Web · Copy Link |
-| 5 | Keep | Add to Library · Add to Diary (albums) · Favorite · Suggest Less (and Suggest Less of This Artist / Album; not on Home's tiles) · Mark as Song of the Day · On Click ▸ · Pin |
+| 5 | Keep | Add to Library · Review This Album (albums) · Favorite · Suggest Less (and Suggest Less of This Artist / Album; not on Home's tiles) · Mark as Song of the Day · On Click ▸ · Pin |
 | 6 | The card's own rows | Move to Top / Bottom · Move to Folder ▸ · Refresh ▸ · Stop Station · a pick's note … |
 | 7 | Take away (last) | Remove · Remove from Playlist · Hide · Delete Playlist |
 
 **The divider (2026-09-26, his call).** `MENU_DIVIDER` (context-menu.ts, a `DividerItem`) is a
 hairline in the menu's `--border`, inset like a label, with `--ctx-divider-gap` above and below.
-It is not a row: no hover, no focus. Used ONCE so far: a Diary entry's menu puts it at the top
-of group 6, so the album's rows and the entry's own (Export · Mark as Done · Move to Folder ·
-Delete Entry) read as two groups. Another menu takes it only by the owner's call.
+It is not a row: no hover, no focus. Used ONCE so far: an album review's menu (Album Reviews,
+the Diary until 2026-10-17) puts it at the top of group 6, so the album's rows and the review's
+own (Export · Mark as Done · Move to Folder · Delete Review) read as two groups. Another menu takes it only by the owner's call.
 
 Two menus put a row ABOVE group 1, both by an earlier decision of the owner: the Playlists
 card's **Rename** field (PLAYLISTS.md §10.2, "the field first, ready to type") and the Song
@@ -168,16 +168,17 @@ Mark as Song of the Day · Pin.
 
 ### 3.2 Album — `albumMenu`
 Play Now · Shuffle · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Go to Album ·
-Start a Web · Copy Link · Add to Library · Add to Diary · Favorite · Suggest Less of This Album ·
+Start a Web · Copy Link · Add to Library · Review This Album · Favorite · Suggest Less of This Album ·
 On Click ▸ · Pin.
 
 - **Shuffle** (2026-09-24, his call 3A): the hero's Shuffle button as a row, on every card. With
   "Shuffle stays on" it turns the mode on (`runListAction`'s rule).
 
-- **Add to Diary** (2026-09-24, [DIARY.md](../features/DIARY.md) §2): summons the Diary card at
-  the album's entry, making it the first time. Left out inside the Diary itself (`inDiary`).
-  A Diary tile's own rows (group 6): Export · Mark as Done / Mark in Progress · Move to Folder ▸; Delete
-  entry is group 7. A Diary folder header: Rename (a field) · Delete Folder (DIARY.md §4b).
+- **Review This Album** (2026-09-24 as *Add to Diary*, renamed 2026-10-17;
+  [DIARY.md](../features/DIARY.md) §2): summons the Album Reviews card at the album's review,
+  making it the first time. Left out inside the card itself (`inDiary`). A review tile's own
+  rows (group 6): Export · Mark as Done / Mark in Progress · Move to Folder ▸; Delete Review is
+  group 7. A folder header in the card: Rename (a field) · Delete Folder (DIARY.md §4b).
 - An album has no station (Apple seeds stations from songs and artists).
 - **Go to Album on an album tile** (fork 2B): every card shows it. In the Library it drills in
   place; elsewhere it opens the Search album pane.

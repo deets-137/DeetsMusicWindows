@@ -146,7 +146,7 @@ The forks still open from the 2026-10-01 talk:
 | Spec line | Numbers / facts | Shot | Source |
 |---|---|---|---|
 | Rewind | Listening stats from the local play log; nothing leaves the PC | — | demo |
-| Diary | An album journal: a note and a score per song and per album, any scale (/10, /5, /100 or your own) | — | demo |
+| Album Reviews | An album journal: a note and a score per song and per album, any scale (/10, /5, /100 or your own) | — | demo |
 | Song of the Day | Mark one song a day; a Home shelf; Rewind › Picks; optional Discord webhook post | — | demo |
 | Local data for agents and you | Read-only SQL over a fresh in-memory copy of five tables | — | dev |
 
@@ -181,7 +181,7 @@ The forks still open from the 2026-10-01 talk:
 | Discord Rich Presence | Your song on your Discord profile | — | dev |
 | Last.fm | Scrobbles and now playing | — | dev |
 | Browser extension | On YouTube or YouTube Music, finds the song on Apple Music; + adds it to your library | — | dev |
-| Agent control | A `deetsmusic` CLI and an MCP server with 21 tools (search, play, queue, playlists, Diary, rules …); Settings › Connections › Agent control | — | dev |
+| Agent control | A `deetsmusic` CLI and an MCP server with 21 tools (search, play, queue, playlists, album reviews, rules …); Settings › Connections › Agent control | — | dev |
 | Connect an AI app in one click | Settings › Connections › *Set up the DeetsMusic MCP* finds Claude Desktop, Claude Code and Codex and connects each (0.26.0) | — | dev |
 | Bug reports in the app | Settings › Bugs sends a report with the log | — | dev |
 

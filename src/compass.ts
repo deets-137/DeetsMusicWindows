@@ -68,7 +68,7 @@ import { requestLibraryFilter } from "./layout-bus";
 
 type Group =
   | "Answer" | "Places" | "Settings" | "Actions" | "Sound" | "Up Next" | "Recently Played" | "Speakers"
-  | "Songs" | "Albums" | "Artists" | "Genres" | "Playlists" | "Stations" | "Apple Music" | "Diary" | "Filters";
+  | "Songs" | "Albums" | "Artists" | "Genres" | "Playlists" | "Stations" | "Apple Music" | "Album Reviews" | "Filters";
 /** Rows per group, and for the shown library kind, by surface: Mini is a small window
  *  (the user's call 2026-09-17: three there). */
 const perGroup = (): number => (currentSurface() === "mini" ? 3 : 6);
@@ -133,6 +133,7 @@ export const SYNONYMS: Record<string, string[]> = {
   window: ["surface"], size: ["surface"], small: ["mini"], large: ["max"],
   bento: ["layout"], grid: ["layout"], // Layout for Max (MAX-CARDS.md)
   np: ["player"], nowplaying: ["player"], // "NP" was this surface's name until 2026-09-18
+  diary: ["reviews"], journal: ["reviews"], // Album Reviews was "Diary" until 2026-10-17
   lib: ["library"], songs: ["library"], music: ["library"],
   lists: ["playlists"], list: ["playlists"],
   web: ["web"], playlistweb: ["web"],
@@ -191,7 +192,7 @@ const GLYPH: Record<Group, string> = {
   Stations: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.7 4.7a10.3 10.3 0 0 0 0 14.6M19.3 4.7a10.3 10.3 0 0 1 0 14.6"/></svg>',
   "Apple Music": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>',
   // A bound book with its lines: the Diary (DIARY.md §10).
-  Diary: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h11a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H6z"/><path d="M6 3.5v17M9.5 8h6M9.5 11.5h6M9.5 15h4"/></svg>',
+  "Album Reviews": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h11a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H6z"/><path d="M6 3.5v17M9.5 8h6M9.5 11.5h6M9.5 15h4"/></svg>',
   // A funnel: a filter keeps some songs and lets the rest go (features/filter-rules.md).
   Filters: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg>',
 };
@@ -425,10 +426,10 @@ function addPlayingToDiary(t: Track): void {
  *  list the Diary last read — a write drops it, and the next open reads it again. */
 function diaryRows(): Row[] {
   return diaryCachedList().map((s): Row => ({
-    group: "Diary",
+    group: "Album Reviews",
     title: s.album.title,
     sub: [s.album.artistName, fmtScore(s.score, s.scaleMax), s.doneAt ? "Completed" : "In progress"].filter(Boolean).join(" · "),
-    aliases: ["diary", "entry", "review"],
+    aliases: ["album reviews", "diary", "entry", "review"],
     run: () => requestDiaryEntry(s.id),
     alt: { label: "Export", run: () => void copyDiaryExport(s.id) },
     tracks: () => diaryGet(s.id).then((e) => e.tracks.filter((x) => !x.unreleased)),
@@ -490,9 +491,9 @@ function actions(all: boolean): Row[] {
     const t = playingTrack;
     rows.push({
       group: "Actions",
-      title: "Add to Diary",
+      title: "Review This Album",
       sub: `${t.albumName} · the playing album`,
-      aliases: ["diary", "review", "journal", "rate album", "write about"],
+      aliases: ["add to diary", "diary", "review", "album reviews", "journal", "rate album", "write about"],
       run: () => addPlayingToDiary(t),
     });
   }

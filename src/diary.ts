@@ -125,10 +125,10 @@ export function copyDiaryExport(id: number): Promise<void> {
     .then(() => diaryExport(id))
     .then((text) => navigator.clipboard.writeText(text))
     .then(
-      () => void toast({ kind: "success", text: "Diary entry copied." }),
+      () => void toast({ kind: "success", text: "Review copied." }),
       (e) => {
         console.error("[diary] export", e);
-        toast({ kind: "warn", text: "Couldn't copy the Diary entry." });
+        toast({ kind: "warn", text: "Couldn't copy the review." });
       },
     );
 }

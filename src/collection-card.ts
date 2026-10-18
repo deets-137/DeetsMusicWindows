@@ -40,6 +40,7 @@ import { levelLeft, ruleGrowComing } from "./card-grow";
 import { searchField, fieldClearHTML } from "./search-field";
 import { patchHTML, keyRow } from "./keyed";
 import { reveal, revealOf } from "./reveal";
+import { mark } from "./marks";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -910,6 +911,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const spec = g.sorts.find((s) => s.key === f.sortKey) ?? g.sorts[0];
     items = sortItems(items, spec, f.sortDir, g.name);
     f.items = items;
+    // Each rebuild of a list, so a strip shows the second and third redraw (LOADING-SET.md §3.5).
+    mark("coll:render", `${f.ctx.key ?? f.ctx.title} ${f.grouping} ${items.length}`);
 
     view.dataset.grid = f.density; // CSS hook for column sizing (NOT data-density —
     // that collides with the density buttons). Openable = pointer-cursor affordance:

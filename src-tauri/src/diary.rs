@@ -234,7 +234,7 @@ fn read_entry(conn: &Connection, id: i64) -> Result<DiaryEntry, String> {
         )
         .optional()
         .map_err(err)?
-        .ok_or_else(|| format!("diary: no entry {id}"))?;
+        .ok_or_else(|| format!("reviews: no review {id}"))?;
     let mut stmt = conn
         .prepare("SELECT song_key, score, note, note_date, updated_at FROM diary_songs WHERE entry_id = ?1")
         .map_err(err)?;
@@ -347,9 +347,9 @@ fn score_of(v: &Value) -> Result<Option<f64>, String> {
         Value::Null => Ok(None),
         Value::Number(n) => match n.as_f64() {
             Some(x) if x.is_finite() && x >= 0.0 => Ok(Some(x)),
-            _ => Err("diary: a score is a number, 0 or more".into()),
+            _ => Err("reviews: a score is a number, 0 or more".into()),
         },
-        _ => Err("diary: a score is a number, 0 or more".into()),
+        _ => Err("reviews: a score is a number, 0 or more".into()),
     }
 }
 
@@ -358,7 +358,7 @@ fn day_of(v: &Value) -> Result<Option<String>, String> {
     match v {
         Value::Null => Ok(None),
         Value::String(s) if s.len() == 10 && s.as_bytes()[4] == b'-' && s.as_bytes()[7] == b'-' => Ok(Some(s.clone())),
-        _ => Err("diary: a date is YYYY-MM-DD".into()),
+        _ => Err("reviews: a date is YYYY-MM-DD".into()),
     }
 }
 
@@ -384,7 +384,7 @@ fn update_entry(conn: &Connection, id: i64, patch: &Value) -> Result<(), String>
         conn.execute("UPDATE diary_entries SET review_date = ?1 WHERE id = ?2", params![day_of(v)?, id]).map_err(err)?;
     }
     if let Some(v) = patch.get("scaleMax") {
-        let max = v.as_f64().filter(|x| x.is_finite() && *x > 0.0).ok_or("diary: a scale's top is a number above 0")?;
+        let max = v.as_f64().filter(|x| x.is_finite() && *x > 0.0).ok_or("reviews: a scale's top is a number above 0")?;
         conn.execute("UPDATE diary_entries SET scale_max = ?1 WHERE id = ?2", params![max, id]).map_err(err)?;
     }
     conn.execute("UPDATE diary_entries SET updated_at = ?1 WHERE id = ?2", params![now_ms(), id]).map_err(err)?;
@@ -403,7 +403,7 @@ pub async fn diary_song_set(entry_id: i64, song_key: String, patch: Value, app: 
 
 fn set_song(conn: &mut Connection, entry_id: i64, song_key: &str, patch: &Value) -> Result<(), String> {
     if song_key.is_empty() {
-        return Err("diary: empty song key".into());
+        return Err("reviews: empty song key".into());
     }
     let now = now_ms();
     let tx = conn.transaction().map_err(err)?;
@@ -457,7 +457,7 @@ pub async fn diary_rescale(id: i64, from_max: f64, to_max: f64, app: tauri::AppH
     crate::db_thread::run(&app, move |db| {
         let ok = |x: f64| x.is_finite() && x > 0.0;
         if !ok(to_max) || !ok(from_max) {
-            return Err("diary: a scale's top is a number above 0".into());
+            return Err("reviews: a scale's top is a number above 0".into());
         }
         let k = to_max / from_max;
         let mut conn = db.lock();
@@ -516,7 +516,7 @@ pub async fn diary_folder_create(name: String, app: tauri::AppHandle) -> Result<
     crate::db_thread::run(&app, move |db| {
         let name = name.trim();
         if name.is_empty() {
-            return Err("diary: a folder needs a name".into());
+            return Err("reviews: a folder needs a name".into());
         }
         let conn = db.lock();
         conn.execute("INSERT INTO diary_folders(name, created_at) VALUES(?1, ?2)", params![name, now_ms()]).map_err(err)?;
@@ -530,7 +530,7 @@ pub async fn diary_folder_rename(id: i64, name: String, app: tauri::AppHandle) -
     crate::db_thread::run(&app, move |db| {
         let name = name.trim();
         if name.is_empty() {
-            return Err("diary: a folder needs a name".into());
+            return Err("reviews: a folder needs a name".into());
         }
         db.lock().execute("UPDATE diary_folders SET name = ?1 WHERE id = ?2", params![name, id]).map_err(err)?;
         Ok(())
@@ -671,7 +671,7 @@ pub async fn diary_export(id: i64, app: tauri::AppHandle) -> Result<String, Stri
 // only do the work. Every write tells the window (`diary-changed`) so an open Diary redraws.
 
 /// The refusal while the switch is off (the bridge answers it 403, the CLI exits 6).
-pub const AGENT_OFF: &str = "The Diary is off for agents. Turn on Agents use the Diary in DeetsMusic › Settings › Connections.";
+pub const AGENT_OFF: &str = "Album Reviews is off for agents. Turn on Agents use Album Reviews in DeetsMusic › Settings › Connections.";
 
 /// `GET /diary` — every entry, newest touched first. `GET /diary?id=N` — one entry, with its
 /// songs and the export text.
@@ -740,7 +740,7 @@ fn song_at(e: &DiaryEntry, n: u32) -> Result<String, String> {
         .find(|t| t.track_number == Some(n))
         .or_else(|| e.tracks.get((n as usize).wrapping_sub(1)))
         .map(song_key_of)
-        .ok_or_else(|| format!("entry {} has no song {n}", e.id))
+        .ok_or_else(|| format!("review {} has no song {n}", e.id))
 }
 
 fn today_local() -> String {
@@ -780,11 +780,11 @@ pub async fn agent_write(app: &tauri::AppHandle, body: &Value) -> Result<Value, 
                 ..Default::default()
             };
             let e = open_entry(&app.state::<Db>().lock(), &a, &tracks, Some(today_local()))?;
-            let verb = if e.created { "Added" } else { "Opened (already in the Diary)" };
-            format!("{verb}: {} by {} — entry {}.", e.album.title, e.album.artist_name, e.id)
+            let verb = if e.created { "Added" } else { "Opened (already reviewed)" };
+            format!("{verb}: {} by {} — review {}.", e.album.title, e.album.artist_name, e.id)
         }
         "note" | "score" | "date" | "done" => {
-            let id = id.ok_or("this action needs the entry's id — see diary list")?;
+            let id = id.ok_or("this action needs the review's id — see reviews list")?;
             let db = app.state::<Db>();
             let mut conn = db.lock();
             let e = read_entry(&conn, id)?;
@@ -827,7 +827,7 @@ pub async fn agent_write(app: &tauri::AppHandle, body: &Value) -> Result<Value, 
                     } else {
                         let x: f64 = v.parse().map_err(|_| format!("{value:?} is not a number"))?;
                         if !(x.is_finite() && x >= 0.0 && x <= e.scale_max) {
-                            return Err(format!("a score on this entry is a number from 0 to {}", fmt_num(e.scale_max)));
+                            return Err(format!("a score on this review is a number from 0 to {}", fmt_num(e.scale_max)));
                         }
                         serde_json::json!(x)
                     };
@@ -856,7 +856,7 @@ pub async fn agent_write(app: &tauri::AppHandle, body: &Value) -> Result<Value, 
                 }
             }
         }
-        other => return Err(format!("{other:?} is not a diary action — use add, note, score, date or done")),
+        other => return Err(format!("{other:?} is not a reviews action — use add, note, score, date or done")),
     };
     crate::log::info(&format!("diary: agent {action}")); // ids and verbs only (LOGGING.md)
     let _ = app.emit("diary-changed", ());

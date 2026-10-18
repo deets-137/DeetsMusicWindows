@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.6.1
 desk_test: passed 2026-09-15
-sources: [src/vinyl.ts, scripts/webview-eval.mjs, src/now-playing-card.ts, src/tray.ts, src/skin-settings.ts, src/settings-store.ts]
-updated: 2026-10-15
+sources: [src/vinyl.ts, scripts/webview-eval.mjs, src/now-playing-card.ts, src/tray.ts, src/skin-settings.ts, src/settings-store.ts, src/spin-steps.ts, src/display-hz.ts, src-tauri/src/display.rs]
+updated: 2026-10-17
 ---
 # Press record player (vinyl cover)
 
@@ -381,3 +381,67 @@ on a 400 px stage, 20 px. A picture at the size of the hole cannot be read. The 
 - The checklist: a key in `settings-store.ts` with a default and why, a spec in
   `agent-settings.ts`, a line in AGENT.md, a `NEW_MARKS` line, the Skin settings Reset group, the
   hint in ONBOARDING.md §1, Compass by the store rule.
+
+## 12. Spin FPS (2026-10-17)
+> **Part:** built · 2026-10-17 · desk test passed 2026-10-17 (rows 1–6; rows 4–6 on his word)
+
+**Why.** The spin cost is per frame, not per pixel: about 1.2 ms of CPU a frame across the GPU,
+Viz and Compositor threads, so a 240 Hz display pays 31–44 % of one core for the record alone
+(WORKLOG 2026-10-17 *CPU hunt*). In a blind test on his 240 Hz portrait monitor he took the
+120 FPS spin for the full rate (WORKLOG 2026-10-17 *night, later*).
+
+**His calls (2026-10-17):** a cap at 120 FPS by default; a Settings row as well as the default;
+the row is **Spin FPS**, a dropdown of 60 · 120 · 144 · 240.
+
+**How it works.**
+- `display.rs`: the rate of the monitor that holds the window, from Windows' current display
+  mode (`EnumDisplaySettingsW`), a whole number. `display_hz` answers for the window that asks;
+  `display-hz` tells a window when its rate changes (a move to another monitor; a focus, which
+  catches a mode changed in Windows' settings). One log line per change: `display: main on 240 Hz`.
+- `display-hz.ts`: the page's copy of its own window's rate. The main window and the tray panel
+  each read their own monitor.
+- `spin-steps.ts` (pure, `tests/spin-steps.test.ts`): the disc redraws at the display rate ÷ the
+  whole number nearest the row's FPS, so every step shows for the same number of frames. A rate
+  that does not divide the display's (120 on a 144 Hz display) would hold one frame in six. So the
+  choice is a most, not an exact rate: 240 Hz gives 60 · 120 · 120 · 240; 144 Hz gives 72 · 144
+  · 144 · 144; 60 Hz is always 60. When the disc would draw every frame anyway, the easing is
+  plain `linear`, as before.
+- `vinyl.ts`: the spin's easing is `steps(n)`, n = the period × that rate (432 steps a turn at
+  16⅔ rpm and 120 FPS). Chromium draws no frame for a step whose angle did not change, which is
+  where the saving comes from. A change of the row, the speed or the monitor sets the easing again
+  on the running animation; the angle stays.
+- The tray panel's disc is the same `mountVinyl`; the full player's flying copy copies the real
+  disc's easing (`full-player.ts`).
+- The hint names the rate in use: "… On this 240 Hz display: 120 FPS". A choice row's hint may now
+  be a function (`rowHint`, settings-card.ts).
+
+**What Claude decided inside his calls:** the nearest whole divisor (not the exact choice, which
+would judder); the option labels are bare numbers, as *Spin speed* has; the row sits under *Spin
+speed* and shows only with Record player on Spin; the hint wording; the New mark leads through the
+*Spin* pill; no skin token (the row's value is the cap); not a rule key (no rule needs it yet; a
+Battery saver rule could set it later); the web builds answer `null` for the rate, so the
+record spins plainly there.
+
+**Known limit:** the disc keeps to its song by running up to 5 % fast or slow for about 1.5 s
+(§4). During such a correction the steps no longer land on every second frame exactly, so a step
+may show for one frame or three. The blind test ran without corrections (a hand-made spin).
+
+**Desk test.**
+1. Press, Record player Spin, on the 240 Hz monitor. Settings › Skin settings › *Spin FPS* reads
+   120; its hint says "On this 240 Hz display: 120 FPS". The disc's animation has
+   `steps(432)` at 16⅔ rpm.
+2. Pick 60, 144, 240: the easing becomes `steps(216)`, `steps(432)`, `linear`; the disc does not jump.
+3. Spin speed 78: the steps follow the new period (`steps(92)` at 120).
+4. Move the window to a monitor at another rate (or change the rate in Windows' settings and
+   focus the window): one `display:` log line, and the steps follow.
+5. The tray panel's disc and the full player's flight carry the same easing.
+6. CPU: `docs/ops/checks/cpu-split.ps1` while playing at 120 against 240 (expected about 21 %
+   against 31–44 % of one core).
+
+**Claude's run (2026-10-17, `docs/ops/checks/spin-fps.mjs`, on the dev app HE started, with
+sound): 7 of 7.** Rows 1–3: `steps(430)` at 120 (the song fits a 3.587 s turn), `steps(215)` at
+60, `steps(430)` at 144 (on 240 Hz), `linear` at 240, `steps(92)` at 78 rpm; at each change the
+disc turned on 33–39° across the read (no jump) and kept running. Rust logged `display: main on
+240 Hz` and `display: tray on 240 Hz` at launch. **Not run:** row 1's hint words on screen, rows
+4 and 5 (another monitor, the tray disc, the flight), row 6 (the CPU split wants `dev:built`,
+which only plays when he starts it).

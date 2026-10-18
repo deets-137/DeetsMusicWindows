@@ -1,0 +1,781 @@
+{
+  "about": "The owner's dev-app round trips per command and cover load times (docs/guide/LOADING-SET.md §3.2). Made by `npm run latency:profile`; edit nothing by hand.",
+  "version": "0.29.0",
+  "from": "2026-10-17 17:32:01",
+  "to": "2026-10-17 17:37:41",
+  "days": 14,
+  "blocks": 12,
+  "commands": {
+    "added_at_map": {
+      "cold": {
+        "n": 5,
+        "p50": 428,
+        "p90": 567,
+        "max": 567
+      },
+      "warm": {
+        "n": 15,
+        "p50": 30,
+        "p90": 97,
+        "max": 100
+      }
+    },
+    "airplay_status": {
+      "cold": {
+        "n": 5,
+        "p50": 179,
+        "p90": 239,
+        "max": 239
+      },
+      "warm": null
+    },
+    "album_palette": {
+      "cold": {
+        "n": 7,
+        "p50": 115,
+        "p90": 190,
+        "max": 190
+      },
+      "warm": null
+    },
+    "appearance_publish": {
+      "cold": {
+        "n": 5,
+        "p50": 263,
+        "p90": 321,
+        "max": 321
+      },
+      "warm": {
+        "n": 5,
+        "p50": 110,
+        "p90": 120,
+        "max": 120
+      }
+    },
+    "apple_connection_status": {
+      "cold": {
+        "n": 5,
+        "p50": 260,
+        "p90": 319,
+        "max": 319
+      },
+      "warm": {
+        "n": 20,
+        "p50": 124,
+        "p90": 307,
+        "max": 319
+      }
+    },
+    "apple_developer_token": {
+      "cold": {
+        "n": 5,
+        "p50": 259,
+        "p90": 319,
+        "max": 319
+      },
+      "warm": {
+        "n": 5,
+        "p50": 52,
+        "p90": 84,
+        "max": 84
+      }
+    },
+    "apple_playlist_counts": {
+      "cold": {
+        "n": 5,
+        "p50": 124,
+        "p90": 252,
+        "max": 252
+      },
+      "warm": {
+        "n": 5,
+        "p50": 9,
+        "p90": 22,
+        "max": 22
+      }
+    },
+    "apple_playlist_tracks": {
+      "cold": {
+        "n": 5,
+        "p50": 29,
+        "p90": 41,
+        "max": 41
+      },
+      "warm": null
+    },
+    "apple_playlists_sync": {
+      "cold": {
+        "n": 5,
+        "p50": 1925,
+        "p90": 2260,
+        "max": 2260
+      },
+      "warm": null
+    },
+    "apple_remote_config": {
+      "cold": {
+        "n": 5,
+        "p50": 87,
+        "p90": 319,
+        "max": 319
+      },
+      "warm": {
+        "n": 5,
+        "p50": 198,
+        "p90": 235,
+        "max": 235
+      }
+    },
+    "apple_user_token": {
+      "cold": {
+        "n": 5,
+        "p50": 18,
+        "p90": 30,
+        "max": 30
+      },
+      "warm": null
+    },
+    "artist_new_releases": {
+      "cold": {
+        "n": 5,
+        "p50": 37,
+        "p90": 74,
+        "max": 74
+      },
+      "warm": null
+    },
+    "artist_photos": {
+      "cold": {
+        "n": 5,
+        "p50": 536,
+        "p90": 742,
+        "max": 742
+      },
+      "warm": {
+        "n": 15,
+        "p50": 61,
+        "p90": 123,
+        "max": 124
+      }
+    },
+    "artist_primaries": {
+      "cold": {
+        "n": 5,
+        "p50": 415,
+        "p90": 556,
+        "max": 556
+      },
+      "warm": {
+        "n": 5,
+        "p50": 14,
+        "p90": 15,
+        "max": 15
+      }
+    },
+    "audio_output": {
+      "cold": {
+        "n": 5,
+        "p50": 262,
+        "p90": 323,
+        "max": 323
+      },
+      "warm": null
+    },
+    "autostart_get": {
+      "cold": {
+        "n": 5,
+        "p50": 232,
+        "p90": 436,
+        "max": 436
+      },
+      "warm": null
+    },
+    "catalog_heals": {
+      "cold": {
+        "n": 5,
+        "p50": 423,
+        "p90": 570,
+        "max": 570
+      },
+      "warm": null
+    },
+    "dead_ids_cached": {
+      "cold": {
+        "n": 5,
+        "p50": 53,
+        "p90": 66,
+        "max": 66
+      },
+      "warm": null
+    },
+    "favorites_cached": {
+      "cold": {
+        "n": 5,
+        "p50": 413,
+        "p90": 557,
+        "max": 557
+      },
+      "warm": {
+        "n": 5,
+        "p50": 5,
+        "p90": 11,
+        "max": 11
+      }
+    },
+    "favorites_known": {
+      "cold": {
+        "n": 5,
+        "p50": 425,
+        "p90": 581,
+        "max": 581
+      },
+      "warm": {
+        "n": 5,
+        "p50": 7,
+        "p90": 16,
+        "max": 16
+      }
+    },
+    "favorites_reconcile": {
+      "cold": {
+        "n": 5,
+        "p50": 198,
+        "p90": 210,
+        "max": 210
+      },
+      "warm": null
+    },
+    "filter_write": {
+      "cold": {
+        "n": 4,
+        "p50": 6,
+        "p90": 6,
+        "max": 6
+      },
+      "warm": null
+    },
+    "filters_list": {
+      "cold": {
+        "n": 5,
+        "p50": 334,
+        "p90": 428,
+        "max": 428
+      },
+      "warm": {
+        "n": 4,
+        "p50": 3,
+        "p90": 4,
+        "max": 4
+      }
+    },
+    "friend_list": {
+      "cold": {
+        "n": 5,
+        "p50": 73,
+        "p90": 84,
+        "max": 84
+      },
+      "warm": {
+        "n": 5,
+        "p50": 115,
+        "p90": 133,
+        "max": 133
+      }
+    },
+    "friend_me": {
+      "cold": {
+        "n": 5,
+        "p50": 98,
+        "p90": 109,
+        "max": 109
+      },
+      "warm": {
+        "n": 10,
+        "p50": 64,
+        "p90": 101,
+        "max": 119
+      }
+    },
+    "friend_sign": {
+      "cold": {
+        "n": 5,
+        "p50": 79,
+        "p90": 94,
+        "max": 94
+      },
+      "warm": {
+        "n": 5,
+        "p50": 49,
+        "p90": 104,
+        "max": 104
+      }
+    },
+    "lastfm_listeners": {
+      "cold": {
+        "n": 5,
+        "p50": 142,
+        "p90": 197,
+        "max": 197
+      },
+      "warm": null
+    },
+    "lastfm_status": {
+      "cold": {
+        "n": 5,
+        "p50": 243,
+        "p90": 338,
+        "max": 338
+      },
+      "warm": {
+        "n": 5,
+        "p50": 368,
+        "p90": 445,
+        "max": 445
+      }
+    },
+    "library_sync": {
+      "cold": {
+        "n": 5,
+        "p50": 2642,
+        "p90": 3022,
+        "max": 3022
+      },
+      "warm": null
+    },
+    "library_sync_busy": {
+      "cold": {
+        "n": 5,
+        "p50": 184,
+        "p90": 243,
+        "max": 243
+      },
+      "warm": null
+    },
+    "library_tracks": {
+      "cold": {
+        "n": 5,
+        "p50": 375,
+        "p90": 531,
+        "max": 531
+      },
+      "warm": null
+    },
+    "local_playlist_tracks": {
+      "cold": {
+        "n": 4,
+        "p50": 25,
+        "p90": 30,
+        "max": 30
+      },
+      "warm": null
+    },
+    "main_ready": {
+      "cold": {
+        "n": 5,
+        "p50": 73,
+        "p90": 86,
+        "max": 86
+      },
+      "warm": null
+    },
+    "mcp_detect": {
+      "cold": {
+        "n": 5,
+        "p50": 221,
+        "p90": 301,
+        "max": 301
+      },
+      "warm": {
+        "n": 1,
+        "p50": 19,
+        "p90": 19,
+        "max": 19
+      }
+    },
+    "no_such_command_x": {
+      "cold": {
+        "n": 1,
+        "p50": 3,
+        "p90": 3,
+        "max": 3
+      },
+      "warm": {
+        "n": 1,
+        "p50": 2,
+        "p90": 2,
+        "max": 2
+      },
+      "failed": 2
+    },
+    "np_publish": {
+      "cold": {
+        "n": 5,
+        "p50": 264,
+        "p90": 320,
+        "max": 320
+      },
+      "warm": {
+        "n": 45,
+        "p50": 203,
+        "p90": 300,
+        "max": 333
+      }
+    },
+    "np_snapshot": {
+      "cold": {
+        "n": 3,
+        "p50": 22,
+        "p90": 23,
+        "max": 23
+      },
+      "warm": null
+    },
+    "outlet_status": {
+      "cold": {
+        "n": 5,
+        "p50": 77,
+        "p90": 106,
+        "max": 106
+      },
+      "warm": null
+    },
+    "pick_today": {
+      "cold": {
+        "n": 5,
+        "p50": 86,
+        "p90": 120,
+        "max": 120
+      },
+      "warm": null
+    },
+    "picks_list": {
+      "cold": {
+        "n": 5,
+        "p50": 240,
+        "p90": 334,
+        "max": 334
+      },
+      "warm": null
+    },
+    "picks_missed": {
+      "cold": {
+        "n": 5,
+        "p50": 240,
+        "p90": 313,
+        "max": 313
+      },
+      "warm": null
+    },
+    "pin_play_counts": {
+      "cold": {
+        "n": 5,
+        "p50": 81,
+        "p90": 95,
+        "max": 95
+      },
+      "warm": {
+        "n": 15,
+        "p50": 12,
+        "p90": 47,
+        "max": 71
+      }
+    },
+    "pins_list": {
+      "cold": {
+        "n": 5,
+        "p50": 423,
+        "p90": 582,
+        "max": 582
+      },
+      "warm": null
+    },
+    "play_counts": {
+      "cold": {
+        "n": 5,
+        "p50": 504,
+        "p90": 650,
+        "max": 650
+      },
+      "warm": {
+        "n": 20,
+        "p50": 33,
+        "p90": 450,
+        "max": 584
+      }
+    },
+    "play_event_count": {
+      "cold": {
+        "n": 5,
+        "p50": 435,
+        "p90": 572,
+        "max": 572
+      },
+      "warm": null
+    },
+    "play_events_since": {
+      "cold": {
+        "n": 5,
+        "p50": 442,
+        "p90": 569,
+        "max": 569
+      },
+      "warm": {
+        "n": 15,
+        "p50": 31,
+        "p90": 97,
+        "max": 100
+      }
+    },
+    "playlist_folders_list": {
+      "cold": {
+        "n": 5,
+        "p50": 457,
+        "p90": 593,
+        "max": 593
+      },
+      "warm": {
+        "n": 5,
+        "p50": 5,
+        "p90": 5,
+        "max": 5
+      }
+    },
+    "playlist_refresh_rows": {
+      "cold": {
+        "n": 5,
+        "p50": 346,
+        "p90": 446,
+        "max": 446
+      },
+      "warm": {
+        "n": 1,
+        "p50": 5,
+        "p90": 5,
+        "max": 5
+      }
+    },
+    "playlists_cached": {
+      "cold": {
+        "n": 5,
+        "p50": 441,
+        "p90": 583,
+        "max": 583
+      },
+      "warm": {
+        "n": 51,
+        "p50": 337,
+        "p90": 527,
+        "max": 594
+      }
+    },
+    "playlists_expire": {
+      "cold": {
+        "n": 1,
+        "p50": 6,
+        "p90": 6,
+        "max": 6
+      },
+      "warm": null
+    },
+    "post_log": {
+      "cold": {
+        "n": 5,
+        "p50": 294,
+        "p90": 409,
+        "max": 409
+      },
+      "warm": {
+        "n": 10,
+        "p50": 197,
+        "p90": 279,
+        "max": 304
+      }
+    },
+    "queue_state_get": {
+      "cold": {
+        "n": 5,
+        "p50": 426,
+        "p90": 570,
+        "max": 570
+      },
+      "warm": null
+    },
+    "recent_added": {
+      "cold": {
+        "n": 5,
+        "p50": 642,
+        "p90": 885,
+        "max": 885
+      },
+      "warm": null
+    },
+    "recent_played_tracks": {
+      "cold": {
+        "n": 5,
+        "p50": 608,
+        "p90": 794,
+        "max": 794
+      },
+      "warm": null
+    },
+    "report_list": {
+      "cold": {
+        "n": 5,
+        "p50": 204,
+        "p90": 262,
+        "max": 262
+      },
+      "warm": null
+    },
+    "row_order_all": {
+      "cold": {
+        "n": 5,
+        "p50": 428,
+        "p90": 581,
+        "max": 581
+      },
+      "warm": null
+    },
+    "seen_tracks": {
+      "cold": {
+        "n": 5,
+        "p50": 517,
+        "p90": 669,
+        "max": 669
+      },
+      "warm": null
+    },
+    "settings_get": {
+      "cold": {
+        "n": 8,
+        "p50": 65,
+        "p90": 84,
+        "max": 84
+      },
+      "warm": {
+        "n": 5,
+        "p50": 196,
+        "p90": 239,
+        "max": 239
+      }
+    },
+    "settings_load_problems": {
+      "cold": {
+        "n": 5,
+        "p50": 4,
+        "p90": 4,
+        "max": 4
+      },
+      "warm": null
+    },
+    "song_artists": {
+      "cold": {
+        "n": 5,
+        "p50": 473,
+        "p90": 682,
+        "max": 682
+      },
+      "warm": {
+        "n": 5,
+        "p50": 94,
+        "p90": 108,
+        "max": 108
+      }
+    },
+    "suggest_list": {
+      "cold": {
+        "n": 5,
+        "p50": 413,
+        "p90": 568,
+        "max": 568
+      },
+      "warm": {
+        "n": 5,
+        "p50": 13,
+        "p90": 31,
+        "max": 31
+      }
+    },
+    "tray_panel_resize": {
+      "cold": {
+        "n": 3,
+        "p50": 11,
+        "p90": 13,
+        "max": 13
+      },
+      "warm": {
+        "n": 13,
+        "p50": 18,
+        "p90": 26,
+        "max": 28
+      }
+    },
+    "update_check": {
+      "cold": {
+        "n": 1,
+        "p50": 7,
+        "p90": 7,
+        "max": 7
+      },
+      "warm": null
+    },
+    "update_status": {
+      "cold": {
+        "n": 5,
+        "p50": 87,
+        "p90": 165,
+        "max": 165
+      },
+      "warm": null
+    },
+    "update_versions": {
+      "cold": {
+        "n": 5,
+        "p50": 522,
+        "p90": 732,
+        "max": 732
+      },
+      "warm": null
+    },
+    "usage_health": {
+      "cold": {
+        "n": 5,
+        "p50": 136,
+        "p90": 184,
+        "max": 184
+      },
+      "warm": null
+    },
+    "user_files_list": {
+      "cold": {
+        "n": 5,
+        "p50": 126,
+        "p90": 149,
+        "max": 149
+      },
+      "warm": null
+    }
+  },
+  "art": {
+    "miss": {
+      "n": 212,
+      "p50": 17,
+      "p90": 437,
+      "max": 477
+    },
+    "deciles": [
+      9,
+      11,
+      12,
+      14,
+      17,
+      126,
+      138,
+      336,
+      437,
+      477
+    ],
+    "hits": 531,
+    "hitShare": 0.715
+  }
+}

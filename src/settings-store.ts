@@ -140,6 +140,9 @@ export interface Settings {
   /** Press record only, spin only: how fast the record turns, in turns each minute — the three
    *  real record speeds. vinyl.ts turns it into the period (docs/features/VINYL.md §4). */
   pressVinylSpeed: "16" | "33" | "45" | "78";
+  /** Press record only, spin only: the most times a second the record redraws. vinyl.ts steps the
+   *  spin at the display rate ÷ the whole number nearest this (spin-steps.ts, VINYL.md §12). */
+  pressVinylFps: "60" | "120" | "144" | "240";
   /** Hover hints (ONBOARDING.md §1; src/hint.ts): the themed box every `title` becomes.
    *  Off = no hover text at all, of either kind. */
   hoverHints: boolean;
@@ -530,6 +533,9 @@ export const DEFAULTS: Settings = {
   // 16⅔ rpm, one turn per 3.6 s (his call, 2026-10-11): a large disc at 33⅓ took the eye off
   // the rest of the window. A user who picked 33⅓ keeps it (only set keys are stored).
   pressVinylSpeed: "16",
+  // 120 (his call, 2026-10-17): in a blind test on his 240 Hz display he took the 120 FPS spin
+  // for the full rate, and it costs about half the CPU (21 % of one core, not 31–44 %).
+  pressVinylFps: "120",
   hoverHints: true,
   hoverHintDelay: "normal",
   hoverSongNames: "always", // user's call 2026-09-15: name the song on every row, not only cut-off ones

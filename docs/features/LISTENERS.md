@@ -685,3 +685,135 @@ Library there, and the edge list covers the same paths.
   albums (his call, §7.1 item 2).
 - **A song with no catalog id** is kept under its library id: the Library and Search can each
   ask once. Low impact.
+
+## 9. An album's counts from its songs, and a row per song
+
+> **Part:** designed · 2026-10-17 · not built. His ask (2026-10-17): "more accurate listening
+> stats for library albums: query Last.fm for just the songs of the album the user has in their
+> library and add them up." Then: "presentation mode can show each song's listening stats, for
+> a more granular big picture view." The forks are §9.6, all his.
+
+**Terms**
+- **The album page:** what the album box shows today, `album.getInfo` on one name form (§7.1
+  item 3). It counts only the scrobbles sent under that exact album name.
+- **A song page:** `track.getInfo` for one (artist, title). It counts the song's scrobbles on
+  **every** release: the single, the album, a deluxe, a playlist on Spotify. Last.fm keys a song
+  by its artist and title, not by its album.
+- **The summed count:** the plays of the album's songs that the user has, added up.
+
+### 9.1 The probe (2026-10-17, live, Last.fm's own track lists)
+
+| Album | Album page plays | Sum of song plays | Ratio | Album page listeners | Top song's listeners | Sum of song listeners |
+|---|---|---|---|---|---|---|
+| *Inventing* (Matilda Mann), 1 song | 267,049 | 281,148 | ×1.05 | 49,354 | 51,785 | 51,785 |
+| *THREAD 27* (Lucy Park), 6 songs | 2,224 | 15,543 | **×6.99** | 649 | 4,094 | 7,943 |
+| *SOS* (SZA), 23 songs | 266,032,438 | 302,684,355 | ×1.14 | 2,831,613 | 2,272,498 | 21,082,390 |
+| *Essex Honey* (Blood Orange), 14 songs | 7,889,879 | 4,114,485 | **×0.52** | 379,952 | 214,354 | 913,562 |
+
+What it says:
+1. **His idea is right for an EP or a single-heavy album.** *THREAD 27*'s songs were singles
+   first, so most of their plays sit on the single pages. The album page shows 2,224 plays; the
+   songs have 15,543. The box under-reads such an album by 7×.
+2. **The summed count answers a different question.** It is "how much these songs are
+   played", not "how much this album is played". *SOS* reads 14 % higher because *Kill Bill*
+   and *Good Days* also count their singles. For a library album that is the more useful
+   number, so the label says so: *Plays of your 6 songs*, not *Plays*.
+3. **Listeners cannot be added.** One person who heard 23 songs is 23 song listeners: *SOS*
+   sums to 21 million against an album page of 2.8 million. The honest number from the songs is
+   the top song's listeners, "at least N people". *THREAD 27*: at least 4,094 (the album page
+   says 649).
+4. **A wrong song name gives a quiet wrong number.** 8 of *Essex Honey*'s 14 songs landed on
+   pages of 45 to 79 listeners (*The Field*: 79), while the singles have 150,000+. The
+   scrobbles sit under another title or artist form (a `feat.` credit, likely). A wrong page is
+   not error 6, so nothing marks it: the sum fell to half the album page. This is the same name
+   problem as the open fork in §8.11 (*The name form*), and it now matters more, because one bad
+   name moves the album's number.
+5. **This probe used Last.fm's track names.** The app would ask with Apple's names. A second
+   probe with Apple's names, over his library, comes before a build (§9.4).
+
+### 9.2 What it costs
+
+- **Money:** none. The Last.fm API is free under a non-commercial key (ours). Last.fm publishes
+  no daily quota. Last.fm asks for at most about **5 calls a second per IP address, averaged over 5
+  minutes**. Each user's app calls from that user's own address, so one user's albums never
+  share the limit with another's.
+- **Calls:** one `track.getInfo` per song, **the call the badge and the song box already make**,
+  kept a month in `listen_counts`. A song the user has played or opened costs 0. A 23-song
+  album never opened costs 23 calls once, then nothing for a month. In the probe one call took
+  about 200 to 400 ms; 23 songs, one at a time at 4 a second, took 9 s.
+- **Apple:** 0 calls. The songs come from the library the level already holds.
+- **Presentation mode:** today it re-reads one album page every 5 min (PresentationMode.md §9.1).
+  The same for every song of a 23-song album is 23 calls each 5 min, 0.08 a second, far under
+  the limit. A Last.fm song page moves in batches (PresentationMode.md §2), so a shorter re-read
+  shows nothing new.
+- **First paint:** songs not yet cached arrive over a few seconds. The box draws the album page
+  first, then the summed count when the last song lands, with the roll the view already has
+  (`roll` in present.ts). Or it draws the sum as songs land (a fork, §9.6 F4).
+
+### 9.3 The shape
+
+**The album box.** On a library album, *Listening Stats* reads *N plays of your M songs* and
+*at least L listeners* (the top song's, or the album page's when that is larger). On a Full
+album or a Search album, M is every song of the album. The album page stays the source of the
+tags, the About and the Last.fm link.
+
+**The guard.** When the sum is under the album page, a song page is wrong (item 4 above): the
+box shows the album page, and the log names the songs with under 1 % of the top song's plays
+(`lastfm: album sum low for <album>: <songs>`). A wrong name is fixed at its cause (§8.11's name
+form), not hidden: the guard only keeps a known-wrong number off the screen.
+
+**Presentation mode: a row per song** (his second ask; PresentationMode.md §3 source B). Below
+the two large numbers, one row per song in album order: the song's number, its title, its plays,
+its listeners, and a bar for its plays against the top song. The song now playing is lit. A song
+not in the library (a Full album) reads faint. The probe shows the rows tell a story: *THREAD
+27* falls from 4,094 listeners (*BLUE SASHIKO*) to 100 (*MOSAIC*), and the deep cut is plain to
+see. He draws the picture (PresentationMode.md §9.2: the layout is a placeholder); this is the
+data it holds.
+
+For an **artist**, the same rows come from one `artist.getTopTracks` call
+(ideas/LastfmArtist.md §1), not one call per song.
+
+### 9.4 Probes before a build
+
+1. **Apple's names over his library.** For his 30 most-played library albums: Apple's artist
+   and title as the app would send them, then the main artist and the title with `(feat. …)`,
+   `[Explicit]` and ` - Single` cut (the forms `albumForms` uses for albums). Count the songs
+   whose plain form finds a page more than 10× larger. This decides §8.11's name form, and
+   whether the guard is ever needed.
+2. **The cache now.** How many of those albums' songs already have a `listen_counts` row: the
+   real first-open cost.
+
+Both scripts go in `docs/ops/checks/` (his ask, 2026-10-01), beside the probe of §9.1,
+[album-sum-probe.mjs](../ops/checks/album-sum-probe.mjs).
+
+### 9.5 What a build touches
+
+| Piece | Where |
+|---|---|
+| The sum and the listener floor, pure | a new function in `src/lastfm-names.ts` or its own small file, with a test (the four probe albums as the fixture) |
+| The songs of the album | `albumLevel` in media-levels.ts already holds them; it passes them to the box |
+| The asks | `listenersFor` (listeners.ts), one per song, through the existing command; no new Rust command, no new table |
+| The box | `statsSec` in info-box.ts: the new label |
+| The rows | present.ts: the per-song list, its re-read, the lit song; `[perf] frames` on its scroll; `app-scroll` |
+| Hints | the stats cell's hint and each row's (ONBOARDING.md §1) |
+| A row, if he wants one | Settings › Playback (F1), with its agent spec and New mark |
+
+### 9.6 Forks (all his)
+
+- **F1. The album number.** Recommended: **the summed count on library albums, the album page
+  on Full and Search albums** (the ask, with the label that says what it is). Or the summed count
+  everywhere (one rule; costs a call per song on every Search album opened). Or both in the box,
+  the album page and *your songs* under it (the most honest; a busier cell).
+- **F2. Listeners.** Recommended: **"at least" the larger of the top song's and the album
+  page's.** Or the album page's only (what Last.fm says, but 649 for *THREAD 27*). Or no
+  listeners in the summed view.
+- **F3. The name form** (§8.11, already open; it now decides this too). Recommended: **after
+  probe §9.4 step 1, ask with Apple's names, then the plain form when Apple's page is tiny or
+  missing** (two calls on such a song, once a month). Or Apple's names only (today).
+- **F4. The first paint.** Recommended: **the album page at once, the sum when every song has
+  landed** (one roll, no counting up in steps). Or the sum as each song lands (it climbs for a
+  few seconds).
+- **F5. The rows.** In presentation mode only (recommended: the big picture is the view's
+  job) · also a plays column in the album's song list in the Library.
+- **F6. A click on a row.** Plays that song with the album after it (as a note's mention does,
+  album-notes.md) · nothing (a TV view to watch, not to drive).

@@ -13,8 +13,10 @@
 import { handle, queuedSong, type Host } from "./handlers";
 import { FakeMusicKit, onNowPlaying, type NowPlaying } from "./musickit";
 import { installTauri } from "../web/tauri-shim";
+import { replayed } from "./latency";
 
-const tauri = installTauri((cmd, args) => handle(cmd, args, host));
+// `replayed`: the owner's waits, only when the shots runner asks (latency.ts; LOADING-SET.md §3.3).
+const tauri = installTauri((cmd, args) => replayed(cmd, () => handle(cmd, args, host)));
 
 // ── The host page (the frame on deets.solutions) ──
 const framed = window.parent !== window;

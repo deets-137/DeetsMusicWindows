@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
 // The copy editor's server half (COPY-EDIT.md): dev server only, `apply: "serve"`.
 import { copyEditPlugin } from "./scripts/copy-edit-plugin.mjs";
 // What's new's bold leads, put in the bundle (vite-release-notes.ts; the demo uses it too).
@@ -7,9 +8,30 @@ import { releaseNotesPlugin } from "./vite-release-notes";
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
+// The command recorder (guide/LOADING-SET.md §3.1): in a telemetry build (the dev server, or a
+// VITE_PERF=1 bundle, as telemetry-on.ts reads it), every `@tauri-apps/api/core` import from
+// src/ resolves to src/ipc-core.ts, whose `invoke` is timed. src/ipc-core.ts's own import, and
+// node_modules' (the plugins, the api's other modules), get the real module. A release build
+// has no such plugin, so it ships the real module only (release-check 5).
+function ipcTimingPlugin() {
+  const shim = fileURLToPath(new URL("./src/ipc-core.ts", import.meta.url));
+  return {
+    name: "ipc-timing",
+    enforce: "pre" as const,
+    // @ts-expect-error process is a nodejs global
+    apply: (_: unknown, env: { command: string }) => env.command === "serve" || process.env.VITE_PERF === "1",
+    resolveId(id: string, importer?: string) {
+      if (id !== "@tauri-apps/api/core" || !importer) return null;
+      const from = importer.replace(/\\/g, "/");
+      if (!from.includes("/src/") || from.includes("/node_modules/") || from.includes("/src/ipc-core.ts")) return null;
+      return shim;
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [copyEditPlugin(), releaseNotesPlugin()],
+  plugins: [ipcTimingPlugin(), copyEditPlugin(), releaseNotesPlugin()],
 
   // Two pages: the player (index.html) and the tray panel (tray.html, TRAY.md).
   build: {

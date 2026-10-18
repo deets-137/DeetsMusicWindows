@@ -15,7 +15,7 @@ const ROW: Record<string, string> = {
   readWindowsMedia: "Read Windows media",
   agentControl: "Agent control",
   agentHistory: "Agents read play history",
-  agentDiary: "Agents use the Diary",
+  agentDiary: "Agents use Album Reviews",
   lastfmScrobble: "Scrobble plays",
   lastfmNowPlaying: "Show now playing",
   sotd: "Song of the Day",

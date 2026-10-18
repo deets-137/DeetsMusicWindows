@@ -12,6 +12,217 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (late night) — album counts from songs designed; Diary renamed Album Reviews
+
+**His asks:** doc listening stats summed from a library album's songs, and a row per song in
+presentation mode; what Last.fm's calls cost; rename "Diary" to "Album Reviews".
+- **Designed, not built:** LISTENERS.md §9. A live probe of 4 albums
+  ([album-sum-probe.mjs](ops/checks/album-sum-probe.mjs)): *THREAD 27*'s songs have 7× its
+  album page's plays; listeners cannot be summed (*SOS*: 21 M summed, 2.8 M real); 8 of
+  *Essex Honey*'s 14 songs land on tiny pages (a name-form problem, §8.11). Cost: one
+  `track.getInfo` per song, kept a month, shared with the badge; no money; ~5 calls a second
+  per IP. Forks F1–F6 are his (§9.6); probe §9.4 comes before a build.
+- **Renamed (his wording, *Review This Album* his pick):** every word a user reads says
+  Album Reviews / review; the CLI command and MCP tool are `reviews` with no `diary` alias
+  (no live users, his word); internal ids stay `diary`. DIARY.md's banner has the list. Two
+  Haiku agents read it for workflows and risks (33 cases): one real fault, the old
+  "diary:" / "entry" words in CLI and agent errors, fixed. The others were carry-over losses
+  (fold memory and section order keyed by the old title), not wanted.
+- **The dev database break, read:** two dev folders. Claude's shells see a private merged
+  copy of `%APPDATA%` (the MSIX package's `LocalCache`); his terminal's dev app at 21:05 made
+  the REAL folder and seeded it from the installed app. A dev app from a Claude shell then
+  opened the private `deetsmusic.db` with the real folder's `-wal` (change counter 3, pages to
+  7,797, against 295 and 3,553). DEBUGGING.md § Sign-in, *The two dev folders*.
+- **Fixed (his pick):** `dev-app.mjs` detects the redirect and starts itself outside the
+  package through WMI; the app uses the real folder and plays (11 → 14 s probed; the
+  -42585 refusal from a Claude shell is gone). CLAUDE.md's playback rule updated.
+- **The rename's shots ran:** [album-reviews.json](ops/checks/album-reviews.json), 4 of 4
+  pass on the dev app; snaps read. On the way: `shots.mjs` `shootDev` called the demo's
+  `replayOff` (from the loading set), so every dev shot failed; the two lines are gone.
+- **One dev profile (his call: keep Claude's):** the private `com.deetsmusic.dev` and
+  `second.dev` (Roaming and Local) copied into the real folders by a WMI-started robocopy, 0
+  failed; `quick_check` ok on both (4,990 and 4,433 tracks); the private copies deleted, so a
+  Claude shell now reads the real files. The 21:05 seed is kept as
+  `com.deetsmusic.dev.seed-2026-10-17.bak` (Roaming and Local), the broken `-wal` / `-shm`
+  under it in `corrupt-wal-2026-10-17`. A dev app on it opens with Last.fm and both friends,
+  and plays (5 → 7 s). The live app was not touched.
+
+## 2026-10-17 (night) — five desk tests closed on his word; the live watches read
+
+**His asks:** mark the open desk tests passed; work on the watches and small fixes.
+- **Passed on his word:** Spin FPS rows 4–6 (VINYL.md §12), AirPlay tracking §13.2a–b,
+  package identity (IDENTITY.md §9.2), rooms with a long queue and stations (ROOMS.md §21.8),
+  Rooms on the web (WebRooms.md §10.5; the Safari steps wait for the site page). DESK-TESTS.md
+  §5 has the row.
+- **The dead-next heal (B20): passed from the live log.** It fired at 18:57 on 0.29.0; the
+  top-up ran 1 ms after the re-window and the song played once (QUEUE.md § The healed song
+  played twice). The other heals (`retryCurrent`, `keyRetry`, `recoverSilent`) have not fired.
+- **The album-mark check** types "American Teen" (his picks) in place of "Salt & Signal"; its
+  menu step moved to row 3, because the demo seeds row 4 as a favorite. 4 of 4 shots pass.
+- **Left as his:** the demo page's lede, the album for the Demos picture
+  (`max-full-player`), the readability paints for Ocean and Glass, the deploys (DeetsSupport,
+  the Discord art), the `../DeetsMusic-aptel` worktree (it still holds uncommitted files of the
+  2026-09-25 build). The next song's colors one ahead: `albumColor:next` runs on live (335
+  lookups in the log); whether the colors change with the song is his eye.
+- **Then (his word):** `../DeetsMusic-aptel` and its branch removed (all but the switch timing
+  was on `seventheenth`). DeetsSupport: `npm run usage:keys` added `notesSource`,
+  `pressVinylFps`, `showSongInfo`; committed `67b6dc0`, pushed `velopack`, deployed
+  (version `b5908b04`; `/status` up, `/signin` 200). The Suggest Less keys went with it. The
+  sign-in icon and the Beta scheme were already live from the 2026-10-16 deploy.
+- **The sign-in mark (his pick of three: snap per display):** DeetsSupport `16f8f45`, pushed,
+  deployed (`0105f7f5`). Headless Edge at 100 / 125 / 150 / 200 %: 32 / 51 / 43 / 48 px, 5
+  colors in each crop, art pixels 1, 2 or 3 device pixels wide. He will redesign the sign-in
+  flow before a public release (HANDOFF › His to design).
+- **Optimization items 3–4:** `db-canary` named; `bridge.rs:ask_for` uses `tokio::time::timeout`
+  (before, each agent request held a sleeping thread for 15 or 90 s); the 1 s wait in
+  `apple.rs` is `tokio::time::sleep`. `npm run check` passes. On a dev app: `GET /grow` answers
+  in 5 ms; 20 calls left the thread count at 49.
+- **The dev database broke (not from this code).** Two dev apps from Claude shells (another
+  session's at 23:30:19, mine at 23:30:57) could not open `com.deetsmusic.dev\deetsmusic.db`:
+  a duplicate `idx_tracks_sort` row, from the WAL only. On his word the `-wal` and `-shm` were
+  renamed to `.bad`; the next start was clean. The other session ("Library album listening
+  stats accuracy") found the cause: Claude's MSIX private copy of the dev folder against the
+  real one his own 21:05 dev app seeded, whose WAL a packaged open applied to the wrong file.
+  The fix options are that session's to bring him.
+
+## 2026-10-17 (late night) — repo cleanup; the old AirPlay tracking build sorted
+
+**His asks:** clean up old dev builds and cargo pieces; what is uncommitted in the two old
+worktrees; what of the 2026-09-25 AirPlay build is still worth taking; port the Windows switch
+timing, document the stall lines, leave the switch timing out.
+- **Cleanup: 50.5 → 31.4 GB.** The merged worktree `.claude/worktrees/bold-zhukovsky-c324ec`
+  (6.4 GB; a 12 KB folder stub stays, Windows refused it) and its branch; 22 incremental folders
+  (4.6 GB, `npm run storage -- --prune`); `debug/deps` files older than 3 days in `target` and
+  `target-second` (7.7 GB); the CLI's debug builds (0.7 GB); `shots/scratch` (1.4 GB). Kept:
+  `installers/` (RELEASE.md §1b), both old worktrees, release builds, deetsmeter, other shots.
+  `cargo check` passes after it.
+- **`../DeetsMusic-identity`:** only `spike/` (81 MB), the evidence IDENTITY.md §8.1 names. Kept.
+- **`../DeetsMusic-aptel`:** a Claude session's 2026-09-25 build of AIRPLAY.md §13.2, never
+  tested or merged; none of it was in `main`. Sorted in AIRPLAY.md §13.2a: `sound:switch`, the
+  `sound:output` reason and `diag.info()` ported (sound.ts, airplay.ts, diag.ts); the stall /
+  drop lines and the crate's readings and quiet keep-alive documented as the reference; the
+  click → sound switch timing left out. The worktree and `../DeetsAirplay`'s uncommitted 0.4.2
+  stay as they are, as that reference.
+- **Checked:** tsc, `npm test`, docs:check. Not run: the §13.2a desk test (a Windows output
+  change while playing).
+- **Part 1, the stall and drop lines (his call: a Tokio task, after the thread / task / poll
+  walkthrough):** built (AIRPLAY.md §13.2b as built). Crate 0.4.2 committed in DeetsAirplay
+  (`44ac6bb`, master, not pushed); the host's `StallWatch` + 4 tests, the watch task, the drop
+  line, `airplay-diag` into the ring. With the local `[patch]`, `cargo test airplay` passes (5).
+  **Found:** `npm run check` runs cargo from the repo root, where `src-tauri/.cargo/config.toml`
+  does not apply, so it builds the pinned 0.4.1 and fails (and it put `Cargo.lock` back). The
+  push and the `rev` bump are the way through, as the Cargo.toml comment says.
+- **Pushed (his OK):** DeetsAirplay `bafd19f..44ac6bb`; the `rev` bumped, the `[patch]` file
+  deleted, `Cargo.lock` on the pushed rev. `npm run check` passes (333 TS tests, 99 Rust tests).
+  Not run: the §13.2b desk test.
+- **Optimization items documented (his call, from a side session's thread count of live 0.29.0
+  paused: 37 Rust threads, only `main` working, 9.6 wakes/s):** four items in his order in
+  HANDOFF › Open now (the growing paused floor first, then `main`'s wakes, the canary thread's
+  name, the threads that only sleep, merged with the old line), and what not to do. No code.
+
+## 2026-10-17 (night, later) — the ⟳ hint passed; the spin-rate eye test
+
+- **The Library ⟳'s hint:** desk test passed (his word). ideas/apple-calls.md §4.1, HANDOFF.
+- **HANDOFF:** the song facts box line said "Not committed"; it is (`21baa9e`, `2710677`).
+- **The spin-rate eye test** (prompt 2 of *CPU hunt*): on the FIRST dev app (`dev:built`; his
+  call, I had started the second by mistake), Press, Max, portrait monitor. Playback did not
+  start there (MusicKit "stopped, no item"), so the hand-made spin of `spin-rate.ps1` ran
+  (3.6 s a turn). A random draw hid the rates as A and B; Claude did not know them either.
+  He guessed A = full rate; A was 120 fps, B the full rate. One round, then **his pick: the
+  120 fps cap.**
+- **The build plan (brought to him as a fork, not built):**
+  1. Rust tells the page the refresh rate of the monitor the window is on (Windows' own display
+     mode, an exact whole number), again when the window moves to another monitor. The
+     page's rAF sampler (frames.ts) is dev-only and noisy (it reads 244 Hz for 240).
+  2. A pure rule (`spin-steps.ts`, with tests): the cap applies only where it divides the
+     display rate evenly: fps = Hz ÷ floor(Hz ÷ 120), so 240 → 120, 360 → 120, and 144, 165
+     and 60 Hz stay at the full rate. A plain 120 on a 144 Hz display would hold one frame in
+     six: a visible judder.
+  3. vinyl.ts sets the spin's easing to `steps(period × fps)`; the tray disc (same
+     `mountVinyl`) and the full player's flying copy (full-player.ts copies the easing) follow.
+  4. One diag line when the cap changes; VINYL.md section and desk test; the CPU split again
+     (expected about 21 % of one core in place of 31–44 %).
+  **Open fork:** the cap is a Press skin token only (Claude's pick), or a token plus a Settings ›
+  Skin settings row to go back to the full rate.
+- **His calls:** a token plus a row; then the row is **Spin FPS**, a dropdown of 60 · 120 · 144 ·
+  240. With the row holding the value, no skin token was needed.
+- **Built (VINYL.md §12):** `src-tauri/src/display.rs` (`display_hz`, the `display-hz` event,
+  `Win32_Graphics_Gdi`), `src/display-hz.ts`, `src/spin-steps.ts` + 5 tests, vinyl.ts, the
+  flight copy in full-player.ts, the row (a choice row's hint may be a function now: `rowHint`),
+  the key and its why, the agent spec, AGENT.md, SETTINGS.md, `NEW_MARKS`, the usage allow-list
+  (+ `npm run usage:keys` into `../DeetsSupport`, not deployed), `display_hz` in the demo and web
+  handlers.
+- **Checked:** `npm run check` passes (333 tests). `ops/checks/spin-fps.mjs` on the first dev app:
+  7 of 7, easing `steps(432)` · `steps(216)` · `steps(432)` · `linear` · `steps(92)` at 78 rpm,
+  the angle does not move. The log says `display: main on 240 Hz`, `display: tray on 240 Hz`.
+- **Not run:** a turning disc with sound. The dev app's plays all fail with `mediaPlaybackError`
+  (Widevine), at 16:26 and 16:30 too, before this change, and in `dev:built` too. Also not run:
+  a move to another monitor, the tray disc, the flight, the CPU split.
+- **The dev app's plays (his ask: look into it).** Apple's license call
+  (`acquireWebPlaybackLicense`) answers `{"errorCode":-42585,"status":-1021}`; the `webPlayback`
+  call before it is fine. Cider tracks the same pair as a Widevine refusal (Cider-2 #2015).
+  **Ruled out, each by a test:** the developer token (the live app's token, same refusal); the
+  Widevine version (both apps load 4.10.3112.0); the dev profile's Widevine store (a fresh one,
+  same refusal; the old one put back); two streams on one Apple ID (the live app quit for 3 min,
+  same refusal); the user token (he signed out and in again, same refusal); the CDP port (a
+  launch without it, same refusal; the test flag taken out again).
+  **The window:** the last good dev play 2026-10-16 13:05, the first refusal 13:53. The dev
+  profile's Widevine took 4.10.3112.0 at 12:59, and its store was last written at 13:53. The live
+  app loads the same version and plays; its Widevine store dates from 2026-09-09.
+  **Lead, not tested:** every refused dev app was started from Claude's shell, inside the Claude
+  desktop app's MSIX package (its profile also shows under `Packages\Claude_…\LocalCache\Local\
+  com.deetsmusic.dev`); the live app starts outside it. The test: he starts `npm run dev:app`
+  from a normal terminal, and one play runs.
+- **Confirmed:** he started `npm run dev:app` from his own terminal and it plays (his word; the
+  page read paused at 0:03 of a song he started). So a dev app inside the Claude package cannot
+  get a license since 2026-10-16. Why that changed on 2026-10-16 is not known (the new Widevine
+  module is the one change in the window). Written into DEBUGGING.md § Sign-in and CLAUDE.md ›
+  How to verify. A WMI launch from the package is refused, so sound tests run on his launch.
+
+## 2026-10-17 (night) — the Library ⟳'s hint on a refused click
+
+**His ask:** the ⟳'s hint words from ideas/apple-calls.md §4, then the small build. He OK'd the
+words as drafted, without "Already".
+- **Found in the code:** an incremental pass's `fetched` is its new songs, so "1,200 of 4,042"
+  would read "3 of 4,042"; and the lock holds after the last page (the artist pass, the heal).
+  So five states of words, and each `progress` event now carries `kind`.
+- **Built:** `src/sync-hint.ts` + 5 tests, `onSyncStatus` in library.ts, `showHintNow` in
+  hint.ts, the nudge (`--nudge-*` tokens, `.is-nudged`), the ONBOARDING.md §1 row.
+- **Left:** the desk test, apple-calls.md §4.1.
+
+## 2026-10-17 (night) — the loading set, steps 2–5: the replay, pops, the set
+
+**His ask:** finish the build, and document in DEBUGGING what it is and what it enables. "Unsure
+if I'll use it but we can build and keep it in our back pocket." No, a day of use is not required
+(asked and answered: the code does not need it; only the numbers do).
+- **Built:** the first `latency.json` (thin: 12 blocks of my reloads) with the cover miss
+  deciles; `demo/latency.ts` (the command replay); `--latency` and `--cold` in shots.mjs, the
+  cover holds answered from the runner, the 500 ms quiet wait after a load, the 90 s first load;
+  pops (`POP` in the step strip) and the settled time; `docs/guide/loading.json`, 11 clips ×
+  Glass and Press; DEBUGGING.md § The loading set; SHOTS.md §5j; CLAUDE.md checklist item 17.
+- **Fixed on the way:** typing in the Search clip went to the page and made a playlist in the
+  demo (the field is clicked first now); 7 clips failed while the replayed launch reads still ran
+  (the quiet wait).
+- **First finding (Glass, p90, cold):** Playlists, first open, shows an empty card from about
+  +266 ms to +1,200 ms, then fills in two steps. LOADING-SET.md §8. Not taken further: his fork.
+
+## 2026-10-17 (late) — the loading set, step 1: the command recorder
+
+**His ask:** check whether L1 and L2 (guide/LOADING-SET.md §5) are still open, then build the
+recorder, on a new branch `seventheenth`.
+- **L1 and L2 are closed:** his calls 2026-10-16, p90 by default and `latency.json` in the repo
+  (§5). CLAUDE.md still said "L1–L2 open"; corrected.
+- **Built:** `src/ipc-timing.ts` (per command the cold and warm round trips, the `ipc:` marks,
+  the cover hits and misses, one block to the log every 5 min and on close, `__ipcTiming`),
+  `src/ipc-core.ts` and the `ipc-timing` plugin in vite.config.ts, the `coll:render` and
+  `mosaic:drawn` marks, release-check 5 on `__ipcTiming`, and `scripts/latency-profile.mjs`
+  (`npm run latency:profile`, step 2's script; the first `latency.json` waits for his use).
+- **Found at the first run:** Tauri's `__TAURI_INTERNALS__.invoke` is read-only; the design's
+  wrap threw and stopped the dev page from booting. The recorder moved to the import (§7).
+- **The check:** `docs/ops/checks/ipc-timing.mjs`, 18 checks, all ok (§6). A release build has
+  none of it; a `VITE_PERF=1` build has it.
+- **Left:** he uses the dev app for a day or more; then the profile, then step 3 (the replay).
+
 ## 2026-10-17 (evening) — album notes: probed, M1 his, built, desk test passed
 
 **His asks:** leave the vinyl fix to its session; tackle album notes; M1 = A ("a bold name or a

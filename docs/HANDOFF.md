@@ -123,13 +123,12 @@ live; the work committed after it waits on the next release.
 
 Every hand and desk test listed here before closed on 2026-10-13 (his report, WORKLOG
 2026-10-13 *desk tests closed*; the rows are DESK-TESTS.md §5). What is left:
-- **The web demo** (WEB-DEMO.md §15.7): the page lede says "everything mocked"; two shot lists
-  type the old album "Salt & Signal".
-- **Playback, watch the live ring:** the dead-next heal (`player:deadNext`, QUEUE.md § The
-  healed song played twice); the music stopped at a song change and the catalog heal
+- **Playback, watch the live ring:** the music stopped at a song change and the catalog heal
   (`player:retryCurrent`, `keyRetry`, `recoverSilent`; QUEUE.md); a healed library id's old
-  play counts may stay on the old key (not checked). None of these fired on live from
-  2026-10-08 to 2026-10-13.
+  play counts may stay on the old key (read 2026-10-17: the 5 healed songs on live have no
+  plays under either id yet, so there is nothing to check). None of these fired on live from
+  2026-10-08 to 2026-10-17. (The dead-next heal fired on live 2026-10-17 and played the song
+  once: QUEUE.md § The healed song played twice, passed.)
 - **Data:** the next song's colors one ahead (ALBUM-COLOR.md, data path item 4). The `db: slow`
   lines were read on 2026-10-13: the read connection is real but not on the launch's path, so
   it stopped there (ideas/WORKERS.md §5.1). What gates `ready` is the library reply itself.
@@ -140,27 +139,49 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   opaque skins pass, live since 0.28.0. Open: Ocean's see-through card (50 % under the bar) and
   Glass in Moonlight and Black-Red. Run the check again after any fix.
 
-- **The Deets head icon:** live since 0.28.0, and DeetsSolutions `38abe54` is pushed. Left
-  (not checked 2026-10-17): the DeetsSupport deploy of the sign-in icon, the Discord art asset,
-  and the sign-in page's blurred mark. whitelabel.md §10.6 › *Before it goes live*, items 2–4.
-- **Package identity and the city icon (2026-10-16): published in 0.29.0** (his call, before his
-  desk test). His desk test runs on live: IDENTITY.md §9.2 (the taskbar at 100 / 125 / 150 %, a
-  new pin, the tray, the media flyout, the next update, an uninstall on the Beta). The spike's
-  files are in the worktree `../DeetsMusic-identity` (branch `identity-spike`).
-- **CPU on live, the sampler run (his ask, 2026-10-17):** the morning run did not happen (the
-  samples log stopped on 2026-09-27). It started at 15:08 on 2026-10-17 in a Terminal tab
-  (`scripts/heaviness-sample.ps1 -Loop 600`, into `scripts/heaviness-samples.log`); its first
-  sample, 26 min after launch, playing, record still: 37.6 % CPU, renderer 17.5 %, GPU 16.7 %.
-  It must answer two questions. 1. After 7.8 h on 0.29.0, the paused renderer used 20–25 % of
-  one core, but a fresh app uses 0 % paused, even after 40 skips. What grows while music plays?
-  2. Does the spin cost grow over the hours? The method, the numbers and the session prompt are
-  in WORKLOG 2026-10-17 *CPU hunt*. Memory is good: a 308 MB private working set.
-- **The record's spin rate (his fork, open):** the Press record redraws at the display's full
-  rate, 240 Hz on both of his monitors. The cost is per frame, about 1.2 ms of CPU across the GPU,
-  Viz and Compositor threads. A simpler disc saves almost nothing, and a 60 fps step cuts the cost
-  to about ⅓. He likes the smooth spin. Next (his plan, the morning of 2026-10-17): he compares a
-  120 fps record and a full-rate record by eye on a dev app, then picks a 120 fps cap or the full
-  rate. The choices and the eye-test prompt are in WORKLOG 2026-10-17 *CPU hunt*. Not built.
+- **The Deets head icon:** live since 0.28.0, and DeetsSolutions `38abe54` is pushed. The sign-in
+  icon (DeetsSupport `201bd06`) is live since the 2026-10-16 deploy. The sign-in page's mark is
+  sharp at every display scale since 2026-10-17 (DeetsSupport `16f8f45`, deployed). Left: the
+  Discord art asset (his upload). whitelabel.md §10.6 › *Before it goes live*, item 3.
+- **Optimization, in his order (his call, 2026-10-17).** The measurement, from a side session on
+  live 0.29.0, paused, 20 s: the Rust process has 37 threads (main, watchdog, 16
+  `tokio-rt-worker` (one per logical core), db, deets-bridge, audio-out, apple-calls,
+  airplay-np, presence, 2 WebView2 host threads (EBWorkerThread, MojoThread), and 11 unnamed
+  Windows threads: thread pool, COM, tray, the dbhealth canary). Only `main` works at rest: 9.6
+  wakes/s, 15.6 ms of CPU in 20 s (about 0.08 % of a core); the watchdog wakes 0.6 /s; every
+  other thread slept. The other 211 of the app's 248 threads are WebView2's (GPU process 83,
+  browser 45, renderer 32, services 51).
+  1. **The paused CPU floor that grows over hours: the top item.** After 7.8 h on 0.29.0 the
+     paused renderer used 20–25 % of one core; a fresh app uses 0 % paused, even after 40 skips.
+     Find what grows with the page sample (DEBUGGING.md § The page sample). The sampler run that
+     started this (his ask): it started at 15:08 on 2026-10-17 in a Terminal tab
+     (`scripts/heaviness-sample.ps1 -Loop 600`, into `scripts/heaviness-samples.log`; the
+     morning run did not happen, the log had stopped on 2026-09-27); its first sample, 26 min
+     after launch, playing, record still: 37.6 % CPU, renderer 17.5 %, GPU 16.7 %. It also asks
+     whether the spin cost grows over the hours. The method and the numbers: WORKLOG 2026-10-17
+     *CPU hunt*. Memory is good: a 308 MB private working set.
+  2. **What wakes `main` 9.6 times a second while paused.** Run the dev command recorder
+     (`src/ipc-timing.ts`) on a paused dev app to name the callers; fix only a caller that has no
+     reason to run while paused. Can ride along with item 1.
+  3. ~~Name the dbhealth thread~~ **done 2026-10-17:** `db-canary`.
+  4. ~~Threads that only sleep~~ **done 2026-10-17:** `ask_for` and the 1 s wait are Tokio timers;
+     20 agent calls on a dev app left the thread count at 49 (DEBUGGING.md § Threads). Committed in
+     `8188179` on `seventheenth`; open: merge, then a release.
+
+  **Not to do:** fewer Tokio workers (an idle worker costs no CPU, and one blocking task holds
+  more of a smaller pool); the watchdog's wakes (the price of freeze detection); WebView2's
+  threads (not ours).
+- **Spin FPS (VINYL.md §12): BUILT 2026-10-17, committed `005955e` on `seventheenth`.** His
+  calls: a 120 FPS cap by default after a blind test, and a Settings › Skin settings row *Spin
+  FPS* (60 · 120 · 144 · 240). `display.rs` (the monitor's rate), `display-hz.ts`,
+  `spin-steps.ts` (+ tests), vinyl.ts, the flight copy. `ops/checks/spin-fps.mjs` passes 7 of 7
+  with sound on a dev app he started (§12, Claude's run); rows 4–6 passed on his word
+  (2026-10-17). **Open:** merge into `main`, then a release. `pressVinylFps` joined the usage
+  allow-list; the DeetsSupport copy is deployed (`67b6dc0`, 2026-10-17).
+- **A dev app Claude starts plays again (fixed 2026-10-17, `642943a`):** `npm run dev:app` from
+  a Claude shell starts itself outside the Claude package through WMI, on the real dev folder,
+  and plays. The private copies of the dev profile are deleted (one dev profile now). Still not
+  known: why Widevine began to refuse the package on 2026-10-16. DEBUGGING.md § Sign-in.
 
 ### Build order (recommended 2026-10-15, for his next sessions)
 
@@ -180,24 +201,29 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
-- **The loading set** (2026-10-16): replay his real command and cover timings (p90) in the demo,
-  one clip per loading wait. Step 1 is the recorder. guide/LOADING-SET.md.
+- **The loading set** (2026-10-16): BUILT 2026-10-17 on `seventheenth`, all five steps, kept as
+  a back-pocket tool (his words). guide/LOADING-SET.md §7, §8; how to use it: DEBUGGING.md § The
+  loading set. Open: the first `latency.json` is thin (my reloads, n ≈ 5); run
+  `npm run latency:profile` again after some days of use. No UX-COVERUPS rows yet: each finding
+  is a fork for him when he picks it up.
 
 - **Rooms: a long queue and stations** (2026-10-16): live since 0.29.0; the worker is deployed
-  (`4f61445`). Claude's two-app desk run passed 11 rows without sound (one Apple ID). Open: his
-  desk test with real playback, and the list of what Claude decided (ROOMS.md §21.10).
-
-- **The Library ⟳'s hint on a refused click** (2026-10-15): the spin part is built (Build order
-  step 1); the hint words and the nudge are a draft for him to edit. ideas/apple-calls.md §4.
+  (`4f61445`). Claude's two-app desk run passed 11 rows without sound (one Apple ID). His desk
+  test with real playback passed on his word (2026-10-17). Open: his look at the list of what
+  Claude decided (ROOMS.md §21.10).
 
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
 
 - **Suggest Less and proactive skips** (SUGGEST-LESS.md): live since 0.29.0; schema **v20**.
-  §12 is the as-built record. Open: the DeetsSupport usage allow-list copy is not deployed
-  (`src/usage-keys.js` there has uncommitted edits, 2026-10-17).
+  §12 is the as-built record. The DeetsSupport usage allow-list copy is deployed (2026-10-17,
+  DeetsSupport `9f49f84` and `67b6dc0`, pushed).
 
 ### Built, waiting on a release or a desk test
+
+- **The Library ⟳'s hint on a refused click** (ideas/apple-calls.md §4, committed `f0d5cfd` on
+  `seventheenth`): desk test passed 2026-10-17 (§4.1, Claude's run and his word). **Open:** merge
+  into `main`, then a release.
 
 - **Album notes** (features/album-notes.md, 2026-10-17, committed on `main`): built, desk test
   passed (§8.3, 10 shots, run by Claude on his dev app). Apple's short note in the album box's
@@ -222,7 +248,8 @@ each step that touches those calls.
 - **The song facts box** (features/LISTENERS.md §8, 2026-10-17, on `main`): built, desk test
   passed (§8.10, run by Claude on his dev app with the shots runner). The edge cases and races
   of §8.11 passed 2026-10-17 (all 20 shots, run by Claude), with two more fixes (one Esc closed
-  the Compass and the view; a long tag ran out of the box). Not committed. Then a release. Open:
+  the Compass and the view; a long tag ran out of the box). Committed (`21baa9e`, `2710677`).
+  Then a release. Open:
   the song's Last.fm call asks under Apple's whole artist text; a main-artist form, as the
   album's, is a fork for him (§8.10). The 2×2 Last.fm box on the Song Credits page; its stats
   cell opens presentation mode in Max; the About cell's order (`notes-order.ts`: Apple's song
@@ -236,11 +263,16 @@ each step that touches those calls.
 - **Usage counts** (USAGE-COUNTS.md): shipped in 0.27.0 (2026-10-14). Watch the first weekly
   reports arrive on deets.solutions/deetsmusic/admin/; the cron's in-window delete is still not
   seen in a run. §11 the as-built record.
-- **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test open (§10.5).
+- **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test passed 2026-10-17 (§10.5,
+  his word; the Safari steps wait for the site page).
   Not built: the site page (part H, a DeetsSolutions session); the worker change is not deployed
   (§10.6).
 
 ### His to design or decide (asks and ideas, not built)
+
+- **Redesign the sign-in flow before a public release** (2026-10-17, his words: "I wanted to
+  redesign the login flow eventually before public (non-friends) release anyway"). The mark's
+  size snap (DeetsSupport `16f8f45`) is "for now". The flow: DATA-ARCHITECTURE.md §2a, HOP-IN.md.
 
 - **Open an item inside Home** (2026-10-17): today an album, playlist or artist opened from Home
   hops to the card that holds it. On the collection engine it would open inside Home, with
@@ -256,6 +288,11 @@ each step that touches those calls.
 - **Presentation mode** (PresentationMode.md): shipped in 0.27.0, his desk test passed
   2026-10-13 (§9.3). The view's picture is his to draw, the goal marker is paused, and a live
   stream from Last.fm is his idea for later. §7a, §7b.
+
+- **An album's counts from its songs, and a row per song** (features/LISTENERS.md §9,
+  designed 2026-10-17, not built): the plays of the library album's songs added up, "at least N"
+  listeners, and one row per song in presentation mode. Forks F1–F6 (§9.6) are his; probe §9.4
+  (Apple's song names over his library) comes before a build.
 
 - **Network errors in plain words** (2026-10-12): a transport error in an Apple call shows raw
   text (`Failed to load: error sending request…`, three `.catch` sites in search-card.ts). Five
@@ -302,16 +339,18 @@ each step that touches those calls.
   the end of a song. Not designed.
 - **Rewind has no card memory:** it opens at the top after a swap or a restart; the one gap
   in the card-systems table (SURFACES-AND-CARDS.md §5). Close it or leave it.
-- **Threads that only sleep:** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` could be Tokio
-  timers (DEBUGGING.md § Threads).
 - **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;
   ask him what is wrong first); Song of the Day "in the sidebar" (ask which sidebar first).
-- **Designed earlier:** the AirPlay stall and switch timing (AIRPLAY.md §13.2, a crate change);
+- **AirPlay tracking (AIRPLAY.md §13.2a–b, his calls 2026-10-17):** `sound:switch` and the
+  `sound:output` reason committed (`9197156`). The stall / drop lines BUILT on a Tokio task (his
+  pick) with crate 0.4.2 (the quiet keep-alive, five readings), committed in DeetsAirplay as
+  `44ac6bb`, pushed, and pinned in Cargo.toml. Desk tests §13.2a and §13.2b passed on his word
+  (2026-10-17). **Open:** merge into `main`, then a release. The `../DeetsMusic-aptel` worktree
+  and its branch were removed 2026-10-17 (his word). The switch timing is left out.
+- **Designed earlier:**
   the web demo's album light (WEB-DEMO.md §10); deploy a worker without dropping connections
   (ideas/WorkerDeploy.md); SECOND-SEARCH.md, ROOMS.md §19–§20, DeetsOTD.md §9,
-  CREDITS.md §5; DOCS-ORG.md steps 6–8 and its open forks. The DeetsSupport sign-in scheme
-  change (BETA.md §5) is written, uncommitted in `../DeetsSupport`, and HELD by his call.
-
+  CREDITS.md §5; DOCS-ORG.md steps 6–8 and its open forks.
 ### deetsmeter: the judge (M3), desk test partly run
 
 `scripts/compare/`, `tools/deetsmeter/`; music-app-comp.md §17.15–§17.17. Play, scroll, search

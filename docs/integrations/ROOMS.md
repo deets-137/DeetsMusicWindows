@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.10.0
 desk_test: passed 2026-09-19
 sources: [src/room.ts, src/room-panel.ts, src/player.ts, src/queue.ts, src-tauri/src/rooms.rs, src-tauri/src/lib.rs]
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 # DeetsMusic — DeetsMusicRooms (listening rooms)
 
@@ -1621,7 +1621,7 @@ what it has and the host gets a toast.
 
 ### 21.8 Stations in a room: the feeder (BUILT 2026-10-16, his calls)
 
-> **Part:** built · 2026-10-16 · desk test rows 1, 2, 4, 6, 7 open (real playback, §21.10)
+> **Part:** built · 2026-10-16 · desk test passed 2026-10-17 (rows 1, 2, 4, 6, 7 with real playback, his word; §21.10)
 
 Replaces §10's "Stations — not in a room" once built. Documented MusicKit only (his call, §21.7).
 

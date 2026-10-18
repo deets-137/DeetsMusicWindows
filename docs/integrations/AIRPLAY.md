@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-19
 sources: [src-tauri/src/airplay.rs, src/airplay.ts, scripts/webview-eval.mjs, src/player.ts, src/sound-worklet.ts, src/sound.ts]
-updated: 2026-10-13
+updated: 2026-10-17
 ---
 # DeetsMusic — AirPlay (play on a HomePod)
 
@@ -533,7 +533,7 @@ cause cannot be read, for three reasons:
 - **An output change does not say why.** `sound:output` does not say if the user, Windows or
   a lost speaker changed it.
 
-### 13.2 The tracking (designed, not built)
+### 13.2 The tracking (designed; built in part, §13.2a)
 
 | Line | When | Fields |
 |---|---|---|
@@ -553,6 +553,103 @@ cause cannot be read, for three reasons:
 🔵 **Open (for the owner, after the first numbers):** the targets. The tracking gives the
 baseline first. A draft to react to: speaker → PC under 300 ms of silence, PC → speaker under
 2 s to sound, speaker → speaker under 2.5 s.
+
+#### 13.2a Where each line stands (2026-10-17)
+> **Part:** built in part · 2026-10-17
+
+A Claude session built the whole table on 2026-09-25 in the worktree `../DeetsMusic-aptel`
+(branch `airplay-telemetry`, uncommitted) with crate 0.4.2 (uncommitted in `../DeetsAirplay`).
+It was never desk-tested or merged. On 2026-10-17 he picked the parts (his calls):
+
+- **Ported to `main` (2026-10-17): `sound:output` `why` and `sound:switch`.** `setOutput(next,
+  why)` in sound.ts; airplay.ts passes `airplay-lost` when refresh sees a dropped session.
+  `timeWindowsSwitch` watches 3 s after a Windows device change while playing (not on a speaker):
+  `ms` to the first meter hop louder than about −70 dB (only with the graph on, `meter: true`),
+  and `stallMs`, the time the audio clock lost against the wall clock, which is the number to
+  read (a hop can come before Windows moves the stream). It goes to the log file through the new
+  `diag.info()` (`fe: sound:switch {…}`). Desk test: play, change the Windows output (headphones
+  ↔ speakers); one `sound:switch` line in the log, and `sound:output` with `why: "windows"`.
+- **Built 2026-10-17 (§13.2b), from this scope: `airplay: stall` / `stall-end` and the richer
+  `airplay: drop`.** The 2026-09-25 build was the reference: a 50 ms watch, while connected and playing, writes `stall`
+  after 2 s with no packet that carried sound (louder than ±1 LSB, because the tap's TPDF dither
+  turns a silent source into −1 / 0 / 1), with the RTT p95 and the last error; `stall-end
+  after N s` when sound returns; `drop after N s: found by <how>`. It needs the crate's new
+  readings on `Session` (`since_reply`, `last_error`, `keepalive_failures`, `first_sound_at`,
+  `sound_packets`) and the quiet keep-alive above (the live `airplay.log` rolled in about 15 h of
+  use on 2026-10-16: 4,759 of its 10,342 lines were `/feedback`). To build it on today's
+  `airplay.rs` (the retune and the stats tick of §13.4–§13.5 came after): the watch rides the
+  existing tick, not a new thread (DEBUGGING.md § Threads).
+- **Left out (his call): `airplay: switch`**, the click → speaker sound stage split. It changes
+  the connect and disconnect commands that §13.5 rewrote; it waits until a slow switch needs it.
+
+#### 13.2b Porting the stall and drop lines: the scope (2026-10-17)
+> **Part:** built · 2026-10-17 (desk test passed 2026-10-17, his word; §13.2a's `sound:switch` too)
+
+**As built (2026-10-17, his call: the Tokio task).** Crate 0.4.2 is `44ac6bb` on DeetsAirplay's
+master, pushed (his OK); `src-tauri/Cargo.toml` pins that `rev`. `airplay.rs`: `install_live` (both places a session is put in place) bumps
+`generation` and calls `start_watch`, a `tauri::async_runtime::spawn` task with a 250 ms
+`tokio::time::interval` (`time` named in Cargo.toml) that ends when its session ends or is
+replaced; it takes the `live` lock with `try_lock`, so a connect holding it skips a tick, never
+blocks a runtime worker. The pure `StallWatch` / `stall_reason` carry 4 tests (`stall_tests`).
+The drop line: `drop <speaker> after N s: found by <no reply | threads>, last reply N s ago · last
+error: …`. Each line sends `airplay-diag` (`airplay:stall`, `airplay:stallEnd`, `airplay:drop`),
+which airplay.ts copies into the ring. Stall-end reasons as built: the sound came back (none),
+`the player stopped`, `the PC slept`, `a reconnect`, `the session ended`, `a new session`.
+
+**What the live log says (2026-10-14 to 10-17):** the `stats 60 s` line ran steadily (826 lines
+about 60.1 s apart, so the page's 2 s status poll keeps its pace while the window shows). 598 of
+its minutes had no resend request; some had bursts of 458, 740 and 976: the stutters. The line
+counts them per minute, so it cannot say when a stall began, how long it lasted, or whether the
+source or the network was at fault. The last drop: 2026-10-16 13:20 (`drop Living Room after
+52 s`).
+
+**Step 1: the crate, 0.4.2** (`../DeetsAirplay`, master, unchanged since 0.4.1 on 2026-09-25, so
+the uncommitted diff applies as it is; 106 lines in `session.rs`).
+- The quiet keep-alive: a `/feedback` line only when it fails or takes over 500 ms. Today 4,759
+  of the 10,342 lines of the live `airplay.1.log` are `/feedback`, and the file rolled in about
+  15 h of use.
+- Five readings on `Session`: `since_reply`, `last_error`, `keepalive_failures`,
+  `first_sound_at` (unused once the switch timing is left out; kept, it costs nothing),
+  `sound_packets` (packets louder than ±1 LSB, so the tap's dither of silence does not count as
+  sound).
+- `cargo test` in the crate, `cargo check` of DeetsAirplay's tray app (it shares the crate,
+  §11), a commit on master (never `git add -A` there), **a push (his OK at the time)**, then the
+  new `rev` in `src-tauri/Cargo.toml`.
+
+**Step 2: the host, on today's `airplay.rs`** (not the old patch: §13.4's stats tick and §13.5's
+retune came after it, so its 399 lines do not apply).
+- **`airplay: drop`, richer:** the existing line in `airplay_status` gains how the drop was found
+  (`no reply` after 3 failed keep-alives, else `threads`), `last reply N s ago`, and the last
+  error (IP masked). It keeps the speaker's name, as the line has today.
+- **`airplay: stall` / `stall-end`:** connected, the player playing, and no packet with sound
+  for 2 s → `stall: no sound to the speaker for 2 s, <why> · rtt p95 N ms · last error: …`, where
+  `why` is `no packet sent` (the pacer stopped), `the source ran dry` (padded packets: the tap
+  sent nothing) or `the source sends silence`. `stall-end after N s (<why>)` when sound returns,
+  the player stops, the session ends or is replaced (a retune), or the PC slept. The state lives
+  in `Live`, so a retune's new session starts clean.
+- A pure `stall_reason()` with unit tests; one `airplay-diag` event per line, which airplay.ts
+  copies into the ring (CLAUDE.md checklist 6); LOGGING.md and the §13.2 table updated.
+
+**The fork: where the stall check runs.**
+- **A Tokio interval task while a session is live, every 250 ms (Claude's pick).** It does not
+  depend on the page: a stall while the webview hangs (the tap then starves) is exactly the case
+  to catch, and the page's poll is what stops then. Stall times to about 0.25 s. No OS thread
+  (DEBUGGING.md § Threads prefers a Tokio timer); it ends with the session. Cost: a second place
+  that reads the session besides the poll.
+- **The page's 2 s status poll, beside the stats line.** Least code, one tick for every
+  diagnostic. Cost: a stall is seen 2–4 s after it starts and timed to 2 s, and none is seen
+  while the page hangs or is held.
+
+**Step 3: tidy up.** Done 2026-10-17 (his word): the worktree `../DeetsMusic-aptel` and its
+branch `airplay-telemetry` are removed. Only the switch timing was not ported, by his call.
+
+**Desk test (on a dev app HE starts, with a speaker; DEBUGGING.md § Sign-in):** play on the
+speaker; `node docs/ops/checks/drop.mjs net 20` takes the webview offline (Rust and the speaker
+keep their network) and a seek past MusicKit's buffer starves the tap → one `stall` with `the
+source ran dry`, then one `stall-end` when the song comes back (a network-side stall needs the
+Wi-Fi cut by hand); pause → no stall; a retune → `stall-end (a new
+session)` if one was open; the speaker unplugged → `drop after N s: found by no reply, last reply
+N s ago`; `airplay.log` gains no `/feedback` line while the keep-alives are fast.
 
 ### 13.3 After the PC sleeps — found, then built
 

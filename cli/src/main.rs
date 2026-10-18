@@ -173,9 +173,10 @@ enum Cmd {
     },
     /// Song of the Day: the picks, or mark / unmark one (docs/integrations/DeetsOTD.md).
     Pick(PickArgs),
-    /// The Diary (docs/features/DIARY.md): list (default) · show N · export N · add album:… ·
+    /// Album Reviews (docs/features/DIARY.md): list (default) · show N · export N · add album:… ·
     /// note N [--song S] TEXT · score N [--song S] X · date N [--song S] YYYY-MM-DD · done N [on|off].
-    /// Needs Settings › Connections › Agents use the Diary.
+    /// Needs Settings › Connections › Agents use Album Reviews.
+    #[command(name = "reviews")]
     Diary(DiaryArgs),
     /// Rules (docs/features/RULEZ.md §7): list (default) · words · show ID · add JSON ·
     /// remove ID · on ID · off ID. An agent reads every rule and writes only the user's own;
@@ -1096,10 +1097,10 @@ fn tools(small: bool) -> Value {
               "index": { "type": "number", "description": "unmark: the row from list (1 = the newest pick)." },
               "note": { "type": "string", "description": "mark: a line posted under the song." },
               "window": { "type": "string", "enum": ["day", "week", "month", "ytd", "year"], "description": "list: only this window (leave it out for every pick)." } } } }));
-    list.push(json!({ "name": "diary", "description": "The user's Diary: albums they review, with a note and a score for each song and for the album, on a scale they chose. list shows every entry with its id. show reads one entry as text (the same text the user's Export copies). add puts an album in the Diary (album:… from search). note, score and date write to an entry: song is the track number; leave it out for the album itself; an empty value clears. A score must be a number from 0 to the entry's scale. done marks it finished (value off puts it back in progress). Refused unless the user turned on Agents use the Diary in DeetsMusic.",
+    list.push(json!({ "name": "reviews", "description": "The user's Album Reviews: albums they review, with a note and a score for each song and for the album, on a scale they chose. list shows every review with its id. show reads one review as text (the same text the user's Export copies). add starts a review of an album (album:… from search). note, score and date write to a review: song is the track number; leave it out for the album itself; an empty value clears. A score must be a number from 0 to the review's scale. done marks it finished (value off puts it back in progress). Refused unless the user turned on Agents use Album Reviews in DeetsMusic.",
           "inputSchema": { "type": "object", "required": ["action"], "additionalProperties": false, "properties": {
               "action": { "type": "string", "enum": ["list", "show", "add", "note", "score", "date", "done"] },
-              "id": { "type": "number", "description": "show, note, score, date, done: the entry's id from list." },
+              "id": { "type": "number", "description": "show, note, score, date, done: the review's id from list." },
               "album": { "type": "string", "description": "add: an album:… id from search." },
               "song": { "type": "number", "description": "note, score, date: the song's track number (leave out for the album)." },
               "value": { "type": "string", "description": "note: the text · score: a number, e.g. 7.5 · date: YYYY-MM-DD or today · done: on or off." } } } }));
@@ -1123,7 +1124,7 @@ fn tools(small: bool) -> Value {
 fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, Failure> {
     let str_arg = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     let num_arg = |k: &str| a.get(k).and_then(|v| v.as_u64().or_else(|| v.as_f64().map(|f| f as u64)).or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))).map(|n| n as u32);
-    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks", "diag", "diary", "rules"];
+    let full_only = ["playlist_show", "playlist_create", "playlist_edit", "queue_edit", "folder", "settings", "query", "picks", "diag", "reviews", "rules"];
     if small && full_only.contains(&name) {
         return Err(Failure { status: 400, message: format!("unknown tool {name:?}") });
     }
@@ -1231,7 +1232,7 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
             },
         )?
         .0,
-        "diary" => {
+        "reviews" => {
             let action = if str_arg("action").is_empty() { "list".to_string() } else { str_arg("action") };
             let target = match action.as_str() {
                 "add" => Some(str_arg("album")),
@@ -1529,7 +1530,7 @@ struct DiaryArgs {
     /// list (the default) · show · export · add · note · score · date · done
     #[arg(default_value = "list")]
     action: String,
-    /// The entry's id (from `diary list`); for add, an album:… id from search.
+    /// The review's id (from `reviews list`); for add, an album:… id from search.
     target: Option<String>,
     /// note: the text · score: a number (empty clears) · date: YYYY-MM-DD, today, or clear · done: on | off.
     value: Vec<String>,
@@ -1614,7 +1615,7 @@ fn op_rules(c: &Client, action: &str, target: &str) -> Result<(String, Value), F
 }
 
 fn op_diary(c: &Client, a: &DiaryArgs) -> Result<(String, Value), Failure> {
-    let id = || a.target.clone().filter(|t| !t.is_empty()).ok_or_else(|| bad(format!("usage: diary {} N  (N from `deetsmusic diary list`)", a.action)));
+    let id = || a.target.clone().filter(|t| !t.is_empty()).ok_or_else(|| bad(format!("usage: reviews {} N  (N from `deetsmusic reviews list`)", a.action)));
     let value = a.value.join(" ");
     match a.action.as_str() {
         "list" => {
@@ -1631,12 +1632,12 @@ fn op_diary(c: &Client, a: &DiaryArgs) -> Result<(String, Value), Failure> {
                     format!("[{}] {} — {}{score}  ({state}{folder} · {written})", e.get("id").and_then(Value::as_i64).unwrap_or(0), s(e, "title"), s(e, "artist"))
                 })
                 .collect();
-            Ok((if lines.is_empty() { "The Diary is empty.".into() } else { lines.join("\n") }, v))
+            Ok((if lines.is_empty() { "No album reviews yet.".into() } else { lines.join("\n") }, v))
         }
         "show" | "export" => {
             let v = c.get(&format!("/diary?id={}", id()?))?;
             let text = s(&v, "text").to_string();
-            Ok((if text.is_empty() { "That entry has nothing written yet.".into() } else { text }, v))
+            Ok((if text.is_empty() { "That review has nothing written yet.".into() } else { text }, v))
         }
         "add" => {
             let v = c.post("/diary", json!({ "action": "add", "album": id()? }))?;
@@ -1646,7 +1647,7 @@ fn op_diary(c: &Client, a: &DiaryArgs) -> Result<(String, Value), Failure> {
             let v = c.post("/diary", json!({ "action": a.action, "id": id()?, "song": a.song, "value": value }))?;
             Ok((s(&v, "message").to_string(), v))
         }
-        other => Err(bad(format!("{other:?} is not a diary action — use list, show, export, add, note, score, date or done"))),
+        other => Err(bad(format!("{other:?} is not a reviews action — use list, show, export, add, note, score, date or done"))),
     }
 }
 

@@ -52,7 +52,7 @@ pub fn message(db_path: &Path, backups: &[PathBuf], why: &str) -> String {
          Check that the disk has free space, then start DeetsMusic again.\n\n\
          If it still does not start, close DeetsMusic and move the file to another folder. \
          DeetsMusic then makes a new, empty file and gets your library from Apple Music again. \
-         Your playlists, Diary and play history stay in the file you moved.\n\n\
+         Your playlists, album reviews and play history stay in the file you moved.\n\n\
          Error: {why}",
         db_path.display()
     )

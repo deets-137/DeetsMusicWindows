@@ -325,7 +325,7 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
       a.catalogId ? addAlbumToLibraryItem(a.catalogId, () => Promise.resolve(load())) : addAlbumFromSongsItem(a.known),
       // The Diary (DIARY.md §2, his call 5C): opens the album's entry, making it the first time.
       !w.inDiary && {
-        label: "Add to Diary",
+        label: "Review This Album",
         run: () =>
           requestDiaryAlbum({
             album: {

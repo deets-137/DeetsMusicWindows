@@ -490,6 +490,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
 /// setting is on (playback keeps running — a hidden webview still plays); a
 /// tray-popped main also hides on focus loss. Panel: × and focus-loss hide it.
 pub fn on_window_event(win: &tauri::Window, ev: &WindowEvent) {
+    crate::display::on_window_event(win, ev);
     let app = win.app_handle();
     match (win.label(), ev) {
         (PANEL, WindowEvent::CloseRequested { api, .. }) => {

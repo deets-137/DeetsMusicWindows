@@ -1,8 +1,8 @@
 ---
 status: idea
-desk_test: none
+desk_test: passed 2026-10-17
 sources: [src-tauri/src/apple.rs, src-tauri/src/library.rs, src-tauri/src/playlists.rs, src-tauri/src/enrich.rs, src-tauri/src/favorites.rs, src-tauri/src/web.rs, src/track-store.ts, src/library-card.ts, src/artist-credit.ts, src/rewind.ts, src/media-menu.ts]
-updated: 2026-10-15
+updated: 2026-10-17
 ---
 # Apple calls — the ledger, and how to make fewer
 
@@ -217,7 +217,7 @@ running sync is **incremental**, a ⟳ click that asks for a full sync is lost.
 runs still starts nothing. What changes is that the user sees why. Not taken: a click that joins a
 full sync or queues one after an incremental sync.
 
-> **Part:** built · 2026-10-15 (the spin; desk test passed, his, 2026-10-15) · the hint draft below designed
+> **Part:** built · 2026-10-15 (the spin; desk test passed, his, 2026-10-15) · the hint and the nudge built 2026-10-17 (his words, below)
 
 **What follows:**
 - The refusal is expected, so it is no longer a `console.error`. The front end knows a sync runs
@@ -234,12 +234,65 @@ still held the lock. Now the lock's release emits `{phase:"idle"}` (`SyncFlagGua
 `library:refreshBusy` with the last progress (the sync's kind is not in the events; not logged).
 The draft below (the hint words, the nudge) is not built.
 
-**Draft (his to edit): how it shows.**
+**The draft as it stood (his OK of the words, 2026-10-17, with no "Already").**
 - While it spins, the ⟳'s hover hint says what runs: "Reading your library… 1,200 of 4,042"
   (the sync events already carry the count and the total). The hint goes in ONBOARDING.md §1.
 - A click while it spins shows that hint at once, without the hover delay, and the ⟳ gives one
   small nudge (the `pop` motion family; none under reduced motion). No toast: the answer sits on
   the control that was clicked.
+
+**As built (2026-10-17, `seventheenth`).** The draft's "1,200 of 4,042" fits a full pass only: an
+incremental pass's `fetched` counts the new songs, not the songs read (`sync_incremental`), and
+after the last page the lock holds through the artist pass and the heal. So the words have five
+states (`src/sync-hint.ts`, pure, `tests/sync-hint.test.ts`):
+
+| When | Words |
+|---|---|
+| No sync | Reads your library from Apple Music again |
+| `start`, no page yet | Reading your library… |
+| A full pass, reading | Reading your library… 1,200 of 4,042 songs |
+| An incremental pass | Checking for new songs… (… 3 new, once it finds some) |
+| The last full page, `done`, `error` | Finishing up your library… |
+
+- **Rust:** each `progress` event carries `kind` (`full` / `incremental`), library.rs. An
+  incremental pass that does not explain the count turns into a full one, and its words follow.
+- **library.ts:** `onSyncStatus` / `syncStatus` (the status after each event, `nextSyncStatus`);
+  `library:refreshBusy` now logs the status, so the kind is in the log.
+- **hint.ts:** `showHintNow(el)` shows a written hint at once, right after a press too. A `title`
+  write while a hint is up changes its words and centres the box again (the count moves under a
+  resting pointer).
+- **The nudge:** `.panel__action.is-nudged`, one dip to `--nudge-scale` in `--nudge-dur` /
+  `--nudge-ease` (alias tokens of the pop family, skin.css); none under reduced motion.
+
+**What Claude decided inside his OK (2026-10-17):** the incremental words and the finishing words
+(the draft had none for those states); the hint on a click shows when Settings › *Hover hints* is
+off too (that setting is about hover; a click must get an answer); `--nudge-scale: 0.86` (a
+panel's 0.97 does not read on an icon square).
+
+**Desk test:** in §4.1.
+
+### 4.1 Desk test (2026-10-17)
+
+1. Launch the dev app with the Library card on screen. While the launch sync runs, rest the
+   pointer on the ⟳: the words name the pass, and a full pass's count moves while you rest.
+2. Click the ⟳ while it spins: the hint shows at once, the ⟳ dips once, and no sync starts (the
+   log has one `library:refreshBusy` with the status). Click twice fast: it dips again.
+3. When the sync ends, the hint under a resting pointer reads *Reads your library from Apple Music
+   again*. A click then starts a full sync, and the words go through *Reading your library…*.
+4. Settings › *Hover hints* off: a click while it spins still shows the hint; hovering does not.
+5. Windows reduced motion on: no dip; the hint still shows.
+
+**Claude's run (2026-10-17, the dev app, `docs/ops/checks/refresh-hint.mjs`): rows 1–3 pass, 10
+of 10 checks.** One full sync from the ⟳ (one `full sync start` in the log, no "already in
+progress"), three refused clicks with three `library:refreshBusy` lines carrying the status, the
+count moving from 100 to 3,960 of 4,060 under the open box, then *Finishing up…* for about
+0.8 s, then idle. A launch-type pass read *Reading your library…* for about 2 s (Apple's count
+call, before Rust picks the pass), then *Checking for new songs…* for one instant, then
+*Finishing up…*. So on a quiet launch the incremental words are seldom seen; the words are right
+in every state. **Not run:** rows 4 and 5 (the setting and reduced motion; by code: `showHintNow`
+reads no setting, the CSS rule drops the dip), and his eye on the dip itself.
+
+**Desk test passed (2026-10-17, his word: "mark library hint as desk tested").**
 
 ## 5. A song's primary artist (his question, 2026-10-15)
 

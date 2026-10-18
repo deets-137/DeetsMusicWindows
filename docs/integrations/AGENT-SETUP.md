@@ -67,10 +67,10 @@ change applies when you press **Allow**. **Allow** applies changes at once. **Of
 An AI app can turn **Add to Library and ♥**, **Export playlists** and **Agent control** off, but
 only you can turn them on.
 
-**Your play history and your Diary.** With **Settings › Connections › Agents read play
+**Your play history and your album reviews.** With **Settings › Connections › Agents read play
 history** on (the default), an AI app can read what you played, when, and what you skipped:
 "what did I play most this week", "which songs do I skip". Turn it off and those reads stop.
-**Agents use the Diary** is off until you turn it on; then an AI app can read your Diary and
+**Agents use Album Reviews** is off until you turn it on; then an AI app can read your album reviews and
 write notes and scores for you. An AI app can also read and mark your **Songs of the Day**
 while Song of the Day is on.
 

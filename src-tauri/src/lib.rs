@@ -10,6 +10,7 @@ mod db_open;
 mod db_thread;
 mod dbhealth;
 mod diary;
+mod display;
 mod enrich;
 mod favorites;
 mod filter;
@@ -625,6 +626,7 @@ pub fn run() {
             media::system_volume_set,
             media::system_volume_mute,
             tray::tray_panel_hide,
+            display::display_hz,
             tray::tray_open_main,
             tray::tray_place_main,
             tray::main_ready,

@@ -1,7 +1,7 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
+sources: [src/ipc-timing.ts, src/ipc-core.ts, demo/latency.ts, scripts/latency-profile.mjs, docs/guide/loading.json, scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
 updated: 2026-10-17
 ---
 # DeetsMusic — Debugging tools
@@ -1455,6 +1455,77 @@ motion: run it before and after a motion change, and compare the two contact she
 **Do not save a front-end file during a run.** Vite serves the demo, so a save reloads the
 page under the runner, as with `webview-eval.mjs` above.
 
+## The loading set — every wait at the owner's real timings (built 2026-10-17)
+
+The demo answers every command at once, so a plain shot cannot show what a card does while it
+waits for its data. The loading set makes the demo wait as long as the owner's own dev app
+waits, command by command, and holds each Apple cover for his real load time. The design and
+the as-built record: guide/LOADING-SET.md (§7).
+
+**What it is — four parts:**
+1. **The command recorder** (`src/ipc-timing.ts`, dev and `--built` only). It times every
+   `invoke` round trip (cold = the first call of a page life, warm = the rest) and every cover
+   load, marks each call on the page clock (`ipc:<cmd>:begin` / `:end`), and writes one block
+   to `deetsmusic.log` every 5 min and on close:
+   ```
+   INFO  diag: [perf] ipc+art 300 s
+       [perf] ipc playlists_cached cold 14 · warm 3,2,4
+       [perf] art miss 212,340,95 · hits 41
+   ```
+   The console handle: `__ipcTiming.commands()`, `.art()`, `.pending()`, `.flush()`. It needs no
+   action: run the dev app as normal and the log fills.
+2. **The profile** (`npm run latency:profile`). It reads the blocks of the last 14 days
+   (`--days`) and writes `docs/guide/latency.json`: per command the cold and warm n · p50 · p90 ·
+   max, and the cover misses with their deciles and the hit share. Names and milliseconds only.
+   Run it again after a change that moves a wait. `--print` shows a table.
+3. **The replay** (`--latency p50|p90|max` on `scripts/shots.mjs`). In a demo shot, each
+   command waits its value from the profile, and each Apple cover is held for a time drawn from
+   the miss deciles (seeded by the shot, the look and the run, so a rerun gives the same waits).
+   `--cold` turns the HTTP cache off (a first load after install); without it, a share of the
+   covers equal to his hit share answers at once. The public demo never replays.
+4. **The loading set** (`docs/guide/loading.json`): 11 clips, one per wait (Home and the
+   Library at launch, Playlists, a playlist, an album, the artist view, Search, Next, Rewind,
+   Radio, Credits), in Glass and Press, Midi.
+
+**What it gives you:**
+- See what a user sees while a card waits: an empty card, a jumble, covers in the wrong order,
+  a list that rebuilds two or three times.
+- Count it, per step with a `"region"`: **pops** (frames where 8 % or more of the box's whole
+  change happens at once; a fade gives few or none), the **settled** time (the last command
+  end, cover load or mosaic before the next action), and the **list redraws** (`coll:render`
+  marks). The strip labels each pop frame `POP` and each mark by name.
+- Judge a cover-up before it ships: `--latency p90 --vs "--some-token=value"` runs the clip as
+  is and with the change, side by side.
+- Compare versions: a later run lands beside the last one in `shots/loading/<version>/`.
+- The command recorder alone answers "which command is slow on my machine": read the blocks, or
+  `__ipcTiming.commands()` in DevTools.
+
+**The commands:**
+```
+npm run latency:profile                                   # after some days of normal use
+node scripts/shots.mjs --list docs/guide/loading.json --latency p90 --cold
+node scripts/shots.mjs --list docs/guide/loading.json --latency p90 --cold --only load-playlists --look moonlight-glass
+node scripts/shots.mjs --list docs/guide/loading.json             # the same clips with no wait: the baseline
+node docs/ops/checks/ipc-timing.mjs                               # the recorder's own check (dev app running)
+```
+The whole set takes about 20–30 minutes (22 clips of 240 frames each).
+
+**Read, in this order:** the log lines `step N (...): … pops N · settled +N`, the console
+file's `settled` and `latency` lines (`latency: no profile for x` names a command with no row:
+a new command, or one he never called), the overview strip `<id>.<look>.strip.png`, then the
+step strip `.s<k>-<step>.png` for the frames around a pop.
+
+**Limits:**
+- The numbers are only as good as the profile. A command he never called answers at once;
+  a first `latency.json` from a few launches has a thin cold column (n ≈ 5).
+- Mosaics are drawn by the demo's own worker on this machine, not replayed.
+- The demo's data is not his library: a list of 27 playlists is the demo's, not his 200.
+- The pop threshold (8 %) is a first guess; tune `POP_SHARE` in shots.mjs on real findings.
+- The first page load of a run can take over 30 s while the demo server compiles; the runner
+  waits 90 s for it.
+- Calls that `@tauri-apps/api` and the Tauri plugins make from `node_modules` (`listen`, the
+  window calls) are not timed and not replayed. They are not data waits.
+
 ## Audio quality — `probe fidelity` (DeetsAirplay, 2026-09-16)
 
 Sound quality is measured, not judged by ear. The probe lives in the DeetsAirplay repo, because it
@@ -1588,6 +1659,41 @@ failure: <reason>`, `user token captured`.
   terminal once (it registers at launch), or write the same four values through WMI
   (`powershell -EncodedCommand …` as the command line). Keep a shell `start` test as a
   test of Windows → app only: it cannot prove what a browser sees.
+- **A dev app started from a Claude session cannot play (2026-10-17; fixed the same night:
+  `dev:app` now starts outside the package, the next item).** Since 2026-10-16
+  (the Widevine module 4.10.3112.0 arrived at 12:59; the last good play 13:05, the first
+  refusal 13:53), every play on a dev app started inside the Claude package fails: MusicKit's
+  `mediaPlaybackError`, and Apple's `acquireWebPlaybackLicense` answers
+  `{"errorCode":-42585,"status":-1021}`. The same dev app started by him from a normal terminal
+  plays. Ruled out by tests: the developer token, the Widevine version, the profile's Widevine
+  store, a second stream on the Apple ID, the user token, the CDP port (WORKLOG 2026-10-17
+  *night, later*). WMI cannot start a process from inside the package either (return value 2,
+  access denied). Until the fix below, a desk test that needed sound ran on a dev app HE
+  started, and Claude drove it over CDP and the bridge. A shell inside the package read the
+  package's copy of `%APPDATA%` and `%LOCALAPPDATA%` (`Packages\Claude_…\LocalCache\`), so the
+  log of a dev app he started was not the file Claude's shell saw.
+- **The two dev folders broke the dev library (2026-10-17).** The package's copy is a merged
+  view: a file the package has written is read from `LocalCache`, any other file from the real
+  folder. At 21:05 he started a dev app from his terminal; the REAL
+  `%APPDATA%\com.deetsmusic.dev` did not exist, so it seeded a 31.9 MB library from the
+  installed app and left its `deetsmusic.db-wal` there. At 23:30 a dev app from a Claude shell
+  opened the PACKAGE's `deetsmusic.db` (14.5 MB, no `-wal` of its own) with the real folder's
+  `-wal`: SQLite applied a WAL from another file, and the open failed with *malformed database
+  schema (idx_tracks_sort) - index idx_tracks_sort already exists*. The proof: the WAL's
+  page-1 frames carry change counter 3 and pages up to 7,797; the package's file has 295 and
+  3,553. **The fix (2026-10-17, his pick):** `scripts/dev-app.mjs` tests whether its own
+  `%APPDATA%` writes land in a package's `LocalCache` (a Claude shell has no package
+  identity, so `GetCurrentPackageFullName` cannot tell), and if so starts itself again
+  through WMI (`Win32_Process.Create`, return value 0) and streams that copy's output from
+  `node_modules/.dev-app/<time>-<pid>.log`. The app then uses the real folder, and it
+  **plays**: probed the same night, playback time 11 → 14 s. Ctrl+C on the script ends the
+  app's whole tree; a hard kill of the script leaves it running. **One dev profile
+  (2026-10-17, his ask):** the package's copies of `com.deetsmusic.dev` and `second.dev` were
+  copied into the real folders (`quick_check` ok on both) and deleted from `LocalCache`; the
+  21:05 seed is kept as `com.deetsmusic.dev.seed-2026-10-17.bak`, the bad `-wal` / `-shm` under
+  it in `corrupt-wal-2026-10-17`. With no copy left, a Claude shell reads the real files. A
+  file a Claude shell WRITES under `%APPDATA%` lands in `LocalCache` again and splits the view,
+  so write there only from a WMI-started `cmd` (or the app itself).
 - **Seeing what Edge looks up:** Process Monitor (`winget install
   Microsoft.Sysinternals.ProcessMonitor`), filter *Path contains* the scheme, click the link
   from a page console (`location.href = "<scheme>://x"`). `/Runtime` did not stop an
@@ -1674,17 +1780,15 @@ name shows in a debugger and in a crash dump.
 | `bridge.rs:start` | `deets-bridge` | the whole run | The loopback HTTP bridge: the extension, the CLI, the MCP (AGENT.md) |
 | `watchdog.rs:start` | `watchdog` | the whole run | Asks the UI thread to answer; logs `ui: the window stopped answering` (LOGGING.md) |
 | `audio_out.rs:setup` | `audio-out` | the whole run | Holds the Windows audio COM objects; reads the default output and its volume on a change (SOUND.md §2.2) |
-| `dbhealth.rs:start` | none | the whole run | The database canary, every 10 minutes (DB-HEALTH.md) |
+| `dbhealth.rs:start` | `db-canary` | the whole run | The database canary, every 10 minutes (DB-HEALTH.md) |
 | `apple_calls.rs:start` | `apple-calls` | the whole run | The hourly Apple call count line (APPLE-CALLS.md) |
 | `apple_calls.rs:watch_for_end` | `apple-backoff` | while a 429 back-off holds | Logs `back-off off` when the hold ends |
 | `presence.rs:request` | `presence` | from the first use | Owns the Discord pipe; every presence write goes through it (FRIENDS.md §8.11) |
 | `airplay.rs:post` | `airplay-np` | from the first publish | Sends now playing and the cover to the AirPlay speaker, newest first (AIRPLAY.md §13.6) |
 | `lib.rs:run` | none | one per request | The `cover`, `wallpaper` and `user` link schemes: reads the file and answers off the webview thread |
-| `bridge.rs:ask_for` | none | one per agent request, up to its time-out | Sleeps for the time-out, then fails the request if the window has not answered |
 | `apple.rs:handle_link` | none | one sign-in | Checks the token the sign-in link carried and stores it |
 | `apple.rs:begin_hosted` | none | 5 minutes | Ends a hosted sign-in link that was not used |
 | `apple.rs:apple_begin_auth` | none | one sign-in | Serves the loopback sign-in page (the fallback to the hosted page) |
-| `apple.rs:tokio_sleep_1s` | none | 1 s | A one-second wait between two token checks |
 | `tray.rs:reveal_fallback` | none | 3 s | Shows the window if the page never said it was ready |
 | `update.rs:airplay_shutdown_bounded` | none | up to 3 s | Stops AirPlay before an install or a quit; the caller waits 3 s at most |
 | `velo.rs:download` | none | one update download | The Velopack spike only (`--features velopack`): passes the download's progress to the status (VELOPACK.md §8) |
@@ -1703,8 +1807,11 @@ name shows in a debugger and in a crash dump.
   sound*. They end with the session.
 - **WebView2's processes**: the browser, the renderer, the GPU process.
 
-**Open (2026-10-13, not changed):** `bridge.rs:ask_for` and `apple.rs:tokio_sleep_1s` start a
-thread only to sleep. A Tokio timer does the same with no thread.
+**Changed 2026-10-17 (his order, optimization items 3–4):** the canary's thread is named
+`db-canary`. `bridge.rs:ask_for` and the one-second wait in `apple.rs:capture_rejected_by_apple`
+started a thread only to sleep; they are Tokio timers now (`tokio::time::timeout`,
+`tokio::time::sleep`). Before, every agent request left a thread asleep for its whole time-out
+(15 s, or 90 s for a long playlist request), even after the window answered.
 
 ## Recipe — debugging a player issue
 1. Reproduce the bad behaviour.

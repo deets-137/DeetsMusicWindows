@@ -66,7 +66,7 @@ export const EVENTS: EventWord[] = [
   { id: "queue.summon", section: "Window", label: "The Queue is about to replace a card or end a grow", cancel: true },
   { id: "album.open", section: "Library", label: "You open an album" },
   { id: "artist.open", section: "Library", label: "You open an artist" },
-  { id: "diary.open", section: "Library", label: "You open a Diary entry" },
+  { id: "diary.open", section: "Library", label: "You open an album review" },
   { id: "playlist.create", section: "Library", label: "You make a playlist" },
   { id: "goto.artist", section: "Library", label: "You press Go to Artist", goTo: true },
   { id: "goto.album", section: "Library", label: "You press Go to Album", goTo: true },
@@ -143,7 +143,7 @@ export const FACTS: FactWord[] = [
     ],
   },
   { id: "loved", section: "The song", label: "Loved", kind: "bool", yes: "The song is loved", no: "The song is not loved" },
-  { id: "diaryScore", section: "The song", label: "Diary score", kind: "number" },
+  { id: "diaryScore", section: "The song", label: "Review score", kind: "number" },
   { id: "plays", section: "The song", label: "Times played", kind: "number" },
   { id: "queueLength", section: "Playback", label: "Songs up next", kind: "number" },
   { id: "loaded", section: "Playback", label: "A song is loaded", kind: "bool", yes: "A song is loaded", no: "No song is loaded" },
@@ -183,7 +183,7 @@ export const FACTS: FactWord[] = [
   { id: "player", section: "Window", label: "Full player", kind: "choice", choices: [{ value: "on", label: "On" }, { value: "off", label: "Off" }] },
 ];
 /** Built-in only (a Settings row's rule reads them). */
-const HIDDEN_FACTS: Partial<Record<FactId, string>> = { "entry.new": "The entry is new", now: "Now", lookMode: "Look schedule", cause: "Cause", from: "From", soloCard: "Only card" };
+const HIDDEN_FACTS: Partial<Record<FactId, string>> = { "entry.new": "The review is new", now: "Now", lookMode: "Look schedule", cause: "Cause", from: "From", soloCard: "Only card" };
 
 // ── the Filter panel's facts (features/filter-rules.md §4) ──────────
 // A filter asks each song in a pool. The facts the engine also has (genre, loved …) keep their
@@ -213,7 +213,7 @@ export const FILTER_FACTS: FactWord[] = [
   ...WINDOW_WORDS.map(([w, words]): FactWord => ({ id: `minutes${w}` as FactId, section: "Plays", label: `Minutes ${words}`, kind: "number", unit: "min" })),
   fromFacts("loved", "Your marks"),
   fromFacts("diaryScore", "Your marks"),
-  { id: "inDiary", section: "Your marks", label: "In your Diary", kind: "bool", yes: "The song is in your Diary", no: "The song is not in your Diary" },
+  { id: "inDiary", section: "Your marks", label: "In your reviews", kind: "bool", yes: "The song is in an album review", no: "The song is not in an album review" },
   { id: "sotd", section: "Your marks", label: "Song of the Day", kind: "bool", yes: "The song was a Song of the Day", no: "The song was never a Song of the Day" },
   { id: "pinned", section: "Your marks", label: "Pinned", kind: "bool", yes: "The song is pinned", no: "The song is not pinned" },
   {
@@ -325,7 +325,7 @@ export const DOS: DoWord[] = [
   { id: "love", section: "Library", label: "Love the song", input: "none", moment: () => ({ love: true }) },
   // Suggest Less (SUGGEST-LESS.md §4): an Apple write only with Add to Library and ♥ on.
   { id: "suggestLess", section: "Library", label: "Mark the song Suggest Less", input: "none", moment: () => ({ suggestLess: true }) },
-  { id: "diary", section: "Library", label: "Open the Diary for this album", input: "none", moment: () => ({ diary: true }) },
+  { id: "diary", section: "Library", label: "Open this album's review", input: "none", moment: () => ({ diary: true }) },
   // Your own files (RULEZ.md §5, session B's store). A picture in a While row holds Glass ›
   // Canvas on that picture; in a When row it sets it as your pick.
   {
@@ -464,7 +464,7 @@ export function leafText(l: Leaf, lists: Lists, inSentence = false): string {
 export function leafParts(l: Leaf, lists: Lists): LeafParts {
   const w = factWord(l.fact);
   const name = w?.label ?? HIDDEN_FACTS[l.fact] ?? l.fact;
-  // A built-in fact with a yes / no value reads as its own words ("The entry is new").
+  // A built-in fact with a yes / no value reads as its own words ("The review is new").
   if (!w && typeof l.is === "boolean") return { rest: l.is ? name : `not: ${lowerFirst(name)}` };
   if (w?.kind === "bool" && l.is !== undefined && !Array.isArray(l.is)) return { rest: l.is === true ? w.yes! : w.no! };
   if (w?.kind === "bool" && l.isNot !== undefined && !Array.isArray(l.isNot)) return { rest: l.isNot === true ? w.no! : w.yes! };
@@ -544,7 +544,7 @@ export function actionText(a: Action | undefined, lists: Lists): string {
     case "addTo": return `Add the song to ${labelOf(lists.editable, arg)}`;
     case "love": return "Love the song";
     case "suggestLess": return "Mark the song Suggest Less";
-    case "diary": return "Open the Diary for this album";
+    case "diary": return "Open this album's review";
     case "scrobble": return `Turn scrobbling ${arg ? "on" : "off"}`;
     case "picture": return `Use the picture ${labelOf(lists.pictures, arg)}`;
     case "playSound": return `Play the sound ${labelOf(lists.sounds, arg)}`;
@@ -635,7 +635,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   keep: { act: "keeps it from happening" }, growOutside: { keep: "keeps the outside-press collapse" },
   sharePause: { act: "pauses sharing for an hour", keep: "keeps sharing paused" }, sleepIn: { act: "starts the sleep timer for" },
   note: { act: "shows the note" }, picture: { act: "uses the picture", keep: "keeps the picture" }, playSound: { act: "plays the sound" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
-  love: { act: "loves the song" }, suggestLess: { act: "marks the song Suggest Less" }, diary: { act: "opens the Diary for this album" }, scrobble: { act: "turns scrobbling" },
+  love: { act: "loves the song" }, suggestLess: { act: "marks the song Suggest Less" }, diary: { act: "opens this album's review" }, scrobble: { act: "turns scrobbling" },
   shuffleLibrary: { act: "plays the library shuffled" }, openIn: { act: "opens it in" },
   // A rule key reads as a thing DeetsMusic keeps at a value, never as its Settings label
   // (2026-10-10: "keeps Collapse on outside click off" was the Party recipe's sentence).

@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src-tauri/src/beta.rs, src-tauri/tauri.beta.conf.json, src-tauri/icons-beta/, scripts/beta-icon.ps1, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/src/velo.rs, cli/src/main.rs]
-updated: 2026-10-15
+updated: 2026-10-17
 ---
 # DeetsMusic Beta — a second app beside the full one
 
@@ -160,12 +160,12 @@ This writes to R2. It needs the owner's go-ahead.
 
 The beta registers `deetsmusic-beta://` (the installer writes it from the overlay's deep-link
 scheme), and `apple::link_scheme()` answers it. The sign-in page takes the scheme in `s`.
-DeetsSupport `src/signin.js` now accepts `deetsmusic(-dev|-beta)`, uncommitted in that repo.
-**Held, not deployed (the owner, 2026-09-23).** DeetsSupport holds no sockets, so its deploy
-drops no room; the hold is his call, beside the wider question of deploying workers without a
-drop ([WorkerDeploy.md](../ideas/WorkerDeploy.md)). Until the deploy, a sign-in started in the
-beta shows the "start from DeetsMusic" page. The copy already carries the Apple sign-in, so the
-beta does not need to sign in until the user token expires; `deetsmusic-beta pull` refreshes it.
+DeetsSupport `src/signin.js` accepts `deetsmusic(-dev|-beta)`. Held by the owner on 2026-09-23;
+committed as DeetsSupport `5907a15` (2026-10-15) and **live since the 2026-10-16 deploy** (read
+from `wrangler deployments list` on 2026-10-17). DeetsSupport holds no sockets, so its deploy
+drops no room ([WorkerDeploy.md](../ideas/WorkerDeploy.md)). The copy already carries the Apple
+sign-in, so the beta does not need to sign in until the user token expires; `deetsmusic-beta
+pull` refreshes it.
 
 The same Worker change fixes the version order: pre-release tags now compare part by part, with
 numbers as numbers. Before it, `0.14.0-beta.10` sorted before `0.14.0-beta.9`.

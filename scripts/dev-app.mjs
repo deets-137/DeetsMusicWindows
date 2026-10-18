@@ -28,11 +28,109 @@
 //      on the owner's screen. It is the app's own tray launch (`--tray`, tray.rs
 //      `tray_launch`): the page loads and runs, `reveal_main` never shows the window, and
 //      only the tray icon appears. The tray icon opens it as usual.
+//   9. Outside the Claude package (2026-10-17): run from a shell in the Claude desktop app
+//      (an MSIX package, whose shells write %APPDATA% into its private copy), this script
+//      starts itself again outside the package, through WMI,
+//      and streams that copy's output here. Inside the package, %APPDATA% and %LOCALAPPDATA%
+//      are a private merged copy: a dev app from a Claude shell and one from his terminal had
+//      two dev folders, and SQLite once took the main file from one and the -wal from the
+//      other (the library broke, DEBUGGING.md § Sign-in). A dev app inside the package also
+//      cannot play (Apple refuses the license, -42585); started outside, it plays.
 import { createServer } from "node:net";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { spawn } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, closeSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+/** Are this process's %APPDATA% writes redirected into a package's private copy? A Claude
+ *  shell is, though it has no package identity (GetCurrentPackageFullName says "no package",
+ *  tested 2026-10-17), so the test is the redirect itself: write a marker, look for it under
+ *  each package's LocalCache, delete it. */
+function insidePackage() {
+  if (process.platform !== "win32" || process.env.DEETS_DEV_OUTSIDE) return false;
+  const name = `.deets-redirect-probe-${process.pid}`;
+  const marker = join(process.env.APPDATA, name);
+  const packages = join(process.env.LOCALAPPDATA, "Packages");
+  try {
+    writeFileSync(marker, "");
+    return readdirSync(packages).some((p) => existsSync(join(packages, p, "LocalCache", "Roaming", name)));
+  } catch {
+    return false; // cannot tell: run here, as before
+  } finally {
+    rmSync(marker, { force: true });
+  }
+}
+
+if (insidePackage()) {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const repo = join(here, "..");
+  const logDir = join(repo, "node_modules", ".dev-app");
+  mkdirSync(logDir, { recursive: true });
+  const log = join(logDir, `${Date.now()}-${process.pid}.log`);
+  writeFileSync(log, "");
+  // A WMI-started process gets a fresh environment: carry the app's own switches over.
+  const carried = Object.entries(process.env)
+    .filter(([k]) => k.startsWith("DEETS_") || k === "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")
+    .map(([k, v]) => `set "${k}=${v}" && `)
+    .join("");
+  const args = process.argv.slice(2).map((a) => `"${a}"`).join(" ");
+  // `cmd /s /c "…"` strips only the outer quotes, so the quoted paths inside survive.
+  const line =
+    `cmd.exe /d /s /c "cd /d "${repo}" && set "DEETS_DEV_OUTSIDE=1" && ${carried}` +
+    `"${process.execPath}" "${fileURLToPath(import.meta.url)}" ${args} > "${log}" 2>&1"`;
+  const made = execFileSync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", '$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $env:DEETS_HOP_CMD }; "$($r.ReturnValue) $($r.ProcessId)"'],
+    { encoding: "utf8", env: { ...process.env, DEETS_HOP_CMD: line } },
+  ).trim();
+  const [rc, pidText] = made.split(" ");
+  const pid = Number(pidText);
+  if (rc !== "0" || !pid) {
+    console.error(`[dev:app] could not start outside the Claude package (WMI return value ${rc}). Start it from your own terminal.`);
+    process.exit(2);
+  }
+  console.log(`[dev:app] inside the Claude package: started outside it (pid ${pid}); its output follows, from ${log}`);
+  // Stopping this script stops the app (Ctrl+C or a kill this script can see; a hard kill
+  // of this process leaves the app running, as a hard kill of `tauri dev` always did).
+  const stop = () => {
+    try {
+      execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
+    } catch {}
+    process.exit(0);
+  };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+  const alive = () => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let at = 0;
+  const pump = () => {
+    const size = statSync(log).size;
+    if (size > at) {
+      const fd = openSync(log, "r");
+      const buf = Buffer.alloc(size - at);
+      readSync(fd, buf, 0, buf.length, at);
+      closeSync(fd);
+      process.stdout.write(buf);
+      at = size;
+    }
+  };
+  const timer = setInterval(() => {
+    pump();
+    if (!alive()) {
+      pump();
+      clearInterval(timer);
+      console.log(`[dev:app] the app outside the package exited`);
+      process.exit(0);
+    }
+  }, 300);
+  await new Promise(() => {}); // the timer above ends the script
+}
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const devConf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.dev.conf.json"), "utf8"));

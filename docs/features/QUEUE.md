@@ -2,7 +2,7 @@
 status: foundation
 desk_test: passed 2026-09-24
 sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts]
-updated: 2026-10-12
+updated: 2026-10-17
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -532,7 +532,12 @@ the belt-and-suspenders. Logged as `player:deadNext` (`bank` says which).
 
 ### The healed song played twice (2026-09-27)
 
-> **Part:** built · 2026-09-27 · desk test open
+> **Part:** built · 2026-09-27 · desk test passed 2026-10-17 (on live, from the log)
+
+**Seen on live 0.29.0, 2026-10-17 18:57.** `player:deadNext` (`ended: next item did not start`,
+`bank:false`) for "Unakkul Naane"; the re-window fed it alone; `player:topUp` ran 1 ms after
+the load (`mkLen` 1 → 9); one `stats:event-start` for the song; his Next at 5 s went to window
+position 1, not back to index 0. The fix below holds.
 
 Seen twice on live in one day (02:55 "BLUE", 16:56 "Dracula"), both the end-of-song shape
 with live songs, both `bank:false`. The heal's re-window fed the song alone, as every click

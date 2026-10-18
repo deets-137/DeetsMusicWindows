@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-09-24
 sources: [demo/boot.ts, demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
-updated: 2026-10-12
+updated: 2026-10-17
 ---
 # DeetsMusic — Web demo
 
@@ -364,15 +364,20 @@ ES2022 for the `await`.
 - `catalog_heals` got a demo handler (an empty answer); every load warned without it.
 
 ### 15.7 Limits, and what is still his
-- **The page's lede** (`strings.js`, his words) says "everything mocked". The songs are real
-  now. The words are his to change.
+- **The page's lede** (`strings.js`, his words) says "everything mocked". **It stays (his call,
+  2026-10-17):** "mocked" means the app, not the songs: the demo plays previews, not full songs,
+  and has no sign-in, AirPlay, rooms or the rest.
 - **Artist links** from right-click › Copy Link do not open: the feed has no artist id. Adding
   `artist_id` to the feed is a DeetsOTD change, which he decided to keep untouched (DeetsOTD.md §7).
 - **Lyrics and writer credits** are empty: the feed has neither.
 - **The shots runner now loads covers and previews from Apple** (no longer "no network"), and its
-  pictures change as he posts picks. Two shot lists still type the old album "Salt & Signal":
-  `docs/guide/shots.json` (`max-full-player`, another session's uncommitted work) and
-  `docs/ops/checks/album-mark.json`. Each needs a new album name.
+  pictures change as he posts picks. `docs/ops/checks/album-mark.json` types "American Teen"
+  since 2026-10-17 (his 5 picks, 4 songs; its menu step moved to row 3, because the demo seeds
+  row 4, "Location", as a favorite); all 4 shots pass. `docs/guide/shots.json`
+  (`max-full-player`, the website's Demos picture) still types "Salt & Signal", and the site's
+  48 Demos pictures still show the invented catalog of 2026-10-11. **Fine for now (his call,
+  2026-10-17).** At the next re-shoot, the shot needs a new album: his pick, a cover with no
+  printed title.
 - **Opened directly** at `/deetsmusic/demo/app/` (no host page), a preview plays with no badge.
   The site links only the page with the frame.
 - **On deets.solutions since 2026-10-13** (his call): the site files (`demo.js`, `index.html`,

@@ -2,7 +2,7 @@
   "about": "An album's grown song columns (CARD-GROW.md §9b): the mark column (Lib ♥; Full ✓ / ♥), the # column under its header, the ♥ column kept on Library Songs, and Add to Library off. Max, Press, Fill on the right card.",
   "desk_test": "cards/CARD-GROW.md §9b, steps 1–4",
   "made": "2026-10-01",
-  "pass": "lib: numRights all equal headerRight; hearts off/on follow the presses; the Now Playing title does not change on a ♥ press; the menu Favorite fills row 4. full: rows read check (heart on the loved song), titleSquares 0; the menu Favorite turns the ✓ to a ♥ (addShown false); the ♥ press brings the ✓ back. others: the Library Songs heads still hold ♥. add-off: stored off, Lib all hidden, Full all check. The + state is not in the demo (every song of this album is in the library).",
+  "pass": "lib: numRights all equal headerRight; hearts off/on follow the presses; the Now Playing title does not change on a ♥ press; the menu Favorite fills row 3 (American Teen: Location, row 4, starts loved in the demo). full: rows read check (heart on the loved song), titleSquares 0; the menu Favorite turns the ✓ to a ♥ (addShown false); the ♥ press brings the ✓ back. others: the Library Songs heads still hold ♥. add-off: stored off, Lib all hidden, Full all check. The + state is not in the demo (every song of this album is in the library).",
   "run": "node scripts/shots.mjs --list docs/ops/checks/album-mark.json  → shots/album-mark/<version>/",
   "looks": [
     {
@@ -23,7 +23,7 @@
           "key": "Ctrl+Space"
         },
         {
-          "type": "Salt & Signal",
+          "type": "American Teen",
           "delay": 30
         },
         {
@@ -75,7 +75,7 @@
           "probe": "(() => { const b = document.querySelector('[data-slot=right] .lib-row[data-idx=\"0\"] button[data-love]'); return JSON.stringify({ on: b.classList.contains('is-on'), title: b.title }); })()"
         },
         {
-          "eval": "(() => { const r = document.querySelector('[data-slot=right] .lib-row[data-idx=\"3\"] .lib-row__title').getBoundingClientRect(); document.querySelector('[data-slot=right] .lib-row[data-idx=\"3\"] .lib-row__title').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 5, button: 2 })); })()"
+          "eval": "(() => { const r = document.querySelector('[data-slot=right] .lib-row[data-idx=\"2\"] .lib-row__title').getBoundingClientRect(); document.querySelector('[data-slot=right] .lib-row[data-idx=\"2\"] .lib-row__title').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 5, button: 2 })); })()"
         },
         {
           "wait": 500
@@ -110,7 +110,7 @@
           "key": "Ctrl+Space"
         },
         {
-          "type": "Salt & Signal",
+          "type": "American Teen",
           "delay": 30
         },
         {
@@ -191,7 +191,7 @@
           "key": "Ctrl+Space"
         },
         {
-          "type": "Salt & Signal",
+          "type": "American Teen",
           "delay": 30
         },
         {
@@ -273,7 +273,7 @@
           "key": "Ctrl+Space"
         },
         {
-          "type": "Salt & Signal",
+          "type": "American Teen",
           "delay": 30
         },
         {

@@ -1,0 +1,114 @@
+{
+  "about": "The Diary renamed Album Reviews (features/DIARY.md, 2026-10-17), on the dev app: the card's words, an open review's header, its Settings section and rows, the Compass by the old word. Every probe has an expect. One shot makes a review of a library album and deletes it again.",
+  "desk_test": "features/DIARY.md (the rename banner)",
+  "made": "2026-10-17",
+  "pass": "Every shot ok. Read the snaps: the card, the review header, the Settings section, the Compass list.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/album-reviews.json --noise 80   (dev app running; no other session driving it)",
+  "shots": [
+    {
+      "id": "reviews-card",
+      "covers": "features/DIARY.md",
+      "kind": "clip",
+      "source": "dev",
+      "size": "max",
+      "seconds": 4,
+      "about": "Summon the card: its title, the + hint, the empty-row words.",
+      "steps": [
+        { "reload": true },
+        { "wait": ".panel__title" },
+        { "wait": 2500 },
+        { "eval": "import('/src/layout-bus.ts').then((m) => m.requestCard('diary'))" },
+        { "wait": 1500 },
+        {
+          "name": "card",
+          "probe": "JSON.stringify((() => { const h = [...document.querySelectorAll('.panel__title')].find((t) => /Album Reviews|Diary/.test(t.textContent)); const add = document.querySelector('#diary-add'); return { title: h?.textContent ?? null, add: add?.dataset.hint ?? add?.getAttribute('title') ?? null, diaryWords: [...document.querySelectorAll('.panel')].filter((p) => p.querySelector('#diary-add')).map((p) => (p.innerText.match(/\\bDiary\\b/g) || []).length)[0] ?? null }; })())",
+          "expect": { "title": "Album Reviews", "add": "Starts a new review or makes a new folder", "diaryWords": 0 }
+        },
+        { "snap": "card" }
+      ]
+    },
+    {
+      "id": "reviews-open-album",
+      "covers": "features/DIARY.md",
+      "kind": "clip",
+      "source": "dev",
+      "size": "max",
+      "seconds": 6,
+      "about": "Review This Album's path (requestDiaryAlbum) on a library album: the header reads Review: <album>; Back reads Album Reviews. The review made here is deleted at the end.",
+      "steps": [
+        { "reload": true },
+        { "wait": ".panel__title" },
+        { "wait": 2500 },
+        {
+          "eval": "(async () => { const inv = window.__TAURI_INTERNALS__.invoke; const before = (await inv('diary_list')).map((s) => s.id); window.__reviewsBefore = before; const page = await inv('library_tracks', { offset: 0, limit: 200 }); const tracks = (Array.isArray(page) ? page : page.tracks ?? page.items ?? []).filter((t) => t.albumName); const name = tracks[0].albumName; const songs = tracks.filter((t) => t.albumName === name); window.__reviewsAlbum = name; const m = await import('/src/layout-bus.ts'); m.requestDiaryAlbum({ album: { title: name, artistName: songs[0].albumArtistName ?? songs[0].artistName, artwork: songs[0].artwork, catalogId: songs[0].albumCatalogId, libraryId: songs[0].albumLibraryId }, tracks: () => songs }); })()"
+        },
+        { "wait": 2500 },
+        {
+          "name": "header",
+          "probe": "JSON.stringify((() => { const p = document.querySelector('#diary-add')?.closest('.panel'); const t = p?.querySelector('.panel__title')?.textContent ?? null; return { header: t, matches: t === 'Review: ' + window.__reviewsAlbum, done: p?.querySelector('#diary-done')?.getAttribute('title') ?? p?.querySelector('#diary-done')?.dataset.hint ?? null }; })())",
+          "expect": { "matches": true, "done": "/review done/" }
+        },
+        { "snap": "review" },
+        { "eval": "document.querySelector('#diary-back')?.click()" },
+        { "wait": 900 },
+        {
+          "name": "back",
+          "probe": "document.querySelector('#diary-add')?.closest('.panel')?.querySelector('.panel__title')?.textContent",
+          "expect": "Album Reviews"
+        },
+        {
+          "eval": "(async () => { const inv = window.__TAURI_INTERNALS__.invoke; const made = (await inv('diary_list')).map((s) => s.id).filter((id) => !window.__reviewsBefore.includes(id)); for (const id of made) await inv('diary_delete', { id }); window.__reviewsMade = made.length; })()"
+        },
+        { "wait": 500 },
+        { "name": "cleanup", "probe": "String(window.__reviewsMade)", "expect": "/^[01]$/" }
+      ]
+    },
+    {
+      "id": "reviews-settings",
+      "covers": "features/DIARY.md",
+      "kind": "clip",
+      "source": "dev",
+      "size": "max",
+      "seconds": 4,
+      "about": "Settings › Album Reviews: the section title, Grow on open's choices, the agent row's words.",
+      "steps": [
+        { "reload": true },
+        { "wait": ".panel__title" },
+        { "wait": 2500 },
+        { "eval": "import('/src/layout-bus.ts').then((m) => m.requestSetting('diarygrow'))" },
+        { "wait": 1800 },
+        {
+          "name": "section",
+          "probe": "JSON.stringify((() => { const txt = document.body.innerText; return { section: /Album Reviews/i.test(txt), newReviews: /New reviews/.test(txt), everyReview: /Every review/.test(txt), oldChoice: /New entries|Every entry/.test(txt) }; })())",
+          "expect": { "section": true, "newReviews": true, "everyReview": true, "oldChoice": false }
+        },
+        { "snap": "settings" }
+      ]
+    },
+    {
+      "id": "reviews-compass",
+      "covers": "features/DIARY.md",
+      "kind": "clip",
+      "source": "dev",
+      "size": "max",
+      "seconds": 4,
+      "about": "Ctrl+Space, the old word \"diary\" (set by script): the card is found as Album Reviews.",
+      "steps": [
+        { "reload": true },
+        { "wait": ".panel__title" },
+        { "wait": 2500 },
+        { "key": "Ctrl+Space" },
+        { "wait": 500 },
+        { "eval": "(() => { const i = document.querySelector('.compass__input'); i.value = 'diary'; i.dispatchEvent(new Event('input', { bubbles: true })); })()" },
+        { "wait": 700 },
+        {
+          "name": "found",
+          "probe": "JSON.stringify([...document.querySelectorAll('.compass__row .compass__title')].map((t) => t.textContent).slice(0, 8))",
+          "expect": { "$has": "Album Reviews" }
+        },
+        { "snap": "compass" },
+        { "key": "Escape" }
+      ]
+    }
+  ]
+}

@@ -69,6 +69,8 @@ import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { SIZE_KEYS, sizeSeen, type SizeSlot } from "./surface";
 import { restartWalk } from "./walk";
 import { hiddenCount, clearHidden } from "./home";
+import { displayHz } from "./display-hz";
+import { spinFps } from "./spin-steps";
 import { clearMarks, countText, markCount, onSuggestChange } from "./suggest";
 import {
   sotdSettings, outletStatuses, refreshSotdSettings, onSotdChange,
@@ -97,7 +99,8 @@ interface ChoiceRow {
   kind: "choice";
   id: string;
   label: string;
-  hint?: string;
+  /** A function when the words depend on the moment (Spin FPS names the display's rate). */
+  hint?: string | (() => string | undefined);
   /** A store key — or `get`/`set` for a value another owner holds (the Rust settings). */
   key?: keyof Settings;
   get?: () => string;
@@ -178,7 +181,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
   { section: "Skin settings", row: "oceancards", skin: "ocean" }, // Ocean card opacity, built 2026-09-23
   { section: "Skin settings", row: "oceanlight", skin: "ocean" }, // Ocean album light, built 2026-09-23
-  { section: "Diary" }, // the Diary card's section, built 2026-09-24
+  { section: "Album Reviews" }, // the card's section, built 2026-09-24 as "Diary"
   { section: "Connections", row: "agentdiary" }, // Agents use the Diary, built 2026-09-24
   { section: "Skin settings", row: "glasswallpaper", skin: "glass" }, // Glass Canvas (Cover Wallpaper), built 2026-09-24
   { section: "Skin settings", row: "glasstiles", skin: "glass", via: { row: "glasswallpaper", values: ["covers"] } },
@@ -209,7 +212,11 @@ const NEW_MARKS: NewMark[] = [
   { section: "Playlists", row: "createsummonsolo" }, // Also when Playlists is the only card, built 2026-10-16 (FUTURE-SETTINGS §16)
   // Cover load animations, one toggle per card, built 2026-10-17 (UX-COVERUPS.md §7.12)
   ...["library", "playlists", "home", "search", "queue", "history", "rewind", "radio", "diary"].map((id): NewMark => ({ section: "Cards", row: `wait-${id}` })),
+  { section: "Skin settings", row: "pressvinylfps", skin: "press", via: { row: "pressvinyl", values: ["spin"] } }, // Spin FPS, built 2026-10-17 (VINYL.md §12)
 ];
+/** A choice or range row's hint: its words, or the function that gives them now. */
+const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
+  typeof r.hint === "function" ? r.hint() : r.hint;
 const markKey = (m: NewMark) => (m.row ? `row:${m.row}` : `sec:${m.section}`);
 const unseen = (key: string) => !setting("quickSeen").includes(key);
 /** An unseen mark that can lead you somewhere: its row's skin is the one on now. */
@@ -329,7 +336,7 @@ const CARD_ROWS: Record<(typeof HIDEABLE_CARDS)[number], { label: string; hint: 
   history: { label: "History", hint: () => "What you played, day by day" },
   rewind: { label: "Rewind", hint: () => (setting("rewindAutoShown") ? "Your listening, ranked" : "Shows after 50 plays") },
   radio: { label: "Radio", hint: () => "Apple's stations" },
-  diary: { label: "Diary", hint: () => "Your album journal" },
+  diary: { label: "Album Reviews", hint: () => "Your notes and scores on albums, song by song" },
   rulez: { label: "Rulez", hint: () => "Your own rules (Max only)" },
 };
 const cardRow = (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
@@ -355,7 +362,7 @@ const cardRow = (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
  *  (the default), off = instant. The words are his draft (§7.12). */
 const WAIT_LABEL: Record<(typeof REVEAL_CARDS)[number], string> = {
   library: "Library", playlists: "Playlists", home: "Home", search: "Search", queue: "Queue",
-  history: "History", rewind: "Rewind", radio: "Radio", diary: "Diary",
+  history: "History", rewind: "Rewind", radio: "Radio", diary: "Album Reviews",
 };
 const WAIT_HINT = "On: the card shows once its covers are in, in one smooth wave. Off: it shows at once, and covers pop in as they load";
 const waitRow = (id: (typeof REVEAL_CARDS)[number]): ToggleRow => ({
@@ -443,7 +450,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "motion", label: "Motion", hint: "The three Animate rows, Fancy scrubber, and If graphics fail", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
   {
     id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, and the Press record player",
-    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed"],
+    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -475,7 +482,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "homeHideLasts", "homeHidden"] },
   { id: "cards", label: "Cards", hint: "Every card back in the picker, and every card waits for its covers. Rewind stays out until 50 plays", keys: ["hiddenCards", "instantCards"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
-  { id: "diary", label: "Diary", hint: "Rescale scores and Grow on open. Not your entries — those are your writing, not a setting", keys: ["diaryRescale", "diaryGrow"] },
+  { id: "diary", label: "Album Reviews", hint: "Rescale scores and Grow on open. Not your reviews — those are your writing, not a setting", keys: ["diaryRescale", "diaryGrow"] },
 ];
 /** The groups the Look and feel row resets; LOOK_PARTS get their own indented rows (menus does not). */
 const LOOK_AND_FEEL = ["look", "schedule", "motion", "skinrows", "menus"];
@@ -544,7 +551,7 @@ export function settingsRows(): SettingEntry[] {
       .filter((r) => r.kind !== "html" && r.kind !== "head")
       .map((r): SettingEntry => {
         const label = r.label;
-        const hint = r.kind === "choice" || r.kind === "range" ? () => r.hint : (r.hint ?? (() => undefined));
+        const hint = r.kind === "choice" || r.kind === "range" ? () => rowHint(r) : (r.hint ?? (() => undefined));
         const when = r.when ?? (() => true);
         let control: SettingEntry["control"];
         if (r.kind === "toggle" && r.key) {
@@ -1394,6 +1401,17 @@ function mountSettings(
           when: () => currentSkin() === "press" && setting("pressVinyl") === "spin",
         },
         {
+          kind: "choice", id: "pressvinylfps", label: "Spin FPS", key: "pressVinylFps", menu: true,
+          hint: () => {
+            const hz = displayHz();
+            const fps = Math.round(spinFps(hz, Number(setting("pressVinylFps")) || 120));
+            const now = hz ? `. On this ${hz} Hz display: ${fps} FPS` : "";
+            return `Press only. The most times a second the record redraws. A lower number uses less power${now}`;
+          },
+          options: [{ value: "60", label: "60" }, { value: "120", label: "120" }, { value: "144", label: "144" }, { value: "240", label: "240" }],
+          when: () => currentSkin() === "press" && setting("pressVinyl") === "spin",
+        },
+        {
           kind: "toggle", id: "pressvinylplate", label: "Show record plate", key: "pressVinylPlate",
           hint: () => "Press only. The offset ink behind the record. Off: only the record, a little larger",
           get: () => setting("pressVinylPlate"),
@@ -1971,8 +1989,8 @@ function mountSettings(
       ],
     },
     {
-      // The Diary card (docs/features/DIARY.md §5). His call 7B: a score is the number you typed.
-      title: "Diary",
+      // The Album Reviews card (docs/features/DIARY.md §5). His call 7B: a score is the number you typed.
+      title: "Album Reviews",
       rows: [
         {
           kind: "choice", id: "diaryrescale", label: "Rescale scores", key: "diaryRescale",
@@ -1981,8 +1999,8 @@ function mountSettings(
         },
         {
           kind: "choice", id: "diarygrow", label: "Grow on open", key: "diaryGrow",
-          hint: "The Diary grows over the card beside it when an album opens: taller in Max, wider in Midi",
-          options: [{ value: "new", label: "New entries" }, { value: "every", label: "Every entry" }, { value: "never", label: "Never" }],
+          hint: "Album Reviews grows over the card beside it when an album opens: taller in Max, wider in Midi",
+          options: [{ value: "new", label: "New reviews" }, { value: "every", label: "Every review" }, { value: "never", label: "Never" }],
         },
       ],
     },
@@ -2109,8 +2127,8 @@ function mountSettings(
         {
           kind: "toggle",
           id: "agentdiary",
-          label: "Agents use the Diary",
-          hint: () => "Lets a connected agent read your Diary and write notes, scores and dates in it",
+          label: "Agents use Album Reviews",
+          hint: () => "Lets a connected agent read your album reviews and write notes, scores and dates in them",
           get: () => agentDiary,
           set: (on) => {
             agentDiary = on;
@@ -2399,7 +2417,7 @@ function mountSettings(
   const rowHTML = (r: Row): string => {
     if (r.kind === "html") return r.html();
     if (r.kind === "head") return `<h4 class="set__sub-head">${esc(r.label)}</h4>`;
-    const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.hint?.();
+    const hint = r.kind === "choice" || r.kind === "range" ? rowHint(r) : r.hint?.();
     const tip = hint ? ` title="${esc(hint)}"` : "";
     const chipSlot = "key" in r && r.key && (RULE_KEYS as readonly string[]).includes(r.key) ? `<span data-rule-chip="key:${r.key}"></span>` : "";
     const label = `<span class="set__label">${esc(r.label)}${newRow(r.id) ? newBadge(`row:${r.id}`) : ""}${chipSlot}</span>`;
@@ -2604,7 +2622,7 @@ function mountSettings(
   // shown, so a hit on it is a dead end (§10.4).
   const rowText = (s: Section, r: Row): string => {
     if (r.kind === "html") return ""; // markup, no label and no hint: never a match
-    const hint = r.kind === "choice" || r.kind === "range" ? r.hint : r.kind === "head" ? undefined : r.hint?.();
+    const hint = r.kind === "choice" || r.kind === "range" ? rowHint(r) : r.kind === "head" ? undefined : r.hint?.();
     return `${r.label} ${s.title} ${hint ?? ""}`.toLowerCase();
   };
   const matchRow = (s: Section, r: Row): boolean => {

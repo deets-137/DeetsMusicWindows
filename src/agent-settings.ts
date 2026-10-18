@@ -286,6 +286,7 @@ const SPECS: Spec[] = [
   storeChoice("Skin settings", "pressVinyl", "Record player", [{ value: "spin", label: "Spin" }, { value: "still", label: "Still" }, { value: "off", label: "Off" }], { only: "Press only", note: skinNote("press", "Press") }),
   storeChoice("Skin settings", "pressVinylWhere", "Show record on", [{ value: "stage", label: "Stage" }, { value: "card", label: "Stage + card" }, { value: "everywhere", label: "Everywhere" }], { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
   storeChoice("Skin settings", "pressVinylSpeed", "Spin speed", [{ value: "16", label: "16⅔" }, { value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
+  storeChoice("Skin settings", "pressVinylFps", "Spin FPS", [{ value: "60", label: "60" }, { value: "120", label: "120" }, { value: "144", label: "144" }, { value: "240", label: "240" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
   storeToggle("Skin settings", "pressVinylPlate", "Show record plate", { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
   {
     key: "menuMode", label: "Open menus on hover", section: "Menus, hints and notices", kind: "toggle", options: ON_OFF,
@@ -406,8 +407,8 @@ const SPECS: Spec[] = [
   ]),
   storeToggle("Rewind", "replayKeep", "Keep every Replay"),
   // ── Diary (docs/features/DIARY.md §5) ──
-  storeChoice("Diary", "diaryRescale", "Rescale scores", [{ value: "ask", label: "Ask" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }]),
-  storeChoice("Diary", "diaryGrow", "Grow on open", [{ value: "new", label: "New entries" }, { value: "every", label: "Every entry" }, { value: "never", label: "Never" }]),
+  storeChoice("Album Reviews", "diaryRescale", "Rescale scores", [{ value: "ask", label: "Ask" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }]),
+  storeChoice("Album Reviews", "diaryGrow", "Grow on open", [{ value: "new", label: "New reviews" }, { value: "every", label: "Every review" }, { value: "never", label: "Never" }]),
   // ── Song of the Day (docs/integrations/DeetsOTD.md §8.8) ──
   // Five rows live in Rust; the sixth (the suggestion) is a view preference in the store.
   // The switch itself is OFF ONLY: an agent may take the feature away, never give it (§5 2B).
@@ -464,9 +465,9 @@ const SPECS: Spec[] = [
     note: (v) => (v === "off" ? "Play history is hidden from agents now. Only you can turn it on again, in DeetsMusic › Settings › Connections." : undefined),
   }),
   // DIARY.md §10: a privacy gate over private writing, so off only, like the two above.
-  rustToggle("Connections", "agentDiary", "Agents use the Diary", async () => (await rustSettings()).agentDiary, (on) => invoke("settings_set_agent_diary", { on }), {
+  rustToggle("Connections", "agentDiary", "Agents use Album Reviews", async () => (await rustSettings()).agentDiary, (on) => invoke("settings_set_agent_diary", { on }), {
     offOnly: true,
-    note: (v) => (v === "off" ? "The Diary is closed to agents now. Only you can turn it on again, in DeetsMusic › Settings › Connections." : undefined),
+    note: (v) => (v === "off" ? "Album Reviews is closed to agents now. Only you can turn it on again, in DeetsMusic › Settings › Connections." : undefined),
   }),
   // ── Updates ──
   storeChoice("Updates", "updateMode", "Get updates", [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }]),

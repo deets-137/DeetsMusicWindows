@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 50 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 636 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 643 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -554,6 +554,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--pop-shift` | `var(--space-1)` | — | how far a panel and a new row travel in |
 | `--pop-scale` | `0.97` | — | a panel's size as it starts to arrive |
 | `--pop-ease` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | — | fast start, soft stop |
+| `--nudge-dur` | `var(--pop-in)` | — | A click that starts nothing (the Library ⟳ while a sync runs, ideas/apple-calls.md §4): the button dips once and comes back, in the pop family's time and ease. |
+| `--nudge-ease` | `var(--pop-ease)` | — |  |
+| `--nudge-scale` | `0.86` | — | the dip; an icon square must read it, a panel's 0.97 does not |
 | `--set-section-gap` | `var(--space-3)` | — | settings card (SETTINGS.md) |
 | `--set-row-h` | `var(--icon-lg)` | — | one consistent row height (matches a panel action) |
 | `--set-log-rows` | `5` | — | The Song of the Day record scrolls past five rows (docs/integrations/DeetsOTD.md §10.6). A row is --set-row-h plus its own padding, so five of them plus the hairlines. |
@@ -685,6 +688,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--present-num` | `clamp(40px, 11cqi, 128px)` | — | the counts: they follow the card's width (cqi) |
 | `--present-roll-dur` | `1.2s` | — | a count that moved rolls up to its new value |
 | `--present-in-delay` | `calc(var(--grow-dur) * 0.4)` | — | the words fade in once the clip is mostly open (--grow-rows-at's fraction) |
+| `--notes-gap` | `var(--space-3)` | — | An album's full Apple note (present.ts openNotes, features/album-notes.md): the same view, words in place of counts. — paragraph ↔ paragraph, song row ↔ its words |
+| `--notes-measure` | `68ch` | — | the longest line: a wide grown card still reads as a column |
+| `--notes-short-fs` | `var(--fs-title)` | — | the short note, the first line in larger type (his draft §7) |
+| `--notes-lh` | `var(--lh-text)` | — | the note's line height |
 | `--lib-stuck-h` | `0px` | — | the height of a list's stuck header (.lib-view-bar / .lib-cols), its scroll-padding-top; the engine sets the measured value on each view, this is a list with none |
 | `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
 | `--sticky-bar-backdrop` | `var(--panel-backdrop)` | ocean, glass, cyber | the card's own frost (Glass); a see-through skin without one adds a blur |

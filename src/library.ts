@@ -3,6 +3,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { nextSyncStatus, type SyncStatus } from "./sync-hint";
 
 export interface Track {
   libraryId?: string;
@@ -54,6 +55,9 @@ export interface SyncEvent {
   /** `idle`: the sync lock is released. It comes after `done` / `error`, once the artist
    *  pass and the heal have ended too; a ⟳ click is refused until then. */
   phase: "start" | "progress" | "done" | "error" | "idle";
+  /** Set on `progress`: which pass sends the pages. `full` counts every song read in
+   *  `fetched`; `incremental` counts only the new songs (the ⟳'s hint, sync-hint.ts). */
+  kind?: "full" | "incremental";
   fetched?: number;
   count?: number;
   total?: number;
@@ -96,15 +100,20 @@ export function onSyncEvent(cb: (e: SyncEvent) => void): Promise<UnlistenFn> {
 // Busy from `start` (or any `progress`) to `idle`, the lock's release. The first subscriber
 // asks Rust once, so a card that mounts during a sync (the launch sync often starts before
 // the Library card is on screen) spins at once instead of standing still.
+// The status (sync-hint.ts) says how far the sync is, for the ⟳'s hover hint (§4).
 let busy = false;
-let lastProgress: { fetched?: number; total?: number } = {};
+let status: SyncStatus | null = null;
 const busyCbs = new Set<(busy: boolean) => void>();
+const statusCbs = new Set<(s: SyncStatus | null) => void>();
 let busyWired = false;
 
-function setBusy(b: boolean): void {
+function setStatus(s: SyncStatus | null): void {
+  // Busy from `start` (or any `progress`) to `idle`; `done` and `error` only finish up.
+  status = s;
+  for (const cb of statusCbs) cb(s);
+  const b = !!s;
   if (b === busy) return;
   busy = b;
-  if (!b) lastProgress = {};
   for (const cb of busyCbs) cb(b);
 }
 
@@ -114,19 +123,19 @@ function wireBusy(): void {
   let heard = false; // an event after the ask is newer than the ask's answer
   void onSyncEvent((e) => {
     heard = true;
-    if (e.phase === "progress") lastProgress = { fetched: e.fetched, total: e.total };
-    if (e.phase === "start" || e.phase === "progress") setBusy(true);
-    else if (e.phase === "idle") setBusy(false);
+    // `done` / `error` before any `start` heard: the card mounted late; the lock still holds.
+    if ((e.phase === "done" || e.phase === "error") && !busy) return setStatus({ stage: "finishing" });
+    setStatus(nextSyncStatus(status, e));
   });
   invoke<boolean>("library_sync_busy")
-    .then((b) => !heard && setBusy(b))
+    .then((b) => !heard && setStatus(b ? { stage: "start" } : null))
     .catch(() => {});
 }
 
 /** A sync holds the lock now: a ⟳ click would be refused. */
 export const syncBusy = (): boolean => busy;
-/** The last progress of the running sync (empty before the first page). */
-export const syncProgress = (): { fetched?: number; total?: number } => lastProgress;
+/** How far the running sync is; `null` when none runs. */
+export const syncStatus = (): SyncStatus | null => status;
 
 /** Follow the busy state. Calls `cb` at once with the current state. Returns an unsubscribe fn. */
 export function onSyncBusy(cb: (busy: boolean) => void): () => void {
@@ -134,4 +143,12 @@ export function onSyncBusy(cb: (busy: boolean) => void): () => void {
   busyCbs.add(cb);
   cb(busy);
   return () => busyCbs.delete(cb);
+}
+
+/** Follow the sync's status, every event. Calls `cb` at once. Returns an unsubscribe fn. */
+export function onSyncStatus(cb: (s: SyncStatus | null) => void): () => void {
+  wireBusy();
+  statusCbs.add(cb);
+  cb(status);
+  return () => statusCbs.delete(cb);
 }
