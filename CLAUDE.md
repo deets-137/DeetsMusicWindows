@@ -326,8 +326,10 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
   (through WMI; `[dev:app] inside the Claude package: started outside it`), so it plays and
   uses the same real dev folder as his terminal. Inside the package it could not play
   (-42585), and its private copy of `%APPDATA%` once broke the dev library (DEBUGGING.md
-  § Sign-in, *The two dev folders*). A Claude shell still READS `%APPDATA%` through the
-  package's copy: read the dev app through the bridge, CDP or a WMI-started `cmd`. Start the
+  § Sign-in, *The two dev folders*). The package's copies of the dev profiles were
+  deleted the same night, so a Claude shell reads the real dev files; a file a Claude shell
+  WRITES under `%APPDATA%` goes to the package's copy again, so write there only from a
+  WMI-started `cmd`. Start the
   dev app (`npm run dev:app`, in the background), then use the `deetsmusic` MCP tools
   (`search` / `list` → `play`, `queue`, `control`, `now_playing`). A `play` call returns
   after the song has started, and every play writes one `[perf] click→sound …` line to

@@ -1668,11 +1668,10 @@ failure: <reason>`, `user token captured`.
   plays. Ruled out by tests: the developer token, the Widevine version, the profile's Widevine
   store, a second stream on the Apple ID, the user token, the CDP port (WORKLOG 2026-10-17
   *night, later*). WMI cannot start a process from inside the package either (return value 2,
-  access denied). **So a desk test that needs sound runs on a dev app HE starts**; Claude drives
-  it over CDP (`webview-eval.mjs`, the shots runner) and the bridge, which work across the
-  package. Also: a shell inside the package reads the package's copy of `%APPDATA%` and
-  `%LOCALAPPDATA%` (`Packages\Claude_…\LocalCache\`), so the log of a dev app he started is
-  not the file Claude's shell sees; read his app's live state with `deetsmusic diag` instead.
+  access denied). Until the fix below, a desk test that needed sound ran on a dev app HE
+  started, and Claude drove it over CDP and the bridge. A shell inside the package read the
+  package's copy of `%APPDATA%` and `%LOCALAPPDATA%` (`Packages\Claude_…\LocalCache\`), so the
+  log of a dev app he started was not the file Claude's shell saw.
 - **The two dev folders broke the dev library (2026-10-17).** The package's copy is a merged
   view: a file the package has written is read from `LocalCache`, any other file from the real
   folder. At 21:05 he started a dev app from his terminal; the REAL
@@ -1688,8 +1687,13 @@ failure: <reason>`, `user token captured`.
   through WMI (`Win32_Process.Create`, return value 0) and streams that copy's output from
   `node_modules/.dev-app/<time>-<pid>.log`. The app then uses the real folder, and it
   **plays**: probed the same night, playback time 11 → 14 s. Ctrl+C on the script ends the
-  app's whole tree; a hard kill of the script leaves it running. To read the real folder
-  from a Claude shell, use a WMI-started `cmd` (`dir`, `copy` to a file outside AppData).
+  app's whole tree; a hard kill of the script leaves it running. **One dev profile
+  (2026-10-17, his ask):** the package's copies of `com.deetsmusic.dev` and `second.dev` were
+  copied into the real folders (`quick_check` ok on both) and deleted from `LocalCache`; the
+  21:05 seed is kept as `com.deetsmusic.dev.seed-2026-10-17.bak`, the bad `-wal` / `-shm` under
+  it in `corrupt-wal-2026-10-17`. With no copy left, a Claude shell reads the real files. A
+  file a Claude shell WRITES under `%APPDATA%` lands in `LocalCache` again and splits the view,
+  so write there only from a WMI-started `cmd` (or the app itself).
 - **Seeing what Edge looks up:** Process Monitor (`winget install
   Microsoft.Sysinternals.ProcessMonitor`), filter *Path contains* the scheme, click the link
   from a page console (`location.href = "<scheme>://x"`). `/Runtime` did not stop an

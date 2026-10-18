@@ -178,9 +178,10 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   with sound on a dev app he started (§12, Claude's run); rows 4–6 passed on his word
   (2026-10-17). **Open:** merge into `main`, then a release. `pressVinylFps` joined the usage
   allow-list; the DeetsSupport copy is deployed (`67b6dc0`, 2026-10-17).
-- **A dev app Claude starts cannot play (since 2026-10-16):** Apple refuses Widevine inside the
-  Claude package (-42585 / -1021); his own launch plays. Sound tests run on his launch.
-  DEBUGGING.md § Sign-in. Why it began on 2026-10-16 is not known.
+- **A dev app Claude starts plays again (fixed 2026-10-17, `642943a`):** `npm run dev:app` from
+  a Claude shell starts itself outside the Claude package through WMI, on the real dev folder,
+  and plays. The private copies of the dev profile are deleted (one dev profile now). Still not
+  known: why Widevine began to refuse the package on 2026-10-16. DEBUGGING.md § Sign-in.
 
 ### Build order (recommended 2026-10-15, for his next sessions)
 
