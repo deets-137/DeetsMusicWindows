@@ -74,6 +74,8 @@ the app can do any of these things.
 - [SpotifyRooms.md](SpotifyRooms.md) — an idea (2026-10-18): Spotify users in a room through their
   own Spotify desktop app (a link opens each song; the Windows media session reads and seeks);
   no Spotify key; the Web API and librespot routes set aside (§1); the probes first (§6).
+- [launch.md](launch.md) — a first draft (2026-10-18): the Product Hunt listing and the Reddit
+  posts for the launch; he rewrites the words; §5 the open questions.
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
   its first part was built (the stats cell grows over the card in Max).
 - [WebRooms.md](../features/WebRooms.md) — moved to features/ on 2026-10-13, when its app side
