@@ -52,8 +52,9 @@ export function onDiag(cb: (e: DiagEvent) => void): () => void {
 // ── Warnings and errors reach the log file as they happen ─────────────────────────
 // `log()` only fills the ring. `warn()` / `error()` also write one line through the Rust
 // `log_event` command (rate-limited there), so a release log shows a failure without a
-// crash or an unload. Same tag + data within DEDUPE_MS is sent once.
-type Level = "warn" | "error";
+// crash or an unload. Same tag + data within DEDUPE_MS is sent once. `info()` is the same
+// for a measurement that must reach the file (the `sound:switch` timing), not a failure.
+type Level = "info" | "warn" | "error";
 const DEDUPE_MS = 2000;
 let lastSent = { key: "", at: -Infinity };
 function send(level: Level, tag: string, data?: unknown): void {
@@ -70,6 +71,11 @@ function send(level: Level, tag: string, data?: unknown): void {
   invoke("log_event", { level, tag, data: text }).catch(() => {
     /* not under Tauri */
   });
+}
+
+export function info(tag: string, data?: unknown): void {
+  log(tag, data);
+  send("info", tag, data);
 }
 
 export function warn(tag: string, data?: unknown): void {

@@ -710,10 +710,13 @@ export function getWindowsMaster(): { value: number; db: number; known: boolean;
   return { value: windowsMaster, db: windowsMasterDb, known: windowsMasterKnown, airplay: !!airplayOutput };
 }
 
-/** airplay.ts: the speaker that plays now, or null when it lets go (Windows' output returns). */
-export function setAirplayOutput(name: string | null): void {
+/**
+ * airplay.ts: the speaker that plays now, or null when it lets go (Windows' output returns).
+ * `why` is for the `sound:output` line: the user let go, or the speaker was lost.
+ */
+export function setAirplayOutput(name: string | null, why: "user" | "airplay-lost" = "user"): void {
   airplayOutput = name ? { key: `airplay:${name}`, name, kind: "airplay" } : null;
-  setOutput(airplayOutput ?? windowsOutput ?? NO_OUTPUT);
+  setOutput(airplayOutput ?? windowsOutput ?? NO_OUTPUT, name ? "airplay-on" : why);
 }
 
 interface WindowsOutput {
@@ -725,14 +728,60 @@ interface WindowsOutput {
   muted: boolean;
 }
 function takeWindowsOutput(o: WindowsOutput | null): void {
+  const before = windowsOutput;
   windowsOutput = o ? { key: o.key, name: o.name, kind: o.kind } : null;
   if (o) {
     windowsMaster = Math.max(0, Math.min(1, o.volume));
     windowsMasterDb = Math.min(0, o.volumeDb);
     windowsMasterKnown = true;
   }
-  if (!airplayOutput) setOutput(windowsOutput ?? NO_OUTPUT);
+  // A new Windows device while the music plays here (not on a speaker): time the switch.
+  if (before && o && before.key !== o.key && !airplayOutput && isPlayingNow()) timeWindowsSwitch(before.kind, o.kind);
+  if (!airplayOutput) setOutput(windowsOutput ?? NO_OUTPUT, "windows");
   applySettings();
+}
+
+/** How long `sound:switch` watches after a Windows output change. */
+const SWITCH_WATCH_MS = 3000;
+/** A meter hop louder than this (K-weighted mean square, about −70 dB) is sound, not silence. */
+const SWITCH_HEARD_MS = 1e-7;
+
+/**
+ * `sound:switch` (AIRPLAY.md §13.2): after a Windows output change while playing, the ms to the
+ * first meter hop with sound, and `stallMs`, the time the audio clock lost against the wall
+ * clock over the watch (the new device's start). A hop can come before the device has
+ * switched, so the stall is the number to read; the hop needs the graph (the Equalizer on).
+ * Written to the log file (`diag.info`), so a release log has it too.
+ */
+function timeWindowsSwitch(fromKind: string, toKind: string): void {
+  const t0 = performance.now();
+  const c = ctx;
+  let heardMs: number | null = null;
+  const off = meterOn
+    ? onMeter((ms) => {
+        if (heardMs == null && ms > SWITCH_HEARD_MS) heardMs = Math.round(performance.now() - t0);
+      })
+    : () => {};
+  let stallMs = 0;
+  let last = c ? { wall: t0, clock: c.currentTime } : null;
+  const sample = window.setInterval(() => {
+    if (!c || !last) return;
+    const now = { wall: performance.now(), clock: c.currentTime };
+    stallMs += Math.max(0, now.wall - last.wall - (now.clock - last.clock) * 1000);
+    last = now;
+  }, 20);
+  window.setTimeout(() => {
+    window.clearInterval(sample);
+    off();
+    diag.info("sound:switch", {
+      from: fromKind,
+      to: toKind,
+      ms: heardMs,
+      stallMs: c ? Math.round(stallMs) : null,
+      graph: c ? c.state : "off",
+      meter: meterOn,
+    });
+  }, SWITCH_WATCH_MS);
 }
 
 /** Follow the Windows default output and its volume (phase 4). Events only: nothing polls. */
@@ -749,10 +798,11 @@ const onOutputChange = (cb: () => void): (() => void) => {
   return () => outputSubs.delete(cb);
 };
 
-export function setOutput(next: SoundOutput): void {
+/** `why` names the cause on the `sound:output` line (AIRPLAY.md §13.2). */
+export function setOutput(next: SoundOutput, why: "user" | "windows" | "airplay-lost" | "airplay-on" = "user"): void {
   if (next.key === output.key && next.kind === output.kind && next.name === output.name) return;
   output = next;
-  diag.log("sound:output", { kind: next.kind, name: next.name });
+  diag.log("sound:output", { kind: next.kind, name: next.name, why });
   // The output's remembered preset is a rule now (RULES.md §13): the engine hears the new
   // `output` fact and lays that preset on top of yours.
   outputSubs.forEach((cb) => cb());

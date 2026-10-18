@@ -83,13 +83,14 @@ let volTimer = 0;
 let volHeldUntil = 0; // a drag owns the slider for a moment; the poll must not yank it back
 let takenOver = false;
 let outputSpeaker = "";
-const applyTakeover = (c: Connected | null) => {
+/** `lost`: the speaker dropped the session (refresh saw it), for the `sound:output` line. */
+const applyTakeover = (c: Connected | null, lost = false) => {
   // Sound (SOUND.md §2.2): the output is the speaker while one plays, so its preset and the
   // panel's words follow it.
   const name = c?.speaker.name ?? "";
   if (name !== outputSpeaker) {
     outputSpeaker = name;
-    setAirplayOutput(c ? name : null);
+    setAirplayOutput(c ? name : null, lost ? "airplay-lost" : "user");
   }
   // The tap (AIRPLAY.md §12 item 8): the PC goes silent only once the session is up on the
   // tap; a session on the loopback, a lost speaker, a failed connect — the PC plays. The tap is
@@ -132,8 +133,9 @@ const refresh = async () => {
       const wasConnected = !!was;
       status = s;
       // Connected a moment ago, gone now, and Rust says why: the speaker dropped the session.
-      if (was && !s.connected && s.error && !recovery) void recover(was.speaker);
-      applyTakeover(s.connected);
+      const dropped = !!was && !s.connected && !!s.error;
+      if (dropped && !recovery) void recover(was.speaker);
+      applyTakeover(s.connected, dropped);
       if (wasConnected && !s.connected && s.error) note = s.error; // "Lost Living Room."
       if (!s.firewallSeeded && !note) note = null;
     }

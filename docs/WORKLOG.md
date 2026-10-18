@@ -12,6 +12,27 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (late night) — repo cleanup; the old AirPlay tracking build sorted
+
+**His asks:** clean up old dev builds and cargo pieces; what is uncommitted in the two old
+worktrees; what of the 2026-09-25 AirPlay build is still worth taking; port the Windows switch
+timing, document the stall lines, leave the switch timing out.
+- **Cleanup: 50.5 → 31.4 GB.** The merged worktree `.claude/worktrees/bold-zhukovsky-c324ec`
+  (6.4 GB; a 12 KB folder stub stays, Windows refused it) and its branch; 22 incremental folders
+  (4.6 GB, `npm run storage -- --prune`); `debug/deps` files older than 3 days in `target` and
+  `target-second` (7.7 GB); the CLI's debug builds (0.7 GB); `shots/scratch` (1.4 GB). Kept:
+  `installers/` (RELEASE.md §1b), both old worktrees, release builds, deetsmeter, other shots.
+  `cargo check` passes after it.
+- **`../DeetsMusic-identity`:** only `spike/` (81 MB), the evidence IDENTITY.md §8.1 names. Kept.
+- **`../DeetsMusic-aptel`:** a Claude session's 2026-09-25 build of AIRPLAY.md §13.2, never
+  tested or merged; none of it was in `main`. Sorted in AIRPLAY.md §13.2a: `sound:switch`, the
+  `sound:output` reason and `diag.info()` ported (sound.ts, airplay.ts, diag.ts); the stall /
+  drop lines and the crate's readings and quiet keep-alive documented as the reference; the
+  click → sound switch timing left out. The worktree and `../DeetsAirplay`'s uncommitted 0.4.2
+  stay as they are, as that reference.
+- **Checked:** tsc, `npm test`, docs:check. Not run: the §13.2a desk test (a Windows output
+  change while playing).
+
 ## 2026-10-17 (night, later) — the ⟳ hint passed; the spin-rate eye test
 
 - **The Library ⟳'s hint:** desk test passed (his word). ideas/apple-calls.md §4.1, HANDOFF.

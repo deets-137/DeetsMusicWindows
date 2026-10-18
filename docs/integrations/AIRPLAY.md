@@ -533,7 +533,7 @@ cause cannot be read, for three reasons:
 - **An output change does not say why.** `sound:output` does not say if the user, Windows or
   a lost speaker changed it.
 
-### 13.2 The tracking (designed, not built)
+### 13.2 The tracking (designed; built in part, §13.2a)
 
 | Line | When | Fields |
 |---|---|---|
@@ -553,6 +553,34 @@ cause cannot be read, for three reasons:
 🔵 **Open (for the owner, after the first numbers):** the targets. The tracking gives the
 baseline first. A draft to react to: speaker → PC under 300 ms of silence, PC → speaker under
 2 s to sound, speaker → speaker under 2.5 s.
+
+#### 13.2a Where each line stands (2026-10-17)
+> **Part:** built in part · 2026-10-17
+
+A Claude session built the whole table on 2026-09-25 in the worktree `../DeetsMusic-aptel`
+(branch `airplay-telemetry`, uncommitted) with crate 0.4.2 (uncommitted in `../DeetsAirplay`).
+It was never desk-tested or merged. On 2026-10-17 he picked the parts (his calls):
+
+- **Ported to `main` (2026-10-17): `sound:output` `why` and `sound:switch`.** `setOutput(next,
+  why)` in sound.ts; airplay.ts passes `airplay-lost` when refresh sees a dropped session.
+  `timeWindowsSwitch` watches 3 s after a Windows device change while playing (not on a speaker):
+  `ms` to the first meter hop louder than about −70 dB (only with the graph on, `meter: true`),
+  and `stallMs`, the time the audio clock lost against the wall clock, which is the number to
+  read (a hop can come before Windows moves the stream). It goes to the log file through the new
+  `diag.info()` (`fe: sound:switch {…}`). Desk test: play, change the Windows output (headphones
+  ↔ speakers); one `sound:switch` line in the log, and `sound:output` with `why: "windows"`.
+- **Documented, not built: `airplay: stall` / `stall-end` and the richer `airplay: drop`.** The
+  2026-09-25 build is the reference: a 50 ms watch, while connected and playing, writes `stall`
+  after 2 s with no packet that carried sound (louder than ±1 LSB, because the tap's TPDF dither
+  turns a silent source into −1 / 0 / 1), with the RTT p95 and the last error; `stall-end
+  after N s` when sound returns; `drop after N s: found by <how>`. It needs the crate's new
+  readings on `Session` (`since_reply`, `last_error`, `keepalive_failures`, `first_sound_at`,
+  `sound_packets`) and the quiet keep-alive above (the live `airplay.log` rolled in about 15 h of
+  use on 2026-10-16: 4,759 of its 10,342 lines were `/feedback`). To build it on today's
+  `airplay.rs` (the retune and the stats tick of §13.4–§13.5 came after): the watch rides the
+  existing tick, not a new thread (DEBUGGING.md § Threads).
+- **Left out (his call): `airplay: switch`**, the click → speaker sound stage split. It changes
+  the connect and disconnect commands that §13.5 rewrote; it waits until a slow switch needs it.
 
 ### 13.3 After the PC sleeps — found, then built
 
