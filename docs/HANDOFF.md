@@ -221,6 +221,16 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
+  [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8
+  faults and 2 visual faults (a third, V3, was a test artifact); his ask was to fix all of them in
+  one sitting. Every guard and fault shot in `checks/rewind-sweep.mjs` passes, and so do the
+  motion shots and readability in all 30 looks. **Schema v22** (`playlist_names`). His calls:
+  K1–K3, a deleted playlist keeps its name, one "Deleted playlists" row, saves every 30 s.
+  **Open:** his desk test (DEETS-REWIND.md §8.5) and his look at what Claude decided there. V1's
+  rule (`styles.css`) also changes the Queue's and every revealed list's entrance: watch them.
+  Next sweep: his pick, or the ledger's order (QUALITY-SWEEP.md §7).
+
 - **The Library ⟳'s hint on a refused click** (ideas/apple-calls.md §4, committed `f0d5cfd` on
   `seventheenth`): desk test passed 2026-10-17 (§4.1, Claude's run and his word). **Open:** merge
   into `main`, then a release.

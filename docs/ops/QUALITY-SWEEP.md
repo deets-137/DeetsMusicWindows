@@ -1,7 +1,7 @@
 ---
 status: sop
 desk_test: none
-sources: [docs/ops/DESK-TESTS.md, docs/ops/checks/README.md, scripts/shots.mjs]
+sources: [docs/ops/DESK-TESTS.md, docs/ops/checks/README.md, scripts/shots.mjs, docs/ops/checks/sweep-helpers.mjs, docs/ops/checks/sweep-read.mjs, docs/ops/checks/smooth-monitor.js]
 updated: 2026-10-18
 ---
 # Quality sweep — stress-test every shipped feature, one at a time
@@ -34,6 +34,14 @@ Terms:
 | C4 | A found fault lands in HANDOFF.md › Open now, ranked likelihood × impact. Fixes go one at a time, each with its desk test | a sweep that fixes 20 things in 10 files is the untested stack of 2026-09-17 by another door |
 | C5 | Cadence: a baseline over the ledger now; then a sweep after each shipped feature; the whole guard set re-run before a release | the guard set is the payoff: a regression suite the release check can run |
 | C6 | The doc lives in `ops/`, beside DESK-TESTS.md | it is a procedure in use, not an idea |
+| C7 (F1) | The guards run as a release-check step for a release with a big feature. He decides at release time which releases count as big, and he has the final say | a small release does not need the whole set; the call is his in the moment |
+| C8 (F2) | A guard that needs his real library is marked dev-only. The release check skips it; it runs in the sweep itself | the release check must run unattended |
+| C9 | Every sweep has a visual pass (§3a): the motion monitor and pop counting over the feature's own movements, and the readability check in every theme and skin | a sweep is about a feature that is "perfect" and complete, to the Deets standard: a flash, a jitter or text that does not read is a fault like any other |
+| C10 | Reading his data is a fixed step (§3, step 3): a read-only probe of the live and dev databases, kept as `checks/<feature>-data.mjs` | on Rewind it was the strongest evidence: it proved two faults with numbers and ruled out three scenarios |
+| C11 | The visual pass stays a fixed part, not an option (C9) | on Rewind it found the two most visible faults; no agent lens saw them |
+| C12 | A sweep list builds on the shared steps in `checks/sweep-helpers.mjs` | two script mistakes on Rewind (a key sent to the wrong target, a play that is only a menu glyph) cost a rerun; a shared step fixes them once |
+| C13 | A fixed run order, and a warning to him before any shot that plays music (§3, step 5) | the readability shot takes about 8 minutes and changes his dev app's look 30 times; music comes out of his speakers |
+| C14 | Readability is read per card (`checks/sweep-read.mjs`): the card's own failures are the sweep's faults; a role that fails on other cards too is one line to the open readability item | on Rewind the shared count (103) hid seven failures that were Rewind's own |
 
 ## 2. What a sweep is not
 
@@ -53,7 +61,12 @@ Terms:
 2. **Start the agents**: one per lens (§4), in one message, each with the same brief (§5) and its
    lens. Give each the feature doc and the files in `sources`. Nothing else: a focused agent
    writes a focused list.
-3. **Triage** each scenario against the code yourself. Every scenario ends in one of five bins:
+3. **Read the data, then triage** (C10). Write a read-only probe of the feature's tables,
+   `checks/<feature>-data.mjs` ([rewind-data.mjs](checks/rewind-data.mjs) is the shape): one
+   query per scenario that data can prove or rule out (a count of the wrong state, a ratio
+   against the expected one). Run it on the live app's database and the dev app's. Never write
+   to either. Then triage each scenario against the code and those numbers. Every scenario ends
+   in one of five bins:
 
    | bin | meaning | what happens |
    |---|---|---|
@@ -66,12 +79,57 @@ Terms:
 4. **Script the guards** as one shots list per feature, `checks/<feature>-sweep.json`, built in
    `shots/scratch/` first ([checks/README.md](checks/README.md), "How to add one"). The demo for layout, motion and keyboard; the
    dev app (`"source": "dev"`) for data, cache and log lines. Every probe has an `expect`.
-   The method and the safety rules are DESK-TESTS.md §6.1 and §6.2.
-5. **Run it**, read the strips and the probes, `--seen` each picture, read the `diag` ring and
-   the log after a dev-app run.
+   The method and the safety rules are DESK-TESTS.md §6.1 and §6.2. A guard for a fault that is
+   not fixed yet is a **fault shot** (`fault-…`): it fails today on purpose and passes when its
+   fix lands. The visual shots (§3a) go in the same list (`visual-…`). Build the list on
+   [checks/sweep-helpers.mjs](checks/sweep-helpers.mjs) (C12): saving and putting back the
+   slots and keys, a card into a slot, a menu pick, play, a key press, a Ctrl+click, the motion
+   monitor and its report. A step the helpers lack, and that a second sweep would need, goes
+   into the helpers, not into the feature's list.
+5. **Run it, in this order** (C13), with one line to him before any shot that plays music
+   (how long, which song):
+   1. the guards and the fault shots (`--only` with their ids);
+   2. the motion shots (`visual-…` without `read`);
+   3. the readability shot last: about 8 minutes, and it changes the dev app's look 30 times.
+      Tell him first. Read it with
+      `node docs/ops/checks/sweep-read.mjs shots/<feature>-sweep/<version> <card>` (C14).
+
+   Read the strips and the probes, `--seen` each picture, read the `diag` ring and the log after
+   a dev-app run. A shot that fails on a script error is the script's fault, not the feature's:
+   fix it (in the helpers when it is shared) and run that shot again.
 6. **Record**: the ledger row (§7), a `### Sweep` part in the feature doc with the scenario table
    (LISTENERS.md §8.11 is the shape), one line in WORKLOG.md, and the ranked faults in HANDOFF.
 7. **Restore** every setting the run changed.
+
+### 3a. The visual pass (C9, 2026-10-18)
+
+The agents' lenses find wrong states. They do not see a flash, a jump or text that does not
+read, so every sweep also measures those, on the feature's own movements:
+
+- **The motion monitor** ([checks/smooth-monitor.js](checks/smooth-monitor.js), [checks/README.md](checks/README.md) part 2a)
+  armed over every movement the feature has: its open, each choice it offers, its menus, and
+  each redraw something else causes (a song change, a store reload). A step before it sets
+  `window.__monExtra` to the feature's own parts (rows, buttons, art) and `window.__monMs` to the
+  watch length; the report probe expects no flash, no snap and no jitter. A hit that is designed
+  motion goes in the table in part 2a of checks/README.md with its reason; any other hit is a fault.
+- **Pops**: each step that moves something keeps its frames (`"frames"`, `"region"`), so a frame
+  that jumps is labelled in the strip (SHOTS.md §5j). Read the strips.
+- **Readability**: a `read` step on each view of the feature, in every theme and skin
+  (`"looks": [{ "theme": "*", "skin": "*" }]`, `ALL_LOOKS` in the helpers), scored against WCAG
+  AA (checks/README.md, part 2b). Read per card with `sweep-read.mjs` (C14): it splits the
+  card's own failures (faults of this sweep) from a role that fails on other cards in the same
+  look (one line to the open readability item).
+- **Designed motion in the report**: `motionReport(name, { only, hold, artFrom, rise })` in the
+  helpers takes out what the reveal is meant to do (a list's hold and release, the wave's 4 px
+  rise, a cover's fade-in from 30 %) and keeps the raw counts in the console file. Everything
+  else fails the shot. Use `read(label)` from the helpers, not a bare `read` step: it turns the
+  hover hints off for the read (seven false failures on Rewind came from a hint left up).
+- **Frames by eye**: the monitor names the part and the time, not what the user sees. Read the
+  frame strip of each hit before you call it. Crop the card when the strip is too small to read.
+
+Both run on the dev app (C8 applies: they need his real data to show real rows). The shots
+are `visual-…` in the feature's sweep list; [checks/rewind-sweep.mjs](checks/rewind-sweep.mjs)
+is the first.
 
 ## 4. The lenses
 
@@ -148,7 +206,7 @@ it: mark them `re-sweep` and clear them in the next baseline.
 | CREDITS | | | | | |
 | SOUND · AUDIO-QUALITY | | | | | one Web Audio graph |
 | VINYL | | | | | the spin has its own telemetry (VINYL.md §8) |
-| DEETS-REWIND | | | | | |
+| DEETS-REWIND | 2026-10-18 | 31 | 8 + 2 visual, all fixed 2026-10-18 | rewind-sweep.json | the first full sweep: three lenses and the visual pass; DEETS-REWIND.md §8; his desk test open |
 | DIARY | | | | | |
 | LOOK-SCHEDULE | | | | | |
 | COMPASS | | | | | |
@@ -159,7 +217,9 @@ it: mark them `re-sweep` and clear them in the next baseline.
 | integrations: LASTFM · AIRPLAY · ROOMS · FRIENDS · DeetsOTD · EXTENSION · AGENT | | | | | one row each when reached; the workers need the second app |
 
 Order of the baseline: the features built since 2026-10-10 first (they are freshest in the
-code and the docs), then the rest oldest-doc first. He can name one to jump the line.
+code and the docs), then the rest oldest-doc first. He can name one to jump the line: on
+2026-10-18 he started with the oldest shipped feature, DEETS-REWIND (its doc first committed
+2026-06-30).
 
 ## 8. Cost
 
@@ -169,12 +229,6 @@ the fixes included; without the fixes, a sweep is a part of a sitting. The ledge
 rows, so the baseline is a run of sittings, not one. That is the reason for C5: the baseline is
 started, not finished, and the per-feature sweeps keep it current from then on.
 
-## 9. Open forks
+## 9. Forks
 
-- **F1 Re-run before a release.** Every guard in `checks/*-sweep.json`, as one release-check
-  step (RELEASE.md §0b), or by hand from the ledger. My recommendation: the check, once three
-  features have guards, so the step is tested on a small set first.
-- **F2 The guard's source.** A guard that needs his real library runs on the dev app only, so
-  the release check cannot run it unattended. Keep two lists per feature (demo and dev), or mark
-  dev-only guards and skip them in the check. My recommendation: mark and skip; the dev-only
-  ones run in the sweep itself.
+None open. F1 and F2 were closed on 2026-10-18 (C7 and C8 in §1).

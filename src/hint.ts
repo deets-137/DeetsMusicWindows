@@ -256,6 +256,13 @@ export function hideHint(): void {
   hide();
 }
 
+/** Hide the hint if its row is inside `root`: the reveal hides a list while it reloads (its
+ *  rows stay on the page, invisible), and a hint must not float over the empty card
+ *  (DEETS-REWIND.md §8, V2). */
+export function hideHintIn(root: Element): void {
+  if (anchor && root.contains(anchor)) hide();
+}
+
 function hide(): void {
   if (!anchor && !showing && !timer) return; // nothing is up — a scroll must cost nothing
   clearTimeout(timer);

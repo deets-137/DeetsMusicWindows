@@ -4,13 +4,12 @@
 // carrying real minutes listened · play count. All local — nothing leaves the machine.
 //
 // Data + grouping semantics live in rewind.ts; this file is markup + wiring only.
-// Known lag, by design: the CURRENTLY playing song's event row isn't finalized until
-// the next song starts, so its in-flight minutes aren't counted yet — the board
-// catches up one song later (we re-render on queue changes).
+// Known lag, by design: the CURRENTLY playing song's minutes show once it ends. The list
+// re-reads when a play's start or end is written (stats.onPlayEvent), not at the 30 s saves.
 
 import "./styles/qcard.css";
 import "./styles/rewind.css";
-import * as queue from "./queue";
+import { onPlayEvent } from "./stats";
 import type { Track } from "./library";
 import { onTracksChange, tracks as libraryTracks } from "./track-store";
 import { esc } from "./collection-card";
@@ -27,7 +26,7 @@ import {
   type RewindRow, type RewindStat, type RewindWindow,
 } from "./rewind";
 import type { CardDef, CardInstance } from "./cards";
-import { makeReplayPlaylist, makePicksPlaylist } from "./replay";
+import { makeReplayPlaylist, makePicksPlaylist, makePickedPlaylist, NothingToAdd } from "./replay";
 import { sotdOn, pickMenu, allPicks, onSotdChange, isPosted, withdrawAsking } from "./sotd";
 import { rowDrag } from "./row-drag";
 import { ROW_PX } from "./art-size";
@@ -79,7 +78,7 @@ function mountRewind(host: HTMLElement): CardInstance {
     <div class="panel__body qcard rewind">
       <div class="lib-pills rewind__pills">
         ${pillHTML("stat", STAT_LABELS[pick.stat])}${pillHTML("window", WINDOW_LABELS[pick.window])}
-        <button class="lib-pill rewind__make" type="button" title="A playlist of this window's top songs, filed under Replay">Make playlist</button>
+        <button class="lib-pill rewind__make" type="button" title="Your top 25 songs of this time span, filed under Replay">Make playlist</button>
       </div>
       <div class="rewind__board"></div>
     </div>`;
@@ -119,7 +118,7 @@ function mountRewind(host: HTMLElement): CardInstance {
     id: (r) => r.key,
     items: () => view as RewindRow[],
     can: () => pick.stat !== "artists",
-    onChange: () => render(),
+    onChange: () => { render(); paintMake(); },
   });
 
   // The reveal (UX-COVERUPS.md §7.11 part 6): the board holds at the card's open and at a
@@ -203,6 +202,7 @@ function mountRewind(host: HTMLElement): CardInstance {
     pillOf("stat").querySelector(".lib-pill__label")!.textContent = STAT_LABELS[pick.stat];
     pillOf("window").querySelector(".lib-pill__label")!.textContent = WINDOW_LABELS[pick.window];
     paintSotd();
+    paintMake();
     holdBoard("window");
     render();
   };
@@ -254,18 +254,38 @@ function mountRewind(host: HTMLElement): CardInstance {
   });
   paintSotd();
 
-  // Make playlist (NEXT-VERSION §4): the window's top songs by minutes listened → a
-  // dated local playlist under the Replay folder. Zero Apple calls.
+  // Make playlist (NEXT-VERSION §4): a dated local playlist under the Replay folder. Zero
+  // Apple calls. Picked rows win (his call K1, 2026-10-18, DEETS-REWIND.md §8.1): with rows
+  // picked, their songs in the order shown (a picked album gives all its songs); with none, the
+  // window's top 25 songs by minutes listened (or, on the SOTD list, the window's picks).
   const makeBtn = host.querySelector<HTMLButtonElement>(".rewind__make");
   makeBtn?.addEventListener("click", () => {
     if (!makeBtn || makeBtn.disabled) return;
     makeBtn.disabled = true;
     const label = makeBtn.textContent;
-    (pick.stat === "picks" ? makePicksPlaylist(pick.window) : makeReplayPlaylist(pick.window))
+    const make = picks.size()
+      ? picksTracks(picks.picked()).then((ts) => makePickedPlaylist(pick.window, ts))
+      : pick.stat === "picks" ? makePicksPlaylist(pick.window) : makeReplayPlaylist(pick.window);
+    make
       .then(() => { makeBtn.textContent = "Made"; })
-      .catch((e) => { console.error("[rewind] make playlist", e); makeBtn.textContent = "Nothing to add"; })
+      .catch((e) => {
+        console.error("[rewind] make playlist", e);
+        // An empty window or pick is the user's to see; any other failure is the app's, and
+        // nothing is left behind (replay.ts createReplay undoes a half-made playlist, F7).
+        makeBtn.textContent = e instanceof NothingToAdd ? "Nothing to add" : "Couldn't make it";
+      })
       .finally(() => window.setTimeout(() => { makeBtn.textContent = label; makeBtn.disabled = false; }, 1500));
   });
+  // The hint says what a press makes now: the picked rows, or the top 25 (K1).
+  const paintMake = () => {
+    if (!makeBtn) return;
+    makeBtn.title = picks.size()
+      ? "A playlist of the picked rows' songs, filed under Replay"
+      : pick.stat === "picks"
+        ? "A playlist of this time span's Songs of the Day, filed under Replay"
+        : "Your top 25 songs of this time span, filed under Replay";
+  };
+  paintMake();
 
   // ── right-click menus (Play Now / Play Next / Add to Queue / Add to Playlist) ──
   // Songs + albums ride the shared menu builders (media-menu.ts) over a concrete Track[];
@@ -385,15 +405,25 @@ function mountRewind(host: HTMLElement): CardInstance {
     else if (pick.stat === "songs" && row.tracks[0]) items = songMenu(row.tracks[0], { context: "rewind" });
     else if (pick.stat === "albums" && row.tracks.length) items = albumMenu(libAlbum(albumTracksOf(row), `album:${row.key}`), { context: `album:${row.key}` });
     else if (pick.stat === "artists" && row.title) items = artistMenuFor(row);
-    else if (pick.stat === "playlists") items = playlistMenuFor(row);
+    else if (pick.stat === "playlists" && !row.gone) items = playlistMenuFor(row); // a deleted playlist: nothing to play
     if (!items) return; // an uncached "Unknown" row — nothing playable
     e.preventDefault();
     el.classList.add("is-context");
     const { clientX: x, clientY: y } = e;
-    void Promise.resolve(items).then((list) => {
-      if (list.length) openContextMenu(x, y, list, () => el.classList.remove("is-context"));
-      else el.classList.remove("is-context");
-    });
+    // A playlist row's menu waits for the playlists read. If the view changed meanwhile (the
+    // dropdowns, the SOTD button) or the row left the list (or the card closed), the row it was
+    // for is gone: open nothing (F8). A re-read that keeps the row keeps its element (keyed).
+    const view0 = `${pick.stat}|${pick.window}`;
+    const gone = () => view0 !== `${pick.stat}|${pick.window}` || !el.isConnected;
+    void Promise.resolve(items)
+      .then((list) => {
+        if (list.length && !gone()) openContextMenu(x, y, list, () => el.classList.remove("is-context"));
+        else el.classList.remove("is-context");
+      })
+      .catch((err) => {
+        console.error("[rewind] menu", err);
+        el.classList.remove("is-context");
+      });
   });
 
   // Drag a row to another card (DRAG-DROP.md §2) — the same lists as its right-click menu.
@@ -404,7 +434,7 @@ function mountRewind(host: HTMLElement): CardInstance {
     rowAt: (target) => {
       const el = target.closest<HTMLElement>("[data-idx]");
       const row = el ? view[Number(el.dataset.idx)] : undefined;
-      if (!el || !row) return null;
+      if (!el || !row || row.gone) return null; // a deleted playlist has nothing to drag
       const index = Number(el.dataset.idx);
       // A drag off a picked row carries every picked row's songs as ONE payload (§19).
       if (picks.size() > 1 && picks.isPicked(row)) {
@@ -427,10 +457,19 @@ function mountRewind(host: HTMLElement): CardInstance {
     },
   });
 
-  // Refresh when a play lands (queue change finalizes the outgoing song's event),
-  // when the track store (re)loads (joins resolve instead of "Unknown"), and when
-  // playlists change (names for the playlist stat).
-  const unsubQueue = queue.onQueueChange(render);
+  // Refresh when a play lands, when the track store (re)loads (joins resolve instead of
+  // "Unknown"), and when playlists change (names for the playlist stat). A play lands when its
+  // row is WRITTEN (stats.onPlayEvent: a start appended, an end finalized), not when the queue
+  // moves: at a song change the queue moves first, so a re-read on it ran before the finished
+  // song's minutes were in the log and showed them one song late (DEETS-REWIND.md §8, F2). It
+  // also spares a re-read of the whole window on every reorder of the queue.
+  const unsubLog = onPlayEvent(render);
+  // A list left open moves with time (F6): the rolling windows drop old plays and This Year
+  // starts again on 1 January, with no play to cause a re-read. Read again when the window
+  // comes back into view, and every 15 minutes while it is in view.
+  const onVisible = () => { if (document.visibilityState === "visible") render(); };
+  document.addEventListener("visibilitychange", onVisible);
+  const tick = window.setInterval(onVisible, 15 * 60_000);
   const unsubTracks = onTracksChange(render, "rewind");
   const unsubPlaylists = onPlaylistsChange(() => { if (pick.stat === "playlists") render(); });
   // A mark, an unmark, a note or the feature going off: the Picks view is drawn from picks.
@@ -448,7 +487,9 @@ function mountRewind(host: HTMLElement): CardInstance {
     destroy() {
       held?.cancel();
       renderSeq++; // orphan any in-flight load
-      unsubQueue();
+      unsubLog();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(tick);
       unsubTracks();
       unsubPlaylists();
       unsubSotd();

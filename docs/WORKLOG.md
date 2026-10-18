@@ -12,6 +12,110 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-18, evening — Rewind: every sweep fault fixed
+
+**His ask:** fix all the faults from the Rewind sweep, here (C4's one-at-a-time set aside for
+this). His calls first: a deleted playlist keeps its name (schema v22), one "Deleted playlists"
+row for the 575 old plays with no name, minutes saved every 30 s. The weekly Replay keeps its
+playlist (one option, no fork).
+
+**Built** (DEETS-REWIND.md §8.5, each with its proof): F1 (`playlist_names`, v22; Replay in
+place), V1 (one CSS rule: no transition on a waiting or entering row; it flashed the Queue's rows
+too), F2 (re-read on `onPlayEvent`), V2 (`hideHintIn` at the hold), F4 (30 s checkpoints), F3 (a
+same-song start judged by the next tick), F5 + K3 (`rewind-window.ts`, 5 tests), F7 (all or
+nothing; "Couldn't make it"), F6 (re-read on show and every 15 min), F8, K1 (picked rows make
+the playlist), K2 (a hand choice ends the unlock). V3 was a test artifact: the readability read
+saw rows through a hover hint; `read()` in the helpers now turns hints off.
+
+**Checked:** `npm run check` passes (344 tests, docs, cargo). On the dev app, every guard and
+fault shot passes, the motion shots pass once `motionReport` takes out the reveal's designed
+hold, release, rise and cover fade (the strips read by eye), and readability has no failure in
+30 looks. Plays 366–367 are the same song twice; new plays keep their playlist names. Nothing
+committed. Open: his desk test (§8.5).
+
+## 2026-10-18, evening — Disk writes, and a counter for every net call
+
+**His questions.** (1) Do local database writes wear the SSD or load the network? No: read from
+the code, a heavy day (300 songs) is about 10–30 MB of writes with the log, in WAL mode; nothing
+in the database goes over the network. Not measured. (2) Is there a counter for Apple, Last.fm
+and other calls? Apple only (`apple_calls.rs`). Last.fm, MusicKit, covers, our workers and
+Discord have none.
+
+**Designed, not built:** [ops/NET-CALLS.md](ops/NET-CALLS.md): one table, service × group ×
+class, from each Rust choke point and a release-build Resource Timing watch in the webview. §1
+lists the eight services; forks F1–F4 (§5) and probes N1–N2 (§6) are open.
+
+## 2026-10-18, later — The live app paused: a license heal
+
+**His question:** why did the live app pause? The log: at 12:40:05 MusicKit raised
+`MEDIA_LICENSE` about 2 min into a song over AirPlay (AirPlay clean: 0 resends, 0 starved). The
+Apple check passed (`app=ok signin=ok`), and the app showed "Playback stopped" with no retry. The
+quiet retry covered only `MEDIA_KEY` within 3 s of our own load. Five such stops in the logs and
+this file since 2026-09-24 (live 09-24 and 10-18; the dev app 10-17 twice; the second dev app
+10-17), each parked as "its own fork".
+
+**His call:** an auto-heal. **Built:** `healLicense` in player.ts and the rule `licenseStep` in
+pause-rules.ts (tested): check Apple, then reload the song once 2 s before the stop; the toast
+only when that fails. QUEUE.md §License heal; TOASTS.md row.
+
+**Then his picks** (resume at the stop less 0.5 s; hold Now Playing as playing; the license
+recorder in every build, local only) **and "hunt for speed".** Found on the dev app:
+- The live failure was the NEXT song's license (Pillow Fight is 141 s; MusicKit asks for the next
+  license ~15 s early; it failed at 126.9 s). Apple's good reply: `status` 0, `errorCode` 0,
+  `renew-after` 780; the key expires after 899 s. A network error there is harmless (MusicKit asks
+  again); MEDIA_LICENSE is a refusal reply, and nothing recorded Apple's reason. Now
+  `license-watch.ts` does (`license:refused` and friends), and the error's own fields are logged.
+- `docs/ops/checks/license-fail.mjs` forces a refusal over CDP `Fetch` (`next`, `start`,
+  `--count 2`). It found three more faults, all fixed: a refusal inside our own load was dropped
+  (a silent stop at 0:00); "once per song" blocked the end-of-song heal of a song healed at its
+  start (now a 30 s window); with no wait the heal looked before MusicKit stopped and skipped
+  (now it waits for the stop, ~40 ms).
+- Refusal → sound: 1,893 ms → 757–864 ms (the live shape); a play's start 605–838 ms. The 1 s wait
+  was pure delay; the Apple check now runs beside the reload; the seek looks every 20 ms.
+  `setQueue({ startTime })` probed: ignored by this MusicKit.
+- Desk test run by Claude (QUEUE.md table). Left for live: the first real `license:refused` line
+  names Apple's reason. On the dev app the probes played muted songs and one temporary web was
+  made (a single played song ended). Nothing committed.
+
+## 2026-10-18 — The quality sweep starts: Rewind, with a visual pass
+
+**Repo:** `seventheenth` pushed and merged into `main` with the QUALITY-SWEEP.md doc (from
+`claude/quality-sweep-doc`, then deleted). The pre-push check failed on `main` alone: the
+usage-keys test reads `../DeetsSupport`'s copy, which already had seventheenth's keys; the
+merge fixed it. A fresh worktree also needs the gitignored `mcpb/dist/deetsmusic.mcpb` and
+`cli/dist/deetsmusic.exe` for `cargo check` (`npm run cli:build`). New branch `v-thirty`.
+
+**His calls:** F1 → C7 (the guards run in the release check for a big release, his call at
+release time); F2 → C8 (dev-only guards marked and skipped there); C9, a visual pass in every
+sweep (QUALITY-SWEEP.md §3a); Rewind's K1–K3 (DEETS-REWIND.md §8.1). He picked the oldest shipped
+feature to start with.
+
+**Rewind swept** (DEETS-REWIND.md §8): 3 Sonnet agents, 45 scenarios, 31 after duplicates,
+triaged against the code and the live database (read-only). 8 faults and 3 visual faults, 5
+guards; the shared readability failures filed under HANDOFF's open readability item.
+`checks/rewind-sweep.mjs` (14 shots; the fault shots fail until their fix). The motion monitor
+(`smooth-monitor.js`) now takes `window.__monExtra` and `window.__monMs`, so a sweep watches
+its own feature's parts on the dev app. The fixes are in HANDOFF › Decided, not built.
+
+**The process, after his review (his OK to all five, 2026-10-18; QUALITY-SWEEP.md C10–C14):**
+read the live database as a fixed step (`checks/rewind-data.mjs` is the first probe); the visual
+pass kept; shared steps in `checks/sweep-helpers.mjs` (the Rewind list moved onto them, checked
+with a guard and the restore on the dev app); a run order with a warning before music; the
+per-card readability report `checks/sweep-read.mjs`. That report found V3, which the shared
+count had hidden.
+
+## 2026-10-18 — Profiles: the idea doc
+
+**His ask:** can the app hold profiles, so a family or friends on one PC or TV can switch
+between their settings and accounts? Written as [ideas/PROFILES.md](ideas/PROFILES.md), not
+built. His calls (§1): a subfolder per profile; settings saved on disk and applied live
+through the CLI's `setSetting` path; a shared `profiles.db` for the profile list and shared
+data (AirPlay); Discord left out; no lock; a switch changes the look and pauses and resets the
+music. Claude's calls inside his (his OK needed, §4–§5): the Apple catalog caches go to the
+shared database, keyed by storefront; a switch calls `setSetting` directly, not the HTTP route
+(the agent consent gate); jobs that write the database carry a profile epoch. Open: forks
+P1–P4 (§8), the draft table of shared and personal settings (§4.2), the probes (§9).
+
 ## 2026-10-17 (late night) — album counts from songs designed; Diary renamed Album Reviews
 
 **His asks:** doc listening stats summed from a library album's songs, and a row per song in

@@ -10,7 +10,7 @@
 // One attribute carries the state: `data-player="full"` on <html>; every CSS rule hangs on it.
 // The card wears `data-np-rows="over|below"` (below: the controls under the cover, 2026-10-11).
 //
-// Ways in: the edge strips on Now Playing (Midi top and bottom, Max left and right), Compass
+// Ways in: the edge strips on Now Playing (Midi top and bottom, Max all four sides when full), Compass
 // ("Full player"), a rule (the `player` action). Ways out: the close square over the cover, the
 // same strips, Escape, a card request (Show queue, Show search, a Compass place), a surface
 // change (no motion). A press on the Queue in Max keeps it open (his call, 2026-10-11).
@@ -290,6 +290,7 @@ function setHistory(on: boolean, m: Motion | null): (() => void) | null {
   if (on) {
     root.dataset.fpHistory = "on";
     mountSide(host);
+    paintZones(); // the right strip moves from the window edge to the gap beside the column
     diag.log("player:history", { on: true, card: side.card, flip: side.flip });
     return m
       ? () => {
@@ -301,11 +302,13 @@ function setHistory(on: boolean, m: Motion | null): (() => void) | null {
   diag.log("player:history", { on: false });
   if (!m) {
     delete root.dataset.fpHistory;
+    paintZones();
     return null;
   }
   // It stays on screen while it slides out; Now Playing has its room back at once. The card
   // stays mounted (hidden) until the player closes, so a drag back costs no mount.
   root.dataset.fpHistory = "leaving";
+  paintZones(); // the right strip is back on the window edge with the room
   return () => {
     const anim = host.animate([{ transform: "none" }, { transform: away }], { duration: m.dur, easing: m.ease, fill: "forwards" });
     moveQueue(m);
@@ -809,23 +812,37 @@ const zonesOn = (): boolean => fullPlayerAvailable() && setting("cardGrow") && g
 
 function reachOf(side: Side): "half" | "full" | "edge" | null {
   const s = surfaceNow();
-  // Stacked: the gap over the cards closes the player (the card's sides are the window's edges).
-  if (full && stack) return side === "down" ? "full" : null;
+  // Stacked and full: every side closes the player (his ask, 2026-10-18). The gap over the
+  // cards (down) and the padding under the title bar (up) are whole gaps; the card's sides are
+  // the window's edges. Midi keeps its two sides only (top and bottom), as at rest.
+  if (full && stack) {
+    if (side === "down" || side === "up") return "full";
+    return s === "max" ? "edge" : null;
+  }
   if (s === "midi") {
     if (side === "up") return "full";
     if (side === "down") return full ? "edge" : "full";
     return null;
   }
   if (s === "max") {
-    if (side === "left") return full ? "full" : "edge";
+    // Full: all four sides close the player (his ask, 2026-10-18). Left is the gap beside the
+    // left column (the Queue, or the side card when flipped); right is the window edge, or the
+    // gap beside the side column while it shows; up is the padding under the title bar; down is
+    // the window edge.
+    if (full) {
+      if (side === "left" || side === "up") return "full";
+      if (side === "right") return root.dataset.fpHistory === "on" ? "full" : "edge";
+      return "edge";
+    }
+    if (side === "left") return "edge";
     // Half the gap beside the stage when a card's strip takes the other half (the Fill strips of
     // four-card Max, or a grown card's collapse strip); the whole gap when none is there.
-    if (side === "right") return full ? "edge" : stageGapShared() ? "half" : "full";
+    if (side === "right") return stageGapShared() ? "half" : "full";
     // The top and the bottom of the resting card open it too (his ask, 2026-10-11). The bottom
     // gap is the Queue's as well (its grow up over Now Playing): each takes half of it, also
     // while another card is grown (both strips act then, 2026-10-14).
-    if (side === "up") return full ? null : "full";
-    if (side === "down") return full ? null : "half";
+    if (side === "up") return "full";
+    if (side === "down") return "half";
   }
   return null;
 }

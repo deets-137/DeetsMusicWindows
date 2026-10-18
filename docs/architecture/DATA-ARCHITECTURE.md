@@ -348,6 +348,20 @@ whole log. At today's 1,876 rows nothing was measurable (~0.3 ms a scan); at 20,
 same 100 queries fall 100 → 23 ms ([DEBUGGING.md](../ops/DEBUGGING.md) §The 2026-09-29 idle
 pass). `IF NOT EXISTS`, so it runs on every start and does nothing after the first.
 
+**Playlist names** (as built 2026-10-18, schema v22, `playlists::migrate_v22`): a play keeps only
+its playlist's key in `context` (`playlist:local:<id>`, or an Apple library playlist's id), so a
+playlist deleted later left its plays nameless. `playlist_names(key, name, seen_at)` keeps the
+name: `record_event_start` writes it when a play from a playlist starts
+(`playlists::remember_name`, the name of that moment, so a rename is followed), and the
+migration named every playlist that existed and had plays. `playlist_names` (the command) reads
+it for the Rewind card. Plays of playlists deleted before v22 have no name to recover
+(DEETS-REWIND.md §8, F1).
+
+**Play minutes saved while a song plays** (2026-10-18, `stats.ts`): the open `play_events` row
+gets its minutes every 30 s of playing, 2 s after the progress ticks stop (a pause) and when the
+window hides, through the same `record_event_end`; the end of the play writes the last value.
+A close or a crash now loses at most 30 s, where it lost the whole listen (DEETS-REWIND.md §8, F4).
+
 **Sync (`library_sync`):** stale-while-revalidate.
 1. Fetch page 0 → learn `total`.
 2. Compute all remaining offsets, fetch them **≤5 concurrent** (`buffer_unordered(5)`).
@@ -495,6 +509,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | `seen_tracks` | library.rs | all materialized (`source='seen'`) rows — ingested as track-store transients so historical plays resolve cross-session |
 | `record_play(catalogId?, libraryId?, kind)` | library.rs | bump a track's `partial`/`full` play tally |
 | `play_events_since(sinceTs)` | library.rs | windowed read of the play-event log (the Rewind card) |
+| `playlist_names()` | playlists.rs | the kept name of each playlist plays came from, by key (schema v22; Rewind names a deleted playlist with it) |
 | `added_at_map` | library.rs | every add time this app has stamped (the Home card's Recently Added) |
 | `artist_photos` | apple.rs | every artist photo already in `artist_catalog`; read-only, never calls Apple (Home's artist tiles) |
 | `catalog_heals` | heal.rs | the heal map: healed (library id, catalog id) pairs and the no-copy library ids |

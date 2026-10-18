@@ -583,6 +583,7 @@ const H: Record<string, Handler> = {
   },
   play_event_count: () => store.events.length,
   play_events_since: (a) => store.events.filter((e) => e.startedTs >= Number(a?.sinceTs ?? 0)).map(({ id: _id, ...e }) => e),
+  playlist_names: () => ({}),
   play_counts: () => Object.entries(store.plays).map(([id, p]) => ({ id, ...p })),
   lastfm_heard: () => false,
 

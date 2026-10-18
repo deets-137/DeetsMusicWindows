@@ -28,6 +28,7 @@ import { onLateArt } from "./artwork-heal";
 import { mark } from "./marks";
 import * as frames from "./frames";
 import * as diag from "./diag";
+import { hideHintIn } from "./hint";
 
 export { REVEAL_CARDS } from "./reveal-wave";
 
@@ -240,7 +241,10 @@ export function reveal(o: RevealOpts): Reveal {
   let waiting = false; // the pictures' wait has started (the data is in)
   let resolveDone: () => void = () => {};
   const done = new Promise<void>((r) => (resolveDone = r));
-  if (!boot) o.body.setAttribute("data-reveal-hold", "");
+  if (!boot) {
+    o.body.setAttribute("data-reveal-hold", "");
+    hideHintIn(o.body); // the held rows are invisible: their hint goes with them (V2)
+  }
   mark("reveal:hold", o.card);
 
   const unwatch = () => {

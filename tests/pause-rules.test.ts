@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot } from "../src/pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S } from "../src/pause-rules";
 
 // The 2026-09-24 read: 86 of 93 `outside` pauses were song changes (DEBUGGING.md).
 test("a pause at the last seconds is the song ending (2026-09-25)", () => {
@@ -61,4 +61,30 @@ test("a stall still buffering at the check is reloaded in the queue, logged else
 test("a stall reload starts 2 s before the stop (2026-10-03)", () => {
   assert.equal(resumeSpot(30), 28);
   assert.equal(resumeSpot(1), 0);
+});
+
+test("a license heal starts 0.5 s before the stop (2026-10-18)", () => {
+  assert.equal(resumeSpot(126, LICENSE_BACK_S), 125.5);
+  assert.equal(resumeSpot(0.2, LICENSE_BACK_S), 0);
+  assert.equal(isLicenseError("MEDIA_LICENSE"), true);
+  assert.equal(isLicenseError("MEDIA_KEY: x"), true);
+  assert.equal(isLicenseError("loadSegmentError"), false);
+});
+
+test("a license failure in the middle of a song is healed once (2026-10-18)", () => {
+  // The live case: MEDIA_LICENSE about 2 min into a song that started by itself.
+  const live = { msg: "MEDIA_LICENSE", queueSong: true, room: false, justLoaded: false, keyRetried: false, healed: false };
+  assert.equal(licenseStep(live), "heal");
+  assert.equal(licenseStep({ ...live, healed: true }), "none"); // a second failure: the toast
+  assert.equal(licenseStep({ ...live, justLoaded: true }), "heal"); // only MEDIA_KEY takes the quick retry
+  assert.equal(licenseStep({ ...live, queueSong: false }), "none"); // a station
+  assert.equal(licenseStep({ ...live, room: true }), "none"); // the host owns a room's music
+  assert.equal(licenseStep({ ...live, msg: "loadSegmentError" }), "none"); // a network drop has its own path
+  assert.equal(licenseStep({ ...live, msg: "MEDIA_LICENSE_X" }), "none");
+  // MEDIA_KEY: right after our load, the quick retry; later, or after it, the heal.
+  const key = { ...live, msg: "MEDIA_KEY: session error", justLoaded: true };
+  assert.equal(licenseStep(key), "keyRetry");
+  assert.equal(licenseStep({ ...key, keyRetried: true }), "heal");
+  assert.equal(licenseStep({ ...key, justLoaded: false }), "heal");
+  assert.equal(licenseStep({ ...key, keyRetried: true, healed: true }), "none");
 });
