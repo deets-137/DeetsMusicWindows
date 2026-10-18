@@ -298,7 +298,8 @@ P1–P4; §9 the probes. After the CPU floor; design it with Backup.
 `SpotifyRooms.md` — an idea (2026-10-18): a Spotify user in a room, through their OWN Spotify
 desktop app (a `spotify:` link opens each song; the Windows media session reads the position,
 seeks, pauses); no Spotify key, no Web API, no librespot (§1 why). Odesli maps the Apple song.
-Three probes come first (§6, `ops/checks/spotify-probe.ps1`, he runs it); §7 the forks.
+The probes (§6, `ops/checks/spotify-probe.ps1`) ran 2026-10-18 (§6.3): the control works with a
+`?autoplay=true` link plus Play; Odesli's keyless API is closed, so the mapping is open; §7 the forks.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

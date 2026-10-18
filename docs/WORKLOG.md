@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,24 @@ updated: 2026-10-17
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-18, night — Repo merges, and the Spotify probe run
+
+**Repo:** `v-thirty` merged into `main`, then `origin/spotify-rooms` (docs only; three
+keep-both conflicts in CLAUDE.md, this file and checks/README.md). `npm run check` passed; `main`
+pushed. `v-thirty` fast-forwarded to `main` (not pushed).
+
+**The probe** (`checks/spotify-probe.ps1`), run by Claude on his PC with his Spotify app open.
+Results in [SpotifyRooms.md](ideas/SpotifyRooms.md) §6.2–§6.3:
+- P0, P3, P5, P6 pass. P5: Spotify sets its position about every 4.5 s; the clock itself is true.
+- P1 fails: Odesli's keyless API returns `401 PUBLIC_API_ACCESS_DEPRECATED`. The Apple → Spotify
+  mapping is now open.
+- P2 fails as written (a plain link does nothing, inside or outside the Claude package);
+  `?autoplay=true` loads the song paused, and the session's Play then starts it, 1.36–1.42 s
+  after the open. He heard the new song start; he did not judge the delay.
+- P4 fails: `#m:ss` is ignored.
+- The script still opens the plain link (not changed). Next: tomorrow, his evaluation and the
+  mapping source.
 
 ## 2026-10-18, evening — Rewind: every sweep fault fixed
 

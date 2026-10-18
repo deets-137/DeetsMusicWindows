@@ -51,8 +51,8 @@ honors it, a guest who joins mid-song needs no seek.
 
 **The song id.** A room entry carries the Apple `catalogId` and the `isrc`
 (`RoomEntry` in `src/room.ts`). With no Spotify key, the app cannot search Spotify. Odesli
-takes `https://music.apple.com/us/song/<catalogId>` and returns the Spotify link (P1). Odesli's
-free tier is about 10 calls a minute with no key; a key raises it.
+takes `https://music.apple.com/us/song/<catalogId>` and returns the Spotify link (P1). **Since
+2026-10-18 the keyless API is closed** (§6.3); the mapping source is open.
 
 ## 3. How a room would work
 
@@ -126,7 +126,28 @@ powershell -File docs/ops/checks/spotify-probe.ps1 -Track <a Spotify song link>
 
 | Date | Who | P0 | P1 | P2 | P3 | P4 | P5 | P6 | By ear |
 |---|---|---|---|---|---|---|---|---|---|
-| | | | | | | | | | |
+| 2026-10-18 | Claude, on his PC (Spotify 'Spotify.exe', Windows 10.0.26200) | pass | **fail** | **fail** as written; **pass** with `?autoplay=true` + Play (§6.3) | pass | fail | pass, with care | pass | his: the new song started; the delay not judged |
+
+### 6.3 What the 2026-10-18 run found
+
+- **P0:** the session is `Spotify.exe`; seek is enabled.
+- **P1:** Odesli's keyless API is closed. Every call returns `401 {"code":"PUBLIC_API_ACCESS_DEPRECATED"}`
+  (a song link and an album link). The mapping needs another source or an Odesli key. This is new
+  since the doc was written. Spotify's keyless oEmbed (`open.spotify.com/oembed?url=…`) gives a
+  title for a known id, but it cannot search.
+- **P2:** a plain `spotify:track:<id>` link changed nothing in 10 s, from this shell and from a
+  WMI-started process outside the Claude package. `spotify:track:<id>?autoplay=true` loads the
+  song, but leaves it paused. That link plus the session's Play gives Playing **1.36–1.42 s** after
+  the open (3 runs, each from another song). `:play` and `Spotify.exe --uri=` were not reached
+  (the first form worked). The probe script still opens the plain link.
+- **P3:** accepted in 12 ms, and the song is at the target. It works after a P2 load too.
+- **P4:** `#1:00` is ignored, with the plain form and with `?autoplay=true`. P3 covers a join.
+- **P5:** Spotify sets its position about every **4.5 s** (2 updates in 10 s), but the clock is
+  true (−11 ms drift over 10 s). A reader must add the time since `LastUpdatedTime`, as `Pos` in
+  the script does. A raw read is up to 4.5 s stale.
+- **P6:** Pause 68 ms, Play 59 ms.
+- **The gate (§6.1):** P0, P2 (in the `?autoplay=true` form) and P3 pass. The open item is P1:
+  how the app finds the Spotify id with no key.
 
 ## 7. The forks (his, after the probes)
 
