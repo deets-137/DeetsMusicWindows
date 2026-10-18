@@ -12,6 +12,38 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-18, later — The live app paused: a license heal
+
+**His question:** why did the live app pause? The log: at 12:40:05 MusicKit raised
+`MEDIA_LICENSE` about 2 min into a song over AirPlay (AirPlay clean: 0 resends, 0 starved). The
+Apple check passed (`app=ok signin=ok`), and the app showed "Playback stopped" with no retry. The
+quiet retry covered only `MEDIA_KEY` within 3 s of our own load. Five such stops in the logs and
+this file since 2026-09-24 (live 09-24 and 10-18; the dev app 10-17 twice; the second dev app
+10-17), each parked as "its own fork".
+
+**His call:** an auto-heal. **Built:** `healLicense` in player.ts and the rule `licenseStep` in
+pause-rules.ts (tested): check Apple, then reload the song once 2 s before the stop; the toast
+only when that fails. QUEUE.md §License heal; TOASTS.md row.
+
+**Then his picks** (resume at the stop less 0.5 s; hold Now Playing as playing; the license
+recorder in every build, local only) **and "hunt for speed".** Found on the dev app:
+- The live failure was the NEXT song's license (Pillow Fight is 141 s; MusicKit asks for the next
+  license ~15 s early; it failed at 126.9 s). Apple's good reply: `status` 0, `errorCode` 0,
+  `renew-after` 780; the key expires after 899 s. A network error there is harmless (MusicKit asks
+  again); MEDIA_LICENSE is a refusal reply, and nothing recorded Apple's reason. Now
+  `license-watch.ts` does (`license:refused` and friends), and the error's own fields are logged.
+- `docs/ops/checks/license-fail.mjs` forces a refusal over CDP `Fetch` (`next`, `start`,
+  `--count 2`). It found three more faults, all fixed: a refusal inside our own load was dropped
+  (a silent stop at 0:00); "once per song" blocked the end-of-song heal of a song healed at its
+  start (now a 30 s window); with no wait the heal looked before MusicKit stopped and skipped
+  (now it waits for the stop, ~40 ms).
+- Refusal → sound: 1,893 ms → 757–864 ms (the live shape); a play's start 605–838 ms. The 1 s wait
+  was pure delay; the Apple check now runs beside the reload; the seek looks every 20 ms.
+  `setQueue({ startTime })` probed: ignored by this MusicKit.
+- Desk test run by Claude (QUEUE.md table). Left for live: the first real `license:refused` line
+  names Apple's reason. On the dev app the probes played muted songs and one temporary web was
+  made (a single played song ended). Nothing committed.
+
 ## 2026-10-18 — The quality sweep starts: Rewind, with a visual pass
 
 **Repo:** `seventheenth` pushed and merged into `main` with the QUALITY-SWEEP.md doc (from

@@ -1,8 +1,8 @@
 ---
 status: foundation
 desk_test: passed 2026-09-24
-sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts]
-updated: 2026-10-17
+sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts, src/license-watch.ts, src/license-reply.ts, docs/ops/checks/license-fail.mjs]
+updated: 2026-10-18
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -663,6 +663,86 @@ is the network-drop resume), the ring shows `player:buffer {end: reload}`, `play
 then the song from 2 s before the stop. (b) A short throttle (Slow 3G, 3 s) that plays again:
 `player:buffer {end: played}` only. (c) Pause during a buffer: no reload. On live after any
 stall: `deetsmusic diag --tag player:buffer`.
+
+### License heal (2026-10-18)
+> **Part:** built · 2026-10-18
+
+**The report.** On live (AirPlay), 2026-10-18 12:40, MusicKit raised `MEDIA_LICENSE` 126.9 s
+into "Pillow Fight" (141 s long). The Apple check passed (`app=ok signin=ok`), and the only answer
+was "Playback stopped. Try the song again." The quiet license retry above covered only a
+`MEDIA_KEY` within 3 s of our own load. The logs and WORKLOG.md hold five of these between
+2026-09-24 and 2026-10-18 (live, the dev app, the second dev app).
+
+**What the failure is** (the probes of 2026-10-18 on the dev app):
+- MusicKit asks for one license per song (`acquireWebPlaybackLicense`, a `fetch`), and asks for
+  the NEXT song's about 15 s before the current one ends. The live failure came 14 s before the
+  end: the refused license was the next song's, and MusicKit stopped the current song with it.
+  The dev failures came at a play's start (`at: 0`).
+- A good reply is JSON: `license`, `status` 0, `errorCode` 0, `renew-after` 780 (s); the key
+  session expires 899 s after it. So a song never outlives its license: renewal is not the cause.
+- A network error on that request is harmless: MusicKit asks again at the song change and plays
+  on. MEDIA_LICENSE comes from a reply MusicKit reads as a refusal. Apple's reason is in that
+  reply, which nothing recorded before (now `license:refused`, below).
+
+**His calls (2026-10-18):** an auto-heal; resume at the stop less 0.5 s; hold Now Playing as
+playing during the heal; the license recorder in every build, the local log only.
+
+**As built** (player.ts `healLicense`, the hold, `traceLicense`; the rules `licenseStep`,
+`isLicenseError`, `LICENSE_BACK_S` in pause-rules.ts; license-watch.ts; license-reply.ts; tested):
+- **Which errors.** `MEDIA_LICENSE` at any time, and a `MEDIA_KEY` that is not the quick retry's
+  (later than 3 s after a load, or the second of that song). In the queue only: a station or a
+  room keeps the old path. **A refusal inside our own load** (a Play on a restored queue) was
+  dropped by `onPlaybackError` and left the song paused at 0:00 with no word; it is now healed
+  once the load ends (`afterLoad`, `via: playbackError:load`).
+- **The hold** (`holdForHeal`): Now Playing, the tray and Discord show the song playing at the
+  spot; the hushed start before the seek is not shown and does not move `lastHeardAt`. It ends at
+  the first tick at the spot, on a give-up, a skip, any transport press, or after 12 s. A Play/Pause
+  press during the hold means Pause: the heal stops and the song stays paused at its spot.
+- **The reload** waits only until MusicKit has stopped the song (about 40 ms; looks every 20 ms,
+  600 ms at most: a song still playing then is left alone), then `recoverLoad` at
+  `resumeSpot(at, 0.5)`, silent until the seek lands. A song never heard starts at 0:00.
+- **The Apple check runs beside the reload**, not before it (441 ms uncached in the desk test).
+  Offline: the hold ends and the drop's resume is armed. A sign-in or token problem: its own
+  toast. Either way `recoverLoad`'s give-up stays quiet (`player:recoverLeft`).
+- **Twice.** The same song refused again within 30 s of its heal (`LICENSE_AGAIN_MS`): the toast at
+  once (`player:licenseGaveUp`), and the first reload's sound check is cancelled
+  (`recoverEpoch`), so no third load plays under the toast. A window, not "once per song": a song
+  healed at its start must still heal when the next song's license fails near its end.
+- **Log.** `player:licenseHeal`, `player:licenseReload {spot, waited}`, `player:healHold`,
+  `player:licenseTrace` (one line per failure: the song, the spot, the output, uptime, and the
+  last 6 license events, compact: `-2300 req 200 s0 e0 r780 630ms`), and MusicKit's whole error
+  (`name`, `reason`, `data`: the forced refusal read `WIDEVINE_CDM_EXPIRED`, `data.status
+  190121`), secrets dropped.
+
+**Why Apple refused: the recorder** (license-watch.ts, every build, nothing sent anywhere). It
+observes the license `fetch` (HTTP status, round trip, and from a clone of the reply `status`,
+`errorCode`, `renew-after`; the license, the request and the headers are never read) and each key
+session (`license-request` / `license-renewal` messages, key statuses, expiration). To the log file
+at once: `license:refused` (an HTTP error, a nonzero code, no license), `license:failed` (a network
+error; a skip's abort only to the ring), `license:keys` (a key not `usable`), `license:message` (any
+message but a first request). `window.__license.trace()` reads the ring.
+
+**Measured** (`docs/ops/checks/license-fail.mjs`, the dev app, muted; refusal → sound at the spot):
+
+| Shape | Before (fixed 1 s wait, check first) | After |
+| --- | --- | --- |
+| `next` (the live case) | 1,893 ms | 757–864 ms (5 runs) |
+| `start` (a play's license) | silent stop, no word | 605–838 ms |
+| `--count 2` | — | the toast at once, no third load |
+
+What is left is MusicKit's own start (the song lookup, the license, the first audio) and the seek.
+Probed and ruled out: `setQueue({ startTime })` (this MusicKit, 3.2526.0, starts at 0:00 anyway).
+Over AirPlay the speaker's 320 ms buffer covers part of the gap.
+
+**Decided inside his calls (Claude, for him to see):** `MEDIA_KEY` outside the quick retry joins the
+heal; the 30 s "again" window (the stall's); the hold's 12 s cap (the hush's); a Pause during the
+hold pauses; the hold covers the tray and Discord too (they read the same state); `recoverLoad`
+stays quiet whenever Apple health already shows a problem (all its callers, not only this heal);
+the seek's looks at 20 ms (the drop resume gets them too).
+
+**Desk test.** Run by Claude on the dev app with license-fail.mjs (the table). Left for live: on
+the next real refusal, `deetsmusic diag --tag license:` and the `player:licenseTrace` line give
+Apple's reason; the song must go on with no toast.
 
 ### A library song Apple sends with no play id (2026-09-28)
 

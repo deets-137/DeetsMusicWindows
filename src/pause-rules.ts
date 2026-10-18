@@ -70,7 +70,43 @@ export function midStallStep(p: {
   return p.canReload ? "reload" : "logOnly";
 }
 
-/** Where a reload starts: STALL_BACK_S before `at`, never below 0. Seconds. */
-export function resumeSpot(at: number): number {
-  return Math.max(0, at - STALL_BACK_S);
+/** A license heal starts this close to the stop (his pick, 2026-10-18): MusicKit's clock ticks
+ *  about 4 times a second, so the last tick is at most ~0.25 s behind what was heard. */
+export const LICENSE_BACK_S = 0.5;
+
+/** Where a reload starts: `back` seconds before `at`, never below 0. Seconds. */
+export function resumeSpot(at: number, back = STALL_BACK_S): number {
+  return Math.max(0, at - back);
+}
+
+// ── A license failure (2026-10-18, QUEUE.md §License heal) ───────────────────────
+// On live, 2026-10-18 12:40, MusicKit's MEDIA_LICENSE stopped a song about 2 min in. Apple's
+// health check passed, and the only answer was the toast: the quiet retry covered MEDIA_KEY
+// right after a load only. Seen 5 times between 2026-09-24 and 2026-10-18.
+
+const MEDIA_KEY = /^MEDIA_KEY\b/;
+const MEDIA_DRM = /^MEDIA_(?:KEY|LICENSE)\b/;
+
+/** A license or key failure (MusicKit's MEDIA_LICENSE / MEDIA_KEY…). */
+export function isLicenseError(msg: string): boolean {
+  return MEDIA_DRM.test(msg);
+}
+
+/**
+ * What a MusicKit error does to a queue song. `keyRetry`: a MEDIA_KEY just after our load (a
+ * race in MusicKit's key setup), loaded again from the top. `heal`: any other license failure,
+ * the first for this song: check Apple, then load it again at the spot. `none`: not a license
+ * failure, not a queue song, a room, or this song was healed already (the old path, the toast).
+ */
+export function licenseStep(p: {
+  msg: string;
+  queueSong: boolean;
+  room: boolean;
+  justLoaded: boolean;
+  keyRetried: boolean;
+  healed: boolean;
+}): "keyRetry" | "heal" | "none" {
+  if (!p.queueSong || p.room || !MEDIA_DRM.test(p.msg)) return "none";
+  if (MEDIA_KEY.test(p.msg) && p.justLoaded && !p.keyRetried) return "keyRetry";
+  return p.healed ? "none" : "heal";
 }

@@ -22,9 +22,11 @@ import { coverArtPx } from "./queue-rows";
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
+import { installLicenseWatch, licenseTrace } from "./license-watch";
+import { errorFields, compactEvent } from "./license-reply";
 import { cancelled } from "./rules";
 import { outputKind } from "./sound";
-import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, MID_STALL_MS } from "./pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S, MID_STALL_MS } from "./pause-rules";
 import { roomDriftTick } from "./room";
 import * as stats from "./stats";
 import * as perf from "./perf";
@@ -228,6 +230,7 @@ async function requireSignIn(): Promise<void> {
 /** Configure MusicKit once (lazy — only when the user first hits play). */
 export function initPlayer(): Promise<any> {
   if (initPromise) return initPromise;
+  installLicenseWatch(); // before MusicKit's first license request
   initPromise = (async () => {
     void loadDeadIds(); // a click before the idle warm-up still gets the saved denylist
     await whenMusicKitLoaded();
@@ -281,6 +284,7 @@ export function initPlayer(): Promise<any> {
  * beyond what the first play would have made anyway.
  */
 export function warmPlayer(): void {
+  installLicenseWatch();
   observeEme();
   void loadDeadIds();
   initPlayer().catch((e) => console.warn("[player] warm-up:", e));
@@ -575,7 +579,10 @@ function emitProgress(): void {
   // Audio really played since the sign-in, so a later playback error is not the
   // subscription (TOASTS.md). Not at the song-start: MusicKit sets now-playing first.
   if (freshSignIn && currentTime > 0.5) freshSignIn = false;
-  if (currentTime > 0) lastHeardAt = currentTime; // MusicKit's clock resets when its player dies
+  // MusicKit's clock resets when its player dies. A heal's hushed start before the seek is not
+  // a spot the user heard: a second failure there must still know the real one.
+  const holdAt = heldSpot();
+  if (currentTime > 0 && (holdAt === null || currentTime >= holdAt - 1)) lastHeardAt = currentTime;
   if (!isLoading && currentTime > HEARD_S) {
     const cur = queue.getCurrent();
     const npId: string | undefined = music?.nowPlayingItem?.id;
@@ -587,6 +594,13 @@ function emitProgress(): void {
   // While a (re)window loads, the outgoing song still ticks through the teardown. The
   // scrubber already shows the incoming song at 0 (emitLoadingProgress, UX-COVERUPS.md §1);
   // an old-song tick here would drag it back under the new title.
+  // A heal hold keeps the scrubber at the spot: the hushed play from 0:00 before the seek is
+  // not shown, and the first tick at the spot ends the hold.
+  const held = heldSpot();
+  if (held !== null) {
+    if (isLoading || !music?.isPlaying || currentTime < held - 1) return;
+    releaseHold("playing");
+  }
   if (!isLoading) progressListeners.forEach((cb) => cb({ progress, currentTime, duration }));
   if (mode === "room") roomDriftTick(); // the room's clock against ours (ROOMS.md §9.3)
   // Repeat one (NEXT-VERSION §12c): MusicKit loops the song with no item change, so the
@@ -640,7 +654,8 @@ function emitModelProgress(): void {
   const durationMs = (trackById(cur?.catalogId) ?? trackById(cur?.libraryId))?.durationMs;
   if (!id || !durationMs) return;
   const duration = durationMs / 1000;
-  const currentTime = resumeAt?.id === id ? Math.min(resumeAt.sec, duration) : 0;
+  const held = heldSpot();
+  const currentTime = held !== null ? Math.min(held, duration) : resumeAt?.id === id ? Math.min(resumeAt.sec, duration) : 0;
   progressListeners.forEach((cb) => cb({ progress: currentTime / duration, currentTime, duration }));
 }
 
@@ -666,15 +681,43 @@ export function setResumeAt(sec: number, id: string): void {
   resumeAt = { sec, id };
 }
 
+// ── The heal hold (2026-10-18, his call; QUEUE.md §License heal) ──────────────────
+// While a license heal reloads the song, Now Playing (and the tray, the media keys' overlay,
+// Discord) keep showing it as playing at the spot where it stopped: no paused flash, no
+// scrubber jump to 0:00 and back. The hold ends when the song plays at the spot again, when
+// the heal gives up or is skipped, on any transport press, or after HOLD_MAX_MS whatever fails.
+let heal: { entry: unknown; at: number; timer: number } | null = null;
+const HOLD_MAX_MS = 12_000;
+
+function holdForHeal(entry: unknown, at: number): void {
+  if (heal) window.clearTimeout(heal.timer);
+  heal = { entry, at, timer: window.setTimeout(() => releaseHold("cap"), HOLD_MAX_MS) };
+  diag.log("player:healHold", { on: true, at: Math.round(at) });
+}
+
+function releaseHold(why: string): void {
+  if (!heal) return;
+  window.clearTimeout(heal.timer);
+  heal = null;
+  diag.log("player:healHold", { on: false, why });
+  emit();
+}
+
+/** The hold, when it covers the model's current song. */
+function heldSpot(): number | null {
+  return heal && mode === "queue" && heal.entry === queue.getCurrent() ? heal.at : null;
+}
+
 function emit(): void {
   const item = music?.nowPlayingItem;
+  const held = heldSpot() !== null;
   const s: PlayerState = {
-    playing: !!music?.isPlaying,
+    playing: held || !!music?.isPlaying,
     title: item?.title ?? item?.attributes?.name,
     artist: item?.artistName ?? item?.attributes?.artistName,
     album: item?.albumName ?? item?.attributes?.albumName,
     artworkUrl: artworkUrlOf(item, coverArtPx()),
-    loading: isLoading,
+    loading: isLoading && !held,
     station:
       mode === "radio" && radioStation
         ? stationInfo(radioStation)
@@ -2978,6 +3021,7 @@ export function onRoomStationItems(cb: () => void): void {
  * `state` is MusicKit's state at the press.
  */
 function logPress(what: "playPause" | "next" | "prev", from: string): void {
+  if (what !== "playPause") releaseHold(what); // playPause decides for itself
   const m = music;
   const S = window.MusicKit?.PlaybackStates;
   diag.log("player:press", {
@@ -2995,6 +3039,17 @@ function logPress(what: "playPause" | "next" | "prev", from: string): void {
 /** Toggle play/pause. With nothing queued, starts the cached library from the top. */
 export async function playPause(why = "button"): Promise<void> {
   logPress("playPause", why);
+  // A heal hold shows the song as playing, so this press means Pause: stop the heal (it reads
+  // lastUserPauseAt) and leave the song paused at its spot.
+  if (heldSpot() !== null) {
+    lastUserPauseAt = performance.now();
+    releaseHold("pause");
+    if (music?.isPlaying) {
+      notePause(why);
+      await music.pause();
+    }
+    return;
+  }
   if (music?.isPlaying) notePause(roomBridge ? `room:${why}` : why);
   if (roomBridge) return roomBridge.playPause(); // a room command (ROOMS.md §10)
   if (!music?.isPlaying) await requireSignIn(); // pausing never needs a sign-in
@@ -3161,18 +3216,21 @@ const RECOVER_CHECK_MS = 4000;
 const RECOVER_LOADING_LOOKS = 3;
 let lastUserPauseAt = -Infinity;
 let recoverAgain: unknown = null;
+/** Bumped when a heal gives up with its toast: a recovery check armed before it does nothing. */
+let recoverEpoch = 0;
 
 /** `atSec`: start the song there (a mid-song stall, a Play on a stuck song); 0 = the top. */
 async function recoverLoad(m: any, why: string, atSec = 0): Promise<void> {
   await loadAndResumeAt(m, atSec, { stopFirst: true });
   const entry = queue.getCurrent();
   const gen = loadGen;
+  const epoch = recoverEpoch;
   const startedAt = performance.now();
   let looks = 0;
   const check = (): void => {
     const mk = music;
     const S = window.MusicKit?.PlaybackStates;
-    if (!mk || !S || !entry || mode !== "queue" || isLoading || loadGen !== gen || queue.getCurrent() !== entry) return;
+    if (!mk || !S || !entry || mode !== "queue" || isLoading || loadGen !== gen || epoch !== recoverEpoch || queue.getCurrent() !== entry) return;
     if (mk.isPlaying || lastUserPauseAt > startedAt) return;
     const st = mk.playbackState;
     if ((st === S.loading || st === S.waiting || st === S.stalled) && looks++ < RECOVER_LOADING_LOOKS) {
@@ -3180,7 +3238,15 @@ async function recoverLoad(m: any, why: string, atSec = 0): Promise<void> {
       return;
     }
     const id = playId(entry) ?? null;
+    // A drop's resume armed for this song, or a known Apple problem with its own toast (the
+    // license heal's parallel check found it), owns what comes next: no second word.
+    if (resumeAfterReconnect?.entry === entry || health.trouble() !== "none") {
+      releaseHold("appleTrouble");
+      diag.log("player:recoverLeft", { why, id, trouble: health.trouble() });
+      return;
+    }
     if (recoverAgain === entry) {
+      releaseHold("gaveUp");
       diag.warn("player:recoverGaveUp", { why, id, state: S[st] ?? st });
       toast({ kind: "warn", text: "Playback stopped. Try the song again." });
       return;
@@ -3305,11 +3371,32 @@ function onEndedWithoutItem(): void {
   });
 }
 
+/** Run `fn` once the load in flight has ended (polled; gives up after AFTER_LOAD_MAX_MS). */
+function afterLoad(fn: () => void): void {
+  const until = performance.now() + AFTER_LOAD_MAX_MS;
+  const look = (): void => {
+    if (!loadingContext) return fn();
+    if (performance.now() < until) window.setTimeout(look, 50);
+  };
+  window.setTimeout(look, 50);
+}
+const AFTER_LOAD_MAX_MS = 10_000;
+
 /** MusicKit's own playback error — the auto-advance twin of the skip rejection above. */
 function onPlaybackError(e: any): void {
-  if (loadingContext || mode !== "queue" || !music) return;
   const msg = String(e?.message ?? e?.error?.message ?? e ?? "");
-  diag.warn("player:playbackError", { msg });
+  // A license refused inside our own load (a Play on a restored queue, 2026-10-18 on the dev
+  // app): the load's play() settles with the song paused at 0:00 and no word. Heal it once the
+  // load has ended, unless the song plays by then.
+  if (loadingContext && mode === "queue" && music && isLicenseError(msg)) {
+    diag.warn("player:playbackError", { msg, during: "load", ...errorFields(e) });
+    afterLoad(() => {
+      if (mode === "queue" && music && !music.isPlaying) onMusicKitTrouble(msg, "playbackError:load");
+    });
+    return;
+  }
+  if (loadingContext || mode !== "queue" || !music) return;
+  diag.warn("player:playbackError", { msg, ...errorFields(e) });
   perf.event("playbackError", { msg, keys: e && typeof e === "object" ? Object.keys(e).slice(0, 8) : typeof e });
   if (!isUnavailable(msg)) {
     if (freshSignIn) {
@@ -3374,11 +3461,15 @@ async function recoverFromFailure(source: string, live = false): Promise<{ troub
   }
 }
 
-const MEDIA_KEY = /^MEDIA_KEY\b/;
 /** Wait before the license retry, so MusicKit's torn-down key session is gone. */
 const KEY_RETRY_MS = 1000;
 /** The entry the license retry already loaded again: a second failure is not retried. */
 let keyRetried: unknown = null;
+/** The last license heal: the same song failing again within LICENSE_AGAIN_MS takes the toast.
+ *  A window, not "once per song": the failure near a song's end is the NEXT song's license
+ *  (MusicKit asks ~15 s early), so a song healed at its start must still heal at its end. */
+let licenseHealed: { entry: unknown; at: number } | null = null;
+const LICENSE_AGAIN_MS = 30_000;
 
 /** MusicKit failed on its own (its alert dialog, or a playback error that is not a dead
  *  song): no native dialog, find the cause, retry the current song once after a heal. */
@@ -3387,12 +3478,31 @@ function onMusicKitTrouble(msg: string, via: string): void {
   // The song and spot this failure stopped, read before any await (the clock is ours).
   const stopped = mode === "queue" ? queue.getCurrent() : undefined;
   const stoppedAt = lastHeardAt;
+  if (isLicenseError(msg)) traceLicense(msg, via, stoppedAt);
   // A failed audio download in a queue song: a network drop, most often a short one.
   if (msg === "loadSegmentError" && stopped) return onDrop(stopped, stoppedAt, via, true);
   const now = performance.now();
+  const step = licenseStep({
+    msg,
+    queueSong: !!stopped,
+    room: !!roomBridge,
+    justLoaded: now - lastLoadEndAt < LOAD_ERROR_GRACE_MS,
+    keyRetried: !!stopped && keyRetried === stopped,
+    healed: !!stopped && licenseHealed?.entry === stopped && now - licenseHealed.at < LICENSE_AGAIN_MS,
+  });
+  if (step === "heal" && stopped) return healLicense(stopped, heardEntry === stopped ? stoppedAt : 0, msg, via);
+  // The same song refused again soon after its heal: say so at once. The path below can stay
+  // silent (one recovery per RETRY_GAP_MS), and that left a song stopped with no word.
+  if (step === "none" && stopped && !roomBridge && isLicenseError(msg)) {
+    releaseHold("again");
+    recoverEpoch++; // the heal's own sound check must not load it a third time under the toast
+    diag.warn("player:licenseGaveUp", { msg, via, id: playId(stopped) ?? null });
+    toast({ kind: "warn", text: "Playback stopped. Try the song again." });
+    return;
+  }
   // The song's license setup failed right after a load: a race inside MusicKit, not Apple's
-  // health. Load the song again once, quietly; a second failure takes the path below.
-  if (stopped && MEDIA_KEY.test(msg) && now - lastLoadEndAt < LOAD_ERROR_GRACE_MS && keyRetried !== stopped) {
+  // health. Load the song again once, quietly; a second failure takes the license heal.
+  if (step === "keyRetry" && stopped) {
     keyRetried = stopped;
     diag.log("player:keyRetry", { via, id: playId(stopped) ?? null });
     window.setTimeout(() => {
@@ -3420,6 +3530,88 @@ function onMusicKitTrouble(msg: string, via: string): void {
     }
     if (r.trouble === "none") toast({ kind: "warn", text: "Playback stopped. Try the song again." });
   })();
+}
+
+/** One log line per license failure with what led to it (QUEUE.md §License heal › Why Apple
+ *  refused): the last license events from license-watch.ts, `ago` in ms before the failure, and
+ *  the song, the spot, the output and the window's state. */
+function traceLicense(msg: string, via: string, at: number): void {
+  const now = performance.now();
+  const m = music;
+  diag.warn("player:licenseTrace", {
+    msg,
+    via,
+    id: m?.nowPlayingItem?.id ?? null,
+    at: Math.round(at),
+    len: Math.round(m?.currentPlaybackDuration ?? 0),
+    mode,
+    output: outputKind(),
+    up: Math.round(now / 1000),
+    online: navigator.onLine,
+    hidden: document.hidden,
+    trace: licenseTrace()
+      .slice(-6)
+      .map((e) => compactEvent(now - e.t, e)),
+  });
+}
+
+/** MusicKit stops the song ~40 ms after it raises the error (desk test 2026-10-18). The heal
+ *  waits for that stop, looking every LICENSE_SETTLE_STEP_MS, and no longer than this: a song
+ *  still playing then was not stopped by the error, and is left alone. A fixed 1 s wait (the
+ *  quick retry's) measured as pure delay: the reload right after the stop took the license. */
+const LICENSE_SETTLE_MS = 600;
+const LICENSE_SETTLE_STEP_MS = 20;
+
+/** A license failure stopped a queue song (2026-10-18, QUEUE.md §License heal). Now Playing
+ *  holds the song as playing at its spot (holdForHeal). The Apple check runs during the wait:
+ *  a revoked or swapped token is healed, an offline network arms the drop's resume, a sign-in
+ *  problem shows its own toast. Apple fine → load the song again once, LICENSE_BACK_S before the
+ *  stop, silent until it gets there. recoverLoad checks that it ends in sound: silent twice, the
+ *  toast. `at` is 0 when the song was never heard (it failed at its start). */
+function healLicense(entry: QueueEntry, at: number, msg: string, via: string): void {
+  const startedAt = performance.now();
+  licenseHealed = { entry, at: startedAt };
+  const spot = resumeSpot(at, LICENSE_BACK_S);
+  diag.warn("player:licenseHeal", { msg, via, id: playId(entry) ?? null, at: Math.round(at) });
+  holdForHeal(entry, spot);
+  emit();
+  emitModelProgress();
+  // The Apple check runs beside the reload, never before it: it took 441 ms uncached in the
+  // desk test, and it matters only when the reload fails. Its answer routes a real cause: a
+  // sign-in problem or an offline network ends the hold and takes that cause's own path (the
+  // reload's give-up toast stays quiet then, recoverLoad).
+  void (async () => {
+    if (!(await isConnected())) {
+      releaseHold("signedOut");
+      return health.show("signedOut", true, via);
+    }
+    const r = await recoverFromFailure(via);
+    if (r.trouble === "offline") {
+      releaseHold("offline");
+      armResume(entry, at, via);
+    } else if (r.trouble !== "none") {
+      releaseHold(r.trouble); // its own toast shows
+    }
+  })().catch((e) => console.warn("[player] license heal check:", e));
+  void (async () => {
+    const settleUntil = performance.now() + LICENSE_SETTLE_MS;
+    while (music?.isPlaying && performance.now() < settleUntil) {
+      await new Promise((res) => window.setTimeout(res, LICENSE_SETTLE_STEP_MS));
+    }
+    const m = music;
+    if (!m || mode !== "queue" || queue.getCurrent() !== entry || m.isPlaying || isLoading || lastUserPauseAt > startedAt) {
+      diag.log("player:licenseHealSkip", { playing: !!m?.isPlaying, same: queue.getCurrent() === entry, loading: isLoading });
+      return releaseHold("skip");
+    }
+    diag.log("player:licenseReload", { spot: Math.round(spot * 10) / 10, waited: Math.round(performance.now() - startedAt) });
+    await recoverLoad(m, "licenseHeal", spot);
+    // A Pause pressed while the reload ran: the load's play() still started the song.
+    if (lastUserPauseAt > startedAt && m.isPlaying) await m.pause();
+  })().catch((e) => {
+    releaseHold("error");
+    console.warn("[player] license heal:", e);
+    toast({ kind: "warn", text: "Playback stopped. Try the song again." });
+  });
 }
 
 /** A network drop stopped a queue song (his calls 2026-09-27): hold the "can't reach" toast
@@ -3507,12 +3699,12 @@ async function seekOnceStarted(m: any, sec: number): Promise<void> {
   const pause = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
   const reached = async (ms: number): Promise<boolean> => {
     const until = performance.now() + ms;
-    while ((m.currentPlaybackTime ?? 0) < sec - 1 && performance.now() < until) await pause(50);
+    while ((m.currentPlaybackTime ?? 0) < sec - 1 && performance.now() < until) await pause(SEEK_POLL_MS);
     return (m.currentPlaybackTime ?? 0) >= sec - 1;
   };
   try {
     const until = performance.now() + SEEK_START_WAIT_MS;
-    while (!m.isPlaying && performance.now() < until) await pause(100);
+    while (!m.isPlaying && performance.now() < until) await pause(SEEK_POLL_MS);
     if (!m.isPlaying) {
       diag.warn("player:resumeSeek", { at: Math.round(sec), done: false, why: "not playing" });
       return;
@@ -3526,6 +3718,8 @@ async function seekOnceStarted(m: any, sec: number): Promise<void> {
   }
 }
 const SEEK_START_WAIT_MS = 8000;
+/** Each silent ms here is heard: 20 ms looks (were 100 and 50, 2026-10-18), a few reads each. */
+const SEEK_POLL_MS = 20;
 
 health.onTrouble((t) => {
   if (t !== "none" || !resumeAfterReconnect) return;
