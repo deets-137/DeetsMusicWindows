@@ -123,9 +123,9 @@ Terms:
 
 ## 3. The list
 
-> **State on 2026-10-14: three rows are open.** **B20** (a watch on live; it cannot be forced),
-> **B21** (deetsmeter's cold start, HANDOFF.md › Open now) and **B22** (Rooms on the web). Every
-> other row passed: the runs of 2026-09-27 to 2026-10-12 and his report of 2026-10-13 (§5). The
+> **State on 2026-10-17: one row is open,** **B21** (deetsmeter's cold start, HANDOFF.md › Open
+> now). Every other row passed: the runs of 2026-09-27 to 2026-10-12, his report of 2026-10-13,
+> his word of 2026-10-17 (B22) and the live log of 2026-10-17 (B20, §5). The
 > rows stay as a record and for a regression run; a new open test is a new row.
 
 Order: the uncommitted work first (a fail there stops a commit), then the released work.
@@ -325,6 +325,8 @@ Summary: *8 pass · 2 partial · 1 fail (adjacent copies) · 2 noisy.* A slip du
 | Launch 1–6 | 2026-10-13 | pass (his eye) | DEBUGGING.md § Launch |
 | B14 on live | 2026-10-13 | pass (log) | `[apple] calls 1h` every hour on the installed 0.27.0 |
 | B23 | 2026-10-15 | pass (his) | Media flyout from a Start Menu start; update beta.4 → beta.6 in 2.0 s; uninstall and first install "seamless and quite fast". The Access is denied wait is inside Update.exe and harmless (VELOPACK.md §12.6) |
+| B22, Identity §9.2, Spin FPS §12 4–6, AirPlay §13.2a–b, Rooms §21.8 | 2026-10-17 | pass (his word) | He marked the five open desk tests passed. WebRooms.md §10.5 on this PC; its Safari steps wait for the site page (part H) |
+| B20 | 2026-10-17 | pass (live log) | `player:deadNext` at 18:57 on 0.29.0: the re-window, `topUp` 1 ms later, the song started once, Next went to position 1 (QUEUE.md § The healed song played twice) |
 
 ## 6. Verify while you build (2026-10-17, his ask)
 

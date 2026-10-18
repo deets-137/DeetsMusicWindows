@@ -383,7 +383,7 @@ on a 400 px stage, 20 px. A picture at the size of the hole cannot be read. The 
   hint in ONBOARDING.md §1, Compass by the store rule.
 
 ## 12. Spin FPS (2026-10-17)
-> **Part:** built · 2026-10-17
+> **Part:** built · 2026-10-17 · desk test passed 2026-10-17 (rows 1–6; rows 4–6 on his word)
 
 **Why.** The spin cost is per frame, not per pixel: about 1.2 ms of CPU a frame across the GPU,
 Viz and Compositor threads, so a 240 Hz display pays 31–44 % of one core for the record alone

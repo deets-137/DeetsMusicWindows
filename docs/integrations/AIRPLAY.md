@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-19
 sources: [src-tauri/src/airplay.rs, src/airplay.ts, scripts/webview-eval.mjs, src/player.ts, src/sound-worklet.ts, src/sound.ts]
-updated: 2026-10-13
+updated: 2026-10-17
 ---
 # DeetsMusic — AirPlay (play on a HomePod)
 
@@ -583,7 +583,7 @@ It was never desk-tested or merged. On 2026-10-17 he picked the parts (his calls
   the connect and disconnect commands that §13.5 rewrote; it waits until a slow switch needs it.
 
 #### 13.2b Porting the stall and drop lines: the scope (2026-10-17)
-> **Part:** built · 2026-10-17 (desk test: open)
+> **Part:** built · 2026-10-17 (desk test passed 2026-10-17, his word; §13.2a's `sound:switch` too)
 
 **As built (2026-10-17, his call: the Tokio task).** Crate 0.4.2 is `44ac6bb` on DeetsAirplay's
 master, pushed (his OK); `src-tauri/Cargo.toml` pins that `rev`. `airplay.rs`: `install_live` (both places a session is put in place) bumps

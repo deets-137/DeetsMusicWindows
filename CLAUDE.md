@@ -165,7 +165,7 @@ for word, with RELEASE.md's section numbers.
   in large type, re-read every 5 min (`src/present.ts`). His calls §7a: a party on personal
   accounts (the café product documented only), Last.fm's number, the card grow; the goal
   marker paused. HE designs the picture.
-- `WebRooms.md` — app side BUILT 2026-10-13, desk test open (§10.5): the rooms web port. A
+- `WebRooms.md` — app side BUILT 2026-10-13, desk test passed 2026-10-17 (§10.5, his word): the rooms web port. A
   friend on a Mac joins a room by its code and listens in a browser on deets.solutions with
   their own Apple Music subscription (no preview tier). The app's Search, Queue, History and
   Now Playing cards on a Tauri stand-in (`web/`, `npm run listen`), `src/platform.ts`'s
@@ -223,7 +223,7 @@ for word, with RELEASE.md's section numbers.
   feed), `release.mjs` runs `vpk pack`. His calls §1 (no migration path: an NSIS install moves
   by hand, RELEASE.md §4b). Install from a WMI-started process, never from this shell; a
   release build takes a CDP port through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (§12.4).
-- `IDENTITY.md` — BUILT 2026-10-16 on `shixtheenth`, desk test open (§9.2): package identity (a
+- `IDENTITY.md` — BUILT 2026-10-16 on `shixtheenth`, desk test passed 2026-10-17 (§9.2, his word): package identity (a
   signed sparse `.msix`, `scripts/identity-pack.mjs`, registered against `current\` by
   `identity.rs` in Velopack's hooks) so the taskbar and Start draw exact-size icons, his city
   art (`npm run icons`, `icon-template/deets-city-600.png`); `tray.ico` keeps the tray the head.

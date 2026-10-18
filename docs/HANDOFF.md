@@ -123,13 +123,14 @@ live; the work committed after it waits on the next release.
 
 Every hand and desk test listed here before closed on 2026-10-13 (his report, WORKLOG
 2026-10-13 *desk tests closed*; the rows are DESK-TESTS.md §5). What is left:
-- **The web demo** (WEB-DEMO.md §15.7): the page lede says "everything mocked"; two shot lists
-  type the old album "Salt & Signal".
-- **Playback, watch the live ring:** the dead-next heal (`player:deadNext`, QUEUE.md § The
-  healed song played twice); the music stopped at a song change and the catalog heal
+- **The web demo** (WEB-DEMO.md §15.7): the page lede says "everything mocked" (his words to
+  change); the Demos picture (`max-full-player` in guide/shots.json) types the old album "Salt &
+  Signal" and needs his pick of a cover with no printed title. The album-mark check is fixed.
+- **Playback, watch the live ring:** the music stopped at a song change and the catalog heal
   (`player:retryCurrent`, `keyRetry`, `recoverSilent`; QUEUE.md); a healed library id's old
   play counts may stay on the old key (not checked). None of these fired on live from
-  2026-10-08 to 2026-10-13.
+  2026-10-08 to 2026-10-17. (The dead-next heal fired on live 2026-10-17 and played the song
+  once: QUEUE.md § The healed song played twice, passed.)
 - **Data:** the next song's colors one ahead (ALBUM-COLOR.md, data path item 4). The `db: slow`
   lines were read on 2026-10-13: the read connection is real but not on the launch's path, so
   it stopped there (ideas/WORKERS.md §5.1). What gates `ready` is the library reply itself.
@@ -143,10 +144,6 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
 - **The Deets head icon:** live since 0.28.0, and DeetsSolutions `38abe54` is pushed. Left
   (not checked 2026-10-17): the DeetsSupport deploy of the sign-in icon, the Discord art asset,
   and the sign-in page's blurred mark. whitelabel.md §10.6 › *Before it goes live*, items 2–4.
-- **Package identity and the city icon (2026-10-16): published in 0.29.0** (his call, before his
-  desk test). His desk test runs on live: IDENTITY.md §9.2 (the taskbar at 100 / 125 / 150 %, a
-  new pin, the tray, the media flyout, the next update, an uninstall on the Beta). The spike's
-  files are in the worktree `../DeetsMusic-identity` (branch `identity-spike`).
 - **Optimization, in his order (his call, 2026-10-17).** The measurement, from a side session on
   live 0.29.0, paused, 20 s: the Rust process has 37 threads (main, watchdog, 16
   `tokio-rt-worker` (one per logical core), db, deets-bridge, audio-out, apple-calls,
@@ -179,9 +176,9 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   calls: a 120 FPS cap by default after a blind test, and a Settings › Skin settings row *Spin
   FPS* (60 · 120 · 144 · 240). `display.rs` (the monitor's rate), `display-hz.ts`,
   `spin-steps.ts` (+ tests), vinyl.ts, the flight copy. `ops/checks/spin-fps.mjs` passes 7 of 7
-  with sound on a dev app he started (§12, Claude's run). **Open:** his eye on it, rows 4–6 of
-  §12 (another monitor, the tray disc, the flight, the CPU split). `pressVinylFps` joined the
-  usage allow-list; the DeetsSupport copy waits for his deploy with Suggest Less's.
+  with sound on a dev app he started (§12, Claude's run); rows 4–6 passed on his word
+  (2026-10-17). **Open:** merge into `main`, then a release. `pressVinylFps` joined the usage
+  allow-list; the DeetsSupport copy waits for his deploy with Suggest Less's.
 - **A dev app Claude starts cannot play (since 2026-10-16):** Apple refuses Widevine inside the
   Claude package (-42585 / -1021); his own launch plays. Sound tests run on his launch.
   DEBUGGING.md § Sign-in. Why it began on 2026-10-16 is not known.
@@ -211,8 +208,9 @@ each step that touches those calls.
   is a fork for him when he picks it up.
 
 - **Rooms: a long queue and stations** (2026-10-16): live since 0.29.0; the worker is deployed
-  (`4f61445`). Claude's two-app desk run passed 11 rows without sound (one Apple ID). Open: his
-  desk test with real playback, and the list of what Claude decided (ROOMS.md §21.10).
+  (`4f61445`). Claude's two-app desk run passed 11 rows without sound (one Apple ID). His desk
+  test with real playback passed on his word (2026-10-17). Open: his look at the list of what
+  Claude decided (ROOMS.md §21.10).
 
 - **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
   words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
@@ -265,7 +263,8 @@ each step that touches those calls.
 - **Usage counts** (USAGE-COUNTS.md): shipped in 0.27.0 (2026-10-14). Watch the first weekly
   reports arrive on deets.solutions/deetsmusic/admin/; the cron's in-window delete is still not
   seen in a run. §11 the as-built record.
-- **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test open (§10.5).
+- **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test passed 2026-10-17 (§10.5,
+  his word; the Safari steps wait for the site page).
   Not built: the site page (part H, a DeetsSolutions session); the worker change is not deployed
   (§10.6).
 
@@ -334,11 +333,11 @@ each step that touches those calls.
 - **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;
   ask him what is wrong first); Song of the Day "in the sidebar" (ask which sidebar first).
 - **AirPlay tracking (AIRPLAY.md §13.2a–b, his calls 2026-10-17):** `sound:switch` and the
-  `sound:output` reason committed (`9197156`; desk test open). The stall / drop lines BUILT on
-  a Tokio task (his pick) with crate 0.4.2 (the quiet keep-alive, five readings), committed in
-  DeetsAirplay as `44ac6bb`, pushed, and pinned in Cargo.toml. **Open:** the desk test
-  (§13.2b, on a dev app he starts, with a speaker), then the `../DeetsMusic-aptel` worktree goes.
-  The switch timing is left out.
+  `sound:output` reason committed (`9197156`). The stall / drop lines BUILT on a Tokio task (his
+  pick) with crate 0.4.2 (the quiet keep-alive, five readings), committed in DeetsAirplay as
+  `44ac6bb`, pushed, and pinned in Cargo.toml. Desk tests §13.2a and §13.2b passed on his word
+  (2026-10-17). **Open:** merge into `main`, then a release; the `../DeetsMusic-aptel` worktree
+  goes. The switch timing is left out.
 - **Designed earlier:**
   the web demo's album light (WEB-DEMO.md §10); deploy a worker without dropping connections
   (ideas/WorkerDeploy.md); SECOND-SEARCH.md, ROOMS.md §19–§20, DeetsOTD.md §9,

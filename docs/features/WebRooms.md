@@ -1,8 +1,8 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-17
 sources: [web/app.ts, web/listen.ts, web/handlers.ts, web/apple-catalog.ts, web/tauri-shim.ts, vite.listen.config.ts, src/platform.ts, src/room.ts, src/room-panel.ts, src/history-card.ts, src/media-menu.ts, src/now-playing-card.ts, src/search-card.ts, src/player.ts, src-tauri/src/apple.rs, tests/web-catalog.test.ts, tests/web-commands.test.ts, docs/integrations/ROOMS.md, docs/integrations/FRIENDS.md, docs/features/WEB-DEMO.md, ../DeetsSolutions/docs/radio.md, ../DeetsSolutions/radio/dev-token.js]
-updated: 2026-10-13
+updated: 2026-10-17
 ---
 # Rooms on the web — a friend on a Mac tunes in from deets.solutions
 
@@ -10,7 +10,8 @@ updated: 2026-10-13
 > DeetsSolutions be an extension of the friends listening on the app. If 2 friends on the app
 > invite another friend who's on Mac, they can tune in on the website."
 >
-> **Status (2026-10-13): the app side is BUILT (§10), desk test open (§10.5).** The site page
+> **Status (2026-10-13): the app side is BUILT (§10); the desk test (§10.5) passed 2026-10-17 on his
+> word.** The Safari steps run once the site page is live. The site page
 > (part H) and the publish step are not built, and the worker change is not deployed, so no
 > visitor can use it yet. Do not tell a user the app does this.
 >

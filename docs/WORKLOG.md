@@ -12,6 +12,24 @@ updated: 2026-10-17
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-17 (night) — five desk tests closed on his word; the live watches read
+
+**His asks:** mark the open desk tests passed; work on the watches and small fixes.
+- **Passed on his word:** Spin FPS rows 4–6 (VINYL.md §12), AirPlay tracking §13.2a–b,
+  package identity (IDENTITY.md §9.2), rooms with a long queue and stations (ROOMS.md §21.8),
+  Rooms on the web (WebRooms.md §10.5; the Safari steps wait for the site page). DESK-TESTS.md
+  §5 has the row.
+- **The dead-next heal (B20): passed from the live log.** It fired at 18:57 on 0.29.0; the
+  top-up ran 1 ms after the re-window and the song played once (QUEUE.md § The healed song
+  played twice). The other heals (`retryCurrent`, `keyRetry`, `recoverSilent`) have not fired.
+- **The album-mark check** types "American Teen" (his picks) in place of "Salt & Signal"; its
+  menu step moved to row 3, because the demo seeds row 4 as a favorite. 4 of 4 shots pass.
+- **Left as his:** the demo page's lede, the album for the Demos picture
+  (`max-full-player`), the readability paints for Ocean and Glass, the deploys (DeetsSupport,
+  the Discord art), the `../DeetsMusic-aptel` worktree (it still holds uncommitted files of the
+  2026-09-25 build). The next song's colors one ahead: `albumColor:next` runs on live (335
+  lookups in the log); whether the colors change with the song is his eye.
+
 ## 2026-10-17 (late night) — repo cleanup; the old AirPlay tracking build sorted
 
 **His asks:** clean up old dev builds and cargo pieces; what is uncommitted in the two old
