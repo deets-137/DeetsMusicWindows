@@ -1,7 +1,7 @@
 ---
 status: project
 desk_test: none
-sources: [scripts/shots.mjs, src/marks.ts, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts]
+sources: [scripts/shots.mjs, src/marks.ts, docs/guide/shots.json, docs/guide/motion.json, vite.demo.config.ts, demo/shim.ts, demo/latency.ts, docs/guide/loading.json, docs/guide/latency.json]
 updated: 2026-10-17
 ---
 # DeetsMusic — Shots: pictures and clips of each feature
@@ -524,6 +524,33 @@ test that anyone can run.
 
 **One driver.** A dev run changes his app while it runs. Before it, ask the other sessions in the
 checkout; never `click` a text field (set it by `eval`; DESK-TESTS.md §6.2).
+
+## 5j. Waits: the replay, pops and settled (2026-10-17)
+
+> **Part:** built · 2026-10-17
+
+For the loading set ([LOADING-SET.md](LOADING-SET.md); how to use it: DEBUGGING.md § The loading
+set).
+
+- **`--latency p50|p90|max`** (demo shots only): `demo/latency.ts` waits each command's value from
+  `docs/guide/latency.json` before the demo's handler answers: the first call of a command in a
+  page life its cold value, later calls the warm one. Each wait marks `ipc:<cmd>:begin` / `:end`.
+  The runner holds each `*mzstatic*` image at the request (CDP `Fetch`), fetches its bytes once
+  per run, and answers after a time drawn from the cover miss deciles. The draw is seeded by the
+  shot, the look, the variant and the run (`--repeat` changes it). After the page loads, the
+  shot waits until no replayed command has been in flight for 500 ms (at most 20 s). The console
+  file says what was replayed (`latency replaying p90 …`) and how the covers went (`N covers: H
+  at once, M held a–b ms`). `off` (the default) changes nothing.
+- **`--cold`**: the HTTP cache is cleared and turned off for each demo shot; every cover is then
+  held. Without it, a share of the covers equal to his hit share answers at once.
+- **Pops**: on a step with `"frames"`, a frame that differs from the one before it by 8 % or more
+  of the step's whole change (`POP_SHARE`) is a pop. The step strip labels it `POP`; the change
+  line and the log add `pops N (+t, …)`.
+- **Settled**: the last `ipc:*:end`, `mosaic:drawn` and cover load in the step's region between
+  the step's input and the next action. The console file's `settled` line also counts the command
+  ends, covers, mosaics and `coll:render` redraws; the log adds `settled +N`.
+- An `invoke` step (§5i) is for dev shots: on a demo page with `--latency` the two would share the
+  `Fetch` domain.
 
 ## 6. Coverage — no shipped feature without a shot
 

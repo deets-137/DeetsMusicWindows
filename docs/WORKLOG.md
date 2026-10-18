@@ -23,6 +23,39 @@ words as drafted, without "Already".
   hint.ts, the nudge (`--nudge-*` tokens, `.is-nudged`), the ONBOARDING.md §1 row.
 - **Left:** the desk test, apple-calls.md §4.1.
 
+## 2026-10-17 (night) — the loading set, steps 2–5: the replay, pops, the set
+
+**His ask:** finish the build, and document in DEBUGGING what it is and what it enables. "Unsure
+if I'll use it but we can build and keep it in our back pocket." No, a day of use is not required
+(asked and answered: the code does not need it; only the numbers do).
+- **Built:** the first `latency.json` (thin: 12 blocks of my reloads) with the cover miss
+  deciles; `demo/latency.ts` (the command replay); `--latency` and `--cold` in shots.mjs, the
+  cover holds answered from the runner, the 500 ms quiet wait after a load, the 90 s first load;
+  pops (`POP` in the step strip) and the settled time; `docs/guide/loading.json`, 11 clips ×
+  Glass and Press; DEBUGGING.md § The loading set; SHOTS.md §5j; CLAUDE.md checklist item 17.
+- **Fixed on the way:** typing in the Search clip went to the page and made a playlist in the
+  demo (the field is clicked first now); 7 clips failed while the replayed launch reads still ran
+  (the quiet wait).
+- **First finding (Glass, p90, cold):** Playlists, first open, shows an empty card from about
+  +266 ms to +1,200 ms, then fills in two steps. LOADING-SET.md §8. Not taken further: his fork.
+
+## 2026-10-17 (late) — the loading set, step 1: the command recorder
+
+**His ask:** check whether L1 and L2 (guide/LOADING-SET.md §5) are still open, then build the
+recorder, on a new branch `seventheenth`.
+- **L1 and L2 are closed:** his calls 2026-10-16, p90 by default and `latency.json` in the repo
+  (§5). CLAUDE.md still said "L1–L2 open"; corrected.
+- **Built:** `src/ipc-timing.ts` (per command the cold and warm round trips, the `ipc:` marks,
+  the cover hits and misses, one block to the log every 5 min and on close, `__ipcTiming`),
+  `src/ipc-core.ts` and the `ipc-timing` plugin in vite.config.ts, the `coll:render` and
+  `mosaic:drawn` marks, release-check 5 on `__ipcTiming`, and `scripts/latency-profile.mjs`
+  (`npm run latency:profile`, step 2's script; the first `latency.json` waits for his use).
+- **Found at the first run:** Tauri's `__TAURI_INTERNALS__.invoke` is read-only; the design's
+  wrap threw and stopped the dev page from booting. The recorder moved to the import (§7).
+- **The check:** `docs/ops/checks/ipc-timing.mjs`, 18 checks, all ok (§6). A release build has
+  none of it; a `VITE_PERF=1` build has it.
+- **Left:** he uses the dev app for a day or more; then the profile, then step 3 (the replay).
+
 ## 2026-10-17 (evening) — album notes: probed, M1 his, built, desk test passed
 
 **His asks:** leave the vinyl fix to its session; tackle album notes; M1 = A ("a bold name or a

@@ -180,8 +180,11 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
-- **The loading set** (2026-10-16): replay his real command and cover timings (p90) in the demo,
-  one clip per loading wait. Step 1 is the recorder. guide/LOADING-SET.md.
+- **The loading set** (2026-10-16): BUILT 2026-10-17 on `seventheenth`, all five steps, kept as
+  a back-pocket tool (his words). guide/LOADING-SET.md §7, §8; how to use it: DEBUGGING.md § The
+  loading set. Open: the first `latency.json` is thin (my reloads, n ≈ 5); run
+  `npm run latency:profile` again after some days of use. No UX-COVERUPS rows yet: each finding
+  is a fork for him when he picks it up.
 
 - **Rooms: a long queue and stations** (2026-10-16): live since 0.29.0; the worker is deployed
   (`4f61445`). Claude's two-app desk run passed 11 rows without sound (one Apple ID). Open: his

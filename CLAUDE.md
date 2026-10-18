@@ -284,9 +284,12 @@ user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or 
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
 feature, made by a script from the demo; for the guide, a marketing overview, and visual
 debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins. `LOADING-SET.md` —
-DESIGNED 2026-10-16, not built: a dev-only recorder of each command's round trip, a profile
-from his log (`latency.json`), the demo replaying it plus his cover load times, and one clip
-per loading wait that counts the pops; L1–L2 open (§5). `marketing.md` — the
+BUILT 2026-10-17, a back-pocket tool (his words): a dev-only recorder of each command's
+round trip (`src/ipc-timing.ts`, the `ipc-timing` Vite plugin → `src/ipc-core.ts`), a profile
+from his log (`npm run latency:profile` → `latency.json`), the demo replaying it plus his cover
+load times (`shots.mjs --latency p90 --cold`, `demo/latency.ts`), and `loading.json`, one clip
+per wait with its pops and settled time. L1 p90, L2 in the repo (his calls, §5); §7 the as-built
+record; how to use it: DEBUGGING.md § The loading set. `marketing.md` — the
 shipped features as a tech spec, with the shot of each, for the intro video; he directs it (§1).
 
 ## How to verify your work
@@ -497,6 +500,9 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
      the thread ledger (DEBUGGING.md § Threads): what it does, how long it lives, its name.
      A long-lived one gets `Builder::name`. Prefer `spawn_blocking` or a Tokio timer to a new
      thread that only waits. docs:check 30 fails a start with no row.
+  17. **Loading (2026-10-17):** a new card or view that waits for data gets a clip in
+     `docs/guide/loading.json` (LOADING-SET.md §3.6), so its wait can be replayed at his real
+     timings. A new command it calls needs a demo handler (`demo/handlers.ts`).
 - **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
   change since the last release is low risk to the app's integrity (no hang, music plays).
   Otherwise stop and ask him for a hand test. The lists are RELEASE.md §0b.

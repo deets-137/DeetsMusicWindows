@@ -18,6 +18,7 @@
 // tiles on the same ladder, so a row's mosaic reuses the covers the rows already loaded.
 
 import { log } from "./diag";
+import { mark } from "./marks";
 import type { Timing } from "./mosaic-worker";
 import { ROW_PX, TILE_PX, HERO_PX } from "./art-size";
 
@@ -190,6 +191,7 @@ function draw(key: string, job: Job): void {
       }
       latest.set(slot, key);
       fill(key);
+      mark("mosaic:drawn", `${job.seed}@${job.px}`); // the strip names it (LOADING-SET.md §3.3)
       log("mosaic:drawn", { covers: job.urls.length, size: job.px, ms: Math.round(performance.now() - started), waited, ...split(timing) });
     }
     settleCbs.get(key)?.forEach((cb) => cb(!!blob));

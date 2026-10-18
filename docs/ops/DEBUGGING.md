@@ -1,7 +1,7 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
+sources: [src/ipc-timing.ts, src/ipc-core.ts, demo/latency.ts, scripts/latency-profile.mjs, docs/guide/loading.json, scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
 updated: 2026-10-17
 ---
 # DeetsMusic — Debugging tools
@@ -1454,6 +1454,77 @@ motion: run it before and after a motion change, and compare the two contact she
 
 **Do not save a front-end file during a run.** Vite serves the demo, so a save reloads the
 page under the runner, as with `webview-eval.mjs` above.
+
+## The loading set — every wait at the owner's real timings (built 2026-10-17)
+
+The demo answers every command at once, so a plain shot cannot show what a card does while it
+waits for its data. The loading set makes the demo wait as long as the owner's own dev app
+waits, command by command, and holds each Apple cover for his real load time. The design and
+the as-built record: guide/LOADING-SET.md (§7).
+
+**What it is — four parts:**
+1. **The command recorder** (`src/ipc-timing.ts`, dev and `--built` only). It times every
+   `invoke` round trip (cold = the first call of a page life, warm = the rest) and every cover
+   load, marks each call on the page clock (`ipc:<cmd>:begin` / `:end`), and writes one block
+   to `deetsmusic.log` every 5 min and on close:
+   ```
+   INFO  diag: [perf] ipc+art 300 s
+       [perf] ipc playlists_cached cold 14 · warm 3,2,4
+       [perf] art miss 212,340,95 · hits 41
+   ```
+   The console handle: `__ipcTiming.commands()`, `.art()`, `.pending()`, `.flush()`. It needs no
+   action: run the dev app as normal and the log fills.
+2. **The profile** (`npm run latency:profile`). It reads the blocks of the last 14 days
+   (`--days`) and writes `docs/guide/latency.json`: per command the cold and warm n · p50 · p90 ·
+   max, and the cover misses with their deciles and the hit share. Names and milliseconds only.
+   Run it again after a change that moves a wait. `--print` shows a table.
+3. **The replay** (`--latency p50|p90|max` on `scripts/shots.mjs`). In a demo shot, each
+   command waits its value from the profile, and each Apple cover is held for a time drawn from
+   the miss deciles (seeded by the shot, the look and the run, so a rerun gives the same waits).
+   `--cold` turns the HTTP cache off (a first load after install); without it, a share of the
+   covers equal to his hit share answers at once. The public demo never replays.
+4. **The loading set** (`docs/guide/loading.json`): 11 clips, one per wait (Home and the
+   Library at launch, Playlists, a playlist, an album, the artist view, Search, Next, Rewind,
+   Radio, Credits), in Glass and Press, Midi.
+
+**What it gives you:**
+- See what a user sees while a card waits: an empty card, a jumble, covers in the wrong order,
+  a list that rebuilds two or three times.
+- Count it, per step with a `"region"`: **pops** (frames where 8 % or more of the box's whole
+  change happens at once; a fade gives few or none), the **settled** time (the last command
+  end, cover load or mosaic before the next action), and the **list redraws** (`coll:render`
+  marks). The strip labels each pop frame `POP` and each mark by name.
+- Judge a cover-up before it ships: `--latency p90 --vs "--some-token=value"` runs the clip as
+  is and with the change, side by side.
+- Compare versions: a later run lands beside the last one in `shots/loading/<version>/`.
+- The command recorder alone answers "which command is slow on my machine": read the blocks, or
+  `__ipcTiming.commands()` in DevTools.
+
+**The commands:**
+```
+npm run latency:profile                                   # after some days of normal use
+node scripts/shots.mjs --list docs/guide/loading.json --latency p90 --cold
+node scripts/shots.mjs --list docs/guide/loading.json --latency p90 --cold --only load-playlists --look moonlight-glass
+node scripts/shots.mjs --list docs/guide/loading.json             # the same clips with no wait: the baseline
+node docs/ops/checks/ipc-timing.mjs                               # the recorder's own check (dev app running)
+```
+The whole set takes about 20–30 minutes (22 clips of 240 frames each).
+
+**Read, in this order:** the log lines `step N (...): … pops N · settled +N`, the console
+file's `settled` and `latency` lines (`latency: no profile for x` names a command with no row:
+a new command, or one he never called), the overview strip `<id>.<look>.strip.png`, then the
+step strip `.s<k>-<step>.png` for the frames around a pop.
+
+**Limits:**
+- The numbers are only as good as the profile. A command he never called answers at once;
+  a first `latency.json` from a few launches has a thin cold column (n ≈ 5).
+- Mosaics are drawn by the demo's own worker on this machine, not replayed.
+- The demo's data is not his library: a list of 27 playlists is the demo's, not his 200.
+- The pop threshold (8 %) is a first guess; tune `POP_SHARE` in shots.mjs on real findings.
+- The first page load of a run can take over 30 s while the demo server compiles; the runner
+  waits 90 s for it.
+- Calls that `@tauri-apps/api` and the Tauri plugins make from `node_modules` (`listen`, the
+  window calls) are not timed and not replayed. They are not data waits.
 
 ## Audio quality — `probe fidelity` (DeetsAirplay, 2026-09-16)
 
