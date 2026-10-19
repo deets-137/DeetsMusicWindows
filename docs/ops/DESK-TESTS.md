@@ -123,7 +123,7 @@ Terms:
 
 ## 3. The list
 
-> **State on 2026-10-17: one row is open,** **B21** (deetsmeter's cold start, HANDOFF.md › Open
+> **State on 2026-10-19: two rows are open,** **A10** (the Network panel, built 2026-10-19) and **B21** (deetsmeter's cold start, HANDOFF.md › Open
 > now). Every other row passed: the runs of 2026-09-27 to 2026-10-12, his report of 2026-10-13,
 > his word of 2026-10-17 (B22) and the live log of 2026-10-17 (B20, §5). The
 > rows stay as a record and for a regression run; a new open test is a new row.
@@ -141,6 +141,7 @@ Order: the uncommitted work first (a fail there stops a commit), then the releas
 | A7 | Hide cards: Settings › Cards, the picker's right-click, Undo, the lock, a restart | [HIDE-CARDS.md §9](../features/HIDE-CARDS.md) | one | agent + owner | Built 2026-10-10. Steps 1–8 an agent can run on the dev app; step 9 (the look of the locked rows) is his |
 | A8 | Layout for Max: 4 cards, 2 columns, 2 rows, 1 card; grow, Rulez, the full player | [MAX-CARDS.md §7](../features/MAX-CARDS.md) | one | agent + owner | Built 2026-10-11. Passed: the owner ran it (2026-10-12) |
 | A9 | Graphics fallback: the rule, the toast's three buttons, the restart, the GPU-process event, the row's three choices | [GRAPHICS-FALLBACK.md §8](../features/GRAPHICS-FALLBACK.md) | one | agent | Built 2026-10-11. Steps 1–3 and 6–8 on `dev:app -- --gpu=off`; step 4 relaunches the app; step 5 ends the dev app's GPU process by PID (match `com.deetsmusic.dev` in the command line, never the live app's) |
+| A10 | The Network panel: the title, the bars, the ping only while playing, Test, a drop, AirPlay; the fetch wrap's A/B | [speedtest.md §9](../features/speedtest.md) · `node docs/ops/checks/fetch-wrap.mjs` (§6.2) | one | owner, then agent | Built 2026-10-19 on `net-worked` in a cloud session: type-checked for Windows, never run. He runs §9 the evening of 2026-10-19; the A/B can be an agent's, on `dev:built`. Step 9 waits on the DeetsSupport deploy (his call) |
 | B1 | Go to Album grows, and the grow replaces the slide | [RULES.md §18](../architecture/RULES.md), *the grow replaces the slide* | one | agent | Also `deetsmusic diag --flush` (LOGGING.md § Reading it from outside) |
 | B2 | The rules engine: the tray panel follows a look change | [RULES.md §18](../architecture/RULES.md), the owner's list | one | agent | The tray panel is `tray.html`, a second webview; read its `data-theme` after a rule changes the look |
 | B3 | The rules engine: a real `dev:fresh` first run | RULES.md §18 · [ONBOARDING.md §5](../features/ONBOARDING.md) | one | agent | `npm run dev:fresh`; the walk should start; every `NEW_MARKS` key starts seen |

@@ -1,0 +1,90 @@
+/* ── The Network button and its panel (docs/features/speedtest.md) ──────────────────────
+   The button is the updates button's family (styles/updates.css): the row's height, no fill,
+   no border, --subtext until hover. Max only, as the Compass and the updates button. The panel
+   is the cog's panel family (styles.css › The quick panel), hung from the button's left edge.
+   The Test row is the Settings card's row family, its button the split-pill half. */
+
+.net { position: relative; display: flex; align-items: center; margin-left: var(--space-2); }
+.net[hidden] { display: none; }
+[data-surface="mini"] .net, [data-surface="midi"] .net { display: none; }
+
+.net__btn {
+  width: var(--net-btn-size); height: var(--net-btn-size);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.net__btn:hover, .net__btn[aria-expanded="true"] { color: var(--title); }
+.net__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.net__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+/* F3: the car warns. A color for now; his drawing decides the final change (§7 N7). */
+.net__btn[data-tone="bad"] { color: var(--net-bad); }
+
+/* ── The panel ── */
+.net__panel {
+  position: absolute; top: 100%; left: 0;
+  --pop-origin: top left;
+  margin-top: var(--space-1);
+  width: var(--net-panel-w);
+  max-height: var(--net-panel-max-h);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--net-panel-pad);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  z-index: 20;
+}
+.net__panel[hidden], .net__panel [hidden] { display: none; }
+
+/* "Network: Good" (his layout): the title face, bold, the whole line. Bad takes the Bad color. */
+.net__title {
+  padding: var(--space-1) var(--space-2) 0;
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--net-title-fs);
+  color: var(--title);
+}
+.net__word[data-tone="bad"] { color: var(--net-bad); }
+
+.net__row { display: flex; flex-direction: column; gap: var(--net-head-gap); padding: 0 var(--space-2); }
+.net__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+.net__name { color: var(--title); white-space: nowrap; }
+.net__now { color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* One cell per minute, oldest on the left: a status page's bar. */
+.net__bar { display: grid; grid-template-columns: repeat(60, 1fr); gap: var(--net-cell-gap); }
+.net__cell { display: block; height: var(--net-cell-h); border-radius: var(--net-cell-radius); background: var(--net-none); }
+.net__cell[data-v="good"] { background: var(--net-good); }
+.net__cell[data-v="ok"] { background: var(--net-ok); }
+.net__cell[data-v="bad"] { background: var(--net-bad); }
+.net__poor { color: var(--net-bad); }
+
+/* The AirPlay lines (N2 c): the round trip in the title ink, the resent share in the Bad
+   color, on the bar's own 60 columns. */
+.net__lines { display: block; width: 100%; height: var(--net-graph-h); overflow: visible; }
+.net__lines polyline { fill: none; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.net__line-rtt { stroke: var(--title); }
+.net__line-resend { stroke: var(--net-bad); }
+.net__keys { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--subtext); }
+.net__key::before {
+  content: ""; display: inline-block; vertical-align: middle;
+  width: var(--space-2); height: var(--updates-bar-h); margin-right: var(--space-1);
+  border-radius: var(--updates-bar-h); background: var(--title);
+}
+.net__key[data-k="resend"]::before { background: var(--net-bad); }
+
+.net__axis { display: flex; justify-content: space-between; padding: 0 var(--space-2); color: var(--subtext); }
+
+/* The Test row (his layout): the result on the left, the button on the right. */
+.net__test { gap: var(--space-2); }
+.net__result { flex: 1 1 auto; min-width: 0; color: var(--subtext); font-size: var(--fs-subtext); }
+.net__result[data-tone="bad"] { color: var(--net-bad); }
+.net__result[data-tone="good"], .net__result[data-tone="ok"] { color: var(--text); }

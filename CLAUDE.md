@@ -196,6 +196,14 @@ for word, with RELEASE.md's section numbers.
   album), `album-notes.ts`, the pure parse `album-notes-parse.ts`, `openNotes` in present.ts.
   §5.1 the probes (46 % of real albums have notes, singles none); §6 a Library album's real
   artist; §8 the as-built record, and what Claude decided (§8.2, his OK).
+- `speedtest.md` — BUILT 2026-10-19 (v1, on `net-worked`), desk test open (§9, his): the Max
+  title bar's race car button (a placeholder drawing until his) and its panel: "Network: Good"
+  (Good · OK · Bad), one status bar per link for the last hour (Internet, Wi-Fi, Apple Music,
+  Stream, AirPlay; AirPlay also draws its round trip and resends as lines), the Test row (ping +
+  2 MB from DeetsSupport's `/speed`, counted and dropped). The ping (`net.rs`, `IcmpSendEcho`)
+  runs every 30 s only while music plays. The header-only fetch wrap (`src/fetch-wrap.ts`, §5.3)
+  gives the song pieces' speed; its A/B is `docs/ops/checks/fetch-wrap.mjs` (§6). His calls §7;
+  §8 the as-built record. The worker route is not deployed.
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
@@ -284,12 +292,6 @@ Deets-head icon is drawn in `icon-template/` (§10.6). (`album-notes.md` moved t
 (§1), the savings (§3: the explained count, mirror dates in one call, new artists from new songs),
 the Library ⟳'s silent refusal (§4), a song's primary artist from Apple at no extra call (§5,
 his calls P1 A, P2 A). The counter itself is `ops/APPLE-CALLS.md`.
-`speedtest.md` — an idea (2026-10-16): his race car title bar button and a panel of network
-health rows (Internet, Wi-Fi, Apple Music, Stream, AirPlay), mostly from signals the app has
-already (§1: the AirPlay crate's RTT and resends stay in Rust today); §5 his calls (2026-10-16:
-song downloads first, a test file of at most 2 MB that is never stored, Max title bar, the glyph warns).
-§5.2 the probe: Apple's song server hides download sizes from Resource Timing; §5.3 his call: a
-header-only `fetch` wrap reads `Content-Length`; §6 its A/B test on every change.
 `PROFILES.md` — an idea (2026-10-18): profiles for a family or friends on one PC or TV. His
 calls §1: a subfolder per profile, settings saved on disk and applied live through the CLI's
 `setSetting` path, a shared `profiles.db` (the profile list, AirPlay, the catalog caches), no

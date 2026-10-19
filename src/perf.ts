@@ -18,6 +18,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import * as diag from "./diag";
 import { TELEMETRY } from "./telemetry-on";
+import { fetchWrapSince } from "./fetch-wrap";
 
 const ON = TELEMETRY; // dev, or a VITE_PERF=1 release-shaped build (telemetry-on.ts)
 const STALE_MS = 30_000; // a click older than this is forgotten, not attributed
@@ -161,6 +162,9 @@ function finish(): void {
     : "";
   if (netLine) console.info(`[perf]   ${netLine}`);
   toLog(`${summary} ${JSON.stringify({ ...meta, ...notes })}${spanLine ? " | " + spanLine : ""}${netLine ? " | " + netLine : ""}`);
+  // The fetch wrap in this play's path (speedtest.md §6.3): its pieces, bytes, faults, cost.
+  const wrap = fetchWrapSince(t0);
+  if (wrap) toLog(`[perf] fetchwrap ${JSON.stringify(wrap)}`);
   t0 = 0;
 }
 

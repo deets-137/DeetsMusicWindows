@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-18
+updated: 2026-10-19
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,30 @@ updated: 2026-10-18
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-19 — The Network panel, v1 (`net-worked`)
+
+**His ask:** design and build v1 of the network widget on a new branch `net-worked` off `main`:
+the race car, "Network:" Good / OK / Bad in bold title text, graphs of how stable the network
+has been (packet loss, dropped connections), and the ad-hoc Test at the bottom, the result left
+of a right-aligned Test button. Claude pushed back on three points: the webview cannot see
+internet packet loss, drops are events, and line graphs of Chromium's rounded estimate sit flat.
+His calls: N1 a (Good · OK · Bad), N2 c (a status bar per link, plus AirPlay lines), N3 b (a
+Rust ping while playing), N4 b (the fetch wrap now), N5 b (the Wi-Fi row), N6 yes (the
+`/speed` route), N7 a (a placeholder glyph). speedtest.md §7.
+
+**Built** (speedtest.md §8): `net.rs` (ping, Wi-Fi, Test), `apple_calls_minutes`, AirPlay's stats
+to the front end, `net-feed.ts`, `net-rules.ts` + 12 tests, `fetch-wrap.ts` + the
+`[perf] fetchwrap` line, `net.ts` + `styles/net.css`, the Compass row, demo handlers, the A/B
+script `checks/fetch-wrap.mjs`. The doc moved from `ideas/` to `features/`. DeetsSupport: `GET
+/speed` and `SPEED_RL` on its own `net-worked` branch, not deployed.
+
+**Checks run** (a Linux cloud session, no Windows): `tsc`, `vite build`, the unit tests,
+`docs:check` (only the 8 failures of sibling repos absent from the container), and `cargo check
+--target x86_64-pc-windows-gnu` (clean). Not run: the app, the demo (it threw at its seed: no
+`sotd/songs.json` in the container), the A/B, `cargo test` on Windows.
+
+**Next:** his desk test tonight (§9), then the A/B on `dev:built`.
 
 ## 2026-10-18, night — Repo merges, and the Spotify probe run
 

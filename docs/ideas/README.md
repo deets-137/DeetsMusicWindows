@@ -67,10 +67,10 @@ the app can do any of these things.
   was built (a Max title bar button for updates, what's new and bug reports).
 - [filter-rules.md](../features/filter-rules.md) — moved to features/ on 2026-10-16, when it
   was built (the Library's Filter and Rulez Playlists: a rule that picks songs).
-- [speedtest.md](speedtest.md) — an idea (2026-10-16): a race car button in the title bar and a
+- [speedtest.md](../features/speedtest.md) — an idea (2026-10-16): a race car button in the title bar and a
   panel that rates the network for music (Internet, Wi-Fi, Apple Music, Stream, AirPlay), mostly
   from signals the app already has (§1); a test file of at most 2 MB on our own worker, never stored (§2.3); §5 his calls (2026-10-16); §5.2 the probe of
-  what Apple sends; §5.3 the header-only `fetch` wrap; §6 its test on every change.
+  what Apple sends; §5.3 the header-only `fetch` wrap; §6 its test on every change. Built 2026-10-19 (v1, on `net-worked`): moved to `features/`.
 - [SpotifyRooms.md](SpotifyRooms.md) — an idea (2026-10-18): Spotify users in a room through their
   own Spotify desktop app (a link opens each song; the Windows media session reads and seeks);
   no Spotify key; the Web API and librespot routes set aside (§1); the probes first (§6).

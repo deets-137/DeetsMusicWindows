@@ -221,6 +221,13 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **The Network panel, v1** (2026-10-19, on `net-worked`, not merged;
+  [features/speedtest.md](features/speedtest.md) §7–§9). The race car button in Max (a
+  placeholder glyph until his), "Network: Good", a bar per link for the last hour, the Test row;
+  the ping every 30 s only while playing; the fetch wrap. Built in a cloud session: tsc, the unit
+  tests and a Windows-target `cargo check` pass; nothing ran on Windows. **Open:** his desk test
+  (§9, tonight), the fetch wrap's A/B (`checks/fetch-wrap.mjs`), his look at what Claude decided
+  (§8.3), his glyph, and the DeetsSupport `/speed` deploy (branch `net-worked` there; his call).
 - **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
   [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8
   faults and 2 visual faults (a third, V3, was a test artifact); his ask was to fix all of them in

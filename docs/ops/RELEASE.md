@@ -117,6 +117,9 @@ risk. Read the whole diff from the last row of §0a, not only the commit message
 - the database schema or migrations, the settings store's shape, the startup path;
 - a feature whose own desk test was never run where it could reach playback (rooms 0.10.0 is
   the example: it was never tested with two apps).
+- the fetch wrap (`src/fetch-wrap.ts`, speedtest.md §6): it sits under every MusicKit request,
+  so a release that changes it runs `node docs/ops/checks/fetch-wrap.mjs` on `dev:built` first
+  and is never published without his hand test.
 
 **Low risk — publish, then report:** CSS, tokens, markup and render code of a card or panel,
 hover hints, wording, docs, scripts that do not ship.

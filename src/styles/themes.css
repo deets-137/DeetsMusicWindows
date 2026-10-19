@@ -72,6 +72,14 @@
   --updates-lit:    var(--new-badge);
   /* The updates panel's status when a check failed: the error toast's edge. */
   --updates-bad:    var(--stop);
+  /* The Network panel (docs/features/speedtest.md): Good · OK · Bad are the traffic lights'
+     three, so a cell reads like the window's own lights. Good sits quieter than OK, OK than Bad
+     (the skin's strengths), so a one-color theme still tells them apart. An empty minute is
+     the EQ grid's line. */
+  --net-good:       color-mix(in srgb, var(--go) var(--net-good-strength), transparent);
+  --net-ok:         color-mix(in srgb, var(--pause) var(--net-ok-strength), transparent);
+  --net-bad:        var(--stop);
+  --net-none:       color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent);
   /* The line between a split pill's halves (settings.css): the subtext ink at the skin's strength. */
   --split-rule:     color-mix(in srgb, var(--subtext) var(--split-rule-strength), transparent);
 

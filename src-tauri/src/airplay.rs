@@ -123,6 +123,14 @@ pub struct Connected {
     pub tap: bool,
     /// Tap mode and the player says playing, but no chunk has arrived for 10 s.
     pub tap_starved: bool,
+    /// The link's health for the Network panel (docs/features/speedtest.md §8), the crate's
+    /// `Stats` as they are: keep-alive round trips, and the session's running counts. A resend
+    /// request is a packet the speaker lost on the network; a starved packet is the PC's gap.
+    pub rtt_ms: f64,
+    pub rtt_p95_ms: f64,
+    pub packets: u64,
+    pub resends: u64,
+    pub starved: u64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1019,13 +1027,21 @@ pub async fn airplay_status(app: AppHandle) -> Result<Status, String> {
         if let Some((name, pct)) = &heard {
             remember_volume(&app, name, *pct);
         }
-        let connected = state.live.lock_or_recover().as_ref().map(|l| Connected {
-            speaker: l.speaker.clone(),
-            seconds: l.session.stats().seconds,
-            latency_ms: l.session.stats().latency_ms,
-            volume: heard.as_ref().map(|(_, pct)| *pct),
-            tap: l.tap.is_some(),
-            tap_starved: l.starved_since.map_or(false, |t| t.elapsed() >= Duration::from_secs(TAP_STARVED_SECS)),
+        let connected = state.live.lock_or_recover().as_ref().map(|l| {
+            let st = l.session.stats();
+            Connected {
+                speaker: l.speaker.clone(),
+                seconds: st.seconds,
+                latency_ms: st.latency_ms,
+                volume: heard.as_ref().map(|(_, pct)| *pct),
+                tap: l.tap.is_some(),
+                tap_starved: l.starved_since.map_or(false, |t| t.elapsed() >= Duration::from_secs(TAP_STARVED_SECS)),
+                rtt_ms: st.rtt_last_ms,
+                rtt_p95_ms: st.rtt_p95_ms,
+                packets: st.packets_sent,
+                resends: st.retransmit_requests,
+                starved: st.starved_packets,
+            }
         });
         let settings = app.state::<Settings>().get();
         let status = Status {

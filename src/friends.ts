@@ -40,6 +40,7 @@ import { effective, onSettingsChange, ownSetting, setting, setSetting } from "./
 import { toast } from "./toast";
 import { plainError } from "./plain-error";
 import { judgeKey, pinsForWorker } from "./friend-pin";
+import { netNote } from "./net-feed";
 
 /** A friends-list write failed: the words for a person, and the raw text in the ring. */
 function friendFailed(what: string, e: unknown, fallback: string): void {
@@ -228,6 +229,8 @@ function connect(of: string, role: "home" | "watch"): void {
       return emit();
     }
     emit();
+    // The home socket only: a friend's own socket closing is that friend going away.
+    if (link.role === "home") netNote({ kind: "drop", what: "friends" });
     retry(link);
   });
 
