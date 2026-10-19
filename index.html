@@ -251,6 +251,14 @@
         </div>
       </div>
 
+      <!-- The Rewind button (docs/features/listening-time.md): right of the updates button, Max
+           only (styles/rewind-top.css). His hourglass, to be redrawn by him. The panel: Today's
+           minutes, then Top Listens and SOTD, each sliding its list in below. src/rewind-btn.ts. -->
+      <div class="rewind-top" id="rewind-top">
+        <button class="rewind-top__btn" id="rewind-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Rewind" title="Rewind: what you listened to today, your top listens and your Songs of the Day"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h11M6.5 20.5h11"/><path d="M8 3.5c0 4.2 4 5.6 4 8.5s-4 4.3-4 8.5M16 3.5c0 4.2-4 5.6-4 8.5s4 4.3 4 8.5"/><path class="rewind-top__sand" d="M9.6 19.2c.6-1.6 1.6-2.3 2.4-2.3s1.8.7 2.4 2.3z"/></svg></button>
+        <div class="rewind-top__panel pop" id="rewind-panel" role="group" aria-label="Rewind" data-frames="rewind-top" data-tauri-drag-region="false" hidden></div>
+      </div>
+
       <div class="drag-region" data-tauri-drag-region></div>
 
       <!-- The Compass (COMPASS.md): the bar Ctrl+Space drops under the title bar, in every

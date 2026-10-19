@@ -1,0 +1,105 @@
+/* ── The Rewind button and its panel (docs/features/listening-time.md) ─────────────────────
+   The button is the updates button's family (styles/updates.css): the row's height, no fill,
+   no border, --subtext until hover. Max only, as the Compass and the updates button: Mini and
+   Midi keep the title bar free to drag the window. The panel is the cog's panel family, hung
+   from the button's left edge. Its two buttons are the sleep panel's chips; the list rows are
+   the Queue card's rows (qcard.css). */
+
+.rewind-top { position: relative; display: flex; align-items: center; margin-left: var(--space-2); }
+[data-surface="mini"] .rewind-top, [data-surface="midi"] .rewind-top { display: none; }
+
+.rewind-top__btn {
+  width: var(--rewind-top-btn-size); height: var(--rewind-top-btn-size);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.rewind-top__btn:hover, .rewind-top__btn[aria-expanded="true"] { color: var(--title); }
+.rewind-top__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.rewind-top__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.rewind-top__sand { fill: currentColor; stroke: none; }
+
+/* ── The panel ── */
+.rewind-top__panel {
+  position: absolute; top: 100%; left: 0;
+  --pop-origin: top left;
+  margin-top: var(--space-1);
+  width: var(--rewind-top-panel-w);
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--rewind-top-panel-pad);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  z-index: 20;
+}
+.rewind-top__panel[hidden], .rewind-top__panel [hidden] { display: none; }
+.rewind-top__panel.is-growing { overflow: hidden; } /* rewind-btn.ts animates the height */
+
+.rewind-top__head {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
+  color: var(--subtext);
+  padding: 0 var(--space-1);
+}
+.rewind-top__today {
+  display: flex; align-items: baseline; gap: var(--space-2);
+  padding: 0 var(--space-1);
+  font-family: var(--font-title); font-weight: var(--fw-title);
+  font-size: var(--rewind-top-today-fs);
+  color: var(--title);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Top Listens on the left, SOTD on the right (his layout, 2026-10-19). */
+.rewind-top__chips { display: flex; justify-content: space-between; gap: var(--space-1); }
+.rewind-top__chip {
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--rewind-top-chip-radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.rewind-top__chip:hover { background: var(--surface-hover); }
+.rewind-top__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
+.rewind-top__chip:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+
+/* A part: the list a button opened, with its own bar above it. */
+.rewind-top__part { display: flex; flex-direction: column; gap: var(--space-1); min-height: 0; }
+.rewind-top__bar { display: flex; align-items: center; gap: var(--space-2); }
+.rewind-top__what { color: var(--subtext); font-size: var(--fs-subtext); }
+
+/* The view dropdown: the Library's Sort pop (a column of choices, a divider, the ↑ ↓ squares),
+   hung under its pill inside the panel. */
+.rewind-top__view { position: relative; }
+.rewind-top__view .rewind-top__pill { width: auto; } /* .lib-pill fills a flex cell; this one fits its word */
+.rewind-top__pop {
+  position: absolute; top: 100%; left: 0;
+  --pop-origin: top left;
+  margin-top: var(--space-1);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--lib-pop-radius);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-2);
+  z-index: 1;
+}
+
+.rewind-top__list {
+  list-style: none; margin: 0; padding: 0;
+  max-height: var(--rewind-top-list-max-h);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex; flex-direction: column;
+}
+.rewind-top__round .qrow__art { border-radius: 50%; }
+.rewind-top__empty { color: var(--subtext); padding: var(--space-2); text-align: center; }

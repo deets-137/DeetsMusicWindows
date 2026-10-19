@@ -1,7 +1,7 @@
 // rewind-window.ts: the Rewind card's time spans (DEETS-REWIND.md §8, F5 and his call K3).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dayInWindow, windowStart } from "../src/rewind-window.ts";
+import { dayInWindow, windowStart, todayStart, fmtToday } from "../src/rewind-window.ts";
 
 /** A local time, as the user's clock reads it. */
 const at = (y: number, m: number, d: number, h = 0, min = 0) => new Date(y, m - 1, d, h, min).getTime();
@@ -34,4 +34,22 @@ test("This Year starts at local midnight on 1 January", () => {
 test("a day that is not a date is never in", () => {
   assert.equal(dayInWindow("", "year"), false);
   assert.equal(dayInWindow("not-a-day", "year"), false);
+});
+
+test("2026-10-19 Today starts at local midnight", () => {
+  assert.equal(todayStart(at(2026, 10, 19, 0, 0)), at(2026, 10, 19));
+  assert.equal(todayStart(at(2026, 10, 19, 23, 59)), at(2026, 10, 19));
+});
+
+test("2026-10-19 the Today number: minutes always, or hours and minutes", () => {
+  const m = 60_000;
+  assert.equal(fmtToday(0, "mins"), "0 mins");
+  assert.equal(fmtToday(59_999, "mins"), "0 mins"); // a minute not yet listened is not shown
+  assert.equal(fmtToday(m, "mins"), "1 min");
+  assert.equal(fmtToday(134 * m, "mins"), "134 mins");
+  assert.equal(fmtToday(47 * m, "hm"), "47 mins");
+  assert.equal(fmtToday(60 * m, "hm"), "1 hr");
+  assert.equal(fmtToday(65 * m, "hm"), "1 hr 5 mins");
+  assert.equal(fmtToday(134 * m, "hm"), "2 hrs 14 mins");
+  assert.equal(fmtToday(121 * m, "hm"), "2 hrs 1 min");
 });

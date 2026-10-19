@@ -26,3 +26,22 @@ export function dayInWindow(day: string, w: RewindWindow, now = Date.now()): boo
   const dayEnd = new Date(y, m - 1, d + 1).getTime(); // the next local midnight
   return dayEnd > windowStart(w, now);
 }
+
+/** Local midnight of today: where the Rewind panel's "Today" starts (docs/features/listening-time.md). */
+export function todayStart(now = Date.now()): number {
+  const d = new Date(now);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/** The Rewind panel's Today number. `mins` (his call, 2026-10-19): always minutes, "134 mins".
+ *  `hm` (Settings › Rewind › Today's time in): hours and minutes past the hour, "2 hrs 14 mins".
+ *  Whole minutes, rounded down, so the number never shows a minute not yet listened. */
+export function fmtToday(ms: number, unit: "mins" | "hm"): string {
+  const min = Math.max(0, Math.floor(ms / 60_000));
+  const mins = (n: number) => `${n} ${n === 1 ? "min" : "mins"}`;
+  if (unit === "mins" || min < 60) return mins(min);
+  const hr = Math.floor(min / 60);
+  const rem = min % 60;
+  const hrs = `${hr} ${hr === 1 ? "hr" : "hrs"}`;
+  return rem ? `${hrs} ${mins(rem)}` : hrs;
+}

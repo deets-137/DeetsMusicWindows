@@ -18,7 +18,7 @@ import { primaryOf } from "./primary-artist";
 import { playlistsCached } from "./playlists";
 import type { Playlist } from "./search";
 import { allPicks, dayLabel } from "./sotd";
-import { windowStart, dayInWindow, type RewindWindow } from "./rewind-window";
+import { windowStart, dayInWindow, todayStart, type RewindWindow } from "./rewind-window";
 
 /** Mirrors Rust's `PlayEvent` (library.rs). `msListened: null` = never finalized. */
 export interface PlayEvent {
@@ -106,7 +106,13 @@ export async function topBy(stat: RewindStat, window: RewindWindow): Promise<Rew
   // Picks are not measured, so they never touch the play log: they are the picks in the
   // window, newest first (R1, owner 2026-09-17).
   if (stat === "picks") return picksIn(window);
-  const events = await playEventsSince(windowStart(window));
+  return topSince(stat, windowStart(window));
+}
+
+/** Ranked rows over every play since `sinceTs` (0: the whole log), minutes-desc. The Rewind
+ *  panel's Top Listens reads the whole log and orders by plays (rewind-btn.ts). */
+export async function topSince(stat: Exclude<RewindStat, "picks">, sinceTs: number): Promise<RewindRow[]> {
+  const events = await playEventsSince(sinceTs);
   // Playlist names resolve from the cached list (local + Apple mirrors). A playlist deleted
   // since keeps the name its plays remembered (schema v22: "Name (deleted)", his call
   // 2026-10-18); plays older than that memory share one "Deleted playlists" row. Nothing
@@ -227,3 +233,10 @@ export function fmtListen(ms: number): string {
 }
 
 export const fmtPlays = (n: number): string => `${n} ${n === 1 ? "play" : "plays"}`;
+
+/** Minutes listened today (since local midnight), in ms. An open play's minutes are in the log
+ *  from its last 30 s save (stats.ts `checkpoint`). The Rewind panel's first row. */
+export async function listenedToday(): Promise<number> {
+  const events = await playEventsSince(todayStart());
+  return events.reduce((sum, e) => sum + (e.msListened ?? 0), 0);
+}

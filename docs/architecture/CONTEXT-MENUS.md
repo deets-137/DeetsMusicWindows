@@ -368,6 +368,7 @@ module with a listener that neither this doc nor ONBOARDING.md §2 names (2026-0
 | `browser-defaults.ts` | anywhere | blocks the browser's own menu, except in a text field |
 | `collection-card.ts` | a row, a tile, the hero, a Last.fm facts box | the row's media menu through its card's builder call; the hero's `menu` (§3a); the facts box's own small menu (LISTENERS.md §7.1) |
 | `history-card.ts` · `qcard.ts` · `rewind-card.ts` · `home-card.ts` · `search-card.ts` | a row, a tile, the now hero, a picked set | the media menu of the item's kind, with the card's own rows (§5) |
+| `rewind-btn.ts` (2026-10-19, listening-time.md) | a Top Listens row (a song, an album, an artist), a SOTD row | the Rewind card's menus: the media menu of the row's kind; a SOTD row adds the pick's own rows (`pickMenu`) |
 | `now-playing-card.ts` | the cover, the title block | the song menu without the Play group (§3.1) |
 | `diary-card.ts` | an entry tile, a song row, a folder header | the album menu with the entry's rows (DIARY.md §2); the song menu; Rename · Delete Folder |
 | `rulez-card.ts` | a rule | the rule's own rows (RULEZ.md §6) — not a media menu |

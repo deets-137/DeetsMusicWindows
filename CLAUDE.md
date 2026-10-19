@@ -196,6 +196,12 @@ for word, with RELEASE.md's section numbers.
   album), `album-notes.ts`, the pure parse `album-notes-parse.ts`, `openNotes` in present.ts.
   §5.1 the probes (46 % of real albums have notes, singles none); §6 a Library album's real
   artist; §8 the as-built record, and what Claude decided (§8.2, his OK).
+- `listening-time.md` — V1 BUILT 2026-10-19 on `ideas-nineteen`, desk test open (§9.3): the
+  Rewind button in the Max title bar (his hourglass, to be redrawn), its panel: *Today: N mins*
+  (Settings › Rewind › *Today's time in*, `rewindToday`), Top Listens (all time, most played, the
+  Library's Sort pop for Songs / Albums / Artists and ↑ ↓) and SOTD (picks, newest first).
+  `src/rewind-btn.ts`. His calls §8; §9 the as-built record and what Claude decided (§9.2). The
+  Rewind card stays until he decides (§9.4); the breakdown by genre and weekday (§4) is not built.
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
@@ -300,9 +306,6 @@ desktop app (a `spotify:` link opens each song; the Windows media session reads 
 seeks, pauses); no Spotify key, no Web API, no librespot (§1 why). Odesli maps the Apple song.
 The probes (§6, `ops/checks/spotify-probe.ps1`) ran 2026-10-18 (§6.3): the control works with a
 `?autoplay=true` link plus Play; Odesli's keyless API is closed, so the mapping is open; §7 the forks.
-`listening-time.md` — an idea (2026-10-19): a title bar glance with the minutes listened
-(`play_events.ms_listened`), and Rewind split by genre, weekday, hour and source, with a Filter
-pill (the filter-rules engine); the push-back (no second stats card, §2); §7 the forks F1–F8.
 `launch.md` — a first draft (2026-10-18), not posted: the Product Hunt listing and one Reddit
 post per community (r/AppleMusic, r/Windows11, r/SideProject, r/rust); he rewrites the words
 (his note). §4 the answers to ready; §5 the open questions (the tip jar, the Apple terms).

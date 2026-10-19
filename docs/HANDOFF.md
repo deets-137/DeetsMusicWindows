@@ -221,6 +221,12 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **The Rewind button in the Max title bar** (2026-10-19, on `ideas-nineteen`;
+  [features/listening-time.md](features/listening-time.md) §9). The hourglass right of the updates
+  button opens a panel: *Today: N mins*, then Top Listens and SOTD, each list sliding in. One new
+  setting (`rewindToday`). **Open:** his desk test (§9.3), his look at §9.2, his hourglass, and
+  whether the Rewind card goes (§9.4). Then merge into `main`.
+
 - **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
   [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8
   faults and 2 visual faults (a third, V3, was a test artifact); his ask was to fix all of them in

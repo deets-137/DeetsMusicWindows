@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 50 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 643 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 649 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -222,6 +222,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--updates-ver-bar-w` | `120px` | — | the download bar under the status |
 | `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | a press: each arrow leaves the way it points and a new one takes its place |
 | `--updates-roll-y` | `22px` | — | how far an arrow travels: out of the glyph's box |
+| `--rewind-top-btn-size` | `var(--traffic-size)` | — | The Rewind button and panel (docs/features/listening-time.md): the updates button's family. |
+| `--rewind-top-panel-w` | `var(--quick-panel-w)` | — | the cog's panel family: one width |
+| `--rewind-top-panel-pad` | `var(--quick-panel-pad)` | — |  |
+| `--rewind-top-chip-radius` | `var(--sleep-chip-radius)` | — | Top Listens and SOTD: the sleep panel's chips |
+| `--rewind-top-today-fs` | `var(--fs-title)` | — | the Today number: the panel's one large line |
+| `--rewind-top-list-max-h` | `320px` | — | a list scrolls past this; the panel stays under the window |
 | `--split-rule-strength` | `45%` | — | The Settings split pill's line between its halves (settings.css): readable on every theme. --border alone vanished on the light themes (his screenshot, 2026-10-16). |
 | `--quick-icons` | `10` | — | The quick panel (QUICK-SETTINGS.md): the cog's strip of icons. One width, open or shut, so an icon press grows it down and never sideways. The width is the row's own sum: ten icons, nine gaps, one more gap between the two clusters, the padding, the border (1px a side) and the scrollbar gutter. A new icon adds one to --quick-icons. |
 | `--quick-panel-w` | `calc(var(--quick-icons) * (var(--quick-logo-size) + var(--space-2)) + 2 * var(--quick-panel-pad) + 2px + var(--scrollbar-w))` | — |  |

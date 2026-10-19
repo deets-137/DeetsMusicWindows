@@ -1,12 +1,17 @@
 ---
-status: idea
-desk_test: none
-sources: [src/rewind.ts, src/rewind-card.ts, src/rewind-window.ts, src/stats.ts, src/filter-eval.ts, src/filters.ts, src/cond-editor.ts, src/updates-btn.ts, src-tauri/src/library.rs]
+status: built
+desk_test: open
+sources: [src/rewind-btn.ts, src/styles/rewind-top.css, src/rewind.ts, src/rewind-window.ts, src/rewind-card.ts, src/stats.ts, src/updates-btn.ts, index.html, tests/rewind-window.test.ts]
 updated: 2026-10-19
 ---
-# Listening time — a title bar glance and "where did my time go"
+# Listening time — the Rewind button in the title bar
 
-> An idea (2026-10-19), not built. His ask: a toolbar widget that shows how much time the
+> **V1 BUILT 2026-10-19 on `ideas-nineteen`; his desk test is open (§9.3).** §8 is his calls,
+> §9 the as-built record. Read §9 first: where it disagrees with §3–§7, §9 is the code. §1–§7
+> are the idea as written before his calls; §4 (the breakdown) and the forks F4–F7 are not
+> built and wait for a later talk.
+>
+> The idea (2026-10-19). His ask: a toolbar widget that shows how much time the
 > user really listened, from their DeetsMusic history. Then let the user make filters to see
 > where the time went: by artist, by genre, by day of the week, and so on. §1 is what the app
 > already has; §2 the push-back (most of this exists); §3 the glance; §4 the breakdown; §5
@@ -152,3 +157,80 @@ Two time spans side by side ("this month vs last month") per row. A later step; 
   today.
 - **F7. Play facts in the shared condition menus.** A. Later, after v1 (recommended). B. In v1.
 - **F8. The glyph and the panel's look.** His to draw.
+
+## 8. His calls (2026-10-19)
+
+> **Part:** decided · 2026-10-19
+
+| Fork | His call |
+|---|---|
+| F1 | **A.** Listening time is `ms_listened` as it is: forward playback only, the Rewind number. |
+| F2 | The Rewind card moves into the title bar: a button **left-aligned** in the title bar, with an **hourglass** glyph. He redraws the glyph later, by the usual protocol. |
+| F3 | A click opens a panel "akin to the sleep timer panel": a rectangle titled **Rewind**. Its first row is the title text **Today: XX mins**, always minutes; a Settings row sets hours and minutes. What sits under it is to be talked through later. |
+| V1 | Under Today, one row: **Top Listens** left, **SOTD** right. Top Listens opens the songs by most played, with a view dropdown (song / album / artist) in the quick-button style: the up and down arrows on the right of the choices, cut by a vertical divider (the Library's Sort pop). SOTD opens the history of picks, newest first. A list "gently slides in below and expands the panel". |
+| F4–F7 | Later, "whenever we get there". |
+
+## 9. As built (2026-10-19)
+
+> **Part:** built · 2026-10-19 · desk test: open
+
+### 9.1 What is in the code
+
+| Part | Where |
+|---|---|
+| The button: right of the updates button, before the drag gap; hidden in Mini and Midi by CSS | `index.html` (`#rewind-top`), `styles/rewind-top.css` |
+| The panel: the head "Rewind", the Today row, the two chips, one list part; a dropdown (`makeDropdown`) with `.pop` and `enterRows` on open; `keepRightInWindow` | `src/rewind-btn.ts` `initRewindButton` (main.ts, a `later` step after the updates button) |
+| Today: the sum of `ms_listened` since local midnight. Read at the panel's open, at each play event (`stats.onPlayEvent`) and every 30 s while open, so an open play's 30 s saves show | `rewind.ts` `listenedToday`; `rewind-window.ts` `todayStart`, `fmtToday` (tested) |
+| Top Listens: the whole log (`topSince(view, 0)`), sorted by plays, then minutes; ↑ reverses it; 50 rows; each row's right side says "N plays" | `rewind.ts` `topSince` (split out of `topBy`, no change to the card) |
+| The view dropdown: Songs · Albums · Artists, a divider, ↓ (most played first) and ↑ (least played first). A nested `makeDropdown`; the Library's `lib-pop__*` classes inside the panel's own `rewind-top__pop` box (absolute, not portaled). A choice keeps the pop open, as the Library's Sort pop does. The view and order are kept in `localStorage` `deets.rewindTop` | `rewind-btn.ts` `popHTML` |
+| SOTD: every pick, newest day first, the row's right side "Today · a note"; the chip is hidden while Song of the Day is off | `rewind-btn.ts` `sotdRows` |
+| The slide: a press draws the list, then the panel's height animates from the old height to the new (`--pop-grow`), the rows enter with `enterRows`. A second press on the pressed chip closes the list the same way. One list at a time | `rewind-btn.ts` `togglePart`, `animateHeight` (the updates panel's shape) |
+| Rows: the Queue card's `qrow`; right-click is the Rewind card's menus (songs, albums, artists, a pick with `pickMenu`); arrows and Home / End (`wireListKeys`, no Enter) | `rewind-btn.ts` `menuFor` |
+| **Settings › Rewind › Today's time in**: *Minutes* (default) / *Hours and minutes*. Key `rewindToday`, its agent spec, the reset group, the usage list, the New mark | `settings-store.ts`, `agent-settings.ts`, `settings-card.ts`, `usage-keys.ts` |
+| The Compass: **Listening today** (Max only) opens the panel | `compass.ts`, COMPASS-TERMS.md |
+
+No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.4).
+
+### 9.2 What Claude decided inside his calls (for his look)
+
+- **Max only**, as the Compass and the updates button: Mini and Midi keep the title bar free to
+  drag the window. In those surfaces the Rewind card is still the way in.
+- The place: right of the updates button, the last button on the left side.
+- **Top Listens reads all time** (the whole play log, from 2026-07-01), not a time span: his
+  words were "most played". **Plays first, minutes second** (the card ranks minutes first).
+- Rows show "N plays" on the right; 50 rows, then the list scrolls (`--rewind-top-list-max-h`, 320 px).
+- A small grey word right of the view pill: "Most played" or "Least played".
+- The Today format: "1 min", "134 mins"; in hours "1 hr", "2 hrs 14 mins". Whole minutes, rounded
+  down. "Today: …" until the first read lands.
+- The hint texts (ONBOARDING.md §1). The setting's label "Today's time in" and its hint.
+- A plain click on a row does nothing, as on the Rewind card; right-click carries the verbs. No
+  Ctrl / Shift picks and no drag to another card in V1.
+- The list that was open stays open the next time the panel opens (in this session).
+- The panel's width is the cog panel's (`--quick-panel-w`), not the sleep panel's 224 px: a list
+  of songs needs the room.
+- The Compass row's name, "Listening today".
+
+### 9.3 The desk test (his)
+
+1. Max. The hourglass sits right of the updates button. Mini and Midi: no hourglass.
+2. Click it: "Rewind", then "Today: N mins". Play a song for a minute with the panel open:
+   the number goes up within 30 s.
+3. Settings › Rewind › Today's time in › Hours and minutes: the row reads "2 hrs 14 mins" (or
+   "N mins" under an hour) at once. Set it back.
+4. Top Listens: the list slides in and the panel grows. Press it again: the list slides out.
+5. The Songs pill: pick Albums, then Artists (round covers). Press ↑: least played first.
+   Close the app and open it: the pill keeps Artists and ↑.
+6. SOTD: your picks, newest first, the day on the right. With Top Listens open, press SOTD: one
+   list replaces the other.
+7. Right-click a song, an album, an artist and a pick: the Rewind card's menus. Play one.
+8. Escape, and a click outside, close the panel (and the pill's pop).
+
+### 9.4 Open
+
+- **"Move the Rewind card into the toolbar":** V1 keeps the card. To take the card out is a
+  fork for him once the panel covers what the card does (the time spans, Playlists, Make
+  playlist, picks and drag), and Mini and Midi have a way in.
+- What sits under Today (his F3: "we can chat user flow"), and §4's breakdown with F4–F7.
+- His hourglass glyph.
+- A `loading.json` clip for the panel's wait (CLAUDE.md checklist 17), and a shots list of §9.3
+  on the dev app (DESK-TESTS.md §6): not run from this cloud session (no Windows dev app here).
