@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 50 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 643 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 644 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
 
 ## Theme roles
 
@@ -762,6 +762,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--full-history-w` | `var(--max-stage-w)` | — | The History column right of the cover (Max, his call 2026-10-11): it shows when this width (plus the panel gap) fits beside the cover without making it smaller, and slides in from the right edge in --player-dur. The Queue column's width (his ask, the same day: two columns of different widths made the centered cover feel off center; it was 300px). |
 | `--full-stack-room` | `220px` | — | Stacked (his calls, 2026-10-11): a window taller than wide puts the player across the top and the cards under it, when the band under a full-width cover holds --full-stack-room (about a card title and three rows). --full-stack-band: once stacked, the window must be this much wider than tall before it goes back, so a drag near square does not flicker. |
 | `--full-stack-band` | `24px` | — |  |
+| `--player-stack-move` | `fade` | press, cyber | How the Queue gets between its column and the band under the stacked player (his calls, 2026-10-18, §14.4): `fade` (the player grows over it; the band rises in once the cover lands) or `slide` (it slides down into the band while the side card slides in). Fade here, so Vanilla and any new skin fade; Press and Cyber slide. |
 | `--np-band-pad` | `var(--space-4)` | — |  |
 | `--np-band-strength` | `78%` | — |  |
 | `--np-band-sub-strength` | `72%` | — | the subtext on the band: its ink, a little clear |

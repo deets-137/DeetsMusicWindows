@@ -12,6 +12,21 @@ updated: 2026-10-18
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-18, evening — The full player's stacked motion, per skin
+
+His report: on his portrait screen (Max, 1080 × 1872), the open to the stacked full player and
+the close back felt like dropped frames, and the close "jumps into place" near its end. Claude
+measured it on his dev app, designed §14 of [fullscreen-player.md](features/fullscreen-player.md)
+(the causes in §14.2), and built it on his calls: fade in Vanilla, Glass and Ocean, slide in
+Press and Cyber (`--player-stack-move`). Also found and fixed the same end jump in the regular
+Max close (§14.6: the Queue's rows now ride its top edge). Before / after numbers: §14.8. The
+kept check: [checks/fp-stack.json](ops/checks/fp-stack.json) (every probe passes). Committed
+on `main` at his ask; desk test §14.5 is his.
+
+A side effect, put right in the same sitting: the shots runner's theme set and put-back counted
+as a change by hand for his Live Theming rule (`recipe:live:4`), which then held Lilac. Claude
+cleared that one hold in `deets.rules.holds` and reloaded. The kept check sets only the skin.
+
 ## 2026-10-18, night — Repo merges, and the Spotify probe run
 
 **Repo:** `v-thirty` merged into `main`, then `origin/spotify-rooms` (docs only; three

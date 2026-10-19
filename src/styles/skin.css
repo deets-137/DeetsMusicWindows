@@ -826,6 +826,11 @@
      this much wider than tall before it goes back, so a drag near square does not flicker. */
   --full-stack-room:     220px;
   --full-stack-band:     24px;
+  /* How the Queue gets between its column and the band under the stacked player (his calls,
+     2026-10-18, §14.4): `fade` (the player grows over it; the band rises in once the cover
+     lands) or `slide` (it slides down into the band while the side card slides in). Fade here,
+     so Vanilla and any new skin fade; Press and Cyber slide. */
+  --player-stack-move:   fade;
   --np-band-pad:         var(--space-4);
   --np-band-strength:    78%;
   --np-band-sub-strength: 72%;                /* the subtext on the band: its ink, a little clear */
@@ -1054,6 +1059,7 @@
   --player-ease:         var(--pop-ease);
   --player-rows-at:      0.4;
   --player-collapse-dur: 0.24s;
+  --player-stack-move:   slide;     /* the stacked Queue slides into the band (§14.4) */
   --grow-zone-bar-w:      4px;      /* a rule of ink, square ends */
   --grow-zone-bar-radius: 0;
 
@@ -1507,6 +1513,7 @@
   --player-ease:         var(--pop-ease);
   --player-rows-at:      0.4;
   --player-collapse-dur: 0.24s;
+  --player-stack-move:   slide;     /* the stacked Queue slides into the band (§14.4) */
   /* sound panel: a scope trace — bright glow, dashed graticule, square dots' ring */
   --sound-curve-glow:        drop-shadow(0 0 3px var(--eq-curve)) drop-shadow(0 0 8px var(--eq-curve));
   --sound-curve-w:           1.5px;

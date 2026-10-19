@@ -4809,11 +4809,20 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .panel.is-player-rebuild .np__close { opacity: 0; }
 /* The resting card's still copy (full-player.ts restCopy, Max): Now Playing's resting place in
    column 1, filled under the Queue while the player opens or closes. JS sets its box. */
-.bento > .panel.np-still {
+.bento > .panel:is(.np-still, .fp-still) {
   position: absolute;
   margin: 0;
   z-index: 0;
   pointer-events: none;
+}
+/* A card held at a box while the stacked grid would move it (full-player.ts pin, §14 N1): the
+   covered content cards for as long as the player is open in Max, and the Queue while a
+   stacked motion runs. Absolute in the bento's padding box (grid-area auto, or the grid area
+   would be its containing block); JS sets the box. */
+.bento .panel.fp-pin {
+  position: absolute;
+  margin: 0;
+  grid-area: auto !important;
 }
 .panel.np-still .np__art { visibility: hidden; } /* the flight carries the cover */
 /* The cover's flight copy: over the cards, under the menus; placed and scaled by JS. */

@@ -1,0 +1,425 @@
+{
+  "about": "The full player's stacked open and close in Max on a portrait window (the owner's 1080 x 1872 screen), in every skin (each shot sets the skin itself and puts Cyber back: a shot look would change the theme, which his Live Theming rule holds): fade (Vanilla, Glass, Ocean) or slide (Press, Cyber). Checks that nothing is left held or copied after each motion, and a close during the open.",
+  "desk_test": "features/fullscreen-player.md §14.5",
+  "made": "2026-10-18",
+  "pass": "Each probe's expect holds. In the log: player max open / close dropped under 3 %, worst under 17 ms. In the strips: no content card at a new size or place, the Queue never jumps, nothing moves after the open lands, and the close ends with no jump.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/fp-stack.json   (needs `npm run dev:app` running, its window maximized on a portrait screen)",
+  "shots": [
+    {
+      "id": "fp-stack-open-close-vanilla",
+      "covers": "features/fullscreen-player.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','vanilla')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": true,
+            "stack": true,
+            "side": "on",
+            "stills": 0,
+            "queueOpacity": ""
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": false,
+            "pins": 0,
+            "stills": 0,
+            "side": null,
+            "queueOpacity": ""
+          },
+          "name": "closed"
+        },
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "id": "fp-stack-open-close-glass",
+      "covers": "features/fullscreen-player.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','glass')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": true,
+            "stack": true,
+            "side": "on",
+            "stills": 0,
+            "queueOpacity": ""
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": false,
+            "pins": 0,
+            "stills": 0,
+            "side": null,
+            "queueOpacity": ""
+          },
+          "name": "closed"
+        },
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "id": "fp-stack-open-close-ocean",
+      "covers": "features/fullscreen-player.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','ocean')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": true,
+            "stack": true,
+            "side": "on",
+            "stills": 0,
+            "queueOpacity": ""
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": false,
+            "pins": 0,
+            "stills": 0,
+            "side": null,
+            "queueOpacity": ""
+          },
+          "name": "closed"
+        },
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "id": "fp-stack-open-close-press",
+      "covers": "features/fullscreen-player.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','press')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": true,
+            "stack": true,
+            "side": "on",
+            "stills": 0,
+            "queueOpacity": ""
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": false,
+            "pins": 0,
+            "stills": 0,
+            "side": null,
+            "queueOpacity": ""
+          },
+          "name": "closed"
+        },
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "id": "fp-stack-open-close-cyber",
+      "covers": "features/fullscreen-player.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": true,
+            "stack": true,
+            "side": "on",
+            "stills": 0,
+            "queueOpacity": ""
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 120
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": false,
+            "pins": 0,
+            "stills": 0,
+            "side": null,
+            "queueOpacity": ""
+          },
+          "name": "closed"
+        },
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "id": "fp-stack-close-during-open-glass",
+      "covers": "features/fullscreen-player.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 4,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','glass')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])"
+        },
+        {
+          "wait": 120
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "eval": "window.__full.close('shot')"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, busy: window.__full.state().busy, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, covered: document.querySelectorAll('.bento .panel.is-covered, .bento .panel.is-covering').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": false,
+            "busy": false,
+            "pins": 0,
+            "stills": 0,
+            "covered": 0,
+            "queueOpacity": ""
+          },
+          "name": "clean"
+        },
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "id": "fp-stack-close-during-open-cyber",
+      "covers": "features/fullscreen-player.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 4,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])"
+        },
+        {
+          "wait": 120
+        },
+        {
+          "key": "Escape"
+        },
+        {
+          "eval": "window.__full.close('shot')"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ full: window.__full.state().full, busy: window.__full.state().busy, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, covered: document.querySelectorAll('.bento .panel.is-covered, .bento .panel.is-covering').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "expect": {
+            "full": false,
+            "busy": false,
+            "pins": 0,
+            "stills": 0,
+            "covered": 0,
+            "queueOpacity": ""
+          },
+          "name": "clean"
+        },
+        {
+          "eval": "window.__store.set('skin','cyber')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    }
+  ]
+}

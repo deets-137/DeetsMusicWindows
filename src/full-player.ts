@@ -257,12 +257,15 @@ function flipSides(): void {
   frames.during("player-side", m.dur, side.flip ? "flip" : "back");
 }
 
-/** Take the column off at once (the close, a surface change, reduced motion). */
-function dropHistory(): void {
+/** Take the column off at once (the close, a surface change, reduced motion). The card stays
+ *  mounted in its hidden host (`keep`), so the next open carries no mount and its tiles play no
+ *  reveal during the motion (§14 N3, 2026-10-18); a surface or layout change unmounts it. */
+function dropHistory(keep = true): void {
   historyGen++;
   historyHost()?.getAnimations().forEach((a) => a.cancel());
   queuePanel()?.getAnimations().forEach((a) => a.id === "side-queue" && a.cancel());
   delete root.dataset.fpHistory;
+  if (keep) return;
   historyInst?.destroy();
   historyInst = null;
 }
@@ -408,12 +411,14 @@ function apply(on: boolean, place?: RowsPlace, row1?: number): void {
 function sizedUrl(src: string, px: number): string {
   return src.replace(/\/(\d+)x(\d+)([a-z]*)\.(jpe?g|png|webp)(?=$|\?)/i, `/${px}x${px}$3.$4`);
 }
-/** Load a picture and wait for its decode, at most `ms`. */
-function preload(src: string, ms: number): Promise<void> {
+/** Load a picture and wait for its decode, at most `ms`. `ready`: the picture is already in the
+ *  memory cache (a second open of the same song), so there is nothing to wait for (§14 N2). */
+function preload(src: string, ms: number): { ready: boolean; wait: Promise<void> } {
   const img = new Image();
   img.decoding = "async";
   img.src = src;
-  return Promise.race([img.decode().catch(() => {}), new Promise<void>((r) => window.setTimeout(r, ms))]);
+  if (img.complete && img.naturalWidth > 0) return { ready: true, wait: Promise.resolve() };
+  return { ready: false, wait: Promise.race([img.decode().catch(() => {}), new Promise<void>((r) => window.setTimeout(r, ms))]) };
 }
 
 /** Ask for the cover file the box needs now. The card swaps its picture once the new file is
@@ -520,6 +525,95 @@ function dropStill(): void {
   opts?.hosts.queue?.style.removeProperty("z-index");
 }
 
+// ── held boxes (§14 N1) ─────────────────────────────────────────────────────────
+// The stacked grid gives the covered content cards the player's area and the Queue the band.
+// Each new size laid out every card again (its list redrew) on every measure, and the cards and
+// the Queue jumped: at the open's first frame, and at the close's last (his report, 2026-10-18).
+// A held card keeps its box (`.fp-pin`, absolute in the bento): the covered cards for as long as
+// the player is open in Max, the Queue while a stacked motion runs.
+const pinned = new Set<HTMLElement>();
+/** The box `r` (a viewport rect) in the bento's padding box. */
+function bentoBox(r: DOMRect, b: DOMRect): { left: number; top: number; width: number; height: number } {
+  const bento = opts!.bento;
+  return { left: r.left - b.left - bento.clientLeft, top: r.top - b.top - bento.clientTop, width: r.width, height: r.height };
+}
+/** Hold each card at its box. Measure every box before the first call changes the layout. */
+function pin(els: HTMLElement[], boxes: DOMRect[]): void {
+  if (!opts) return;
+  const b = rect(opts.bento);
+  els.forEach((el, i) => {
+    const box = bentoBox(boxes[i], b);
+    el.classList.add("fp-pin");
+    el.style.left = `${box.left}px`;
+    el.style.top = `${box.top}px`;
+    el.style.width = `${box.width}px`;
+    el.style.height = `${box.height}px`;
+    pinned.add(el);
+  });
+}
+function unpin(els: Iterable<HTMLElement> = [...pinned]): void {
+  for (const el of els) {
+    el.classList.remove("fp-pin");
+    for (const k of ["left", "top", "width", "height"]) el.style.removeProperty(k);
+    pinned.delete(el);
+  }
+}
+
+/** Still copies of the Queue for a stacked motion: its look at the place it leaves, which fades
+ *  while the real one is somewhere else (§14.4). Inert, off the slot, under the moving cards. */
+let queueStills: HTMLElement[] = [];
+function stillOf(panel: HTMLElement, r: DOMRect): HTMLElement | null {
+  if (!opts) return null;
+  const copy = panel.cloneNode(true) as HTMLElement;
+  copy.removeAttribute("data-slot");
+  copy.removeAttribute("data-frames");
+  copy.removeAttribute("id");
+  copy.classList.remove("fp-pin", "pop-enter");
+  copy.classList.add("fp-still");
+  copy.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+  copy.querySelectorAll(".grow-zone").forEach((el) => el.remove());
+  for (const k of ["left", "top", "width", "height", "opacity", "z-index"]) copy.style.removeProperty(k);
+  copy.inert = true;
+  copy.setAttribute("aria-hidden", "true");
+  const box = bentoBox(r, rect(opts.bento));
+  copy.style.left = `${box.left}px`;
+  copy.style.top = `${box.top}px`;
+  copy.style.width = `${box.width}px`;
+  copy.style.height = `${box.height}px`;
+  opts.bento.appendChild(copy);
+  queueStills.push(copy);
+  return copy;
+}
+/** End a stacked motion's parts: the stills go, the Queue's own motion and hold end. */
+function dropStackBits(): void {
+  queueStills.forEach((s) => s.remove());
+  queueStills = [];
+  const queue = queuePanel();
+  if (queue) {
+    queue.getAnimations().forEach((a) => a.id === "stack-move" && a.cancel());
+    queue.style.removeProperty("opacity");
+    unpin([queue]);
+  }
+  historyHost()?.getAnimations().forEach((a) => a.id === "stack-move" && a.cancel());
+}
+/** Max, not stacked: the Queue between its resting box (`rest`, under Now Playing) and the whole
+ *  column (`full`, where it is laid out now). It moves with its top edge (a translate), so its
+ *  header and rows go up and down with the edge; a clip holds its bottom edge where the column
+ *  ends. `back`: the close (full → rest). The same edges as the clip it replaces (§14.6). */
+function queueRise(queue: HTMLElement, rest: DOMRect, full: DOMRect, pad: number, dur: number, ease: string, back: boolean): Animation[] {
+  const qr = getComputedStyle(queue).borderRadius || "0px";
+  const dy = rest.top - full.top;
+  const low = { transform: `translateY(${dy}px)`, clipPath: `inset(${-pad}px ${-pad}px ${dy + full.bottom - rest.bottom - pad}px ${-pad}px round ${qr})` };
+  const up = { transform: "none", clipPath: clipOpen(pad, qr) };
+  return [queue.animate(back ? [up, low] : [low, up], { duration: dur, easing: ease, fill: "both" })];
+}
+/** The skin's stacked motion (skin.css --player-stack-move): fade or slide. */
+const stackMove = (): "fade" | "slide" =>
+  getComputedStyle(root).getPropertyValue("--player-stack-move").trim() === "slide" ? "slide" : "fade";
+/** Max's content cards: every content slot of the composition (covered while full). */
+const maxCards = (): HTMLElement[] =>
+  surfaceNow() === "max" ? (opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h) : [];
+
 /** The rows on the band (and the band itself) come in. The fade is a Web Animation, not a CSS
  *  class: layoutNow flips `data-np-rows` to "over" to measure the controls, and a CSS animation
  *  on a rule that names the attribute stops on the flip and starts again from 0 on the flip
@@ -569,6 +663,10 @@ export async function openFullPlayer(cause: string): Promise<void> {
     const fromQueue = queue ? rect(queue) : null;
     const restStill = m && queue ? restCopy(panel) : null; // Max: the resting place stays filled
     const row1 = surface === "midi" ? from.height : undefined;
+    // Max: the content cards keep their boxes while the player is open (§14 N1), measured now,
+    // while the layout is the resting one.
+    const cards = maxCards();
+    pin(cards, cards.map(rect));
     // Measure the full layout once, with no paint between: the rows' place, then the cover box.
     apply(true, undefined, row1);
     // Stacked or not is decided here too (a tall window), before the cover box is measured.
@@ -579,13 +677,27 @@ export async function openFullPlayer(cause: string): Promise<void> {
     const place = first.place;
     panel.dataset.npRows = place;
     const box = rect(art).width;
-    apply(false);
+    // Stacked in Max, the side card is part of the open (§14 N3): it mounts now, hidden, so the
+    // motion carries no mount and nothing moves again after it lands.
+    const stacked = stack && surface === "max" && first.history;
+    if (stacked) warmHistory();
     const px = fullArtPx(box, window.devicePixelRatio, stageArtPx());
     const img = art.querySelector<HTMLImageElement>(".vinyl:not(.vinyl--out) img");
     const big = img?.src ? sizedUrl(img.src, px) : null;
     // The large file loads before the open, so the flight never shows a soft picture (§9.3).
-    if (big && m) await preload(big, tokenMs("--player-art-wait"));
-    if (my !== gen || !fullPlayerAvailable() || surfaceNow() !== surface) return;
+    // Already in memory, the layout stays on and the motion starts in this task (§14 N2).
+    const pre = big && m ? preload(big, tokenMs("--player-art-wait")) : null;
+    if (pre && !pre.ready) {
+      apply(false);
+      await pre.wait;
+    }
+    if (my !== gen || !fullPlayerAvailable() || surfaceNow() !== surface) {
+      if (!full) {
+        apply(false);
+        unpin();
+      }
+      return;
+    }
     artPx = 0;
     askArt(box);
 
@@ -617,13 +729,37 @@ export async function openFullPlayer(cause: string): Promise<void> {
       }),
     ];
     if (fly) anims.push(flyAnim(fly, fromArt, toArt, m.dur, m.ease, false));
-    if (queue && fromQueue) {
-      // Max: the Queue grows up over the place Now Playing left, in the same time (§9.4.3).
+    const move = stacked ? stackMove() : null;
+    if (queue && fromQueue && move) {
+      // Stacked (§14.4): the Queue goes from its column to the band under the player. A still of
+      // it stays in the column and fades under the growing player.
       const toQueue = rect(queue);
-      const qr = getComputedStyle(queue).borderRadius || "0px";
-      anims.push(queue.animate([{ clipPath: clipBetween(fromQueue, toQueue, pad, qr) }, { clipPath: clipOpen(pad, qr) }], {
-        duration: m.dur, easing: m.ease, fill: "both",
-      }));
+      const qStill = stillOf(queue, fromQueue);
+      qStill?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: m.dur, easing: m.ease, fill: "both" });
+      const side = historyHost();
+      if (move === "slide") {
+        // It slides down into the band while the side card slides in from its edge.
+        const a = queue.animate([{ transform: `translate(${fromQueue.left - toQueue.left}px, ${fromQueue.top - toQueue.top}px)` }, { transform: "none" }], {
+          duration: m.dur, easing: m.ease,
+        });
+        a.id = "stack-move";
+        anims.push(a);
+        if (side) {
+          root.dataset.fpHistory = "on";
+          paintZones();
+          const s = side.animate([{ transform: awayX() }, { transform: "none" }], { duration: m.dur, easing: m.ease });
+          s.id = "stack-move";
+          anims.push(s);
+        }
+      } else {
+        // Fade: out of view until the cover lands; then the band rises in (below).
+        queue.style.opacity = "0";
+      }
+    } else if (queue && fromQueue) {
+      // Max: the Queue grows up over the place Now Playing left, in the same time (§9.4.3).
+      // Its rows ride its top edge (§14.6, 2026-10-18): a clip alone showed the middle of the
+      // tall list in the resting box, and the rows jumped at the first frame and the last.
+      anims.push(...queueRise(queue, fromQueue, rect(queue), pad, m.dur, m.ease, false));
     }
     let rowsIn = false;
     const rows = () => {
@@ -637,12 +773,26 @@ export async function openFullPlayer(cause: string): Promise<void> {
     anims.forEach((a) => a.cancel());
     fly?.remove();
     art.style.visibility = "";
-    if (my === gen) dropStill(); // a close that took over owns the copy now
+    if (my === gen) {
+      dropStill(); // a close that took over owns the copy now
+      queueStills.forEach((s) => s.remove());
+      queueStills = [];
+    }
     endFrames();
     delete panel.dataset.frames;
     if (full && my === gen) {
       covered.forEach(cover);
       rows();
+      if (move === "fade" && queue) {
+        // The band (the Queue and the side card) rises in, as the rows do.
+        queue.style.removeProperty("opacity");
+        const side = historyHost();
+        if (side) {
+          root.dataset.fpHistory = "on";
+          paintZones();
+        }
+        enterRows(side ? [queue, side] : [queue], 2);
+      }
     }
   } finally {
     if (my === gen) busy = false;
@@ -671,14 +821,20 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   opts?.hosts.queue?.getAnimations().forEach((a) => a.cancel());
   document.querySelectorAll(".np__fly").forEach((f) => f.remove());
   dropStill();
+  dropStackBits();
   if (art) art.style.visibility = "";
-  // The History column and a rows slide end at once: the close measures the layout without them.
-  dropHistory();
+  // Stacked in Max, the side card leaves with the Queue's motion (§14.4). Otherwise the History
+  // column ends at once: the close measures the layout without it.
+  const stacked = !!m && stack && surface === "max";
+  if (!stacked) dropHistory();
   panel?.getAnimations({ subtree: true }).forEach((a) => a.id === "rows-slide" && a.cancel());
   busy = true;
   const covered = coveredHosts();
   const end = () => {
     full = false;
+    dropHistory(cause !== "surface" && cause !== "layout"); // those remount the slots
+    dropStackBits();
+    unpin(); // each held card is at its resting box already: the grid takes it there, no jump
     apply(false);
     stack = false; // the next open decides again
     opts?.bento.style.removeProperty("--fp-stack-h");
@@ -687,7 +843,11 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
     watch = null;
     artPx = 0;
     setFullArtPx(0);
-    refreshPlayerState(); // the cover goes back to the rest file (already in the cache)
+    // The cover goes back to the rest file (already in the cache), one frame after the layout
+    // goes back, so the last frame of the close carries only the layout (§14 N4).
+    requestAnimationFrame(() => {
+      if (!full) refreshPlayerState();
+    });
     panel?.classList.remove("is-player-rebuild", "is-rows-sliding");
     if (panel) delete panel.dataset.frames;
     diag.log("player", { on: false, cause, surface: surface ?? currentSurface(), motion: !!m });
@@ -705,12 +865,18 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   // The rest boxes: measured with the layout off for one layout, no paint.
   const row1 = opts?.bento.style.getPropertyValue("--player-row1");
   const place = panel.dataset.npRows as RowsPlace | undefined;
+  // The held cards are measured where the resting grid puts them now (the window may have
+  // changed size while full), then held there for the motion.
+  const cards = maxCards();
+  unpin(cards);
   apply(false);
   const rest = rect(panel);
   const restArt = rect(art);
   const restQueue = queue ? rect(queue) : null;
+  const restCards = cards.map(rect);
   const restStill = queue ? restCopy(panel) : null; // Max: the resting place fills as the Queue goes
   apply(true, place, row1 ? parseFloat(row1) : undefined);
+  pin(cards, restCards);
 
   // The rows and the band go first (§9.4.2).
   panel.classList.add("is-player-rebuild");
@@ -739,11 +905,36 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
     }),
   ];
   if (fly) anims.push(flyAnim(fly, restArt, toArt, m.collapseDur, m.ease, true));
-  if (queue && toQueue && restQueue) {
-    const qr = getComputedStyle(queue).borderRadius || "0px";
-    anims.push(queue.animate([{ clipPath: clipOpen(pad, qr) }, { clipPath: clipBetween(restQueue, toQueue, pad, qr) }], {
-      duration: m.collapseDur, easing: m.ease, fill: "both",
-    }));
+  if (stacked && queue && toQueue && restQueue) {
+    // Stacked (§14.4): the Queue goes back to its column, held at its resting box, so the grid's
+    // change at the end moves nothing. A still of the band's Queue fades where it was.
+    const qStill = stillOf(queue, toQueue);
+    pin([queue], [restQueue]);
+    const side = root.dataset.fpHistory === "on" ? historyHost() : null;
+    if (stackMove() === "slide") {
+      qStill?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: m.collapseDur, easing: m.ease, fill: "both" });
+      const a = queue.animate([{ transform: `translate(${toQueue.left - restQueue.left}px, ${toQueue.top - restQueue.top}px)` }, { transform: "none" }], {
+        duration: m.collapseDur, easing: m.ease,
+      });
+      a.id = "stack-move";
+      anims.push(a);
+      if (side) {
+        const s = side.animate([{ transform: "none" }, { transform: awayX() }], { duration: m.collapseDur, easing: m.ease, fill: "forwards" });
+        s.id = "stack-move";
+        anims.push(s);
+      }
+    } else {
+      // Fade: the band goes first, as the rows do; the Queue fades in at its column under the
+      // shrinking player, with the content cards.
+      const out = Math.round(m.collapseDur * 0.4);
+      qStill?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: out, easing: m.ease, fill: "both" });
+      if (side) side.animate([{ opacity: 1 }, { opacity: 0 }], { duration: out, easing: m.ease, fill: "forwards" }).id = "stack-move";
+      const a = queue.animate([{ opacity: 0 }, { opacity: 0, offset: 0.3 }, { opacity: 1 }], { duration: m.collapseDur, easing: m.ease, fill: "both" });
+      a.id = "stack-move";
+      anims.push(a);
+    }
+  } else if (queue && toQueue && restQueue) {
+    anims.push(...queueRise(queue, restQueue, toQueue, pad, m.collapseDur, m.ease, true));
   }
   await Promise.all(anims.map((a) => a.finished.catch(() => {})));
   if (my !== gen) return; // something else ended it (a surface change) and cleaned up
@@ -916,12 +1107,14 @@ export function initFullPlayer(o: Opts): void {
     // Layout for Max changed: close with no motion before the layout remounts (MAX-CARDS.md).
     if (k === "maxCards") {
       if (full) void closeFullPlayer("layout", false);
+      else dropHistory(false); // the kept side card goes with the old layout
       paintZones();
     }
   });
   // A surface change ends it with no motion, before the layout remounts the slots.
   onSurfaceChange(() => {
     if (full) void closeFullPlayer("surface", false);
+    else dropHistory(false);
     paintZones();
   });
   // Escape closes it, unless a menu, a popover or a text field takes it first (the grow's rule).

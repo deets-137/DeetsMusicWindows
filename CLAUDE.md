@@ -139,7 +139,9 @@ for word, with RELEASE.md's section numbers.
 - `fullscreen-player.md` — BUILT 2026-10-11, tested, on for everyone (the DevTools flag
   removed): Now Playing grows so the cover is as large as the window allows, Midi and Max
   only. §6–§7 the decisions, §9 the motion, §10 the edge zones, §13 the as-built record.
-  Mini's player view and a turning Press copy in the flight are open.
+  Mini's player view and a turning Press copy in the flight are open. §14 BUILT 2026-10-18,
+  desk test open: the stacked open and close per skin (`--player-stack-move`: fade, or slide in
+  Press and Cyber), held cards (`.fp-pin`), and the regular Max Queue's rows riding its edge.
 - `BACKUP.md` — DESIGNED, not built (2026-10-11): one backup file (no secrets, no caches),
   *Back up now* plus a weekly copy to a folder, restore = replace all on a fresh install (his
   calls, §1); a `.deetsbackup` file; the rows in Settings › Updates. §8 the open forks. §9 a

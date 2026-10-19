@@ -750,3 +750,166 @@ Press) and with the monitor in every skin; the new baseline is §2a of the check
 
 **Not built.** Everything in §12.7, the Mini player view, an agent route.
 
+## 14. The stacked open and close, made smooth (design pass, 2026-10-18)
+
+> **Part:** built · 2026-10-18 · desk test open (§14.5). F1 decided by him: per skin (§14.7).
+> §14.6–§14.8 are the as-built record; where they disagree with §14.3–§14.4, they are the code.
+
+His report (2026-10-18, Max on his portrait screen, 1080 × 1872, Cyber, 244 Hz): the open to
+the stacked player and the close back "feel like some frames dropped". Read on his dev app with
+a dev shot (`shots/scratch/fp-stack-live.json`), two `--trace` runs and the JS sampler.
+
+### 14.1 What was measured
+
+| | His own run (17:19) | The dev shot | The trace |
+|---|---|---|---|
+| Open | 364 ms · dropped 7 of 67 · worst 33 ms | 405 ms · dropped 19 · worst 71 ms | the click's own task 48 ms |
+| Close | 281 ms · dropped 3 of 58 · worst 17 ms | 313 ms · dropped 5 · worst 88 ms, a 77 ms long task | the click 51 ms; one 50 ms frame at the end |
+
+The shot's screencast adds load; his own lines are the honest numbers. At 244 Hz a frame is
+4.1 ms, so one 9 ms layout pass drops two frames.
+
+### 14.2 What the user sees, and why
+
+1. **The cards jump at the first frame of the open.** The stacked grid puts the four content
+   cards in the player's area (`grid-area: 1 / 1 / 2 / 3`, styles.css). They get a new size at
+   once: the Library's rows show at full opacity across the left of the window, under the
+   growing clip, then fade. The Queue jumps from its column (top 630 px) to the band
+   (top 1260 px) in the same frame: its clip animation cannot move a box, only crop it.
+2. **A second motion after the open lands.** The side column (Playlists for him) mounts after
+   the open, two frames later `refit` runs `slideRows` (`player-rows below→below`, 342 ms),
+   and the side card's tiles pop in during its reveal (682 ms). The open reads as two steps.
+3. **The close ends in a jump.** Through the whole close the Queue stays in the band and the
+   content cards fade in at their stacked places (the Library over the left half). At the end
+   (`end()`) the grid goes back in one frame: the Queue jumps up, every card jumps home. That
+   frame also lays out all four cards again and swaps the cover file back to 480 px: the
+   50–88 ms frame.
+4. **The click waits.** The open's first task forces style and layout about five times
+   (`apply(true)`, `layoutNow` flips `data-np-rows` and back, `apply(false)`, `apply(true)`
+   again, then the rects): 77 ms of `getBoundingClientRect` / `getComputedStyle` in the
+   sampler. Each pass lays out the four content cards at their new size, and the collection
+   cards redraw (`rerenderInPlace`). His click took 176 ms to its handler's end; the first
+   changed picture came at +274 ms.
+
+A probe (2026-10-18): one switch of the stacked layout costs 9–17 ms. With the four content
+cards pinned at their rest boxes it costs 6–10 ms, and they do not move (0 px).
+
+### 14.3 What follows (no fork: each one only removes a fault)
+
+- **N1. Pin the covered cards.** While the stacked player is open or moving, each content card
+  is held at its rest box (absolute, its own size, `grid-area: auto` so the grid area is not its
+  containing block). No relayout, no list redraw, no jump: the cards fade out and in where they
+  will be.
+- **N2. Measure once.** The open measures the stacked layout in one pass and starts the large
+  cover's load from the size the stacked width gives (the bento's width is known with no
+  layout), so the wait and the measure overlap. Target: two forced passes on the click, not five.
+- **N3. One motion.** Stacked, the side column is part of the open: its card mounts during the
+  cover wait (`warmHistory` moves earlier), and it arrives with the Queue (F1). `refit` after
+  the open finds nothing to change, so no second slide.
+- **N4. A light last frame.** With N1 the close's last frame lays out only the player and the
+  Queue. The cover file goes back to 480 px one frame later, after the layout frame.
+- Out of scope here: Midi's stacked band (its two cards are uncovered and change size). Measure
+  it after the build, with the same shot.
+
+### 14.4 The fork (his)
+
+**F1. How the Queue gets between its column and the band under the player.**
+
+- **A. Fade (recommended).** The Queue stays in its column, and the player grows over it. Once
+  the cover lands, the band (the Queue and the side card) rises in with the rows (`enterRows`).
+  The close is the reverse: the band goes first with the rows, the player shrinks, and the Queue
+  fades in at its column with the content cards. Only opacity and transform move. Cost: the
+  Queue is out of view for about 300 ms.
+- **B. Slide.** The Queue slides down into the band and widens while the player grows (a
+  translate and a clip from its rest box), and the side card slides in from the right at the same
+  time. A still copy of the Queue (as `restCopy` does for Now Playing) fills its old place, so
+  nothing goes blank. The close runs it back. Cost: the most moving parts at 244 Hz; the Queue's
+  rows are at the band's width from the first frame (the clip hides the extra width).
+
+### 14.5 Desk test (written now; run after the build)
+
+1. Max, portrait (his screen). Open from the right strip, close from the strip over the cards.
+   His `[perf] frames player max open / close` lines: dropped under 3 %, worst under 17 ms.
+2. In the frames (`shots/scratch/fp-stack-live.json`): no frame shows a content card at a
+   new size or place; the Queue never jumps; nothing moves after the open lands.
+3. Open, then close during the open; close, then open during the close: no stuck card.
+4. Escape while open; a surface change while open (no motion).
+5. Drag the window across square while open (the restack slide still works).
+6. Every skin (the motion set), and Max landscape (not stacked: unchanged).
+
+The kept check is [../ops/checks/fp-stack.json](../ops/checks/fp-stack.json): each skin's open
+and close with probes (nothing left held, copied or faded after each), and a close during the
+open. Each shot sets the skin with its own step and puts Cyber back: a shot `looks` would set the
+theme, and his Live Theming rule (album color → theme) then holds it as a change by hand.
+
+### 14.6 The regular Max Queue (found while measuring, 2026-10-18)
+
+His second note, the same day: "when it gets close to the finish state on shrink, it jumps into
+place". The frames of a landscape Max close (1080 × 760, `shots/scratch/fp-close-end.json`)
+showed it outside the stacked layout too: during the close the Queue stays laid out at the whole
+column's height and the clip only crops it, so the resting box showed the middle of the list
+("two summers", "Forcefed Serenity"); one frame after the end it showed its header and first
+rows. The open had the same jump at its first frame. Fix: `queueRise` in `full-player.ts`. The
+Queue keeps its full-column layout and moves with its top edge (a `translateY` from the resting
+top), and a clip holds its bottom edge at the column's end. The edges are the same as the clip it
+replaces, so the shape is his §9.4.3 ("the Queue grows up over the place Now Playing left"); the
+rows now travel with the edge. Checked in the frames: the header lands in place, no jump. Midi
+has no such jump (its rows fade in at the strip).
+
+### 14.7 As built (2026-10-18)
+
+**His calls.** F1 per skin: **Fade** in Glass and Ocean, **Slide** in Press and Cyber ("Fade
+works for Glass and ocean, Slide works for Press and Cyber"). Vanilla fades (his pick). The token
+is `--player-stack-move` in skin.css: `fade` in the base block (so a new skin fades too), `slide`
+in the Press and Cyber blocks.
+
+**The code** (`src/full-player.ts`, `src/styles.css`, `src/styles/skin.css`):
+- **N1, held cards.** `pin` / `unpin` and `.fp-pin` (absolute in the bento, `grid-area: auto
+  !important`). Max's content cards are held at their resting boxes from the open's first measure
+  to the close's end; the close measures their resting boxes again first (the window may have
+  changed size), then holds them there for the motion. A layout pass measured 9–17 ms before and
+  6–10 ms after (the worst `Layout` in a trace: 11 → 5 ms).
+- **N2, measure once.** `preload` returns `ready` when the large cover is already in memory; then
+  the layout stays on and the motion starts in the click's own task (no `apply(false)` and
+  `apply(true)` again). The click's task is still ~43 ms, ~34 ms of it forced layout (two ~10 ms
+  passes restyle the whole page after `<html>` attributes change). Left as is: it delays the
+  start and drops no frame inside the motion.
+- **N3, one motion.** Stacked, the side card mounts during the open's measure (`warmHistory`
+  moved up) and comes with the Queue. **The side card now stays mounted, hidden, after a close**
+  (`dropHistory(keep)`): it is unmounted only by a surface or *Layout for Max* change (open or
+  closed) or a pick of another card. Reason: mounted on every open, its tile reveal (684 ms) ran
+  during each open. Now it plays once, after the first open lands, with 0 dropped frames.
+- **N4.** The cover goes back to the 480 px file one frame after the close's last layout.
+- **Fade** (`move === "fade"`): a still copy of the Queue (`stillOf`, `.fp-still`) stays in the
+  column and fades under the growing player; the real Queue waits in the band at opacity 0; when
+  the open lands, `fpHistory` turns on and `enterRows([queue, side])` raises the band. The close:
+  a copy of the band's Queue and the side card fade over 40 % of the collapse; the real Queue,
+  held at its resting box, fades in from 30 % with the content cards.
+- **Slide**: the real Queue in the band translates from its column's top-left; the side card
+  slides in from its edge (`awayX`) at the same time; the still copy fades in the column. The
+  close runs it back (the Queue held at its resting box, translated from the band).
+- `dropStackBits` ends a stacked motion's parts (the stills, the Queue's own motion, its hold and
+  opacity); the close and its `end` call it, so a close during the open leaves nothing.
+
+### 14.8 Measured after the build (2026-10-18, his dev app, the app's own frame lines)
+
+Measured with `__full.open` / `close` cycles, after a page reload. Numbers taken right after the
+shots runner had been attached to the page ran at about half rate in every skin and are not used
+(a reload cleared it).
+
+| Where | Before (old code, same method) | After |
+|---|---|---|
+| Portrait stacked, Cyber, 244 Hz | open ~10 % dropped (5–14 %), close ~11 % (3–22 %) and the jump at the end | open ~6 % (4–21 %), close ~8 % (5–13 %), no jump |
+| Portrait stacked, Cyber and Glass, 60 Hz | — | open 0–5 %, close 0–6 % |
+| Max landscape 1080 × 760, Cyber | open 4–20 %, close 3 % | open 2–18 %, close 3–9 % |
+| Max landscape, Glass | — | open 6–28 %, close 5–25 % (the frost's raster) |
+| Midi 495 × 670, five skins | — | open 1–24 % (Glass and Ocean the high end), close 0–3 % |
+
+The screen ran at 244 Hz for most of the session and at 60 Hz for the last portrait run (the PC
+had been idle; Windows' dynamic refresh rate, or a display change). At 244 Hz a frame is 4.1 ms,
+so a 9 ms pass drops two.
+
+**Open after this build.** The click's forced layouts (N2, ~34 ms); Glass's per-frame cost in
+every surface; the clip-path animations run on the main thread each frame (Chromium does not
+composite them), which is most of what is left of the open's drops at 244 Hz.
+
