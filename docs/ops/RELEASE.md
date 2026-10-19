@@ -42,6 +42,7 @@ updated: 2026-10-16
 | Step | Command | What it does | Needs |
 |---|---|---|---|
 | 1 | set the version, write the notes | the same version in the seven files (§1), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. `vpk pack` puts that entry in the package; publish copies it to the update offer and the website, and refuses to run without it | — |
+| 1a | `node docs/ops/checks/smooth.mjs` | **The motion monitor, before every release (his call, 2026-10-18).** Claude runs it: the motion set and the full player, every skin, each clip watched for a flash, a snap and a jitter ([checks/README.md](checks/README.md) §2a). A hit not in that section's baseline stops the release until its frames are read and it is fixed or added to the baseline with the reason. About 35 minutes; it runs on the web demo, so it can run while the build does. The result goes in the release log's Notes (§0a) | nothing: the runner serves the demo itself (its own Vite and headless Edge) |
 | 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build --no-bundle` → stage the exe and its resources → `vpk pack` (signs every exe through `sign.mjs`; writes the full package, the delta, Setup.exe and the feed) → delete the Portable.zip → sign the feed → `release-check` → copy Setup.exe to `installers/DeetsMusic_<version>_x64-setup.exe` (§1) | both secrets below, the signing tools (§6.9), `vpk` at the crate's version (`dotnet tool install -g vpk --version 1.2.161`) |
 | 3 | install + test | `installers/DeetsMusic_<version>_x64-setup.exe`, by hand. **From Claude's shell, start it through WMI** (§4) | — |
 | 4 | `npm run release:publish` | uploads the packages, Setup.exe, the version's rollback feed and then the feed to R2 `<channel>/vp/`, each feed signed; adds the row to the channel index; installs start to update (§6.7). Then builds the web demo and commits + pushes it to `../DeetsSolutions` master, which deploys the site (WEB-DEMO.md §9.8) | `../DeetsSupport` checkout, wrangler login; the updater key; `../DeetsSolutions` on master |
@@ -68,7 +69,9 @@ and users can check, and it opens a possible second lock (§6.6).
 ## 0a. What went out (the release log)
 
 One row per build published to the `deetsmusic` channel since the first public one. The text
-of each is in [RELEASE-NOTES.md](RELEASE-NOTES.md). "Hand test" is §0 step 3.
+of each is in [RELEASE-NOTES.md](RELEASE-NOTES.md). "Hand test" is §0 step 3. From the release
+after 0.30.0, each row's Notes start with the motion monitor's result (§0 step 1a): "motion: no
+new hit", or the hits and what was done.
 
 | Version | Date | Commit | Hand test | Notes |
 |---|---|---|---|---|

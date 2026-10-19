@@ -1,7 +1,7 @@
 ---
 status: sop
 desk_test: none
-sources: [src/ipc-timing.ts, src/ipc-core.ts, demo/latency.ts, scripts/latency-profile.mjs, docs/guide/loading.json, scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
+sources: [src/ipc-timing.ts, src/ipc-core.ts, demo/latency.ts, scripts/latency-profile.mjs, docs/guide/loading.json, scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, scripts/frame-why.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
 updated: 2026-10-17
 ---
 # DeetsMusic — Debugging tools
@@ -695,6 +695,43 @@ Two things it is built to stop you doing:
   At idle `CrGpuMain` barely registers, so that 86.9% is the switch's own cost. A change can
   cut the page's work and still cost the user frames by pushing it onto raster — which only
   the per-thread table shows. `GpuVSyncThread` blocks on vsync, so its % is waiting, not load.
+
+## Why a frame is late — `scripts/frame-why.mjs` (dev only, 2026-10-18)
+
+His ask: hunt the frame drops before fixing them. `--trace` says how busy each thread was;
+this says WHY the page's main thread worked on each frame, and what wrote the change.
+
+```
+node scripts/frame-why.mjs "window.__full.open('why').then(()=>new Promise(r=>setTimeout(r,600)))"
+node scripts/frame-why.mjs "<expression>" --frames=20    # the 20 costliest frames (default 12)
+node scripts/frame-why.mjs "<expression>" --all          # every frame
+```
+
+It traces with Chromium's invalidation tracking on. For each main-thread frame
+(`BeginMainFrame`) it prints the time from the first frame, its cost split (style, with the
+number of elements restyled; layout; paint; script), the scripts that ran for it (`▸`: a timer, a
+frame callback or an event, with its file and line) and the INVALIDATIONS that dirtied it (the
+element, the reason, the script line). Then the causes ranked over the run, and the forced style
+and layout passes outside any frame (a script read a box after a write) with their line.
+
+**How to read it.**
+- A composited animation (transform, opacity, and clip-path in WebView2 Edge 155: measured, a
+  1 s clip on a 1000 × 1100 box drew 5 main-thread frames) needs no main-thread frame. A frame
+  in the middle of a motion is the thing to explain.
+- `style N ms (E el)` with E in the thousands: an inherited property or an attribute on a high
+  element changed (`visibility`, `inert`, a `data-*` on `<html>`): every element under it restyles.
+- `StyleRecalc: Animation` on an element every frame: a running animation that the main thread
+  ticks (Cyber's storm, a CSS transition). Small each time.
+- Line numbers point into the file as Vite serves it (TypeScript stripped), so they sit near the
+  source line, not on it.
+- Measure after a page reload, and not right after a shots run: a page the shots runner had
+  attached to ran its motions at half rate until a reload (2026-10-18).
+
+**What it found on the full player (2026-10-18, fixed the same day, fullscreen-player.md §14.9):**
+`cover()` at the landing restyled ~1,100 elements (12 ms); the check two frames after the landing
+measured the layout again for nothing (~20 ms); the size watch's first report did the same in the
+motion's first frame; `pin` forced a layout per card. Left: the close's last frame (50 ms, the
+`<html>` attribute restyling 1,873 elements) and the click's two whole-page passes.
 
 ## What the 2026-09-17 health check found
 

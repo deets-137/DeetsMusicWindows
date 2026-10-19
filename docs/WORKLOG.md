@@ -27,6 +27,15 @@ A side effect, put right in the same sitting: the shots runner's theme set and p
 as a change by hand for his Live Theming rule (`recipe:live:4`), which then held Lilac. Claude
 cleared that one hold in `deets.rules.holds` and reloaded. The kept check sets only the skin.
 
+**The frame hunt (later the same sitting; his calls: the recorder first, the motion monitor
+before every release).** New: `scripts/frame-why.mjs` (DEBUGGING.md § Why a frame is late).
+First finding: clip-path animations are composited in this WebView2, so the clip is not the
+cost. Four fixes that change nothing seen (fullscreen-player.md §14.9): `cover()` after the
+landing, the post-open `refit` only when needed, the size watch's first report skipped, `pin`
+reads the bento once. The open's landing went from 28 ms to 13 ms; no motion frame over 18 ms.
+Left: the close's last frame (50 ms) from the `<html>` attributes. RELEASE.md §0 step 1a: Claude
+runs `smooth.mjs` before every release, the result in the release log.
+
 ## 2026-10-18, night — Repo merges, and the Spotify probe run
 
 **Repo:** `v-thirty` merged into `main`, then `origin/spotify-rooms` (docs only; three

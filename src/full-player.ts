@@ -54,6 +54,8 @@ let gen = 0; // bumps on every open and close: a wait that comes back late knows
 let artPx = 0; // the cover file size asked for while full (a 200 px bucket)
 let watch: ResizeObserver | null = null;
 let slideGen = 0; // bumps on every rows slide: only the newest one ends is-rows-sliding
+let wantHistory = false; // the open's measure: the side column shows (Max)
+let resizedInMotion = false; // a resize during the open changed the layout: check it after the landing
 const subs = new Set<(on: boolean) => void>();
 
 const root = document.documentElement;
@@ -532,15 +534,21 @@ function dropStill(): void {
 // A held card keeps its box (`.fp-pin`, absolute in the bento): the covered cards for as long as
 // the player is open in Max, the Queue while a stacked motion runs.
 const pinned = new Set<HTMLElement>();
-/** The box `r` (a viewport rect) in the bento's padding box. */
-function bentoBox(r: DOMRect, b: DOMRect): { left: number; top: number; width: number; height: number } {
+/** The bento's padding box in the viewport. Read it BEFORE any write: a read after one forces a
+ *  layout (one per card, measured with scripts/frame-why.mjs, 2026-10-18). */
+function bentoOrigin(): { left: number; top: number } {
   const bento = opts!.bento;
-  return { left: r.left - b.left - bento.clientLeft, top: r.top - b.top - bento.clientTop, width: r.width, height: r.height };
+  const b = rect(bento);
+  return { left: b.left + bento.clientLeft, top: b.top + bento.clientTop };
+}
+/** The box `r` (a viewport rect) in the bento's padding box. */
+function bentoBox(r: DOMRect, o: { left: number; top: number }): { left: number; top: number; width: number; height: number } {
+  return { left: r.left - o.left, top: r.top - o.top, width: r.width, height: r.height };
 }
 /** Hold each card at its box. Measure every box before the first call changes the layout. */
 function pin(els: HTMLElement[], boxes: DOMRect[]): void {
   if (!opts) return;
-  const b = rect(opts.bento);
+  const b = bentoOrigin();
   els.forEach((el, i) => {
     const box = bentoBox(boxes[i], b);
     el.classList.add("fp-pin");
@@ -575,7 +583,7 @@ function stillOf(panel: HTMLElement, r: DOMRect): HTMLElement | null {
   for (const k of ["left", "top", "width", "height", "opacity", "z-index"]) copy.style.removeProperty(k);
   copy.inert = true;
   copy.setAttribute("aria-hidden", "true");
-  const box = bentoBox(r, rect(opts.bento));
+  const box = bentoBox(r, bentoOrigin());
   copy.style.left = `${box.left}px`;
   copy.style.top = `${box.top}px`;
   copy.style.width = `${box.width}px`;
@@ -654,6 +662,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
   if (!surface || !panel || !art) return;
   busy = true;
   const my = ++gen;
+  resizedInMotion = false;
   try {
     if (grownState()) await collapseGrow("player", false); // no motion: one motion at a time
     const m = motion();
@@ -679,6 +688,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
     const box = rect(art).width;
     // Stacked in Max, the side card is part of the open (§14 N3): it mounts now, hidden, so the
     // motion carries no mount and nothing moves again after it lands.
+    wantHistory = first.history;
     const stacked = stack && surface === "max" && first.history;
     if (stacked) warmHistory();
     const px = fullArtPx(box, window.devicePixelRatio, stageArtPx());
@@ -781,7 +791,13 @@ export async function openFullPlayer(cause: string): Promise<void> {
     endFrames();
     delete panel.dataset.frames;
     if (full && my === gen) {
-      covered.forEach(cover);
+      // The covered cards are at opacity 0 and take no click (`.is-covering`). `cover` adds
+      // `inert` and `visibility: hidden`, which restyle every element inside them (~1,100,
+      // 12 ms on the landing frame, frame-why.mjs, 2026-10-18): once the rows and the band
+      // have come in, in a frame where nothing moves.
+      window.setTimeout(() => {
+        if (full && my === gen) covered.forEach(cover);
+      }, m.dur);
       rows();
       if (move === "fade" && queue) {
         // The band (the Queue and the side card) rises in, as the rows do.
@@ -798,11 +814,14 @@ export async function openFullPlayer(cause: string): Promise<void> {
     if (my === gen) busy = false;
   }
   // The History column waits for the open to land: its card mounts hidden, and two frames
-  // later it slides in when the card is wide.
+  // later it slides in when the card is wide. The check measures the layout again (~20 ms,
+  // frame-why.mjs, 2026-10-18), so it runs only when something can have changed: a resize
+  // during the open, or a column still to come.
   if (full && my === gen) {
     warmHistory();
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (full && my === gen) refit(panel);
+      if (!full || my !== gen) return;
+      if (resizedInMotion || wantHistory !== (root.dataset.fpHistory === "on")) refit(panel);
     }));
   }
 }
@@ -965,7 +984,13 @@ function watchSize(panel: HTMLElement): void {
   const np = npOf(panel);
   const art = artOf(panel);
   if (!np || !art) return;
-  watch = new ResizeObserver(() => refit(panel));
+  // An observer reports the size it starts on, at once: the open has just measured that size,
+  // so its first report is skipped (a full measure in the motion's first frame, 2026-10-18).
+  let started = false;
+  watch = new ResizeObserver(() => {
+    if (!started) return void (started = true);
+    refit(panel);
+  });
   watch.observe(np);
 }
 
@@ -978,6 +1003,7 @@ function refit(panel: HTMLElement): void {
   const next = layoutNow(panel);
   const histNow = root.dataset.fpHistory === "on";
   if (busy) {
+    if (next.stack !== stack || panel.dataset.npRows !== next.place || next.history !== wantHistory) resizedInMotion = true;
     setStack(next.stack, next.stackH);
     if (panel.dataset.npRows !== next.place) panel.dataset.npRows = next.place;
   } else if (panel.dataset.npRows !== next.place || next.history !== histNow || next.stack !== stack) {

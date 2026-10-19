@@ -910,6 +910,30 @@ had been idle; Windows' dynamic refresh rate, or a display change). At 244 Hz a 
 so a 9 ms pass drops two.
 
 **Open after this build.** The click's forced layouts (N2, ~34 ms); Glass's per-frame cost in
-every surface; the clip-path animations run on the main thread each frame (Chromium does not
-composite them), which is most of what is left of the open's drops at 244 Hz.
+every surface. (A line here said the clip animations run on the main thread. They do not: §14.9.)
+
+### 14.9 The frame hunt (2026-10-18, his calls: the recorder first, the monitor before releases)
+
+The recorder is `scripts/frame-why.mjs` (DEBUGGING.md § Why a frame is late). Measured first: in
+this WebView2 (Edge 155) a clip-path animation is composited, like transform and opacity, so the
+clip is not the cost. The costs it named in the open and the close, and what was done (none
+changes what is seen):
+
+| Frame | Before | Cause | Fix |
+|---|---|---|---|
+| The open's landing | 28 ms | `cover()` (`inert` + `visibility: hidden`) restyled ~1,100 elements inside the cards that were already at opacity 0 | the cards take no click from the start (`.is-covering` has `pointer-events: none`, card-grow too); `cover` runs `--player-dur` after the landing, when nothing moves (7–12 ms there) |
+| Two frames after the landing | 12.5 ms + 20 ms script | the post-open `refit` measured the layout again (`layoutNow` flips `data-np-rows`) | it runs only when a resize during the open changed the layout (`resizedInMotion`) or the side column is still to come (`wantHistory`) |
+| The motion's first frame | ~9 ms of it | the size watch's first report (an observer reports its start size at once) ran a full measure | that first report is skipped |
+| The click | ~3 ms | `pin` read `clientLeft` after each card's write: a forced layout per card | `bentoOrigin()` reads the bento once, before any write |
+
+After (portrait stacked, Cyber): no main-thread frame in the open's motion over 18 ms (the first,
+the one-time paint of the new layout), the landing 13 ms; the delayed `cover` frame 7–12 ms at
++700 ms. **Left, for a later step:** the close's last frame, 50 ms (19 ms style on 1,873
+elements, 10 ms layout, 14 ms script): `data-player` and `data-fp-stack` live on `<html>`, so
+taking them off restyles the whole page; the same attributes cost the click's two whole-page
+passes (~10–15 ms each). Moving them to the bento touches every full-player rule in styles.css.
+
+**The monitor before every release** (his call): RELEASE.md §0 step 1a. It cannot see the two
+jumps found today (a box that moves to a new place in one frame and stays; rows that change
+inside a box), and it runs on the demo only; extending it is the next motion-check step.
 

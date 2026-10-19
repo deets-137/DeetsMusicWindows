@@ -4398,7 +4398,10 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
 .bento .panel.is-grown { z-index: 2; }                    /* over the covered cards (swap-top is 1) */
 /* Covered cards: they fade under the opening edge, then they are hidden and inert — no
    paint (Ocean sand, Glass frost) and no input. Collapse fades them back as the clip closes. */
-.bento .panel.is-covering   { opacity: 0; transition: opacity var(--grow-dur) var(--grow-ease); }
+/* A card fading out under a grown card or the full player takes no click from the start: its
+   `inert` and `visibility` come after the motion (their restyle of every element inside cost
+   ~12 ms on the full player's landing frame, 2026-10-18). */
+.bento .panel.is-covering   { opacity: 0; pointer-events: none; transition: opacity var(--grow-dur) var(--grow-ease); }
 .bento .panel.is-uncovering { opacity: 1; transition: opacity var(--grow-collapse-dur) var(--grow-ease); } /* ends with the collapse clip, or uncover() would cut it */
 .bento .panel.is-covered    { visibility: hidden; }
 /* While the clip opens or closes, the body's content is gone AT ONCE (the rows are already
