@@ -235,6 +235,14 @@ each step that touches those calls.
      and ~20 forced passes in frame callbacks (`album-color.ts applyText`, `enterBand`,
      `compass.ts place`, `card-swap.ts onScreen`). Each is its own step, with frame-why first.
   4. The close's click keeps two ~20 ms layout reads (`rect` in `closeFullPlayer`).
+  5. **The motion monitor's new checks** (2026-10-19, [the checks archive](ops/checks/README.md),
+     part 2a; WORKLOG 2026-10-19 *motion monitor*). TELEPORT and ROW JUMP are built and proved on
+     the old code; `smooth.mjs --dev` ran portrait in four skins before he stopped it. Left: the
+     rest of the dev run (portrait Cyber, landscape, Midi: `node docs/ops/checks/smooth.mjs
+     --dev`); the whole demo set once, to add each shot's designed TELEPORT and ROW JUMP hits to
+     the baseline (only the full player shots ran); and one new hit to read in the frames:
+     portrait Glass and Ocean, the Queue list's shown part ~25 px shorter in one frame at the
+     close's end (`shots/scratch/smooth-dev-portrait/`).
   Then a release (the monitor runs first, RELEASE.md §0 step 1a).
 
 - **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;

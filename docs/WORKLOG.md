@@ -12,6 +12,31 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-19 — The motion monitor: teleports, row jumps, the dev app
+
+A side session of the frame hunt, on `main`. The task: the monitor missed both jumps fixed on
+2026-10-18 (fullscreen-player.md §14.2, §14.6), and it ran on the demo only. Built:
+- **TELEPORT and ROW JUMP** in `smooth-monitor.js` (the rules: [the checks archive](ops/checks/README.md),
+  part 2a). TELEPORT judges the part of a box that shows (cut by overflow and `inset()` clips),
+  so a clip that keeps a box in place is not a hit; a first try on the layout box flagged the
+  designed Queue clip and every part that moves while hidden.
+- **Proved** on the full player shots in Cyber, in scratch worktrees (never the shared
+  checkout's branch): on `ef5bcc9^` ROW JUMP fired on the landscape Queue at the open and the
+  close (529 px) and TELEPORT at the stacked close's end (the Queue 634 px, the cards 710–910
+  px); on `e96f5ba` neither fired. The stacked open's first-frame jump does not happen in the
+  demo (a frame trace: the Queue's visible box holds still under its clip).
+- **`smooth.mjs --dev`**: the open and close on the dev app at his sizes (portrait maximized
+  1080 × 1872, landscape 1080 × 760, Midi), each shot reloads first, the skin by eval and put
+  back, the window placed by a new dev handle `__surface.place` / `bounds` (`surface.ts`) and
+  put back at the end. The demo set gained portrait and landscape full player shots.
+- **The animation watch** in `frames.ts`: one `[perf] frames anim …` line per group of
+  animations no gesture times (DEBUGGING.md § Frame telemetry).
+- Run on the dev app (after the state-off-`<html>` commit): portrait Vanilla, Glass, Ocean,
+  Press. No jump of 2026-10-18 came back. New, unread: Glass and Ocean, the Queue list's shown
+  part ~25 px shorter in one frame at the close's end. He stopped the run for the night; the dev
+  app was put back (Max, maximized, Cyber) and closed. The rest is HANDOFF › Open now.
+Not run: `npm test` and `cargo` (no Rust or pure-rule change); `tsc` and `docs:check` pass.
+
 ## 2026-10-19 — The full player's state off `<html>`
 
 A side session of the frame hunt, on `main`. The task: cut the close's last frame and the

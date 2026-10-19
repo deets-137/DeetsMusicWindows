@@ -190,6 +190,13 @@ local playlist row), `drag cross` (a copy to another card, DRAG-DROP.md), `drag 
 menu opening), `appearance theme|skin` (the view transition), `sample` (manual),
 `window a-b` (a windowed pane's edge patch that cost ≥ 4 ms — collection-window.ts; the
 detail is the rendered item range after the pass).
+`anim <target> <what> [×N]` (2026-10-19, the animation watch) is motion that no gesture
+times: every finite animation that starts (a CSS animation, a transition of a box property
+such as transform, opacity or clip-path, an `el.animate`) joins the group begun less than a
+frame before it, and the group is one window that closes when its last member ends. `<what>`
+is the keyframes name, the property, or `animate`; `×N` is the members. A group that overlaps
+a named window's start (open, or begun up to two frames after) is not logged: that window has
+it. Endless motion (a spinner, the Ocean sea, the record) and hover color fades are left out.
 
 **The display.** At launch + 3 s the module samples 40 idle frames and logs
 `[perf] display <hz> Hz (period <ms>)`; every window is judged against that period, so a

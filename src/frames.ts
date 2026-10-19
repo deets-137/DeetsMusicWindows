@@ -86,6 +86,8 @@ function ensureLoop(): void {
 
 function close(w: Win): void {
   if (!open.delete(w)) return;
+  if (isNamed(w)) for (const n of named) if (n.t0 === w.t0) n.end = performance.now();
+  if (w.name === "anim" && overlapsNamed(w.t0)) return; // the gesture's own window has it (the animation watch)
   mark(`${w.name}:end`, w.detail);
   const elapsed = Math.round(performance.now() - w.t0);
   const n = w.gaps.length;
@@ -106,6 +108,10 @@ function close(w: Win): void {
 
 function openWin(name: string, detail = ""): Win {
   const w: Win = { name, detail, t0: performance.now(), last: 0, gaps: [], longTasks: [] };
+  if (isNamed(w)) {
+    named.push({ t0: w.t0, end: Infinity });
+    if (named.length > 24) named.shift();
+  }
   mark(`${name}:begin`, detail);
   open.add(w);
   ensureLoop();
@@ -139,6 +145,63 @@ function onScroll(e: Event): void {
   }
   scrollWin = openWin("scroll", firstClass(e.target));
   scrollWin.deadline = now + SCROLL_IDLE_MS;
+}
+
+// ── the animation watch (2026-10-19) ─────────────────────────────────────────
+// Motion with no begin() call was unseen: a card's tile reveal, a toast, a hint. Every finite
+// animation that starts (a CSS animation, a transition of a box property, an `el.animate`) joins
+// the group that began less than a frame before it, and the group is one window, `anim <first
+// target> <what> ×N`, that closes when its last member ends. A group that overlaps a named
+// window's start (open before it, or begun up to two frames after) is dropped: that gesture is
+// measured already. Hover color fades are not motion and are skipped.
+const ANIM_MIN_MS = 120;
+const BOX_PROPS = /^(transform|translate|scale|rotate|opacity|clip-path|width|height|top|left|right|bottom|inset|max-height|filter)$/;
+const seenAnims = new WeakSet<Animation>();
+let animGroup: { w: Win; live: number } | null = null;
+const named: { t0: number; end: number }[] = []; // the recent named windows (end Infinity while open)
+
+const isNamed = (w: Win): boolean => w.name !== "anim"; // a scroll too: its covers fade in under it
+const overlapsNamed = (t0: number): boolean => named.some((n) => n.t0 <= t0 + 2 * period && n.end >= t0 - period);
+
+function animLabel(a: Animation): string {
+  const el = (a.effect as KeyframeEffect | null)?.target;
+  const who = el instanceof HTMLElement ? firstClass(el) : el ? el.tagName.toLowerCase() : "?";
+  const what = a instanceof CSSAnimation ? a.animationName : a instanceof CSSTransition ? a.transitionProperty : "animate";
+  return `${who} ${what}`;
+}
+
+function watchAnim(a: Animation): void {
+  if (seenAnims.has(a)) return;
+  seenAnims.add(a);
+  const timing = a.effect?.getComputedTiming();
+  const ms = Number(timing?.endTime ?? 0);
+  if (!timing || !Number.isFinite(ms) || ms < ANIM_MIN_MS) return; // a spinner, a sea: endless
+  if (a instanceof CSSTransition && !BOX_PROPS.test(a.transitionProperty)) return;
+  const now = performance.now();
+  if (!animGroup || now - animGroup.w.t0 >= period || !open.has(animGroup.w)) animGroup = { w: openWin("anim", animLabel(a)), live: 0 };
+  const g = animGroup;
+  g.live++;
+  g.w.detail = g.w.detail.replace(/ ×\d+$/, "") + (g.live > 1 ? ` ×${g.live}` : "");
+  g.w.deadline = Math.max(g.w.deadline ?? 0, now + ms + 500); // a member held paused forever
+  const done = () => {
+    if (--g.live === 0) close(g.w);
+  };
+  a.finished.then(done, done);
+}
+
+function observeAnimations(): void {
+  const scan = (e: Event) => {
+    const t = e.target;
+    if (t instanceof Element) for (const a of t.getAnimations()) watchAnim(a);
+  };
+  document.addEventListener("animationstart", scan, { capture: true, passive: true });
+  document.addEventListener("transitionrun", scan, { capture: true, passive: true });
+  const animate = Element.prototype.animate;
+  Element.prototype.animate = function (this: Element, ...args: Parameters<Element["animate"]>) {
+    const a = animate.apply(this, args);
+    watchAnim(a);
+    return a;
+  };
 }
 
 function observeLongTasks(): void {
@@ -239,6 +302,7 @@ export function init(): void {
   document.addEventListener("scroll", onScroll, { capture: true, passive: true });
   observeLongTasks();
   observeInputs();
+  observeAnimations();
   HZ_AT.forEach((t) => window.setTimeout(sampleHz, t)); // one busy sample can no longer pin the rate
   window.setTimeout(logRenderer, 2000); // after the first paints, before the first hz line
   window.__frames = {

@@ -44,7 +44,7 @@ version apart; `--vs "--token=value"` runs a variant beside the first (SHOTS.md 
 | [mb-support-probe.mjs](mb-support-probe.mjs) | probe script | MusicBrainz (and Wikidata) coverage of the library's artists: the match by Apple artist URL, then by name + one album; the Support links by type; top 50 / top 200 / the rest. Reads the app's database read-only; no app needed | [SupportArtist.md §5](../../ideas/SupportArtist.md) | 2026-10-13 |
 | [lastfm-refresh-probe.mjs](lastfm-refresh-probe.mjs) | probe script | How often Last.fm refreshes its public counts: the top 3 chart songs and two albums read every minute; a line per move with the minutes since the last. No app needed; the key from the build's key file | [PresentationMode.md §7](../../features/PresentationMode.md) | 2026-10-13 |
 | [album-sum-probe.mjs](album-sum-probe.mjs) | probe script | An album page's plays and listeners against its songs': one `album.getInfo`, then one `track.getInfo` per song of Last.fm's track list, the sum and the top song's listeners, each song's line. No app needed; the key from the build's key file | [LISTENERS.md §9.1](../../features/LISTENERS.md) | 2026-10-17 |
-| [smooth.mjs](smooth.mjs) + [smooth-monitor.js](smooth-monitor.js) | shots runner + probe | The motion monitor: the motion set and the full player's open and close, every skin, each shot watched every frame for a flash, a one-frame snap and a jitter (§2a) | none — a regression run after any motion change ([fullscreen-player.md §13](../../features/fullscreen-player.md)) | 2026-10-14 |
+| [smooth.mjs](smooth.mjs) + [smooth-monitor.js](smooth-monitor.js) | shots runner + probe | The motion monitor: the motion set and the full player's open and close, every skin, each shot watched every frame for a flash, a one-frame snap, a jitter, a teleport and a row jump (§2a); `--dev` runs the full player on the dev app at his window sizes | none — a regression run after any motion change ([fullscreen-player.md §13](../../features/fullscreen-player.md)) | 2026-10-14 |
 | [readability.mjs](readability.mjs) + [readability.json](readability.json) + [readability-sheet.mjs](readability-sheet.mjs) | shots runner + list + review sheet | The readability check: every text box on screen, in every theme × skin, scored against the real pixels behind it; Glass also with Fancy Glass on at both ends of each slider (§2b) | none — a regression run after any theme, skin or text-color change | 2026-10-14 |
 | [reveal-live.json](reveal-live.json) | shots list (dev source) | The first load of Playlists, Home, Search (his newest additions, typed and pasted), Library, History and Rewind on his LIVE dev app, cold and warm, plus a cold launch: the pictures each step brought, the late ones, their reading order, the redraws (SHOTS.md §5h) | [UX-COVERUPS.md §7.13](../../architecture/UX-COVERUPS.md) — the baseline, then after each build step | 2026-10-17 |
 | [song-box.json](song-box.json) | shots list (dev source) | The song facts box on Song Credits in Max (Search › Bohemian Rhapsody): the box and its About, presentation mode and Esc back to the song page, Hide song info and Undo, *Notes from* › None (set back after). Probes, not only pictures | [LISTENERS.md §8.9](../../features/LISTENERS.md) | 2026-10-17 |
@@ -75,9 +75,26 @@ the hardware: a real unplug on a laptop stays the owner's test.
 
 His ask (2026-10-14): "a smooth experience all around". `node docs/ops/checks/smooth.mjs` builds
 a list from `docs/guide/motion.json` (so a shot added there is watched too) plus the full
-player in Max and Midi, runs it on the web demo, and prints one block per shot. `--skin press`,
-`--only grow,drill` and `--report` (print the last run again) narrow it. The full run is 130
-clips and takes about 35 minutes.
+player in Max, Midi, Max portrait (1080 × 1872, the stacked layout) and Max landscape
+(1080 × 760), runs it on the web demo, and prints one block per shot. `--skin press`,
+`--only grow,drill` and `--report` (print the last run again) narrow it. The full run is 140
+clips and takes about 40 minutes.
+
+**On the dev app (2026-10-19):** `node docs/ops/checks/smooth.mjs --dev` runs the full player's
+open and close on the running dev app, in every skin, at his real window sizes: **portrait**
+(the window maximized on his portrait screen, 1080 × 1872), **landscape** Max 1080 × 760, and
+**Midi** (his Midi size). `--place portrait,midi` and `--skin cyber` narrow it; `--report` with
+`--dev` prints the last dev run. About 12 minutes. Rules it keeps:
+- Each shot **reloads the page first**: a page the runner was attached to before ran at about
+  half rate (fullscreen-player.md §14.8).
+- The skin is set with an **eval step** and put back after each shot. It never uses a shot
+  `looks`: setting the theme counts as a change by hand for his Live Theming rule (album color →
+  theme), which then holds the wrong theme.
+- The window is placed through `window.__surface.place` (dev only, `surface.ts`). The window's
+  place, surface and skin are saved first in `shots/scratch/smooth-dev-was.json` and put back at
+  the end, also when a shot fails; after a stopped run, `--dev --put-back` puts them back.
+- Be the only session driving the dev app, and run it on a tree with no one else's edits in
+  progress: Vite hot-reloads every saved file into the page under the measure.
 
 **What a hit is** (`smooth-monitor.js`, every frame for 14 s):
 - **FLASH:** a part fully shown goes under 0.85 opacity and is fully shown again within 700 ms.
@@ -85,6 +102,29 @@ clips and takes about 35 minutes.
   fade-out that ends with a snap back. A flash that runs on from an intended hide reads as one
   long dip, so only the snap shows it (the full player's first fix, 2026-10-14).
 - **JITTER:** a box moves 3 px or more and returns within 1 px inside 250 ms.
+- **TELEPORT** (2026-10-19): the part of a box that shows (its box cut by every ancestor's
+  overflow and `inset()` clip) moves or changes size by 24 px or more in one frame, after a still
+  frame (under 1 px), and each of the next two steps is under 1/8 of the jump. The part is shown
+  (painted opacity 0.5 or more) in both frames. A tween moves on the same scale in the frames
+  around each step, so it never reads as one; a part that moves while it is hidden is not a hit.
+  The line gives the jump in px and the box before → after (`x,y w×h`).
+- **ROW JUMP** (2026-10-19): in each scroller in view (the app's scrollbar classes), the monitor
+  takes the first row in the part that shows (a keyed element such as `data-idx`, a leaf, or a
+  box under 96 px high) and the content's y at the visible top. A hit: the row changes in one
+  frame to one 3 or more rows away (or the content's y moves by 2.5 rows or more), after a still
+  frame, and it stays there for two frames. A scroll moves a little each frame. The line gives
+  the row before → after (its key and the start of its text) and the content's move in px.
+
+**How the two new checks were proved (2026-10-19).** The full player shots ran in Cyber on the
+code before the fix (`ef5bcc9^`, in a scratch worktree) and on `e96f5ba`:
+- Before: **ROW JUMP** on the landscape Max Queue at the open and the close, 529 px ("Flower In
+  A Hurricane" → row 8 "Bad Things" and back): the §14.6 jump. **TELEPORT** at the stacked
+  portrait close's last frame: the Queue 634 px (from the band at y 1274 to its column at 640)
+  and every content card 710–910 px: the §14.2 jump.
+- After: neither check fires; the only TELEPORT left is the Compass list's designed resize.
+- Not reproduced in the demo: the stacked open's first-frame jump. In the demo at `ef5bcc9^` the
+  Queue's layout moves under a clip that keeps its visible box in place (a frame trace of its box
+  and clip); the jump was seen on his dev app with his side card. The `--dev` run covers it.
 
 **The baseline: hits that are designed motion (2026-10-14, all five skins).** Each one is the
 same in every run. A hit not in this list is new, and it needs a look at that shot's frames.
@@ -102,6 +142,7 @@ same in every run. A hit not in this list is new, and it needs a look at that sh
 | fullplayer-midi (all) | JITTER 4 px on `np__times`, `np__vol` | the rows' `enterRows` rise |
 | surface-mini-to-midi (all) | JITTER ~20 px on `np__center`, back in ~25 ms | not painted: Now Playing's ResizeObserver puts the row right before the paint (the frames show no jump) |
 | boot (all) | no report | the shot reloads the page; read its strip |
+| fullplayer-* (all, 2026-10-19) | TELEPORT on `compass.pop`, 42–220 px in its height, one per typed letter | the Compass list grows and shrinks with the matches as "full player" is typed: no motion is designed there |
 | rewind-sweep `visual-choices` (dev app, 2026-10-18) | FLASH on the list (`rewind__board`) and its rows at each view change; SNAP of the list and its off-screen rows one frame later; JITTER ≤ 4 px on each row; FLASH of a cover to 0.3 | the reveal: the list holds blank while it reloads, then lifts, and the first screen's rows enter on the wave (4 px rise) and covers fade in from `--art-in-from`. `motionReport` in `sweep-helpers.mjs` takes these out; a row that shows, fades and enters again (V1, fixed) still fails |
 
 **Found and fixed with it (2026-10-14):** the full player's rows flashed after the open; the Max close ended with a jump (an empty resting place, then a last sliver)

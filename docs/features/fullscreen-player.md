@@ -983,7 +983,9 @@ Checks: `fp-stack.json` 7 shots, 17 probes ok (its probes read the bento now); `
 passes. `frame-why.mjs --causes=N` lists N invalidations per frame, the subtree ones first: that
 is how causes 2 and 3 were found.
 
-**The monitor before every release** (his call): RELEASE.md §0 step 1a. It cannot see the two
+**The monitor before every release** (his call): RELEASE.md §0 step 1a. It could not see the two
 jumps found today (a box that moves to a new place in one frame and stays; rows that change
-inside a box), and it runs on the demo only; extending it is the next motion-check step.
+inside a box), and it ran on the demo only. Since 2026-10-19 it has TELEPORT and ROW JUMP, both
+proved on the code before ef5bcc9, and `--dev` runs the open and close on the dev app at his
+window sizes ([the monitor's section](../ops/checks/README.md), §2a there).
 

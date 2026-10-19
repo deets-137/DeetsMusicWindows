@@ -11,7 +11,7 @@
 // (sizeMini / sizePlayer / sizeMidi / sizeMax). A resize by hand is not remembered.
 
 import { setting, onSettingsChange, DEFAULTS } from "./settings-store";
-import { currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
+import { availableMonitors, currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 
 // diag.ts loads lazily: it starts a flush timer when it loads, and the pure modules that import
 // this one (row-pick.ts) run in the unit tests, where the timer would keep the test from ending.
@@ -348,12 +348,44 @@ declare global {
     /** The shots runner's handle on the dev app (DESK-TESTS.md §6): the surface now, and a
      *  deliberate pick (as the Window row makes one), so a shot can run in Mini, Midi or Max and
      *  put the window back. Dev builds only. */
-    __surface?: { now: () => { surface: SurfaceName; view: MiniView }; set: (s: SurfaceName, view?: MiniView) => Promise<void> };
+    __surface?: {
+      now: () => { surface: SurfaceName; view: MiniView };
+      set: (s: SurfaceName, view?: MiniView) => Promise<void>;
+      /** The window's place now (2026-10-19, the motion monitor on his real window sizes):
+       *  its outer position in physical px, its inner size in css px, maximized or not. */
+      bounds: () => Promise<WinPlace>;
+      /** Put the window at a place `bounds` gave, or maximize it on the first portrait (or
+       *  landscape) monitor: `{ max: "portrait" }`. Auto-flip may change the surface. */
+      place: (p: WinPlace | { max: "portrait" | "landscape" }) => Promise<WinPlace>;
+    };
   }
+}
+type WinPlace = { x: number; y: number; w: number; h: number; max: boolean };
+async function winBounds(): Promise<WinPlace> {
+  const [pos, max] = await Promise.all([appWindow.outerPosition(), appWindow.isMaximized()]);
+  return { x: pos.x, y: pos.y, w: Math.round(window.innerWidth), h: Math.round(window.innerHeight), max };
+}
+async function winPlace(p: WinPlace | { max: "portrait" | "landscape" }): Promise<WinPlace> {
+  if (typeof p.max === "string") {
+    const want = p.max;
+    const mon = (await availableMonitors()).find((m) => (m.size.height > m.size.width) === (want === "portrait"));
+    if (!mon) throw new Error(`no ${want} monitor`);
+    if (await appWindow.isMaximized()) await appWindow.unmaximize();
+    await appWindow.setPosition(new PhysicalPosition(mon.workArea.position.x + 40, mon.workArea.position.y + 40));
+    await appWindow.maximize();
+  } else {
+    const q = p as WinPlace;
+    if (await appWindow.isMaximized()) await appWindow.unmaximize();
+    await appWindow.setPosition(new PhysicalPosition(q.x, q.y));
+    await appWindow.setSize(new LogicalSize(q.w, q.h));
+    if (q.max) await appWindow.maximize();
+  }
+  await new Promise((r) => window.setTimeout(r, 600)); // the resize events and auto-flip
+  return winBounds();
 }
 // `?.`: the unit tests load this module in Node, where `import.meta.env` does not exist.
 if (import.meta.env?.DEV && typeof window !== "undefined")
-  window.__surface = { now: () => ({ surface: active, view: miniView }), set: (s, view) => applySurface(s, view) };
+  window.__surface = { now: () => ({ surface: active, view: miniView }), set: (s, view) => applySurface(s, view), bounds: winBounds, place: winPlace };
 
 // The launch resize (initSurface): the launch cover (boot-cover.ts) waits for it, so the
 // window shows already at its size.
