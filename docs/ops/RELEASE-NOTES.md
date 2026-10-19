@@ -41,6 +41,35 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.30.0 — 2026-10-18
+
+**Apple's album notes.** An album's box shows Apple's editorial note in About. Click it for
+the full note: in Max it grows over the card, in Midi and Mini it opens inside the card. A
+song named in the note plays when you click it, with the album after it.
+
+**Song facts on Song Credits.** A song's page has a box beside the cover: Tags, Listening
+Stats, About and Links. In Max, click the stats for presentation mode. Settings › Playback ›
+*Notes from* picks Apple, Last.fm, both or none.
+
+**The Diary is now Album Reviews.** The card, its Settings section, the album menu's *Review
+This Album* and the Compass use the new name. Your reviews stay as they are.
+
+**Cards open in one smooth wave.** A card waits for its first covers, then shows its rows in
+reading order, and a redraw keeps the covers that did not change. Settings › Cards › *Cover
+load animations* sets each card to wait or to show at once.
+
+**Songs play on after a license hiccup.** When Apple refuses or stalls a song's license, the
+song now reloads in under a second, where it once stopped or sat at its end.
+
+**Spin FPS for the Press record.** The turning record redraws at most 120 times a second by
+default, which uses less power. Settings › Skin settings › *Spin FPS* picks 60, 120, 144 or 240.
+
+**Rewind keeps every play right.** A play keeps its playlist's name after you delete the
+playlist, the open play's minutes are saved as it goes, and the list no longer flickers.
+
+**Fixes.** The full player in Max closes from all four edges. The Library's ⟳ says how far a
+sync is when you click it during one.
+
 ## 0.29.0 — 2026-10-16
 
 **Suggest Less.** Right-click a song for Suggest Less, Suggest Less of This Artist or Suggest
