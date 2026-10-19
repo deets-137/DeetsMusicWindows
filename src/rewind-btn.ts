@@ -89,15 +89,15 @@ export function initRewindButton(): void {
     <div class="rewind-top__head">Rewind</div>
     <div class="rewind-top__today" data-rt-today>Today: …</div>
     <div class="rewind-top__chips">
-      <button class="rewind-top__chip" type="button" data-rt-part="top" aria-pressed="false" title="Your most played songs, albums or artists">Top Listens</button>
-      <button class="rewind-top__chip" type="button" data-rt-part="sotd" aria-pressed="false" title="Your Songs of the Day, newest first">SOTD</button>
+      <button class="sound__pill rewind-top__chip" type="button" data-rt-part="top" aria-pressed="false" title="Your most played songs, albums or artists">Top Listens</button>
+      <button class="sound__pill rewind-top__chip" type="button" data-rt-part="sotd" aria-pressed="false" title="Your Songs of the Day, newest first">SOTD</button>
     </div>
     <div class="rewind-top__part" data-rt-body hidden>
       <div class="rewind-top__bar" data-rt-bar>
         <div class="rewind-top__view">
-          <button class="lib-pill rewind-top__pill" type="button" aria-haspopup="true" aria-expanded="false" title="What Top Listens ranks, and its order">
-            <span class="lib-pill__label" data-rt-label></span>
-            <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
+          <button class="sound__pill rewind-top__pill" type="button" aria-haspopup="true" aria-expanded="false" title="What Top Listens ranks, and its order">
+            <span data-rt-label></span>
+            <svg class="rewind-top__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
           </button>
           <div class="rewind-top__pop pop" data-rt-pop data-frames="rewind-top-view" hidden></div>
         </div>
@@ -177,6 +177,15 @@ export function initRewindButton(): void {
         meta: `${dayLabel(p.day)}${p.note ? ` · ${p.note}` : ""}`, pickId: p.id,
       }));
 
+  /** The scrollbar's gutter (the Room panel's method, `measureGutters` in room-panel.ts): a list
+   *  that scrolls reserves the gutter and reaches into the panel's right padding by the bar's
+   *  width, so its rows keep their width whether the bar shows or not. Read right after a draw,
+   *  before the paint, so no frame shows the rows move. */
+  const measureGutter = () => {
+    const scrolls = list.scrollHeight > list.clientHeight + 1;
+    if (scrolls !== list.hasAttribute("data-scrolls")) list.toggleAttribute("data-scrolls", scrolls);
+  };
+
   /** Draw the open part's list. `slide`: the part just opened or changed, so its rows enter. */
   const drawList = async (slide: boolean) => {
     const now = part;
@@ -199,6 +208,7 @@ export function initRewindButton(): void {
     list.innerHTML = rows.length
       ? rows.map((r, i) => rowHTML(r, i, now === "top" ? fmtPlays(r.plays) : r.meta ?? "")).join("")
       : `<li class="rewind-top__empty">${now === "top" ? "Nothing played yet." : "No Songs of the Day yet."}</li>`;
+    measureGutter();
     if (slide) enterRows([...(now === "top" ? [bar] : []), ...list.children]);
     animateHeight(from);
   };

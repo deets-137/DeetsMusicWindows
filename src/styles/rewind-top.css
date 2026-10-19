@@ -2,8 +2,9 @@
    The button is the updates button's family (styles/updates.css): the row's height, no fill,
    no border, --subtext until hover. Max only, as the Compass and the updates button: Mini and
    Midi keep the title bar free to drag the window. The panel is the cog's panel family, hung
-   from the button's left edge. Its two buttons are the sleep panel's chips; the list rows are
-   the Queue card's rows (qcard.css). */
+   from the button's left edge. Its buttons are the panel chip family (.sound__pill on the
+   button, UI-ARCHITECTURE.md §2a, as the Library's Filter panel does); the view pop is the
+   Library's Sort pop; the list rows are the Queue card's rows (qcard.css). */
 
 .rewind-top { position: relative; display: flex; align-items: center; margin-left: var(--space-2); }
 [data-surface="mini"] .rewind-top, [data-surface="midi"] .rewind-top { display: none; }
@@ -43,33 +44,22 @@
 .rewind-top__panel[hidden], .rewind-top__panel [hidden] { display: none; }
 .rewind-top__panel.is-growing { overflow: hidden; } /* rewind-btn.ts animates the height */
 
+/* The title: the Room and Sound panels' title (.room__title, .sound__title). */
 .rewind-top__head {
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
-  color: var(--subtext);
-  padding: 0 var(--space-1);
+  color: var(--title); letter-spacing: var(--rewind-top-title-tracking);
 }
 .rewind-top__today {
   display: flex; align-items: baseline; gap: var(--space-2);
-  padding: 0 var(--space-1);
   font-family: var(--font-title); font-weight: var(--fw-title);
   font-size: var(--rewind-top-today-fs);
   color: var(--title);
   font-variant-numeric: tabular-nums;
 }
 
-/* Top Listens on the left, SOTD on the right (his layout, 2026-10-19). */
+/* Top Listens on the left, SOTD on the right (his layout, 2026-10-19): a pair at one width. */
 .rewind-top__chips { display: flex; justify-content: space-between; gap: var(--space-1); }
-.rewind-top__chip {
-  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
-  color: var(--text); background: var(--surface);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--rewind-top-chip-radius);
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-}
-.rewind-top__chip:hover { background: var(--surface-hover); }
-.rewind-top__chip[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
-.rewind-top__chip:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.rewind-top__chip { border-radius: var(--rewind-top-chip-radius); min-width: var(--rewind-top-chip-w); }
 
 /* A part: the list a button opened, with its own bar above it. */
 .rewind-top__part { display: flex; flex-direction: column; gap: var(--space-1); min-height: 0; }
@@ -79,7 +69,18 @@
 /* The view dropdown: the Library's Sort pop (a column of choices, a divider, the ↑ ↓ squares),
    hung under its pill inside the panel. */
 .rewind-top__view { position: relative; }
-.rewind-top__view .rewind-top__pill { width: auto; } /* .lib-pill fills a flex cell; this one fits its word */
+/* Its trigger: a panel chip with the dropdown caret (the Library pill's caret, turned while open). */
+.rewind-top__pill {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  border-radius: var(--rewind-top-chip-radius); min-width: var(--rewind-top-chip-w);
+}
+.rewind-top__caret {
+  flex: 0 0 auto; margin-left: auto;
+  width: var(--caret-size); height: var(--caret-size);
+  fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.7;
+}
+.rewind-top__pill[aria-expanded="true"] .rewind-top__caret { transform: rotate(180deg); }
 .rewind-top__pop {
   position: absolute; top: 100%; left: 0;
   --pop-origin: top left;
@@ -100,6 +101,14 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex; flex-direction: column;
+}
+/* The bar's gutter: the Room panel's member list method (styles.css .room__members). A list that
+   scrolls (rewind-btn.ts measureGutter) reserves the gutter and reaches out into the panel's
+   right padding by the bar's width, so the rows keep their width either way. No transition:
+   the list is measured before its first paint, so there is no motion to cover. */
+.rewind-top__list[data-scrolls] {
+  scrollbar-gutter: stable;
+  margin-right: calc(-1 * var(--scrollbar-w));
 }
 .rewind-top__round .qrow__art { border-radius: 50%; }
 .rewind-top__empty { color: var(--subtext); padding: var(--space-2); text-align: center; }

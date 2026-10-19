@@ -185,6 +185,8 @@ Two time spans side by side ("this month vs last month") per row. A later step; 
 | The view dropdown: Songs · Albums · Artists, a divider, ↓ (most played first) and ↑ (least played first). A nested `makeDropdown`; the Library's `lib-pop__*` classes inside the panel's own `rewind-top__pop` box (absolute, not portaled). A choice keeps the pop open, as the Library's Sort pop does. The view and order are kept in `localStorage` `deets.rewindTop` | `rewind-btn.ts` `popHTML` |
 | SOTD: every pick, newest day first, the row's right side "Today · a note"; the chip is hidden while Song of the Day is off | `rewind-btn.ts` `sotdRows` |
 | The slide: a press draws the list, then the panel's height animates from the old height to the new (`--pop-grow`), the rows enter with `enterRows`. A second press on the pressed chip closes the list the same way. One list at a time | `rewind-btn.ts` `togglePart`, `animateHeight` (the updates panel's shape) |
+| The families (UI-ARCHITECTURE.md §2a), aligned 2026-10-19 at his ask: the title is the Room and Sound panels' title; Top Listens, SOTD and the view trigger are the **panel chip** (`.sound__pill` on the button, as the Library's Filter panel does, with alias tokens `--rewind-top-chip-radius`, `--rewind-top-chip-w`), not the sleep chip and not the Library's toolbar pill; the pop's choices and ↑ ↓ are the Library's own `lib-pop__*` | `styles/rewind-top.css`, `skin.css` |
+| The scrollbar's gutter (his ask, 2026-10-19): the Room panel's method. A list that scrolls gets `data-scrolls`, reserves the gutter and reaches into the panel's 8 px right padding by the bar's 8 px, so no row moves when the bar comes or goes. Measured right after each draw, before the paint; no transition | `rewind-btn.ts` `measureGutter`, `.rewind-top__list[data-scrolls]` |
 | Rows: the Queue card's `qrow`; right-click is the Rewind card's menus (songs, albums, artists, a pick with `pickMenu`); arrows and Home / End (`wireListKeys`, no Enter) | `rewind-btn.ts` `menuFor` |
 | **Settings › Rewind › Today's time in**: *Minutes* (default) / *Hours and minutes*. Key `rewindToday`, its agent spec, the reset group, the usage list, the New mark | `settings-store.ts`, `agent-settings.ts`, `settings-card.ts`, `usage-keys.ts` |
 | The Compass: **Listening today** (Max only) opens the panel | `compass.ts`, COMPASS-TERMS.md |
@@ -206,6 +208,8 @@ No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.
 - A plain click on a row does nothing, as on the Rewind card; right-click carries the verbs. No
   Ctrl / Shift picks and no drag to another card in V1.
 - The list that was open stays open the next time the panel opens (in this session).
+- Top Listens and SOTD at one width, 88 px (`--rewind-top-chip-w`): the family asks a pair to be
+  one width, and no token was wide enough for "Top Listens".
 - The panel's width is the cog panel's (`--quick-panel-w`), not the sleep panel's 224 px: a list
   of songs needs the room.
 - The Compass row's name, "Listening today".
@@ -224,6 +228,10 @@ No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.
    list replaces the other.
 7. Right-click a song, an album, an artist and a pick: the Rewind card's menus. Play one.
 8. Escape, and a click outside, close the panel (and the pill's pop).
+9. The gutter: open Top Listens (it scrolls), then SOTD with only a few picks (it does not), then
+   back. No row's text and no "N plays" moves sideways; the bar sits at the panel's right edge.
+10. The chips: Top Listens and SOTD are one width, the same shape as the Sound panel's chips;
+   the view chip's caret turns while its pop is open.
 
 ### 9.4 Open
 

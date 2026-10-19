@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 50 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 649 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
+| Skin (everything else) | skin.css base block | 651 tokens · overrides: vanilla 4, press 69, ocean 45, glass 73, cyber 68 |
 
 ## Theme roles
 
@@ -225,7 +225,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--rewind-top-btn-size` | `var(--traffic-size)` | — | The Rewind button and panel (docs/features/listening-time.md): the updates button's family. |
 | `--rewind-top-panel-w` | `var(--quick-panel-w)` | — | the cog's panel family: one width |
 | `--rewind-top-panel-pad` | `var(--quick-panel-pad)` | — |  |
-| `--rewind-top-chip-radius` | `var(--sleep-chip-radius)` | — | Top Listens and SOTD: the sleep panel's chips |
+| `--rewind-top-chip-radius` | `var(--sound-chip-radius)` | — | the panel chip family (UI-ARCHITECTURE.md §2a) |
+| `--rewind-top-title-tracking` | `var(--room-title-tracking)` | — | the panel title's family (.room__title) |
+| `--rewind-top-chip-w` | `88px` | — | Top Listens and SOTD at one width; the view chip fits "Artists" and its caret |
 | `--rewind-top-today-fs` | `var(--fs-title)` | — | the Today number: the panel's one large line |
 | `--rewind-top-list-max-h` | `320px` | — | a list scrolls past this; the panel stays under the window |
 | `--split-rule-strength` | `45%` | — | The Settings split pill's line between its halves (settings.css): readable on every theme. --border alone vanished on the light themes (his screenshot, 2026-10-16). |

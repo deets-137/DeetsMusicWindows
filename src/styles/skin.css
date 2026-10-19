@@ -179,7 +179,9 @@
   --rewind-top-btn-size:     var(--traffic-size);
   --rewind-top-panel-w:      var(--quick-panel-w);   /* the cog's panel family: one width */
   --rewind-top-panel-pad:    var(--quick-panel-pad);
-  --rewind-top-chip-radius:  var(--sleep-chip-radius); /* Top Listens and SOTD: the sleep panel's chips */
+  --rewind-top-chip-radius:  var(--sound-chip-radius); /* the panel chip family (UI-ARCHITECTURE.md §2a) */
+  --rewind-top-title-tracking: var(--room-title-tracking); /* the panel title's family (.room__title) */
+  --rewind-top-chip-w:       88px;                   /* Top Listens and SOTD at one width; the view chip fits "Artists" and its caret */
   --rewind-top-today-fs:     var(--fs-title);        /* the Today number: the panel's one large line */
   --rewind-top-list-max-h:   320px;                  /* a list scrolls past this; the panel stays under the window */
   /* The Settings split pill's line between its halves (settings.css): readable on every theme.
