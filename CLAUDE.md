@@ -300,6 +300,9 @@ desktop app (a `spotify:` link opens each song; the Windows media session reads 
 seeks, pauses); no Spotify key, no Web API, no librespot (§1 why). Odesli maps the Apple song.
 The probes (§6, `ops/checks/spotify-probe.ps1`) ran 2026-10-18 (§6.3): the control works with a
 `?autoplay=true` link plus Play; Odesli's keyless API is closed, so the mapping is open; §7 the forks.
+`listening-time.md` — an idea (2026-10-19): a title bar glance with the minutes listened
+(`play_events.ms_listened`), and Rewind split by genre, weekday, hour and source, with a Filter
+pill (the filter-rules engine); the push-back (no second stats card, §2); §7 the forks F1–F8.
 `launch.md` — a first draft (2026-10-18), not posted: the Product Hunt listing and one Reddit
 post per community (r/AppleMusic, r/Windows11, r/SideProject, r/rust); he rewrites the words
 (his note). §4 the answers to ready; §5 the open questions (the tip jar, the Apple terms).

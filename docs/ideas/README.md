@@ -76,6 +76,9 @@ the app can do any of these things.
   no Spotify key; the Web API and librespot routes set aside (§1); the probes first (§6).
 - [launch.md](launch.md) — a first draft (2026-10-18): the Product Hunt listing and the Reddit
   posts for the launch; he rewrites the words; §5 the open questions.
+- [listening-time.md](listening-time.md) — an idea (2026-10-19): a title bar glance with the
+  real minutes listened today, and Rewind split by genre, weekday, hour and source, with the
+  Library's Filter pill on the plays; zero Apple calls; §7 the forks.
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when
   its first part was built (the stats cell grows over the card in Max).
 - [WebRooms.md](../features/WebRooms.md) — moved to features/ on 2026-10-13, when its app side
