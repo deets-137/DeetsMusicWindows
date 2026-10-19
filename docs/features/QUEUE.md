@@ -744,6 +744,76 @@ the seek's looks at 20 ms (the drop resume gets them too).
 the next real refusal, `deetsmusic diag --tag license:` and the `player:licenseTrace` line give
 Apple's reason; the song must go on with no toast.
 
+### End stall (2026-10-18)
+> **Part:** built · 2026-10-18
+
+**The report.** On live, 2026-10-18 16:18, "Flower In A Hurricane" (225 s, from the Library) reached
+225 of 225 s and sat in MusicKit's `waiting` for 28 s, still "now playing", until a Next press.
+No error, no `ended`, no line in the log. A Play Next insert ("Pillow Fight") and two dead-id
+reconciles came early in the song. Why nothing healed it: `midStallArms` skips a song's last 2 s,
+the end-of-song heal needs `ended`, and the song-change check needs the song to change.
+
+**Reproduced** (`license-fail.mjs next --hold 30`, the dev app): MusicKit asks for the next song's
+license ~15 s before the end. Held unanswered, the song reaches its end and sits in `waiting` with
+the old song still now playing, silent, with no error — the live picture, line for line. The
+next song's audio was already buffered; only the license was missing. Not proven for the live
+case (the installed app had no recorder); the lines below will say next time. Also found:
+- **A reload cannot get out of it.** `m.stop()` waits for the license request that is still out:
+  a recovery load started during the hold sat for 64 s and ran only when the request was let
+  through. So a heal that reloads (the mid-stall's way) hangs with the stall.
+- **Cutting the request does.** Failed as a network error at 5 s (`--cut 5`), MusicKit asked again
+  at the song change and went straight on: no `waiting` at all. At a play's start, it asked again
+  at once and played 1.3 s after the cut.
+- On live the Next press played at once; in the repro a Next during the hold sat in `loading` (the
+  next song waits on the same request). So the live stall may have had another cause; the lines
+  below tell the two apart.
+
+**Built (logs, every build):**
+- `license:slow {type}`: a license or song lookup out for 5 s (license-watch.ts tracks every
+  playback request in flight: the lookup, the license, the audio; kinds and times only).
+- `license:lookup`: a song lookup answered with an HTTP error.
+- `player:endStall` (3 s into a buffer in a song's last 2 s, a song queued after it; the rule
+  `endStallArms` in pause-rules.ts, tested): what is still out (`out: ["license 17712ms"]`), the last
+  license events, MusicKit's position and next item against the model's next, the `<audio>`
+  elements (paused, readyState, networkState, seconds buffered ahead), the output.
+  `player:endStallEnd {s, how}`: how long, and how it ended (played, songChange, press:next).
+
+**His calls (2026-10-18):** cut a hung license request at 5 s (the recorder may act now); reload
+the next song after 8 s when an end stall has nothing out.
+
+**As built:**
+- **The cut** (license-watch.ts `cutLicense`): a license request still out after 5 s fails, for
+  MusicKit, as `TypeError: Failed to fetch`, and the request is aborted (`license:cut`). The retry
+  after a cut is cut at 15 s, once (his call, the same evening); the one after that is never cut,
+  so a slow network cannot loop (`cutAfterMs` in license-reply.ts, tested; an answered request
+  starts it over). A request the 5 s cut does not cover gets `license:slow`. With MusicKit's own
+  signal and no `AbortSignal.any`, no cut.
+- **The heal** (player.ts `healEndStall`; the rule `endStallStep`, tested): 8 s into an end stall,
+  nothing out → the model moves to the next song (`jumpToNextFed`) and `recoverLoad` loads it
+  (`player:endStallHeal`); a license or lookup out → `player:endStallWait`; a user pause, a room, a
+  station, a load or heal in flight → nothing.
+
+**Measured** (license-fail.mjs on the dev app, the app's own cut, the script holding 30 s):
+
+| Case | Before | After |
+| --- | --- | --- |
+| The next song's license hangs (`next --hold 30`) | silent at the end until it returns | cut at 5 s; the next song played at the change, no `waiting` |
+| A play's own license hangs (`start --hold 30`) | silent until it returns | cut at 5 s; playing 1.3 s later |
+| The retry after a cut hangs too (`--count 2`), with no retry cut | — | MusicKit asked again at once; the retry held; ~22 s silent at the change until it returned (the song-change check's reload waited for it too) |
+| The same, with the 15 s retry cut | — | cut at 5 s, the retry cut at 15 s; the song change waited ~11 s, then played. The song-change check's reload met MusicKit's own retry: a `MEDIA_KEY` "session is already closed", which the quick key retry healed 1 s later |
+
+Not forced: an end stall with nothing out (the 8 s heal). Its rule is tested; the live log will
+show the first one (`player:endStall` with `out: []`, then `player:endStallHeal`).
+
+**Decided inside his calls (Claude, for him to see):** the cut's error is the one a dropped
+connection gives (`TypeError: Failed to fetch`), since MusicKit retries that and not every error;
+the spared request is the one right after a cut, whenever it comes; a song lookup out also means
+wait (a reload waits on it too); the heal goes through `jumpToNextFed` (Suggest Less skips
+honored) and `recoverLoad` (it checks itself: silent twice, the toast).
+
+**Desk test.** Run by Claude (the table). On live: after the next end stall, `deetsmusic diag --tag
+player:endStall` and `--tag license:` say which case it was.
+
 ### A library song Apple sends with no play id (2026-09-28)
 
 > **Part:** built · 2026-09-28 · desk test open

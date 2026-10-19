@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S } from "../src/pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S, endStallArms, endStallStep } from "../src/pause-rules";
 
 // The 2026-09-24 read: 86 of 93 `outside` pauses were song changes (DEBUGGING.md).
 test("a pause at the last seconds is the song ending (2026-09-25)", () => {
@@ -61,6 +61,28 @@ test("a stall still buffering at the check is reloaded in the queue, logged else
 test("a stall reload starts 2 s before the stop (2026-10-03)", () => {
   assert.equal(resumeSpot(30), 28);
   assert.equal(resumeSpot(1), 0);
+});
+
+test("a buffer at a song's very end arms the end watch (2026-10-18)", () => {
+  // The live case: "Flower In A Hurricane" at 225 of 225 s, `waiting`, a song queued after it.
+  const live = { wasPlaying: true, buffering: true, loading: false, at: 225, duration: 225, upcoming: 4046 };
+  assert.equal(endStallArms(live), true);
+  assert.equal(endStallArms({ ...live, at: 120 }), false); // mid-song: the mid-stall watch's
+  assert.equal(endStallArms({ ...live, upcoming: 0 }), false); // a queue end: maybeFinishQueue's
+  assert.equal(endStallArms({ ...live, loading: true }), false); // our own load
+  assert.equal(endStallArms({ ...live, wasPlaying: false }), false);
+  assert.equal(endStallArms({ ...live, duration: 0 }), false); // no length known
+  assert.equal(midStallArms(live), false); // why nothing ran before: the mid watch skips the end
+});
+
+test("an end stall with nothing out reloads the next song at 8 s (2026-10-18)", () => {
+  const stuck = { holds: true, requestOut: false, userPaused: false, canReload: true };
+  assert.equal(endStallStep(stuck), "reload");
+  assert.equal(endStallStep({ ...stuck, requestOut: true }), "wait"); // a reload would wait for it too
+  assert.equal(endStallStep({ ...stuck, holds: false }), "fine"); // it went on by itself
+  assert.equal(endStallStep({ ...stuck, userPaused: true }), "leave");
+  assert.equal(endStallStep({ ...stuck, canReload: false }), "leave"); // a room, a station, a load in flight
+  assert.equal(endStallStep({ ...stuck, holds: false, requestOut: true }), "fine");
 });
 
 test("a license heal starts 0.5 s before the stop (2026-10-18)", () => {

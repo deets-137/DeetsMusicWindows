@@ -63,6 +63,23 @@ Discord have none.
 class, from each Rust choke point and a release-build Resource Timing watch in the webview. §1
 lists the eight services; forks F1–F4 (§5) and probes N1–N2 (§6) are open.
 
+## 2026-10-18, evening — A second live pause: the end stall
+
+**His question:** the same cause? No: at 16:18 "Flower In A Hurricane" sat in `waiting` at 225 of
+225 s for 28 s, still now playing, no error, until his Next. No heal arms there (QUEUE.md §End
+stall). **Reproduced** on the dev app with `license-fail.mjs next --hold 30`: a hung next-song
+license gives exactly that picture. A reload cannot get out (`m.stop()` waits on the request);
+cutting the request can (MusicKit asks again). New lines: `license:slow`, `player:endStall` (names
+what is out), `player:endStallEnd`.
+
+**His calls:** cut a hung license at 5 s; reload the next song after 8 s when nothing is out.
+**Built:** license-watch.ts `cutLicense`; player.ts `healEndStall`, rules `endStallArms` and
+`endStallStep` (tested). Measured: both hang shapes now play on (QUEUE.md table). A retry that
+hung too stayed silent until it returned (~22 s in the test), so **his next call:** cut the
+retry at 15 s, once (`cutAfterMs`, tested); measured ~11 s, then the song played. The 8 s heal
+is not forced. The dev rule "When the music resumes, if the song is loved → Pause" paused some
+runs; left as is.
+
 ## 2026-10-18, later — The live app paused: a license heal
 
 **His question:** why did the live app pause? The log: at 12:40:05 MusicKit raised

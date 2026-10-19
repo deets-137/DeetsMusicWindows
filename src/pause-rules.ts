@@ -79,6 +79,30 @@ export function resumeSpot(at: number, back = STALL_BACK_S): number {
   return Math.max(0, at - back);
 }
 
+// ── A song that sticks at its end (2026-10-18, QUEUE.md §End stall) ─────────────────
+// On live, "Flower In A Hurricane" reached 225 of 225 s and sat in `waiting` for 28 s, the
+// song still "now playing", until a Next press. midStallArms skips a song's last seconds, the
+// end-of-song heal needs `ended`, and the song-change check needs the song to change: none ran.
+
+/** Does a buffer arm the end watch? A playing song buffering in its last seconds, outside a
+ *  load, with a song queued after it (a queue end is maybeFinishQueue's). */
+export function endStallArms(p: { wasPlaying: boolean; buffering: boolean; loading: boolean; at: number; duration: number; upcoming: number }): boolean {
+  return p.wasPlaying && p.buffering && !p.loading && p.upcoming > 0 && p.duration > 0 && nearSongEnd(p.at, p.duration);
+}
+
+/**
+ * The end watch's heal, END_STALL_HEAL_MS after the arm (his call, 2026-10-18). Not stuck any
+ * more: nothing. A license or song lookup still out: wait (a reload waits for it too; the
+ * license cut owns it). A user pause, a room, a station or a load or heal in flight: nothing.
+ * Else: move to the next song and load it.
+ */
+export function endStallStep(p: { holds: boolean; requestOut: boolean; userPaused: boolean; canReload: boolean }): "fine" | "wait" | "leave" | "reload" {
+  if (!p.holds) return "fine";
+  if (p.requestOut) return "wait";
+  if (p.userPaused || !p.canReload) return "leave";
+  return "reload";
+}
+
 // ── A license failure (2026-10-18, QUEUE.md §License heal) ───────────────────────
 // On live, 2026-10-18 12:40, MusicKit's MEDIA_LICENSE stopped a song about 2 min in. Apple's
 // health check passed, and the only answer was the toast: the quiet retry covered MEDIA_KEY

@@ -96,6 +96,16 @@ export function errorFields(e: unknown): Record<string, unknown> {
   return text.length > 400 ? { cut: text.slice(0, 400) } : out; // the line's data is cut at 600 in Rust
 }
 
+/** The cut of a hung license request (his calls, 2026-10-18; license-watch.ts § The cut). */
+export const FIRST_CUT_MS = 5000;
+export const RETRY_CUT_MS = 15_000;
+
+/** When to cut a license request, after `cutsInRow` cuts with no answer between: the first at
+ *  5 s, the retry at 15 s, then never (a slow network must not loop). null = no cut. */
+export function cutAfterMs(cutsInRow: number): number | null {
+  return cutsInRow <= 0 ? FIRST_CUT_MS : cutsInRow === 1 ? RETRY_CUT_MS : null;
+}
+
 /** A refusal: an HTTP error, a nonzero status or errorCode, or a reply with no license. */
 export function isRefusal(http: number, r: LicenseReply): boolean {
   if (http !== 200) return true;

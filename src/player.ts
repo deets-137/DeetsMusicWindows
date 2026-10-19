@@ -22,11 +22,11 @@ import { coverArtPx } from "./queue-rows";
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
-import { installLicenseWatch, licenseTrace } from "./license-watch";
+import { installLicenseWatch, licenseTrace, inFlightNow } from "./license-watch";
 import { errorFields, compactEvent } from "./license-reply";
 import { cancelled } from "./rules";
 import { outputKind } from "./sound";
-import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S, MID_STALL_MS } from "./pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S, MID_STALL_MS, endStallArms, endStallStep } from "./pause-rules";
 import { roomDriftTick } from "./room";
 import * as stats from "./stats";
 import * as perf from "./perf";
@@ -1012,15 +1012,18 @@ function logPauseSource(): void {
       stall = null;
     }
     endMidStall("played");
+    endEndStall("played");
   }
   const buffering = st === S.waiting || st === S.stalled;
-  if (!midStall && midStallArms({
+  const shape = {
     wasPlaying,
     buffering,
     loading: isLoading || loadingContext || endHealing,
     at: music.currentPlaybackTime ?? 0,
     duration: music.currentPlaybackDuration ?? 0,
-  })) armMidStall();
+  };
+  if (!midStall && midStallArms(shape)) armMidStall();
+  if (!endStall && mode === "queue" && endStallArms({ ...shape, upcoming: queue.getUpcoming().length })) armEndStall();
   if (st !== S.waiting && st !== S.loading) wasPlaying = playing;
 }
 
@@ -1091,6 +1094,111 @@ function checkMidStall(): void {
   recoverLoad(m, "midStall", resumeSpot(s.at)).catch((e) => console.warn("[player] stall reload:", e));
 }
 
+// ── A song that sticks at its end (2026-10-18, QUEUE.md §End stall) ──────────────────
+// The song buffers in its last 2 s with a song queued after it. On the dev app this was
+// reproduced by holding the next song's license request: MusicKit asks for it ~15 s early and
+// waits for it at the end, with no error. END_STALL_LOG_MS on: one `player:endStall` line with
+// what is still out (the lookup, the license, the audio), the license events and MusicKit's
+// queue, so the cause has a name. Its end is logged too: how long, and how it got out.
+// END_STALL_HEAL_MS on (his call, 2026-10-18: "reload the next song after 8 s when an end stall
+// has nothing out"): with no license or lookup still out, the model moves to the next song and
+// it is loaded fresh (`player:endStallHeal`), the way his Next press got out of it on live. With
+// one out, nothing is done (`player:endStallWait`): a reload waits for that request too
+// (`m.stop()` does), and license-watch.ts cuts a hung license at 5 s.
+let endStall: { id: string | null; since: number; timer: number; healTimer: number; logged: boolean } | null = null;
+const END_STALL_LOG_MS = 3000;
+const END_STALL_HEAL_MS = 8000;
+
+function armEndStall(): void {
+  const m = music;
+  if (!m) return;
+  endStall = {
+    id: m.nowPlayingItem?.id ?? null,
+    since: performance.now(),
+    timer: window.setTimeout(checkEndStall, END_STALL_LOG_MS),
+    healTimer: window.setTimeout(healEndStall, END_STALL_HEAL_MS),
+    logged: false,
+  };
+}
+
+/** Still stuck: the same song, not playing, still buffering. */
+function endStallHolds(s: NonNullable<typeof endStall>): boolean {
+  const m = music;
+  const S = window.MusicKit?.PlaybackStates;
+  if (!m || !S) return false;
+  const st = m.playbackState;
+  return !m.isPlaying && (m.nowPlayingItem?.id ?? null) === s.id && (st === S.waiting || st === S.stalled);
+}
+
+function healEndStall(): void {
+  const s = endStall;
+  const m = music;
+  if (!s || !m) return;
+  const out = inFlightNow().filter((r) => r.kind === "license" || r.kind === "lookup");
+  const step = endStallStep({
+    holds: endStallHolds(s),
+    requestOut: out.length > 0,
+    userPaused: lastUserPauseAt > s.since,
+    canReload: mode === "queue" && !roomBridge && !endHealing && !isLoading && !loadingContext,
+  });
+  if (step === "fine") return endEndStall("moved on");
+  if (step === "wait") return diag.log("player:endStallWait", { id: s.id, out: out.map((r) => `${r.kind} ${r.ageMs}ms`) });
+  if (step === "leave") return;
+  diag.warn("player:endStallHeal", { id: s.id, s: Math.round((performance.now() - s.since) / 1000), next: playId(queue.getUpcoming()[0] ?? {}) ?? null });
+  endEndStall("heal");
+  endHealing = true;
+  (async () => {
+    if (!jumpToNextFed("endStall")) return;
+    await recoverLoad(m, "endStall");
+  })()
+    .catch((e) => console.warn("[player] end stall heal:", e))
+    .finally(() => {
+      endHealing = false;
+    });
+}
+
+function endEndStall(how: string): void {
+  const s = endStall;
+  if (!s) return;
+  window.clearTimeout(s.timer);
+  window.clearTimeout(s.healTimer);
+  endStall = null;
+  if (s.logged) diag.warn("player:endStallEnd", { id: s.id, s: Math.round((performance.now() - s.since) / 1000), how });
+}
+
+function checkEndStall(): void {
+  const s = endStall;
+  const m = music;
+  const S = window.MusicKit?.PlaybackStates;
+  if (!s || !m || !S) return;
+  const st = m.playbackState;
+  if (!endStallHolds(s)) return endEndStall("moved on");
+  s.logged = true;
+  const now = performance.now();
+  const items: any[] = m.queue?.items ?? [];
+  const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
+  const els = [...document.querySelectorAll("audio")].map((a) => {
+    const b = a.buffered;
+    const ahead = b.length ? b.end(b.length - 1) - a.currentTime : 0;
+    return `${a.paused ? "p" : "P"}r${a.readyState}n${a.networkState}+${ahead.toFixed(1)}s`;
+  });
+  diag.warn("player:endStall", {
+    id: s.id,
+    s: Math.round((now - s.since) / 1000),
+    state: S[st] ?? st,
+    mk: `${np}/${items.length}`,
+    mkNext: items[np + 1]?.id ?? null,
+    next: playId(queue.getUpcoming()[0] ?? {}) ?? null,
+    out: inFlightNow().map((r) => `${r.kind} ${r.ageMs}ms`),
+    trace: licenseTrace()
+      .slice(-4)
+      .map((e) => compactEvent(now - e.t, e)),
+    els,
+    output: outputKind(),
+    online: navigator.onLine,
+  });
+}
+
 window.addEventListener("pagehide", () => {
   if (!music?.isPlaying) return;
   diag.log("player:exit", { id: music.nowPlayingItem?.id ?? null, at: Math.round(music.currentPlaybackTime ?? 0) });
@@ -1126,6 +1234,7 @@ function wireEvents(): void {
 }
 
 function onNowPlayingChange(): void {
+  endEndStall("songChange");
   if (!loadingContext) {
     if (mode === "radio") {
       // Break-out boundary: a manual insert waited for the current song to end —
@@ -3022,6 +3131,7 @@ export function onRoomStationItems(cb: () => void): void {
  */
 function logPress(what: "playPause" | "next" | "prev", from: string): void {
   if (what !== "playPause") releaseHold(what); // playPause decides for itself
+  endEndStall(`press:${what}`);
   const m = music;
   const S = window.MusicKit?.PlaybackStates;
   diag.log("player:press", {

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseLicenseReply, isRefusal, errorFields, compactEvent } from "../src/license-reply";
+import { parseLicenseReply, isRefusal, errorFields, compactEvent, cutAfterMs } from "../src/license-reply";
 
 // The good reply read on the dev app, 2026-10-18 (the license value shortened).
 const GOOD = JSON.stringify({ license: "CAIS...", errorCode: 0, "renew-after": 780, status: 0 });
@@ -42,6 +42,13 @@ test("MusicKit's error object is logged without its secrets (2026-10-18)", () =>
   assert.deepEqual(errorFields("MEDIA_LICENSE"), {});
   const long = errorFields({ description: "y".repeat(5000), data: { a: "z".repeat(5000), b: "z".repeat(5000), c: "z".repeat(5000), d: "z".repeat(5000) } });
   assert.ok(JSON.stringify(long).length <= 600);
+});
+
+test("a hung license is cut at 5 s, its retry at 15 s, then never (2026-10-18)", () => {
+  assert.equal(cutAfterMs(0), 5000);
+  assert.equal(cutAfterMs(1), 15000);
+  assert.equal(cutAfterMs(2), null); // a slow network must not loop
+  assert.equal(cutAfterMs(7), null);
 });
 
 test("a license event fits in a few characters for the log line (2026-10-18)", () => {

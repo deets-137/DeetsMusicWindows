@@ -9,6 +9,11 @@
 //   … --count 2    refuse two requests in a row: the heal's own reload is refused too, so the
 //                  toast must show (the fails-twice path)
 //   … --port 47826 the dev app's bridge port (default: read from the dev log)
+//   … --hold 30    HOLD the request unanswered for 30 s, then let it through, instead of
+//                  refusing it: a request that hangs (the end-of-song stall, QUEUE.md §End
+//                  stall). Prints MusicKit's state every 500 ms meanwhile.
+//   … --what webPlayback|asset   the request to refuse or hold: the license (default), the
+//                  song lookup (`webPlayback`), or the audio itself (`itunes-assets`)
 //
 // How: CDP `Fetch` holds every request to acquireWebPlaybackLicense and answers it with HTTP 200
 // and a made-up refusal, `{"status":-1021,"errorCode":-1021}` (Apple's real refusal body is not
@@ -26,9 +31,13 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const args = process.argv.slice(2);
 const shape = args[0];
-const count = Number(args[args.indexOf("--count") + 1] || 1) || 1;
-if (shape !== "next" && shape !== "start") {
-  console.error("usage: license-fail.mjs next|start [--count N] [--port P]");
+const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
+const count = Number(opt("--count") || 1) || 1;
+const holdS = Number(opt("--hold") || 0);
+const what = opt("--what") ?? "license";
+const PATTERNS = { license: "*acquireWebPlaybackLicense*", webPlayback: "*/wa/webPlayback*", asset: "*itunes-assets*" };
+if ((shape !== "next" && shape !== "start") || !PATTERNS[what]) {
+  console.error("usage: license-fail.mjs next|start [--count N] [--hold S] [--what license|webPlayback|asset] [--port P]");
   process.exit(2);
 }
 
@@ -84,20 +93,37 @@ console.log(`${stamp()} dev bridge ${bridge}: ${await cli("vol", "0")}`);
 if (shape === "start") {
   await mk("m.stop()");
   await sleep(500);
+} else {
+  // The current song's own license must go through: only the NEXT song's is caught. So the
+  // song must be playing and past its first seconds (a song just starting still asks).
+  if (!(await mk("m.isPlaying"))) console.log(`${stamp()} ${await cli("resume")}`);
+  const ready = Date.now() + 20_000;
+  while (Date.now() < ready && !(await mk("m.isPlaying && m.currentPlaybackTime > 3"))) await sleep(250);
 }
 
 // Hold the license requests from here on; refuse the first `count`, let the rest through.
 const body = Buffer.from(JSON.stringify({ status: -1021, errorCode: -1021 })).toString("base64");
-await send("Fetch.enable", { patterns: [{ urlPattern: "*acquireWebPlaybackLicense*", requestStage: "Request" }] });
+await send("Fetch.enable", { patterns: [{ urlPattern: PATTERNS[what], requestStage: "Request" }] });
 let refused = 0;
 let refusedAt = null;
 const pump = setInterval(async () => {
   while (paused.length) {
     const p = paused.shift();
-    if (refused < count) {
+    if (refused < count && holdS > 0) {
       refused++;
       refusedAt ??= await evaluate("performance.now()");
-      console.log(`${stamp()} refused license request ${refused} of ${count}`);
+      console.log(`${stamp()} holding ${what} request ${refused} of ${count} for ${holdS} s`);
+      // --cut S: the hung request fails as a network error after S s (what a cut by the app's
+      // own fetch wrapper would look like), instead of going through at the hold's end.
+      const cutS = Number(opt("--cut") || 0);
+      setTimeout(() => {
+        console.log(`${stamp()} ${cutS ? "cut" : "released"} ${what} request`);
+        void send(cutS ? "Fetch.failRequest" : "Fetch.continueRequest", cutS ? { requestId: p.requestId, errorReason: "Aborted" } : { requestId: p.requestId });
+      }, (cutS || holdS) * 1000);
+    } else if (refused < count) {
+      refused++;
+      refusedAt ??= await evaluate("performance.now()");
+      console.log(`${stamp()} refused ${what} request ${refused} of ${count}`);
       await send("Fetch.fulfillRequest", {
         requestId: p.requestId,
         responseCode: 200,
@@ -118,8 +144,6 @@ const pump = setInterval(async () => {
 
 const t0 = await evaluate("performance.now()");
 if (shape === "next") {
-  if (!(await mk("m.isPlaying"))) console.log(`${stamp()} ${await cli("resume")}`);
-  await sleep(2500);
   const len = await mk("m.currentPlaybackDuration");
   await mk(`m.seekToTime(${Math.max(0, len - 20)})`);
   console.log(`${stamp()} seeked to ${Math.round(len - 20)} of ${Math.round(len)} s; waiting for the next song's license`);
@@ -127,11 +151,19 @@ if (shape === "next") {
   console.log(`${stamp()} ${await cli("resume")}`);
 }
 
-// Wait for the refusals and the heal to play out (the hold's cap is 12 s).
-const until = Date.now() + 45_000;
+// Wait for the refusals and the heal to play out (the hold's cap is 12 s). A held request: wait
+// until it is released plus 15 s, printing MusicKit's state each time it changes.
+const settleMs = holdS > 0 ? holdS * 1000 + 15_000 : 14_000;
+const until = Date.now() + 45_000 + settleMs;
+let lastState = "";
 while (Date.now() < until) {
   await sleep(500);
-  if (refused >= count && (await evaluate(`performance.now() - ${refusedAt ?? 1e15} > 14000`))) break;
+  if (holdS > 0) {
+    const s = await mk(`[MusicKit.PlaybackStates[m.playbackState], m.nowPlayingItem?.id ?? null, Math.round(m.currentPlaybackTime ?? 0), Math.round(m.currentPlaybackDuration ?? 0), m.nowPlayingItemIndex].join(" ")`);
+    if (s !== lastState) console.log(`${stamp()} state: ${s}   (state id at/len index)`);
+    lastState = s;
+  }
+  if (refused >= count && (await evaluate(`performance.now() - ${refusedAt ?? 1e15} > ${settleMs}`))) break;
 }
 clearInterval(pump);
 await send("Fetch.disable");
