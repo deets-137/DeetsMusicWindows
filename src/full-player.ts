@@ -7,7 +7,8 @@
 //
 // It is not a grow: it changes the card's column (Max) and its inner layout, so it is its own
 // module and borrows the grow's parts (the clip, the covered-card classes, the zones' look).
-// One attribute carries the state: `data-player="full"` on <html>; every CSS rule hangs on it.
+// One attribute carries the state: `data-player="full"` on the bento (`fp()`); every CSS rule
+// hangs on it (the Compass and the toasts outside the bento read it through `:has()`).
 // The card wears `data-np-rows="over|below"` (below: the controls under the cover, 2026-10-11).
 //
 // Ways in: the edge strips on Now Playing (Midi top and bottom, Max all four sides when full), Compass
@@ -59,6 +60,11 @@ let resizedInMotion = false; // a resize during the open changed the layout: che
 const subs = new Set<(on: boolean) => void>();
 
 const root = document.documentElement;
+/** The element that wears the player's state (`data-player`, `data-fp-stack`, `data-fp-history`,
+ *  `data-fp-flip`): the bento, not <html>. A change on <html> restyled the whole page (1,500
+ *  elements, a 50–70 ms close frame, §14.9); on the bento it restyles the cards only. Nothing is
+ *  set before init, so the fallback only reads. */
+const fp = (): HTMLElement => opts?.bento ?? root;
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const rect = (el: Element) => el.getBoundingClientRect();
 const surfaceNow = (): "midi" | "max" | null => {
@@ -105,7 +111,7 @@ const coveredHosts = (): HTMLElement[] =>
   stack && surfaceNow() === "midi" ? [] : (opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h);
 
 /** The room the History column takes from Now Playing now: its width and the panel gap. */
-const historyRoom = (): number => (root.dataset.fpHistory === "on" && !stack ? pxToken("--full-history-w") + pxToken("--panel-gap") : 0);
+const historyRoom = (): number => (fp().dataset.fpHistory === "on" && !stack ? pxToken("--full-history-w") + pxToken("--panel-gap") : 0);
 
 /** The full player's layout now. */
 interface Layout {
@@ -145,7 +151,7 @@ function setStack(on: boolean, h: number): void {
   if (h > 0) opts?.bento.style.setProperty("--fp-stack-h", `${h}px`);
   if (on === stack) return;
   stack = on;
-  root.toggleAttribute("data-fp-stack", on);
+  fp().toggleAttribute("data-fp-stack", on);
   diag.log("player:stack", { on, h });
   if (surfaceNow() === "midi") midiCards().forEach((c) => (on ? uncover(c) : cover(c)));
   paintZones(); // stacked, the strip over the cards closes the player
@@ -205,7 +211,7 @@ const saveSide = () => {
     /* storage off: kept for the session */
   }
 };
-const markFlip = () => root.toggleAttribute("data-fp-flip", side.flip);
+const markFlip = () => fp().toggleAttribute("data-fp-flip", side.flip);
 
 let historyInst: { destroy(): void } | null = null;
 let historyGen = 0;
@@ -244,7 +250,7 @@ function flipSides(): void {
   side = { ...side, flip: !side.flip };
   saveSide();
   diag.log("player:side", { flip: side.flip });
-  const m = root.dataset.fpHistory === "on" ? motion() : null;
+  const m = fp().dataset.fpHistory === "on" ? motion() : null;
   const moving = [host, queue].filter((p): p is HTMLElement => !!p);
   const before = moving.map(rect);
   markFlip();
@@ -266,7 +272,7 @@ function dropHistory(keep = true): void {
   historyGen++;
   historyHost()?.getAnimations().forEach((a) => a.cancel());
   queuePanel()?.getAnimations().forEach((a) => a.id === "side-queue" && a.cancel());
-  delete root.dataset.fpHistory;
+  delete fp().dataset.fpHistory;
   if (keep) return;
   historyInst?.destroy();
   historyInst = null;
@@ -293,7 +299,7 @@ function setHistory(on: boolean, m: Motion | null): (() => void) | null {
     a.id = "side-queue";
   };
   if (on) {
-    root.dataset.fpHistory = "on";
+    fp().dataset.fpHistory = "on";
     mountSide(host);
     paintZones(); // the right strip moves from the window edge to the gap beside the column
     diag.log("player:history", { on: true, card: side.card, flip: side.flip });
@@ -306,20 +312,20 @@ function setHistory(on: boolean, m: Motion | null): (() => void) | null {
   }
   diag.log("player:history", { on: false });
   if (!m) {
-    delete root.dataset.fpHistory;
+    delete fp().dataset.fpHistory;
     paintZones();
     return null;
   }
   // It stays on screen while it slides out; Now Playing has its room back at once. The card
   // stays mounted (hidden) until the player closes, so a drag back costs no mount.
-  root.dataset.fpHistory = "leaving";
+  fp().dataset.fpHistory = "leaving";
   paintZones(); // the right strip is back on the window edge with the room
   return () => {
     const anim = host.animate([{ transform: "none" }, { transform: away }], { duration: m.dur, easing: m.ease, fill: "forwards" });
     moveQueue(m);
     void anim.finished.then(() => {
       if (my !== historyGen) return;
-      delete root.dataset.fpHistory;
+      delete fp().dataset.fpHistory;
       anim.cancel();
     }, () => {});
   };
@@ -355,7 +361,7 @@ function slideRows(panel: HTMLElement, next: Layout): void {
     diag.log("player:rows", { from: from ?? "", to: place, motion: !!m });
   }
   // The History column comes or goes in the same pass: the cover block moves over for it.
-  const column = history !== (root.dataset.fpHistory === "on") ? setHistory(history, m) : null;
+  const column = history !== (fp().dataset.fpHistory === "on") ? setHistory(history, m) : null;
   if (!m) return;
   column?.();
   columns.forEach((c, i) => {
@@ -397,12 +403,12 @@ function apply(on: boolean, place?: RowsPlace, row1?: number): void {
   const panel = npHost();
   if (on) {
     if (row1 !== undefined) opts?.bento.style.setProperty("--player-row1", `${row1}px`);
-    root.dataset.player = "full";
-    root.toggleAttribute("data-fp-stack", stack);
+    fp().dataset.player = "full";
+    fp().toggleAttribute("data-fp-stack", stack);
     if (panel && place) panel.dataset.npRows = place;
   } else {
-    delete root.dataset.player;
-    root.removeAttribute("data-fp-stack");
+    delete fp().dataset.player;
+    fp().removeAttribute("data-fp-stack");
     if (panel) delete panel.dataset.npRows;
     opts?.bento.style.removeProperty("--player-row1");
   }
@@ -631,7 +637,7 @@ function enterBand(panel: HTMLElement): void {
   panel.classList.remove("is-player-rebuild");
   if (!center) return;
   // In *below* the rows' box is `display: contents` (it cannot fade): its parts fade.
-  const below = root.dataset.player === "full" && panel.dataset.npRows === "below";
+  const below = fp().dataset.player === "full" && panel.dataset.npRows === "below";
   const dur = reduced() ? 0 : tokenMs("--grow-body-fade");
   if (dur > 0) {
     const easing = getComputedStyle(panel).getPropertyValue("--ease-ui").trim() || "ease";
@@ -681,7 +687,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
     // Stacked or not is decided here too (a tall window), before the cover box is measured.
     const first = layoutNow(panel);
     stack = first.stack;
-    root.toggleAttribute("data-fp-stack", stack);
+    fp().toggleAttribute("data-fp-stack", stack);
     if (first.stackH > 0) opts?.bento.style.setProperty("--fp-stack-h", `${first.stackH}px`);
     const place = first.place;
     panel.dataset.npRows = place;
@@ -755,7 +761,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
         a.id = "stack-move";
         anims.push(a);
         if (side) {
-          root.dataset.fpHistory = "on";
+          fp().dataset.fpHistory = "on";
           paintZones();
           const s = side.animate([{ transform: awayX() }, { transform: "none" }], { duration: m.dur, easing: m.ease });
           s.id = "stack-move";
@@ -804,7 +810,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
         queue.style.removeProperty("opacity");
         const side = historyHost();
         if (side) {
-          root.dataset.fpHistory = "on";
+          fp().dataset.fpHistory = "on";
           paintZones();
         }
         enterRows(side ? [queue, side] : [queue], 2);
@@ -821,7 +827,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
     warmHistory();
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (!full || my !== gen) return;
-      if (resizedInMotion || wantHistory !== (root.dataset.fpHistory === "on")) refit(panel);
+      if (resizedInMotion || wantHistory !== (fp().dataset.fpHistory === "on")) refit(panel);
     }));
   }
 }
@@ -929,7 +935,7 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
     // change at the end moves nothing. A still of the band's Queue fades where it was.
     const qStill = stillOf(queue, toQueue);
     pin([queue], [restQueue]);
-    const side = root.dataset.fpHistory === "on" ? historyHost() : null;
+    const side = fp().dataset.fpHistory === "on" ? historyHost() : null;
     if (stackMove() === "slide") {
       qStill?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: m.collapseDur, easing: m.ease, fill: "both" });
       const a = queue.animate([{ transform: `translate(${toQueue.left - restQueue.left}px, ${toQueue.top - restQueue.top}px)` }, { transform: "none" }], {
@@ -1001,7 +1007,7 @@ function refit(panel: HTMLElement): void {
   if (!full) return;
   const art = artOf(panel);
   const next = layoutNow(panel);
-  const histNow = root.dataset.fpHistory === "on";
+  const histNow = fp().dataset.fpHistory === "on";
   if (busy) {
     if (next.stack !== stack || panel.dataset.npRows !== next.place || next.history !== wantHistory) resizedInMotion = true;
     setStack(next.stack, next.stackH);
@@ -1048,7 +1054,7 @@ function reachOf(side: Side): "half" | "full" | "edge" | null {
     // the window edge.
     if (full) {
       if (side === "left" || side === "up") return "full";
-      if (side === "right") return root.dataset.fpHistory === "on" ? "full" : "edge";
+      if (side === "right") return fp().dataset.fpHistory === "on" ? "full" : "edge";
       return "edge";
     }
     if (side === "left") return "edge";

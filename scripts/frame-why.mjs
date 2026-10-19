@@ -11,7 +11,8 @@
 // A composited animation (transform, opacity, and clip-path in this WebView2) needs no main-
 // thread frame at all; a frame that recalculates style during one is the thing to explain.
 //
-// Flags: `--frames=N` prints the N costliest frames (default 12); `--all` prints every frame.
+// Flags: `--frames=N` prints the N costliest frames (default 12); `--all` prints every frame;
+// `--causes=N` prints N invalidations per frame (default 6), subtree ones first.
 // Same CDP port discovery as webview-eval.mjs / webview-profile.mjs.
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -27,6 +28,7 @@ const expr = argv.filter((a) => !a.startsWith("--")).join(" ");
 if (!expr) fail('usage: node scripts/frame-why.mjs "<expression>" [--frames=N] [--all]');
 const showN = Number((argv.find((a) => a.startsWith("--frames=")) ?? "").slice(9)) || 12;
 const ALL = argv.includes("--all");
+const causesN = Number((argv.find((a) => a.startsWith("--causes=")) ?? "").slice(9)) || 6;
 
 let gen;
 try {
@@ -165,8 +167,10 @@ for (const r of pick) {
   r.scripts.slice(0, 4).forEach((s) => console.log(`           ▸ ${ms(s.ms).padStart(5)} ms ${s.what}`));
   const seen = new Map();
   for (const c of r.causes) seen.set(c, (seen.get(c) ?? 0) + 1);
-  [...seen].slice(0, 6).forEach(([c, n]) => console.log(`             ${n > 1 ? `${n}× ` : ""}${c}`));
-  if (seen.size > 6) console.log(`             … ${seen.size - 6} more`);
+  // A subtree invalidation restyles everything under its element: it explains a large count.
+  const listed = causesN > 6 ? [...seen].sort((a, b) => Number(b[0].includes("subtree")) - Number(a[0].includes("subtree"))) : [...seen];
+  listed.slice(0, causesN).forEach(([c, n]) => console.log(`             ${n > 1 ? `${n}× ` : ""}${c}`));
+  if (seen.size > causesN) console.log(`             … ${seen.size - causesN} more`);
 }
 // The ranking: each cause (without its node, so one reason on many rows counts as one), the
 // frames it dirtied and the style time of those frames.

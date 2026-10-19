@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.0
 desk_test: passed 2026-10-12
 sources: [src/layout.ts, src/layout-rules.ts, src/card-grow.ts, src/full-player.ts, src/styles.css, index.html, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/rulez-words.ts, src/rulez-logs.ts, src/compass.ts, src/appearance.ts, src/boot-cover.ts, src/rulez-card.ts, src/surface.ts]
-updated: 2026-10-14
+updated: 2026-10-19
 ---
 # DeetsMusic — Max cards: one, two or four content cards in Max
 
@@ -201,7 +201,7 @@ in Max (`styles.css:1945`–`1946`). Add one rule set per count, under the exist
   there). The covered card is placed by hand, like Midi's rule at `styles.css:4032`, or
   auto-placement opens a new row for it.
 - **The full player** (`docs/features/fullscreen-player.md`, built in the same tree, 2026-10-11)
-  sets `:root[data-player="full"]`: in Max, Now Playing spans `1 / 2 / 3 / 4` and the Queue
+  sets `data-player="full"` (on the bento since 2026-10-19): in Max, Now Playing spans `1 / 2 / 3 / 4` and the Queue
   `1 / 1 / 3 / 2`. Those numbers assume content columns 2–3 and rows 1–2. With one column or
   one row, Now Playing must still cover the whole content area: `1 / 2 / -1 / -1` covers every
   count. Read that session's CSS when this build starts.

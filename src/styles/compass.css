@@ -48,8 +48,8 @@
    The bar hangs from the title bar with the card's own left and right edges, centered over the
    cover; the Queue and the History column stay clear. Without this, Max pushed the bar into
    the strip right of the card (over History, or into a gutter) and Midi dropped it under the
-   card, off the window. */
-:root[data-player="full"] .compass {
+   card, off the window. The state is on the bento (2026-10-19), and the bar is outside it. */
+:root:has(> body .bento[data-player="full"]) .compass {
   --compass-drop: 0px;
   left: var(--np-left, var(--panel-edge-gap));
   right: var(--np-right-in, var(--panel-edge-gap));

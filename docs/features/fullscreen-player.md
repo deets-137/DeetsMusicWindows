@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.1
 desk_test: passed 2026-10-11
 sources: [src/full-player.ts, src/full-player-layout.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-18
+updated: 2026-10-19
 ---
 # Full player — grow the Now Playing card
 
@@ -369,7 +369,7 @@ A design pass on what is still undrawn, before any code:
 
 - **`src/full-player.ts`** (≈350 lines) — the feature:
   - The state: `isFullPlayer()`, `onFullPlayerChange(cb)`, `openFullPlayer(cause)`,
-    `closeFullPlayer(cause)`, `toggleFullPlayer(cause)`. Sets `data-player="full"` on `<html>`
+    `closeFullPlayer(cause)`, `toggleFullPlayer(cause)`. Sets `data-player="full"` on the bento (on `<html>` until 2026-10-19, §14.9)
     (one attribute, every CSS rule hangs on it) and `data-np-rows="beside|over"` on the card.
   - The open: close any grow first (`collapseGrow("player", false)`); load the large cover
     and wait for its decode (§12.5); set the layout once; then the motion (§12.4).
@@ -622,7 +622,7 @@ default) has the slots' own title picker (`makePicker` in `layout.ts`, now gener
 key): every card but Now Playing and Rulez. Two copies of a card are allowed (the slot's copy
 is covered). Picking a card mounts it in the column. Picking **Queue** flips the columns: the
 side card, with its picker, takes the stage column on the left and the Queue the right
-column; nothing remounts (`data-fp-flip` on `<html>`, CSS moves the two panels), and the two
+column; nothing remounts (`data-fp-flip` on the bento, CSS moves the two panels), and the two
 slide past each other over the cover (`flipSides`). The card and the flip are remembered
 (`deets.fullplayer.side`). Flipped, the column slides in and out at the LEFT edge, and a
 window too narrow for it puts the Queue back left (it slides there); the flip returns when the
@@ -639,7 +639,7 @@ Midi its two content cards, uncovered. The second test is his Midi condition ("i
 after a full-width cover") and stops a window that is only a little taller than wide from
 leaving the cards no room. A resize across the line slides the rows and the two columns
 (their size changes at once). Stacked, the strip over the cards closes the player.
-`data-fp-stack` on `<html>`; the grid is in styles.css after the side column's rules. Shots:
+`data-fp-stack` on the bento (on `<html>` until 2026-10-19); the grid is in styles.css after the side column's rules. Shots:
 `shots/scratch/stack.json` (Max 1090 × 1880 ↔ 1800 × 1000, Midi 495 × 1300).
 
 **The top and bottom strips at rest (his ask, the same day).** In Max the resting Now Playing
@@ -932,6 +932,56 @@ the one-time paint of the new layout), the landing 13 ms; the delayed `cover` fr
 elements, 10 ms layout, 14 ms script): `data-player` and `data-fp-stack` live on `<html>`, so
 taking them off restyles the whole page; the same attributes cost the click's two whole-page
 passes (~10–15 ms each). Moving them to the bento touches every full-player rule in styles.css.
+
+**As built, 2026-10-19: the state is on the bento.** Nothing on screen changes. Three causes
+restyled the whole page, and all three are cut:
+
+1. **The attributes.** `data-player`, `data-fp-stack`, `data-fp-history` and `data-fp-flip` are
+   on the bento (`fp()` in full-player.ts), not on `<html>`. Each of the 45 selectors keeps its
+   weight: `:where(:root)[data-surface=…] .bento[data-player="full"]…` (`:where` weighs nothing,
+   so `.bento` takes `:root`'s place); a selector that named `.bento` already keeps `:root`. The
+   stacked rules still win. The Compass and the toasts are outside the bento; they read the
+   state through `:root:has(> body .bento[data-player="full"])` (the browser restyles only the
+   bar and the host for it, measured).
+2. **Two rules with no class at the end** (`.np__center > *`, `> :not(.np__meta)`). A change on
+   the bento made the browser restyle every element in it (1,768, measured after step 1). They
+   now start at the card: the card wears `data-np-rows` only while the player is open, so the
+   meaning is the same.
+3. **Two custom properties on the bento** (`--fp-stack-h`, `--player-row1`). A custom property is
+   inherited, so each write restyled every element in the bento. They are read on the bento only;
+   `@property … { syntax: "*"; inherits: false; }` stops the restyle. No initial value, so the
+   `var()` fallback holds when they are unset.
+
+**Before and after** (`frame-why.mjs`, dev app, Cyber, A/B on the same load: HEAD's files, then
+these, after a reload each time; the PC was busy (CPU 90 %) during the A/B, so the times are
+high on both sides; the element counts do not depend on the load):
+
+| | Before | After |
+|---|---|---|
+| Max portrait 1080 × 1872, close's last frame | 110–163 ms, style 45–69 ms on **1,868** elements | 116–143 ms, style 40–45 ms on **536** |
+| Max portrait, the open's click (two style passes) | 19–30 + 15–25 ms | 10–15 + 3–6 ms |
+| Max portrait, the close's click | 22–31 + 17–26 ms | 21–27 + 19–22 ms |
+| Max landscape 1080 × 760, close's last frame | 132–176 ms, style 51–78 ms on **1,510** | 74–93 ms, style 26–33 ms on **256** |
+| Max landscape, the open's click | 16–30 + 13–25 ms | 7–8 + 2 ms |
+| Max landscape, the close's click | 25–34 + 23–29 ms | 15 + 10–14 ms |
+| Midi 495 × 670, the open's first frame | 14–15 ms, style 9–10 ms on **765** | gone (the costliest frame is the landing, 14–22 ms) |
+| Midi, close's last frame | 44 ms on **913** | 40–55 ms on **285** |
+| Midi, the open's click / the close's click | 8 + 7 / 12 + 6 ms | 3–6 + 3–5 / 5–6 + 4–6 ms |
+
+On a quiet PC before the change (2026-10-19, one run each): the close's last frame was 72 ms
+(portrait) and 58 ms (landscape), the open's click 13 + 11 ms.
+
+**Left: the close's last frame in Max portrait** (the trace's inside, with Blink's own events):
+the style work is now small; the frame is a layout-tree rebuild (~18 ms: `.stage` leaves
+`display: contents`, the History column goes to `display: none`), ~20 forced style and layout
+passes inside frame callbacks (`album-color.ts applyText`, `enterBand`, `compass.ts place`,
+`card-swap.ts onScreen` read boxes after the close's writes), and the layout itself. The close's
+click keeps two ~20 ms passes in portrait: they are the layout reads of `rect` in
+`closeFullPlayer`, not a restyle. Each is its own step.
+
+Checks: `fp-stack.json` 7 shots, 17 probes ok (its probes read the bento now); `npm run check`
+passes. `frame-why.mjs --causes=N` lists N invalidations per frame, the subtree ones first: that
+is how causes 2 and 3 were found.
 
 **The monitor before every release** (his call): RELEASE.md §0 step 1a. It cannot see the two
 jumps found today (a box that moves to a new place in one frame and stays; rows that change

@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-10-17
+updated: 2026-10-19
 ---
 # DeetsMusic — Handoff
 
@@ -220,6 +220,22 @@ each step that touches those calls.
   DeetsSupport `9f49f84` and `67b6dc0`, pushed).
 
 ### Built, waiting on a release or a desk test
+
+- **The full player's frames** (2026-10-18 and 2026-10-19, on `main`; fullscreen-player.md
+  §14, §14.9). The stacked open and close per skin, the frame recorder (`frame-why.mjs`), and
+  the player's state moved from `<html>` to the bento (the close's last frame restyles 256–536
+  elements, not 1,500–1,868). **Open, for the next sitting:**
+  1. His desk test (§14.5), which now also covers the state move: the Compass over the full
+     player, the toasts under the title bar, the flip and the History column, stacked and not.
+     Nothing on screen should differ from 0.30.0.
+  2. Measure again on a quiet PC: the 2026-10-19 A/B ran with the CPU at 90 % (a game was
+     running), so its times are high on both sides (§14.9 table).
+  3. The close's last frame in Max portrait is still ~60–70 ms on a quiet PC: a layout-tree
+     rebuild (`.stage` leaves `display: contents`; the History column goes to `display: none`)
+     and ~20 forced passes in frame callbacks (`album-color.ts applyText`, `enterBand`,
+     `compass.ts place`, `card-swap.ts onScreen`). Each is its own step, with frame-why first.
+  4. The close's click keeps two ~20 ms layout reads (`rect` in `closeFullPlayer`).
+  Then a release (the monitor runs first, RELEASE.md §0 step 1a).
 
 - **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
   [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8

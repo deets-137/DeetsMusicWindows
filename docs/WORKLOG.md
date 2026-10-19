@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-18
+updated: 2026-10-19
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,23 @@ updated: 2026-10-18
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-19 — The full player's state off `<html>`
+
+A side session of the frame hunt, on `main`. The task: cut the close's last frame and the
+click's two whole-page restyles by moving the player's four state attributes from `<html>` to
+the bento, with nothing seen changed. Built, measured A/B on his dev app (portrait, landscape,
+Midi), and written up in [fullscreen-player.md](features/fullscreen-player.md) §14.9.
+
+Found on the way: the attributes were one of three causes. Two rules ended in a part with no
+class (`.np__center > *`), so a change on the bento still restyled all of it; and two custom
+properties written on the bento (`--fp-stack-h`, `--player-row1`) are inherited, so each write
+did the same. Both fixed (`@property … inherits: false`). New flag: `frame-why.mjs --causes=N`.
+Result: the close's last frame restyles 256–536 elements (was 1,500–1,868); the open's click
+passes are about a third. The frame's time fell clearly in landscape only: what is left there is
+a layout-tree rebuild and forced passes (HANDOFF › Open now). The A/B ran with his CPU at 90 %
+(a game), so the times are high on both sides. Checks: `fp-stack.json` 17 probes ok,
+`npm run check` passes. Committed at his ask.
 
 ## 2026-10-18, evening — The full player's stacked motion, per skin
 

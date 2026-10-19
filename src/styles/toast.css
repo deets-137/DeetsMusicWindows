@@ -30,8 +30,9 @@
   --toast-in: translateX(var(--toast-shift));
 }
 /* The full player (2026-10-11) too: Now Playing fills the view, so "under the card" is the
-   window's bottom; the stack sits under the title bar instead. */
-:is([data-surface="max"], [data-surface="mini"][data-mini="player"], [data-player="full"]) .toast-host {
+   window's bottom; the stack sits under the title bar instead. The state is on the bento
+   (2026-10-19), and the host is outside it. */
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"], :root:has(> body .bento[data-player="full"])) .toast-host {
   top: min(
     max(calc(var(--titlebar-h) + var(--space-2)), calc(var(--toast-below, 0px) + var(--space-2))),
     calc(100vh - var(--toast-floor-room))

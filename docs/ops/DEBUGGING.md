@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/ipc-timing.ts, src/ipc-core.ts, demo/latency.ts, scripts/latency-profile.mjs, docs/guide/loading.json, scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, scripts/frame-why.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
-updated: 2026-10-17
+updated: 2026-10-19
 ---
 # DeetsMusic — Debugging tools
 
@@ -705,6 +705,7 @@ this says WHY the page's main thread worked on each frame, and what wrote the ch
 node scripts/frame-why.mjs "window.__full.open('why').then(()=>new Promise(r=>setTimeout(r,600)))"
 node scripts/frame-why.mjs "<expression>" --frames=20    # the 20 costliest frames (default 12)
 node scripts/frame-why.mjs "<expression>" --all          # every frame
+node scripts/frame-why.mjs "<expression>" --causes=40    # 40 invalidations per frame (default 6), subtree ones first
 ```
 
 It traces with Chromium's invalidation tracking on. For each main-thread frame
@@ -720,6 +721,10 @@ and layout passes outside any frame (a script read a box after a write) with the
   in the middle of a motion is the thing to explain.
 - `style N ms (E el)` with E in the thousands: an inherited property or an attribute on a high
   element changed (`visibility`, `inert`, a `data-*` on `<html>`): every element under it restyles.
+  Look for `Invalidation set invalidates subtree` (`--causes=40` lists those first). Two quiet
+  sources of it (2026-10-19): a selector whose last part has no class (`.x > *`,
+  `> :not(.y)`) under the changed attribute, and a custom property written on a high element
+  (custom properties are inherited; `@property … { inherits: false }` stops it).
 - `StyleRecalc: Animation` on an element every frame: a running animation that the main thread
   ticks (Cyber's storm, a CSS transition). Small each time.
 - Line numbers point into the file as Vite serves it (TypeScript stripped), so they sit near the
@@ -730,8 +735,10 @@ and layout passes outside any frame (a script read a box after a write) with the
 **What it found on the full player (2026-10-18, fixed the same day, fullscreen-player.md §14.9):**
 `cover()` at the landing restyled ~1,100 elements (12 ms); the check two frames after the landing
 measured the layout again for nothing (~20 ms); the size watch's first report did the same in the
-motion's first frame; `pin` forced a layout per card. Left: the close's last frame (50 ms, the
-`<html>` attribute restyling 1,873 elements) and the click's two whole-page passes.
+motion's first frame; `pin` forced a layout per card. On 2026-10-19 the player's state moved
+from `<html>` to the bento, and the two causes above with it: the close's last frame restyles
+256–536 elements, not 1,500–1,868, and the open's click passes fell to about a third (§14.9).
+Left in that frame: a layout-tree rebuild and forced passes in frame callbacks.
 
 ## What the 2026-09-17 health check found
 

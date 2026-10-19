@@ -33,7 +33,7 @@
           "wait": 1600
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.querySelector('.bento').hasAttribute('data-fp-stack'), side: document.querySelector('.bento').dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": true,
             "stack": true,
@@ -51,7 +51,7 @@
           "wait": 1200
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.querySelector('.bento').dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": false,
             "pins": 0,
@@ -97,7 +97,7 @@
           "wait": 1600
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.querySelector('.bento').hasAttribute('data-fp-stack'), side: document.querySelector('.bento').dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": true,
             "stack": true,
@@ -115,7 +115,7 @@
           "wait": 1200
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.querySelector('.bento').dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": false,
             "pins": 0,
@@ -161,7 +161,7 @@
           "wait": 1600
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.querySelector('.bento').hasAttribute('data-fp-stack'), side: document.querySelector('.bento').dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": true,
             "stack": true,
@@ -179,7 +179,7 @@
           "wait": 1200
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.querySelector('.bento').dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": false,
             "pins": 0,
@@ -225,7 +225,7 @@
           "wait": 1600
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.querySelector('.bento').hasAttribute('data-fp-stack'), side: document.querySelector('.bento').dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": true,
             "stack": true,
@@ -243,7 +243,7 @@
           "wait": 1200
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.querySelector('.bento').dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": false,
             "pins": 0,
@@ -289,7 +289,7 @@
           "wait": 1600
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.documentElement.hasAttribute('data-fp-stack'), side: document.documentElement.dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, stack: document.querySelector('.bento').hasAttribute('data-fp-stack'), side: document.querySelector('.bento').dataset.fpHistory ?? null, stills: document.querySelectorAll('.fp-still').length, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": true,
             "stack": true,
@@ -307,7 +307,7 @@
           "wait": 1200
         },
         {
-          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.documentElement.dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
+          "probe": "JSON.stringify({ full: window.__full.state().full, pins: document.querySelectorAll('.fp-pin').length, stills: document.querySelectorAll('.fp-still, .np-still').length, side: document.querySelector('.bento').dataset.fpHistory ?? null, queueOpacity: document.querySelector('.panel[data-slot=\"queue\"]').style.opacity })",
           "expect": {
             "full": false,
             "pins": 0,
