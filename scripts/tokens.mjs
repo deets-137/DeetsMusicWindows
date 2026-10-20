@@ -3,8 +3,9 @@
 // `[data-skin]` base block of skin.css (every skin token, its base value, its comment, and
 // which skins override it). The release check (release-check.mjs §6) fails when the file on
 // disk is not what this script would write. UI-ARCHITECTURE.md §1–§3 stays the map; this is
-// the list.
-import { readFileSync, writeFileSync } from "node:fs";
+// the list. Its Motion view also names the files that read each motion token (src/ and
+// extension/), so a change to who reads one is a `npm run tokens` too.
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -66,6 +67,50 @@ function tokensOf(lines) {
   if (section.tokens.length || section.name) sections.push(section);
   // A block comment that opened on a token line and closed later.
   return sections;
+}
+
+// A time (`0.2s`, `120ms`) or a timing function. `0s` / `0ms` alone is not motion.
+const TIME = /(?<![\w.-])(?:\d*\.\d+|[1-9]\d*)m?s\b/;
+const CURVE = /cubic-bezier\(|\blinear\(|\bsteps\(|^(?:ease|ease-in|ease-out|ease-in-out|linear)$/;
+
+/** The base tokens whose value is a time or a curve, or an alias (through var()) of one. */
+function motionTokens(base) {
+  const all = base.flatMap((s) => s.tokens);
+  // A speed is a plain number (px per second), so its name says it.
+  const yes = new Set(all.filter((t) => TIME.test(t.value) || CURVE.test(t.value) || /-speed$/.test(t.name)).map((t) => t.name));
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const t of all) {
+      if (yes.has(t.name)) continue;
+      const refs = [...t.value.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]);
+      if (refs.some((r) => yes.has(r))) { yes.add(t.name); grew = true; }
+    }
+  }
+  return all.filter((t) => yes.has(t.name));
+}
+
+/** For each token, the files (repo-relative) that name it outside its own definition. */
+function readersOf(names) {
+  const files = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) { if (!["fonts", "node_modules", "icons"].includes(e.name)) walk(p); }
+      else if (/\.(css|ts|js|html)$/.test(e.name)) files.push(p);
+    }
+  };
+  walk("src");
+  walk("extension");
+  const want = new Set(names);
+  const out = new Map();
+  for (const f of files.sort()) {
+    const text = read(f).replace(/^\s*--[a-z0-9-]+\s*:/gm, ""); // a definition is not a read
+    const seen = new Set();
+    for (const m of text.matchAll(/--[a-z0-9-]+(?![a-z0-9-])/g)) if (want.has(m[0])) seen.add(m[0]);
+    const short = f.replace(/^src\//, "");
+    for (const n of seen) (out.get(n) ?? out.set(n, []).get(n)).push(short);
+  }
+  return out;
 }
 
 export function render() {
@@ -138,6 +183,25 @@ export function render() {
     }
     out.push("");
   }
+  // ── motion: every token that is a time or a curve, in one place, with the files that read it ──
+  const motion = motionTokens(base);
+  const readers = readersOf(motion.map((t) => t.name));
+  out.push("## Motion");
+  out.push("");
+  out.push("Every skin token that is a duration, a delay or a curve, or an alias of one. The same rows are in");
+  out.push("*Skin tokens* above, with their notes. *Read by* is every file under `src/` and `extension/`");
+  out.push("that names the token (CSS `var()`, or a `tokenMs` / `getPropertyValue` read in TS). A row with no");
+  out.push("reader is a token nothing uses.");
+  out.push("");
+  out.push("| Token | Base | Overridden by | Read by |");
+  out.push("|---|---|---|---|");
+  for (const t of motion) {
+    const by = skinNames.filter((n) => overrides.get(n).has(t.name));
+    const files = readers.get(t.name) ?? [];
+    out.push(`| \`${t.name}\` | \`${esc(t.value)}\` | ${by.join(", ") || "—"} | ${files.join(", ") || "**none**"} |`);
+  }
+  out.push("");
+
   if (orphans.length) {
     out.push("## Overrides with no base token");
     out.push("");

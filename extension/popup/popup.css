@@ -160,7 +160,7 @@ body {
   display: block; position: absolute; top: 50%;
   right: calc(var(--space-2) + var(--icon-sm) + var(--space-1));
   width: 6px; height: 6px; margin-top: -3px; border-radius: 999px;
-  background: var(--subtext); animation: search-pulse 0.9s ease-in-out infinite;
+  background: var(--subtext); animation: search-pulse var(--search-pulse-dur) var(--pulse-ease) infinite;
 }
 @keyframes search-pulse { 50% { opacity: 0.25; } }
 

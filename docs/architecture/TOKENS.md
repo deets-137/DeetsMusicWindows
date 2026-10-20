@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 54 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 665 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
+| Skin (everything else) | skin.css base block | 670 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
 
 ## Theme roles
 
@@ -662,6 +662,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--scrub-glow-max` | `5px` | — | … and at its brightest |
 | `--scrub-glow-held` | `3px` | — | Cyber: the glow while the bolt is held |
 | `--scrub-flicker-dur` | `0.12s` | — | Cyber: the one flicker on release |
+| `--slider-release-hold` | `0.3s` | — | how long a slider wears data-released after the drag (slider.ts); longer than any release motion |
 | `--scrub-lens-glint-blur` | `1.5px` | — | Glass: the lens's two inset glints |
 | `--scrub-lens-shadow-blur` | `2px` | — | Glass: the lens's drop shadow |
 
@@ -712,6 +713,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--present-count-gap` | `calc(var(--space-5) * 2)` | — | Plays ↔ Listeners |
 | `--present-num` | `clamp(40px, 11cqi, 128px)` | — | the counts: they follow the card's width (cqi) |
 | `--present-roll-dur` | `1.2s` | — | a count that moved rolls up to its new value |
+| `--present-roll-ease` | `cubic-bezier(0.33, 1, 0.68, 1)` | — | the roll's curve (present.ts): fast, then it settles on the number |
 | `--present-in-delay` | `calc(var(--grow-dur) * 0.4)` | — | the words fade in once the clip is mostly open (--grow-rows-at's fraction) |
 | `--notes-gap` | `var(--space-3)` | — | An album's full Apple note (present.ts openNotes, features/album-notes.md): the same view, words in place of counts. — paragraph ↔ paragraph, song row ↔ its words |
 | `--notes-measure` | `68ch` | — | the longest line: a wide grown card still reads as a column |
@@ -842,6 +844,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--dur-med` | `0.18s` | press |  |
 | `--dur-spin` | `0.7s` | — |  |
 | `--ease-ui` | `ease` | — |  |
+| `--pulse-ease` | `ease-in-out` | — | a busy or connecting breath (AirPlay square, Search dot, Library pill): no hard edge at either end |
 | `--sh-cross-dur` | `0.42s` | — | Shuffle's press run: uncross → parallel → cross |
 | `--sh-cross-gap` | `3px` | — | how far the two wires part, in the icon's 24-unit box |
 | `--rp-loop-dur` | `0.5s` | — | Repeat's one full turn, on the press that lands on "one" |
@@ -849,6 +852,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--drag-lift` | `scale(1.02)` | press, glass, cyber | lift of a dragged row's copy (row-drag.ts) |
 | `--drag-ghost-opacity` | `0.85` | — | the copy stays see-through so the list under it reads |
 | `--drag-nodrop-opacity` | `0.5` | — | the copy over a place that takes no drop |
+| `--drag-scroll-edge` | `28px` | — | a drag this near a list's edge scrolls the list (row-drag.ts) |
+| `--drag-scroll-speed` | `540` | — | px per second: the old 9 px a frame at 60 Hz, now the same on every refresh rate |
 | `--drag-source-opacity` | `0.4` | — | the pressed row, left in place while its copy moves |
 | `--drop-line-w` | `2px` | press, cyber | insertion-indicator + drop-target outline thickness |
 | `--hold-ms` | `400ms` | — | -- movable rows (MOVABLE-ROWS.md): the press-and-hold that turns a header into its own grip, and the grip bar on a pinned tile -- — how long a header is held before it can be moved |
@@ -940,6 +945,128 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--space-3` | `12px` | — |  |
 | `--space-4` | `16px` | — |  |
 | `--space-5` | `24px` | — |  |
+
+## Motion
+
+Every skin token that is a duration, a delay or a curve, or an alias of one. The same rows are in
+*Skin tokens* above, with their notes. *Read by* is every file under `src/` and `extension/`
+that names the token (CSS `var()`, or a `tokenMs` / `getPropertyValue` read in TS). A row with no
+reader is a token nothing uses.
+
+| Token | Base | Overridden by | Read by |
+|---|---|---|---|
+| `--vol-grow` | `var(--dur-med)` | — | styles.css |
+| `--sleep-turn` | `1s linear` | — | styles.css |
+| `--sleep-swap` | `0.42s` | — | styles.css |
+| `--room-gutter-open` | `var(--dur-med)` | — | styles.css |
+| `--room-away-dur` | `1.6s` | — | styles.css |
+| `--room-fig-stagger` | `40ms` | — | styles.css |
+| `--room-part-slide` | `260ms` | — | styles.css |
+| `--room-bob-glide` | `120ms` | — | styles.css |
+| `--room-fill` | `0.28s var(--ease-ui)` | — | styles.css |
+| `--compass-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/compass.css, styles/skin.css |
+| `--cog-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles.css |
+| `--updates-fly` | `0.5s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/updates.css |
+| `--updates-bar-in` | `0.36s var(--ease-ui)` | — | styles/updates.css |
+| `--updates-bar-fill` | `0.2s linear` | — | styles/updates.css |
+| `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/skin.css, updates-btn.ts |
+| `--rewind-top-flip` | `var(--compass-spin)` | — | styles/rewind-top.css |
+| `--net-drive` | `var(--updates-roll)` | — | net.ts |
+| `--sound-grow` | `0.22s` | — | styles.css |
+| `--sound-glide` | `var(--dur-fast)` | — | styles.css |
+| `--web-shrink-dur` | `0.32s` | — | web.ts |
+| `--web-shrink-ease` | `var(--pop-ease)` | — | web.ts |
+| `--menu-grow-dur` | `var(--pop-in)` | — | context-menu.ts |
+| `--menu-grow-ease` | `var(--pop-ease)` | — | context-menu.ts |
+| `--walk-cycle` | `0.571s` | — | styles/walk.css |
+| `--walk-travel` | `0.75s` | — | styles/walk.css, walk.ts |
+| `--aurora-dur` | `60s` | glass | styles.css |
+| `--wallpaper-tile-dur` | `0.9s` | — | wallpaper.ts |
+| `--wallpaper-tile-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | — | wallpaper.ts |
+| `--wallpaper-fade-dur` | `0.8s` | — | styles.css, wallpaper.ts |
+| `--wallpaper-fade-ease` | `ease` | — | styles.css, wallpaper.ts |
+| `--ocean-breath-dur` | `1.1s` | — | ocean.ts, styles.css |
+| `--ocean-breath-ease` | `cubic-bezier(0.37, 0, 0.63, 1)` | — | ocean.ts, styles.css |
+| `--ocean-glow-fade` | `2.4s` | — | styles.css |
+| `--ocean-ripple-dur` | `3.4s` | — | styles.css |
+| `--ocean-ripple-gap` | `0.35s` | — | ocean.ts |
+| `--ocean-ripple-ease` | `cubic-bezier(0.2, 0.6, 0.35, 1)` | — | styles.css |
+| `--np-title-scroll-delay` | `350ms` | — | styles.css |
+| `--np-title-scroll-back` | `var(--dur-med)` | — | styles.css |
+| `--vinyl-swap-dur` | `0.4s` | press | vinyl.ts |
+| `--vinyl-swap-ease` | `ease-in-out` | press | vinyl.ts |
+| `--ap-pulse` | `1.2s` | — | styles.css |
+| `--ap-caret-dur` | `0.32s` | — | styles.css |
+| `--pop-in` | `var(--dur-med)` | — | extension/styles/skin.css, card-grow.ts, pop.ts, reveal.ts, rewind-btn.ts, styles.css, styles/skin.css |
+| `--pop-out` | `var(--dur-fast)` | — | appearance.ts, hero-slide.ts, styles.css, styles/skin.css, styles/walk.css, walk.ts |
+| `--pop-grow` | `var(--dur-med)` | — | airplay.ts, net.ts, quick-panel.ts, rewind-btn.ts, sound-panel.ts, updates-btn.ts, web.ts |
+| `--pop-stagger` | `0.03s` | — | extension/styles/skin.css, card-grow.ts, pop.ts, styles.css, styles/skin.css |
+| `--pop-ease` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | — | extension/styles/skin.css, airplay.ts, net.ts, pop.ts, quick-panel.ts, rewind-btn.ts, sound-panel.ts, styles.css, styles/skin.css, updates-btn.ts, web.ts |
+| `--nudge-dur` | `var(--pop-in)` | — | styles.css |
+| `--nudge-ease` | `var(--pop-ease)` | — | styles.css |
+| `--set-flash-dur` | `1600ms` | — | styles/settings.css |
+| `--rulez-fold-dur` | `var(--dur-med)` | — | styles.css |
+| `--rulez-fold-ease` | `var(--ease-ui)` | — | styles.css |
+| `--album-spin-dur` | `48s` | glass | styles.css |
+| `--album-fade-dur` | `600ms` | — | styles.css |
+| `--storm-cycle-1` | `8s` | — | styles.css |
+| `--storm-cycle-2` | `12s` | — | styles.css |
+| `--scrub-bob-dur` | `2.4s` | — | ambient.ts, styles.css |
+| `--scrub-sheen-dur` | `6s` | — | ambient.ts, styles.css |
+| `--scrub-breathe-dur` | `3s` | — | ambient.ts, styles.css |
+| `--scrub-flicker-dur` | `0.12s` | — | styles.css |
+| `--slider-release-hold` | `0.3s` | — | slider.ts |
+| `--artist-info-fold-dur` | `240ms` | — | styles.css |
+| `--artist-info-slide` | `var(--nav-dur)` | — | hero-slide.ts |
+| `--artist-info-slide-ease` | `var(--nav-ease)` | — | hero-slide.ts |
+| `--present-roll-dur` | `1.2s` | — | present.ts |
+| `--present-roll-ease` | `cubic-bezier(0.33, 1, 0.68, 1)` | — | present.ts |
+| `--present-in-delay` | `calc(var(--grow-dur) * 0.4)` | — | styles.css |
+| `--nav-dur` | `0.26s` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, handoff.ts, layout.ts, styles.css, styles/skin.css |
+| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, layout.ts, styles.css, styles/skin.css |
+| `--memory-wait` | `0.4s` | — | collection-card.ts |
+| `--reveal-cap` | `1.5s` | — | home-card.ts, reveal.ts, styles/skin.css |
+| `--reveal-span` | `0.5s` | — | reveal.ts, styles/skin.css |
+| `--search-reveal-cap` | `0.8s` | — | reveal.ts, search-card.ts, styles/skin.css |
+| `--search-reveal-span` | `0.15s` | — | reveal.ts |
+| `--art-in` | `var(--pop-in)` | — | artwork-heal.ts, styles.css, styles/skin.css |
+| `--swap-dur` | `var(--nav-dur)` | — | card-swap.ts, styles.css |
+| `--swap-ease` | `var(--nav-ease)` | — | styles.css |
+| `--grow-dur` | `0.34s` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
+| `--grow-ease` | `var(--pop-ease)` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
+| `--grow-body-fade` | `0.09s` | — | extension/styles/skin.css, full-player.ts, styles.css, styles/skin.css |
+| `--grow-collapse-dur` | `0.24s` | — | card-grow.ts, present.ts, styles.css, styles/skin.css |
+| `--grow-rows-stagger` | `0.012s` | — | card-grow.ts, styles.css |
+| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | full-player.ts, styles/skin.css |
+| `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber | full-player.ts |
+| `--player-collapse-dur` | `var(--grow-collapse-dur)` | press, ocean, glass, cyber | full-player.ts |
+| `--player-art-wait` | `0.25s` | — | full-player.ts, styles/skin.css |
+| `--fly-dur` | `0.42s` | press, ocean | extension/styles/skin.css, handoff.ts, styles.css, styles/skin.css |
+| `--fly-ease` | `var(--nav-ease)` | press, ocean, cyber | extension/styles/skin.css, styles.css, styles/skin.css |
+| `--boot-dur` | `0.8s` | press, ocean, glass, cyber | extension/styles/skin.css, appearance.ts, boot-cover.ts, styles.css, styles/skin.css |
+| `--boot-cover-out` | `var(--boot-dur)` | cyber | styles.css |
+| `--boot-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | press, ocean, glass, cyber | styles.css |
+| `--boot-stagger` | `70ms` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css |
+| `--boot-safety` | `4s` | — | extension/styles/skin.css, boot-cover.ts, styles.css, styles/skin.css |
+| `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber | appearance.ts, styles.css |
+| `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | styles.css |
+| `--theme-morph-dur` | `500ms` | — | appearance.ts, styles.css |
+| `--theme-morph-ease` | `ease-in-out` | — | styles.css |
+| `--theme-morph-hand-ease` | `ease-out` | — | appearance.ts, styles.css |
+| `--search-pulse-dur` | `0.9s` | — | extension/popup/popup.css, styles.css, styles/skin.css |
+| `--dur-fast` | `0.12s` | press, glass, cyber | extension/styles/skin.css, copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
+| `--dur-med` | `0.18s` | press | extension/popup/popup.css, extension/popup/popup.js, extension/styles/skin.css, styles.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/walk.css |
+| `--dur-spin` | `0.7s` | — | extension/popup/popup.css, styles.css |
+| `--ease-ui` | `ease` | — | extension/popup/popup.css, extension/styles/skin.css, copy-edit.ts, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
+| `--pulse-ease` | `ease-in-out` | — | extension/popup/popup.css, styles.css |
+| `--sh-cross-dur` | `0.42s` | — | styles.css |
+| `--rp-loop-dur` | `0.5s` | — | styles.css |
+| `--drag-scroll-speed` | `540` | — | row-drag.ts |
+| `--hold-ms` | `400ms` | — | row-order.ts, styles.css, styles/diary.css |
+| `--diary-morph-dur` | `calc(var(--nav-dur) * 1.4)` | — | diary-card.ts |
+| `--diary-morph-ease` | `var(--nav-ease)` | — | diary-card.ts |
+| `--split-pill-busy-dur` | `var(--search-pulse-dur)` | — | styles.css |
+| `--view-leave-dur` | `var(--dur-fast)` | — | collection-card.ts, styles.css |
 
 ## Overrides with no base token
 

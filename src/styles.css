@@ -1469,7 +1469,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .ap-caret, .ap-cut { transition: none; }
 }
-.ap-square[data-state="connecting"] svg { animation: ap-pulse var(--ap-pulse) ease-in-out infinite; }
+.ap-square[data-state="connecting"] svg { animation: ap-pulse var(--ap-pulse) var(--pulse-ease) infinite; }
 @keyframes ap-pulse { 50% { opacity: 0.35; } }
 
 .ap {
@@ -3450,7 +3450,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   display: block; position: absolute; top: 50%;
   right: calc(var(--space-2) + var(--icon-sm) + var(--space-1));
   width: var(--search-busy-size); height: var(--search-busy-size); margin-top: calc(-1 * var(--search-busy-size) / 2); border-radius: var(--radius-round);
-  background: var(--subtext); animation: search-pulse var(--search-pulse-dur) ease-in-out infinite;
+  background: var(--subtext); animation: search-pulse var(--search-pulse-dur) var(--pulse-ease) infinite;
 }
 @keyframes search-pulse { 50% { opacity: 0.25; } }
 
@@ -4897,7 +4897,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .split-pill__half[aria-disabled="true"] { opacity: var(--split-pill-dim); cursor: default; filter: none; }
 .split-pill__half:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
 /* A Full | Lib switch waiting for Apple's page: the pressed half breathes (FULL-LIB.md §5). */
-.split-pill__half[aria-busy="true"] { cursor: progress; animation: search-pulse var(--split-pill-busy-dur) ease-in-out infinite; }
+.split-pill__half[aria-busy="true"] { cursor: progress; animation: search-pulse var(--split-pill-busy-dur) var(--pulse-ease) infinite; }
 /* A level with Full | Lib keeps the bar's place (his call, 2026-10-13, FULL-LIB.md §5.2): the
    two views differ in length, and a bar that came and went moved the rows and the hero
    sideways on every switch. Only these levels: a short list there shows the 8 px strip. */

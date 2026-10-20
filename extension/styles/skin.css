@@ -698,6 +698,8 @@
   --dur-med:  0.18s;
   --dur-spin: 0.7s;
   --ease-ui:  ease;
+  --pulse-ease: ease-in-out;        /* a busy breath (the popup's search dot); the app's own token */
+  --search-pulse-dur: 0.9s;         /* the busy dot's breath while a search is out; the app's own token */
   --sh-cross-dur: 0.42s;            /* Shuffle's press run: uncross → parallel → cross */
   --sh-cross-gap: 3px;              /* how far the two wires part, in the icon's 24-unit box */
   --rp-loop-dur:  0.5s;             /* Repeat's one full turn, on the press that lands on "one" */

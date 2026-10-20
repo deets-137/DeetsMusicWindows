@@ -77,6 +77,8 @@ const hidden = () => root.dataset.ambient === "paused";
 // `effective`: a rule may hold the canvas and the picture (RULEZ.md §5.2, two rule keys).
 const mode = (): "aurora" | "covers" | "picture" => (currentSkin() === "glass" ? effective("glassCanvas") : "aurora");
 const ms = (token: string) => (reduced() ? 0 : tokenMs(token));
+/** The layer's fade curve; it rides with --wallpaper-fade-dur. */
+const fadeEase = () => getComputedStyle(root).getPropertyValue("--wallpaper-fade-ease").trim() || "ease";
 const num = (token: string, fallback: number) => parseFloat(getComputedStyle(root).getPropertyValue(token)) || fallback;
 /** The picture in use: yours, or the one a rule holds. `http://files.localhost/<id>` (user_files.rs). */
 const pictureId = () => effective("glassPictureId");
@@ -266,8 +268,8 @@ function buildSlots(w: number, h: number, n: number): void {
   const dur = ms("--wallpaper-fade-dur");
   if (old) {
     if (dur) {
-      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur, easing: "ease" });
-      old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: "ease", fill: "forwards" }).finished.then(() => old.remove(), () => old.remove());
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur, easing: fadeEase() });
+      old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: fadeEase(), fill: "forwards" }).finished.then(() => old.remove(), () => old.remove());
     } else old.remove();
   }
 }
@@ -410,7 +412,7 @@ function leave(fade: boolean): void {
   setSoft(null);
   if (dur && layer) {
     frames.during("wallpaper", dur, "leave");
-    layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: "ease", fill: "forwards" }).finished.then(done, done);
+    layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: fadeEase(), fill: "forwards" }).finished.then(done, done);
     diag.log("wallpaper:off", {});
   } else done();
 }
@@ -501,7 +503,7 @@ async function update(reason: string): Promise<void> {
     const dur = ms("--wallpaper-fade-dur");
     if (dur) {
       frames.during("wallpaper", dur, "enter");
-      layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur, easing: "ease" });
+      layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur, easing: fadeEase() });
     }
   } else if (plan.length) frames.during("wallpaper", ms("--wallpaper-tile-dur"), "tiles");
   plan.forEach((p) => swapSlot(p.slot, p.key, newGeom ? undefined : p.from));

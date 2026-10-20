@@ -278,8 +278,9 @@ function run(from: number): void {
     stopWatch = null;
     setSetting("onboardingStep", 0);
     diag.log("walk:end", { why, step: at });
-    card.style.opacity = "0";
-    window.setTimeout(() => layer.remove(), 300);
+    card.classList.add("is-leaving");
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => layer.remove(), still ? 0 : tokenMs("--pop-out"));
     window.removeEventListener("keydown", onKey, true);
     window.removeEventListener("resize", reposition);
   }

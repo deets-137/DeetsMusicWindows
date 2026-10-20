@@ -12,6 +12,28 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-19, late — `v-thirtyone`: the last raw motion values on tokens; a Motion view in TOKENS.md
+
+His ask: count how much of the app's motion is on tokens, then put the rest on tokens and
+update the ledger. The audit: 154 CSS `transition` / `animation` declarations and 63 `.animate()`
+calls. Before the pass, 12 values were raw. All 12 now read tokens:
+- New tokens: `--pulse-ease` (the AirPlay, Search and Library pill pulses, and the extension
+  popup's dot), `--slider-release-hold`, `--present-roll-ease`, `--drag-scroll-edge` and
+  `--drag-scroll-speed`.
+- Drag auto-scroll is now px per second (540 = the old 9 px a frame at 60 Hz). It was 2.4×
+  faster on a 144 Hz screen.
+- wallpaper.ts's four fades now read `--wallpaper-fade-ease`. The token existed, but nothing read it.
+- The walk card now leaves on `--pop-out`. Before, walk-card-in's fill held its inline opacity,
+  so the card never faded and vanished after a fixed 300 ms.
+
+The raw values left are correct by nature: `linear` on spins and constant-speed scrolls,
+`steps()` computed from `--ambient-fps`, `* 1s` unit conversions, and the Ocean gesture
+constants. TOKENS.md has a new **Motion** section (scripts/tokens.mjs): 112 tokens and the files
+that read each. Every motion token has a reader. No check fails a raw duration or easing yet
+(check 28 covers color only). The Mod system architecture session had no skin tokens ready:
+Metal's tokens are open forks (ideas/metal.md §8). Desk test: drag a row to a long list's edge
+(the scroll speed), end the first-run walk (the card fades), and watch the wallpaper fade in Glass › Canvas.
+
 ## 2026-10-19, late — `v-thirtyone`: a made web clears the Web panel
 
 His ask: after Make playlist, the next open of the Web panel starts fresh (no seed, chips, name

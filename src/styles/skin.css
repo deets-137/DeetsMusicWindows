@@ -669,6 +669,7 @@
   --scrub-glow-max:     5px;    /* … and at its brightest */
   --scrub-glow-held:    3px;    /* Cyber: the glow while the bolt is held */
   --scrub-flicker-dur:  0.12s;  /* Cyber: the one flicker on release */
+  --slider-release-hold: 0.3s;  /* how long a slider wears data-released after the drag (slider.ts); longer than any release motion */
   --scrub-lens-glint-blur:  1.5px; /* Glass: the lens's two inset glints */
   --scrub-lens-shadow-blur: 2px;   /* Glass: the lens's drop shadow */
 
@@ -720,6 +721,7 @@
   --present-count-gap: calc(var(--space-5) * 2); /* Plays ↔ Listeners */
   --present-num:      clamp(40px, 11cqi, 128px); /* the counts: they follow the card's width (cqi) */
   --present-roll-dur: 1.2s;                    /* a count that moved rolls up to its new value */
+  --present-roll-ease: cubic-bezier(0.33, 1, 0.68, 1); /* the roll's curve (present.ts): fast, then it settles on the number */
   --present-in-delay: calc(var(--grow-dur) * 0.4); /* the words fade in once the clip is mostly open (--grow-rows-at's fraction) */
   /* An album's full Apple note (present.ts openNotes, features/album-notes.md): the same view, words in place of counts. */
   --notes-gap:        var(--space-3);          /* paragraph ↔ paragraph, song row ↔ its words */
@@ -919,6 +921,7 @@
   --dur-med:  0.18s;
   --dur-spin: 0.7s;
   --ease-ui:  ease;
+  --pulse-ease: ease-in-out;        /* a busy or connecting breath (AirPlay square, Search dot, Library pill): no hard edge at either end */
   --sh-cross-dur: 0.42s;            /* Shuffle's press run: uncross → parallel → cross */
   --sh-cross-gap: 3px;              /* how far the two wires part, in the icon's 24-unit box */
   --rp-loop-dur:  0.5s;             /* Repeat's one full turn, on the press that lands on "one" */
@@ -926,6 +929,8 @@
   --drag-lift:  scale(1.02);        /* lift of a dragged row's copy (row-drag.ts) */
   --drag-ghost-opacity: 0.85;       /* the copy stays see-through so the list under it reads */
   --drag-nodrop-opacity: 0.5;       /* the copy over a place that takes no drop */
+  --drag-scroll-edge:  28px;        /* a drag this near a list's edge scrolls the list (row-drag.ts) */
+  --drag-scroll-speed: 540;         /* px per second: the old 9 px a frame at 60 Hz, now the same on every refresh rate */
   --drag-source-opacity: 0.4;       /* the pressed row, left in place while its copy moves */
   --drop-line-w: 2px;               /* insertion-indicator + drop-target outline thickness */
   /* -- movable rows (MOVABLE-ROWS.md): the press-and-hold that turns a header into its

@@ -26,6 +26,7 @@ export interface SliderHandle {
 }
 
 import * as frames from "./frames";
+import { tokenMs } from "./boot-cover";
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
@@ -72,7 +73,7 @@ export function makeSlider(el: HTMLElement, opts: SliderOptions): SliderHandle {
     dragging = false;
     delete el.dataset.dragging;
     el.dataset.released = "";
-    releasedTimer = window.setTimeout(() => delete el.dataset.released, 300);
+    releasedTimer = window.setTimeout(() => delete el.dataset.released, tokenMs("--slider-release-hold"));
     endFrames();
     const f = fracAt(e.clientX, e.clientY);
     reflect(f);

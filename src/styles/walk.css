@@ -178,6 +178,12 @@
 @keyframes walk-card-in {
   from { opacity: 0; transform: translateY(var(--hint-shift)); }
 }
+/* The walk ends: the card leaves the way it came, over --pop-out; walk.ts removes the layer
+   after the same token. An inline opacity could not do this: walk-card-in's fill holds it. */
+.walk__card.is-leaving { animation: walk-card-out var(--pop-out) var(--ease-ui) forwards; }
+@keyframes walk-card-out {
+  to { opacity: 0; transform: translateY(var(--hint-shift)); }
+}
 @keyframes walk-target {
   to { filter: brightness(1.35); }
 }
@@ -187,6 +193,6 @@
 @media (prefers-reduced-motion: reduce) {
   .walk__stop { transition: none; }
   .walk__stop[data-move="walk"] .walk__sprite { animation: none; }
-  .walk__card, .walk__btn--next { animation: none; }
+  .walk__card, .walk__card.is-leaving, .walk__btn--next { animation: none; }
   .walk-target { animation: none; outline: var(--focus-ring-w) solid var(--title); }
 }

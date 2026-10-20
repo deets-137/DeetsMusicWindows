@@ -23,6 +23,7 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import { wireListKeys } from "./list-keys";
 import type { Track } from "./library";
 import { tokenMs } from "./boot-cover";
+import { bezierAt, parseBezier } from "./stepped-ease";
 import * as frames from "./frames";
 import * as diag from "./diag";
 
@@ -122,11 +123,12 @@ function roll(b: HTMLElement, to: number): void {
     b.textContent = fmt(to);
     return;
   }
+  const curve = parseBezier(getComputedStyle(b).getPropertyValue("--present-roll-ease")) ?? [0.33, 1, 0.68, 1];
   const t0 = performance.now();
   const step = (now: number) => {
     if (b.dataset.n !== String(to)) return; // a newer roll took over
     const k = Math.min(1, (now - t0) / dur);
-    const e = 1 - Math.pow(1 - k, 3);
+    const e = bezierAt(curve, k);
     b.textContent = fmt(Math.round(from + (to - from) * e));
     if (k < 1) requestAnimationFrame(step);
   };

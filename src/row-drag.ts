@@ -23,8 +23,12 @@ import type { Track } from "./library";
 import type { Station } from "./radio";
 
 const DRAG_THRESHOLD = 6;
-const EDGE = 28; // px from a list's top/bottom edge where auto-scroll starts
-const STEP = 9; // px scrolled per frame
+// Auto-scroll near a list's edge: --drag-scroll-edge (px) and --drag-scroll-speed (px per
+// second, so a 144 Hz screen scrolls as fast as a 60 Hz one). Read once per drag.
+let edge = 28;
+let speed = 540;
+let tick = 0; // the last frame's time
+let carry = 0; // the part of a pixel not scrolled yet
 
 /** What a drag carries (§2). `tracks()` runs only at the drop, so a Search album costs no
  *  fetch until it lands somewhere. */
@@ -425,12 +429,18 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
     document.documentElement.classList.toggle("is-drag-nodrop", nodrop);
   };
 
-  const autoScroll = () => {
+  const autoScroll = (now: number) => {
     const d = drag;
     if (!d) return;
+    // A long frame (a stall) scrolls at most 50 ms worth, not a jump.
+    carry += (speed * Math.min(50, tick ? now - tick : 0)) / 1000;
+    tick = now;
+    const STEP = Math.trunc(carry);
+    carry -= STEP;
     const el = d.reordering ? scrollerOf(d.src.list) : d.hit?.scroll;
-    if (el?.isConnected) {
+    if (el?.isConnected && STEP) {
       const r = el.getBoundingClientRect();
+      const EDGE = edge;
       if (d.reordering && (d.src.axis ?? "y") === "x") {
         const dx = d.lastX < r.left + EDGE ? -STEP : d.lastX > r.right - EDGE ? STEP : 0;
         if (dx && d.lastY >= r.top && d.lastY <= r.bottom) {
@@ -478,6 +488,11 @@ export function rowDrag(opts: RowDragOptions): RowDrag {
       reordering: false, to: p.index, hit: null, slot: null, raf: 0,
     };
     opts.onStart?.(p.index);
+    const cs = getComputedStyle(document.documentElement);
+    edge = parseFloat(cs.getPropertyValue("--drag-scroll-edge")) || 28;
+    speed = parseFloat(cs.getPropertyValue("--drag-scroll-speed")) || 540;
+    tick = 0;
+    carry = 0;
     update();
     drag.raf = requestAnimationFrame(autoScroll);
   };
