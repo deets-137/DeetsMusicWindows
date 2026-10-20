@@ -198,6 +198,12 @@ for word, with RELEASE.md's section numbers.
   album), `album-notes.ts`, the pure parse `album-notes-parse.ts`, `openNotes` in present.ts.
   §5.1 the probes (46 % of real albums have notes, singles none); §6 a Library album's real
   artist; §8 the as-built record, and what Claude decided (§8.2, his OK).
+- `listening-time.md` — V1 BUILT 2026-10-19 on `ideas-nineteen`, desk test open (§9.3): the
+  Rewind button in the Max title bar (his hourglass, to be redrawn), its panel: *Today: N mins*
+  (Settings › Rewind › *Today's time in*, `rewindToday`), Top Listens (all time, most played, the
+  Library's Sort pop for Songs / Albums / Artists and ↑ ↓) and SOTD (picks, newest first).
+  `src/rewind-btn.ts`. His calls §8; §9 the as-built record and what Claude decided (§9.2). The
+  Rewind card stays until he decides (§9.4); the breakdown by genre and weekday (§4) is not built.
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.

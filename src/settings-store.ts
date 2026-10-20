@@ -339,6 +339,9 @@ export interface Settings {
   replayDay: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
   /** Each week gets its own dated Replay (off = one rolling playlist, replaced weekly). */
   replayKeep: boolean;
+  /** The Rewind panel's Today number (docs/features/listening-time.md): minutes always, or
+   *  hours and minutes. */
+  rewindToday: "mins" | "hm";
   // ── library & playlists ──
   /** Backfill missing playlist song counts on the overview (§14). */
   playlistEagerCounts: boolean;
@@ -611,6 +614,7 @@ export const DEFAULTS: Settings = {
   replayAuto: true,
   replayDay: "mon",
   replayKeep: false,
+  rewindToday: "mins", // his call 2026-10-19: "Today: XX mins", always minutes; the row is for a user who wants hours
   playlistEagerCounts: true,
   playlistCreateSummon: "on",
   playlistCreateSummonSolo: false, // user's call 2026-10-16: where Playlists is the only card, Search would replace the playlist you just made

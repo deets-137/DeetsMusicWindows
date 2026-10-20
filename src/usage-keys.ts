@@ -52,7 +52,7 @@ export const REPORTED: readonly string[] = [
   // Cards: which cards the picker offers
   ...HIDEABLE_CARDS.map((id) => `hiddenCards.${id}`),
   // Rewind, Diary, Song of the Day
-  "fullPlayRule", "replayAuto", "replayDay", "replayKeep", "diaryRescale", "diaryGrow",
+  "fullPlayRule", "replayAuto", "replayDay", "replayKeep", "rewindToday", "diaryRescale", "diaryGrow",
   "sotd", "sotdSuggest", "sotdDayStart", "sotdPicksPerDay", "sotdPostMode",
   // Connections (on/off and the mode only), Updates
   "agentControl", "agentSettings", "agentHistory", "agentDiary", "updateMode",

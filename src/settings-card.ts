@@ -213,6 +213,7 @@ const NEW_MARKS: NewMark[] = [
   // Cover load animations, one toggle per card, built 2026-10-17 (UX-COVERUPS.md §7.12)
   ...["library", "playlists", "home", "search", "queue", "history", "rewind", "radio", "diary"].map((id): NewMark => ({ section: "Cards", row: `wait-${id}` })),
   { section: "Skin settings", row: "pressvinylfps", skin: "press", via: { row: "pressvinyl", values: ["spin"] } }, // Spin FPS, built 2026-10-17 (VINYL.md §12)
+  { section: "Rewind", row: "rewindtoday" }, // Today's time in, built 2026-10-19 (listening-time.md)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -481,7 +482,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
   { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "homeHideLasts", "homeHidden"] },
   { id: "cards", label: "Cards", hint: "Every card back in the picker, and every card waits for its covers. Rewind stays out until 50 plays", keys: ["hiddenCards", "instantCards"] },
-  { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["fullPlayRule", "replayDay", "replayAuto", "replayKeep"] },
+  { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["fullPlayRule", "replayDay", "replayAuto", "replayKeep", "rewindToday"] },
   { id: "diary", label: "Album Reviews", hint: "Rescale scores and Grow on open. Not your reviews — those are your writing, not a setting", keys: ["diaryRescale", "diaryGrow"] },
 ];
 /** The groups the Look and feel row resets; LOOK_PARTS get their own indented rows (menus does not). */
@@ -1986,6 +1987,12 @@ function mountSettings(
           ],
         },
         storeToggle("replaykeep", "Keep every Replay", "replayKeep", () => "Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly"),
+        // The Rewind panel's first row (docs/features/listening-time.md; his call 2026-10-19).
+        {
+          kind: "choice", id: "rewindtoday", label: "Today's time in", key: "rewindToday",
+          hint: "How the Rewind panel in the title bar shows the time you listened today",
+          options: [{ value: "mins", label: "Minutes" }, { value: "hm", label: "Hours and minutes" }],
+        },
       ],
     },
     {

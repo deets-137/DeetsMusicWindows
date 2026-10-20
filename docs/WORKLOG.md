@@ -12,6 +12,26 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-19 — The Rewind button (listening time V1), on `ideas-nineteen`
+
+**The idea** ([features/listening-time.md](features/listening-time.md), then in `ideas/`): a title
+bar glance at the minutes listened, and Rewind split by genre and weekday. Claude's push-back
+(§2): no second stats card.
+
+**His calls** (§8): F1 A (`ms_listened` as it is); the Rewind card goes into a left-aligned
+title bar button with an hourglass; a panel titled Rewind, *Today: XX mins* first (always
+minutes, a Settings row for hours); Top Listens (left) and SOTD (right), each list sliding in;
+the Library's Sort pop for Songs / Albums / Artists with ↑ ↓. F4–F7 later.
+
+**Built** (§9): `src/rewind-btn.ts`, `styles/rewind-top.css`, the markup in `index.html`;
+`rewind.ts` `topSince` (split out of `topBy`) and `listenedToday`; `rewind-window.ts` `todayStart`
+and `fmtToday` with two tests; the `rewindToday` key, row, agent spec, reset group, usage list and
+New mark; the Compass row *Listening today*; the ledgers (ONBOARDING §1, CONTEXT-MENUS, SETTINGS,
+SETTINGS-INVENTORY, COMPASS-TERMS); TOKENS.md regenerated. Checked: `tsc`, `npm test` (348 pass),
+`vite build`, `docs:check` (only the 8 old failures from sibling repos not in this container).
+Not run: a shots list on the dev app (the session ran in a Linux cloud container). What Claude
+decided inside his calls: §9.2. **Open:** his desk test §9.3; the card's future §9.4.
+
 ## 2026-10-19 — The motion monitor: teleports, row jumps, the dev app
 
 A side session of the frame hunt, on `main`. The task: the monitor missed both jumps fixed on

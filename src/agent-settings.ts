@@ -406,6 +406,7 @@ const SPECS: Spec[] = [
     { value: "fri", label: "Fri" }, { value: "sat", label: "Sat" }, { value: "sun", label: "Sun" },
   ]),
   storeToggle("Rewind", "replayKeep", "Keep every Replay"),
+  storeChoice("Rewind", "rewindToday", "Today's time in", [{ value: "mins", label: "Minutes" }, { value: "hm", label: "Hours and minutes" }]),
   // ── Diary (docs/features/DIARY.md §5) ──
   storeChoice("Album Reviews", "diaryRescale", "Rescale scores", [{ value: "ask", label: "Ask" }, { value: "always", label: "Always" }, { value: "never", label: "Never" }]),
   storeChoice("Album Reviews", "diaryGrow", "Grow on open", [{ value: "new", label: "New reviews" }, { value: "every", label: "Every review" }, { value: "never", label: "Never" }]),

@@ -244,6 +244,11 @@ each step that touches those calls.
      portrait Glass and Ocean, the Queue list's shown part ~25 px shorter in one frame at the
      close's end (`shots/scratch/smooth-dev-portrait/`).
   Then a release (the monitor runs first, RELEASE.md §0 step 1a).
+- **The Rewind button in the Max title bar** (2026-10-19, on `ideas-nineteen`;
+  [features/listening-time.md](features/listening-time.md) §9). The hourglass right of the updates
+  button opens a panel: *Today: N mins*, then Top Listens and SOTD, each list sliding in. One new
+  setting (`rewindToday`). **Open:** his desk test (§9.3), his look at §9.2, his hourglass, and
+  whether the Rewind card goes (§9.4). Then merge into `main`.
 
 - **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
   [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8

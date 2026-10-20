@@ -432,6 +432,7 @@ Who can see what you play. A status line under the rows says what is shared now.
 | Count a play at | When a play counts as listened through | **90%** / End / Half or 4 min |
 | Weekly Replay | A playlist of the past week's most-played songs, made on this weekday | **on**, **Mon** |
 | Keep every Replay | Each week gets its own dated playlist in a Replay folder. Off: one playlist, replaced weekly | on / **off** |
+| Today's time in | How the Rewind panel in the title bar shows the time you listened today: "134 mins" or "2 hrs 14 mins" | **Minutes** / Hours and minutes |
 
 ### Album Reviews
 

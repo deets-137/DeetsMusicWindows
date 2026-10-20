@@ -24,6 +24,7 @@ updated: 2026-09-20
 | **web** (playlist web) | The title bar's Web panel (2026-09-22). "web" and a seed is the Actions row instead (§2b of COMPASS.md) |
 | **quick settings** | The quick panel under the cog: every setting, by what it is for (2026-09-20) |
 | **what's new** (release notes, changelog, news) | Max only: the updates panel, with What's new unfolded (2026-10-16, UpdatesButton.md) |
+| **listening today** (top listens, minutes listened, most played) | Max only: the Rewind panel in the title bar (2026-10-19, listening-time.md) |
 | **updates and bugs** (update, report a bug, suggestion) | The updates panel in Max; in Mini and Midi, the quick panel at its Updates and bugs icon (2026-10-16) |
 | **listening room** (room, together) | The Room panel |
 | **friends** (friend, buddies, people, together) | The same panel's Friends half — its own row, because "friends" and "listening room" are two things a person means (FRIENDS.md §16.7) |

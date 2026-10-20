@@ -56,6 +56,8 @@ nothing about authoring changed when the box did.
 | Title menu | Settings… | Shows the Settings card | index.html |
 | Title bar | the compass (right of the cog; Max only since 2026-10-11) | Go anywhere! (Ctrl + Space) | index.html |
 | Title bar | the updates button (right of the compass; Max only, 2026-10-16, UpdatesButton.md) | Updates, what's new, and bug reports → offered: "DeetsMusic 0.29.0 is available" · "Downloading DeetsMusic 0.29.0" · "DeetsMusic 0.29.0 is ready. Restart to install it" | index.html, updates-btn.ts |
+| Title bar | the Rewind button, an hourglass (right of the updates button; Max only, 2026-10-19, listening-time.md) | Rewind: what you listened to today, your top listens and your Songs of the Day | index.html |
+| Rewind panel (2026-10-19) | Top Listens · SOTD · the view pill · its ↓ and ↑ squares | Your most played songs, albums or artists · Your Songs of the Day, newest first · What Top Listens ranks, and its order · Most played first · Least played first | rewind-btn.ts |
 | Updates panel (2026-10-16) | the version row's Download · Restart · Check now (Try again after a failed check: the same hint) · What's new's All release notes link | Downloads the update. Restart to install it · Installs the update and opens DeetsMusic again · Asks music-api.deets.solutions for a newer version · Opens every version's notes on deets.solutions | updates-btn.ts |
 | Title bar | the cog (right of the title; left of the compass since 2026-10-11) | Quick settings, grouped by what they are for, and the way to all of Settings (was *Opens Settings at full size* until 2026-09-20, QUICK-SETTINGS.md) | index.html |
 | Quick panel (2026-09-20) | the Tips line over the icons | Opens Settings at Tips | index.html |
