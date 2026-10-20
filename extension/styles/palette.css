@@ -74,4 +74,20 @@
      or pure white (Identity Guidelines); never tint it with a theme color. */
   --paint-apple-music-black:   #000000;
   --paint-apple-music-white:   #FFFFFF;
+  /* Metal (docs/features/metal.md §1b): each theme's metal and the floor under it, and the gold
+     Black & Yellow's titles take under Metal. Dark themes are steels, light themes aluminum,
+     Sepia a champagne bronze. */
+  --paint-dark-steel:          #242426; /* Black & Yellow's cards under Metal */
+  --paint-dark-steel-floor:    #161617;
+  --paint-gold-leaf:           #D9B45A; /* Black & Yellow's titles under Metal: gold, not hi-vis */
+  --paint-blackened-steel:     #231F20; /* Black & Red */
+  --paint-blackened-floor:     #141213;
+  --paint-blue-steel:          #2B3340; /* Moonlight */
+  --paint-blue-steel-floor:    #1A202A;
+  --paint-lilac-aluminum:      #DEDCE6; /* Lilac */
+  --paint-lilac-aluminum-floor:#C4C1CF;
+  --paint-green-aluminum:      #DBDFD6; /* Green */
+  --paint-green-aluminum-floor:#C3C9BD;
+  --paint-champagne-bronze:    #DDCFB4; /* Sepia */
+  --paint-champagne-floor:     #C5B492;
 }

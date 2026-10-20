@@ -55,7 +55,7 @@
      hue is the theme's --title; --vol-fill-strength is how hard that tint
      reads (a skin/material decision, not a color). */
   --vol-pill-w:        32px;   /* ~2.3× a traffic light */
-  --vol-pill-radius:   999px;  /* true capsule */
+  --vol-pill-radius:   var(--lib-pill-radius);  /* the same capsule as the Library pills in every skin (the 2026-10-20 inventory, docs/features/metal.md §4.4): a skin sets --lib-pill-radius once */
   --vol-pill-fs:       9px;
   --vol-fill-strength: 30%;
   --vol-icon-size:     calc(var(--traffic-size) - 4px);   /* inside the bar's 1 px border with a 1 px breath: 12 px at 16 */
@@ -501,6 +501,26 @@
      --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep
      --panel itself opaque: album-color.ts reads it for the contrast guard. */
   --panel-paint:  var(--panel);
+  /* Paint hooks (docs/features/metal.md §4.2, Step 2): off in every skin but Metal.
+     --panel-blend: the card paint's layers blend (a texture over its fill).
+     --app-canvas-color / -blend: a color under the page's canvas pattern, and the blend.
+     --control-paint (+ -size, -blend, --control-shadow): a texture and an edge light on the
+     control family (icon squares, Library pills and buttons), over its own fill.
+     --accent-sheen: a polished face over the accent fills (Library Play, the scrubber's fill). */
+  --panel-blend:         normal;
+  --app-canvas-color:    transparent;
+  --app-canvas-blend:    normal;
+  --control-paint:       none;
+  --control-paint-size:  auto;
+  --control-blend:       normal;
+  --control-shadow:      none;
+  --accent-sheen:        none;
+  /* Metal's textures (src/metal.ts draws them on <html> under Metal). Defined here so a frame
+     before it runs still has a valid paint: an undefined var() voids the whole background. */
+  --metal-texture:       none;
+  --metal-texture-fine:  none;
+  --metal-size:          480px;
+  --metal-size-fine:     240px;
   --sand-display: none;
   --sand-reach:   0px;
   --sand-tile:    128px;  /* the grain texture repeats on this tile (styles.css .panel::before) */
@@ -551,7 +571,7 @@
   --vinyl-swap-ease:    ease-in-out;
   --vinyl-swap-travel:  110%;         /* of the disc: far enough to leave the cover box */
   --vinyl-swap-fade:    0;            /* opacity at the far end of the slide */
-  --cover-swap:         none;         /* a plain cover's move on a song change (vinyl.ts): none, or zoetrope (the Metal draft, docs/ideas/metal.md §6.1); the record's slide wins where it shows */
+  --cover-swap:         none;         /* a plain cover's move on a song change (vinyl.ts): none, or zoetrope (the Metal draft, docs/features/metal.md §6.1); the record's slide wins where it shows */
   --zoetrope-run:       0.5;          /* the zoetrope's ends (vinyl.ts): how far off to the side, × the cover's width */
   --zoetrope-turn:      58;           /* … turned this many degrees on the drum */
   --zoetrope-scale:     0.6;          /* … at this size */
@@ -1075,7 +1095,6 @@
   --radius-control:     0;
   --panel-radius:       0;
   --lib-pill-radius:    0;
-  --vol-pill-radius:    0;
   --lib-pop-radius:     0;
   --lib-tile-radius:    0;
   --lib-row-art-radius: 0;
@@ -1433,7 +1452,6 @@
 
   /* controls — rounded glass chips (not the capsule, not the Press trim) */
   --lib-pill-radius:    12px;
-  --vol-pill-radius:    12px;
   --lib-tile-radius:    12px;
   --lib-row-art-radius: 8px;
 
@@ -1575,7 +1593,6 @@
   --radius-control:     2px;
   --panel-radius:       0;
   --lib-pill-radius:    2px;
-  --vol-pill-radius:    2px;
   --lib-pop-radius:     0;
   --lib-tile-radius:    0;
   --lib-row-art-radius: 0;
@@ -1651,6 +1668,127 @@
      filled via the mask, like every skin's handle) */
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 2 L6 14 h5 l-2 8 L18 9 h-5 l3 -7 Z' fill='%23000'/%3E%3C/svg%3E");
   --scrubber-handle-size: 14px;
+}
+
+/* ============================================================
+   METAL — finely brushed stainless steel, or thick acrylic paint
+   (docs/features/metal.md; his calls §1). Over every theme: each theme
+   names its metal and its floor (themes.css --metal / --metal-floor,
+   the --ink-2 pattern), so the dark themes are steels and the light
+   ones aluminum. The app's own UI pieces only: the material goes on
+   through the paint hooks, the shape is sharp, and the Now Playing
+   cover turns on a drum (the zoetrope, vinyl.ts) with the previous
+   and next covers peeking (styles.css "Metal", metal.ts).
+   The textures (--metal-texture, --metal-texture-fine) are drawn by
+   src/metal.ts from Settings › Skin settings (Material, Grain).
+   ============================================================ */
+[data-skin="metal"] {
+  /* type: Windows' own DIN (Bahnschrift) over Segoe UI Variable; nothing to bundle */
+  --font-title: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-body:  "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --fw-title:   600;
+
+  /* shape: sharp (his ask, 2026-10-19), a machined corner barely broken; no capsule pill */
+  --panel-radius:       4px;
+  --radius-panel:       4px;
+  --radius-control:     2px;
+  --lib-pill-radius:    2px;   /* the volume pill follows (base --vol-pill-radius) */
+  --lib-pop-radius:     4px;
+  --lib-tile-radius:    2px;
+  --lib-row-art-radius: 1px;
+  --scrollbar-radius:   1px;
+  --panel-border-width: 1px;
+  --panel-border:       var(--metal-edge);
+
+  /* the material: the theme's metal, a floor under it, and controls a step lighter */
+  --panel:         var(--metal);
+  --spane-bg:      var(--metal);
+  --border:        var(--metal-edge);
+  --surface:       light-dark(color-mix(in srgb, var(--metal), white 40%), color-mix(in srgb, var(--metal), white 7%));
+  --surface-hover: light-dark(color-mix(in srgb, var(--metal), white 62%), color-mix(in srgb, var(--metal), white 13%));
+  --canvas:        var(--metal-floor);
+  /* the grain over a plate lit a little at the top: no diagonal reflection (his call, 2026-10-19:
+     "old school app design") */
+  --panel-paint:
+    var(--metal-texture),
+    linear-gradient(180deg, color-mix(in srgb, var(--metal), white 5%), var(--metal) 45%, color-mix(in srgb, var(--metal), black 5%));
+  --panel-blend:        overlay, normal;
+  --canvas-bg:          var(--metal-texture);
+  --canvas-bg-size:     var(--metal-size) var(--metal-size);
+  --app-canvas-color:   var(--canvas);
+  --app-canvas-blend:   overlay;
+  --control-paint:      var(--metal-texture-fine);
+  --control-paint-size: var(--metal-size-fine) var(--metal-size-fine);
+  --control-blend:      overlay;
+  --control-shadow:     inset 0 1px 0 var(--metal-edge-hi), 0 1px 1px var(--metal-cast);
+  /* the accent fills: a polished face on the title ink, so yellow reads as gold */
+  --accent-sheen:       linear-gradient(160deg, var(--metal-sheen-hi), transparent 42%, var(--metal-sheen-lo));
+  /* the edges catch the light; a crisp contact shadow and a short cast one, no soft halo */
+  --shadow-card:
+    inset 0 1px 0 var(--metal-edge-hi),
+    inset 0 -1px 0 var(--metal-edge-lo),
+    0 1px 0 var(--metal-contact),
+    0 3px 6px var(--metal-cast);
+  --shadow-panel: 0 1px 0 var(--metal-contact), 0 6px 14px var(--metal-contact), inset 0 1px 0 var(--metal-edge-hi);
+
+  /* the cover change (Settings › Cover change sets --cover-swap; vinyl.ts runs it): a drum's
+     turn. The peek's geometry and timing are on the stage (below). */
+  --vinyl-swap-dur:  0.56s;
+  --vinyl-swap-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  /* a theme change (a rule, Live Theming) on a song change is a cut that lands under the
+     turning cover: a crossfade between a warm and a cool theme passes through grey */
+  --theme-morph-dur: 0.01s;
+
+  /* the stage with the peek (styles.css "Metal"): the box 5:4, the cover a square of 72 % of
+     its width, the side covers 62 % turned 30° on the drum; the turn runs between them */
+  --metal-peek-cover-inset: 5% 14%;   /* a square of 72 % of the width: 5 % of the height above and below */
+  --metal-peek-crop:        5%;       /* the box crops to the cover's top and bottom (a side cover's inner edge grew past them) */
+  --metal-peek-top:         11.25%;
+  --metal-peek-size-w:      62%;
+  --metal-peek-size-h:      77.5%;    /* 62 % of the width */
+  --metal-peek-turn:        30deg;
+  --metal-peek-dim:         brightness(0.7) saturate(0.9);
+  --metal-peek-shadow:      0 2px 6px var(--metal-contact);
+  --metal-cover-shadow:     0 2px 4px var(--metal-contact), 0 8px 18px var(--metal-cast);
+  --metal-cover-rim:        inset 0 0 0 1px color-mix(in srgb, white 16%, transparent), inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
+  --metal-perspective:      900px;
+
+  /* the scrubber: the thumbwheel (metal.md §1b2, idea 5, his pick) */
+  --metal-slot-h:        6px;
+  --metal-slot-radius:   1px;
+  --metal-wheel-w:       10px;
+  --metal-wheel-h:       18px;
+  --metal-wheel-radius:  3px;
+  --metal-wheel-pitch:   3px;    /* one knurl ridge */
+  --metal-wheel-roll:    30;     /* how far the ridges roll over the whole track, × the fill */
+  --metal-wheel-lift:    1.08;   /* under the pointer */
+  --metal-slot-shadow:   inset 0 1px 2px color-mix(in srgb, black 65%, transparent), 0 1px 0 var(--metal-edge-hi);
+  --metal-wheel-shadow:  0 1px 2px color-mix(in srgb, black 50%, transparent), inset 0 0 0 1px color-mix(in srgb, black 35%, transparent);
+  --metal-badge-in:      0.3s;   /* the Plays badge's fade when it appears */
+}
+/* the stage with the peek: the slower two-step turn between the side covers */
+[data-skin="metal"][data-metal-peek]:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) {
+  --zoetrope-run:        0.26;   /* the side cover's center, from the middle, × the cover's width */
+  --zoetrope-turn:       30;
+  --zoetrope-scale:      0.86;   /* the side cover (62 % of the box) over the cover (72 %) */
+  --zoetrope-fade:       1;
+  --zoetrope-dim:        0.7;
+  --zoetrope-stagger:    0.15;   /* the next cover sets off while the old one still moves: no still moment (his report) */
+  --zoetrope-leave-ease: cubic-bezier(0.45, 0, 0.55, 1);
+  --vinyl-swap-ease:     cubic-bezier(0.2, 1.12, 0.3, 1);   /* each step lands with a 2–3 px overshoot */
+  --vinyl-swap-dur:      0.72s;
+  --np-listen-inset:     calc(14% + 6px);   /* the Plays badge on the cover's own corner */
+}
+/* Cover change: Zoetrope (Settings › Skin settings) */
+[data-skin="metal"][data-metal-cover="zoetrope"] { --cover-swap: zoetrope; }
+/* Material: Acrylic — thick paint laid with a flat brush: the relief lights the strokes, a
+   softer edge, a slightly rounder card */
+[data-skin="metal"][data-metal-material="acrylic"] {
+  --panel-radius:   6px;
+  --radius-panel:   6px;
+  --panel-blend:    soft-light, normal;
+  --control-blend:  soft-light;
+  --metal-edge-hi:  light-dark(color-mix(in srgb, white 55%, transparent), color-mix(in srgb, white 6%, transparent));
 }
 
 /* Cyber's strike cycle: the bolt is wiped in top→bottom over ~60% of

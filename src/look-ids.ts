@@ -5,7 +5,7 @@
 // `RETIRED` in js/controls.js — the id is a contract with stored state.
 
 export type ThemeName = "lilac" | "green" | "sepia" | "moonlight" | "black-yellow" | "black-red";
-export type SkinName = "vanilla" | "press" | "ocean" | "glass" | "cyber";
+export type SkinName = "vanilla" | "press" | "ocean" | "glass" | "cyber" | "metal";
 
 // The 2026-08-10 rename traded four vibe names for what the themes actually are.
 export const RETIRED_THEMES: Record<string, ThemeName> = {

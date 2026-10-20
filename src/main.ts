@@ -33,6 +33,7 @@ import { warmMosaics } from "./mosaic";
 import { initWalk } from "./walk";
 import { initLayout } from "./layout";
 import { initSkinSettings } from "./skin-settings";
+import { initMetal } from "./metal";
 import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
 import { toast } from "./toast";
 import { repairText, type LoadProblems } from "./settings-repair";
@@ -196,6 +197,7 @@ window.addEventListener("DOMContentLoaded", () => {
   releaseRules = holdRegistry();
   boot("initLook", () => initLook()); // the theme and skin from the store, with the schedule's look on top (RULES.md §7a)
   boot("initSkinSettings", () => initSkinSettings()); // before the first paint, so a card never flashes the default look
+  boot("initMetal", () => initMetal()); // the Metal skin's textures, side covers and word fade (docs/features/metal.md)
   boot("initSurface", () => initSurface());
   // The rules engine's `surface` fact (RULES.md §5), registered here and not in surface.ts:
   // the unit tests load surface.ts, and the engine's log keeps Node running.
@@ -758,8 +760,6 @@ window.addEventListener("DOMContentLoaded", () => {
   later.push(["initTitleWeb", () => initTitleWeb()]); // the title bar's Web item (PLAYLIST-WEB.md §1a)
   // The copy editor's pencil (COPY-EDIT.md): dev only, so the release bundle drops the import.
   if (import.meta.env.DEV) later.push(["initCopyEdit", () => void import("./copy-edit").then((m) => m.initCopyEdit())]);
-  // The Metal draft (docs/ideas/metal.md §6.1): dev only, a console handle over Vanilla.
-  if (import.meta.env.DEV) later.push(["initMetalDraft", () => void import("./dev/metal-draft").then((m) => m.initMetalDraft())]);
   later.push(["initCompass", () => initCompass()]); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
   later.push(["initPlaylistExpiry", () => initPlaylistExpiry()]); // temporary web playlists (PLAYLIST-WEB.md §10)
   later.push(["initPlaylistRefresh", () => initPlaylistRefresh()]); // how often a mirrored Apple playlist re-reads its songs (PLAYLIST-REFRESH.md)

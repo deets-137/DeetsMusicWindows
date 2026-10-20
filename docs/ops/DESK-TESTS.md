@@ -123,7 +123,7 @@ Terms:
 
 ## 3. The list
 
-> **State on 2026-10-19: two rows are open,** **A10** (the Network panel: §9 passed on his word
+> **State on 2026-10-20: three rows are open,** **A11** (the Metal skin, set for 2026-10-21), **A10** (the Network panel: §9 passed on his word
 > 2026-10-19; only the fetch wrap's A/B is left, an agent's) and **B21** (deetsmeter's cold start, HANDOFF.md › Open
 > now). Every other row passed: the runs of 2026-09-27 to 2026-10-12, his report of 2026-10-13,
 > his word of 2026-10-17 (B22) and the live log of 2026-10-17 (B20, §5). The
@@ -142,6 +142,7 @@ Order: the uncommitted work first (a fail there stops a commit), then the releas
 | A7 | Hide cards: Settings › Cards, the picker's right-click, Undo, the lock, a restart | [HIDE-CARDS.md §9](../features/HIDE-CARDS.md) | one | agent + owner | Built 2026-10-10. Steps 1–8 an agent can run on the dev app; step 9 (the look of the locked rows) is his |
 | A8 | Layout for Max: 4 cards, 2 columns, 2 rows, 1 card; grow, Rulez, the full player | [MAX-CARDS.md §7](../features/MAX-CARDS.md) | one | agent + owner | Built 2026-10-11. Passed: the owner ran it (2026-10-12) |
 | A9 | Graphics fallback: the rule, the toast's three buttons, the restart, the GPU-process event, the row's three choices | [GRAPHICS-FALLBACK.md §8](../features/GRAPHICS-FALLBACK.md) | one | agent | Built 2026-10-11. Steps 1–3 and 6–8 on `dev:app -- --gpu=off`; step 4 relaunches the app; step 5 ends the dev app's GPU process by PID (match `com.deetsmusic.dev` in the command line, never the live app's) |
+| A11 | The Metal skin: the cover change, the peek, the thumbwheel, the four rows, every theme and surface; the other skins unchanged | [metal.md §6.4](../features/metal.md), DESK-TESTS.md §6.6 · `shots/scratch/metal-rapid.json`, `metal-next-back.json`, `metal-breakit.json` | one | agent, then owner | Built 2026-10-20 on `v-thirtyone`; set for 2026-10-21. §6.6 in order: the scripts (cold with `clearCache`), the timing gate (`changes[].pops`), the motion monitor, frames by time at full size; then his look. Pause through the app's Play button (a direct `pause()` was resumed) |
 | A10 | The Network panel: the title, the bars, the ping only while playing, Test, a drop, AirPlay; the fetch wrap's A/B | [speedtest.md §9](../features/speedtest.md) · `node docs/ops/checks/fetch-wrap.mjs` (§6.2) | one | owner, then agent | Built 2026-10-19 on `net-worked` in a cloud session: type-checked for Windows, never run. He runs §9 the evening of 2026-10-19; the A/B can be an agent's, on `dev:built`. Step 9 waits on the DeetsSupport deploy (his call) |
 | B1 | Go to Album grows, and the grow replaces the slide | [RULES.md §18](../architecture/RULES.md), *the grow replaces the slide* | one | agent | Also `deetsmusic diag --flush` (LOGGING.md § Reading it from outside) |
 | B2 | The rules engine: the tray panel follows a look change | [RULES.md §18](../architecture/RULES.md), the owner's list | one | agent | The tray panel is `tray.html`, a second webview; read its `data-theme` after a rule changes the look |
@@ -438,7 +439,7 @@ The first run: two agents, 39 scenarios, 7 fixes (LISTENERS.md §8.11).
 
 ### 6.6 Motion and transitions: catch the smallest piece (his ask, 2026-10-20)
 
-**What happened.** The Metal draft's cover change (docs/ideas/metal.md §6.1) passed seven
+**What happened.** The Metal draft's cover change (docs/features/metal.md §6.1) passed seven
 independent design reviews and Claude's own frame checks. Then he found four faults in a few
 minutes of use: a 133 ms stall in the middle of a turn, a blank cover that flashed in a side
 slot, doubled edges where two layers of one cover overlapped, and jumps, pops and wrong covers

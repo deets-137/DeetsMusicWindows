@@ -401,6 +401,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   `pressVinylSpeed` (16⅔ | 33⅓ | 45 | 78, the record speed in turns each minute),
   `pressVinylFps` (60 | 120 | 144 | 240, the most redraws a second; 2026-10-17) — each `[Press only]`; a set
   under another skin is stored, and the reply says it shows while Press is the skin.
+- The Metal rows (2026-10-20): `metalMaterial` (Steel | Acrylic), `metalGrain` (Faint | Fine |
+  Medium | Strong), `metalCoverChange` (Zoetrope | Off), `metalPeek` (on | off; with Zoetrope)
+  — each `[Metal only]`; a set under another skin is stored, and the reply says it shows while
+  Metal is the skin.
 - A slider takes a whole number 0–100 (`oceanSand`, `glassBacklight`, `glassTint`,
   `glassCanvasGlow`, `glassCanvasDim`), with or without `%`. The four Glass sliders are
   `[Glass only, with Fancy Glass on]`: while `glassFancy` is off they store a value but the look

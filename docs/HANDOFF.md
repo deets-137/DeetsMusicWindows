@@ -211,6 +211,12 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **The Metal skin** (2026-10-20, on `v-thirtyone`; [metal.md](features/metal.md) §6.4). A sixth
+  skin in the title menu: brushed steel or acrylic over every theme, the thumbwheel scrubber,
+  the zoetrope cover change with the peek, four Settings rows. **Open: the desk test, set for
+  2026-10-21** (DESK-TESTS.md row A11, §6.6): the scripted motion cases on the real skin, every
+  theme and surface, the other skins unchanged, then his look. DeetsSolutions' skin list is his
+  call. Not released.
 - **The full player's frames** (2026-10-18 and 2026-10-19, on `main`; fullscreen-player.md
   §14, §14.9). The stacked open and close per skin, the frame recorder (`frame-why.mjs`), and
   the player's state moved from `<html>` to the bento (the close's last frame restyles 256–536

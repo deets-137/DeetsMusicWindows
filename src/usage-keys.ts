@@ -62,4 +62,10 @@ export const REPORTED: readonly string[] = [
 export const NOT_REPORTED: Readonly<Record<string, string>> = {
   sunShift: "minutes, close to a time",
   usageReports: "the switch itself: a report leaves only while it is on",
+  // Metal's rows (2026-10-20): not sent until he decides (a new key on the allow-list is his call,
+  // USAGE-COUNTS.md §2); the skin itself is already counted through `skin`.
+  metalMaterial: "Metal's rows: his call before they are sent",
+  metalGrain: "Metal's rows: his call before they are sent",
+  metalCoverChange: "Metal's rows: his call before they are sent",
+  metalPeek: "Metal's rows: his call before they are sent",
 };

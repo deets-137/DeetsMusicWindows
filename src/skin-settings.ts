@@ -11,6 +11,9 @@
 //        `glassDiffusion` (0–100) → --glass-diffusion, the wallpaper's blur (never locked).
 // Press: `pressVinyl` / `pressVinylWhere` → `data-press-vinyl` / `data-press-vinyl-where`
 //        (docs/features/VINYL.md); the tray panel applies these two as well.
+// Metal: `metalMaterial` → `data-metal-material`; `metalCoverChange` → `data-metal-cover`
+//        (skin.css turns it into --cover-swap); `metalPeek` → `data-metal-peek`, present only
+//        with the zoetrope on. metal.ts draws the textures (it reads `metalGrain` itself).
 // The skin blocks in skin.css read them; other skins ignore them.
 
 import { setting, effective, onSettingsChange, GLASS_LOCKED } from "./settings-store";
@@ -60,7 +63,15 @@ export function initSkinSettings(): void {
   const applyGlassFancy = () => {
     document.documentElement.dataset.glassFancy = effective("glassFancy") ? "on" : "off";
   };
+  const applyMetal = () => {
+    const root = document.documentElement;
+    root.dataset.metalMaterial = setting("metalMaterial");
+    root.dataset.metalCover = setting("metalCoverChange");
+    if (setting("metalPeek") && setting("metalCoverChange") === "zoetrope") root.dataset.metalPeek = "";
+    else delete root.dataset.metalPeek;
+  };
   applyEdges();
+  applyMetal();
   applyScrubber();
   applyGlassFancy();
   applyVinylAttrs();
@@ -68,6 +79,7 @@ export function initSkinSettings(): void {
   applySliders();
   onSettingsChange((k) => {
     if (k === "oceanEdges") applyEdges();
+    if (k === "metalMaterial" || k === "metalCoverChange" || k === "metalPeek") applyMetal();
     if (k === "fancyScrubber") applyScrubber();
     if (isVinylKey(k)) applyVinylAttrs();
     if (k === "glassFancy") {

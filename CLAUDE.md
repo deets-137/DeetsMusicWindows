@@ -213,6 +213,13 @@ for word, with RELEASE.md's section numbers.
   runs every 30 s only while music plays. The header-only fetch wrap (`src/fetch-wrap.ts`, §5.3)
   gives the song pieces' speed; its A/B is `docs/ops/checks/fetch-wrap.mjs` (§6). His calls §7;
   §8 the as-built record. The worker route is deployed (2026-10-19).
+- `metal.md` — BUILT 2026-10-20 on `v-thirtyone`, desk test OPEN (set for 2026-10-21, DESK-TESTS.md
+  A11 and §6.6): the sixth skin, Metal. Finely brushed steel or acrylic over every theme (each theme
+  names `--metal` / `--metal-floor`; gold titles on Black & Yellow), sharp corners, the thumbwheel
+  scrubber, the zoetrope cover change with the peek (`--cover-swap`, `--zoetrope-*`, vinyl.ts;
+  `src/metal.ts` draws the textures, the side covers and the word fade). Settings › Skin settings:
+  Material, Grain, Cover change, Peek. His calls §1; §6.1 every review round, his reports and the
+  break-it pass; §6.4 the as-built record (the cleanup: one shape alias, the paint hooks).
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
@@ -314,12 +321,6 @@ The probes (§6, `ops/checks/spotify-probe.ps1`) ran 2026-10-18 (§6.3): the con
 `launch.md` — a first draft (2026-10-18), not posted: the Product Hunt listing and one Reddit
 post per community (r/AppleMusic, r/Windows11, r/SideProject, r/rust); he rewrites the words
 (his note). §4 the answers to ready; §5 the open questions (the tip jar, the Apple terms).
-`metal.md` — an idea (2026-10-19), a dev-only draft BUILT 2026-10-20 (§6.1): an elegant
-brushed-steel (or acrylic) sixth skin over every theme, the app's own UI pieces only (his calls
-§1). The draft: `src/dev/metal-draft.*` over Vanilla, picked in dev from the title menu's Skin
-list, tuned in Settings › Skin settings; the thumbwheel scrubber; the zoetrope cover change with
-the peek (`--cover-swap`, `--zoetrope-*` in skin.css, read by vinyl.ts). §6.1 records every
-review round, his reports and the break-it pass. §4 the token survey (primitives, §4.4).
 `mods.md` — an idea (2026-10-19): skins and themes a user downloads (a `.deetsmod` file, values
 only, no code or CSS, §6), built on metal.md's primitives; his marketplace page beside Hop in for
 a first load (§1); new theme slots later (§4, his note); the DeetsRGB widget talk as a record (§7).

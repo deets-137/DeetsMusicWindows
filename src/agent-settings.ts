@@ -288,6 +288,10 @@ const SPECS: Spec[] = [
   storeChoice("Skin settings", "pressVinylSpeed", "Spin speed", [{ value: "16", label: "16⅔" }, { value: "33", label: "33⅓" }, { value: "45", label: "45" }, { value: "78", label: "78" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
   storeChoice("Skin settings", "pressVinylFps", "Spin FPS", [{ value: "60", label: "60" }, { value: "120", label: "120" }, { value: "144", label: "144" }, { value: "240", label: "240" }], { only: "Press only, with Record player on Spin", note: skinNote("press", "Press") }),
   storeToggle("Skin settings", "pressVinylPlate", "Show record plate", { only: "Press only, with Record player on", note: skinNote("press", "Press") }),
+  storeChoice("Skin settings", "metalMaterial", "Material", [{ value: "steel", label: "Steel" }, { value: "acrylic", label: "Acrylic" }], { only: "Metal only", note: skinNote("metal", "Metal") }),
+  storeChoice("Skin settings", "metalGrain", "Grain", [{ value: "faint", label: "Faint" }, { value: "fine", label: "Fine" }, { value: "medium", label: "Medium" }, { value: "strong", label: "Strong" }], { only: "Metal only", note: skinNote("metal", "Metal") }),
+  storeChoice("Skin settings", "metalCoverChange", "Cover change", [{ value: "zoetrope", label: "Zoetrope" }, { value: "off", label: "Off" }], { only: "Metal only", note: skinNote("metal", "Metal") }),
+  storeToggle("Skin settings", "metalPeek", "Peek", { only: "Metal only, with Cover change on Zoetrope", note: skinNote("metal", "Metal") }),
   {
     key: "menuMode", label: "Open menus on hover", section: "Menus, hints and notices", kind: "toggle", options: ON_OFF,
     get: () => (setting("menuMode") === "hover" ? "on" : "off"),

@@ -12,9 +12,9 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 
 | Tier | File | Count |
 |---|---|---|
-| Palette (raw paints) | palette.css | 49 |
-| Theme (color roles) | themes.css | 54 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 678 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
+| Palette (raw paints) | palette.css | 62 |
+| Theme (color roles) | themes.css | 63 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 690 tokens · overrides: vanilla 4, press 69, ocean 45, glass 72, cyber 68, metal 55 |
 
 ## Theme roles
 
@@ -62,6 +62,15 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--np-listen-ink` | `var(--title)` | — |  |
 | `--np-listen-sub` | `var(--subtext)` | — |  |
 | `--glint` | `light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65))` | — | The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy scrubbers). Light is white in every theme, so this is the one role no theme remaps; a little dimmer on dark themes so it does not blaze. |
+| `--metal-edge` | `light-dark(rgba(0, 0, 0, 0.22), rgba(255, 255, 255, 0.12))` | — | Metal (docs/features/metal.md): light and shade on the metal, the same in every theme (light is white, shade is black), stronger on the light aluminums. Only Metal reads them. |
+| `--metal-edge-hi` | `light-dark(rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.16))` | — |  |
+| `--metal-edge-lo` | `light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.6))` | — |  |
+| `--metal-contact` | `rgba(0, 0, 0, 0.3)` | — | a card's crisp contact shadow |
+| `--metal-cast` | `rgba(0, 0, 0, 0.16)` | — | its short cast shadow |
+| `--metal-sheen-hi` | `rgba(255, 255, 255, 0.38)` | — | the polished face on an accent fill |
+| `--metal-sheen-lo` | `rgba(0, 0, 0, 0.24)` | — |  |
+| `--metal` | — | every theme |  |
+| `--metal-floor` | — | every theme |  |
 | `--canvas` | — | every theme |  |
 | `--go` | — | every theme |  |
 | `--stop` | — | every theme |  |
@@ -85,12 +94,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--font-title` | `"Liberation Serif", Georgia, "Times New Roman", serif` | press, ocean, glass, cyber |  |
-| `--font-body` | `"Liberation Sans", Arial, Helvetica, sans-serif` | press, ocean, cyber |  |
+| `--font-title` | `"Liberation Serif", Georgia, "Times New Roman", serif` | press, ocean, glass, cyber, metal |  |
+| `--font-body` | `"Liberation Sans", Arial, Helvetica, sans-serif` | press, ocean, cyber, metal |  |
 | `--fs-title` | `20px` | press, ocean, glass, cyber |  |
 | `--fs-text` | `14px` | press, cyber |  |
 | `--fs-subtext` | `12px` | press, cyber |  |
-| `--fw-title` | `700` | press, ocean, glass, cyber |  |
+| `--fw-title` | `700` | press, ocean, glass, cyber, metal |  |
 | `--fw-text` | `400` | cyber |  |
 | `--fw-subtext` | `400` | cyber |  |
 | `--lh-text` | `1.45` | press |  |
@@ -119,7 +128,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--vol-pill-w` | `32px` | — | Pill height tracks --traffic-size (sits level with the lights). The fill hue is the theme's --title; --vol-fill-strength is how hard that tint hue is the theme's --title; --vol-fill-strength is how hard that tint reads (a skin/material decision, not a color). — ~2.3× a traffic light |
-| `--vol-pill-radius` | `999px` | press, glass, cyber | true capsule |
+| `--vol-pill-radius` | `var(--lib-pill-radius)` | — | the same capsule as the Library pills in every skin (the 2026-10-20 inventory, docs/features/metal.md §4.4): a skin sets --lib-pill-radius once |
 | `--vol-pill-fs` | `9px` | — |  |
 | `--vol-fill-strength` | `30%` | — |  |
 | `--vol-icon-size` | `calc(var(--traffic-size) - 4px)` | — | inside the bar's 1 px border with a 1 px breath: 12 px at 16 |
@@ -342,14 +351,14 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--radius-panel` | `10px` | press, cyber |  |
-| `--radius-control` | `6px` | press, cyber |  |
+| `--radius-panel` | `10px` | press, cyber, metal |  |
+| `--radius-control` | `6px` | press, cyber, metal |  |
 
 ### floating panels (menus / popovers)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--shadow-panel` | `0 8px 24px rgba(0, 0, 0, 0.18)` | press |  |
+| `--shadow-panel` | `0 8px 24px rgba(0, 0, 0, 0.18)` | press, metal |  |
 | `--menu-min-w` | `122px` | — |  |
 | `--menu-fly-max-w` | `calc(var(--menu-min-w) * 2.6)` | — | A flyout is as wide as its longest row, up to this (2026-10-10: an absolute box at left: 100% has no room to grow, so every long label wrapped at its longest word). |
 | `--ctx-divider-gap` | `var(--space-1)` | — | above and below a menu divider (DividerItem) |
@@ -404,17 +413,17 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--walk-card-gap` | `var(--space-2)` | — | between the sprites and the speech card |
 | `--walk-point` | `14px` | — | the arm/arrow that names the target |
 | `--walk-pair-gap` | `4px` | — | between Deets and Happy |
-| `--spane-bg` | `var(--panel)` | ocean, glass, cyber | Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the base paints the panel material — an opaque slide masks the pane beneath. Translucent skins (Glass, Cyber) drop this to transparent: they FADE off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting --panel over the card's own frost stacks into a visible rectangle. |
+| `--spane-bg` | `var(--panel)` | ocean, glass, cyber, metal | Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the base paints the panel material — an opaque slide masks the pane beneath. Translucent skins (Glass, Cyber) drop this to transparent: they FADE off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting --panel over the card's own frost stacks into a visible rectangle. |
 
 ### bento panels
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--panel-gap` | `var(--space-3)` | — |  |
-| `--panel-radius` | `12px` | press, ocean, glass, cyber |  |
+| `--panel-radius` | `12px` | press, ocean, glass, cyber, metal |  |
 | `--panel-pad` | `var(--space-3)` | — |  |
-| `--panel-border-width` | `0` | press, ocean, glass, cyber | borderless: spacing/typography carry the |
-| `--panel` | `var(--canvas)` | press, ocean, glass, cyber | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
+| `--panel-border-width` | `0` | press, ocean, glass, cyber, metal | borderless: spacing/typography carry the |
+| `--panel` | `var(--canvas)` | press, ocean, glass, cyber, metal | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
 | `--shadow-card` | `none` | press, ocean, cyber | skins add a real card shadow |
 | `--panel-backdrop` | `none` | press, glass | frosted-glass blur behind the panel; a skin opts in |
 | `--scroller-layer` | `auto` | vanilla, press, ocean, glass, cyber | will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell). Press and Vanilla opted in too on 2026-10-11, so every skin has the layer: without it a list scrolls on the main thread and drops frames |
@@ -424,8 +433,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--canvas-bg` | `none` | press, glass | A background-image BEHIND the cards. Its color comes from a theme role (--border); the pattern is skin. Vanilla paints nothing. The role (--border); the pattern is skin. Vanilla paints nothing. The extension pages paint --canvas-bg as-is (static). In the app, extension pages paint --canvas-bg as-is (static). In the app, .app-body paints --app-canvas-bg; a skin whose canvas MOVES sets it .app-body paints --app-canvas-bg; a skin whose canvas MOVES sets it to none and draws on an ambient layer instead (Glass → aurora), to none and draws on an ambient layer instead (Glass → aurora), because a moving background repaints every frame. |
-| `--canvas-bg-size` | `auto` | press, glass, cyber |  |
+| `--canvas-bg` | `none` | press, glass, metal | A background-image BEHIND the cards. Its color comes from a theme role (--border); the pattern is skin. Vanilla paints nothing. The role (--border); the pattern is skin. Vanilla paints nothing. The extension pages paint --canvas-bg as-is (static). In the app, extension pages paint --canvas-bg as-is (static). In the app, .app-body paints --app-canvas-bg; a skin whose canvas MOVES sets it .app-body paints --app-canvas-bg; a skin whose canvas MOVES sets it to none and draws on an ambient layer instead (Glass → aurora), to none and draws on an ambient layer instead (Glass → aurora), because a moving background repaints every frame. |
+| `--canvas-bg-size` | `auto` | press, glass, cyber, metal |  |
 | `--canvas-bg-repeat` | `repeat` | press, glass, cyber |  |
 | `--app-canvas-bg` | `var(--canvas-bg)` | glass |  |
 | `--canvas-dim` | `0` | glass | A black layer over the canvas and ambient layers, under the cards (.app-body::after), as an alpha 0–1. Base 0. Glass drives it (Dim canvas) and undoes it in its frost. |
@@ -512,6 +521,18 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--panel-paint` | `var(--panel)` | glass | .panel paints --panel-paint. A skin with sand edges sets it transparent and shows --panel on .panel::before instead, broken into grains over and shows --panel on .panel::before instead, broken into grains over --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --panel itself opaque: album-color.ts reads it for the contrast guard. |
+| `--panel-blend` | `normal` | metal | Paint hooks (docs/features/metal.md §4.2, Step 2): off in every skin but Metal. --panel-blend: the card paint's layers blend (a texture over its fill). --app-canvas-color / -blend: a color under the page's canvas pattern, and the blend. --control-paint (+ -size, -blend, --control-shadow): a texture and an edge light on the control family (icon squares, Library pills and buttons), over its own fill. --accent-sheen: a polished face over the accent fills (Library Play, the scrubber's fill). |
+| `--app-canvas-color` | `transparent` | metal |  |
+| `--app-canvas-blend` | `normal` | metal |  |
+| `--control-paint` | `none` | metal |  |
+| `--control-paint-size` | `auto` | metal |  |
+| `--control-blend` | `normal` | metal |  |
+| `--control-shadow` | `none` | metal |  |
+| `--accent-sheen` | `none` | metal |  |
+| `--metal-texture` | `none` | — | Metal's textures (src/metal.ts draws them on <html> under Metal). Defined here so a frame before it runs still has a valid paint: an undefined var() voids the whole background. |
+| `--metal-texture-fine` | `none` | — |  |
+| `--metal-size` | `480px` | — |  |
+| `--metal-size-fine` | `240px` | — |  |
 | `--sand-display` | `none` | — |  |
 | `--sand-reach` | `0px` | — |  |
 | `--sand-tile` | `128px` | — | the grain texture repeats on this tile (styles.css .panel::before) |
@@ -558,11 +579,11 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--vinyl-groove-w` | `1px` | — |  |
 | `--vinyl-groove-ink` | `var(--title)` | — |  |
 | `--vinyl-groove-alpha` | `9%` | — |  |
-| `--vinyl-swap-dur` | `0.4s` | press |  |
-| `--vinyl-swap-ease` | `ease-in-out` | press |  |
+| `--vinyl-swap-dur` | `0.4s` | press, metal |  |
+| `--vinyl-swap-ease` | `ease-in-out` | press, metal |  |
 | `--vinyl-swap-travel` | `110%` | — | of the disc: far enough to leave the cover box |
 | `--vinyl-swap-fade` | `0` | — | opacity at the far end of the slide |
-| `--cover-swap` | `none` | — | a plain cover's move on a song change (vinyl.ts): none, or zoetrope (the Metal draft, docs/ideas/metal.md §6.1); the record's slide wins where it shows |
+| `--cover-swap` | `none` | — | a plain cover's move on a song change (vinyl.ts): none, or zoetrope (the Metal draft, docs/features/metal.md §6.1); the record's slide wins where it shows |
 | `--zoetrope-run` | `0.5` | — | the zoetrope's ends (vinyl.ts): how far off to the side, × the cover's width |
 | `--zoetrope-turn` | `58` | — | … turned this many degrees on the drum |
 | `--zoetrope-scale` | `0.6` | — | … at this size |
@@ -686,13 +707,13 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--lib-pill-radius` | `999px` | press, glass, cyber | fully-rounded sort/view pills |
-| `--lib-pop-radius` | `var(--radius-panel)` | press, cyber |  |
+| `--lib-pill-radius` | `999px` | press, glass, cyber, metal | fully-rounded sort/view pills |
+| `--lib-pop-radius` | `var(--radius-panel)` | press, cyber, metal |  |
 | `--lib-pop-dir-size` | `26px` | — | a direction / density square in the Sort and View pops |
 | `--lib-grid-gap` | `var(--space-2)` | — |  |
 | `--lib-tile-small` | `84px` | — | min tile width — small squares (denser) |
 | `--lib-tile-large` | `132px` | — | min tile width — large squares |
-| `--lib-tile-radius` | `8px` | press, glass, cyber |  |
+| `--lib-tile-radius` | `8px` | press, glass, cyber, metal |  |
 | `--tile-badge-size` | `20px` | — | the tile badge (PINS.md): a pinned tile's corner square |
 | `--tile-badge-inset` | `var(--space-1)` | — |  |
 | `--tile-badge-radius` | `var(--lib-tile-radius)` | — | cut to the tile's own corner |
@@ -730,14 +751,14 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--lib-stuck-h` | `0px` | — | the height of a list's stuck header (.lib-view-bar / .lib-cols), its scroll-padding-top; the engine sets the measured value on each view, this is a list with none |
 | `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
 | `--sticky-bar-backdrop` | `var(--panel-backdrop)` | ocean, glass, cyber | the card's own frost (Glass); a see-through skin without one adds a blur |
-| `--lib-row-art-radius` | `4px` | press, glass, cyber | its corner — a skin shape lever (round still wins) |
+| `--lib-row-art-radius` | `4px` | press, glass, cyber, metal | its corner — a skin shape lever (round still wins) |
 
 ### scrollbar (our own; color is a theme role)
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--scrollbar-w` | `8px` | — |  |
-| `--scrollbar-radius` | `999px` | press, cyber |  |
+| `--scrollbar-radius` | `999px` | press, cyber, metal |  |
 
 ### in-card navigation (drill-in push/pop)
 
@@ -822,7 +843,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber |  |
 | `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | eases in, so the cover lands softly |
 | `--agent-motion` | `1.6` | — | an agent's theme / skin / surface change: every cover time above × this (UX-COVERUPS §6b) |
-| `--theme-morph-dur` | `500ms` | — | A rule's theme change: the colors crossfade in place, no cover (UX-COVERUPS §6c). 500 ms is his call (2026-09-27): shorter reads as a blink on a light ↔ dark change; longer holds the low-contrast middle and the still background layers longer. |
+| `--theme-morph-dur` | `500ms` | metal | A rule's theme change: the colors crossfade in place, no cover (UX-COVERUPS §6c). 500 ms is his call (2026-09-27): shorter reads as a blink on a light ↔ dark change; longer holds the low-contrast middle and the still background layers longer. |
 | `--theme-morph-ease` | `ease-in-out` | — |  |
 | `--theme-morph-hand-ease` | `ease-out` | — | A pick you make by hand moves from the first frame (his call, 2026-09-28): ease-in-out held the old colors ~130 ms after the press. A rule's change keeps ease-in-out (UX-COVERUPS §6c.2). |
 | `--theme-morph-hand-wait` | `0.4` | — | The menu or Compass that made the pick leaves first; the fade starts at this fraction of its --pop-out, where the pop ease has it ~88 % gone (the rest ends with the fade's first frame). |
@@ -1001,8 +1022,8 @@ reader is a token nothing uses.
 | `--ocean-ripple-ease` | `cubic-bezier(0.2, 0.6, 0.35, 1)` | — | styles.css |
 | `--np-title-scroll-delay` | `350ms` | — | styles.css |
 | `--np-title-scroll-back` | `var(--dur-med)` | — | styles.css |
-| `--vinyl-swap-dur` | `0.4s` | press | dev/metal-draft.ts, vinyl.ts |
-| `--vinyl-swap-ease` | `ease-in-out` | press | styles/skin.css, vinyl.ts |
+| `--vinyl-swap-dur` | `0.4s` | press, metal | metal.ts, vinyl.ts |
+| `--vinyl-swap-ease` | `ease-in-out` | press, metal | styles/skin.css, vinyl.ts |
 | `--ap-pulse` | `1.2s` | — | styles.css |
 | `--ap-caret-dur` | `0.32s` | — | styles.css |
 | `--pop-in` | `var(--dur-med)` | — | extension/styles/skin.css, card-grow.ts, pop.ts, reveal.ts, rewind-btn.ts, styles.css, styles/skin.css |
@@ -1058,14 +1079,14 @@ reader is a token nothing uses.
 | `--boot-safety` | `4s` | — | extension/styles/skin.css, boot-cover.ts, styles.css, styles/skin.css |
 | `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber | appearance.ts, styles.css |
 | `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | styles.css |
-| `--theme-morph-dur` | `500ms` | — | appearance.ts, styles.css |
+| `--theme-morph-dur` | `500ms` | metal | appearance.ts, styles.css |
 | `--theme-morph-ease` | `ease-in-out` | — | styles.css |
 | `--theme-morph-hand-ease` | `ease-out` | — | appearance.ts, styles.css |
 | `--search-pulse-dur` | `0.9s` | — | extension/popup/popup.css, styles.css, styles/skin.css |
-| `--dur-fast` | `0.12s` | press, glass, cyber | extension/styles/skin.css, copy-edit.ts, dev/metal-draft.css, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
+| `--dur-fast` | `0.12s` | press, glass, cyber | extension/styles/skin.css, copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
 | `--dur-med` | `0.18s` | press | extension/popup/popup.css, extension/popup/popup.js, extension/styles/skin.css, styles.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/walk.css |
 | `--dur-spin` | `0.7s` | — | extension/popup/popup.css, styles.css |
-| `--ease-ui` | `ease` | — | extension/popup/popup.css, extension/styles/skin.css, copy-edit.ts, dev/metal-draft.css, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
+| `--ease-ui` | `ease` | — | extension/popup/popup.css, extension/styles/skin.css, copy-edit.ts, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
 | `--pulse-ease` | `ease-in-out` | — | extension/popup/popup.css, styles.css |
 | `--sh-cross-dur` | `0.42s` | — | styles.css |
 | `--rp-loop-dur` | `0.5s` | — | styles.css |
@@ -1092,6 +1113,33 @@ A skin sets these, but the base block never declares them — a token that only 
 - `--glass-frost-stop (glass)`
 - `--glass-frost-pause (glass)`
 - `--glass-light (glass)`
+- `--panel-border (metal)`
+- `--border (metal)`
+- `--surface (metal)`
+- `--surface-hover (metal)`
+- `--canvas (metal)`
+- `--metal-peek-cover-inset (metal)`
+- `--metal-peek-crop (metal)`
+- `--metal-peek-top (metal)`
+- `--metal-peek-size-w (metal)`
+- `--metal-peek-size-h (metal)`
+- `--metal-peek-turn (metal)`
+- `--metal-peek-dim (metal)`
+- `--metal-peek-shadow (metal)`
+- `--metal-cover-shadow (metal)`
+- `--metal-cover-rim (metal)`
+- `--metal-perspective (metal)`
+- `--metal-slot-h (metal)`
+- `--metal-slot-radius (metal)`
+- `--metal-wheel-w (metal)`
+- `--metal-wheel-h (metal)`
+- `--metal-wheel-radius (metal)`
+- `--metal-wheel-pitch (metal)`
+- `--metal-wheel-roll (metal)`
+- `--metal-wheel-lift (metal)`
+- `--metal-slot-shadow (metal)`
+- `--metal-wheel-shadow (metal)`
+- `--metal-badge-in (metal)`
 
 ## Palette
 
@@ -1146,3 +1194,16 @@ A skin sets these, but the base block never declares them — a token that only 
 | `--paint-paper-warm` | `#ECE6CF` |
 | `--paint-apple-music-black` | `#000000` |
 | `--paint-apple-music-white` | `#FFFFFF` |
+| `--paint-dark-steel` | `#242426` |
+| `--paint-dark-steel-floor` | `#161617` |
+| `--paint-gold-leaf` | `#D9B45A` |
+| `--paint-blackened-steel` | `#231F20` |
+| `--paint-blackened-floor` | `#141213` |
+| `--paint-blue-steel` | `#2B3340` |
+| `--paint-blue-steel-floor` | `#1A202A` |
+| `--paint-lilac-aluminum` | `#DEDCE6` |
+| `--paint-lilac-aluminum-floor` | `#C4C1CF` |
+| `--paint-green-aluminum` | `#DBDFD6` |
+| `--paint-green-aluminum-floor` | `#C3C9BD` |
+| `--paint-champagne-bronze` | `#DDCFB4` |
+| `--paint-champagne-floor` | `#C5B492` |

@@ -12,6 +12,22 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-20 — `v-thirtyone`: the Metal skin, from idea to a real skin
+
+- **Idea to draft** (metal.md §1–§6.1): a mod-system talk led to Metal as the test case for
+  downloadable skins (mods.md). His calls: the app's own UI pieces only, elegant brushed steel
+  or acrylic, over every theme, built from the code on Max. A dev-only draft over Vanilla, then
+  the thumbwheel scrubber (his pick of five), the zoetrope cover change (his design) and the
+  peek (his idea).
+- **Reviews and his reports:** seven independent design reviews (5 → 6/10) did not catch what
+  he found in minutes: a mid-turn stall, a blank cover flash, doubled layers, rapid-press jumps,
+  the side covers' wedges. All fixed; then the Sonnet break-it pass (42 scenarios, nine fixed).
+  The lesson is DESK-TESTS.md §6.6, now mandatory for anything that moves.
+- **The real skin** (metal.md §6.4): the cleanup first (one true shape alias; the paint hooks),
+  then `metal` as a sixth skin with four Settings rows; the draft deleted. Committed and
+  pushed in two steps: 8759e79 (the draft), then this sitting's skin.
+- **Open:** the desk test, 2026-10-21 (DESK-TESTS.md A11).
+
 ## 2026-10-19, late — `v-thirtyone`: the full player's moving card box (Max)
 
 His report from the full player's desk test: in Glass the close showed "a weird gap line" while

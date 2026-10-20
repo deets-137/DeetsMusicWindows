@@ -1,8 +1,8 @@
 ---
-status: idea
-desk_test: none
-sources: [src/styles/skin.css, src/styles/themes.css, src/styles.css, src/look-ids.ts, src/dev/metal-draft.css, src/dev/metal-draft.ts, src/vinyl.ts, src/settings-card.ts]
-updated: 2026-10-19
+status: built
+desk_test: open
+sources: [src/styles/skin.css, src/styles/themes.css, src/styles.css, src/look-ids.ts, src/metal.ts, src/skin-settings.ts, src/vinyl.ts, src/settings-card.ts]
+updated: 2026-10-20
 ---
 # Metal — a brushed-metal skin, and the token cleanup it needs
 
@@ -11,14 +11,14 @@ updated: 2026-10-19
 > user the app does this.
 
 Metal is a sixth skin. It is also the test case for skins a user downloads
-([mods.md](mods.md)): if Metal can be made from token values alone, most skins can. This doc
+([mods.md](../ideas/mods.md)): if Metal can be made from token values alone, most skins can. This doc
 holds the skin and the token cleanup. The file format, the install and the safety rules are in
 mods.md.
 
 ## 0. Terms
 
 - **Theme:** the color roles (`themes.css`). **Skin:** the shape, type, space and motion
-  tokens (`skin.css`). The same words as [SKINZ.md](../features/SKINZ.md).
+  tokens (`skin.css`). The same words as [SKINZ.md](SKINZ.md).
 - **Paint token:** a token whose value is a whole CSS `background` (layers of images and
   gradients), not one color. `--panel-paint` and `--canvas-bg` are the two today.
 - **Hook:** a CSS rule in our own files that stays off until a skin sets a token. Ocean's Sand
@@ -128,7 +128,7 @@ Each is a Settings row under Skin settings, "Metal only", as Glass and Ocean hav
 
 The VU meter and the machined controls are code, as the record player is (`src/vinyl.ts`).
 The rest is values and hooks. A downloaded skin could have the values, never the code
-([mods.md](mods.md) §6.1).
+([mods.md](../ideas/mods.md) §6.1).
 
 ## 2. How Press does it today (the evidence)
 
@@ -487,6 +487,38 @@ is deleted.
 - **The check:** the same before / after sets. At the defaults nothing changes.
 
 ### 6.4 Step 3: the Metal skin
+> **Part:** built · 2026-10-20 · desk test open (2026-10-21)
+
+**As built (2026-10-20), his calls: the cleanup first; four Settings rows.**
+- **Step 1 (primitives):** the inventory showed the skins vary each shape on purpose (Glass
+  rounds tiles 12 px with a pill scrollbar; Cyber squares tiles but rounds pills 2 px), so a
+  shared shape primitive would move pixels in a built-in skin. The one true pair: the volume
+  pill now follows the Library pill (`--vol-pill-radius: var(--lib-pill-radius)`; three skin
+  lines gone, same values). Motion was already aliased by the motion pass (TOKENS.md › Motion).
+- **Step 2 (hooks, off in every other skin):** `--panel-blend`, `--app-canvas-color` /
+  `-blend`, `--control-paint` / `-size` / `-blend` / `--control-shadow` on the control family,
+  `--accent-sheen` on the accent fills; the family's hovers change `background-color` only.
+  The hairline, chamfer and engrave hooks wait for a skin that uses them.
+- **Step 3 (the skin):** `metal` in `SkinName`, the title menu (hint: *Brushed steel panels
+  with sharp edges. Covers turn on a drum*), the look schedule's list, the fonts list
+  (Windows' Bahnschrift and Segoe UI Variable, nothing bundled), the extension's options page
+  and its style copies (no texture there). `[data-skin="metal"]` in skin.css on the hooks;
+  each theme's `--metal` / `--metal-floor` in themes.css from new palette paints, the shared
+  light-and-shade roles, and the gold title on Black & Yellow; the stage, the peek, the badge
+  and the thumbwheel in styles.css "Metal" on Metal tokens; `src/metal.ts` (the textures, the
+  side covers, the word fade; from the draft). Settings › Skin settings: Material, Grain, Cover
+  change, Peek (`metalMaterial`, `metalGrain`, `metalCoverChange`, `metalPeek`; agent specs,
+  New marks, SETTINGS.md §3, AGENT.md). Not in the usage allow-list (a privacy call, his).
+- **The dev draft is gone** (`src/dev/`, its picker items, the Settings dev hook).
+- **Checked:** tsc, the unit tests, docs:check, and on the dev app the skin picked from the
+  title menu: the texture drawn, the zoetrope on, both side covers, the four rows.
+- **Not run yet (the desk test, 2026-10-21):** DESK-TESTS.md §6.6 on the real skin: the break-it
+  pass's scripts (`metal-rapid.json`, `metal-next-back.json`, `metal-breakit.json`, cold with
+  `clearCache`), the timing gate, the motion monitor; every theme × Metal (and Acrylic), Midi,
+  Mini and the full player; the other five skins unchanged (the hooks are off there); the
+  extension's options page; then his own look. Move the three lists to `docs/ops/checks/`.
+
+**The plan (2026-10-19), kept as a record:**
 
 - **The block:** `[data-skin="metal"]` in `skin.css`, values only (fork F1).
 - **The assets:** the grain tile and the screw SVG, and the heading font in `fonts.css` and
@@ -524,7 +556,7 @@ with a default and its "why", an agent spec, a hover hint, a New mark.
 ### 6.6 Not in this scope
 
 The `.deetsmod` file, the install, the safety checks, the marketplace page and new theme
-slots. They are in [mods.md](mods.md), and they build on Step 1's primitives.
+slots. They are in [mods.md](../ideas/mods.md), and they build on Step 1's primitives.
 
 ## 7. Forks (all his)
 

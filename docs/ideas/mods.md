@@ -10,7 +10,7 @@ updated: 2026-10-19
 > mod system"). Nothing is decided and nothing is built. Every fork in §8 is his. Do not tell a
 > user the app does this.
 
-The Metal skin ([metal.md](metal.md)) is the test case for this doc. Its token cleanup
+The Metal skin ([metal.md](../features/metal.md)) is the test case for this doc. Its token cleanup
 (metal.md §4.4, the primitives) is the public API a mod would set, so mods come after it.
 
 ## 0. Terms

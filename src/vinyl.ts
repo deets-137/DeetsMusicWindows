@@ -216,7 +216,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
   const held = () => suspended || root.dataset.ambient === "paused";
   const isRecordHere = () => getComputedStyle(box).getPropertyValue("--vinyl").trim() === "1";
   // A skin may move a plain cover on a song change too (--cover-swap, base `none`): `zoetrope`
-  // is the Metal draft's (docs/ideas/metal.md §6.1). The record's own slide wins where it shows.
+  // is the Metal draft's (docs/features/metal.md §6.1). The record's own slide wins where it shows.
   const coverSwap = () => getComputedStyle(box).getPropertyValue("--cover-swap").trim() || "none";
 
   const setDuration = (duration: number) => {

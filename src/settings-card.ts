@@ -159,17 +159,6 @@ interface RangeRow {
 type Row = (ToggleRow | ChoiceRow | SplitRow | HtmlRow | RangeRow | HeadRow) & { when?: () => boolean };
 const shown = (rows: Row[]): Row[] => rows.filter((r) => !r.when || r.when());
 
-// Dev-only rows at the end of Skin settings: the Metal draft's (src/dev/metal-draft.ts,
-// docs/ideas/metal.md §6.1) adds them, and calls the redraw when its own state changes. A
-// release build imports no dev module, so the list stays empty there.
-export type DevSkinRow = Row;
-const devSkinRows: Row[] = [];
-const devRedraws = new Set<() => void>();
-export function addDevSkinRows(rows: DevSkinRow[]): void {
-  devSkinRows.push(...rows);
-  devRedraws.forEach((f) => f());
-}
-export const redrawDevSkinRows = (): void => devRedraws.forEach((f) => f());
 
 // ── New marks (QUICK-SETTINGS.md §10): a row or a section that is new wears the N badge
 //    beside its name, in the Settings card and in the quick panel alike, until the pointer
@@ -226,6 +215,10 @@ const NEW_MARKS: NewMark[] = [
   ...["library", "playlists", "home", "search", "queue", "history", "rewind", "radio", "diary"].map((id): NewMark => ({ section: "Cards", row: `wait-${id}` })),
   { section: "Skin settings", row: "pressvinylfps", skin: "press", via: { row: "pressvinyl", values: ["spin"] } }, // Spin FPS, built 2026-10-17 (VINYL.md §12)
   { section: "Rewind", row: "rewindtoday" }, // Today's time in, built 2026-10-19 (listening-time.md)
+  { section: "Skin settings", row: "metalmaterial", skin: "metal" }, // Metal's Material, built 2026-10-20 (metal.md)
+  { section: "Skin settings", row: "metalgrain", skin: "metal" }, // Metal's Grain
+  { section: "Skin settings", row: "metalcover", skin: "metal" }, // Metal's Cover change
+  { section: "Skin settings", row: "metalpeek", skin: "metal" }, // Metal's Peek
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -463,7 +456,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "motion", label: "Motion", hint: "The three Animate rows, Fancy scrubber, and If graphics fail", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
   {
     id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, and the Press record player",
-    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps"],
+    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps", "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -1430,6 +1423,32 @@ function mountSettings(
           get: () => setting("pressVinylPlate"),
           set: (on) => setSetting("pressVinylPlate", on),
           when: () => currentSkin() === "press" && setting("pressVinyl") !== "off",
+        },
+        // Metal (docs/features/metal.md; his calls 2026-10-20: these four rows, Grain size fixed)
+        {
+          kind: "choice", id: "metalmaterial", label: "Material", key: "metalMaterial",
+          hint: "Metal only. Steel: finely brushed stainless. Acrylic: thick paint laid with a brush",
+          options: [{ value: "steel", label: "Steel" }, { value: "acrylic", label: "Acrylic" }],
+          when: () => currentSkin() === "metal",
+        },
+        {
+          kind: "choice", id: "metalgrain", label: "Grain", key: "metalGrain", menu: true,
+          hint: "Metal only. How strong the brush lines are",
+          options: [{ value: "faint", label: "Faint" }, { value: "fine", label: "Fine" }, { value: "medium", label: "Medium" }, { value: "strong", label: "Strong" }],
+          when: () => currentSkin() === "metal",
+        },
+        {
+          kind: "choice", id: "metalcover", label: "Cover change", key: "metalCoverChange",
+          hint: "Metal only. Zoetrope: the cover turns away on a drum while the next one comes forward",
+          options: [{ value: "zoetrope", label: "Zoetrope" }, { value: "off", label: "Off" }],
+          when: () => currentSkin() === "metal",
+        },
+        {
+          kind: "toggle", id: "metalpeek", label: "Peek", key: "metalPeek",
+          hint: () => "Metal only. In max, the previous and next covers wait behind the cover, and it turns between them",
+          get: () => setting("metalPeek"),
+          set: (on) => setSetting("metalPeek", on),
+          when: () => currentSkin() === "metal" && setting("metalCoverChange") === "zoetrope",
         },
       ],
     },
@@ -3083,14 +3102,6 @@ function mountSettings(
   });
   const unsubFiles = onFilesChange(() => render()); // a picture added, renamed or deleted
   const unsubSkin = onSkinChange(() => render()); // skin-only rows come and go
-  // The dev-only Skin settings rows (addDevSkinRows): take any new ones, then draw.
-  const skinRows = sections.find((s) => s.title === "Skin settings")?.rows;
-  const takeDevRows = () => {
-    if (skinRows) for (const r of devSkinRows) if (!skinRows.includes(r)) skinRows.push(r);
-    if (alive) render();
-  };
-  if (devSkinRows.length && skinRows) for (const r of devSkinRows) skinRows.push(r);
-  devRedraws.add(takeDevRows);
   const unsubLibAdd = onLibraryAddChange(render);
   const unsubSuggest = onSuggestChange(() => { if (alive) render(); }); // the Suggest Less count
   // An agent set a value Rust owns (agent-settings.ts): read the cached ones again.
@@ -3278,7 +3289,6 @@ function mountSettings(
       chips.forEach((c) => c.destroy());
       unsubSotd();
       unsubSkin();
-      devRedraws.delete(takeDevRows);
       unsubFiles();
       unsubLibAdd();
       unsubSuggest();

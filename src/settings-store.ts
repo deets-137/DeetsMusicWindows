@@ -143,6 +143,17 @@ export interface Settings {
   /** Press record only, spin only: the most times a second the record redraws. vinyl.ts steps the
    *  spin at the display rate ÷ the whole number nearest this (spin-steps.ts, VINYL.md §12). */
   pressVinylFps: "60" | "120" | "144" | "240";
+  /** Metal only (docs/features/metal.md): the material of the cards and controls, finely brushed
+   *  stainless steel or thick acrylic paint. `data-metal-material` on <html>; metal.ts draws it. */
+  metalMaterial: "steel" | "acrylic";
+  /** Metal only: how strong the brush lines are. metal.ts draws the texture at this strength. */
+  metalGrain: "faint" | "fine" | "medium" | "strong";
+  /** Metal only: a song change turns the covers on a drum (the zoetrope), or the cover simply
+   *  changes. `--cover-swap` on <html>; vinyl.ts runs the turn. */
+  metalCoverChange: "zoetrope" | "off";
+  /** Metal only, with the zoetrope: in Max and the player view, the previous and next songs'
+   *  covers wait behind the cover, and the turn runs between them. `data-metal-peek` on <html>. */
+  metalPeek: boolean;
   /** Hover hints (ONBOARDING.md §1; src/hint.ts): the themed box every `title` becomes.
    *  Off = no hover text at all, of either kind. */
   hoverHints: boolean;
@@ -539,6 +550,12 @@ export const DEFAULTS: Settings = {
   // 120 (his call, 2026-10-17): in a blind test on his 240 Hz display he took the 120 FPS spin
   // for the full rate, and it costs about half the CPU (21 % of one core, not 31–44 %).
   pressVinylFps: "120",
+  // Metal (his calls 2026-10-20, metal.md §1): the draft's tuned values. Steel, the elegant
+  // brushed stainless he asked for; acrylic is the other material.
+  metalMaterial: "steel",
+  metalGrain: "fine", // finely brushed (his "finely brushed stainless steel"); faint, medium, strong to taste
+  metalCoverChange: "zoetrope", // his design: shrink and turn out while the next comes in from the right
+  metalPeek: true, // "Let's test Peek" (2026-10-20): the neighbors wait at the sides
   hoverHints: true,
   hoverHintDelay: "normal",
   hoverSongNames: "always", // user's call 2026-09-15: name the song on every row, not only cut-off ones

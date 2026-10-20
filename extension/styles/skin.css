@@ -1412,3 +1412,103 @@
   40%, 60% { transform: translate(calc(var(--drift-x) * 0.9045), calc(var(--drift-y) * 0.9045)); }
   50%      { transform: translate(var(--drift-x), var(--drift-y)); }
 }
+
+/* The extension's copy: no textures here (the app's metal.ts draws them). */
+[data-skin="metal"] { --metal-texture: none; --metal-texture-fine: none; --metal-size: 480px; --metal-size-fine: 240px; }
+/* ============================================================
+   METAL — finely brushed stainless steel, or thick acrylic paint
+   (docs/features/metal.md; his calls §1). Over every theme: each theme
+   names its metal and its floor (themes.css --metal / --metal-floor,
+   the --ink-2 pattern), so the dark themes are steels and the light
+   ones aluminum. The app's own UI pieces only: the material goes on
+   through the paint hooks, the shape is sharp, and the Now Playing
+   cover turns on a drum (the zoetrope, vinyl.ts) with the previous
+   and next covers peeking (styles.css "Metal", metal.ts).
+   The textures (--metal-texture, --metal-texture-fine) are drawn by
+   src/metal.ts from Settings › Skin settings (Material, Grain).
+   ============================================================ */
+[data-skin="metal"] {
+  /* type: Windows' own DIN (Bahnschrift) over Segoe UI Variable; nothing to bundle */
+  --font-title: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-body:  "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --fw-title:   600;
+
+  /* shape: sharp (his ask, 2026-10-19), a machined corner barely broken; no capsule pill */
+  --panel-radius:       4px;
+  --radius-panel:       4px;
+  --radius-control:     2px;
+  --lib-pill-radius:    2px;   /* the volume pill follows (base --vol-pill-radius) */
+  --lib-pop-radius:     4px;
+  --lib-tile-radius:    2px;
+  --lib-row-art-radius: 1px;
+  --scrollbar-radius:   1px;
+  --panel-border-width: 1px;
+  --panel-border:       var(--metal-edge);
+
+  /* the material: the theme's metal, a floor under it, and controls a step lighter */
+  --panel:         var(--metal);
+  --spane-bg:      var(--metal);
+  --border:        var(--metal-edge);
+  --surface:       light-dark(color-mix(in srgb, var(--metal), white 40%), color-mix(in srgb, var(--metal), white 7%));
+  --surface-hover: light-dark(color-mix(in srgb, var(--metal), white 62%), color-mix(in srgb, var(--metal), white 13%));
+  --canvas:        var(--metal-floor);
+  /* the grain over a plate lit a little at the top: no diagonal reflection (his call, 2026-10-19:
+     "old school app design") */
+  --panel-paint:
+    var(--metal-texture),
+    linear-gradient(180deg, color-mix(in srgb, var(--metal), white 5%), var(--metal) 45%, color-mix(in srgb, var(--metal), black 5%));
+  --panel-blend:        overlay, normal;
+  --canvas-bg:          var(--metal-texture);
+  --canvas-bg-size:     var(--metal-size) var(--metal-size);
+  --app-canvas-color:   var(--canvas);
+  --app-canvas-blend:   overlay;
+  --control-paint:      var(--metal-texture-fine);
+  --control-paint-size: var(--metal-size-fine) var(--metal-size-fine);
+  --control-blend:      overlay;
+  --control-shadow:     inset 0 1px 0 var(--metal-edge-hi), 0 1px 1px var(--metal-cast);
+  /* the accent fills: a polished face on the title ink, so yellow reads as gold */
+  --accent-sheen:       linear-gradient(160deg, var(--metal-sheen-hi), transparent 42%, var(--metal-sheen-lo));
+  /* the edges catch the light; a crisp contact shadow and a short cast one, no soft halo */
+  --shadow-card:
+    inset 0 1px 0 var(--metal-edge-hi),
+    inset 0 -1px 0 var(--metal-edge-lo),
+    0 1px 0 var(--metal-contact),
+    0 3px 6px var(--metal-cast);
+  --shadow-panel: 0 1px 0 var(--metal-contact), 0 6px 14px var(--metal-contact), inset 0 1px 0 var(--metal-edge-hi);
+
+  /* the cover change (Settings › Cover change sets --cover-swap; vinyl.ts runs it): a drum's
+     turn. The peek's geometry and timing are on the stage (below). */
+  --vinyl-swap-dur:  0.56s;
+  --vinyl-swap-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  /* a theme change (a rule, Live Theming) on a song change is a cut that lands under the
+     turning cover: a crossfade between a warm and a cool theme passes through grey */
+  --theme-morph-dur: 0.01s;
+
+  /* the stage with the peek (styles.css "Metal"): the box 5:4, the cover a square of 72 % of
+     its width, the side covers 62 % turned 30° on the drum; the turn runs between them */
+  --metal-peek-cover-inset: 5% 14%;   /* a square of 72 % of the width: 5 % of the height above and below */
+  --metal-peek-crop:        5%;       /* the box crops to the cover's top and bottom (a side cover's inner edge grew past them) */
+  --metal-peek-top:         11.25%;
+  --metal-peek-size-w:      62%;
+  --metal-peek-size-h:      77.5%;    /* 62 % of the width */
+  --metal-peek-turn:        30deg;
+  --metal-peek-dim:         brightness(0.7) saturate(0.9);
+  --metal-peek-shadow:      0 2px 6px var(--metal-contact);
+  --metal-cover-shadow:     0 2px 4px var(--metal-contact), 0 8px 18px var(--metal-cast);
+  --metal-cover-rim:        inset 0 0 0 1px color-mix(in srgb, white 16%, transparent), inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
+  --metal-perspective:      900px;
+
+  /* the scrubber: the thumbwheel (metal.md §1b2, idea 5, his pick) */
+  --metal-slot-h:        6px;
+  --metal-slot-radius:   1px;
+  --metal-wheel-w:       10px;
+  --metal-wheel-h:       18px;
+  --metal-wheel-radius:  3px;
+  --metal-wheel-pitch:   3px;    /* one knurl ridge */
+  --metal-wheel-roll:    30;     /* how far the ridges roll over the whole track, × the fill */
+  --metal-wheel-lift:    1.08;   /* under the pointer */
+  --metal-slot-shadow:   inset 0 1px 2px color-mix(in srgb, black 65%, transparent), 0 1px 0 var(--metal-edge-hi);
+  --metal-wheel-shadow:  0 1px 2px color-mix(in srgb, black 50%, transparent), inset 0 0 0 1px color-mix(in srgb, black 35%, transparent);
+  --metal-badge-in:      0.3s;   /* the Plays badge's fade when it appears */
+}
+/* the stage with the peek: the slower two-step turn between the side covers */

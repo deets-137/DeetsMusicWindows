@@ -1682,7 +1682,9 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   /* Canvas pattern behind the cards (Press halftone / Cyber grid). A skin
      whose canvas MOVES paints it on an ambient layer instead and sets
      --app-canvas-bg: none (Glass → .aurora). Vanilla paints nothing. */
+  background-color:  var(--app-canvas-color);  /* transparent; a skin whose canvas pattern blends needs a color under it (Metal) */
   background-image:  var(--app-canvas-bg);
+  background-blend-mode: var(--app-canvas-blend);
   background-size:   var(--canvas-bg-size);
   background-repeat: var(--canvas-bg-repeat);
 }
@@ -2033,6 +2035,7 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   flex-direction: column;
   min-height: 0;
   background: var(--panel-paint);   /* --panel, unless a skin moves the fill to the rim layer */
+  background-blend-mode: var(--panel-blend);  /* normal; a skin with a textured paint blends its layers (Metal) */
   -webkit-backdrop-filter: var(--panel-backdrop);  /* none under most skins; Glass frosts */
   backdrop-filter: var(--panel-backdrop);
   isolation: var(--panel-isolation);
@@ -2184,6 +2187,10 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   display: grid;
   place-items: center;
   background: var(--surface-hover);
+  background-image: var(--control-paint);       /* none; a skin's texture over the family's fill (Metal) */
+  background-size: var(--control-paint-size);
+  background-blend-mode: var(--control-blend);
+  box-shadow: var(--control-shadow);
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
   color: var(--title);
@@ -2382,6 +2389,10 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
   background: var(--surface);
+  background-image: var(--control-paint);       /* none; a skin's texture over the family's fill (Metal) */
+  background-size: var(--control-paint-size);
+  background-blend-mode: var(--control-blend);
+  box-shadow: var(--control-shadow);
   border: 1px solid var(--border);
   border-radius: var(--lib-pill-radius);
   color: var(--text);
@@ -2389,7 +2400,7 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   font-size: var(--fs-subtext);
   cursor: pointer;
 }
-.lib-pill:hover { background: var(--surface-hover); }
+.lib-pill:hover { background-color: var(--surface-hover); }
 .lib-pill__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lib-pill__caret {
   flex: 0 0 auto;
@@ -3167,14 +3178,17 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   padding: var(--space-2) var(--space-3);
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--lib-pill-radius);
   color: var(--text); font-family: var(--font-body); font-size: var(--fs-text); cursor: pointer;
+  background-image: var(--control-paint); background-size: var(--control-paint-size);
+  background-blend-mode: var(--control-blend); box-shadow: var(--control-shadow);
 }
-.lib-action:hover { background: var(--surface-hover); }
+.lib-action:hover { background-color: var(--surface-hover); }
 /* Nothing to play yet (a new playlist): the row keeps its place, quietened and unpressable. */
 .lib-action:disabled { opacity: var(--disabled-alpha); cursor: default; }
-.lib-action:disabled:hover { background: var(--surface); }
-.lib-action--play:disabled:hover { background: var(--title); filter: none; }
-.lib-action--play { background: var(--title); border-color: var(--title); color: var(--surface); }
-.lib-action--play:hover { background: var(--title); filter: brightness(1.12); }
+.lib-action:disabled:hover { background-color: var(--surface); }
+.lib-action--play:disabled:hover { background-color: var(--title); filter: none; }
+/* the accent fill: the title ink, with a skin's polished face over it (--accent-sheen; Metal) */
+.lib-action--play { background-color: var(--title); background-image: var(--accent-sheen); background-blend-mode: normal; border-color: var(--title); color: var(--surface); box-shadow: none; }
+.lib-action--play:hover { background-color: var(--title); filter: brightness(1.12); }
 /* The count row (multi-select, NEXT-VERSION §19): while rows are picked, the same slot
    says how many, then Play and Shuffle. There is no Clear button — a click on any row, or
    Escape, already drops the picks.
@@ -3858,6 +3872,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 .scrub .scrub__fill {
   position: absolute; left: 0; top: 0; height: 100%;
   width: var(--slider-fill, 0%); background: var(--title); border-radius: var(--radius-round);
+  background-image: var(--accent-sheen);
 }
 .scrub .scrub__handle {
   position: absolute; top: 50%; left: var(--slider-fill, 0%);
@@ -5129,3 +5144,111 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .fpop__row.is-on .fpop__name { color: var(--title); font-weight: 600; }
 .fpop__name { font-size: var(--fs-text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fpop__sub { font-size: var(--fs-subtext); color: var(--subtext); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Metal (docs/features/metal.md; skin.css "METAL"; src/metal.ts) ─────────────────────────
+   The parts of the skin the tokens do not reach: the cover's box during a change, the stage
+   with the peek, the Plays badge's arrival, and the thumbwheel scrubber. */
+
+/* The cover change stays inside the cover's own box: overflow did not hold the turned covers
+   once they were on their own layer; a clip-path does (his ask, 2026-10-19). */
+[data-skin="metal"] .np__art { clip-path: inset(0 round var(--radius-control)); }
+/* A theme fade names .vinyl__spin so Press's record keeps turning through it, and a named
+   element is drawn above the page, past every clip: a song change that also changed the theme
+   drew the zoetrope over the cards. Metal has no record to keep turning. The cover box and the
+   song's words ride the fade live instead (the record's own trick, theme-live above), so the
+   page's old snapshot does not double the turning covers. */
+[data-skin="metal"][data-theme-fade] .np__art .vinyl__spin { view-transition-name: none; }
+[data-skin="metal"][data-theme-fade] :is(.np__art, .np__meta) {
+  view-transition-name: match-element;
+  view-transition-class: theme-live;
+}
+/* The Plays badge arrives with a short fade instead of popping in (the design review). */
+@keyframes metal-badge-in { from { opacity: 0; } to { opacity: 1; } }
+[data-skin="metal"] .np__listen--cover:not([hidden]) { animation: metal-badge-in var(--metal-badge-in) ease-out both; }
+
+/* The stage with the peek (Max, the player view): the box is 5:4, the cover a square in its
+   middle, and the previous and next covers wait behind it at the sides, turned on the drum and
+   dimmed; metal.ts draws them. The box crops to the cover's top and bottom: a side cover's
+   inner edge, turned toward you, grew past them (his note, 2026-10-20). */
+[data-skin="metal"][data-metal-peek]:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art {
+  background: transparent;
+  height: 80cqw;
+  aspect-ratio: 5 / 4;
+  clip-path: inset(var(--metal-peek-crop) 0 round var(--radius-control));
+}
+[data-skin="metal"][data-metal-peek]:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art .vinyl {
+  inset: var(--metal-peek-cover-inset);
+  z-index: 1;
+  border-radius: var(--radius-control);
+  box-shadow: var(--metal-cover-shadow);   /* a soft edge where two covers meet */
+}
+/* a light rim, so the front cover reads as a sleeve, not a slab */
+[data-skin="metal"][data-metal-peek]:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art .vinyl::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--metal-cover-rim);
+  pointer-events: none;
+}
+.metal-peek { display: none; }
+[data-skin="metal"][data-metal-peek]:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art .metal-peek {
+  display: block;
+  position: absolute;
+  top: var(--metal-peek-top);
+  width: var(--metal-peek-size-w);
+  height: var(--metal-peek-size-h);
+  z-index: 0;
+  pointer-events: none;
+  border-radius: var(--radius-control);
+  background: var(--peek-art, none) center / cover no-repeat, var(--surface);
+  filter: var(--metal-peek-dim);
+  box-shadow: var(--metal-peek-shadow);
+}
+[data-skin="metal"][data-metal-peek] .np__art .metal-peek[data-side="prev"] { left: 0; transform: perspective(var(--metal-perspective)) rotateY(calc(-1 * var(--metal-peek-turn))); }
+[data-skin="metal"][data-metal-peek] .np__art .metal-peek[data-side="next"] { right: 0; transform: perspective(var(--metal-perspective)) rotateY(var(--metal-peek-turn)); }
+[data-skin="metal"][data-metal-peek] .np__art .metal-peek[data-empty] { visibility: hidden; }
+/* One layer per slot (his report, 2026-10-20): the slot receiving the old cover stays empty
+   while that cover is still on its way there; it shows in the frame the old cover is removed. */
+[data-skin="metal"][data-metal-peek] .np__art:has(> .vinyl--out) > .metal-peek[data-receiving] { opacity: 0; }
+
+/* The thumbwheel (metal.md §1b2, idea 5, his pick), with Fancy scrubber on as the other
+   skins' playheads are, on every .scrub: a slot milled into the plate, a polished accent fill,
+   and a short knurled wheel lit across its middle whose ridges roll with the fill. */
+[data-fancy-scrub="on"][data-skin="metal"] .scrub .scrub__track {
+  height: var(--metal-slot-h);
+  border-radius: var(--metal-slot-radius);
+  background: color-mix(in srgb, var(--metal), black 45%);
+  box-shadow: var(--metal-slot-shadow);
+}
+[data-fancy-scrub="on"][data-skin="metal"] .scrub .scrub__fill {
+  border-radius: var(--metal-slot-radius);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--title), white 35%), var(--title) 55%, color-mix(in srgb, var(--title), black 30%));
+}
+[data-fancy-scrub="on"][data-skin="metal"] .scrub__handle {
+  width: var(--metal-wheel-w);
+  height: var(--metal-wheel-h);
+  -webkit-mask: none;
+  mask: none;
+  border-radius: var(--metal-wheel-radius);
+  background:
+    /* the knurl: one ridge a pitch, moved by the fill so the wheel turns as it travels */
+    repeating-linear-gradient(180deg,
+      color-mix(in srgb, black 42%, transparent) 0 1px,
+      color-mix(in srgb, white 10%, transparent) 1px calc(var(--metal-wheel-pitch) - 1px),
+      transparent calc(var(--metal-wheel-pitch) - 1px) var(--metal-wheel-pitch))
+      0 calc(var(--slider-fill, 0%) * var(--metal-wheel-roll)) / 100% var(--metal-wheel-pitch),
+    /* the cylinder: dark at the top and bottom, lit across the middle */
+    linear-gradient(180deg, color-mix(in srgb, black 55%, transparent), transparent 30%, color-mix(in srgb, white 28%, transparent) 48%, transparent 66%, color-mix(in srgb, black 60%, transparent)),
+    /* its two faces catch the light at the sides */
+    linear-gradient(90deg, color-mix(in srgb, white 18%, transparent), transparent 25%, transparent 75%, color-mix(in srgb, black 25%, transparent)),
+    color-mix(in srgb, var(--metal), white 22%);
+  box-shadow: var(--metal-wheel-shadow);
+  transition: transform var(--dur-fast) var(--ease-ui), filter var(--dur-fast) var(--ease-ui);
+}
+/* under the hand it rises a little; held, it brightens, as metal under a lamp */
+[data-fancy-scrub="on"][data-skin="metal"] .scrub:hover { --handle-scale: var(--metal-wheel-lift); }
+[data-fancy-scrub="on"][data-skin="metal"] .scrub[data-dragging] .scrub__handle { filter: brightness(1.15); }
+@media (prefers-reduced-motion: reduce) {
+  [data-skin="metal"] .np__listen--cover:not([hidden]) { animation: none; }
+}

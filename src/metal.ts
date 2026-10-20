@@ -1,34 +1,26 @@
-// The Metal draft (docs/ideas/metal.md §6.1, the Step 0 probe): dev only, so the release
-// bundle drops the import (main.ts). It paints Vanilla and sets <html data-metal-draft>, and
-// src/dev/metal-draft.css restyles Vanilla from there. Vanilla's own block is untouched.
-//
-// Where he reaches it (his asks, 2026-10-19):
-// - the title menu's Skin list ends with Vanilla and Metal (dev only). Each is a real pick of
-//   Vanilla, so it is stored like any pick; a built-in skin picked there turns the draft off.
-// - Settings › Skin settings, while Metal shows: Material (steel or acrylic), Grain, Grain size
-//   and Cover change (the zoetrope). The values live here, in localStorage, never in the store.
-// - the console: __metalDraft() on · "off" · { material, grain, size, swap }.
-// When Metal is built as a skin (metal.md §6.4) this file and its sheet are deleted, and the
-// rows become store keys with their agent specs.
-import "./metal-draft.css";
-import { currentSkin, onSkinChange, paintSkin, type SkinName } from "../skin";
-import { pickLook } from "../look";
-import { addDevSkinRows, redrawDevSkinRows } from "../settings-card";
-import { getCurrent, getHistory, onQueueChange, peekNext } from "../queue";
-import { artURL, coverArtPx, resolveEntry } from "../queue-rows";
-import { playlistCoverFor } from "../playlist-cover";
+// The Metal skin's moving parts (docs/ideas/metal.md; skin.css "METAL"; styles.css "Metal").
+// - The material: the card, page and control textures, drawn as SVG noise from Settings ›
+//   Skin settings (Material: finely brushed stainless steel or thick acrylic paint; Grain) and
+//   published on <html> as --metal-texture / --metal-texture-fine. Drawn only under Metal.
+// - The peek: in Max and the player view, the previous and next songs' covers wait behind the
+//   cover (.metal-peek), and the zoetrope (vinyl.ts, --cover-swap) turns between them. One layer
+//   per slot: the slot receiving the old cover shows only as it lands, the slot the new cover
+//   left refills during the turn.
+// - The words: the song's title, artist and album, its times and heart, leave and arrive with
+//   the turn, so the text and the picture change together; the Plays badge fades up as the
+//   cover lands.
+// skin-settings.ts publishes the attributes (data-metal-material, data-metal-cover,
+// data-metal-peek); this file draws and moves. Every motion runs on one clock (turnMs): the
+// turn's duration × --motion-scale, and nothing under reduced motion or a hidden window.
+// Built from the dev draft and its reviews (metal.md §6.1); DESK-TESTS.md §6.6 is its test.
+import { currentSkin, onSkinChange } from "./skin";
+import { setting, onSettingsChange } from "./settings-store";
+import { getCurrent, getHistory, onQueueChange, peekNext } from "./queue";
+import { artURL, coverArtPx, resolveEntry } from "./queue-rows";
+import { playlistCoverFor } from "./playlist-cover";
 
-type Material = "steel" | "acrylic";
-type Swap = "zoetrope" | "off";
-interface Tune { material: Material; grain: number; size: number; swap: Swap; peek: boolean }
-interface Saved extends Tune { on: boolean; prior?: SkinName }
-
-declare global {
-  interface Window { __metalDraft?: (arg?: "on" | "off" | Partial<Tune>) => Tune | "off" }
-}
-
-const KEY = "dev.metalDraft";
-const START: Tune = { material: "steel", grain: 0.3, size: 480, swap: "zoetrope", peek: true };
+const GRAIN = { faint: 0.15, fine: 0.3, medium: 0.5, strong: 0.75 } as const;
+const TILE = 480; // px of one texture tile: the draft's Medium grain size (his pick: Grain size stays fixed)
 
 const svg = (s: string) => `url("data:image/svg+xml,${encodeURIComponent(s)}")`;
 
@@ -56,52 +48,6 @@ function acrylic(grain: number, px: number): string {
     `</filter><rect width="${px}" height="${px}" filter="url(#f)"/></svg>`);
 }
 
-function read(): Saved {
-  try {
-    const s = JSON.parse(localStorage.getItem(KEY) ?? "null") as Partial<Saved> | null;
-    if (s) return {
-      on: !!s.on, prior: s.prior,
-      material: s.material === "acrylic" ? "acrylic" : "steel",
-      grain: typeof s.grain === "number" ? s.grain : START.grain,
-      size: typeof s.size === "number" ? s.size : START.size,
-      swap: s.swap === "off" ? "off" : "zoetrope",
-      peek: s.peek !== false,
-    };
-  } catch { /* a bad value starts fresh */ }
-  return { on: false, ...START };
-}
-const write = (s: Saved) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* dev only */ } };
-
-const VARS = ["--metal-texture", "--metal-texture-fine", "--metal-size", "--metal-size-fine", "--metal-sheen-k", "--cover-swap"];
-function paint(s: Saved): void {
-  const root = document.documentElement;
-  if (!s.on) {
-    delete root.dataset.metalDraft;
-    delete root.dataset.metalPeek;
-    VARS.forEach((p) => root.style.removeProperty(p));
-    return;
-  }
-  if (s.peek && s.swap === "zoetrope") root.dataset.metalPeek = "";
-  else delete root.dataset.metalPeek;
-  peekSync();
-  if (currentSkin() !== "vanilla") paintSkin("vanilla");
-  const draw = s.material === "steel" ? steel : acrylic;
-  const fine = Math.round(s.size / 2);
-  root.style.setProperty("--metal-texture", draw(s.grain, s.size));
-  root.style.setProperty("--metal-texture-fine", draw(s.grain * 0.8, fine));
-  root.style.setProperty("--metal-size", `${s.size}px`);
-  root.style.setProperty("--metal-size-fine", `${fine}px`);
-  root.style.setProperty("--metal-sheen-k", "0");
-  root.style.setProperty("--cover-swap", s.swap === "zoetrope" ? "zoetrope" : "none");
-  root.dataset.metalDraft = s.material;
-}
-
-// ── the peek: the previous and next covers behind the current one (CSS: metal-draft.css) ──
-// The previous song is the last one in the history, the next is the queue's first: the same
-// entries the Queue card shows, resolved by its own helpers, so no Apple call is made. A
-// side cover that changes fades in once the zoetrope has turned (its duration, read from CSS).
-// A side cover that is the same picture as the cover (a song from the same album) is left
-// empty: the same picture three times read as a rendering fault (the design review).
 const peekArt = (side: "prev" | "next"): string | null => {
   const cur = getCurrent();
   const px = coverArtPx();
@@ -161,7 +107,7 @@ function wireTextFade(): void {
       const old = ghost;
       ghost = copy();
       const root = document.documentElement;
-      if (root.dataset.metalDraft === undefined || root.dataset.skin !== "vanilla") return;
+      if (root.dataset.skin !== "metal") return;
       const art = meta.closest(".np")?.querySelector<HTMLElement>(".np__art");
       const dur = turnMs(art ?? meta);
       const host = meta.offsetParent as HTMLElement | null;
@@ -223,7 +169,7 @@ let lastPic: string | null = null; // the cover on show before this song
 let turnAt = 0;
 function peekSync(): void {
   wireTextFade();
-  const on = document.documentElement.dataset.metalPeek !== undefined && onStage();
+  const on = document.documentElement.dataset.metalPeek !== undefined && currentSkin() === "metal" && onStage();
   const cur = getCurrent();
   const songNow = cur ? cur.catalogId ?? cur.libraryId ?? null : null;
   if (songNow !== shownSong) {
@@ -299,155 +245,41 @@ function peekSync(): void {
   });
 }
 
-/** Change the tuning and draw it everywhere: the page, the picker, the Settings rows. */
-function tune(patch: Partial<Saved>): Saved {
-  const s = { ...read(), ...patch };
-  write(s);
-  paint(s);
-  markPicker();
-  redrawDevSkinRows();
-  return s;
+/** Draw the material on <html> (under Metal only; the base skin tokens are inert elsewhere). */
+function paintMaterial(): void {
+  const root = document.documentElement;
+  const props = ["--metal-texture", "--metal-texture-fine", "--metal-size", "--metal-size-fine"];
+  if (currentSkin() !== "metal") { props.forEach((p) => root.style.removeProperty(p)); return; }
+  const grain = GRAIN[setting("metalGrain")] ?? GRAIN.fine;
+  const draw = setting("metalMaterial") === "acrylic" ? acrylic : steel;
+  const fine = Math.round(TILE / 2);
+  root.style.setProperty("--metal-texture", draw(grain, TILE));
+  root.style.setProperty("--metal-texture-fine", draw(grain * 0.8, fine));
+  root.style.setProperty("--metal-size", `${TILE}px`);
+  root.style.setProperty("--metal-size-fine", `${fine}px`);
 }
 
-// ── the picker items (dev only): Vanilla and Metal ──
-type Choice = "vanilla" | "metal";
-const CHOICES: [Choice, string, string][] = [
-  ["vanilla", "Vanilla", "Dev only: the base skin, with nothing on top"],
-  ["metal", "Metal", "Dev only: the Metal draft. Its material and grain are in Settings › Skin settings"],
-];
-const metalOn = () => currentSkin() === "vanilla" && read().on;
-
-function markPicker(): void {
-  const vanilla = currentSkin() === "vanilla", on = read().on;
-  document.querySelectorAll<HTMLElement>("[data-metal-choice]").forEach((el) => {
-    const c = el.dataset.metalChoice as Choice;
-    el.setAttribute("aria-checked", String(vanilla && (c === "metal" ? on : !on)));
+export function initMetal(): void {
+  paintMaterial();
+  peekSync();
+  onSkinChange(() => { paintMaterial(); peekSync(); });
+  onSettingsChange((k) => {
+    if (k === "metalMaterial" || k === "metalGrain") paintMaterial();
+    if (k === "metalPeek" || k === "metalCoverChange") queueMicrotask(peekSync); // after skin-settings.ts sets the attribute
   });
-}
-
-function choose(c: Choice): void {
-  tune({ on: c === "metal", prior: undefined }); // a pick from the menu is stored; "off" has nothing to give back
-  pickLook({ skin: "vanilla" });
-}
-
-function addPicker(): void {
-  const flyout = document.querySelector<HTMLElement>('.menu__row[data-row="skin"] .flyout');
-  if (!flyout || flyout.querySelector("[data-metal-choice]")) return;
-  for (const [c, label, hint] of CHOICES) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "flyout__item";
-    b.setAttribute("role", "menuitemradio");
-    b.dataset.skin = "vanilla";
-    b.dataset.metalChoice = c;
-    b.title = hint;
-    b.textContent = label;
-    b.addEventListener("click", () => choose(c));
-    flyout.append(b);
-  }
-  markPicker();
-}
-
-// ── the Settings rows (Skin settings, while Metal shows) ──
-const GRAINS: [string, string][] = [["0.15", "Faint"], ["0.3", "Fine"], ["0.5", "Medium"], ["0.75", "Strong"]];
-const SIZES: [string, string][] = [["320", "Small"], ["480", "Medium"], ["720", "Large"]];
-const nearest = (v: number, list: [string, string][]) =>
-  list.reduce((a, b) => (Math.abs(Number(b[0]) - v) < Math.abs(Number(a[0]) - v) ? b : a))[0];
-
-function addRows(): void {
-  addDevSkinRows([
-    {
-      kind: "choice", id: "metalmaterial", label: "Material",
-      hint: "Metal draft, dev only. Steel: finely brushed stainless. Acrylic: thick paint laid with a brush",
-      options: [{ value: "steel", label: "Steel" }, { value: "acrylic", label: "Acrylic" }],
-      get: () => read().material,
-      set: (v) => void tune({ material: v === "acrylic" ? "acrylic" : "steel" }),
-      when: metalOn,
-    },
-    {
-      kind: "choice", id: "metalgrain", label: "Grain",
-      hint: "Metal draft, dev only. How strong the brush lines are",
-      options: GRAINS.map(([value, label]) => ({ value, label })),
-      get: () => nearest(read().grain, GRAINS),
-      set: (v) => void tune({ grain: Number(v) }),
-      when: metalOn,
-    },
-    {
-      kind: "choice", id: "metalgrainsize", label: "Grain size",
-      hint: "Metal draft, dev only. How long the brush lines run before the pattern repeats",
-      options: SIZES.map(([value, label]) => ({ value, label })),
-      get: () => nearest(read().size, SIZES),
-      set: (v) => void tune({ size: Number(v) }),
-      when: metalOn,
-    },
-    {
-      kind: "choice", id: "metalcoverswap", label: "Cover change",
-      hint: "Metal draft, dev only. Zoetrope: the old cover shrinks and turns away on a drum while the next one comes in from the right",
-      options: [{ value: "zoetrope", label: "Zoetrope" }, { value: "off", label: "Off" }],
-      get: () => read().swap,
-      set: (v) => void tune({ swap: v === "off" ? "off" : "zoetrope" }),
-      when: metalOn,
-    },
-    {
-      kind: "choice", id: "metalpeek", label: "Peek",
-      hint: "Metal draft, dev only. In max, the previous and next covers wait behind the cover, and the zoetrope turns between them",
-      options: [{ value: "on", label: "On" }, { value: "off", label: "Off" }],
-      get: () => (read().peek ? "on" : "off"),
-      set: (v) => void tune({ peek: v === "on" }),
-      when: () => metalOn() && read().swap === "zoetrope",
-    },
-  ]);
-}
-
-export function initMetalDraft(): void {
-  const saved = read();
-  if (saved.on && (currentSkin() === "vanilla" || saved.prior)) paint(saved);
-  addPicker();
-  addRows();
   // The side covers follow the queue, and come back when a surface change rebuilds the card.
   onQueueChange(() => peekSync());
-  // A surface change rebuilds the card after the attribute flips, so look again once it has.
   const later = () => { peekSync(); window.setTimeout(peekSync, 120); window.setTimeout(peekSync, 600); };
-  new MutationObserver(later).observe(document.documentElement, { attributes: true, attributeFilter: ["data-surface", "data-mini"] });
-  // …and any time a cover box appears without its side covers (a card mounted, swapped, grown)
-  // At most one look a frame: it ran on every DOM change in the app, a Library scroll included
-  // (the break-it pass).
+  new MutationObserver(later).observe(document.documentElement, { attributes: true, attributeFilter: ["data-surface", "data-mini", "data-metal-peek"] });
+  // …and any time a cover box appears without its side covers (a card mounted, swapped,
+  // grown), at most one look a frame: it ran on every DOM change in the app before.
   let looking = false;
   new MutationObserver(() => {
-    if (looking || document.documentElement.dataset.metalPeek === undefined || !onStage()) return;
+    if (looking || document.documentElement.dataset.metalPeek === undefined || currentSkin() !== "metal" || !onStage()) return;
     looking = true;
     requestAnimationFrame(() => {
       looking = false;
       if ([...document.querySelectorAll(".np__art")].some((b) => !b.querySelector(":scope > .metal-peek"))) peekSync();
     });
   }).observe(document.body, { childList: true, subtree: true });
-  // A built-in skin picked while the draft is on: the draft goes off, so Vanilla is plain next time.
-  onSkinChange((name) => {
-    const s = read();
-    if (name !== "vanilla" && s.on) { write({ ...s, on: false, prior: undefined }); paint({ ...s, on: false }); }
-    queueMicrotask(() => { markPicker(); redrawDevSkinRows(); });
-  });
-  window.__metalDraft = (arg) => {
-    const s = read();
-    if (arg === "off") {
-      const prior = s.prior;
-      tune({ on: false, prior: undefined });
-      if (prior && prior !== "vanilla") paintSkin(prior);
-      console.info("[metal draft] off");
-      return "off";
-    }
-    const patch: Partial<Saved> = { on: true };
-    if (!s.on) patch.prior = currentSkin();
-    if (arg && typeof arg === "object") {
-      if (arg.material === "steel" || arg.material === "acrylic") patch.material = arg.material;
-      if (typeof arg.grain === "number") patch.grain = Math.max(0, Math.min(1, arg.grain));
-      if (typeof arg.size === "number") patch.size = Math.max(120, Math.min(1200, Math.round(arg.size)));
-      if (arg.swap === "zoetrope" || arg.swap === "off") patch.swap = arg.swap;
-      if (typeof arg.peek === "boolean") patch.peek = arg.peek;
-    }
-    const n = tune(patch);
-    const out = { material: n.material, grain: n.grain, size: n.size, swap: n.swap, peek: n.peek };
-    console.info("[metal draft]", out);
-    return out;
-  };
 }

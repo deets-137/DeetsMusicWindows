@@ -42,6 +42,7 @@ export const THEME_OPTIONS = [
 ];
 export const SKIN_OPTIONS = [
   { value: "press", label: "Press" }, { value: "ocean", label: "Ocean" }, { value: "glass", label: "Glass" }, { value: "cyber", label: "Cyber" },
+  { value: "metal", label: "Metal" },
 ];
 
 /** A change to one of these clears a hand pick's hold and applies the schedule at once. */

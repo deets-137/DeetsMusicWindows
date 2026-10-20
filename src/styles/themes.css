@@ -125,9 +125,22 @@
      scrubbers). Light is white in every theme, so this is the one role no theme remaps;
      a little dimmer on dark themes so it does not blaze. */
   --glint: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65));
+
+  /* Metal (docs/features/metal.md): light and shade on the metal, the same in every theme
+     (light is white, shade is black), stronger on the light aluminums. Only Metal reads them. */
+  --metal-edge:     light-dark(rgba(0, 0, 0, 0.22), rgba(255, 255, 255, 0.12));
+  --metal-edge-hi:  light-dark(rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.16));
+  --metal-edge-lo:  light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.6));
+  --metal-contact:  rgba(0, 0, 0, 0.3);   /* a card's crisp contact shadow */
+  --metal-cast:     rgba(0, 0, 0, 0.16);  /* its short cast shadow */
+  --metal-sheen-hi: rgba(255, 255, 255, 0.38); /* the polished face on an accent fill */
+  --metal-sheen-lo: rgba(0, 0, 0, 0.24);
 }
 
 [data-theme="lilac"] {
+  /* Metal's material in this theme (only the Metal skin paints it; metal.md §1b) */
+  --metal:       var(--paint-lilac-aluminum);
+  --metal-floor: var(--paint-lilac-aluminum-floor);
   color-scheme: light;
   --canvas:  var(--paint-dewy-lilac);
   --go:      var(--paint-fae-mint);
@@ -154,6 +167,9 @@
 }
 
 [data-theme="green"] {
+  /* Metal's material in this theme (only the Metal skin paints it; metal.md §1b) */
+  --metal:       var(--paint-green-aluminum);
+  --metal-floor: var(--paint-green-aluminum-floor);
   color-scheme: light;
   --canvas:  var(--paint-dewy-chartreuse);
   --go:      var(--paint-fern);
@@ -180,6 +196,9 @@
 }
 
 [data-theme="sepia"] {
+  /* Metal's material in this theme (only the Metal skin paints it; metal.md §1b) */
+  --metal:       var(--paint-champagne-bronze);
+  --metal-floor: var(--paint-champagne-floor);
   color-scheme: light;
   --canvas:  var(--paint-parchment);
   --go:      var(--paint-olive-leaf);
@@ -206,6 +225,9 @@
 }
 
 [data-theme="moonlight"] {
+  /* Metal's material in this theme (only the Metal skin paints it; metal.md §1b) */
+  --metal:       var(--paint-blue-steel);
+  --metal-floor: var(--paint-blue-steel-floor);
   color-scheme: dark;
   --canvas:  var(--paint-deep-slate);
   --go:      var(--paint-moonlight-white);   /* lights are monochrome here: */
@@ -232,6 +254,9 @@
 }
 
 [data-theme="black-yellow"] {
+  /* Metal's material in this theme (only the Metal skin paints it; metal.md §1b) */
+  --metal:       var(--paint-dark-steel);
+  --metal-floor: var(--paint-dark-steel-floor);
   color-scheme: dark;
   --canvas:  var(--paint-pitch);
   --go:      var(--paint-hazard);   /* monochrome yellow family — no green/red: */
@@ -258,6 +283,9 @@
 }
 
 [data-theme="black-red"] {
+  /* Metal's material in this theme (only the Metal skin paints it; metal.md §1b) */
+  --metal:       var(--paint-blackened-steel);
+  --metal-floor: var(--paint-blackened-floor);
   color-scheme: dark;
   --canvas:  var(--paint-pitch);
   --go:      var(--paint-siren);    /* monochrome red family — no green/yellow: */
@@ -285,3 +313,7 @@
   --scrollbar:       rgba(255, 43, 43, 0.22);
   --scrollbar-hover: rgba(255, 43, 43, 0.40);
 }
+
+/* Metal over Black & Yellow (his example, metal.md §1): dark steel with gold, not hi-vis
+   yellow. The one place a skin changes a theme's title: the theme names the paint. */
+[data-skin="metal"][data-theme="black-yellow"] { --title: var(--paint-gold-leaf); }
