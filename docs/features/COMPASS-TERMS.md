@@ -82,7 +82,7 @@ Any other row opens the Settings card at that row. Examples: **hover hints**, **
 | **play** / **pause** (resume, stop) | Play or pause; Space does this too |
 | **next** (skip, forward) · **previous** (back, prev) | The next or the previous song |
 | **shuffle** (random) · **repeat** (loop) · **mute** (silence, quiet) | The transport buttons |
-| **sleep in 15 / 30 / 45 / 60** · **sleep at end of song** · **sleep at end of up next** · **sleep timer off** | The sleep timer |
+| **sleep in 15 / 30 / 45 / 60** · **sleep at end of song** · **sleep at end of queue** · **sleep timer off** | The sleep timer |
 | **full player** (full screen, fullscreen, big cover, large cover) | Opens or closes the full player: Now Playing grows so the cover is as large as the window allows (fullscreen-player.md, 2026-10-11). Midi and Max only |
 | **pin this song** / **unpin this song** (pin, pinned) | Pins the playing song: a tile on Home's Pinned shelf and the Library's (PINS.md, 2026-09-18) |
 | **reset row order** (arrange, rearrange, move, order, sections) | Opens Settings › Reset › Row order — the way back to the built-in order of every section and every pinned item (MOVABLE-ROWS.md, 2026-09-20). Shown only when you have moved something |

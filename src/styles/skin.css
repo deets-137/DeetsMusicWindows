@@ -93,6 +93,7 @@
   --room-panel-pad:      var(--sound-panel-pad);
   --room-panel-max-h:    min(560px, calc(100vh - 48px));  /* scrolls inside a short window (mini) */
   --room-title-tracking: var(--sound-title-tracking);
+  --sleep-title-tracking: var(--room-title-tracking); /* "Sleep Timer": the panel title's family (.room__title), his ask 2026-10-19 */
   --room-code-fs:        22px;   /* the code, the panel's one piece of large type */
   --room-code-space:     0.08em; /* letter spacing, so 8 characters read one by one */
   --room-field-w:        132px;  /* a name field beside its label, with the label unwrapped */

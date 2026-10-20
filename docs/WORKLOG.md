@@ -12,6 +12,20 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-19, late — `v-thirtyone`: a made web clears the Web panel
+
+His ask: after Make playlist, the next open of the Web panel starts fresh (no seed, chips, name
+or Make playlist), with the Start row on the last web's kind. PLAYLIST-WEB.md §13a, desk test
+§13a.1 open.
+
+## 2026-10-19, late — `v-thirtyone`: the Sleep panel's title, End of Queue
+
+His ask, from a screenshot: the Sleep panel gets the title "Sleep Timer" in the panels' title
+rule (`.sleep__title`, `--sleep-title-tracking` → `.room__title`'s), and the chip "End of Up
+Next" is "End of Queue". The words follow it: the chip's hint ("Pauses when the queue runs
+out"), the timer's status ("Sleep at the end of the queue"), the Compass verb ("Sleep at end of
+Queue"), and the ledgers (ONBOARDING §1, SETTINGS, SETTINGS-INVENTORY, COMPASS-TERMS, QUEUE).
+
 ## 2026-10-19, late — `v-thirtyone`: the Web panel's i and its title
 
 His ask: an i at the top of the Web panel that says how the web picks songs, in plain words;

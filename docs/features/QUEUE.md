@@ -1012,7 +1012,7 @@ started the whole library from "A".
 4. At the end of a list, press Play before the web arrives: the list plays from its start, and
    the log shows `web:listEnd {skip: "user acted"}`; nothing replaces it.
 5. Queue a station after a list (Add to Queue on a station): at the end the station plays, no web.
-6. Sleep timer "at the end of Up Next", then let the list end: no web (`web:listEnd {skip:
+6. Sleep timer "at the end of the queue", then let the list end: no web (`web:listEnd {skip:
    "sleep"}`), the list waits paused.
 
 ## Restore across sessions (2026-09-12)

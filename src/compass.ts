@@ -507,7 +507,7 @@ function actions(all: boolean): Row[] {
   }
   rows.push(
     { group: "Actions", title: "Sleep at end of song", sub: "The sleep timer", run: () => sleepAtEnd("song") },
-    { group: "Actions", title: "Sleep at end of Up Next", sub: "The sleep timer", run: () => sleepAtEnd("queue") },
+    { group: "Actions", title: "Sleep at end of Queue", sub: "The sleep timer", run: () => sleepAtEnd("queue") },
   );
   if (sleepArmed()) rows.push({ group: "Actions", title: "Sleep timer off", run: () => sleepOff() });
   // The full player (features/fullscreen-player.md §12.6). Its words are the row's aliases;

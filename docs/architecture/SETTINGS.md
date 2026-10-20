@@ -372,7 +372,7 @@ because `soundAdaptive` does.
 **All four are also rows of Settings › Sleep (§3), 2026-09-18**, and Reset gained a **Sleep** group
 for them — it had none, which was the mismatch fork 2 asked about.
 
-The dial, *Off*, *End of song* and *End of Up Next* are live actions, not stored settings.
+The dial, *Off*, *End of song* and *End of Queue* are live actions, not stored settings.
 
 ### Listening rooms — `room-panel.ts`, `room.ts` ([ROOMS.md](../integrations/ROOMS.md))
 

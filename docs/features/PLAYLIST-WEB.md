@@ -823,3 +823,28 @@ The first try (2026-10-19, eight short lines, Claude's) was replaced the same da
 5. Pick an album with Reach 3 set. The first paragraph says "goes 2 artists out".
 6. Click the i again. The fold closes and the panel shrinks.
 7. The Playlists card's web button: its panel ("Playlist web") has the same i.
+
+## 13a. A made web clears the panel (2026-10-19)
+> **Part:** built · 2026-10-19
+
+His ask: once a web is made from a seed, opening the panel again gives the user a fresh start
+for a new web. Before, the panel kept the seed, its genre chips, the status line, the name and
+Make playlist, so a second press made the same web again.
+
+- `made` is set when **Make playlist** succeeds (a failed make keeps everything). The next
+  open runs `clearMade`: no seed, no result, no picked genres, the name and the field empty, and
+  the chips, status, name, Make playlist and Keep · Temp hidden. A build still in flight is
+  dropped. The list under the field is the usual first list (the library, earlier webs).
+- The Start row keeps the kind of the last web built (onOpen, as before), so a song web opens on
+  Song.
+- Reach, Size, Prefer and the days are settings and stay as they are.
+- Only the panel's own Make clears it: a web from a right-click, the Compass or a list's end
+  never touches the panel.
+- Log: `web:fresh`.
+
+### 13a.1 Desk test
+1. Open the Web panel. Pick a song. Wait for the chips. Click **Make playlist**.
+2. Open the Web panel again. The field is empty and reads "Find a song". No song row is
+   picked, and no chips, status, name or Make playlist show.
+3. Pick another song. The chips, the name and Make playlist come back for it.
+4. Pick a song, then close the panel WITHOUT making. Open it again: the song is still picked.

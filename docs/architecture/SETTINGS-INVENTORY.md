@@ -129,7 +129,7 @@ Music pauses when the timer runs out. The last three rows are also in Settings �
 | The dial | Turn it to set the minutes | — |
 | Off | Turns the timer off | — |
 | End of song | Pauses when this song ends | — |
-| End of Up Next | Pauses when Up Next runs out | — |
+| End of Queue | Pauses when the queue runs out | — |
 | Wind down | Over these last minutes the volume sinks to nothing, then the music pauses | **5 min**, or 0 for a plain pause |
 | Play out song | The time runs out mid-song: the song finishes first | on / **off** |
 | Every day | A sleep time that arms itself daily. It pauses only if music is playing then | **Off** / Sunset / a set time (**10:00 PM**) |

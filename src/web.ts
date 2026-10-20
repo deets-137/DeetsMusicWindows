@@ -640,6 +640,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
   let picked = new Set<string>();
   let building = 0; // the build in flight; a newer one wins
   let making = false;
+  let made = false; // a web was made from this seed: the next open starts fresh (§13a, his ask 2026-10-19)
 
   /** Show or hide a part; a part that appears while the panel shows slides in. */
   const show = (el: HTMLElement, on: boolean) => {
@@ -1079,7 +1080,26 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
   };
 
 
+  /** After a web is made, the next open drops the seed and its parts, so the panel is ready for
+   *  a new web. The Start row keeps the kind (onOpen sets it from the last web built). */
+  const clearMade = () => {
+    made = false;
+    building++; // a build still in flight is dropped
+    seed = null;
+    result = null;
+    picked = new Set();
+    pickGenres = false;
+    nameEdited = false;
+    nameInput.value = "";
+    artistInput.value = "";
+    field.sync();
+    for (const el of [chipsEl, statusEl, nameInput, makeBtn, lifeEl]) el.hidden = true;
+    chipsEl.innerHTML = "";
+    diag.log("web:fresh", {});
+  };
+
   const pickSeed = (s: WebSeed) => {
+    made = false;
     seed = s;
     kind = s.kind;
     rows = [];
@@ -1183,6 +1203,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
       makeBtn.textContent = "Make playlist";
       renderReady();
     }
+    made = true;
     if (expireDays) diag.log("web:expiry", { arm: id, days: expireDays });
     diag.log("web:make", { kind: result.kind, seed: seedName(seed), expireDays, songs: tracks.length, genres: [...picked], prefer: setting("webPrefer") });
     playIfSeedPlaying(seed, tracks, id, "panel");
@@ -1365,6 +1386,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     // While the playlist is being made, a click away or the pointer leaving does not close it.
     shouldStayOpen: (why) => making && (why === "away" || why === "leave" || why === "toggle"),
     onOpen: () => {
+      if (made) clearMade();
       renderSegs();
       // Zero calls: the earlier webs' seeds, the library artist photos and play counts already saved.
       void Promise.all([

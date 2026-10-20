@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 54 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 664 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
+| Skin (everything else) | skin.css base block | 665 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
 
 ## Theme roles
 
@@ -156,6 +156,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--room-panel-pad` | `var(--sound-panel-pad)` | — |  |
 | `--room-panel-max-h` | `min(560px, calc(100vh - 48px))` | — | scrolls inside a short window (mini) |
 | `--room-title-tracking` | `var(--sound-title-tracking)` | — |  |
+| `--sleep-title-tracking` | `var(--room-title-tracking)` | — | "Sleep Timer": the panel title's family (.room__title), his ask 2026-10-19 |
 | `--room-code-fs` | `22px` | — | the code, the panel's one piece of large type |
 | `--room-code-space` | `0.08em` | — | letter spacing, so 8 characters read one by one |
 | `--room-field-w` | `132px` | — | a name field beside its label, with the label unwrapped |

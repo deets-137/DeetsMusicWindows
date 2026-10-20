@@ -487,6 +487,11 @@ body {
   z-index: 20;
 }
 .sleep__panel[hidden] { display: none; }
+/* The title: the Room, Sound, Rewind and Web panels' title (.room__title), his ask 2026-10-19. */
+.sleep__title {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
+  color: var(--title); letter-spacing: var(--sleep-title-tracking);
+}
 
 .sleep__dial {
   position: relative;

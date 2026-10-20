@@ -354,7 +354,7 @@ function hint(): string {
   switch (mode) {
     case "clock": return fromSchedule ? `Sleep at ${clockText(deadline)}, every day` : `Sleep in ${readoutText(remainingMs())}`;
     case "song": return "Sleep at the end of this song";
-    case "queue": return "Sleep at the end of Up Next";
+    case "queue": return "Sleep at the end of the queue";
     default: return "The sleep timer. Music pauses when it runs out";
   }
 }

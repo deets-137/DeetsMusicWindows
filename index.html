@@ -340,6 +340,7 @@
           ></button>
 
           <div class="sleep__panel pop" id="sleep-panel" role="group" aria-label="Sleep timer" data-tauri-drag-region="false" hidden>
+            <div class="sleep__title">Sleep Timer</div>
             <div class="sleep__dial" id="sleep-dial" role="slider" tabindex="0" aria-label="Minutes until sleep"
                  aria-valuemin="0" aria-valuemax="120" aria-valuenow="0"
                  title="Turn the timer to set the minutes. Music pauses when it runs out">
@@ -357,7 +358,7 @@
             </div>
             <div class="sleep__chips">
               <button class="sleep__chip" type="button" data-sleep-mode="song" aria-pressed="false" title="Pauses when this song ends">End of song</button>
-              <button class="sleep__chip" type="button" data-sleep-mode="queue" aria-pressed="false" title="Pauses when Up Next runs out">End of Up Next</button>
+              <button class="sleep__chip" type="button" data-sleep-mode="queue" aria-pressed="false" title="Pauses when the queue runs out">End of Queue</button>
             </div>
             <!-- These four are ALSO rows of Settings › Sleep (2026-09-18). Both controls write
                  the same store key and both repaint on onSettingsChange, so neither can drift.
