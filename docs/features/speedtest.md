@@ -389,18 +389,51 @@ the EQ grid's line. Each threshold's reason is beside it in `src/net-rules.ts`.
 1. `npm run dev:app`, Max. The car is right of the Rewind button (on `v-thirtyone`). Hover:
    "Network: Good". Open the panel: the car drives off to the right and the next one drives in
    from the left. Close it: off to the left, in from the right.
-2. Play a song. Open the panel: "Network: Good"; Internet, Apple Music, Stream (and Wi-Fi on
-   Wi-Fi). Within 30 s the Internet line reads "N ms · 0 % lost". The newest cell is green.
+2. Play a song. Open the panel: "Network: Good"; Internet, Apple Music, Stream, each with one
+   status word on the right (§10). Within 30 s Internet reads "Good". Hover it: "0 % of pings lost
+   in the last 5 min, N ms round trip." The newest cell is green.
 3. Hover a cell: its time and numbers.
-4. Click **Test**: "Testing…", then "N Mbps · N ms · just now". The log has one `net: test` line.
+4. Click **Test**: Speed reads "Testing…", then "Good". Hover it: "Just now: N Mbps down, N ms
+   round trip." The log has one `net: test` line.
 5. Pause. The ping stops (`net:watch {on:false}` in `diag`); the newest Internet cells go empty.
 6. Turn Wi-Fi off (or pull the cable): the title says Bad, the car turns the Bad color, the
-   Internet row's newest cell is Bad. Back on: the drop's minutes stay Bad, the title goes back
+   Internet row reads Bad at once (its hint: "Offline.") and its newest cell is Bad. Back on: the drop's minutes stay Bad, the title goes back
    to Good after 5 minutes.
-7. AirPlay to a speaker: the AirPlay row and its two lines appear.
+7. AirPlay to a speaker: the AirPlay row appears under Internet, and stays for the session.
+   Hover its status: the speaker's name, the sound sent again, the round trip.
 8. The fetch wrap: after a play, `grep "\[perf\] fetchwrap" …deetsmusic.log | tail -1`:
    `pieces` > 0 and `unseen` 0 means MusicKit reads songs with `fetch`; `faults` 0. Then run
    `node docs/ops/checks/fetch-wrap.mjs` on `dev:built` (§6.2).
 9. The worker: once deployed, `curl -s -o /dev/null -w '%{size_download} %{http_code}\n'
    https://support.deets.solutions/speed` → `2097152 200`. Until then, step 4 shows "The test
    did not finish".
+
+## 10. Revised 2026-10-19, evening (his calls)
+
+His review of v1 on `v-thirtyone`, after a fit test of every string in all five skins on the
+dev app (the Stream line was cut short in every skin; a long AirPlay speaker name in Press):
+
+- **Wi-Fi is out** ("chuck wifi out"). The row, the `net_wifi` command and its WLAN code
+  (`net.rs`), the `Win32_NetworkManagement_WiFi` feature, the `wifi` minute field and
+  `wifiVerdict` with its test are gone. N5 is undone.
+- **AirPlay takes its place**, under Internet, once a speaker has played this session (not
+  only in the hour). Its two lines under the bar (N2 c) are gone. It is the one thing that
+  changes the panel's size (about 40 px, once a session); when it comes with the panel open,
+  the panel grows gently and the row slides in (his ask: `--pop-grow`, `--pop-ease`,
+  `enterRows`, the Rewind panel's own motion).
+- **Minimal text** ("just statuses with interpretation in hover text"). Each row shows one
+  word on the right: Good, OK or Bad over the last 5 minutes (the title's words and window),
+  "–" while it has nothing to judge. The numbers and what they mean are that word's hover
+  hint, in sentences; for a Bad row the hint ends with the advice that was the red line under
+  it. The Test row reads "Speed" and the Test's status the same way (`testVerdict`), its
+  Mbps, round trip and age in the hint.
+
+**What Claude decided inside his calls (for his OK):**
+- Only Bad takes a color, as the title's word does; "–" is in the subtext color.
+- The Test row's left word, "Speed".
+- Offline reads Bad on the Internet row at once, as the title does, before its minute is judged.
+- Apple's wait reads in minutes or hours above 2 minutes ("wait 12 min", not "720 s").
+- The hint wording: "N % of pings lost in the last 5 min, N ms round trip.", "None of N calls
+  to Apple failed this hour.", "No pauses to load this hour. Songs load at N Mbps.",
+  "Living Room: 0.4 % of the sound sent again, 22 ms round trip.", "Just now: N Mbps down, N ms
+  round trip."

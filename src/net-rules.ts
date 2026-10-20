@@ -18,8 +18,6 @@ export interface Minute {
   rtts: number[];
   /** A Rooms or Friends socket closed and had to reconnect. */
   drops: number;
-  /** The Wi-Fi signal quality, 0–100, the lowest read this minute; null = not on Wi-Fi. */
-  wifi: number | null;
   /** Music played at some point in this minute. */
   playing: boolean;
   /** Mid-song pauses to load, and their seconds. */
@@ -36,7 +34,7 @@ export interface Minute {
 }
 
 export const emptyMinute = (m: number): Minute => ({
-  m, offline: false, pingSent: 0, rtts: [], drops: 0, wifi: null, playing: false,
+  m, offline: false, pingSent: 0, rtts: [], drops: 0, playing: false,
   stalls: 0, stallS: 0, apPackets: 0, apResends: 0, apStarved: 0, apRtt: null, pieceKbps: [],
 });
 
@@ -68,17 +66,6 @@ export function internetVerdict(c: Minute): CellVerdict {
   if (c.drops >= DROPS_BAD || (loss !== null && loss >= LOSS_BAD) || (rtt !== null && rtt >= RTT_BAD_MS)) return "bad";
   if (c.drops > 0 || (loss !== null && loss > 0) || (rtt !== null && rtt >= RTT_OK_MS)) return "ok";
   return loss === null ? "none" : "good";
-}
-
-// ── Wi-Fi: Windows' signal quality ──
-// Windows draws its own bars from the same number: under 40 is one bar, where a 256 kbps
-// stream starts to stall; 65 and up is the full set.
-const WIFI_BAD = 40;
-const WIFI_OK = 65;
-
-export function wifiVerdict(c: Minute): CellVerdict {
-  if (c.wifi === null) return "none";
-  return c.wifi < WIFI_BAD ? "bad" : c.wifi < WIFI_OK ? "ok" : "good";
 }
 
 // ── Apple Music: the calls of that minute (apple_calls.rs, `apple_calls_minutes`) ──

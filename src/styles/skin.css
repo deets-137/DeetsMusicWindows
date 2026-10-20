@@ -197,7 +197,6 @@
   --net-cell-h:              10px;                   /* one minute of the last hour */
   --net-cell-gap:            1px;
   --net-cell-radius:         1px;
-  --net-graph-h:             28px;                   /* the AirPlay lines under its bar */
   --net-good-strength:       60%;                    /* a Good cell is quieter than a Bad one, so */
   --net-ok-strength:         85%;                    /* the bar reads in a one-color theme too */
   /* The Settings split pill's line between its halves (settings.css): readable on every theme.

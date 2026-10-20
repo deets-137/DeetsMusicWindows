@@ -253,7 +253,8 @@ each step that touches those calls.
 - **The Network panel, v1** (2026-10-19, on `net-worked`; merged on `v-thirtyone`, right of the
   Rewind button;
   [features/speedtest.md](features/speedtest.md) §7–§9). The car button in Max (his
-  drawing, 2026-10-19), "Network: Good", a bar per link for the last hour, the Test row;
+  drawing, 2026-10-19), "Network: Good", per link one status word (numbers on hover) and a bar
+  for the last hour, the Test row; Wi-Fi out, AirPlay second (speedtest.md §10, his review);
   the ping every 30 s only while playing; the fetch wrap. Built in a cloud session: tsc, the unit
   tests and a Windows-target `cargo check` pass; nothing ran on Windows. **Open:** his desk test
   (§9, tonight), the fetch wrap's A/B (`checks/fetch-wrap.mjs`), his look at what Claude decided

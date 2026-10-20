@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 54 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 667 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
+| Skin (everything else) | skin.css base block | 666 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
 
 ## Theme roles
 
@@ -246,7 +246,6 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--net-cell-h` | `10px` | — | one minute of the last hour |
 | `--net-cell-gap` | `1px` | — |  |
 | `--net-cell-radius` | `1px` | — |  |
-| `--net-graph-h` | `28px` | — | the AirPlay lines under its bar |
 | `--net-good-strength` | `60%` | — | a Good cell is quieter than a Bad one, so |
 | `--net-ok-strength` | `85%` | — | the bar reads in a one-color theme too |
 | `--split-rule-strength` | `45%` | — | The Settings split pill's line between its halves (settings.css): readable on every theme. --border alone vanished on the light themes (his screenshot, 2026-10-16). |

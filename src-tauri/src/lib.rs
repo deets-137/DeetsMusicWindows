@@ -385,7 +385,6 @@ pub fn run() {
         .invoke_handler(invoke_with_watchdog(tauri::generate_handler![
             apple::apple_developer_token,
             net::net_ping,
-            net::net_wifi,
             net::net_test,
             apple_calls::apple_calls_minutes,
             apple::apple_developer_token_retry,

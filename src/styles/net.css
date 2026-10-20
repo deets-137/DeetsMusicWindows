@@ -45,6 +45,7 @@
   z-index: 20;
 }
 .net__panel[hidden], .net__panel [hidden] { display: none; }
+.net__panel.is-growing { overflow: hidden; } /* net.ts animates the height as a row comes */
 
 /* "Network: Good" (his layout): the title face, bold, the whole line. Bad takes the Bad color. */
 .net__title {
@@ -57,7 +58,12 @@
 .net__row { display: flex; flex-direction: column; gap: var(--net-head-gap); padding: 0 var(--space-2); }
 .net__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); min-width: 0; }
 .net__name { color: var(--title); white-space: nowrap; }
-.net__now { color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* A row's status (his ask, 2026-10-19): one word, Good · OK · Bad, the title's words in the
+   title's way: only Bad takes a color. "–" while there is nothing to judge. Its numbers and
+   their meaning are its hover hint. */
+.net__status { color: var(--text); white-space: nowrap; }
+.net__status[data-tone="none"] { color: var(--subtext); }
+.net__status[data-tone="bad"] { color: var(--net-bad); }
 
 /* One cell per minute, oldest on the left: a status page's bar. */
 .net__bar { display: grid; grid-template-columns: repeat(60, 1fr); gap: var(--net-cell-gap); }
@@ -65,26 +71,9 @@
 .net__cell[data-v="good"] { background: var(--net-good); }
 .net__cell[data-v="ok"] { background: var(--net-ok); }
 .net__cell[data-v="bad"] { background: var(--net-bad); }
-.net__poor { color: var(--net-bad); }
-
-/* The AirPlay lines (N2 c): the round trip in the title ink, the resent share in the Bad
-   color, on the bar's own 60 columns. */
-.net__lines { display: block; width: 100%; height: var(--net-graph-h); overflow: visible; }
-.net__lines polyline { fill: none; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
-.net__line-rtt { stroke: var(--title); }
-.net__line-resend { stroke: var(--net-bad); }
-.net__keys { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--subtext); }
-.net__key::before {
-  content: ""; display: inline-block; vertical-align: middle;
-  width: var(--space-2); height: var(--updates-bar-h); margin-right: var(--space-1);
-  border-radius: var(--updates-bar-h); background: var(--title);
-}
-.net__key[data-k="resend"]::before { background: var(--net-bad); }
 
 .net__axis { display: flex; justify-content: space-between; padding: 0 var(--space-2); color: var(--subtext); }
 
-/* The Test row (his layout): the result on the left, the button on the right. */
+/* The Test row: "Speed" and its status as a link row reads, then the button on the right. */
 .net__test { gap: var(--space-2); }
-.net__result { flex: 1 1 auto; min-width: 0; color: var(--subtext); font-size: var(--fs-subtext); }
-.net__result[data-tone="bad"] { color: var(--net-bad); }
-.net__result[data-tone="good"], .net__result[data-tone="ok"] { color: var(--text); }
+.net__result { flex: 1 1 auto; text-align: right; }

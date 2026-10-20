@@ -45,6 +45,20 @@ dry-ran, then deployed with wrangler 4.151.2: version 44de8440, the new `SPEED_R
 the update feed (`/update/deetsmusic/vp/releases.deetsmusic.json`) 200 with 0.30.0; `/signin`,
 `/health`, `/config`, `/status` 200. Both branches pushed to DeetsSupport's origin.
 
+Then the panel's words, at his ask. A fit test on the dev app (each string of each row put in a
+copy of a real row; the skin swapped on `<html>` for the run and put back, no setting written)
+found the Stream line cut short in every skin (277–363 px in ~265) and a long AirPlay speaker
+name cut in Press; all else fit. His review in three steps: a breakdown of every piece, then a
+tile mockup, then his calls (speedtest.md §10): Wi-Fi out (front end and Rust), AirPlay in its
+place once a speaker played this session, its lines gone, and one status word per row with the
+numbers in its hover hint. The tile layout was drawn but never built; his last call replaced it.
+
+His report: the "Play on" panel's ✓ showed as "âœ“". `src/styles.css` is a plain `<link>`;
+Vite's dev server sends it as `text/css` with no charset, and the file had no `@charset`, so the
+webview guessed. One reload read it as Windows-1252 (the page itself was UTF-8; a fresh copy of
+the same file decoded right). Fixed at the source: `@charset "UTF-8";` as the file's first bytes.
+The release bundle keeps it at the front of its stylesheet (checked in `dist/`).
+
 ## 2026-10-19 — The Network panel, v1 (`net-worked`)
 
 **His ask:** design and build v1 of the network widget on a new branch `net-worked` off `main`:

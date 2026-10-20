@@ -641,7 +641,6 @@ const H: Record<string, Handler> = {
     const n = Number(a?.n ?? 3);
     return { sent: n, rtts: Array.from({ length: n }, (_, i) => 22 + ((i * 7) % 9)) };
   },
-  net_wifi: () => ({ quality: 78, rxMbps: 866 }),
   net_test: () => new Promise((r) => setTimeout(() => r({ bytes: 2097152, ms: 420, mbps: 39.9, ping: { sent: 3, rtts: [23, 25, 22] } }), 1200)),
   apple_calls_minutes: () => ({ minutes: [], backoffS: null }),
 

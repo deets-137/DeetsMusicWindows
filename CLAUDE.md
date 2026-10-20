@@ -206,8 +206,9 @@ for word, with RELEASE.md's section numbers.
   Rewind card stays until he decides (§9.4); the breakdown by genre and weekday (§4) is not built.
 - `speedtest.md` — BUILT 2026-10-19 (v1, on `net-worked`), desk test open (§9, his): the Max
   title bar's car button (his drawing; it drives off on open and close) and its panel: "Network: Good"
-  (Good · OK · Bad), one status bar per link for the last hour (Internet, Wi-Fi, Apple Music,
-  Stream, AirPlay; AirPlay also draws its round trip and resends as lines), the Test row (ping +
+  (Good · OK · Bad), one row per link with one status word and a bar for the last hour (Internet,
+  AirPlay once a speaker played this session, Apple Music, Stream; the numbers are the word's hover
+  hint; Wi-Fi taken out, §10), the Test row (ping +
   2 MB from DeetsSupport's `/speed`, counted and dropped). The ping (`net.rs`, `IcmpSendEcho`)
   runs every 30 s only while music plays. The header-only fetch wrap (`src/fetch-wrap.ts`, §5.3)
   gives the song pieces' speed; its A/B is `docs/ops/checks/fetch-wrap.mjs` (§6). His calls §7;

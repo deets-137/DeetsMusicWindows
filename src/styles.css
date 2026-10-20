@@ -1,4 +1,9 @@
-/* ============================================================
+@charset "UTF-8";
+/* The line above must stay the file's first bytes. This file is a plain <link> in index.html,
+   and Vite's dev server sends it as `text/css` with no charset, so the webview guessed its
+   encoding. A reload once read it as Windows-1252: the "Play on" panel's ✓ showed as "âœ“"
+   (2026-10-19). Its @imports take the same encoding.
+   ============================================================
    App styles. Tokens first (palette → themes → skin), then the
    app's own rules. Rules reference ONLY semantic tokens —
    never a raw hex or hardcoded px / font name.

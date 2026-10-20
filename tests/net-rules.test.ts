@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  emptyMinute, median, lossOf, internetVerdict, wifiVerdict, appleVerdict, streamVerdict, airplayVerdict,
+  emptyMinute, median, lossOf, internetVerdict, appleVerdict, streamVerdict, airplayVerdict,
   worst, titleVerdict, testVerdict, isSongUrl, pieceKbps, pushRing, type Minute,
 } from "../src/net-rules.ts";
 
@@ -31,13 +31,6 @@ test("internet: offline is Bad, a lost echo is OK, no ping while online is nothi
   assert.equal(internetVerdict(min({})), "none");
   assert.equal(internetVerdict(min({ drops: 1 })), "ok");
   assert.equal(internetVerdict(min({ drops: 3 })), "bad");
-});
-
-test("wi-fi follows Windows' own bars (2026-10-19)", () => {
-  assert.equal(wifiVerdict(min({ wifi: null })), "none");
-  assert.equal(wifiVerdict(min({ wifi: 30 })), "bad");
-  assert.equal(wifiVerdict(min({ wifi: 50 })), "ok");
-  assert.equal(wifiVerdict(min({ wifi: 90 })), "good");
 });
 
 test("apple: one failure is OK, only failures or three is Bad (2026-10-19)", () => {

@@ -1,13 +1,10 @@
-//! The Network panel's three reads (docs/features/speedtest.md): a ping, the Wi-Fi signal, and the
-//! Test download. Each is a command the front end calls; nothing here runs on its own, and no
+//! The Network panel's two reads (docs/features/speedtest.md): a ping and the Test download. Each is a command the front end calls; nothing here runs on its own, and no
 //! thread is started (each read is one `spawn_blocking` task, or async).
 //!
 //! - `net_ping`: ICMP echoes to the support worker's host (Cloudflare's edge), through
 //!   `IcmpSendEcho` (no admin right needed). net.ts calls it every 30 s, only while music plays
 //!   (his call N3, speedtest.md §7). The answer is the round trips and how many came back: the
 //!   only packet-loss number the app has for the internet link.
-//! - `net_wifi`: the Wi-Fi signal quality (0–100) of the connected Wi-Fi adapter, through the
-//!   WLAN API. `None` on Ethernet, or with the WLAN service off.
 //! - `net_test`: the Test button. Three pings, then a download of 2 MB from
 //!   `support.deets.solutions/speed`. The bytes are counted and dropped: nothing goes to disk
 //!   (his rule, speedtest.md §5 F1). Only the result goes back to the panel.
@@ -33,15 +30,6 @@ pub struct Ping {
     pub sent: u32,
     /// The round trip of each echo that came back, ms.
     pub rtts: Vec<u32>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Wifi {
-    /// The signal quality Windows reports, 0–100.
-    pub quality: u32,
-    /// The link's receive rate, Mbps (what the adapter negotiated, not what the internet gives).
-    pub rx_mbps: u32,
 }
 
 #[derive(Serialize)]
@@ -103,51 +91,6 @@ fn ping_blocking(n: u32) -> Result<Ping, String> {
 #[tauri::command]
 pub async fn net_ping(n: u32) -> Result<Ping, String> {
     tauri::async_runtime::spawn_blocking(move || ping_blocking(n)).await.map_err(|e| e.to_string())?
-}
-
-fn wifi_blocking() -> Option<Wifi> {
-    use windows::Win32::Foundation::HANDLE;
-    use windows::Win32::NetworkManagement::WiFi::{
-        wlan_interface_state_connected, wlan_intf_opcode_current_connection, WlanCloseHandle, WlanEnumInterfaces, WlanFreeMemory,
-        WlanOpenHandle, WlanQueryInterface, WLAN_CONNECTION_ATTRIBUTES, WLAN_INTERFACE_INFO_LIST,
-    };
-
-    let mut handle = HANDLE::default();
-    let mut version = 0u32;
-    // 2 = the client version of Windows Vista and later. Fails when the WLAN service is off.
-    if unsafe { WlanOpenHandle(2, None, &mut version, &mut handle) } != 0 {
-        return None;
-    }
-    let mut found = None;
-    let mut list: *mut WLAN_INTERFACE_INFO_LIST = std::ptr::null_mut();
-    if unsafe { WlanEnumInterfaces(handle, None, &mut list) } == 0 && !list.is_null() {
-        let count = unsafe { (*list).dwNumberOfItems } as usize;
-        let first = unsafe { std::ptr::addr_of!((*list).InterfaceInfo) }.cast::<windows::Win32::NetworkManagement::WiFi::WLAN_INTERFACE_INFO>();
-        for i in 0..count {
-            let info = unsafe { &*first.add(i) };
-            if info.isState != wlan_interface_state_connected {
-                continue;
-            }
-            let mut size = 0u32;
-            let mut data: *mut core::ffi::c_void = std::ptr::null_mut();
-            let rc = unsafe { WlanQueryInterface(handle, &info.InterfaceGuid, wlan_intf_opcode_current_connection, None, &mut size, &mut data, None) };
-            if rc == 0 && !data.is_null() {
-                let attrs = unsafe { &*(data as *const WLAN_CONNECTION_ATTRIBUTES) };
-                let a = &attrs.wlanAssociationAttributes;
-                found = Some(Wifi { quality: a.wlanSignalQuality.min(100), rx_mbps: a.ulRxRate / 1000 });
-                unsafe { WlanFreeMemory(data) };
-                break;
-            }
-        }
-        unsafe { WlanFreeMemory(list as *const _) };
-    }
-    unsafe { WlanCloseHandle(handle, None) };
-    found
-}
-
-#[tauri::command]
-pub async fn net_wifi() -> Result<Option<Wifi>, String> {
-    tauri::async_runtime::spawn_blocking(wifi_blocking).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

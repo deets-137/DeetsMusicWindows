@@ -5,14 +5,15 @@
 //
 // The panel, top to bottom (his layout):
 //   - the title line, "Network: Good" (Good · OK · Bad, his words), in the title face, bold;
-//   - one bar per link for the last hour, one cell per minute: Internet, Wi-Fi, Apple Music,
-//     Stream, AirPlay (Wi-Fi only on Wi-Fi, AirPlay only with a speaker in the hour). The
-//     AirPlay row also draws its round trip and its resent share as two lines (N2 c);
-//   - the Test row: the result on the left, the Test button on the right (net_test).
+//   - one row per link: its name, its numbers as small tiles (a value over a short label, his
+//     ask 2026-10-19: no line of parts joined by dots), and a bar for the last hour, one cell per
+//     minute. Internet, AirPlay (once a speaker has played this session), Apple Music, Stream.
+//     Wi-Fi and the AirPlay lines were taken out on 2026-10-19 (his call, speedtest.md §10);
+//   - the Test row: the result as a tile on the left, the Test button on the right (net_test).
 //
-// What it reads (§8.1): the ping (`net_ping`, every 30 s, only while music plays, N3), the Wi-Fi
-// signal (`net_wifi`, every 60 s while music plays, N5), Apple's calls by minute
-// (`apple_calls_minutes`), and the feed (net-feed.ts): stalls, socket drops, AirPlay's counts,
+// What it reads (§8.1): the ping (`net_ping`, every 30 s, only while music plays, N3), Apple's
+// calls by minute (`apple_calls_minutes`), and the feed (net-feed.ts): stalls, socket drops,
+// AirPlay's counts,
 // the fetch wrap's song pieces. Offline from the webview's own events. Nothing runs while the
 // music is paused and the panel is shut: the bars fill from events then, and the ping waits.
 // Everything stays in memory; the bars start empty at each launch.
@@ -23,37 +24,37 @@ import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { keepRightInWindow } from "./quick-panel";
 import { currentSurface } from "./surface";
-import { onPlayerState, streamKbps } from "./player";
+import { onPlayerState } from "./player";
 import { onTrouble, type Trouble } from "./apple-health";
 import { onNetNote, type AirplayStats, type NetNote } from "./net-feed";
 import {
   emptyMinute, median, resendShare, pushRing, worst, titleVerdict, testVerdict,
-  internetVerdict, wifiVerdict, appleVerdict, streamVerdict, airplayVerdict, VERDICT_WORDS,
+  internetVerdict, appleVerdict, streamVerdict, airplayVerdict, VERDICT_WORDS,
   type Minute, type CellVerdict, type Verdict,
 } from "./net-rules";
 import * as diag from "./diag";
 import { tokenMs } from "./boot-cover";
+import * as frames from "./frames";
 
 const HOUR = 60;
 const PING_EVERY_MS = 30_000;
 const PING_N = 3;
-const WIFI_EVERY_MS = 60_000;
 /** While the panel is open, its numbers are read again this often. */
 const OPEN_EVERY_MS = 5_000;
 /** A minute keeps at most this many song pieces (a song is about 10). */
 const PIECES_PER_MINUTE = 100;
 
 interface Ping { sent: number; rtts: number[] }
-interface Wifi { quality: number; rxMbps: number }
 interface SpeedTest { bytes: number; ms: number; mbps: number; ping: Ping }
 interface AppleMinutes { minutes: { m: number; ok: number; bad: number }[]; backoffS: number | null }
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const nowMin = () => Math.floor(Date.now() / 60_000);
 const clock = (m: number) => new Date(m * 60_000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const plural = (n: number, one: string, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 const mbpsText = (kbps: number) => (kbps >= 1000 ? `${(kbps / 1000).toFixed(kbps >= 10_000 ? 0 : 1)} Mbps` : `${Math.round(kbps)} kbps`);
 const pct = (share: number) => `${(share * 100).toFixed(share < 0.01 ? 1 : 0)} %`;
+/** Apple's wait in the largest unit that reads whole: "45 s", "12 min", "1 h". */
+const waitText = (s: number) => (s < 120 ? `${s} s` : s < 2 * 3600 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`);
 
 // ── the minutes ──
 const minutes: Minute[] = [];
@@ -76,8 +77,7 @@ function hour(): Minute[] {
 let apple: AppleMinutes = { minutes: [], backoffS: null };
 let appleTrouble: Trouble = "none";
 let ap: AirplayStats | null = null; // the last AirPlay poll
-let apSeen = false; // a speaker in the hour: its row shows
-let wifiNow: Wifi | null = null;
+let apSeen = false; // a speaker has played this session: its row shows
 let playing = false;
 let offlineSince: number | null = navigator.onLine ? null : nowMin();
 let lastTest: { at: number; r: SpeedTest } | { at: number; err: string } | null = null;
@@ -89,18 +89,6 @@ const readApple = async () => {
     apple = await invoke<AppleMinutes>("apple_calls_minutes");
   } catch {
     /* an old build or the demo: the row stays empty */
-  }
-};
-
-const readWifi = async () => {
-  try {
-    wifiNow = await invoke<Wifi | null>("net_wifi");
-    if (wifiNow) {
-      const c = cur();
-      c.wifi = Math.min(c.wifi ?? 100, wifiNow.quality);
-    }
-  } catch {
-    wifiNow = null;
   }
 };
 
@@ -123,22 +111,18 @@ const ping = async () => {
   paint();
 };
 
-// ── the timers: only while music plays (the ping, N3; the Wi-Fi read, N5), and while the
-//    panel is open (its numbers) ──
+// ── the timers: only while music plays (the ping, N3), and while the panel is open (its
+//    numbers) ──
 let pingTimer = 0;
-let wifiTimer = 0;
 let openTimer = 0;
 function armPlaying(on: boolean): void {
   if (on === !!pingTimer) return;
   window.clearInterval(pingTimer);
-  window.clearInterval(wifiTimer);
-  pingTimer = wifiTimer = 0;
+  pingTimer = 0;
   diag.log("net:watch", { on });
   if (!on) return;
   void ping();
-  void readWifi();
   pingTimer = window.setInterval(() => void ping(), PING_EVERY_MS);
-  wifiTimer = window.setInterval(() => void readWifi(), WIFI_EVERY_MS);
 }
 
 function onNote(n: NetNote): void {
@@ -168,36 +152,44 @@ function onNote(n: NetNote): void {
 }
 
 // ── the rows ──
+// A row shows one word, its status: Good, OK or Bad over the last five minutes, the title's
+// own words; "–" while it has nothing to judge. The numbers and what they mean are the
+// status's hover hint (his ask, 2026-10-19: minimal text, the reading on hover). The advice
+// for a Bad row is the hint's last sentence.
 interface Row {
   key: string;
   name: string;
   show: (h: Minute[]) => boolean;
   verdicts: (h: Minute[]) => CellVerdict[];
-  /** The row's numbers now, right of its name. */
-  now: (h: Minute[]) => string;
+  /** The status's hover hint: the row's numbers now, in sentences. */
+  hint: (h: Minute[]) => string;
   /** One cell's hover hint, after its time. */
   cell: (c: Minute, i: number) => string;
-  /** The line under a row that is Bad now, in the user's terms. */
+  /** The hint's last sentence while the row is Bad now, in the user's terms. */
   poor: string;
 }
 
 const appleOf = (m: number) => apple.minutes.find((a) => a.m === m) ?? { ok: 0, bad: 0 };
 const last5 = (h: Minute[]) => h.slice(-5);
 
+// The order (his call, 2026-10-19): AirPlay takes the place Wi-Fi had, under Internet.
 const ROWS: Row[] = [
   {
     key: "internet",
     name: "Internet",
     show: () => true,
     verdicts: (h) => h.map(internetVerdict),
-    now: (h) => {
-      if (!navigator.onLine) return "Offline";
+    hint: (h) => {
+      if (!navigator.onLine) {
+        const since = offlineSince === null ? 0 : nowMin() - offlineSince;
+        return since < 1 ? "Offline." : `Offline for ${since} min.`;
+      }
       const recent = last5(h);
       const sent = recent.reduce((a, c) => a + c.pingSent, 0);
-      if (!sent) return playing ? "Pinging…" : "Pings while music plays";
+      if (!sent) return playing ? "Checking the link." : "The link is checked every 30 s while music plays.";
       const rtts = recent.flatMap((c) => c.rtts);
       const r = median(rtts);
-      return `${r === null ? "–" : `${Math.round(r)} ms`} · ${pct((sent - rtts.length) / sent)} lost`;
+      return `${pct((sent - rtts.length) / sent)} of pings lost in the last 5 min${r === null ? "" : `, ${Math.round(r)} ms round trip`}.`;
     },
     cell: (c) => {
       if (c.offline) return "offline";
@@ -212,63 +204,15 @@ const ROWS: Row[] = [
     poor: "Songs may pause to load.",
   },
   {
-    key: "wifi",
-    name: "Wi-Fi",
-    show: (h) => !!wifiNow || h.some((c) => c.wifi !== null),
-    verdicts: (h) => h.map(wifiVerdict),
-    now: () => (wifiNow ? `Signal ${wifiNow.quality} %${wifiNow.rxMbps ? ` · ${wifiNow.rxMbps} Mbps link` : ""}` : "Not on Wi-Fi now"),
-    cell: (c) => (c.wifi === null ? "no reading" : `signal ${c.wifi} %`),
-    poor: "The Wi-Fi signal is weak. Move closer to the router, or use a cable.",
-  },
-  {
-    key: "apple",
-    name: "Apple Music",
-    show: () => true,
-    verdicts: (h) => h.map((c) => (c.m === nowMin() && (appleTrouble === "app" || appleTrouble === "offline") ? "bad" : appleVerdict(appleOf(c.m).ok, appleOf(c.m).bad))),
-    now: () => {
-      if (apple.backoffS) return `Apple asked us to wait ${apple.backoffS} s`;
-      if (appleTrouble === "app") return "Not answering";
-      if (appleTrouble === "offline") return "Out of reach";
-      const ok = apple.minutes.reduce((a, m) => a + m.ok, 0);
-      const bad = apple.minutes.reduce((a, m) => a + m.bad, 0);
-      return ok + bad ? `${plural(ok + bad, "call")} this hour${bad ? `, ${bad} failed` : ""}` : "No calls this hour";
-    },
-    cell: (c) => {
-      const a = appleOf(c.m);
-      return a.ok + a.bad ? `${plural(a.ok + a.bad, "call")}${a.bad ? `, ${a.bad} failed` : ""}` : "no calls";
-    },
-    poor: "Apple Music is slow to answer. DeetsMusic keeps trying.",
-  },
-  {
-    key: "stream",
-    name: "Stream",
-    show: () => true,
-    verdicts: (h) => h.map(streamVerdict),
-    now: (h) => {
-      const kbps = streamKbps();
-      const stalls = h.reduce((a, c) => a + c.stalls, 0);
-      const speed = median(h.flatMap((c) => c.pieceKbps).slice(-20));
-      return [kbps ? `${kbps} kbps` : "", plural(stalls, "pause") + " this hour", speed ? `songs load at ${mbpsText(speed)}` : ""].filter(Boolean).join(" · ");
-    },
-    cell: (c) => {
-      if (!c.playing && !c.stalls) return "not playing";
-      const parts = [c.stalls ? `${plural(c.stalls, "pause")} to load (${Math.round(c.stallS)} s)` : "no pause"];
-      const speed = median(c.pieceKbps);
-      if (speed) parts.push(`songs load at ${mbpsText(speed)}`);
-      return parts.join(" · ");
-    },
-    poor: "Songs pause to load. Settings › Playback › Stream quality › Low may help.",
-  },
-  {
     key: "airplay",
     name: "AirPlay",
     show: () => apSeen,
     verdicts: (h) => h.map(airplayVerdict),
-    now: (h) => {
-      if (!ap) return "No speaker now";
+    hint: (h) => {
+      if (!ap) return "No speaker now.";
       const recent = last5(h);
       const share = resendShare({ apPackets: recent.reduce((a, c) => a + c.apPackets, 0), apResends: recent.reduce((a, c) => a + c.apResends, 0) });
-      return `${ap.speaker} · ${Math.round(ap.rttP95Ms || ap.rttMs)} ms · ${share === null ? "–" : pct(share)} resent`;
+      return `${ap.speaker}: ${share === null ? "no sound sent yet" : `${pct(share)} of the sound sent again`}, ${Math.round(ap.rttP95Ms || ap.rttMs)} ms round trip.`;
     },
     cell: (c) => {
       const share = resendShare(c);
@@ -277,6 +221,44 @@ const ROWS: Row[] = [
     },
     poor: "The speaker misses sound. Move it or the PC closer to the router.",
   },
+  {
+    key: "apple",
+    name: "Apple Music",
+    show: () => true,
+    verdicts: (h) => h.map((c) => (c.m === nowMin() && (appleTrouble === "app" || appleTrouble === "offline") ? "bad" : appleVerdict(appleOf(c.m).ok, appleOf(c.m).bad))),
+    hint: () => {
+      if (appleTrouble === "app") return "Apple Music is not answering.";
+      if (appleTrouble === "offline") return "Apple Music is out of reach.";
+      const ok = apple.minutes.reduce((a, m) => a + m.ok, 0);
+      const bad = apple.minutes.reduce((a, m) => a + m.bad, 0);
+      const calls = ok + bad ? `${bad ? `${bad} of ${plural(ok + bad, "call")}` : `None of ${plural(ok, "call")}`} to Apple failed this hour.` : "No calls to Apple this hour.";
+      return apple.backoffS ? `${calls} Apple asked us to wait ${waitText(apple.backoffS)}.` : calls;
+    },
+    cell: (c) => {
+      const a = appleOf(c.m);
+      return a.ok + a.bad ? `${plural(a.ok + a.bad, "call")}${a.bad ? `, ${a.bad} failed` : ""}` : "no calls";
+    },
+    poor: "DeetsMusic keeps trying.",
+  },
+  {
+    key: "stream",
+    name: "Stream",
+    show: () => true,
+    verdicts: (h) => h.map(streamVerdict),
+    hint: (h) => {
+      const stalls = h.reduce((a, c) => a + c.stalls, 0);
+      const speed = median(h.flatMap((c) => c.pieceKbps).slice(-20));
+      return `${stalls ? `${plural(stalls, "pause")} to load` : "No pauses to load"} this hour.${speed ? ` Songs load at ${mbpsText(speed)}.` : ""}`;
+    },
+    cell: (c) => {
+      if (!c.playing && !c.stalls) return "not playing";
+      const parts = [c.stalls ? `${plural(c.stalls, "pause")} to load (${Math.round(c.stallS)} s)` : "no pause"];
+      const speed = median(c.pieceKbps);
+      if (speed) parts.push(`songs load at ${mbpsText(speed)}`);
+      return parts.join(" · ");
+    },
+    poor: "Settings › Playback › Stream quality › Low may help.",
+  },
 ];
 
 /** The title's word: the worst of every row in the last five minutes. */
@@ -284,49 +266,22 @@ function verdictNow(h: Minute[]): Verdict {
   return titleVerdict(ROWS.filter((r) => r.show(h)).map((r) => r.verdicts(h)), navigator.onLine);
 }
 
-// ── the AirPlay lines (N2 c): the round trip and the resent share over the hour ──
-function airplayLines(h: Minute[]): string {
-  const rtts = h.map((c) => c.apRtt);
-  const shares = h.map((c) => resendShare(c));
-  const rttTop = Math.max(50, ...rtts.map((v) => v ?? 0));
-  const shareTop = Math.max(0.02, ...shares.map((v) => v ?? 0));
-  const line = (vs: (number | null)[], top: number) => {
-    const segs: string[] = [];
-    let seg: string[] = [];
-    vs.forEach((v, i) => {
-      if (v === null) {
-        if (seg.length) segs.push(seg.join(" "));
-        seg = [];
-        return;
-      }
-      seg.push(`${i + 0.5},${(20 - (v / top) * 19).toFixed(2)}`);
-    });
-    if (seg.length) segs.push(seg.join(" "));
-    // A lone point draws as a short dash, so one minute of data still shows.
-    return segs.map((s) => (s.includes(" ") ? s : `${s} ${s.replace(/^([\d.]+)/, (x) => String(+x + 0.6))}`));
-  };
-  const poly = (cls: string, pts: string[]) => pts.map((p) => `<polyline class="${cls}" points="${p}" />`).join("");
-  return (
-    `<svg class="net__lines" viewBox="0 0 60 20" preserveAspectRatio="none" aria-hidden="true">` +
-    poly("net__line-rtt", line(rtts, rttTop)) + poly("net__line-resend", line(shares, shareTop)) +
-    `</svg><div class="net__keys"><span class="net__key" data-k="rtt">Round trip, up to ${Math.round(rttTop)} ms</span>` +
-    `<span class="net__key" data-k="resend">Resent, up to ${pct(shareTop)}</span></div>`
-  );
-}
-
 // ── the Test row ──
-function testText(): { text: string; tone: string } {
-  if (testing) return { text: "Testing…", tone: "" };
-  if (!lastTest) return { text: "Pings our server, then downloads 2 MB", tone: "" };
+/** The Test's status (its speed judged as a stream needs it) and the numbers as its hint. */
+function testStatus(): { word: string; tone: CellVerdict; hint: string } {
+  if (testing) return { word: "Testing…", tone: "none", hint: "Pings our server, then downloads 2 MB." };
+  if (!lastTest) return { word: "–", tone: "none", hint: "Test pings our server, then downloads 2 MB. Nothing is kept." };
   const ago = Math.round((Date.now() - lastTest.at) / 60_000);
-  const when = ago < 1 ? "just now" : `${ago} min ago`;
-  if ("err" in lastTest) return { text: `The test did not finish · ${when}`, tone: "bad" };
+  const when = ago < 1 ? "Just now" : `${ago} min ago`;
+  if ("err" in lastTest) return { word: VERDICT_WORDS.bad, tone: "bad", hint: `${when}: the test did not finish.` };
   const r = lastTest.r;
   const rtt = median(r.ping.rtts);
   const lost = r.ping.sent - r.ping.rtts.length;
+  const v = testVerdict(r.mbps);
   return {
-    text: `${r.mbps >= 10 ? Math.round(r.mbps) : r.mbps.toFixed(1)} Mbps · ${rtt === null ? "–" : `${Math.round(rtt)} ms`}${lost ? ` · ${lost} lost` : ""} · ${when}`,
-    tone: testVerdict(r.mbps),
+    word: VERDICT_WORDS[v],
+    tone: v,
+    hint: `${when}: ${r.mbps >= 10 ? Math.round(r.mbps) : r.mbps.toFixed(1)} Mbps down, ${rtt === null ? "no ping back" : `${Math.round(rtt)} ms round trip`}${lost ? `, ${lost} of ${r.ping.sent} pings lost` : ""}.`,
   };
 }
 
@@ -366,14 +321,21 @@ function build(rows: Row[]): void {
     rows
       .map(
         (r) =>
-          `<div class="net__row" data-row="${r.key}"><div class="net__head"><span class="net__name">${r.name}</span><span class="net__now"></span></div>` +
-          `<div class="net__bar">${cells}</div>${r.key === "airplay" ? `<div class="net__graph"></div>` : ""}<div class="net__poor" hidden>${esc(r.poor)}</div></div>`,
+          `<div class="net__row" data-row="${r.key}"><div class="net__head"><span class="net__name">${r.name}</span><span class="net__status"></span></div>` +
+          `<div class="net__bar">${cells}</div></div>`,
       )
       .join("") +
     `<div class="net__axis" aria-hidden="true"><span>1 h ago</span><span>now</span></div>` +
-    `<div class="set quick__rows"><div class="set__row net__test"><span class="net__result"></span>` +
+    `<div class="set quick__rows"><div class="set__row net__test"><span class="net__name">Speed</span><span class="net__status net__result"></span>` +
     `<div class="set__split"><button class="set__half" type="button" data-net-test title="Pings support.deets.solutions, then downloads 2 MB from it. Nothing is kept">Test</button></div></div></div>`;
   shape = rows.map((r) => r.key).join();
+}
+
+/** A status word, its tone and its hover hint, each written only when it changed. */
+function setStatus(el: HTMLElement, word: string, tone: CellVerdict, hint: string): void {
+  if (el.textContent !== word) el.textContent = word;
+  if (el.dataset.tone !== tone) el.dataset.tone = tone;
+  if (el.dataset.hint !== hint) el.title = hint; // hint.ts moves `title` to `data-hint`
 }
 
 /** Repaint the button, and the panel when it is open. Cheap: no call, no new element unless a
@@ -390,7 +352,20 @@ function paint(): void {
   }
   if (!panel || panel.hidden) return;
   const rows = ROWS.filter((r) => r.show(h));
-  if (rows.map((r) => r.key).join() !== shape) build(rows);
+  // A row that comes while the panel is open (AirPlay, the first time a speaker plays this
+  // session) grows the panel gently and slides in, as the Rewind panel's lists do (his ask,
+  // 2026-10-19). The first build at an open has nothing to grow from.
+  let grewFrom = 0;
+  let came: string[] = [];
+  const keys = rows.map((r) => r.key).join();
+  if (keys !== shape) {
+    if (shape) {
+      grewFrom = panel.offsetHeight;
+      const had = new Set(shape.split(","));
+      came = rows.map((r) => r.key).filter((k) => !had.has(k));
+    }
+    build(rows);
+  }
   const word = panel.querySelector<HTMLElement>(".net__word")!;
   word.textContent = VERDICT_WORDS[v];
   word.dataset.tone = v;
@@ -398,23 +373,49 @@ function paint(): void {
     const el = panel.querySelector<HTMLElement>(`[data-row="${r.key}"]`);
     if (!el) continue;
     const vs = r.verdicts(h);
-    el.querySelector(".net__now")!.textContent = r.now(h);
+    // Offline now is Bad at once, as the title is, before a minute of it has been judged.
+    const now = r.key === "internet" && !navigator.onLine ? "bad" : worst(vs.slice(-5));
+    const hint = now === "bad" ? `${r.hint(h)} ${r.poor}` : r.hint(h);
+    setStatus(el.querySelector<HTMLElement>(".net__status")!, now === "none" ? "–" : VERDICT_WORDS[now], now, hint);
     el.querySelectorAll<HTMLElement>(".net__cell").forEach((cell, i) => {
       const cv = vs[i];
       if (cell.dataset.v !== cv) cell.dataset.v = cv;
       const tip = `${clock(h[i].m)} · ${r.cell(h[i], i)}`;
-      if (cell.title !== tip) cell.title = tip;
+      if (cell.dataset.hint !== tip) cell.title = tip;
     });
-    (el.querySelector(".net__poor") as HTMLElement).hidden = worst(vs.slice(-5)) !== "bad";
-    const graph = el.querySelector(".net__graph");
-    if (graph) graph.innerHTML = airplayLines(h);
   }
-  const t = testText();
-  const res = panel.querySelector<HTMLElement>(".net__result")!;
-  res.textContent = t.text;
-  if (t.tone) res.dataset.tone = t.tone;
-  else delete res.dataset.tone;
+  const t = testStatus();
+  setStatus(panel.querySelector<HTMLElement>(".net__result")!, t.word, t.tone, t.hint);
   (panel.querySelector("[data-net-test]") as HTMLButtonElement).disabled = testing;
+  if (grewFrom) {
+    growFrom(grewFrom);
+    enterRows(came.map((k) => panel!.querySelector(`[data-row="${k}"]`)).filter((el): el is HTMLElement => !!el));
+    diag.log("net:row", { came });
+  }
+}
+
+// ── the height follows the content (rewind-btn.ts's `animateHeight`, the panels' one shape) ──
+let grow: Animation | null = null;
+function growFrom(from: number): void {
+  if (!panel) return;
+  grow?.cancel();
+  grow = null;
+  panel.classList.remove("is-growing");
+  if (panel.hidden || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const to = panel.offsetHeight;
+  if (Math.abs(to - from) < 1) return;
+  panel.classList.add("is-growing");
+  frames.during("fold", 250, to > from ? "open" : "close");
+  const a = panel.animate([{ height: `${from}px` }, { height: `${to}px` }], {
+    duration: tokenMs("--pop-grow"),
+    easing: getComputedStyle(panel).getPropertyValue("--pop-ease").trim() || "ease",
+  });
+  grow = a;
+  a.onfinish = () => {
+    if (grow !== a) return;
+    grow = null;
+    panel?.classList.remove("is-growing");
+  };
 }
 
 /** Open the panel (the Compass's row, COMPASS.md §9). Max only, as its button. */
@@ -478,7 +479,7 @@ export function initNetwork(): void {
       keepRightInWindow(root!, panel!);
       enterRows(panel!.children);
       diag.log("net:open", { verdict: wasVerdict });
-      void Promise.all([readApple(), readWifi()]).then(paint);
+      void readApple().then(paint);
       window.clearInterval(openTimer);
       openTimer = window.setInterval(() => {
         if (panel!.hidden) return void window.clearInterval(openTimer);
