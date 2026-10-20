@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.0
 desk_test: passed 2026-10-12
 sources: [src/layout.ts, src/layout-rules.ts, src/card-grow.ts, src/full-player.ts, src/styles.css, index.html, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/rulez-words.ts, src/rulez-logs.ts, src/compass.ts, src/appearance.ts, src/boot-cover.ts, src/rulez-card.ts, src/surface.ts]
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 # DeetsMusic — Max cards: one, two or four content cards in Max
 
@@ -225,7 +225,10 @@ card covers it, so Fill is implied. The words stay the Grow words with a directi
 - `canFill()` is false, so *Fill* leaves the title's menu (`growMenu`, `card-grow.ts:521`), and
   the Grow button cycles rest → grow → rest (`buttonAction`, `card-grow.ts:508`).
 - The menu shows *Grow right* / *Grow left* in *2 columns*, *Grow down* / *Grow up* in
-  *2 rows*. The edge zone toward the neighbor grows. The outer edges do nothing.
+  *2 rows*. The edge zone toward the neighbor grows. **Since 2026-10-20 (his ask) the right
+  strip and the far outer strip grow too** (the top card's top, the bottom card's bottom; in
+  *2 columns* each card's top and bottom, and the right card's right): the result is the same
+  grow over the other card. The left strip beside the stage stays Now Playing's.
 - A rule's grow (`growByRule`, `card-grow.ts:345`) with the axis of the neighbor grows. A rule
   that asks for `full` takes the grow toward the neighbor (the result is the same).
 - **The full player's rule** (from that session, 2026-10-11): the left edge of the content

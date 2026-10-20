@@ -788,6 +788,15 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
   }
   // The outer sides: the one-click Fill zones (four-card max only); on the grown card they
   // collapse it (two-card max too: there the grow over the other card is the whole area).
+  // Two-card Max, at rest: the right and the far outer strip (the top card's top, the bottom
+  // card's bottom; the right card's right...) grow the card over the other one, as the strip
+  // toward it does (his ask, 2026-10-20: only the top strip grew the bottom card). The left
+  // strip beside the stage stays Now Playing's.
+  if (!canFill() && !mine && currentSurface() === "max" && !state && side !== "left") {
+    const dirs = growDirs(slot);
+    if (dirs.length !== 1) return null;
+    return { dir: dirs[0], act: "grow", reach: b === "edge" ? "edge" : "full" };
+  }
   if (!canFill() && !(mine && currentSurface() === "max")) return null;
   if (state && !mine) return null; // while one card is grown, only its own outer zones act
   // The gap beside the stage is shared with Now Playing's full-player strip: split at its
