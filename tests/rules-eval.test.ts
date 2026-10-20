@@ -12,7 +12,7 @@ const known: Known = {
   actions: new Set(["grow", "summon", "sleep", "openIn", "shuffleLibrary"]),
   targets: new Set([
     "key:theme", "key:skin", "key:soundEqPreset", "key:shareActivityApp", "key:shareActivityDiscord", "key:discordRoomInvite", "prop:window.onTop",
-    "key:glassFancy", "key:backgroundMotion", "key:cardSwapMotion", "key:appearanceMotion", "key:glassCanvas",
+    "key:glassFancy", "key:backgroundMotion", "key:cardSwapMotion", "key:appearanceMotion", "key:glassCanvas", "key:metalCoverChange",
   ]),
 };
 
@@ -215,7 +215,7 @@ test("Idle shuffle plays (2026-09-27): the library only with no song loaded; Not
   assert.equal(plays("noop", false), false);
 });
 
-test("If graphics fail (2026-10-11): Save + tell holds the five effects off while software; Tell only and Off make no rule", () => {
+test("If graphics fail (2026-10-11; Metal 2026-10-20): Save + tell holds the six effects off while software; Tell only and Off make no rule", () => {
   const off = (v: RowValues["graphicsFallback"], graphics: string) => resolveState(rows({ graphicsFallback: v }), { graphics }, []).set;
   const soft = off("save", "software");
   assert.equal(soft.get("key:glassFancy")?.value, false);
@@ -223,13 +223,14 @@ test("If graphics fail (2026-10-11): Save + tell holds the five effects off whil
   assert.equal(soft.get("key:cardSwapMotion")?.value, false);
   assert.equal(soft.get("key:appearanceMotion")?.value, false);
   assert.equal(soft.get("key:glassCanvas")?.value, "aurora");
+  assert.equal(soft.get("key:metalCoverChange")?.value, "off"); // the zoetrope turn (metal.md §6.7)
   assert.equal(off("save", "accelerated").size, 0);
   assert.equal(off("tell", "software").size, 0);
   assert.equal(off("off", "software").size, 0);
   // No fact yet (before the first read): nothing holds.
   assert.equal(resolveState(rows({}), {}, []).set.size, 0);
   // Turn effects on: a session hold on every target sets the rule aside.
-  const holds = ["glassFancy", "backgroundMotion", "cardSwapMotion", "appearanceMotion", "glassCanvas"].map((k) => ({ ruleId: "row:graphicsFallback", target: `key:${k}`, kind: "session" as const }));
+  const holds = ["glassFancy", "backgroundMotion", "cardSwapMotion", "appearanceMotion", "glassCanvas", "metalCoverChange"].map((k) => ({ ruleId: "row:graphicsFallback", target: `key:${k}`, kind: "session" as const }));
   assert.equal(resolveState(rows({}), { graphics: "software" }, holds).set.size, 0);
 });
 

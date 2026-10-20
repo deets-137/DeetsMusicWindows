@@ -1,0 +1,57 @@
+{
+  "about": "His report (2026-10-20): rapid Back / Next ghosts covers and flickers a cover as another one. The Metal draft's zoetrope with the peek on the running dev app, in Max: Next, Back, Next, Back about 250 ms apart (it ends on the starting song), frames kept from the first press; music paused again at the end if a press started it. The size is set for the shot and put back.",
+  "desk_test": "docs/features/metal.md §6.7; DESK-TESTS.md A11",
+  "made": "2026-10-20",
+  "pass": "The end probe: one cover layer, both side covers filled, the starting song, not playing. Read the strip by time for doubled or wrong covers.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/metal-rapid.json",
+  "shots": [
+    {
+      "about": "Metal rapid Next/Back",
+      "covers": "docs/features/metal.md",
+      "id": "metal-rapid",
+      "kind": "clip",
+      "source": "dev",
+      "size": "max",
+      "seconds": 9,
+      "steps": [
+        {
+          "wait": 900
+        },
+        {
+          "probe": "JSON.stringify({title: document.querySelector('.np__title')?.textContent})",
+          "name": "start"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type",
+          "frames": 160,
+          "region": "[data-slot=\"np\"] .np__art"
+        },
+        {
+          "wait": 250
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play)"
+        },
+        {
+          "wait": 250
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 250
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play)"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "probe": "(() => { const m = window.MusicKit && MusicKit.getInstance(); if (m && m.isPlaying) m.pause(); return JSON.stringify({title: document.querySelector('.np__title')?.textContent, playing: !!(m && m.isPlaying), layers: document.querySelectorAll('.np__art .vinyl').length, peeks: [...document.querySelectorAll('.metal-peek')].map(p => p.dataset.side + ':' + (p.dataset.src || '').slice(-24))}); })()",
+          "name": "end"
+        }
+      ]
+    }
+  ]
+}

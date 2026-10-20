@@ -541,6 +541,7 @@ export const GRAPHICS_OFF: { key: string; value: unknown }[] = [
   { key: "cardSwapMotion", value: false },
   { key: "appearanceMotion", value: false },
   { key: "glassCanvas", value: "aurora" },
+  { key: "metalCoverChange", value: "off" }, // the zoetrope's 3D turn and the side covers (metal.md §6.7)
 ];
 
 /** A WebGL renderer name that means software drawing: WARP ("Microsoft Basic Render Driver"),

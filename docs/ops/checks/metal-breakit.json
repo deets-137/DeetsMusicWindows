@@ -1,0 +1,129 @@
+{
+  "about": "The Metal draft's break-it pass (docs/ideas/metal.md §6.1, DESK-TESTS.md §6.6), scripted on the running dev app in Max: a shuffle toggle with no song change (the side covers must not animate), a jump two rows ahead in the Queue card (one layer per slot), and eight Next presses 80 ms apart (one cover layer, at most one word copy, no stale receiving mark at the end). The last step presses Back until the starting song shows, then pauses through the app's Play button.",
+  "desk_test": "docs/features/metal.md §6.7; DESK-TESTS.md A11",
+  "made": "2026-10-20",
+  "pass": "The shot is ok: every expect holds (no side animation on a shuffle toggle; one layer, no receiving mark and no word copy after a Queue jump and after eight Next presses 80 ms apart; back on the starting song, paused).",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/metal-breakit.json",
+  "shots": [
+    {
+      "about": "Metal break-it guards",
+      "covers": "docs/features/metal.md",
+      "id": "metal-breakit",
+      "kind": "clip",
+      "source": "dev",
+      "size": "max",
+      "seconds": 40,
+      "steps": [
+        {
+          "wait": 900
+        },
+        {
+          "probe": "(window.__mbStart = document.querySelector('.np__title')?.textContent, JSON.stringify({title: window.__mbStart, player: document.querySelector('.bento')?.dataset.player}))",
+          "name": "start"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__shuffle"
+        },
+        {
+          "wait": 60
+        },
+        {
+          "probe": "JSON.stringify({peekAnims: [...document.querySelectorAll('.metal-peek')].reduce((n, p) => n + p.getAnimations().length, 0), song: document.querySelector('.np__title')?.textContent})",
+          "name": "shuffle-on"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__shuffle"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "click": ".qcard__list .qrow:nth-of-type(2)",
+          "frames": 60,
+          "region": "[data-slot=\"np\"] .np__art"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({title: document.querySelector('.np__title')?.textContent, layers: document.querySelectorAll('.np__art .vinyl').length, receiving: document.querySelectorAll('.metal-peek[data-receiving]').length, ghosts: document.querySelectorAll('[data-metal-ghost]').length})",
+          "name": "after-jump",
+          "expect": {
+            "layers": 1,
+            "receiving": 0,
+            "ghosts": 0
+          }
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 80
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 80
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 80
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 80
+        },
+        {
+          "probe": "JSON.stringify({ghostsMid: document.querySelectorAll('[data-metal-ghost]').length, layersMid: document.querySelectorAll('.np__art .vinyl').length})",
+          "name": "mid-rapid"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 80
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 80
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 80
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify({title: document.querySelector('.np__title')?.textContent, layers: document.querySelectorAll('.np__art .vinyl').length, receiving: document.querySelectorAll('.metal-peek[data-receiving]').length, ghosts: document.querySelectorAll('[data-metal-ghost]').length, peeks: [...document.querySelectorAll('.metal-peek')].map(p => p.dataset.side + ':' + (p.dataset.src ? 'art' : 'none') + ':' + getComputedStyle(p).opacity)})",
+          "name": "after-rapid",
+          "expect": {
+            "layers": 1,
+            "receiving": 0,
+            "ghosts": 0
+          }
+        },
+        {
+          "probe": "(async () => { const t = () => document.querySelector('.np__title')?.textContent; for (let i = 0; i < 14 && t() !== window.__mbStart; i++) { document.querySelector('[data-slot=\"np\"] .np__btn:not(.np__btn--play)').click(); await new Promise((r) => setTimeout(r, 1400)); } const m = MusicKit.getInstance(); await new Promise((r) => setTimeout(r, 400)); if (m.isPlaying) { document.querySelector('[data-slot=\"np\"] .np__btn--play').click(); await new Promise((r) => setTimeout(r, 1200)); } return JSON.stringify({back: t() === window.__mbStart, playing: m.isPlaying}); })()",
+          "name": "restored",
+          "expect": {
+            "back": true,
+            "playing": false
+          }
+        }
+      ]
+    }
+  ]
+}

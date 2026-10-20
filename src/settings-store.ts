@@ -824,7 +824,9 @@ export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDis
   // point have no Settings row; a rule is how a pro user changes them.
   "webPlayNew", "webPlayMode", "webSkipSeed", "webSkipSeedAt",
   // Layout for Max (MAX-CARDS.md §4.9, his call 2026-10-11): e.g. two cards while on battery.
-  "maxCards"] as const;
+  "maxCards",
+  // Metal's cover change (docs/features/metal.md §6.7): the graphics fallback turns the 3D turn off.
+  "metalCoverChange"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 

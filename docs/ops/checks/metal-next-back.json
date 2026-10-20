@@ -1,0 +1,73 @@
+{
+  "about": "His report (2026-10-20): on Next and Back the side cover seems to change color before the covers move. The Metal draft's zoetrope with the peek on the running dev app, in Max: Next (often a song with the same cover), Next again between two different covers, then Back within 1.2 s and Back again (so it goes to the previous song, not the start of this one), the cover box's frames kept after each; music paused again at the end if a press started it. The size is set for the shot and put back.",
+  "desk_test": "docs/features/metal.md §6.7; DESK-TESTS.md A11",
+  "made": "2026-10-20",
+  "pass": "Read the two click strips by time (bytime crops of the cover box): the old cover lands in its slot, the next comes in front only where the side slots meet and sets off at once, the giving slot refills under it (never empty), the pushed-off side cover turns away behind; no frame carries more than ~15 % of the turn's change (popscore). Ends on the starting song, paused.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/metal-next-back.json",
+  "shots": [
+    {
+      "about": "Metal Next and Back, cold",
+      "covers": "docs/features/metal.md",
+      "id": "metal-next-back",
+      "kind": "clip",
+      "source": "dev",
+      "size": "max",
+      "seconds": 16,
+      "steps": [
+        {
+          "clearCache": true
+        },
+        {
+          "wait": 3500
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({title: document.querySelector('.np__title')?.textContent, next: document.querySelector('.metal-peek[data-side=\"next\"]')?.dataset.src?.slice(-30), prev: document.querySelector('.metal-peek[data-side=\"prev\"]')?.dataset.src?.slice(-30)})",
+          "name": "before"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type"
+        },
+        {
+          "wait": 900
+        },
+        {
+          "probe": "JSON.stringify({title: document.querySelector('.np__title')?.textContent, next: document.querySelector('.metal-peek[data-side=\"next\"]')?.dataset.src?.slice(-30), prev: document.querySelector('.metal-peek[data-side=\"prev\"]')?.dataset.src?.slice(-30)})",
+          "name": "before"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type",
+          "frames": 50,
+          "region": "[data-slot=\"np\"] .np__art"
+        },
+        {
+          "wait": 1000
+        },
+        {
+          "probe": "JSON.stringify({title: document.querySelector('.np__title')?.textContent, next: document.querySelector('.metal-peek[data-side=\"next\"]')?.dataset.src?.slice(-30), prev: document.querySelector('.metal-peek[data-side=\"prev\"]')?.dataset.src?.slice(-30)})",
+          "name": "after-next"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play)",
+          "frames": 50,
+          "region": "[data-slot=\"np\"] .np__art"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play)"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "(() => { const m = window.MusicKit && MusicKit.getInstance(); if (m && m.isPlaying) m.pause(); return JSON.stringify({title: document.querySelector('.np__title')?.textContent, playing: !!(m && m.isPlaying)}); })()",
+          "name": "end"
+        }
+      ]
+    }
+  ]
+}

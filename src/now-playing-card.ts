@@ -212,6 +212,7 @@ export const nowPlayingCard: CardDef = {
     // swaps the scrubber for a LIVE marker and the prev/next buttons disable.
     let onStation = false; // radio mode → the menu offers Stop Station
     let artKey = ""; // what the cover box currently shows — rebuilt only on change
+    let shownEntry: ReturnType<typeof queue.getCurrent> = null; // the queue entry the cover shows
     let lastState: PlayerState | undefined;
     // The cover box's art slot: the Press record player where it is on (docs/features/VINYL.md),
     // the plain cover everywhere else.
@@ -298,7 +299,18 @@ export const nowPlayingCard: CardDef = {
       const radioGap = !!s.station && !title;
       if (npArt && vinyl && key !== artKey && !(radioGap && artKey)) {
         artKey = key;
-        vinyl.show(song, artwork);
+        // The turn's direction from the queue, the one place that knows it: after Previous the
+        // song we left waits first in Up Next. A list of songs shown took a run of Previous
+        // presses for steps forward, and the next Next then turned back (the stress test,
+        // 2026-10-20). A station or a jump has no answer here; vinyl.ts falls back to its list.
+        const left = shownEntry;
+        const up = queue.getUpcoming()[0];
+        const same = (a?: { catalogId?: string; libraryId?: string } | null, b?: { catalogId?: string; libraryId?: string } | null) =>
+          !!a && !!b && ((!!a.catalogId && a.catalogId === b.catalogId) || (!!a.libraryId && a.libraryId === b.libraryId));
+        const hist = queue.getHistory();
+        const back = same(left, up) ? true : same(left, hist[hist.length - 1]) ? false : undefined;
+        shownEntry = cur ?? null;
+        vinyl.show(song, artwork, back);
         npArt.querySelector(".np__station")?.remove();
         // Radio: the station's name rides the cover as a hover chip (STATIONS.md §3b).
         if (s.station) {

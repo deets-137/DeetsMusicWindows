@@ -2157,6 +2157,7 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   text-decoration-line: var(--title-underline);
   text-decoration-thickness: var(--title-underline-w);
   text-underline-offset: var(--title-underline-offset);
+  letter-spacing: var(--title-tracking, normal);   /* a skin's title tracking (Metal) */
 }
 .panel__body {
   flex: 1 1 auto;
@@ -2206,11 +2207,12 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   font-size: var(--action-text-fs);
   font-weight: var(--action-text-weight);
   line-height: 1;
+  color: var(--action-text-ink, var(--title));   /* a skin may ink the word apart from the glyph squares (Metal: small text needs 4.5:1) */
 }
 /* Pressed = the board it opens is the one showing. Scoped to the worded action, so the
    glyph squares that already carry aria-pressed (np__shuffle) keep their own rule. The
    pressed look is the app's own: --picked, with the title's ink on the border and the word. */
-.panel__action--text[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
+.panel__action--text[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--action-text-ink, var(--title)); }
 .panel__action:hover { filter: brightness(0.97); }
 .panel__action[disabled] { opacity: 0.6; cursor: default; }
 .panel__action[hidden] { display: none; } /* class sets display:grid, which would beat [hidden] */
@@ -2773,8 +2775,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .ctx-menu__input::placeholder { color: var(--subtext); }
 /* Optional title above a field (InputItem.label) — the shelf-header voice, menu-scaled. */
 .ctx-menu__label {
-  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
-  color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--font-caps, var(--font-title)); font-weight: var(--fw-caps, var(--fw-title)); font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px)); font-stretch: var(--caps-stretch, normal);   /* the caps hooks: a skin's label face (Metal), else the title's */
+  color: var(--subtext); text-transform: uppercase; letter-spacing: var(--caps-tracking, 0.06em);
   padding: var(--space-2) var(--space-2) var(--space-1);
   cursor: default;
 }
@@ -3187,7 +3189,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .lib-action:disabled:hover { background-color: var(--surface); }
 .lib-action--play:disabled:hover { background-color: var(--title); filter: none; }
 /* the accent fill: the title ink, with a skin's polished face over it (--accent-sheen; Metal) */
-.lib-action--play { background-color: var(--title); background-image: var(--accent-sheen); background-blend-mode: normal; border-color: var(--title); color: var(--surface); box-shadow: none; }
+.lib-action--play { background-color: var(--title); background-image: var(--accent-sheen); background-blend-mode: var(--accent-sheen-blend); background-size: var(--accent-sheen-size); border-color: var(--title); color: var(--surface); box-shadow: none; }
 .lib-action--play:hover { background-color: var(--title); filter: brightness(1.12); }
 /* The count row (multi-select, NEXT-VERSION §19): while rows are picked, the same slot
    says how many, then Play and Shuffle. There is no Clear button — a click on any row, or
@@ -3355,8 +3357,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    list), voiced like the Search card's section titles so the two sectioned surfaces
    speak one language. Non-interactive: no hover treatment, default cursor. */
 .lib-shelf {
-  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
-  color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--font-caps, var(--font-title)); font-weight: var(--fw-caps, var(--fw-title)); font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px)); font-stretch: var(--caps-stretch, normal);
+  color: var(--subtext); text-transform: uppercase; letter-spacing: var(--caps-tracking, 0.06em);
   padding: var(--space-3) 0 var(--space-1);
   cursor: default;
 }
@@ -3378,7 +3380,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 }
 .lib-shelf--toggle.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
 /* Full strength: at 70 % no subtext can reach 4.5:1 (the readability check, 2026-10-14). */
-.lib-shelf__count { margin-left: auto; }
+.lib-shelf__count { margin-left: auto; font-variant-numeric: var(--caps-figures, normal); }   /* a skin may line the counts up (Metal) */
 
 /* ── Search card (SEARCH.md — the "searches" screen archetype) ── */
 /* Blended sectioned results: bar-divided vertical sections, each an h-scroller.
@@ -3493,8 +3495,8 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__sec { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
 .search__sec:last-child { border-bottom: none; }
 .search__sec-title, .search__label, .artist-info__h {
-  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-subtext);
-  color: var(--subtext); text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--font-caps, var(--font-title)); font-weight: var(--fw-caps, var(--fw-title)); font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px)); font-stretch: var(--caps-stretch, normal);
+  color: var(--subtext); text-transform: uppercase; letter-spacing: var(--caps-tracking, 0.06em);
   margin: 0 0 var(--space-1);
 }
 /* The song pane and the writer pane (CREDITS.md §7). The chip wears the web panel's
@@ -3731,12 +3733,12 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 .np {
   position: relative;
   transition:
-    --album-bg var(--album-fade-dur),
-    --album-c1 var(--album-fade-dur),
-    --album-c2 var(--album-fade-dur),
-    --np-title var(--album-fade-dur),
-    --np-subtext var(--album-fade-dur),
-    --np-accent var(--album-fade-dur);
+    --album-bg var(--album-fade-dur) var(--album-fade-delay),
+    --album-c1 var(--album-fade-dur) var(--album-fade-delay),
+    --album-c2 var(--album-fade-dur) var(--album-fade-delay),
+    --np-title var(--album-fade-dur) var(--album-fade-delay),
+    --np-subtext var(--album-fade-dur) var(--album-fade-delay),
+    --np-accent var(--album-fade-dur) var(--album-fade-delay);
 }
 /* Album-colored accents: the scrub fill and the "on" squares follow --np-accent
    (theme --title / --go until a skin opts in and JS sets a guarded album color). */
@@ -3872,7 +3874,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 .scrub .scrub__fill {
   position: absolute; left: 0; top: 0; height: 100%;
   width: var(--slider-fill, 0%); background: var(--title); border-radius: var(--radius-round);
-  background-image: var(--accent-sheen);
+  background-image: var(--accent-sheen); background-blend-mode: var(--accent-sheen-blend); background-size: var(--accent-sheen-size);
 }
 .scrub .scrub__handle {
   position: absolute; top: 50%; left: var(--slider-fill, 0%);
@@ -4160,6 +4162,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   font-family: var(--font-title);
   font-weight: var(--fw-title);
   font-size: var(--fs-text);
+  letter-spacing: var(--title-tracking, normal);
   color: var(--np-title);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -5162,6 +5165,15 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   view-transition-name: match-element;
   view-transition-class: theme-live;
 }
+/* The title bar is the same brushed floor as the window under the cards, with a dark seam below:
+   it was the page's plain color, so the window read as two materials (the design review). */
+[data-skin="metal"] .titlebar {
+  background-color: var(--app-canvas-color);
+  background-image: var(--app-canvas-bg);
+  background-blend-mode: var(--app-canvas-blend);
+  background-size: var(--canvas-bg-size);
+  box-shadow: inset 0 -1px 0 var(--metal-edge-lo);
+}
 /* The Plays badge arrives with a short fade instead of popping in (the design review). */
 @keyframes metal-badge-in { from { opacity: 0; } to { opacity: 1; } }
 [data-skin="metal"] .np__listen--cover:not([hidden]) { animation: metal-badge-in var(--metal-badge-in) ease-out both; }
@@ -5170,11 +5182,17 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
    middle, and the previous and next covers wait behind it at the sides, turned on the drum and
    dimmed; metal.ts draws them. The box crops to the cover's top and bottom: a side cover's
    inner edge, turned toward you, grew past them (his note, 2026-10-20). */
+/* A side cover sits deeper on the drum (translateZ, below), so its inner edge stays shorter than
+   the cover and the box needs no crop above and below (it cropped 5 % before). The left and right
+   slots overlap in the middle even at rest, so the arriving cover must cross the leaving one: a
+   stacking flip did it in one frame (a pop), and a shared 3D scene cut the covers into strips
+   where the planes met (both tried, the stress test, 2026-10-20). vinyl.ts holds the arriving
+   cover in its slot until the old one is nearly home, fades it in on top there, and from then on
+   the only edge that moves over the other covers is its own. */
 [data-skin="metal"][data-metal-peek]:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art {
   background: transparent;
   height: 80cqw;
   aspect-ratio: 5 / 4;
-  clip-path: inset(var(--metal-peek-crop) 0 round var(--radius-control));
 }
 [data-skin="metal"][data-metal-peek]:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art .vinyl {
   inset: var(--metal-peek-cover-inset);
@@ -5195,18 +5213,22 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 [data-skin="metal"][data-metal-peek]:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .np__art .metal-peek {
   display: block;
   position: absolute;
-  top: var(--metal-peek-top);
-  width: var(--metal-peek-size-w);
-  height: var(--metal-peek-size-h);
-  z-index: 0;
+  inset: var(--metal-peek-cover-inset);   /* the cover's own box: the turn lands exactly on it */
   pointer-events: none;
   border-radius: var(--radius-control);
   background: var(--peek-art, none) center / cover no-repeat, var(--surface);
   filter: var(--metal-peek-dim);
-  box-shadow: var(--metal-peek-shadow);
+  box-shadow: var(--metal-cover-rim), var(--metal-cover-shadow);   /* the cover's own rim and shadow: a cover that lands here hands over pixel for pixel */
 }
-[data-skin="metal"][data-metal-peek] .np__art .metal-peek[data-side="prev"] { left: 0; transform: perspective(var(--metal-perspective)) rotateY(calc(-1 * var(--metal-peek-turn))); }
-[data-skin="metal"][data-metal-peek] .np__art .metal-peek[data-side="next"] { right: 0; transform: perspective(var(--metal-perspective)) rotateY(var(--metal-peek-turn)); }
+/* where the drum holds a side cover: out by --zoetrope-run of the cover's width, back by the
+   depth that shows it at --zoetrope-scale, turned by --zoetrope-turn (vinyl.ts turns the
+   covers between these same places, in the same transform, so a cover lands exactly on its slot) */
+[data-skin="metal"][data-metal-peek] .np__art .metal-peek[data-side="prev"] {
+  transform: perspective(var(--metal-perspective)) translateX(calc(-100% * var(--zoetrope-run))) translateZ(var(--metal-drum-back)) rotateY(calc(-1deg * var(--zoetrope-turn)));
+}
+[data-skin="metal"][data-metal-peek] .np__art .metal-peek[data-side="next"] {
+  transform: perspective(var(--metal-perspective)) translateX(calc(100% * var(--zoetrope-run))) translateZ(var(--metal-drum-back)) rotateY(calc(1deg * var(--zoetrope-turn)));
+}
 [data-skin="metal"][data-metal-peek] .np__art .metal-peek[data-empty] { visibility: hidden; }
 /* One layer per slot (his report, 2026-10-20): the slot receiving the old cover stays empty
    while that cover is still on its way there; it shows in the frame the old cover is removed. */
@@ -5226,6 +5248,8 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   background: linear-gradient(180deg, color-mix(in srgb, var(--title), white 35%), var(--title) 55%, color-mix(in srgb, var(--title), black 30%));
 }
 [data-fancy-scrub="on"][data-skin="metal"] .scrub__handle {
+  /* the wheel stays on its slot at both ends instead of hanging half off it (the review) */
+  left: clamp(calc(var(--metal-wheel-w) / 2), var(--slider-fill, 0%), calc(100% - var(--metal-wheel-w) / 2));
   width: var(--metal-wheel-w);
   height: var(--metal-wheel-h);
   -webkit-mask: none;
@@ -5233,9 +5257,12 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   border-radius: var(--metal-wheel-radius);
   background:
     /* the knurl: one ridge a pitch, moved by the fill so the wheel turns as it travels */
+    /* each ridge: a dark groove, a bright lip where the lamp catches it, then its face (flat
+       grey bars read as a barcode: the design review, round 2) */
     repeating-linear-gradient(180deg,
-      color-mix(in srgb, black 42%, transparent) 0 1px,
-      color-mix(in srgb, white 10%, transparent) 1px calc(var(--metal-wheel-pitch) - 1px),
+      color-mix(in srgb, black 48%, transparent) 0 1px,
+      color-mix(in srgb, white 40%, transparent) 1px 2px, /* raw: the ridge's lip, one device row under the groove */
+      color-mix(in srgb, white 8%, transparent) 2px calc(var(--metal-wheel-pitch) - 1px), /* raw: the ridge's face starts below its lip */
       transparent calc(var(--metal-wheel-pitch) - 1px) var(--metal-wheel-pitch))
       0 calc(var(--slider-fill, 0%) * var(--metal-wheel-roll)) / 100% var(--metal-wheel-pitch),
     /* the cylinder: dark at the top and bottom, lit across the middle */

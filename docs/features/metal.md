@@ -558,6 +558,138 @@ with a default and its "why", an agent spec, a hover hint, a New mark.
 The `.deetsmod` file, the install, the safety checks, the marketplace page and new theme
 slots. They are in [mods.md](../ideas/mods.md), and they build on Step 1's primitives.
 
+### 6.7 The stress test and the design review loop (2026-10-20, his ask)
+
+> **Part:** built · 2026-10-20 · desk test: his look (DESK-TESTS.md A11)
+
+His ask: stress test Metal, have an independent Fable reviewer score the Metal implementation
+only (pictures, no code), and work until it gives 9/10. Run on his dev app (Max, Black & Yellow,
+his library), the method of DESK-TESTS.md §6.6. The kept lists are `docs/ops/checks/metal-*.json`
+([checks/README.md](../ops/checks/README.md) §2). Frames were read by time and cropped with two scratch scripts (a crop
+sheet with frame-to-frame difference images, and a score: the share of a turn's change that
+its largest frame carries; a pop is one frame with a large share).
+
+**The break-it pass (three Sonnet agents, one per lens, 44 scenarios).** Triaged against the code;
+fixed:
+1. *The cover and its side covers guessed the turn's direction apart and could disagree* (a
+   card rebuilt by a surface change, then Previous; a picture that arrived late): two layers in
+   one slot. Now the queue decides (`now-playing-card.ts` passes `back` to `vinyl.show`: after
+   Previous the song left waits first in Up Next), `vinyl.ts` keeps its fallback list per window
+   (it was per card), and publishes the turn it ran on the box (`data-turn` fwd · back · none,
+   `data-turn-song`, `data-turn-at`, the `vinyl:turn` event); `metal.ts` follows it. A run of
+   Previous presses had also made the next Next turn back (found in the frames).
+2. *The sides moved while the cover stood still* (two songs, one picture; a song with no
+   picture): the turn reads `none` then.
+3. *Both side covers sat empty for a whole album played in order*: a side now shows the nearest
+   neighbor whose cover differs (the album before, the album after), up to 60 entries, no Apple
+   call.
+4. *The graphics fallback left Metal's 3D turn on*: `metalCoverChange` is a rule key, and the
+   built-in *If graphics fail* rule sets it Off (`GRAPHICS_OFF`, its unit test). His dev app was
+   on WARP during the run and the rule did exactly that; the app was restarted through
+   `app_restart` to test on the card.
+5. *A side picture that was slow or failed showed as a blank slab*: a side shows only a decoded
+   picture; a failure is tried again on a later sync.
+6. *The word fade*: its copy is `inert` (Tab landed in it), it cancels only its own animations
+   (it cut the full player's row slide), and it copies the words only under Metal.
+7. *Rapid Material or Grain changes*: the texture is drawn once a frame at most. *Show cover*
+   Album ⇄ Playlist updates the sides at once.
+
+**Performance (traced on the card).** A Metal skip kept the page thread ~71 % and the GPU process
+~69 % busy for a second (Metal with Cover change Off: ~15 %). The cause: the album colors are
+inherited custom properties with a 600 ms transition, so every frame of the turn restyled the
+card and re-rastered its brushed plate. Under the zoetrope the colors now step once, as the next
+cover comes forward (`--album-fade-delay` 0.3 s, a new base token at 0 s; `--album-fade-dur` 0
+in Metal): ~20–24 % and ~16–20 %. The turn's z-index keyframes moved out of the animation too.
+No long task over 50 ms per skip without the shot runner's screen recording.
+
+**The motion, by its frames.** The turn traded depth in one frame while the two covers still
+overlapped (45 % of the turn's change in one frame). The front cover always overlaps both side
+slots, so one cover must pass in front of another somewhere. Tried and rejected: a shared 3D
+scene (the planes cut through each other and the side covers in strips: the covers overlap too
+much to sit on a real cylinder) and an opacity cross (one cover showed through the other). As
+built: the old cover leaves at once and carries most of its travel in its first ~100 ms
+(`--zoetrope-leave` 0.24, a new token, on a strong ease-out); the next waits under it in its slot
+(`--zoetrope-stagger` 0.14), opaque (it covers its own slot exactly), starts to grow ~30 ms
+before it comes in front (`--zoetrope-lead` 0.06, a new token, base 0) so the cut lands on a cover
+already moving, and sets off fast with its overshoot (`--zoetrope-rise`, a new token, is 0 in
+Metal: no fade; the base keeps its fade-in), so the peak speed sits
+at the start and the turn settles by ~460 ms. A cover still leaving when the next press lands
+finishes its own path at 4× speed (it faded before, and one cover showed through another). The slot it leaves takes its new neighbor under it when `vinyl.ts` says the cover is
+opaque (`vinyl:covered`), sliding in solid from past the box's edge, so no slot stands empty; a cover pushed off a receiving slot keeps
+turning around the drum behind the arriving cover; the receiving mark lasts until the landed
+cover is gone. Side covers sit on the drum by `translateZ` in the cover's own box (the box needs
+no crop now) and wear the cover's rim and shadow, so a landing hands back pixel for pixel. The
+largest frames are now the old cover's departure and the cut (~20 % each); the app's own frame
+counter shows the turn painting at ~200 fps on his 244 Hz display (a sheet's repeated frames are
+the screen recording, late). A cold start (cache cleared) can still hold the arriving cover up to
+300 ms for its picture (the noted slow-link case, §6.1); warm, there is no still moment.
+
+**The look (the reviewer's points, in Metal's tokens).** Steel: a second, quieter layer of short
+streaks (one layer read as scan lines). Acrylic: on overlay, the bristles only inside the dabs, a
+gentle relief lit low (34°) so each stroke's edge shows, its contrast 0.55 around mid-grey so
+small text sits clear on it (it had been nearly the same picture
+as Steel, then too loud under small text). The floor at the fine grain's
+pitch, a soft shadow under each card, the title bar the same brushed floor with a dark seam, the
+Play button's gold with the grain (`--accent-sheen-blend`, `--accent-sheen-size`, new base
+tokens), the icon squares with a dark bottom edge, the Settings split pills, the grow bar and the
+EQ knob square, the thumbwheel's ridges lit and the wheel kept on its slot at both ends.
+
+**The review loop.** One Fable reviewer, pictures only (ten stills, the turn read by time with
+difference images, a slot enlarged, four rapid presses), told the owner's recorded calls so it
+scored within them. Round 1: 6. Round 2: 7. Round 3: 8. Round 4: 8.5 (the landing flash and the
+"round" badge and scrollbar it reported were checked at pixel level and withdrawn). **Round 5:
+9/10** ("Plainly: it is a 9"; cold and warm turns alike, every interrupted press opaque, nothing
+worse). What it sees between 9 and 10 is design, not a fault, and his: the cut is the brightest
+frame (the zoetrope's own overlap strip; a narrower overlap or a ~60 ms lead would halve it);
+Acrylic reads as a wider brush rather than paint (a wave in each dab would change that); the
+refilled side slot shows a 6–8 px bare edge for one frame on a Next.
+
+**Efficiency (2026-10-20, his ask).** A scripted scroll in the Settings card dropped ~23 % of its
+frames at 244 Hz under Metal, 0 % under Vanilla, and 0 % with Metal's paint off; no one layer
+alone was the cause. The textures are now baked once into PNG bitmaps at the screen's density
+(`bake` in metal.ts; the SVG stays the paint until the bitmap is ready or if the canvas refuses
+it; a move to a screen of another density bakes again): ~6–10 % dropped, pixel-identical to the
+SVG (a still compared at 0 difference). What is left is the blend modes (~5 points: with them
+off for a test, ~2–3 %). Taking that out means baking each theme's colors into the bitmaps and
+baking again on every theme change; not done.
+
+**What Claude decided inside his calls (for his OK):** the sides show the nearest different
+cover; the cover turn's new timing and the two-frame cut; the album colors stepping with the
+turn under Metal; the graphics fallback turning the zoetrope off; the texture and shadow values
+above.
+
+**Noted, not fixed:**
+- Core app (not Metal): the ~75 ms from a press to the first motion is the song change itself;
+  the toggle rows' dot switch; the thumbwheel's 2 px from the mute button; the window buttons.
+- The texture under software drawing stays on (only the 3D turn is in the fallback); measure
+  on WARP before adding a texture-off value (a new choice is his call).
+- The tray panel shows Metal without the texture (only the main window draws it); the extension
+  copy is untouched (`extension/scripts/pack.cjs --styles-only` would rewrite its hand-made
+  Metal block).
+- Show cover = Playlist or a station: both side slots stay empty on the 5:4 stage.
+- **Sepia as brushed brass: his call, BUILT 2026-10-20.** Light parchment read as wood or kraft
+  paper under the brush. One block, `[data-skin="metal"][data-theme="sepia"]` in themes.css (the
+  pattern of Black & Yellow's gold): `color-scheme: dark` (every light-dark() value Metal reads
+  takes its dark side), the plate and floor, cream text, sand subtext, brass-gold titles and
+  accent fills, light borders and scrollbars; five new paints in palette.css (`--paint-brass*`).
+  Sepia is unchanged in every other skin; no new theme. The grain lifts a plate ~1.5× on screen
+  (its noise averages ~0.73 there), so the base paints are set darker to render near #66542E /
+  #4E4024 (measured on the still: #64532E–#6F5E36 plate, #4A3C22 floor), then a step darker
+  after the readability check (below).
+- **The readability check on all six Metal looks (2026-10-20, before the commit).** The first run:
+  187 failure groups, nearly all on the dark metals (Moonlight 56 and Black & Red 58 were already
+  failing before this work; Brass 61): the grain lifts the plates and, more, the controls, so the
+  themes' own secondary text and title ink fell under 4.5:1 there. Fixed in Metal's tokens, the
+  plates unchanged: dark controls step up 3 % from the plate (was 7 %), the pressed tint 5 %
+  (`--picked-strength`, was 14 %), the volume tint 20 % (was 30 %), a worded header action in the
+  text's ink (`--action-text-ink`, a new hook; the glyph squares keep the title), and Metal text
+  roles per theme where a theme's own fall short, its hue kept (themes.css: Black & Yellow's gold
+  #E8C773, Moonlight's text and subtext, Black & Red's anodized red, Lilac's and Green's subtext;
+  `--paint-*` in palette.css). Brass: plate #3A3019, gold #F2D488, cream #F7EED8, sand #E8DBB6.
+  The last runs: 0 failure groups in all six looks (`shots/readability/0.30.0-metal-brass-6`
+  and `-7`); toasts measured mid-fade (12–21 % opacity) in earlier runs were capture timing.
+- Type: the reviewer's proposals are in F7 (§7).
+
 ## 7. Forks (all his)
 
 Closed 2026-10-19 (§1): Metal over every theme; the cleanup first; no new pieces (F1 and F5:
@@ -568,11 +700,37 @@ Metal is values and hooks only, over the app's existing UI).
 - **F4, the hairline in Press and Cyber** (§4.1). Every built-in skin keeps 1 px solid, and
   Press and Cyber get one look each in the shots after Step 2 (recommended). Or only Metal
   ever uses the token.
-- **F7, the font** (his ask, 2026-10-20; review set for 2026-10-21). Today `--font-title` is
+- **F7, the font** (his ask, 2026-10-20). **Closed 2026-10-20: B (below).** Today `--font-title` is
   Bahnschrift (Windows' own DIN) over Segoe UI Variable, nothing bundled (skin.css, Metal). An
   independent Fable design reviewer (`model: "fable"`, no build context) looks at Metal on the
   dev app in each theme and proposes better title (and body) faces, each with its license and
   bundle size. He picks; the font then goes in `fonts.css` like the other skins'.
+  **The reviewer's answer (2026-10-20, §6.7, pictures only):** Bahnschrift is the right family
+  for brushed metal (Windows' own, 0 bytes); use it better before bundling anything: SemiBold
+  titles at `letter-spacing: -0.01em`, and its SemiCondensed width for the uppercase section
+  labels at `0.08em` (no shared token reaches those labels yet). Keep Segoe UI Variable for body
+  text (a bundled body face loses Windows' hinting at 11–13 px). If a bundled title face: Barlow
+  (SemiBold + Semi Condensed; SIL OFL; ~22 KB a weight), Titillium Web (SemiBold; OFL; ~18 KB),
+  Archivo (SemiBold, width axis; OFL; ~28 KB).
+  **The font test (2026-10-20, his ask):** the five set on his dev app (the faces injected for
+  the pictures only, `shots/scratch/metal-fonts.json`; measured sizes: Barlow ~22 KB a weight,
+  Titillium Web ~12 KB, Archivo's variable file 90 KB), in Black & Yellow, Lilac and Sepia, judged
+  by a fresh Fable reviewer (pictures only) for uniqueness, cohesiveness and elegance, out of 10
+  each: **B — Bahnschrift titles, Bahnschrift SemiCondensed labels: 7 · 9 · 8 = 24**; C — Barlow,
+  Barlow Semi Condensed labels: 7 · 8 · 8 = 23; A — Bahnschrift as built: 6 · 7 · 7 = 20; D —
+  Titillium Web: 7 · 6 · 5 = 18 (renders light at 1×; its labels fall under the body's weight);
+  E — Archivo: 5 · 6 · 7 = 18 (no voice of its own). B wins on Windows' hinting at 1× (the
+  crispest), 0 KB, one family, and the stamped-plate read of condensed DIN caps. Its tuning:
+  titles 600 at −0.005em; labels at width 87.5, weight 600 (650 on the light themes), tracked
+  0.10em, +0.5–1 px; tabular figures for the counts beside them; titles stay mixed case. C wins
+  only if he wants Metal warmer (best on Sepia), at ~44 KB. **His pick: B, applied 2026-10-20.**
+  Five new skin hooks, off in every other skin (each rule keeps its own value as the fallback):
+  `--font-caps`, `--fw-caps`, `--caps-tracking`, `--caps-grow`, `--caps-stretch` on the uppercase
+  labels (`.lib-shelf`, `.search__sec-title` / `__label`, `.artist-info__h`, `.ctx-menu__label`,
+  `.set__head`, `.set__sub-head`, the Settings page heads, `.compass__group`, `.qcard__label`),
+  `--caps-figures` on the counts beside them, `--title-tracking` on `.panel__title` and
+  `.np__title`. Metal: "Bahnschrift SemiCondensed" 600 (650 on Lilac and Green), 0.10em, +0.5 px,
+  tabular figures; titles −0.005em.
 
 ## 8. Probes before a build
 

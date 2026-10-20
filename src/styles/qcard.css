@@ -53,10 +53,13 @@
 
 /* Up Next */
 .qcard__label {
-  font-size: var(--fs-subtext);
+  font-family: var(--font-caps);   /* a skin's label face (Metal); unset, it inherits as before */
+  font-weight: var(--fw-caps);
+  font-stretch: var(--caps-stretch);
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
   color: var(--subtext);
   text-transform: uppercase;
-  letter-spacing: var(--qcard-label-spacing);
+  letter-spacing: var(--caps-tracking, var(--qcard-label-spacing));
   padding: 0 var(--space-1);
 }
 .qcard__list {

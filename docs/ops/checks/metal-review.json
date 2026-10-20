@@ -1,0 +1,109 @@
+{
+  "about": "Stills of the Metal skin for an independent design review (metal.md §6.7): Max in each of the six themes (Steel, Fine), Acrylic on two, Midi and the Mini player view on one, and the title menu open. On the running dev app; looks and sizes are set for each shot and put back. Nothing plays.",
+  "desk_test": "docs/features/metal.md §6.7; DESK-TESTS.md A11",
+  "made": "2026-10-20",
+  "pass": "Ten pictures: Max in the six themes (Steel), Acrylic in two, Midi in two; the pointer off every control (no hover hint). For a design review and a before/after look.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/metal-review.json",
+  "shots": [
+    {
+      "about": "Metal stills for review",
+      "covers": "docs/features/metal.md",
+      "id": "metal-max",
+      "kind": "picture",
+      "source": "dev",
+      "size": "max",
+      "looks": [
+        {
+          "skin": "metal",
+          "theme": "black-yellow"
+        },
+        {
+          "skin": "metal",
+          "theme": "black-red"
+        },
+        {
+          "skin": "metal",
+          "theme": "moonlight"
+        },
+        {
+          "skin": "metal",
+          "theme": "lilac"
+        },
+        {
+          "skin": "metal",
+          "theme": "green"
+        },
+        {
+          "skin": "metal",
+          "theme": "sepia"
+        }
+      ],
+      "settings": {
+        "metalMaterial": "steel"
+      },
+      "steps": [
+        {
+          "hover": ".drag-region"
+        },
+        {
+          "wait": 900
+        }
+      ]
+    },
+    {
+      "about": "Metal stills for review",
+      "covers": "docs/features/metal.md",
+      "id": "metal-acrylic",
+      "kind": "picture",
+      "source": "dev",
+      "size": "max",
+      "looks": [
+        {
+          "skin": "metal",
+          "theme": "moonlight"
+        },
+        {
+          "skin": "metal",
+          "theme": "sepia"
+        }
+      ],
+      "settings": {
+        "metalMaterial": "acrylic"
+      },
+      "steps": [
+        {
+          "hover": ".drag-region"
+        },
+        {
+          "wait": 900
+        }
+      ]
+    },
+    {
+      "about": "Metal stills for review",
+      "covers": "docs/features/metal.md",
+      "id": "metal-midi",
+      "kind": "picture",
+      "source": "dev",
+      "size": "midi",
+      "looks": [
+        {
+          "skin": "metal",
+          "theme": "black-yellow"
+        },
+        {
+          "skin": "metal",
+          "theme": "lilac"
+        }
+      ],
+      "steps": [
+        {
+          "hover": ".drag-region"
+        },
+        {
+          "wait": 900
+        }
+      ]
+    }
+  ]
+}

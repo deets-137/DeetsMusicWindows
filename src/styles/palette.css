@@ -80,7 +80,7 @@
      Sepia a champagne bronze. */
   --paint-dark-steel:          #242426; /* Black & Yellow's cards under Metal */
   --paint-dark-steel-floor:    #161617;
-  --paint-gold-leaf:           #D9B45A; /* Black & Yellow's titles under Metal: gold, not hi-vis */
+  --paint-gold-leaf:           #E8C773; /* Black & Yellow's titles under Metal: gold, not hi-vis (lifted from #D9B45A to read on the lighter controls) */
   --paint-blackened-steel:     #231F20; /* Black & Red */
   --paint-blackened-floor:     #141213;
   --paint-blue-steel:          #2B3340; /* Moonlight */
@@ -91,4 +91,22 @@
   --paint-green-aluminum-floor:#C3C9BD;
   --paint-champagne-bronze:    #DDCFB4; /* Sepia */
   --paint-champagne-floor:     #C5B492;
+  /* Metal over Sepia as brushed brass (his call, 2026-10-20): a dark brass plate with cream text.
+     The brushed grain lifts a plate by about 1.5× on screen (its noise averages ~0.73 there), and
+     the controls on it lighter still, so the plate is set dark and the text light; the
+     readability check reads the real pixels in every Metal look. */
+  --paint-brass:               #3A3019; /* Sepia's cards under Metal */
+  --paint-brass-floor:         #2C2414;
+  --paint-brass-gold:          #F2D488; /* its titles and accent fills */
+  --paint-brass-cream:         #F7EED8; /* its text */
+  --paint-brass-sand:          #E8DBB6; /* its subtext */
+  /* Metal's text roles in the other themes, where the theme's own fall short on the brushed
+     plates and controls as they render (the readability check, 2026-10-20) */
+  --paint-moon-steel-text:     #E4ECF7; /* Moonlight */
+  --paint-moon-steel-subtext:  #C8D4E6;
+  --paint-anodized-red:        #FF8A80; /* Black & Red: red anodized, light enough on steel */
+  --paint-anodized-red-subtext:#E9A79F;
+  --paint-lilac-metal-subtext: #484260; /* Lilac */
+  --paint-green-metal-text:    #32412A; /* Green */
+  --paint-green-metal-subtext: #3E4B34;
 }

@@ -12,9 +12,9 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 
 | Tier | File | Count |
 |---|---|---|
-| Palette (raw paints) | palette.css | 62 |
+| Palette (raw paints) | palette.css | 74 |
 | Theme (color roles) | themes.css | 63 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 690 tokens · overrides: vanilla 4, press 69, ocean 45, glass 72, cyber 68, metal 55 |
+| Skin (everything else) | skin.css base block | 697 tokens · overrides: vanilla 4, press 69, ocean 45, glass 72, cyber 68, metal 65 |
 
 ## Theme roles
 
@@ -130,7 +130,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--vol-pill-w` | `32px` | — | Pill height tracks --traffic-size (sits level with the lights). The fill hue is the theme's --title; --vol-fill-strength is how hard that tint hue is the theme's --title; --vol-fill-strength is how hard that tint reads (a skin/material decision, not a color). — ~2.3× a traffic light |
 | `--vol-pill-radius` | `var(--lib-pill-radius)` | — | the same capsule as the Library pills in every skin (the 2026-10-20 inventory, docs/features/metal.md §4.4): a skin sets --lib-pill-radius once |
 | `--vol-pill-fs` | `9px` | — |  |
-| `--vol-fill-strength` | `30%` | — |  |
+| `--vol-fill-strength` | `30%` | metal |  |
 | `--vol-icon-size` | `calc(var(--traffic-size) - 4px)` | — | inside the bar's 1 px border with a 1 px breath: 12 px at 16 |
 | `--vol-pill-grown-w` | `120px` | — | The grown pill (NEXT-VERSION §20): its size on hover, the glyphs' inset, the grow's time. |
 | `--vol-pill-grown-h` | `var(--traffic-size)` | — |  |
@@ -317,7 +317,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sound-fader-inset` | `8px` | — |  |
 | `--sound-fader-track-w` | `2px` | — |  |
 | `--sound-fader-knob-h` | `8px` | — |  |
-| `--sound-fader-knob-radius` | `3px` | — |  |
+| `--sound-fader-knob-radius` | `3px` | metal |  |
 | `--sound-glide` | `var(--dur-fast)` | — | a dot or knob settling after an edit |
 | `--sound-readout-min-w` | `56px` | — |  |
 | `--sound-status-lh` | `1.35` | — |  |
@@ -529,6 +529,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--control-blend` | `normal` | metal |  |
 | `--control-shadow` | `none` | metal |  |
 | `--accent-sheen` | `none` | metal |  |
+| `--accent-sheen-blend` | `normal` | metal | how the sheen's layers lay over the accent (Metal: the grain on overlay) |
+| `--accent-sheen-size` | `auto` | metal |  |
 | `--metal-texture` | `none` | — | Metal's textures (src/metal.ts draws them on <html> under Metal). Defined here so a frame before it runs still has a valid paint: an undefined var() voids the whole background. |
 | `--metal-texture-fine` | `none` | — |  |
 | `--metal-size` | `480px` | — |  |
@@ -591,6 +593,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--zoetrope-dim` | `1` | — | … at this brightness |
 | `--zoetrope-stagger` | `0` | — | 0–1 of the turn: the next cover waits while the old one retreats first; 0 = together |
 | `--zoetrope-leave-ease` | `` | — | the old cover's retreat curve; empty: the turn's own (--vinyl-swap-ease) |
+| `--zoetrope-leave` | `` | — | the share of the turn the old cover takes to reach its slot; empty: the stagger + 0.35 |
+| `--zoetrope-lead` | `0` | — | the share of its move the arriving cover grows under the old one before it comes in front |
+| `--zoetrope-rise` | `0.35` | — | the share of its move the arriving cover fades in over, on top (never a depth flip mid-turn) |
+| `--zoetrope-perspective` | `900px` | — | the drum's perspective; a side cover set back shows at --zoetrope-scale |
 | `--ap-panel-w` | `220px` | — | AirPlay "Play on" panel (AIRPLAY.md) |
 | `--ap-row-h` | `var(--icon-lg)` | — |  |
 | `--ap-dot` | `0.9em` | — | the ✓ gutter on a row |
@@ -618,7 +624,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--set-range-w` | `120px` | — | a range row's slider (Glass's Tint / Frost) |
 | `--set-range-val-w` | `3.5em` | — | its value, "100%" fits |
 | `--set-pill-pad` | `var(--space-1) var(--space-2)` | — |  |
-| `--set-pill-radius` | `999px` | — | the split pill's outer radius |
+| `--set-pill-radius` | `999px` | metal | the split pill's outer radius |
 | `--set-menu-min-w` | `120px` | — | the small menu behind a menu half |
 | `--set-menu-max-h` | `280px` | — | 7 weekdays fit; longer lists scroll |
 | `--set-flash-dur` | `1600ms` | — | a row opened from a toast: its highlight fades over this |
@@ -656,7 +662,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--album-aurora-strength` | `36%` | glass | alpha/mix strength of the stops |
 | `--album-aurora-reach` | `3` | glass | halo diameter, in cover-widths |
 | `--album-spin-dur` | `48s` | glass | rotation period of the highlight sweep |
-| `--album-fade-dur` | `600ms` | — | crossfade on track change |
+| `--album-fade-dur` | `600ms` | metal | crossfade on track change |
+| `--album-fade-delay` | `0s` | metal | when that change starts (Metal: one step as the new cover comes forward) |
 
 ### storm layer (decorative strokes behind the cards)
 
@@ -797,7 +804,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-zone-bar-w` | `3px` | press, glass | The zone bar hugs the card it will grow: --gap from the card's edge (negative = over it), --trim from each end (the card's corner radius, so it runs between the corners), its own radius and an optional glow. |
 | `--grow-zone-bar-gap` | `0px` | ocean, glass |  |
 | `--grow-zone-bar-trim` | `var(--panel-radius)` | — |  |
-| `--grow-zone-bar-radius` | `999px` | press, ocean, glass, cyber |  |
+| `--grow-zone-bar-radius` | `999px` | press, ocean, glass, cyber, metal |  |
 | `--grow-zone-bar-glow` | `none` | ocean, glass |  |
 | `--grow-zone-resize-inset` | `5px` | — | The window-edge Fill zones sit inside Tauri's resize band: the outer 5 px of a window with no OS frame (BORDERLESS_RESIZE_INSET, tauri-runtime-wry undecorated_resizing.rs). |
 | `--grow-btn-gap` | `var(--space-2)` | — | between the title text and the Grow button |
@@ -926,7 +933,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--picked-strength` | `14%` | — | how hard a picked row's fill reads |
+| `--picked-strength` | `14%` | metal | how hard a picked row's fill reads |
 
 ### title menu flyouts
 
@@ -1037,7 +1044,7 @@ reader is a token nothing uses.
 | `--rulez-fold-dur` | `var(--dur-med)` | — | styles.css |
 | `--rulez-fold-ease` | `var(--ease-ui)` | — | styles.css |
 | `--album-spin-dur` | `48s` | glass | styles.css |
-| `--album-fade-dur` | `600ms` | — | styles.css |
+| `--album-fade-dur` | `600ms` | metal | styles.css |
 | `--storm-cycle-1` | `8s` | — | styles.css |
 | `--storm-cycle-2` | `12s` | — | styles.css |
 | `--scrub-bob-dur` | `2.4s` | — | ambient.ts, styles.css |
@@ -1113,19 +1120,20 @@ A skin sets these, but the base block never declares them — a token that only 
 - `--glass-frost-stop (glass)`
 - `--glass-frost-pause (glass)`
 - `--glass-light (glass)`
+- `--title-tracking (metal)`
+- `--font-caps (metal)`
+- `--fw-caps (metal)`
+- `--caps-tracking (metal)`
+- `--caps-grow (metal)`
+- `--caps-figures (metal)`
 - `--panel-border (metal)`
 - `--border (metal)`
 - `--surface (metal)`
 - `--surface-hover (metal)`
+- `--action-text-ink (metal)`
 - `--canvas (metal)`
 - `--metal-peek-cover-inset (metal)`
-- `--metal-peek-crop (metal)`
-- `--metal-peek-top (metal)`
-- `--metal-peek-size-w (metal)`
-- `--metal-peek-size-h (metal)`
-- `--metal-peek-turn (metal)`
 - `--metal-peek-dim (metal)`
-- `--metal-peek-shadow (metal)`
 - `--metal-cover-shadow (metal)`
 - `--metal-cover-rim (metal)`
 - `--metal-perspective (metal)`
@@ -1196,7 +1204,7 @@ A skin sets these, but the base block never declares them — a token that only 
 | `--paint-apple-music-white` | `#FFFFFF` |
 | `--paint-dark-steel` | `#242426` |
 | `--paint-dark-steel-floor` | `#161617` |
-| `--paint-gold-leaf` | `#D9B45A` |
+| `--paint-gold-leaf` | `#E8C773` |
 | `--paint-blackened-steel` | `#231F20` |
 | `--paint-blackened-floor` | `#141213` |
 | `--paint-blue-steel` | `#2B3340` |
@@ -1207,3 +1215,15 @@ A skin sets these, but the base block never declares them — a token that only 
 | `--paint-green-aluminum-floor` | `#C3C9BD` |
 | `--paint-champagne-bronze` | `#DDCFB4` |
 | `--paint-champagne-floor` | `#C5B492` |
+| `--paint-brass` | `#3A3019` |
+| `--paint-brass-floor` | `#2C2414` |
+| `--paint-brass-gold` | `#F2D488` |
+| `--paint-brass-cream` | `#F7EED8` |
+| `--paint-brass-sand` | `#E8DBB6` |
+| `--paint-moon-steel-text` | `#E4ECF7` |
+| `--paint-moon-steel-subtext` | `#C8D4E6` |
+| `--paint-anodized-red` | `#FF8A80` |
+| `--paint-anodized-red-subtext` | `#E9A79F` |
+| `--paint-lilac-metal-subtext` | `#484260` |
+| `--paint-green-metal-text` | `#32412A` |
+| `--paint-green-metal-subtext` | `#3E4B34` |

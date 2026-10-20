@@ -315,5 +315,30 @@
 }
 
 /* Metal over Black & Yellow (his example, metal.md §1): dark steel with gold, not hi-vis
-   yellow. The one place a skin changes a theme's title: the theme names the paint. */
+   yellow: the theme names the paint. */
 [data-skin="metal"][data-theme="black-yellow"] { --title: var(--paint-gold-leaf); }
+/* Metal's text roles where a theme's own fall short on the brushed plates and the lighter controls
+   as they render (the grain lifts them; the readability check, 2026-10-20). Each theme keeps its
+   own hue; only the lightness moves. */
+[data-skin="metal"][data-theme="moonlight"] { --text: var(--paint-moon-steel-text); --subtext: var(--paint-moon-steel-subtext); }
+[data-skin="metal"][data-theme="black-red"] { --title: var(--paint-anodized-red); --subtext: var(--paint-anodized-red-subtext); }
+[data-skin="metal"][data-theme="lilac"] { --subtext: var(--paint-lilac-metal-subtext); }
+[data-skin="metal"][data-theme="green"] { --text: var(--paint-green-metal-text); --subtext: var(--paint-green-metal-subtext); }
+/* Metal over Sepia: brushed brass (his call, 2026-10-20; metal.md §6.7). Sepia's own light
+   parchment reads as wood or paper under the brush, and brass needs a darker plate; its dark ink
+   would fail on one, so under Metal only Sepia turns dark: the scheme (every light-dark() value
+   Metal reads takes its dark side), the plate and floor, and the text roles. Sepia stays as it is
+   in every other skin. No new theme: one block, as Black & Yellow's gold above. */
+[data-skin="metal"][data-theme="sepia"] {
+  color-scheme: dark;
+  --metal:       var(--paint-brass);
+  --metal-floor: var(--paint-brass-floor);
+  --title:   var(--paint-brass-gold);
+  --text:    var(--paint-brass-cream);
+  --subtext: var(--paint-brass-sand);
+  --border:        rgba(243, 231, 201, 0.14);   /* cream @ low alpha */
+  --panel-border:  rgba(243, 231, 201, 0.28);
+  --scrollbar:       rgba(233, 196, 106, 0.26);  /* brass gold @ low alpha */
+  --scrollbar-hover: rgba(233, 196, 106, 0.46);
+  --traffic-glyph: rgba(0, 0, 0, 0.6);
+}

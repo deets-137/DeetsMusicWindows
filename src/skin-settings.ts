@@ -66,8 +66,8 @@ export function initSkinSettings(): void {
   const applyMetal = () => {
     const root = document.documentElement;
     root.dataset.metalMaterial = setting("metalMaterial");
-    root.dataset.metalCover = setting("metalCoverChange");
-    if (setting("metalPeek") && setting("metalCoverChange") === "zoetrope") root.dataset.metalPeek = "";
+    root.dataset.metalCover = effective("metalCoverChange");
+    if (setting("metalPeek") && effective("metalCoverChange") === "zoetrope") root.dataset.metalPeek = "";
     else delete root.dataset.metalPeek;
   };
   applyEdges();

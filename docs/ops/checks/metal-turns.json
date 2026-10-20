@@ -1,0 +1,108 @@
+{
+  "about": "Metal's turn direction (metal.md §6.7, the 2026-10-20 stress test): the cover and its side covers follow one turn (vinyl.ts publishes data-turn). Next, then a card rebuild (Max → Midi → Max), then Previous; then Previous again and Next (a run of Previous presses once made the next Next turn back): the turn must read back, and no frame may show a side cover with the same picture as the leaving cover while it is still visible (a doubled slot; the arriving cover sitting over the slot it leaves is the hand-off, not a double). A rAF sampler counts those frames. On the running dev app; ends on the starting song, paused.",
+  "desk_test": "docs/features/metal.md §6.7; DESK-TESTS.md A11",
+  "made": "2026-10-20",
+  "pass": "The shot is ok: every probe expect holds (the turn reads fwd, then back after a Max → Midi → Max rebuild, then fwd after two Backs; doubled 0 on every turn; one cover layer, no receiving mark, no word copy at the end; back on the starting song, paused).",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/metal-turns.json",
+  "shots": [
+    {
+      "about": "Metal turn direction and one layer per slot",
+      "covers": "docs/features/metal.md",
+      "id": "metal-turns",
+      "kind": "clip",
+      "source": "dev",
+      "size": "max",
+      "seconds": 20,
+      "steps": [
+        {
+          "wait": 900
+        },
+        {
+          "probe": "JSON.stringify({title: document.querySelector('.np__title')?.textContent})",
+          "name": "start"
+        },
+        {
+          "eval": "(window.__mtRun = () => { const f = window.__mtF = []; (function loop() { const box = document.querySelector('.np__art'); if (!box) return; const shown = [...box.querySelectorAll('.vinyl--out')].filter((v) => +getComputedStyle(v).opacity > 0.05).map((v) => v.querySelector('img')?.src).filter(Boolean); let dbl = 0; box.querySelectorAll('.metal-peek').forEach((p) => { const cs = getComputedStyle(p); if (cs.visibility !== 'hidden' && +cs.opacity > 0.05 && p.dataset.src && shown.includes(p.dataset.src)) dbl++; }); f.push({ dbl, layers: shown.length }); if (f.length < 300) requestAnimationFrame(loop); })(); }, window.__mtRun(), 'ok')"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type",
+          "frames": 90,
+          "region": "[data-slot=\"np\"] .np__art"
+        },
+        {
+          "wait": 1300
+        },
+        {
+          "probe": "JSON.stringify({turn: document.querySelector('.np__art').dataset.turn, doubled: window.__mtF.filter((x) => x.dbl).length, maxLayers: Math.max(...window.__mtF.map((x) => x.layers))})",
+          "name": "after-next",
+          "expect": {
+            "turn": "fwd",
+            "doubled": 0
+          }
+        },
+        {
+          "eval": "window.__surface.set('midi')"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "eval": "window.__surface.set('max')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "eval": "(window.__mtRun(), 'ok')"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play)",
+          "frames": 90,
+          "region": "[data-slot=\"np\"] .np__art"
+        },
+        {
+          "wait": 1300
+        },
+        {
+          "probe": "(() => { return JSON.stringify({title: document.querySelector('.np__title')?.textContent, turn: document.querySelector('.np__art').dataset.turn, doubled: window.__mtF.filter((x) => x.dbl).length, layers: document.querySelectorAll('.np__art .vinyl').length, receiving: document.querySelectorAll('.metal-peek[data-receiving]').length, ghosts: document.querySelectorAll('[data-metal-ghost]').length}); })()",
+          "name": "after-back",
+          "expect": {
+            "title": "Location",
+            "turn": "back",
+            "doubled": 0,
+            "layers": 1,
+            "receiving": 0,
+            "ghosts": 0
+          }
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play)"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "eval": "(window.__mtRun(), 'ok')"
+        },
+        {
+          "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type",
+          "frames": 90,
+          "region": "[data-slot=\"np\"] .np__art"
+        },
+        {
+          "wait": 1300
+        },
+        {
+          "probe": "(async () => { const m = window.MusicKit && MusicKit.getInstance(); if (m && m.isPlaying) { document.querySelector('[data-slot=\"np\"] .np__btn--play').click(); await new Promise((r) => setTimeout(r, 1200)); } return JSON.stringify({title: document.querySelector('.np__title')?.textContent, turn: document.querySelector('.np__art').dataset.turn, doubled: window.__mtF.filter((x) => x.dbl).length, playing: !!(m && m.isPlaying)}); })()",
+          "name": "next-after-two-backs",
+          "expect": {
+            "title": "Location",
+            "turn": "fwd",
+            "doubled": 0,
+            "playing": false
+          }
+        }
+      ]
+    }
+  ]
+}

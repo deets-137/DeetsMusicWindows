@@ -79,7 +79,8 @@ const ms = (v: string): number => {
 
 export interface Vinyl {
   /** Show a song's cover. `song` is its identity (a new one slides); no `src` = the ♪ placeholder. */
-  show(song: string, src: string | undefined): void;
+  /** `back`: the turn runs as Previous (the caller asks the queue); undefined: vinyl.ts guesses. */
+  show(song: string, src: string | undefined, back?: boolean): void;
   playing(on: boolean): void;
   /** The play position in seconds. `duration` 0 = no end (a live station): the disc turns freely.
    *  `exact`: a real clock (the audio element); false = MusicKit's whole-second count. */
@@ -91,12 +92,28 @@ export interface Vinyl {
   destroy(): void;
 }
 
+// Which way a song change turns, for every mount in this window: a return to the song before is
+// Previous. Module-wide, so a card rebuilt by a surface change still knows (the break-it pass,
+// 2026-10-20: per mount, the first Previous after a rebuild turned forward), and a second mount
+// on the same change gets the same answer.
+const turns = { recent: [] as string[], last: null as { song: string; back: boolean } | null };
+function turnBack(next: string, known?: boolean): boolean {
+  if (turns.last?.song === next) return turns.last.back;
+  const r = turns.recent;
+  // The caller's answer (the queue) wins; the list is the fallback for a station or a jump.
+  const back = known ?? (r.length >= 2 && r[r.length - 2] === next);
+  if (back) r.pop();
+  else r.push(next);
+  if (r.length > 20) r.shift();
+  turns.last = { song: next, back };
+  return back;
+}
+
 export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
   let slot: HTMLElement | null = null;
   let song: string | null = null;
   let src: string | undefined;
   let gen = 0; // bumps on every song change: a slide still waiting on a decode checks it
-  const recent: string[] = []; // songs shown, newest last — a return to the one before is Previous
   let anim: Animation | null = null;
   let easing = ""; // the easing `anim` has: the Spin FPS row's steps, or linear (spin-steps.ts)
   let period = turnS();
@@ -325,6 +342,14 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
   };
   if (TEL) samplers.push(sample);
 
+  // A cover's stacking order during a turn, set now or after `ms`; a newer call drops a pending
+  // one (a rapid press turns the arriving cover into the leaving one).
+  const stackTimers = new WeakMap<HTMLElement, number>();
+  const stack = (e: HTMLElement, z: number, ms = 0) => {
+    window.clearTimeout(stackTimers.get(e));
+    if (ms <= 0) { e.style.zIndex = String(z); return; }
+    stackTimers.set(e, window.setTimeout(() => { e.style.zIndex = String(z); }, ms));
+  };
   /** Slide `old` out and `el` in, once `el`'s cover is decoded (or DECODE_WAIT_MS passed). */
   const slide = (old: HTMLElement, el: HTMLElement, back: boolean) => {
     const mine = gen;
@@ -365,19 +390,26 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
         const small = num("--zoetrope-scale", 0.6);
         const away = num("--zoetrope-fade", 0);
         const dim = `brightness(${num("--zoetrope-dim", 1)})`;
-        const drum = (dx: number, deg: number, s: number) => `perspective(900px) translateX(${dx}px) rotateY(${deg}deg) scale(${s})`;
+        // A cover set back on the drum shows at `s` at depth P − P / s: the same transform as
+        // Metal's side covers (styles.css "Metal"), so a cover lands exactly on its slot.
+        // A cover set back on the drum shows at `s` at depth P − P / s: the same transform as
+        // Metal's side covers (styles.css "Metal"), so a cover lands exactly on its slot.
+        const P = num("--zoetrope-perspective", 900);
+        const drum = (dx: number, deg: number, s: number) =>
+          `perspective(${P}px) translateX(${dx}px) translateZ(${s >= 1 ? 0 : P - P / s}px) rotateY(${deg}deg)`;
         // --zoetrope-stagger (0–1): how long the next cover waits in its slot while the old one
         // retreats first (his call, 2026-10-20: the next cover must not land on top of the old
-        // one). The two trade depth on the way, so the arriving cover passes in front only once
-        // the old one has stepped back. 0 (the base): both move together.
+        // one). 0 (the base): both move together.
         const stagger = Math.min(0.8, Math.max(0, num("--zoetrope-stagger", 0)));
-        const back = Math.min(1, stagger + 0.35);
+        const back = Math.min(1, Math.max(0.1, num("--zoetrope-leave", stagger + 0.35))); // the share of the turn the old cover takes to reach its slot
         const front = { transform: drum(0, 0, 1), opacity: 1, filter: "brightness(1)" };
         const behind = (dx: number, deg: number) => ({ transform: drum(dx, deg, small), opacity: away, filter: dim });
         // The retreat has its own curve (--zoetrope-leave-ease; empty: the turn's): an ease-out
         // spent the retreat in its first ~100 ms, and the screen then stood still until the next
         // cover set off, which read as the turn sticking (his report, 2026-10-20).
         const leave = cs.getPropertyValue("--zoetrope-leave-ease").trim() || easing;
+        const lead = Math.min(0.3, Math.max(0, num("--zoetrope-lead", 0))); // the share of its move it grows under the old cover first
+        const rise = Math.min(0.9, Math.max(0, num("--zoetrope-rise", 0.35))); // the share of its move the arriving cover fades in over
         // A press during a turn: the cover that was arriving leaves from where it is now, not
         // from the front (it jumped there for a frame: his report, rapid Back / Next).
         const at = getComputedStyle(old);
@@ -388,9 +420,15 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
         };
         old.getAnimations().forEach((a) => a.cancel());
         old.style.opacity = "";
+        // The stacking order never changes during a turn: the arriving cover is on top from its
+        // first frame, faded in over its own slot (below). The two traded depth mid-turn before
+        // (a z-index keyframe, then a timer), and the arriving cover jumped in front of the
+        // leaving one in one frame while they still overlapped (the stress test's frames,
+        // 2026-10-20); a z-index keyframe also kept the whole turn off the compositor.
+        stack(old, 2);
         old
           .animate(
-            [{ ...from, zIndex: 3, easing: leave }, { ...behind(-run, -turn), zIndex: 1, offset: back }, { ...behind(-run, -turn), zIndex: 1 }],
+            [{ ...from, easing: leave }, { ...behind(-run, -turn), offset: back }, behind(-run, -turn)],
             { duration, fill: "forwards" },
           )
           .finished.then(() => old.remove(), () => old.remove());
@@ -406,8 +444,24 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
           const late = performance.now() - t0;
           const hold = Math.max(0, duration * stagger - late);
           const move = Math.max(duration * (1 - stagger), duration * 0.4);
+          // It waits under the old cover, then comes in front the moment it leaves its slot. The
+          // front cover always overlaps both side slots, so some cover must pass another: with the
+          // old one home and dimmed by then, only the strip where the two side covers meet changes
+          // (Metal, --zoetrope-rise 0; the design review, round 2). A skin with --zoetrope-rise
+          // above 0 fades it in on top over that share of its move instead.
+          // it starts to grow a frame or two before it comes in front, so the cut lands on a cover
+          // already on its way (one interval doubled its size: the design review, round 4)
+          stack(el, 1);
+          stack(el, 3, hold + move * lead);
+          // the moment it is opaque over its slot, on its own clock: the skin swaps that slot's
+          // picture under it then (metal.ts; a timer of its own ran ahead under load: the stress test)
+          window.setTimeout(() => {
+            if (mine === gen && el.isConnected) box.dispatchEvent(new CustomEvent("vinyl:covered", { bubbles: true }));
+          }, hold + move * Math.max(rise, lead));
           el.animate(
-            [{ ...behind(run, turn), zIndex: 1, easing }, { ...front, zIndex: 2 }],
+            rise > 0
+              ? [{ ...behind(run, turn), opacity: 0, easing }, { opacity: 1, offset: Math.max(rise, lead) }, front]
+              : [{ ...behind(run, turn), easing }, front],
             { duration: move, delay: hold, fill: "backwards" },
           );
         });
@@ -451,7 +505,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
   place(slot);
 
   const vinyl: Vinyl = {
-    show(next, s) {
+    show(next, s, dir) {
       if (TEL && !(next === song && s === src)) {
         const short = (v: string | undefined) => (v ? v.replace(/^https?:\/\/[^/]+\/.*\/([^/]{0,24})[^/]*$/, "…$1") : "none");
         telLine(
@@ -480,10 +534,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
         }
         return;
       }
-      const back = recent.length >= 2 && recent[recent.length - 2] === next;
-      if (back) recent.pop();
-      else recent.push(next);
-      if (recent.length > 20) recent.shift();
+      const back = turnBack(next, dir);
 
       songSummary();
       tel = freshTel();
@@ -505,19 +556,28 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
       // A quick run of skips. Under the zoetrope a cover still on its way out fades from where it
       // is: removed at once, it popped (his report, 2026-10-20: rapid Back / Next).
       const fadeOut = !isRecordHere() && coverSwap() === "zoetrope" && !reduced();
+      // It finishes its own way to its slot at four times the speed instead of fading: a fade
+      // showed one cover through another when a press landed mid-turn (the design review, round 3).
       box.querySelectorAll<HTMLElement>(".vinyl--out").forEach((e) => {
-        if (!fadeOut) { e.remove(); return; }
-        e.animate([{ opacity: getComputedStyle(e).opacity }, { opacity: 0 }], { duration: 120, fill: "forwards" })
-          .finished.then(() => e.remove(), () => e.remove());
+        const runs = e.getAnimations();
+        if (!fadeOut || !runs.length) { e.remove(); return; }
+        runs.forEach((a) => a.updatePlaybackRate(4));
+        window.setTimeout(() => e.remove(), 400); // its own end removes it sooner (slide)
       });
       const el = build(s);
       slot = el;
       place(el);
-      if (old && old.querySelector("img") && s && !held() && !reduced() && (isRecordHere() || coverSwap() !== "none")) {
-        slide(old, el, back);
-      } else {
-        old?.remove();
-      }
+      // The zoetrope does not turn a picture onto itself (two songs from one album); a record does.
+      const samePic = !isRecordHere() && coverSwap() === "zoetrope" && !!s && old?.querySelector("img")?.src === s;
+      const turned = !samePic && !!(old && old.querySelector("img") && s && !held() && !reduced() && (isRecordHere() || coverSwap() !== "none"));
+      if (turned) slide(old!, el, back);
+      else old?.remove();
+      // The turn as it ran, for the skin's side covers (metal.ts): one answer for the cover and
+      // its neighbors, where each guessed the direction alone and could disagree (the break-it pass).
+      box.dataset.turn = turned ? (back ? "back" : "fwd") : "none";
+      box.dataset.turnSong = next;
+      box.dataset.turnAt = String(performance.now());
+      box.dispatchEvent(new CustomEvent("vinyl:turn", { bubbles: true }));
       sync();
     },
     playing(on) {

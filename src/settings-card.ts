@@ -1448,7 +1448,7 @@ function mountSettings(
           hint: () => "Metal only. In max, the previous and next covers wait behind the cover, and it turns between them",
           get: () => setting("metalPeek"),
           set: (on) => setSetting("metalPeek", on),
-          when: () => currentSkin() === "metal" && setting("metalCoverChange") === "zoetrope",
+          when: () => currentSkin() === "metal" && ownSetting("metalCoverChange") === "zoetrope",
         },
       ],
     },

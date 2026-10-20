@@ -12,6 +12,45 @@ updated: 2026-10-20
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-20, night (2) — `v-thirtyone`: Metal brass, font B, the texture bake
+
+- His calls: Sepia as brushed brass under Metal, and font B. Brass is one Metal × Sepia block in
+  themes.css (dark scheme, brass plate, cream text, gold titles; five `--paint-brass*`), no new
+  theme. Font B: Bahnschrift titles (−0.005em) and Bahnschrift SemiCondensed labels (600, 650 on
+  the light metals, 0.10em, +0.5 px, tabular counts) through new caps hooks that keep every other
+  skin's values. The font test: five faces on his dev app, a fresh Fable reviewer, B 24 > Barlow
+  23 > A 20 > Titillium 18 = Archivo 18 (metal.md §7).
+- Efficiency: a Settings scroll dropped ~23 % of frames at 244 Hz under Metal (0 % in Vanilla);
+  the textures are now baked once into PNG bitmaps at the screen's density: ~6–10 %, pixel-
+  identical. The blend modes are the rest (~5 points), not taken out. The storage prune refused
+  while cargo ran.
+- A shot run left his dev app on Sepia (a reload mid-shot, likely); set back to Black & Yellow.
+- The readability check on the six Metal looks before the commit (his condition): 187 failure
+  groups → 0, by Metal's tokens (darker dark controls, lighter tints, `--action-text-ink`, Metal
+  text roles per theme, brass a step darker); metal.md §6.7.
+
+## 2026-10-20, night — `v-thirtyone`: Metal stress test and review loop to 9/10
+
+- His ask: stress test Metal and work until an independent Fable reviewer (pictures only) scores
+  the Metal implementation 9/10. Scores 6 → 7 → 8 → 8.5 → 9. The record is metal.md §6.7.
+- The break-it pass (three Sonnet agents, 44 scenarios) found the cover and its side covers
+  guessing the turn's direction apart; the queue now decides (`now-playing-card.ts` →
+  `vinyl.show(…, back)`), `vinyl.ts` publishes the turn (`data-turn`, `vinyl:turn`,
+  `vinyl:covered`). Also: the side covers show the nearest different cover (album playback left
+  them empty); `metalCoverChange` is a rule key and the graphics fallback turns it Off.
+- A skip cost ~70 % of the page thread and the GPU process (the album colors' inherited
+  transition re-rastered the brushed card every frame); the colors now step with the turn:
+  ~20 %.
+- The turn was rebuilt by its frames (no depth flip, no fade, no empty slot; a 3D scene and an
+  opacity cross tried and rejected); new tokens `--zoetrope-leave`, `-lead`, `-rise`,
+  `-perspective`, `--album-fade-delay`, `--accent-sheen-blend` / `-size`, `--metal-drum-back`.
+  The look: Steel's second streak layer, Acrylic relit and calmer, the title bar, Play, bevels,
+  square pills, the thumbwheel, card shadows.
+- His dev app had fallen back to WARP; restarted through `app_restart` (that ended his Vite
+  runner; Claude started `npm run dev:app` again).
+- Kept lists: `docs/ops/checks/metal-*.json` (six). Forks for him: Sepia as brass (metal.md §6.7),
+  the type (F7, the reviewer's proposals recorded). Not committed.
+
 ## 2026-10-20, late — two reviews set for 2026-10-21 (doc only)
 
 - His ask: a full stress test and an independent Fable review of the card grow motion

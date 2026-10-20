@@ -99,12 +99,13 @@
 
 /* A group's name: the context menu's label idiom. */
 .compass__group {
-  font-family: var(--font-title);
-  font-weight: var(--fw-title);
-  font-size: var(--fs-subtext);
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  font-stretch: var(--caps-stretch, normal);
   color: var(--subtext);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--caps-tracking, 0.06em);
   padding: var(--space-2) var(--space-2) var(--space-1);
 }
 .compass__list { display: flex; flex-direction: column; }

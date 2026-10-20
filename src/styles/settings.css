@@ -28,10 +28,11 @@
 
 .set__section { display: flex; flex-direction: column; gap: var(--space-1); }
 .set__head {
-  font-family: var(--font-title);
-  font-weight: var(--fw-title);
-  font-size: var(--fs-subtext);
-  letter-spacing: 0.08em;
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  font-stretch: var(--caps-stretch, normal);
+  letter-spacing: var(--caps-tracking, 0.08em);
   text-transform: uppercase;
   color: var(--subtext);
   padding: 0 var(--space-2) var(--space-1);
@@ -66,10 +67,11 @@
    hairline, so nothing invites a click. */
 .set__sub-head {
   padding: var(--space-2) var(--space-2) 0;
-  font-family: var(--font-title);
-  font-weight: var(--fw-title);
-  font-size: var(--fs-subtext);
-  letter-spacing: 0.08em;
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  font-stretch: var(--caps-stretch, normal);
+  letter-spacing: var(--caps-tracking, 0.08em);
   text-transform: uppercase;
   color: var(--subtext);
 }
@@ -283,12 +285,13 @@
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
   border-bottom: 1px solid var(--border);
-  font-family: var(--font-title);
-  font-weight: var(--fw-title);
-  font-size: var(--fs-subtext);
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  font-stretch: var(--caps-stretch, normal);
   color: var(--subtext);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--caps-tracking, 0.06em);
 }
 /* The record of what has left this PC (docs/integrations/DeetsOTD.md §10.6): five rows, then it scrolls
    inside the group so the section does not grow without end. `app-scroll` for the themed bar
