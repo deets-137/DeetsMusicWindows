@@ -36,6 +36,15 @@ Claude's within his ask: the dot count and places (3 in the top bulb, 6 in the b
 read at 16 px), the exit fading as the arrows do, both curves and distances borrowed, not new.
 listening-time.md §9.3 step 11, speedtest.md §9 step 1.
 
+Then the worker, at his word ("deploy if safe and clean"). DeetsSupport's `net-worked` was cut
+from `master`, so it lacked `velopack`'s four commits (three usage-key sets and the sign-in
+icon fix), and the live worker (deployed 2026-10-18 06:44 UTC) already had them. Claude
+committed the `rewindToday` key on `velopack`, merged `velopack` into `net-worked` (clean),
+dry-ran, then deployed with wrangler 4.151.2: version 44de8440, the new `SPEED_RL` binding
+(namespace 3004, unused elsewhere). Checked live: `support…/speed` → 2,097,152 bytes, 200;
+the update feed (`/update/deetsmusic/vp/releases.deetsmusic.json`) 200 with 0.30.0; `/signin`,
+`/health`, `/config`, `/status` 200. Both branches pushed to DeetsSupport's origin.
+
 ## 2026-10-19 — The Network panel, v1 (`net-worked`)
 
 **His ask:** design and build v1 of the network widget on a new branch `net-worked` off `main`:

@@ -8,7 +8,8 @@ updated: 2026-10-19
 
 > **Built 2026-10-19 (v1) on `net-worked`; desk test open (§9, his, tonight).** §7 his calls for v1
 > (2026-10-19); §8 the as-built record; §9 the desk test. The worker's `/speed` route is on the
-> DeetsSupport branch `net-worked`, **not deployed** (his call). The text below §7 is the design
+> DeetsSupport branch `net-worked`, **deployed 2026-10-19** at his word (version 44de8440, with
+> `velopack` merged in; `/speed` answers `2097152 200`). The text below §7 is the design
 > as it was; where it disagrees with §8, §8 is the code.
 >
 > An idea (2026-10-16). His ask, with a drawing of a race car (a low body, a rear

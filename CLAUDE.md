@@ -211,7 +211,7 @@ for word, with RELEASE.md's section numbers.
   2 MB from DeetsSupport's `/speed`, counted and dropped). The ping (`net.rs`, `IcmpSendEcho`)
   runs every 30 s only while music plays. The header-only fetch wrap (`src/fetch-wrap.ts`, §5.3)
   gives the song pieces' speed; its A/B is `docs/ops/checks/fetch-wrap.mjs` (§6). His calls §7;
-  §8 the as-built record. The worker route is not deployed.
+  §8 the as-built record. The worker route is deployed (2026-10-19).
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.

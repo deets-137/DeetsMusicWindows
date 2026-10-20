@@ -257,7 +257,7 @@ each step that touches those calls.
   the ping every 30 s only while playing; the fetch wrap. Built in a cloud session: tsc, the unit
   tests and a Windows-target `cargo check` pass; nothing ran on Windows. **Open:** his desk test
   (§9, tonight), the fetch wrap's A/B (`checks/fetch-wrap.mjs`), his look at what Claude decided
-  (§8.3), and the DeetsSupport `/speed` deploy (branch `net-worked` there; his call).
+  (§8.3). The DeetsSupport `/speed` route is live (deployed 2026-10-19, branch `net-worked`).
 
 - **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
   [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8
