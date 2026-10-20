@@ -421,6 +421,21 @@ dev app (the Stream line was cut short in every skin; a long AirPlay speaker nam
   changes the panel's size (about 40 px, once a session); when it comes with the panel open,
   the panel grows gently and the row slides in (his ask: `--pop-grow`, `--pop-ease`,
   `enterRows`, the Rewind panel's own motion).
+- **"Played" means music** (found by the motion pass below): the row comes the first time music
+  plays while a speaker is on, in this app run. Not on a stats poll, and not on its packets: a
+  kept speaker's sender streams silence to hold the session (~125 packets a second with
+  nothing playing, measured 2026-10-19), so a connected speaker looked played at launch.
+
+**The motion pass (2026-10-19, his ask: "a similar review for the network widget").** The shots
+list [checks/title-panels-motion.json](../ops/checks/title-panels-motion.json) runs the panel on
+the dev app in Press and Glass, after a page reload: the open, a status's hover hint, the
+AirPlay row arriving with the panel open (`window.__net.speakerPlayed()`, a dev-only handle that
+does what music on a speaker does to the row), the Test press (a real 2 MB test), the close.
+One fault: the AirPlay row comes in the middle, so the rows under it moved down in one frame
+while only the panel's edge glided. Now the row opens its own room (`openRoom`: its height and
+the gap above it from nothing, on `--pop-grow`), so the rows under it glide. Worst frames after:
+open 16–21 ms, the row's arrival 17–25 ms, the car 8–9 ms; the Test press holds the button in
+place ("Testing…", then the word).
 - **Minimal text** ("just statuses with interpretation in hover text"). Each row shows one
   word on the right: Good, OK or Bad over the last 5 minutes (the title's words and window),
   "–" while it has nothing to judge. The numbers and what they mean are that word's hover

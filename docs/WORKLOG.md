@@ -59,6 +59,19 @@ webview guessed. One reload read it as Windows-1252 (the page itself was UTF-8; 
 the same file decoded right). Fixed at the source: `@charset "UTF-8";` as the file's first bytes.
 The release bundle keeps it at the front of its stylesheet (checked in `dist/`).
 
+Then the motion of the two panels, at his ask, with a kept shots list on the dev app
+([checks/title-panels-motion.json](ops/checks/title-panels-motion.json)). The first run (CPU
+60–70 %, a noisy machine) found four Rewind faults; each was fixed and the list run again, one at
+a time, his order: SOTD's held press, empty gap and late covers; the list's close; Top Listens'
+blinking bar; "Today: …" at the first open. The record and the numbers: listening-time.md §9.5.
+One run reloaded the dev page (nothing was playing; checked first).
+
+The same pass on the Network panel (speedtest.md §10, *The motion pass*). Two finds: the AirPlay
+row showed at launch with no music, because a kept speaker's sender streams silence (its packets
+rise ~125 a second), so "played" is now music playing with a speaker on; and the row, coming in
+the middle, made the rows under it jump, now it opens its own room. A dev-only handle,
+`window.__net` (`state`, `speakerPlayed`), lets the shots bring the row without playing music.
+
 ## 2026-10-19 — The Network panel, v1 (`net-worked`)
 
 **His ask:** design and build v1 of the network widget on a new branch `net-worked` off `main`:

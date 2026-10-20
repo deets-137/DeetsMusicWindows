@@ -40,6 +40,14 @@ type Dir = "desc" | "asc";
 
 /** How many rows a list shows. The list scrolls past `--rewind-top-list-max-h`. */
 const LIST_CAP = 50;
+/** SOTD shows every pick, but draws them this many at a time: the first page at the press, the
+ *  next as the list is scrolled near its end. 199 picks with a cover each drawn in the press
+ *  held the first frame ~70 ms and the panel sat empty (title-panels-motion.json, 2026-10-19). */
+const PAGE = LIST_CAP;
+/** A list this close to its end (px) draws its next page. */
+const PAGE_AHEAD_PX = 240;
+/** The covers loaded ahead when the pointer rests on SOTD, so the first rows arrive with them. */
+const WARM_COVERS = 8;
 /** The Today number re-reads this often while the panel is open: the play log saves an open
  *  play's minutes every 30 s (stats.ts `checkpoint`), so the number moves while music plays. */
 const TODAY_EVERY_MS = 30_000;
@@ -186,8 +194,92 @@ export function initRewindButton(): void {
     if (scrolls !== list.hasAttribute("data-scrolls")) list.toggleAttribute("data-scrolls", scrolls);
   };
 
-  /** Draw the open part's list. `slide`: the part just opened or changed, so its rows enter. */
-  const drawList = async (slide: boolean) => {
+  // ── the pages: a list draws `PAGE` rows, then the next as it nears its end ──
+  let shown = 0;
+  const metaOf = (r: RewindRow) => (part === "top" ? fmtPlays(r.plays) : r.meta ?? "");
+  const rowsHTML = (from: number, to: number) => rows.slice(from, to).map((r, i) => rowHTML(r, from + i, metaOf(r))).join("");
+  list.addEventListener("scroll", () => {
+    if (shown >= rows.length || list.scrollTop + list.clientHeight < list.scrollHeight - PAGE_AHEAD_PX) return;
+    const from = shown;
+    shown = Math.min(rows.length, shown + PAGE);
+    list.insertAdjacentHTML("beforeend", rowsHTML(from, shown));
+  }, { passive: true });
+
+  // The first SOTD covers start loading when the pointer rests on the button (or it takes the
+  // focus), so the rows that slide in at the press have them. The webview keeps each one.
+  const warmed = new Set<string>();
+  const warming = new Set<HTMLImageElement>();
+  const warmSotd = () => {
+    if (part === "sotd") return;
+    for (const r of sotdRows().slice(0, WARM_COVERS)) {
+      const u = artURL(r.track, ROW_PX);
+      if (!u || warmed.has(u)) continue;
+      warmed.add(u);
+      // Held until it lands: an Image nothing holds can be dropped before its download ends.
+      const img = new Image();
+      warming.add(img);
+      img.onload = img.onerror = () => warming.delete(img);
+      img.src = u;
+    }
+  };
+  chipOf("sotd").addEventListener("pointerenter", warmSotd);
+  chipOf("sotd").addEventListener("focus", warmSotd);
+
+  /** A swap from one list to the other (his ask, 2026-10-19: no empty panel between them): a
+   *  fade-through. A copy of the old part's rows in view stays over the list and fades out in
+   *  the first half of `--pop-in`; then `done` lets the new rows enter. A see-through panel
+   *  (Glass) showed old and new rows printed over each other when both moved at once. Only the
+   *  rows in view are copied: a copy of all 50 held the press ~25 ms. */
+  let ghost: HTMLElement | null = null;
+  /** The copy goes, and the list it hid shows: on a newer press, a close of the part, a close
+   *  of the panel. Its `done` does not run then, so this is the one way back. */
+  const dropGhost = () => {
+    ghost?.remove();
+    ghost = null;
+    body.style.visibility = "";
+  };
+  const fadeOld = (done: () => void): boolean => {
+    dropGhost();
+    if (body.hidden || reduced()) return false;
+    const g = document.createElement("div");
+    g.className = "rewind-top__ghost";
+    g.setAttribute("aria-hidden", "true");
+    g.style.top = `${body.offsetTop}px`;
+    g.style.left = `${body.offsetLeft}px`;
+    g.style.width = `${body.offsetWidth}px`;
+    g.style.height = `${body.offsetHeight}px`;
+    const top = body.getBoundingClientRect().top;
+    const view = list.getBoundingClientRect();
+    for (const el of [bar, ...list.children] as HTMLElement[]) {
+      if (el.hidden) continue;
+      const r = el.getBoundingClientRect();
+      if (r.bottom <= view.top && el !== bar) continue;
+      if (r.top >= view.bottom) break;
+      const c = el.cloneNode(true) as HTMLElement;
+      c.classList.remove("pop-enter");
+      c.style.position = "absolute";
+      c.style.top = `${r.top - top}px`;
+      c.style.width = `${r.width}px`;
+      g.appendChild(c);
+    }
+    panel.appendChild(g);
+    ghost = g;
+    const a = g.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: tokenMs("--pop-in") / 2,
+      easing: getComputedStyle(panel).getPropertyValue("--pop-ease").trim() || "ease",
+    });
+    a.onfinish = () => {
+      g.remove();
+      if (ghost !== g) return;
+      ghost = null;
+      done();
+    };
+    return true;
+  };
+
+  /** Draw the open part's list. `slide`: the part just opened or changed, so its rows enter;
+   *  `swap`: it replaced the other part's list, which fades out over it. */
+  const drawList = async (slide: boolean, swap = false) => {
     const now = part;
     const n = ++seq;
     if (!now) return;
@@ -200,34 +292,86 @@ export function initRewindButton(): void {
     }
     if (n !== seq || part !== now) return; // a newer press or read took over
     const from = panel.offsetHeight;
+    const enter = () => { if (slide) enterRows([...(now === "top" ? [bar] : []), ...list.children]); };
+    // A swap: the new rows wait, unseen, while the copy of the old ones fades out over them.
+    const through = swap && fadeOld(() => {
+      body.style.visibility = "";
+      if (n === seq && part === now) enter();
+    });
+    if (through) body.style.visibility = "hidden";
+    body.hidden = false;
     rows = next;
     bar.hidden = now !== "top";
     label.textContent = VIEW_LABELS[pick.view];
     what.textContent = pick.dir === "desc" ? "Most played" : "Least played";
     list.classList.toggle("rewind-top__round", now === "top" && pick.view === "artists");
+    shown = Math.min(rows.length, PAGE);
     list.innerHTML = rows.length
-      ? rows.map((r, i) => rowHTML(r, i, now === "top" ? fmtPlays(r.plays) : r.meta ?? "")).join("")
+      ? rowsHTML(0, shown)
       : `<li class="rewind-top__empty">${now === "top" ? "Nothing played yet." : "No Songs of the Day yet."}</li>`;
     measureGutter();
-    if (slide) enterRows([...(now === "top" ? [bar] : []), ...list.children]);
+    if (!through) enter();
     animateHeight(from);
+  };
+
+  /** A part's close (his ask, 2026-10-19: the list slides out): the list fades while the panel's
+   *  height closes over it, both on `--pop-grow` and `--pop-ease`, and it is hidden at the end.
+   *  It was hidden at once, and the empty panel then shrank. Both hold their last frame
+   *  (`fill: forwards`) until the hide, so no frame shows the full list at the end. */
+  let leaving: Animation[] = [];
+  const stopLeaving = (hide: boolean) => {
+    if (!leaving.length) return;
+    if (hide) body.hidden = true;
+    for (const a of leaving) a.cancel();
+    leaving = [];
+    panel.classList.remove("is-growing");
+  };
+  const slideOut = (from: number) => {
+    grow?.cancel();
+    grow = null;
+    stopLeaving(false);
+    if (panel.hidden || reduced()) {
+      body.hidden = true;
+      return;
+    }
+    body.hidden = true;
+    const to = panel.offsetHeight;
+    body.hidden = false;
+    if (Math.abs(to - from) < 1) {
+      body.hidden = true;
+      return;
+    }
+    panel.classList.add("is-growing");
+    frames.during("fold", 250, "close");
+    const opts: KeyframeAnimationOptions = {
+      duration: tokenMs("--pop-grow"),
+      easing: getComputedStyle(panel).getPropertyValue("--pop-ease").trim() || "ease",
+      fill: "forwards",
+    };
+    const h = panel.animate([{ height: `${from}px` }, { height: `${to}px` }], opts);
+    const o = body.animate([{ opacity: 1 }, { opacity: 0 }], opts);
+    leaving = [h, o];
+    h.onfinish = () => { if (leaving.includes(h)) stopLeaving(true); };
   };
 
   /** Open a part, or close it when it is the open one (a second press). */
   const togglePart = (p: Part) => {
     const from = panel.offsetHeight;
+    const swap = part !== null && part !== p;
     part = part === p ? null : p;
     for (const q of ["top", "sotd"] as Part[]) chipOf(q).setAttribute("aria-pressed", String(part === q));
     diag.log("rewindTop:part", { part });
     if (!part) {
       seq++;
       viewDrop.close();
-      body.hidden = true;
-      animateHeight(from);
+      dropGhost();
+      slideOut(from);
       return;
     }
-    body.hidden = false;
-    void drawList(true);
+    stopLeaving(false); // a press during the slide-out keeps the list
+    // The part shows in drawList, with its rows: shown here, Top Listens' bar painted empty while
+    // its rows were read, then blinked out as its entry began (2026-10-19).
+    void drawList(true, swap);
   };
   panel.addEventListener("click", (e) => {
     const p = (e.target as HTMLElement).closest<HTMLElement>("[data-rt-part]")?.dataset.rtPart as Part | undefined;
@@ -321,6 +465,9 @@ export function initRewindButton(): void {
   onSotdChange(paintSotd);
   paintSotd();
   paintToday();
+  // Read once at start, so the first open shows the minutes, not "Today: …" for a frame or two
+  // (2026-10-19). Each open reads again; the panel shows the last number until then.
+  void readToday();
 
   dropdown = makeDropdown({
     root,
@@ -331,6 +478,7 @@ export function initRewindButton(): void {
     onOpen: () => {
       keepRightInWindow(root, panel);
       void readToday();
+      if (sotdOn()) warmSotd(); // the first SOTD covers, before a press can ask for them
       if (part) void drawList(false);
       enterRows([...panel.children].filter((el) => !(el as HTMLElement).hidden));
       window.clearInterval(tick);
@@ -342,7 +490,12 @@ export function initRewindButton(): void {
     },
   });
   // The panel's close closes the view pop with it.
-  new MutationObserver(() => { if (panel.hidden) viewDrop.close(); }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+  new MutationObserver(() => {
+    if (!panel.hidden) return;
+    viewDrop.close();
+    dropGhost(); // a swap's fading copy goes with the panel
+    stopLeaving(true); // and a slide-out ends where it was going
+  }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   // The hourglass turns a half turn at each open and each close, by any path (his ask,
   // 2026-10-19), always the same way, so it keeps flipping as a real one would. The angle only
   // grows; the CSS transition on --rewind-top-angle does the motion. A close of a panel that

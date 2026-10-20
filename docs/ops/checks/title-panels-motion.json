@@ -1,0 +1,442 @@
+{
+  "about": "The Max title bar's Rewind and Network panels on the dev app (his library): the Rewind panel's open, Top Listens sliding in (the panel grows), SOTD replacing it, SOTD sliding out, the close; then the Network panel's open and close. In the app's own look (Press on 2026-10-19) and in Glass (the heaviest to draw: each shot sets the skin through the store and puts Press back, never a look, which his Live Theming rule would hold). Checks that each panel ends shut, nothing is left growing, and the hourglass and car end at rest.",
+  "desk_test": "features/listening-time.md §9.3, features/speedtest.md §9",
+  "made": "2026-10-19",
+  "pass": "Each probe's expect holds. In the console file: each [perf] frames line for rewind-top, fold and net with dropped under 3 % and worst under 17 ms at the display's rate. In the strips: the panel grows from its top-left corner, the rows enter in order, a list slides in with the panel's height following it (no jump at the end), SOTD replaces Top Listens without the panel snapping, and the close leaves nothing behind.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/title-panels-motion.json   (needs `npm run dev:app` running in Max, its window on screen)",
+  "shots": [
+    {
+      "id": "rewind-panel-press",
+      "covers": "features/listening-time.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 9,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','press')"
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ surface: document.documentElement.dataset.surface, shut: document.getElementById('rewind-panel').hidden })",
+          "expect": {
+            "surface": "max",
+            "shut": true
+          },
+          "name": "rest"
+        },
+        {
+          "reload": true
+        },
+        {
+          "wait": 6000
+        },
+        {
+          "click": "#rewind-open",
+          "frames": 45,
+          "region": "#rewind-panel"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ open: !document.getElementById('rewind-panel').hidden, today: /^Today: [0-9]/.test(document.querySelector('[data-rt-today]').textContent) })",
+          "expect": {
+            "open": true,
+            "today": true
+          },
+          "name": "open"
+        },
+        {
+          "click": "[data-rt-part=\"top\"]",
+          "frames": 45,
+          "region": "#rewind-panel"
+        },
+        {
+          "wait": 1000
+        },
+        {
+          "probe": "JSON.stringify({ body: !document.querySelector('[data-rt-body]').hidden, rows: document.querySelectorAll('[data-rt-list] > li').length > 0, growing: document.getElementById('rewind-panel').classList.contains('is-growing') })",
+          "expect": {
+            "body": true,
+            "rows": true,
+            "growing": false
+          },
+          "name": "top listens"
+        },
+        {
+          "hover": "[data-rt-part=\"sotd\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "click": "[data-rt-part=\"sotd\"]",
+          "frames": 45,
+          "region": "#rewind-panel"
+        },
+        {
+          "wait": 1000
+        },
+        {
+          "probe": "JSON.stringify({ sotd: document.querySelector('[data-rt-part=\"sotd\"]').getAttribute('aria-pressed'), top: document.querySelector('[data-rt-part=\"top\"]').getAttribute('aria-pressed'), growing: document.getElementById('rewind-panel').classList.contains('is-growing') })",
+          "expect": {
+            "sotd": "true",
+            "top": "false",
+            "growing": false
+          },
+          "name": "sotd"
+        },
+        {
+          "click": "[data-rt-part=\"sotd\"]",
+          "frames": 45,
+          "region": "#rewind-panel"
+        },
+        {
+          "wait": 900
+        },
+        {
+          "probe": "JSON.stringify({ body: document.querySelector('[data-rt-body]').hidden, growing: document.getElementById('rewind-panel').classList.contains('is-growing') })",
+          "expect": {
+            "body": true,
+            "growing": false
+          },
+          "name": "list out"
+        },
+        {
+          "click": "#rewind-open",
+          "frames": 40
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('rewind-panel').hidden, angle: document.getElementById('rewind-open').style.getPropertyValue('--rewind-top-angle') })",
+          "expect": {
+            "shut": true,
+            "angle": "/^-?\\d+deg$/"
+          },
+          "name": "closed"
+        }
+      ]
+    },
+    {
+      "id": "rewind-panel-glass",
+      "covers": "features/listening-time.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 9,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','glass')"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('rewind-panel').hidden })",
+          "expect": {
+            "shut": true
+          },
+          "name": "rest"
+        },
+        {
+          "click": "#rewind-open",
+          "frames": 45,
+          "region": "#rewind-panel"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "click": "[data-rt-part=\"top\"]",
+          "frames": 45,
+          "region": "#rewind-panel"
+        },
+        {
+          "wait": 1000
+        },
+        {
+          "hover": "[data-rt-part=\"sotd\"]"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "click": "[data-rt-part=\"sotd\"]",
+          "frames": 45,
+          "region": "#rewind-panel"
+        },
+        {
+          "wait": 1000
+        },
+        {
+          "click": "[data-rt-part=\"sotd\"]",
+          "frames": 45,
+          "region": "#rewind-panel"
+        },
+        {
+          "wait": 900
+        },
+        {
+          "click": "#rewind-open",
+          "frames": 40
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('rewind-panel').hidden, growing: document.getElementById('rewind-panel').classList.contains('is-growing') })",
+          "expect": {
+            "shut": true,
+            "growing": false
+          },
+          "name": "closed"
+        },
+        {
+          "eval": "window.__store.set('skin','press')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    },
+    {
+      "id": "net-panel-press",
+      "covers": "features/speedtest.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 14,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','press')"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('net-panel').hidden })",
+          "expect": {
+            "shut": true
+          },
+          "name": "rest"
+        },
+        {
+          "reload": true
+        },
+        {
+          "wait": 6000
+        },
+        {
+          "click": "#net-open",
+          "frames": 45
+        },
+        {
+          "wait": 900
+        },
+        {
+          "probe": "JSON.stringify({ open: !document.getElementById('net-panel').hidden, rows: [...document.querySelectorAll('#net-panel .net__row')].map(r => r.dataset.row), wifi: !!document.querySelector('[data-row=wifi]'), statuses: [...document.querySelectorAll('#net-panel .net__status')].every(s => s.textContent && s.dataset.hint) })",
+          "expect": {
+            "open": true,
+            "wifi": false,
+            "rows": [
+              "internet",
+              "apple",
+              "stream"
+            ],
+            "statuses": true
+          },
+          "name": "open"
+        },
+        {
+          "hover": "#net-panel [data-row=internet] .net__status",
+          "frames": 30
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ hint: !!document.querySelector('.hint') && getComputedStyle(document.querySelector('.hint')).opacity !== '0' })",
+          "expect": {
+            "hint": true
+          },
+          "name": "status hint"
+        },
+        {
+          "eval": "window.__net.speakerPlayed()",
+          "frames": 45
+        },
+        {
+          "wait": 900
+        },
+        {
+          "probe": "JSON.stringify({ rows: [...document.querySelectorAll('#net-panel .net__row')].map(r => r.dataset.row), growing: document.getElementById('net-panel').classList.contains('is-growing'), entering: document.querySelectorAll('#net-panel .pop-enter').length })",
+          "expect": {
+            "rows": [
+              "internet",
+              "airplay",
+              "apple",
+              "stream"
+            ],
+            "growing": false,
+            "entering": 0
+          },
+          "name": "airplay row"
+        },
+        {
+          "click": "#net-panel [data-net-test]",
+          "frames": 60
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "probe": "JSON.stringify({ speed: document.querySelector('#net-panel .net__result').textContent, hint: document.querySelector('#net-panel .net__result').dataset.hint, disabled: document.querySelector('[data-net-test]').disabled })",
+          "expect": {
+            "speed": "/^(Good|OK|Bad)$/",
+            "hint": "/Mbps down/",
+            "disabled": false
+          },
+          "name": "test"
+        },
+        {
+          "click": "#net-open",
+          "frames": 40
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('net-panel').hidden, carAnims: document.querySelector('#net-open .net__car').getAnimations().length })",
+          "expect": {
+            "shut": true,
+            "carAnims": 0
+          },
+          "name": "closed"
+        }
+      ]
+    },
+    {
+      "id": "net-panel-glass",
+      "covers": "features/speedtest.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 14,
+      "steps": [
+        {
+          "eval": "window.__store.set('skin','glass')"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('net-panel').hidden })",
+          "expect": {
+            "shut": true
+          },
+          "name": "rest"
+        },
+        {
+          "reload": true
+        },
+        {
+          "wait": 6000
+        },
+        {
+          "click": "#net-open",
+          "frames": 45
+        },
+        {
+          "wait": 900
+        },
+        {
+          "probe": "JSON.stringify({ open: !document.getElementById('net-panel').hidden, rows: [...document.querySelectorAll('#net-panel .net__row')].map(r => r.dataset.row), wifi: !!document.querySelector('[data-row=wifi]'), statuses: [...document.querySelectorAll('#net-panel .net__status')].every(s => s.textContent && s.dataset.hint) })",
+          "expect": {
+            "open": true,
+            "wifi": false,
+            "rows": [
+              "internet",
+              "apple",
+              "stream"
+            ],
+            "statuses": true
+          },
+          "name": "open"
+        },
+        {
+          "hover": "#net-panel [data-row=internet] .net__status",
+          "frames": 30
+        },
+        {
+          "wait": 1200
+        },
+        {
+          "probe": "JSON.stringify({ hint: !!document.querySelector('.hint') && getComputedStyle(document.querySelector('.hint')).opacity !== '0' })",
+          "expect": {
+            "hint": true
+          },
+          "name": "status hint"
+        },
+        {
+          "eval": "window.__net.speakerPlayed()",
+          "frames": 45
+        },
+        {
+          "wait": 900
+        },
+        {
+          "probe": "JSON.stringify({ rows: [...document.querySelectorAll('#net-panel .net__row')].map(r => r.dataset.row), growing: document.getElementById('net-panel').classList.contains('is-growing'), entering: document.querySelectorAll('#net-panel .pop-enter').length })",
+          "expect": {
+            "rows": [
+              "internet",
+              "airplay",
+              "apple",
+              "stream"
+            ],
+            "growing": false,
+            "entering": 0
+          },
+          "name": "airplay row"
+        },
+        {
+          "click": "#net-panel [data-net-test]",
+          "frames": 60
+        },
+        {
+          "wait": 3000
+        },
+        {
+          "probe": "JSON.stringify({ speed: document.querySelector('#net-panel .net__result').textContent, hint: document.querySelector('#net-panel .net__result').dataset.hint, disabled: document.querySelector('[data-net-test]').disabled })",
+          "expect": {
+            "speed": "/^(Good|OK|Bad)$/",
+            "hint": "/Mbps down/",
+            "disabled": false
+          },
+          "name": "test"
+        },
+        {
+          "click": "#net-open",
+          "frames": 40
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('net-panel').hidden, carAnims: document.querySelector('#net-open .net__car').getAnimations().length })",
+          "expect": {
+            "shut": true,
+            "carAnims": 0
+          },
+          "name": "closed"
+        },
+        {
+          "eval": "window.__store.set('skin','press')"
+        },
+        {
+          "wait": 1200
+        }
+      ]
+    }
+  ]
+}

@@ -68,6 +68,12 @@
 /* A part: the list a button opened, with its own bar above it. */
 .rewind-top__part { display: flex; flex-direction: column; gap: var(--space-1); min-height: 0; }
 .rewind-top__bar { display: flex; align-items: center; gap: var(--space-2); }
+/* A swap's copy of the old list (rewind-btn.ts `fadeOld`): over the new one, in the panel's own
+   fill, fading out while the new rows enter under it. Never takes the pointer. */
+.rewind-top__ghost {
+  position: absolute; z-index: 1; overflow: hidden; pointer-events: none;
+  background: var(--menu-surface);
+}
 .rewind-top__what { color: var(--subtext); font-size: var(--fs-subtext); }
 
 /* The view dropdown: the Library's Sort pop (a column of choices, a divider, the ↑ ↓ squares),

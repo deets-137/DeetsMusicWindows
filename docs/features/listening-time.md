@@ -245,5 +245,34 @@ No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.
 - What sits under Today (his F3: "we can chat user flow"), and §4's breakdown with F4–F7.
 - ~~His hourglass glyph.~~ Drawn from his sketch and made to flip, 2026-10-19 (§9.3 step 11):
   `index.html`, `--rewind-top-flip` (the Compass needle's turn), the observer in rewind-btn.ts.
-- A `loading.json` clip for the panel's wait (CLAUDE.md checklist 17), and a shots list of §9.3
-  on the dev app (DESK-TESTS.md §6): not run from this cloud session (no Windows dev app here).
+- A `loading.json` clip for the panel's wait (CLAUDE.md checklist 17). The shots list now exists
+  for the motion: [checks/title-panels-motion.json](../ops/checks/title-panels-motion.json) (§9.5).
+
+### 9.5 The motion pass (2026-10-19, his ask)
+
+> **Part:** built · 2026-10-19
+
+His ask: "verify the opening of SOTD and such is smooth". The shots list
+[checks/title-panels-motion.json](../ops/checks/title-panels-motion.json) runs the panel on the
+dev app in Press and Glass: the open (first, after a page load), Top Listens, SOTD over it, SOTD
+out, the close; and the Network panel's open and close. The first run found four faults, each
+fixed and run again on its own (his order):
+1. **SOTD: a held press, an empty panel, late covers.** All 199 picks, a cover each, were drawn
+   in the press (a 69 ms long task, the first change at +84 ms), the old list vanished, and the
+   covers landed ~160 ms after the rows. Now: SOTD draws 50 rows at the press and the next 50 as
+   the list nears its end (`PAGE`, every pick stays reachable; End reaches the drawn rows); a
+   swap is a fade-through, a copy of the old rows in view fading out in half of `--pop-in`
+   before the new rows enter (`fadeOld`; at once, a see-through Glass panel printed old and new
+   rows over each other); the first 8 SOTD covers load when the panel opens and when the pointer
+   rests on SOTD (`warmSotd`). After: worst frame 17 ms (Press) and 21 ms (Glass), the covers
+   ready at once.
+2. **The list's close.** The list vanished and the empty panel shrank. Now it fades while the
+   height closes over it (`slideOut`, `fill: forwards` until the hide). Worst 17 ms.
+3. **Top Listens' start.** Its bar painted with an empty view chip while its rows were read,
+   then blinked out as the entry began. Now the part shows only in `drawList`, with its rows.
+   Worst 8 ms.
+4. **"Today: …" at the first open.** The minutes are read once at start-up too.
+
+What Claude decided inside his ask: the page size (50, Top Listens' cap), the fade-through's
+half-and-half split, the 8 warmed covers. The Network panel needed no fix (open worst 13–42 ms
+under load, 0 drops left after a quiet run).

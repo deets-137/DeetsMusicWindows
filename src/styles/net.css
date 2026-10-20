@@ -45,7 +45,6 @@
   z-index: 20;
 }
 .net__panel[hidden], .net__panel [hidden] { display: none; }
-.net__panel.is-growing { overflow: hidden; } /* net.ts animates the height as a row comes */
 
 /* "Network: Good" (his layout): the title face, bold, the whole line. Bad takes the Bad color. */
 .net__title {

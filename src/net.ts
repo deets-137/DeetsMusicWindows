@@ -36,6 +36,18 @@ import * as diag from "./diag";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 
+declare global {
+  interface Window {
+    /** The shots runner's handle on the dev app (DESK-TESTS.md §6): the AirPlay row's state, and
+     *  `speakerPlayed`, which does what music on a speaker does to it (the row comes), so the
+     *  panel's grow can be watched without playing music. Dev builds only. */
+    __net?: {
+      state: () => { apSeen: boolean; speaker: string | null; playing: boolean; rows: string };
+      speakerPlayed: () => void;
+    };
+  }
+}
+
 const HOUR = 60;
 const PING_EVERY_MS = 30_000;
 const PING_N = 3;
@@ -137,7 +149,11 @@ function onNote(n: NetNote): void {
     const was = ap;
     ap = n.stats;
     if (!ap) return void (was && paint());
-    apSeen = true;
+    // The row comes once a speaker has PLAYED this session (his words, 2026-10-19): music
+    // playing while a speaker is on. Not its packets: the sender streams silence to hold the
+    // session, ~125 packets a second with nothing playing (measured 2026-10-19).
+    const played = !apSeen && playing;
+    if (played) apSeen = true;
     // A new session starts its counts at 0: take this poll as the new base.
     if (was && was.speaker === ap.speaker && ap.packets >= was.packets) {
       c.apPackets += ap.packets - was.packets;
@@ -145,7 +161,7 @@ function onNote(n: NetNote): void {
       c.apStarved += Math.max(0, ap.starved - was.starved);
     }
     if (ap.rttP95Ms > 0) c.apRtt = Math.max(c.apRtt ?? 0, ap.rttP95Ms);
-    if (!was) paint();
+    if (!was || played) paint();
     return; // every 2 s: the button repaints on the next ping, the open panel on its own beat
   }
   paint();
@@ -353,14 +369,12 @@ function paint(): void {
   if (!panel || panel.hidden) return;
   const rows = ROWS.filter((r) => r.show(h));
   // A row that comes while the panel is open (AirPlay, the first time a speaker plays this
-  // session) grows the panel gently and slides in, as the Rewind panel's lists do (his ask,
-  // 2026-10-19). The first build at an open has nothing to grow from.
-  let grewFrom = 0;
+  // session) opens its own room and fades in (his ask, 2026-10-19). The first build at an open
+  // has nothing to grow from.
   let came: string[] = [];
   const keys = rows.map((r) => r.key).join();
   if (keys !== shape) {
     if (shape) {
-      grewFrom = panel.offsetHeight;
       const had = new Set(shape.split(","));
       came = rows.map((r) => r.key).filter((k) => !had.has(k));
     }
@@ -387,35 +401,31 @@ function paint(): void {
   const t = testStatus();
   setStatus(panel.querySelector<HTMLElement>(".net__result")!, t.word, t.tone, t.hint);
   (panel.querySelector("[data-net-test]") as HTMLButtonElement).disabled = testing;
-  if (grewFrom) {
-    growFrom(grewFrom);
-    enterRows(came.map((k) => panel!.querySelector(`[data-row="${k}"]`)).filter((el): el is HTMLElement => !!el));
+  if (came.length) {
+    const els = came.map((k) => panel!.querySelector<HTMLElement>(`[data-row="${k}"]`)).filter((el): el is HTMLElement => !!el);
+    openRoom(els);
+    enterRows(els);
     diag.log("net:row", { came });
   }
 }
 
-// ── the height follows the content (rewind-btn.ts's `animateHeight`, the panels' one shape) ──
-let grow: Animation | null = null;
-function growFrom(from: number): void {
-  if (!panel) return;
-  grow?.cancel();
-  grow = null;
-  panel.classList.remove("is-growing");
-  if (panel.hidden || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const to = panel.offsetHeight;
-  if (Math.abs(to - from) < 1) return;
-  panel.classList.add("is-growing");
-  frames.during("fold", 250, to > from ? "open" : "close");
-  const a = panel.animate([{ height: `${from}px` }, { height: `${to}px` }], {
-    duration: tokenMs("--pop-grow"),
-    easing: getComputedStyle(panel).getPropertyValue("--pop-ease").trim() || "ease",
-  });
-  grow = a;
-  a.onfinish = () => {
-    if (grow !== a) return;
-    grow = null;
-    panel?.classList.remove("is-growing");
-  };
+// ── a new row opens its own room ──
+// AirPlay comes in the middle of the panel, so the panel's height alone could not hide the
+// change: the rows under it moved down in one frame while the panel's edge glided (the shots,
+// 2026-10-19). The row grows from nothing, with the panel's gap above it, on --pop-grow and
+// --pop-ease (the panels' grow), so the rows under it glide down and the panel follows.
+function openRoom(els: HTMLElement[]): void {
+  if (!panel || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const gap = parseFloat(getComputedStyle(panel).rowGap) || 0;
+  const opts = { duration: tokenMs("--pop-grow"), easing: getComputedStyle(panel).getPropertyValue("--pop-ease").trim() || "ease" };
+  frames.during("fold", 250, "open");
+  for (const el of els) {
+    const h = el.offsetHeight;
+    el.style.overflow = "hidden";
+    el.animate([{ height: "0px", marginTop: `${-gap}px` }, { height: `${h}px`, marginTop: "0px" }], opts).onfinish = () => {
+      el.style.overflow = "";
+    };
+  }
 }
 
 /** Open the panel (the Compass's row, COMPASS.md §9). Max only, as its button. */
@@ -436,7 +446,21 @@ export function initNetwork(): void {
     playing = s.playing;
     if (playing) cur().playing = true;
     armPlaying(playing);
+    // Music with a speaker already on: that speaker has played (the row's rule, onNote).
+    if (playing && ap && !apSeen) {
+      apSeen = true;
+      paint();
+    }
   });
+  // `?.`: the unit tests load this module in Node, where `import.meta.env` does not exist.
+  if (import.meta.env?.DEV)
+    window.__net = {
+      state: () => ({ apSeen, speaker: ap?.speaker ?? null, playing, rows: shape }),
+      speakerPlayed: () => {
+        apSeen = true;
+        paint();
+      },
+    };
   onTrouble((t) => {
     appleTrouble = t;
     paint();
