@@ -482,5 +482,90 @@ order. A design review (step 6) comes last and never replaces them.
    side, reverse, rapid). A score never closes a fault hunt.
 
 Keep the step-2 lists in `docs/ops/checks/` with their `expect`s, so the next change to the same
-motion runs them as a regression test. The first lists are `shots/scratch/metal-next-back.json`
-and `metal-rapid.json` (to move to `checks/` when Metal is built).
+motion runs them as a regression test. The Metal lists are `docs/ops/checks/metal-*.json` (moved
+there 2026-10-20).
+
+### 6.7 What the Metal stress test taught (2026-10-20)
+
+His ask: stress test Metal and loop an independent Fable reviewer to 9/10 (metal.md §6.7). It
+took five rounds (6 → 9) and found faults that seven earlier reviews had missed. What to repeat,
+and what to avoid, next time.
+
+**Before measuring anything**
+- **Check the renderer first.** His dev app had fallen back to WARP (software drawing) before
+  the run; every trace and long task was meaningless until it ran on the card again. Read
+  `UNMASKED_RENDERER_WEBGL` (or the `gpu:renderer` log line) before any timing.
+- **`app_restart` from a Claude shell ends a dev runner he started in his own terminal** (Vite
+  goes with it; CSS stops hot-reloading and the next page reload is a dead page). Restart with
+  `npm run dev:app` from the session instead, and say so.
+- **Read his look at the start and check it at the end.** A shot run that is interrupted (a page
+  reload from an edit mid-shot) can leave a look it set; the `state … was {…}` line in each shot's
+  console is the record of what it started from. He also uses the app during a run: a change you
+  did not make is his, so leave it.
+
+**Finding faults**
+- **The break-it pass first, three Sonnet agents, one lens each** (§6.5): 44 scenarios, and the
+  worst fault of the day (the cover and its side covers deciding the direction apart) came from
+  it. Triage each against the code: about a third were real.
+- **Read the frames by time, cropped and enlarged, with difference images:**
+  `docs/ops/checks/frames-bytime.py` (a sheet: the frame on screen every N ms, each with its
+  change image under it). **Score a motion** with `docs/ops/checks/frames-popscore.py`: the
+  share of the whole change its largest frame carries. A pop is one frame with a large share
+  (45 % before the fix, 6–13 % after). Enlarge one slot alone (a 2× crop) to see a doubled edge.
+- **A rAF sampler in the page is the assertion for layers** (doubled slots, the turn's
+  direction): count frames where a condition holds, return the count, `expect` 0. Compare full
+  URLs: every cover address ends `/480x480bb.jpg`, so a suffix match reported doubles that were
+  not there.
+- **Cold and warm are two different motions.** `clearCache` makes the arriving picture download
+  again; keep both lists (`metal-next-back.json`, `-warm.json`) and give a reviewer both.
+- **Repeated frames in a sheet are the screen recording, not the paint**: check the app's own
+  `[perf] frames` line for the clip (the turn painted ~200 fps while the sheet repeated frames).
+- **Every list ends where it started**: press Back until the starting title shows, pause through
+  the app's Play button (a direct `pause()` is resumed). One old list skipped his queue 10 songs.
+
+**Fixing motion**
+- **Two modules that animate one thing must not guess the same fact apart.** Let the owner of
+  the animation publish what it did (`data-turn`, `vinyl:turn`, `vinyl:covered`) and the other
+  follow it; a timer of its own drifts under load (the giving slot emptied before its cover was
+  there, only under the shot runner).
+- **Ask the data that knows**: the queue knows Next from Back; a list of songs shown does not.
+- **A z-index keyframe keeps the whole animation off the compositor**, transform included.
+- **`preserve-3d` is flattened by `overflow` or `clip-path` on the same box**, and planes that
+  really intersect look worse than a cut. Where two covers must cross, choose the moment: when
+  the old one is home, over the smallest overlap, with a short lead.
+- **Fixing one artifact makes another**: a fade-in that outranks a CSS hide (an animation beats
+  the cascade) put a ghost in a slot. Re-run every check after every motion change.
+
+**Performance**
+- **A/B by injecting a style override** in the live page during a scripted gesture (one layer
+  off at a time, then all at once), with `__frames.sample()` or `webview-profile --trace`. No
+  single layer explained Metal's slow scroll; all of them together did.
+- **An inherited `@property` color with a transition repaints the whole card every frame** of it
+  (a skip cost ~70 % of the page and the GPU process); step it instead.
+- **SVG filter textures re-raster as content moves**: bake them once into bitmaps at the screen's
+  density (pixel-identical; compare a still at 0 difference).
+- **Dev telemetry runs a rAF loop during animations**, so a dev trace shows a main frame every
+  vsync that a release build does not have.
+
+**Color**
+- **Design colors against the rendered pixels.** Metal's noise averages ~0.73 on screen (the
+  filter works in linear light), so an overlay grain lifts a plate ~1.5× and its controls more;
+  a paint chosen by arithmetic rendered at 3:1. Run the readability check on the skin's looks
+  before a commit (`docs/ops/checks/readability.mjs --look … --no-glass --tag …`, ~80 s a look);
+  a toast measured at 12–21 % opacity is a fade caught mid-way, not a color.
+
+**The review loop**
+- **Pictures only, and tell the reviewer his recorded calls** (the zoetrope, no reflection, the
+  themes' roles), so it scores within them and names a conflict instead of scoring it.
+- **Verify every claim at pixel level before acting**: two (a landing flash, "round" corners)
+  were wrong and were withdrawn when shown the measurement or a 6× crop.
+- **One reviewer for continuity across rounds; a fresh one for a separate question** (the fonts),
+  so the first one's anchoring does not carry over.
+- **Give it the numbers it cannot see**: the frame counter, cold against warm, what is core app.
+
+**Tools in this shell**
+- Write multi-line file content with Edit / Write, or `python - <<'X'` for scripted
+  replacements; `node -e` with template literals breaks on backticks.
+- Never run the shots runner from inside its own output folder (EPERM on the next run).
+- Vite serves any project file (`/shots/scratch/…`), but a `.css` comes back as a JS module:
+  inline its text in the eval instead of fetching it.

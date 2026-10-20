@@ -213,13 +213,16 @@ for word, with RELEASE.md's section numbers.
   runs every 30 s only while music plays. The header-only fetch wrap (`src/fetch-wrap.ts`, §5.3)
   gives the song pieces' speed; its A/B is `docs/ops/checks/fetch-wrap.mjs` (§6). His calls §7;
   §8 the as-built record. The worker route is deployed (2026-10-19).
-- `metal.md` — BUILT 2026-10-20 on `v-thirtyone`, desk test OPEN (set for 2026-10-21, DESK-TESTS.md
-  A11 and §6.6): the sixth skin, Metal. Finely brushed steel or acrylic over every theme (each theme
+- `metal.md` — BUILT 2026-10-20 on `v-thirtyone`; the agent's stress test done and an independent
+  design review at 9/10 (§6.7), his look open (DESK-TESTS.md A11): the sixth skin, Metal. Finely brushed steel or acrylic over every theme (each theme
   names `--metal` / `--metal-floor`; gold titles on Black & Yellow), sharp corners, the thumbwheel
   scrubber, the zoetrope cover change with the peek (`--cover-swap`, `--zoetrope-*`, vinyl.ts;
   `src/metal.ts` draws the textures, the side covers and the word fade). Settings › Skin settings:
   Material, Grain, Cover change, Peek. His calls §1; §6.1 every review round, his reports and the
-  break-it pass; §6.4 the as-built record (the cleanup: one shape alias, the paint hooks).
+  break-it pass; §6.4 the as-built record (the cleanup: one shape alias, the paint hooks); §6.7 the
+  stress test, the turn rebuilt by its frames, the baked textures, Sepia as brushed brass (one
+  Metal × Sepia block in themes.css) and the readability fixes; §7 F7 font B (Bahnschrift titles,
+  SemiCondensed labels through the `--caps-*` hooks).
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
@@ -358,7 +361,10 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
   and same-content cases scripted on the dev app, the timing gate (no gap over ~50 ms in
   `changes[].pops` mid-motion), the motion monitor, and frames read by time at full size. A
   design score never replaces a fault hunt: the Metal cover change passed seven reviews and he
-  still found four faults in minutes.
+  still found four faults in minutes. **DESK-TESTS.md §6.7 is what the full Metal stress test
+  taught** (check the renderer before timing, read frames by time with
+  `docs/ops/checks/frames-bytime.py` / `frames-popscore.py`, let the animation's owner publish what
+  it did, verify a reviewer's claims at pixel level, run the readability check before a commit).
 - **Unit tests on pure logic (2026-09-25):** `npm test` runs `tests/*.test.ts` on Node's
   built-in runner, no test dependency. `npm run check` = tsc + tests + docs:check + cargo
   check + cargo test (~15 s), and the pre-push hook (`.githooks/pre-push`) runs it. A test

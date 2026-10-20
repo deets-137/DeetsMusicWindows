@@ -217,18 +217,18 @@ each step that touches those calls.
   same-content cases on the dev app, the timing gate, frames read by time); the Fable reviewer
   (`model: "fable"`) works apart from the build context and hunts faults, not a design score.
   Detail and the open step 5: [CARD-GROW.md](cards/CARD-GROW.md) §20.
-- **An independent Fable design review of the Metal skin's font.** Today `--font-title` is
-  Bahnschrift over Segoe UI Variable (nothing bundled). The reviewer proposes better faces;
-  he picks (a fork). [metal.md](features/metal.md) §7, F7.
 
 ### Built, waiting on a release or a desk test
 
-- **The Metal skin** (2026-10-20, on `v-thirtyone`; [metal.md](features/metal.md) §6.4). A sixth
-  skin in the title menu: brushed steel or acrylic over every theme, the thumbwheel scrubber,
-  the zoetrope cover change with the peek, four Settings rows. **Open: the desk test, set for
-  2026-10-21** (DESK-TESTS.md row A11, §6.6): the scripted motion cases on the real skin, every
-  theme and surface, the other skins unchanged, then his look. DeetsSolutions' skin list is his
-  call. Not released.
+- **The Metal skin** (2026-10-20, on `v-thirtyone`; [metal.md](features/metal.md) §6.4, §6.7). A
+  sixth skin in the title menu: brushed steel or acrylic over every theme (Sepia as brushed brass),
+  the thumbwheel scrubber, the zoetrope cover change with the peek, four Settings rows, font B
+  (Bahnschrift titles and SemiCondensed labels, §7 F7, his pick). The agent's stress test is done:
+  the break-it pass, the scripted motion lists (`docs/ops/checks/metal-*.json`), an independent
+  design review at 9/10, the readability check at 0 failures in all six Metal looks. **Open: his
+  look** (DESK-TESTS.md row A11), Midi / Mini / the full player by hand; the texture under software
+  drawing stays on (only the 3D turn is in the graphics fallback). Lessons for the next stress
+  test: DESK-TESTS.md §6.7. DeetsSolutions' skin list is his call. Not released.
 - **The full player's frames** (2026-10-18 and 2026-10-19, on `main`; fullscreen-player.md
   §14, §14.9). The stacked open and close per skin, the frame recorder (`frame-why.mjs`), and
   the player's state moved from `<html>` to the bento (the close's last frame restyles 256–536
