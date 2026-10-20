@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 54 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 666 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
+| Skin (everything else) | skin.css base block | 662 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
 
 ## Theme roles
 
@@ -271,11 +271,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--sound-strong-fw` | `600` | — |  |
 | `--sound-tabs-pad` | `2px` | — | the tab strip's inset around the two tabs |
 | `--sound-tab-radius` | `calc(var(--radius-control) - 2px)` | — | nested inside the strip's radius |
-| `--sound-foot-fs` | `11px` | — | the footer line: review date and the limiter, quieter than a row |
-| `--sound-foot-pill-w` | `64px` | — | Keep: 7 days / 14 days / Never, one width, text centred |
 | `--sound-reset-w` | `56px` | — | Reset and Undo share one width |
-| `--sound-meter-w` | `172px` | — | "Limiter −12.5 dB · peak −10.0 dBFS" fits; shorter text never shrinks the box |
-| `--sound-meter-pad-y` | `2px` | — |  |
 | `--sound-dim` | `0.5` | — | a part while its switch is off |
 | `--sound-graph-h` | `128px` | — |  |
 | `--sound-graph-radius` | `var(--radius-control)` | press |  |

@@ -12,6 +12,25 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-19, late — `v-thirtyone`: the Sound panel's lower box removed
+
+His ask, from a screenshot: the box under the Equalizer's preset row was not intuitive or
+useful. Removed: the status line, the "How the equalizer decides" fold (Avoid distortion, the
+preamp stepper, the outputs list with its ×, the explanation) and the footer (Keep: 7 days, the
+Keep / Turn all off buttons, the limiter meter). His calls: *Remember each output* moves to its
+own row under the preset row (B of two); the meter goes, and not into a hover hint (my answer
+to his question: a hint is read once, the meter changes every half second). Nothing in the store
+changed: Settings › Sound keeps every one of those settings, and the review still asks by toast.
+Four footer and meter tokens removed; TOKENS.md regenerated. SOUND.md §11b is the record and
+the desk test (open).
+
+Then his ask: a motion pass on the panel, as for Rewind and Network. The new kept list is
+`docs/ops/checks/sound-panel-motion.json` (Press and Glass, dev source). It found that every part
+of the panel snapped open and shut (the i fold dropped the rows under it ~160 px in one frame).
+`showPart` now gives a part its own room: the height, the padding and the gap move together, a
+close fades, and a click mid-way turns it round. The i fold is filled before it opens. The
+numbers and the three faults are in SOUND.md §11b.
+
 ## 2026-10-19, evening — `v-thirtyone`: the Rewind button and the Network panel together
 
 His ask: one local branch to test both new title bar buttons. `v-thirtyone` is `main` (the full

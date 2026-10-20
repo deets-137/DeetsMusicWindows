@@ -1119,12 +1119,6 @@ export function sampleRateNow(): number {
   return ctx?.sampleRate ?? 48000;
 }
 
-export function busStatus() {
-  return lastStatus;
-}
-export function contextState(): string {
-  return ctx?.state ?? "none";
-}
 export function routedElements(): number {
   return routedCount;
 }

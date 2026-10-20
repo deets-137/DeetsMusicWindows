@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-24
 sources: [src/sound.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts, src/settings-store.ts]
-updated: 2026-09-29
+updated: 2026-10-19
 ---
 # DeetsMusic — sound processing: Advanced EQ + DeetsAdaptiveSound
 
@@ -733,3 +733,54 @@ only a DevTools flag brings it back.
    the rows are back, and the switch shows your last choice. Remove the flag and reload: gone.
 4. The log after a song with the Equalizer on: `sound:meterOn`, and no `sound:measured` line.
 
+
+## 11b. The Sound panel's lower box removed (2026-10-19)
+
+> **Part:** built · desk test open
+
+**His call:** the box under the preset row was not intuitive or useful. Remove the status line
+(*Off. Living Room uses Flat when you turn it on.*), the **How the equalizer decides** fold and
+the footer (**Keep: 7 days**, Keep / Turn all off, and the limiter meter). **Remember each output**
+moves out of the fold to its own row under the preset row (his pick of two). The meter is not kept
+as a hover hint either: a hint is read once, and the meter changed every half second.
+
+**As built:**
+- `sound-panel.ts`: the Equalizer view ends with the import / copy note, then the
+  *Remember each output* row (`soundEqPerOutput`, On / Off). The panel has no footer.
+- Gone from the panel only: *Avoid distortion*, *Lower the song by*, the list of outputs with
+  their × (forget one output's preset), the EQ's explanation, the review pill and the meter.
+  `busStatus()` and `contextState()` left sound.ts with their only reader.
+- The settings stay. Settings › Sound still has *Avoid distortion*, *Lower the song by*,
+  *Remember each output* and *Ask to keep after*; the rules, the agent and the Compass reach them.
+- The review still runs: on its day the toast asks *Keep* or turn off (sound.ts `checkReview`).
+- The Adaptive tab (behind its DevTools flag, §11a) keeps its status lines and its fold.
+- Tokens removed: `--sound-foot-fs`, `--sound-foot-pill-w`, `--sound-meter-w`,
+  `--sound-meter-pad-y`. §2.4a's footer and limiter box are history from here.
+
+**Desk test (the dev app; front end only, no restart):**
+1. Open the Sound panel: under ‹ preset › [Sliders] [⋯] is one row, *Remember each output* [On].
+   No status box, no fold, no footer, in Equalizer on and off.
+2. Click the pill: Off. Settings › Sound › *Remember each output* shows Off. Click again: On.
+3. ⋯ → Paste with no EQ text on the clipboard: the note appears above the row and leaves after 8 s.
+4. Open the panel: the rows rise in order (`enterRows`), with no empty strip at the bottom.
+
+**The motion pass (his ask, 2026-10-19, run by Claude on the dev app):**
+`docs/ops/checks/sound-panel-motion.json`, in Press and Glass. It covers the open, the i fold
+(and two clicks 90 ms apart), the ⋯ row, Remember each output, Sliders and Dots, Equalizer Off
+and On, and the close. Every probe passes. The faults found, each fixed and run again:
+- **A part snapped open.** `showPart` showed a part in one frame. The i fold pushed every row
+  under it down ~160 px at once, and the panel's edge jumped. Now a part opens and closes its own
+  room (net.ts `openRoom`'s shape): its height, its padding and the gap above it move on
+  `--pop-grow` / `--pop-ease`, so the rows under it glide. The close fades the part as it shuts.
+  A click during the motion turns it round from where it is (`partShown`). This covers the i
+  fold, the ⋯ row, the name row, the band row and the import note.
+- **The i fold grew to one line, then jumped.** The click showed the fold before
+  `renderReading` filled it, so the height it grew to was one line. The fold is filled first now.
+- **A 13 px step in the first frame.** The fold's padding stayed at height 0. The padding now
+  moves with the height (`border-box` while it moves).
+
+After the fixes, Press shows `[perf] frames fold` at 0–3.5 % dropped, worst 4–17 ms. Glass shows
+7–47 % dropped, but its worst frame is 9–13 ms at 244 Hz (over 100 fps), which is the frost
+redrawing as the panel's height changes. The Rewind pass accepted 21 ms on Glass
+(listening-time.md §9.5). The panel's open (`menu sound`): Press 4.5 %, worst 17 ms; Glass
+4.4 %, worst 17 ms.

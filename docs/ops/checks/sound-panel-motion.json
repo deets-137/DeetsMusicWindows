@@ -1,0 +1,469 @@
+{
+  "about": "The title bar's Sound panel on the dev app (his library), after its lower box left (SOUND.md §11b): the open, the i fold in and out (and two clicks 90 ms apart, which turn the motion round), the ⋯ actions row in and out, Remember each output Off and On, Sliders to Dots and back, the Equalizer Off and On, the close. In Press and in Glass (the heaviest to draw). Each shot sets its settings through the store and puts them back, so his Equalizer, its mode, Remember each output and his skin end as they were. Made by a script from one step list, so both skins run the same steps.",
+  "desk_test": "features/SOUND.md §11b",
+  "made": "2026-10-19",
+  "pass": "Each probe's expect holds. In the console file: each [perf] frames line for sound and fold with dropped under 3 % and worst under 17 ms at the display's rate. In the strips: the panel grows from the button, the rows enter in order, a part that comes or goes (the i fold, the ⋯ row) grows or shrinks its own height so the rows under it glide and the panel's edge follows (no jump in one frame), and the close leaves nothing behind.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/sound-panel-motion.json   (needs `npm run dev:app` running, its window on screen)",
+  "shots": [
+    {
+      "id": "sound-panel-press",
+      "covers": "features/SOUND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 16,
+      "settings": {
+        "skin": "press",
+        "soundEq": true,
+        "soundEqMode": "graphic",
+        "soundEqPerOutput": true
+      },
+      "steps": [
+        {
+          "eval": "(() => { if (!document.getElementById('sound-panel').hidden) document.getElementById('sound-btn').click(); })()"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('sound-panel').hidden })",
+          "expect": {
+            "shut": true
+          },
+          "name": "rest"
+        },
+        {
+          "click": "#sound-btn",
+          "frames": 45,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "(() => { const p = document.getElementById('sound-panel'); const rows = [...p.querySelectorAll('.sound__view > *')].filter((e) => e.offsetParent); return JSON.stringify({ open: !p.hidden, footer: p.querySelectorAll('.sound__footer').length + [...p.querySelectorAll('.sound__fold-btn')].filter((b) => b.offsetParent).length, last: rows.at(-1)?.querySelector('.sound__label')?.textContent ?? null, scrolls: p.scrollHeight > p.clientHeight + 1 }); })()",
+          "expect": {
+            "open": true,
+            "footer": 0,
+            "last": "Remember each output",
+            "scrolls": false
+          },
+          "name": "open"
+        },
+        {
+          "eval": "(() => { if (!document.querySelector('#sound-panel .sound__info-body').hidden) document.querySelector('#sound-panel .sound__info').click(); })()"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "click": "#sound-panel .sound__info",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ shown: (() => { const e = document.querySelector('#sound-panel .sound__info-body'); return !e.hidden && e.getBoundingClientRect().height > 0; })(), anims: document.querySelector('#sound-panel .sound__info-body').getAnimations().length })",
+          "expect": {
+            "shown": true,
+            "anims": 0
+          },
+          "name": "i open"
+        },
+        {
+          "click": "#sound-panel .sound__info",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ hidden: document.querySelector('#sound-panel .sound__info-body').hidden })",
+          "expect": {
+            "hidden": true
+          },
+          "name": "i shut"
+        },
+        {
+          "click": "#sound-panel .sound__info"
+        },
+        {
+          "wait": 90
+        },
+        {
+          "click": "#sound-panel .sound__info",
+          "frames": 30,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ hidden: document.querySelector('#sound-panel .sound__info-body').hidden, expanded: document.querySelector('#sound-panel .sound__info').getAttribute('aria-expanded') })",
+          "expect": {
+            "hidden": true,
+            "expanded": "false"
+          },
+          "name": "i twice"
+        },
+        {
+          "click": "#sound-panel [aria-label=\"Preset actions\"]",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ shown: (() => { const e = document.querySelector('#sound-panel .sound__actions'); return !e.hidden && e.getBoundingClientRect().height > 0; })(), anims: document.querySelector('#sound-panel .sound__actions').getAnimations().length })",
+          "expect": {
+            "shown": true,
+            "anims": 0
+          },
+          "name": "actions open"
+        },
+        {
+          "click": "#sound-panel [aria-label=\"Preset actions\"]",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ hidden: document.querySelector('#sound-panel .sound__actions').hidden })",
+          "expect": {
+            "hidden": true
+          },
+          "name": "actions shut"
+        },
+        {
+          "click": "#sound-panel .sound__view > .sound__row:last-child .sound__pill",
+          "frames": 20,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "probe": "JSON.stringify({ perOut: window.__store.get('soundEqPerOutput'), text: document.querySelector('#sound-panel .sound__view > .sound__row:last-child .sound__pill').textContent })",
+          "expect": {
+            "perOut": false,
+            "text": "Off"
+          },
+          "name": "per output off"
+        },
+        {
+          "click": "#sound-panel .sound__view > .sound__row:last-child .sound__pill",
+          "frames": 20,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "probe": "JSON.stringify({ perOut: window.__store.get('soundEqPerOutput') })",
+          "expect": {
+            "perOut": true
+          },
+          "name": "per output on"
+        },
+        {
+          "click": "#sound-panel .sound__presets .sound__pill",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ mode: window.__store.get('soundEqMode') })",
+          "expect": {
+            "mode": "parametric"
+          },
+          "name": "dots"
+        },
+        {
+          "click": "#sound-panel .sound__presets .sound__pill",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "click": "#sound-panel .sound__row--strong .sound__pill",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ eq: window.__store.get('soundEq') })",
+          "expect": {
+            "eq": false
+          },
+          "name": "eq off"
+        },
+        {
+          "click": "#sound-panel .sound__row--strong .sound__pill",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "click": "#sound-btn",
+          "frames": 40
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('sound-panel').hidden, eq: window.__store.get('soundEq'), mode: window.__store.get('soundEqMode'), perOut: window.__store.get('soundEqPerOutput') })",
+          "expect": {
+            "shut": true,
+            "eq": true,
+            "mode": "graphic",
+            "perOut": true
+          },
+          "name": "closed"
+        }
+      ]
+    },
+    {
+      "id": "sound-panel-glass",
+      "covers": "features/SOUND.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 16,
+      "settings": {
+        "skin": "glass",
+        "soundEq": true,
+        "soundEqMode": "graphic",
+        "soundEqPerOutput": true
+      },
+      "steps": [
+        {
+          "eval": "(() => { if (!document.getElementById('sound-panel').hidden) document.getElementById('sound-btn').click(); })()"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('sound-panel').hidden })",
+          "expect": {
+            "shut": true
+          },
+          "name": "rest"
+        },
+        {
+          "click": "#sound-btn",
+          "frames": 45,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "(() => { const p = document.getElementById('sound-panel'); const rows = [...p.querySelectorAll('.sound__view > *')].filter((e) => e.offsetParent); return JSON.stringify({ open: !p.hidden, footer: p.querySelectorAll('.sound__footer').length + [...p.querySelectorAll('.sound__fold-btn')].filter((b) => b.offsetParent).length, last: rows.at(-1)?.querySelector('.sound__label')?.textContent ?? null, scrolls: p.scrollHeight > p.clientHeight + 1 }); })()",
+          "expect": {
+            "open": true,
+            "footer": 0,
+            "last": "Remember each output",
+            "scrolls": false
+          },
+          "name": "open"
+        },
+        {
+          "eval": "(() => { if (!document.querySelector('#sound-panel .sound__info-body').hidden) document.querySelector('#sound-panel .sound__info').click(); })()"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "click": "#sound-panel .sound__info",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ shown: (() => { const e = document.querySelector('#sound-panel .sound__info-body'); return !e.hidden && e.getBoundingClientRect().height > 0; })(), anims: document.querySelector('#sound-panel .sound__info-body').getAnimations().length })",
+          "expect": {
+            "shown": true,
+            "anims": 0
+          },
+          "name": "i open"
+        },
+        {
+          "click": "#sound-panel .sound__info",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ hidden: document.querySelector('#sound-panel .sound__info-body').hidden })",
+          "expect": {
+            "hidden": true
+          },
+          "name": "i shut"
+        },
+        {
+          "click": "#sound-panel .sound__info"
+        },
+        {
+          "wait": 90
+        },
+        {
+          "click": "#sound-panel .sound__info",
+          "frames": 30,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ hidden: document.querySelector('#sound-panel .sound__info-body').hidden, expanded: document.querySelector('#sound-panel .sound__info').getAttribute('aria-expanded') })",
+          "expect": {
+            "hidden": true,
+            "expanded": "false"
+          },
+          "name": "i twice"
+        },
+        {
+          "click": "#sound-panel [aria-label=\"Preset actions\"]",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ shown: (() => { const e = document.querySelector('#sound-panel .sound__actions'); return !e.hidden && e.getBoundingClientRect().height > 0; })(), anims: document.querySelector('#sound-panel .sound__actions').getAnimations().length })",
+          "expect": {
+            "shown": true,
+            "anims": 0
+          },
+          "name": "actions open"
+        },
+        {
+          "click": "#sound-panel [aria-label=\"Preset actions\"]",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ hidden: document.querySelector('#sound-panel .sound__actions').hidden })",
+          "expect": {
+            "hidden": true
+          },
+          "name": "actions shut"
+        },
+        {
+          "click": "#sound-panel .sound__view > .sound__row:last-child .sound__pill",
+          "frames": 20,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "probe": "JSON.stringify({ perOut: window.__store.get('soundEqPerOutput'), text: document.querySelector('#sound-panel .sound__view > .sound__row:last-child .sound__pill').textContent })",
+          "expect": {
+            "perOut": false,
+            "text": "Off"
+          },
+          "name": "per output off"
+        },
+        {
+          "click": "#sound-panel .sound__view > .sound__row:last-child .sound__pill",
+          "frames": 20,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 400
+        },
+        {
+          "probe": "JSON.stringify({ perOut: window.__store.get('soundEqPerOutput') })",
+          "expect": {
+            "perOut": true
+          },
+          "name": "per output on"
+        },
+        {
+          "click": "#sound-panel .sound__presets .sound__pill",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ mode: window.__store.get('soundEqMode') })",
+          "expect": {
+            "mode": "parametric"
+          },
+          "name": "dots"
+        },
+        {
+          "click": "#sound-panel .sound__presets .sound__pill",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "click": "#sound-panel .sound__row--strong .sound__pill",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "probe": "JSON.stringify({ eq: window.__store.get('soundEq') })",
+          "expect": {
+            "eq": false
+          },
+          "name": "eq off"
+        },
+        {
+          "click": "#sound-panel .sound__row--strong .sound__pill",
+          "frames": 40,
+          "region": "#sound-panel"
+        },
+        {
+          "wait": 700
+        },
+        {
+          "click": "#sound-btn",
+          "frames": 40
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.getElementById('sound-panel').hidden, eq: window.__store.get('soundEq'), mode: window.__store.get('soundEqMode'), perOut: window.__store.get('soundEqPerOutput') })",
+          "expect": {
+            "shut": true,
+            "eq": true,
+            "mode": "graphic",
+            "perOut": true
+          },
+          "name": "closed"
+        }
+      ]
+    }
+  ]
+}

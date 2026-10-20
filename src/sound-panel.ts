@@ -15,6 +15,8 @@ import * as sound from "./sound";
 import * as loudness from "./sound-loudness";
 import { getVolume, getDuck, onPlayerState, onPlayerProgress } from "./player";
 import * as diag from "./diag";
+import * as frames from "./frames";
+import { tokenMs } from "./boot-cover";
 import { el } from "./dom";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
@@ -60,7 +62,6 @@ const hasGain = (t: BandType) => t === "peak" || t === "lowshelf" || t === "high
 const hz = (f: number) => (f >= 1000 ? `${(f / 1000).toFixed(f >= 10000 ? 0 : 1)} kHz` : `${Math.round(f)} Hz`);
 const db = (v: number, digits = 1) => `${v > 0.049 ? "+" : v < -0.049 ? "−" : ""}${Math.abs(v).toFixed(digits)} dB`;
 const pct = (v: number) => `${Math.round(v * 100)} %`;
-const day = (ms: number) => new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 // ── The icon: three faders whose knobs sit at the curve's low / mid / high ─────────────
 function icon(bands: Band[], on: boolean): string {
@@ -162,7 +163,7 @@ export function initSoundPanel(): void {
     alsoInside: volumeControls,
     onOpen: () => {
       keepInWindow(root, panel); // midi: the 300 px panel under this icon passed the left edge
-      enterRows([head, ...visibleRows(tab === "eq" ? eqView : adaptView), footer]);
+      enterRows([head, ...visibleRows(tab === "eq" ? eqView : adaptView)]);
       void startShape();
       renderAll();
     },
@@ -204,13 +205,11 @@ let curvePath!: SVGPathElement;
 let fillPath!: SVGPathElement;
 let eqView!: HTMLDivElement;
 let adaptView!: HTMLDivElement;
-let footer!: HTMLDivElement;
 let tabEq!: HTMLButtonElement;
 let tabAdapt!: HTMLButtonElement;
 let tab: "eq" | "adapt" = "eq";
 let head!: HTMLDivElement;
 let resetBtn!: HTMLButtonElement;
-let reviewPill!: HTMLButtonElement;
 let songPath!: SVGPathElement;
 let heardPath!: SVGPathElement;
 let zoneRects: SVGRectElement[] = [];
@@ -228,27 +227,18 @@ let bandOn!: HTMLButtonElement;
 let presetName!: HTMLSpanElement;
 let modePill!: HTMLButtonElement;
 let eqPill!: HTMLButtonElement;
-let eqStatus!: HTMLDivElement;
 let eqNote!: HTMLDivElement;
-let eqFoldBody!: HTMLDivElement;
-let eqWhy!: HTMLDivElement;
-let outputsList!: HTMLDivElement;
 let actionsRow!: HTMLDivElement;
 let nameRow!: HTMLDivElement;
 let nameInput!: HTMLInputElement;
 let deleteBtn!: HTMLButtonElement;
 let renameBtn!: HTMLButtonElement;
-let preampRow!: HTMLDivElement;
-let preampValue!: HTMLSpanElement;
 let adaptivePill!: HTMLButtonElement;
 let loudStatus!: HTMLDivElement;
 let lowStatus!: HTMLDivElement;
 let xfStatus!: HTMLDivElement;
 let adaptFoldBody!: HTMLDivElement;
 let adaptWhy!: HTMLDivElement;
-let reviewStatus!: HTMLSpanElement;
-let reviewActions!: HTMLDivElement;
-let meter!: HTMLSpanElement;
 let compareBtn!: HTMLButtonElement;
 let holding = false;
 let nameMode: "save" | "rename" = "save";
@@ -263,7 +253,6 @@ function build(panel: HTMLElement): void {
   head = el("div", "sound__head");
   eqView = el("div", "sound__view");
   adaptView = el("div", "sound__view");
-  footer = el("div", "sound__footer");
   compareBtn = el("button", "sound__compare", "Compare");
   compareBtn.type = "button";
   compareBtn.title = "Hold to hear the music without the effects, at the same loudness";
@@ -293,10 +282,12 @@ function build(panel: HTMLElement): void {
   infoBtn.title = "What this song's sound is like. Click for the numbers";
   infoBtn.setAttribute("aria-expanded", "false");
   infoBtn.addEventListener("click", () => {
-    const open = infoBody.hidden;
+    const open = !partShown(infoBody);
+    // Fill the fold before it opens: showPart measures the height it grows to (the shots,
+    // 2026-10-19: filled after, it grew to one line and then jumped to its full height).
+    if (open) renderReading(true);
     showPart(infoBody, open);
     infoBtn.setAttribute("aria-expanded", String(open));
-    renderReading();
   });
   const tabs = el("div", "sound__tabs");
   tabs.setAttribute("role", "tablist");
@@ -470,7 +461,7 @@ function build(panel: HTMLElement): void {
   more.setAttribute("aria-label", "Preset actions");
   more.setAttribute("aria-expanded", "false");
   more.addEventListener("click", () => {
-    const open = actionsRow.hidden;
+    const open = !partShown(actionsRow);
     showPart(actionsRow, open);
     more.setAttribute("aria-expanded", String(open));
     if (!open) showPart(nameRow, false);
@@ -516,45 +507,16 @@ function build(panel: HTMLElement): void {
   nameRow.hidden = true;
   eqView.append(nameRow);
 
-  eqStatus = el("div", "sound__status");
   eqNote = el("div", "sound__note");
   eqNote.hidden = true;
-  eqView.append(growBox(eqStatus), eqNote);
+  eqView.append(eqNote);
 
-  // The EQ's fold: how it decides, and its settings
-  const eqFold = foldButton("How the equalizer decides", "Shows what the equalizer uses and the settings that change it", () => eqFoldBody);
-  eqView.append(eqFold);
-  eqFoldBody = el("div", "sound__fold");
-  eqWhy = el("div", "sound__why");
-  const autoPre = cyclePill(
-    "soundEqPreamp",
-    ["limiter", "needed", "always", "manual"],
-    ["Limiter only", "When needed", "Always", "By hand"],
-    "How a boost is kept from distorting: Limiter only turns down just the loudest moments; the others lower the whole song (when needed, always, or by an amount you set)",
-  );
-  syncs.push(autoPre.sync);
-  preampValue = el("span", "sound__readout");
-  const preDown = el("button", "sound__step", "‹");
-  preDown.type = "button";
-  preDown.title = "0.5 dB lower";
-  preDown.setAttribute("aria-label", "Preamp 0.5 dB lower");
-  const preUp = el("button", "sound__step", "›");
-  preUp.type = "button";
-  preUp.title = "0.5 dB higher";
-  preUp.setAttribute("aria-label", "Preamp 0.5 dB higher");
-  const nudge = (d: number) => setSetting("soundEqPreampDb", Math.max(-24, Math.min(6, Math.round((setting("soundEqPreampDb") + d) * 2) / 2)));
-  preDown.addEventListener("click", () => nudge(-0.5));
-  preUp.addEventListener("click", () => nudge(0.5));
-  const preCtl = el("div", "sound__stepper");
-  preCtl.append(preDown, preampValue, preUp);
-  preampRow = row("Lower the song by", preCtl);
+  // The status line, the "How the equalizer decides" fold (Avoid distortion, the preamp, the
+  // outputs list) and the meter left the panel (user, 2026-10-19: not intuitive or useful there).
+  // Those settings live in Settings › Sound; only Remember each output stays, as its own row.
   const perOut = cyclePill("soundEqPerOutput", [true, false], ["On", "Off"], "On: headphones, speakers and AirPlay speakers each remember their own preset");
   syncs.push(perOut.sync);
-  outputsList = el("div", "sound__outputs");
-  // The settings first, then what they do (user, 2026-09-16): the controls never move when the text changes.
-  eqFoldBody.append(row("Avoid distortion", autoPre.btn), preampRow, row("Remember each output", perOut.btn), outputsList, eqWhy);
-  eqFoldBody.hidden = true;
-  eqView.append(eqFoldBody);
+  eqView.append(row("Remember each output", perOut.btn));
 
   // 6. DeetsAdaptiveSound
   adaptivePill = pill("Turns adaptive sound on or off. Each of the three parts below also has its own switch");
@@ -604,35 +566,9 @@ function build(panel: HTMLElement): void {
   adaptFoldBody.hidden = true;
   adaptView.append(adaptFoldBody);
 
-  // 7. The review and the meter
-  const review = cyclePill("soundReviewDays", [7, 14, 3, 0], ["7 days", "14 days", "3 days", "Never"], "When to ask whether the effects are worth keeping, counted from the first time one was turned on");
-  syncs.push(review.sync);
-  reviewStatus = el("span", "sound__foot-text");
-  review.btn.classList.add("sound__foot-pill");
-  review.btn.title = "When to ask whether the effects are worth keeping, counted from the first time one was turned on. Click for the next choice";
-  reviewActions = el("div", "sound__actions");
-  const keep = el("button", "sound__chip", "Keep");
-  keep.type = "button";
-  keep.title = "Keeps the effects and stops asking";
-  keep.addEventListener("click", () => setSetting("soundReviewed", true));
-  const off = el("button", "sound__chip", "Turn all off");
-  off.type = "button";
-  off.title = adaptiveUnhidden() ? "Turns the equalizer and adaptive sound off" : "Turns the equalizer off";
-  off.addEventListener("click", () => {
-    setSetting("soundEq", false);
-    setSetting("soundAdaptive", false);
-  });
-  reviewActions.append(keep, off);
-  reviewActions.hidden = true;
-  meter = el("span", "sound__meter");
-  meter.title = "The limiter stops distortion by turning down only the loudest moments. Shows how much it cut, and the loudest moment, in the last half second";
-  const footLine = el("div", "sound__foot-line");
-  const keepWrap = el("div", "sound__row-end");
-  keepWrap.append(el("span", "sound__label", "Keep:"), review.btn);
-  reviewPill = review.btn;
-  footLine.append(meter, keepWrap);
-  footer.append(footLine, reviewActions);
-  panel.append(eqView, adaptView, footer);
+  // The review (Keep: 7 days) and the limiter meter left the panel (user, 2026-10-19). The review
+  // still asks by toast (sound.ts `checkReview`); its days are Settings › Sound › Ask to keep after.
+  panel.append(eqView, adaptView);
   setTab(tab);
 }
 
@@ -754,11 +690,59 @@ function foldButton(label: string, title: string, body: () => HTMLElement): HTML
   return b;
 }
 
-/** Show or hide a part; one that appears slides in like a new row. */
+/** Show or hide a part; one that appears slides in like a new row. The part opens and closes its
+ *  own room (net.ts `openRoom`'s shape): its height grows from nothing with the gap above it, on
+ *  the panels' --pop-grow and --pop-ease, so the rows under it glide and the panel's edge follows.
+ *  Before 2026-10-19 the i fold dropped every row under it ~160 px in one frame (the shots). */
+const partAnims = new WeakMap<HTMLElement, Animation>();
+const partClosing = new WeakSet<HTMLElement>();
+/** Shown and not on its way out: a toggle reads this, so a click during the close opens it again. */
+function partShown(e: HTMLElement): boolean {
+  return !e.hidden && !partClosing.has(e);
+}
 function showPart(e: HTMLElement, on: boolean): void {
-  if (e.hidden === !on) return;
-  e.hidden = !on;
-  if (on && parts && !parts.panel.hidden && !reduced()) enterRows([e]);
+  if (partShown(e) === on) return;
+  const running = partAnims.get(e);
+  const from = running ? e.getBoundingClientRect().height : on ? 0 : e.offsetHeight;
+  running?.cancel();
+  partAnims.delete(e);
+  partClosing.delete(e);
+  e.style.overflow = "";
+  e.style.boxSizing = "";
+  if (!parts || parts.panel.hidden || reduced()) {
+    e.hidden = !on;
+    return;
+  }
+  const gap = parseFloat(getComputedStyle(e.parentElement ?? e).rowGap) || 0;
+  const opts = { duration: tokenMs("--pop-grow"), easing: getComputedStyle(parts.panel).getPropertyValue("--pop-ease").trim() || "ease" };
+  e.hidden = false;
+  const full = e.offsetHeight;
+  // The padding goes with the height (border-box while it moves): a fold's padding alone held
+  // ~16 px at height 0, and the rows under it stepped down in the first frame (the shots).
+  const cs = getComputedStyle(e);
+  const pt = parseFloat(cs.paddingTop) || 0;
+  const pb = parseFloat(cs.paddingBottom) || 0;
+  const at = (h: number) => {
+    const k = full > 0 ? Math.min(1, h / full) : 0;
+    return { height: `${h}px`, paddingTop: `${pt * k}px`, paddingBottom: `${pb * k}px`, marginTop: `${-gap * (1 - k)}px` };
+  };
+  e.style.overflow = "hidden";
+  e.style.boxSizing = "border-box";
+  frames.during("fold", 250, on ? "open" : "close");
+  const a = on
+    ? e.animate([at(from), at(full)], opts)
+    : e.animate([{ ...at(from), opacity: 1 }, { ...at(0), opacity: 0 }], opts);
+  partAnims.set(e, a);
+  if (!on) partClosing.add(e);
+  a.onfinish = () => {
+    if (partAnims.get(e) !== a) return;
+    partAnims.delete(e);
+    partClosing.delete(e);
+    e.style.overflow = "";
+    e.style.boxSizing = "";
+    if (!on) e.hidden = true;
+  };
+  if (on) enterRows([e]);
 }
 
 // ── Editing ─────────────────────────────────────────────────────────────────────────
@@ -1076,34 +1060,12 @@ function renderAll(): void {
   adaptivePill.textContent = adaptiveOn() ? "On" : "Off";
   adaptivePill.setAttribute("aria-pressed", String(adaptiveOn()));
   parts.panel.toggleAttribute("data-adaptive-off", !adaptiveOn());
-  // Always shown (no jump in the rows below); live only for Set by hand.
-  const manual = setting("soundEqPreamp") === "manual";
-  preampRow.toggleAttribute("data-inactive", !manual);
-  preampRow.querySelectorAll("button").forEach((b) => (b.disabled = !manual));
-  preampValue.textContent = db(setting("soundEqPreampDb"));
   if (selected >= bands().length) selected = -1;
   renderCurve();
   renderHandles();
   renderFaders();
   renderBandRow();
   renderStatus();
-}
-
-// The meter holds the worst of each half second, so the numbers read instead of flickering.
-let meterHold = { limiterDb: 0, peakDb: -Infinity, since: 0 };
-function renderMeter(): void {
-  const st = sound.busStatus();
-  const routed = sound.routedElements() > 0 && sound.contextState() === "running";
-  const show = routed && !!st && (setting("soundEq") || adaptiveOn());
-  meter.hidden = !show;
-  if (!show || !st) return;
-  meterHold.limiterDb = Math.min(meterHold.limiterDb, st.limiterDb);
-  meterHold.peakDb = Math.max(meterHold.peakDb, st.outPeakDb);
-  const now = performance.now();
-  if (now - meterHold.since < 500 && meter.textContent) return;
-  const cut = meterHold.limiterDb < -0.05 ? `Limiter ${db(meterHold.limiterDb)}` : "Limiter idle";
-  meter.textContent = `${cut} · peak ${meterHold.peakDb > -100 ? db(meterHold.peakDb) : "silent"}`;
-  meterHold = { limiterDb: 0, peakDb: -Infinity, since: now };
 }
 
 /** What the button last showed: every bus status (about 4 a second while music plays) calls
@@ -1183,26 +1145,6 @@ function renderBandRow(): void {
   bandOn.setAttribute("aria-pressed", String(b.on));
 }
 
-/** The preamp line of "How the equalizer decides", with this moment's numbers. */
-function preampWhy(peak: number): string {
-  const boost = Math.max(0, peak);
-  const room = sound.headroomDb();
-  const roomText = sound.getOutput().kind === "airplay"
-    ? "An AirPlay speaker sets its own volume, so the music reaches it at full level and has no room to spare"
-    : `At this volume there is ${db(room)} of room before the music would distort`;
-  const most = boost > 0.05 ? `Your biggest boost is ${db(boost)}.` : "Nothing is boosted now.";
-  switch (setting("soundEqPreamp")) {
-    case "limiter":
-      return `Avoid distortion: limiter only. ${most} ${roomText}. The song is never turned down; if a boost would distort, the limiter turns down just those loud moments.`;
-    case "needed":
-      return `Avoid distortion: when needed. ${most} ${roomText}, so the song is turned down ${db(Math.max(0, boost - room))}. The limiter catches anything left.`;
-    case "always":
-      return `Avoid distortion: always. ${most} The song is turned down by that much at any volume. Nothing distorts, but the parts you did not boost get quieter.`;
-    case "manual":
-      return `Avoid distortion: by hand. The song is turned down by the amount you set, ${db(setting("soundEqPreampDb"))}. The limiter catches anything left.`;
-  }
-}
-
 /** Match loudness off inside Adaptive sound: the songs are still measured (sound.ts `measure`). */
 function measuringLine(): string {
   const n = loudness.loudnessState().measuredSongs;
@@ -1249,52 +1191,8 @@ function renderLoudStatus(): void {
 
 function renderStatus(): void {
   if (!parts || parts.panel.hidden) return;
-  const out = sound.getOutput();
-  const p = sound.activePreset();
-  const on = setting("soundEq");
-  const fs = sound.sampleRateNow();
-  const peak = sound.curvePeakDb(bands(), p.design, fs);
 
-  // EQ
-  const pre = currentPreampDb();
-  setText(eqStatus, on
-    ? `Playing ${p.name} on ${out.name}${pre < -0.05 ? `, turned down ${db(-pre)} to avoid distortion` : ""}.`
-    : `Off. ${out.name} uses ${p.name} when you turn it on.`);
-  const outKind =
-    out.kind === "airplay" ? "an AirPlay speaker"
-    : out.kind === "unknown" ? "an output Windows does not name a type for"
-    : out.kind === "headphones" ? "headphones"
-    : out.kind === "headset" ? "a headset"
-    : "speakers";
-  setWhy(eqWhy, [
-    `The equalizer turns ranges of sound up or down: the bass, the voice, the top end. The music plays on ${out.name}, which is ${outKind}.`,
-    setting("soundEqPerOutput")
-      ? "Remember each output is on: the preset you pick is kept for the output that plays now, and it comes back when you switch to that output again."
-      : "Remember each output is off: one preset plays on every output.",
-    preampWhy(peak),
-    ...(p.design === "rbj" ? ["This preset was imported, so it uses the filter type its author measured with."] : []),
-  ]);
-  const map = setting("soundEqOutputs");
-  outputsList.replaceChildren(
-    ...Object.entries(map).map(([k, id]) => {
-      const r = el("div", "sound__output");
-      const label = k === out.key ? `${out.name} (playing)` : sound.outputName(k);
-      r.append(el("span", "sound__label", label), el("span", "sound__readout", sound.presetFor(id).name));
-      const forget = el("button", "sound__icon-btn", "×");
-      forget.type = "button";
-      forget.title = "Forgets the preset for this output";
-      forget.setAttribute("aria-label", "Forget");
-      forget.addEventListener("click", () => {
-        const next = { ...setting("soundEqOutputs") };
-        delete next[k];
-        setSetting("soundEqOutputs", next);
-      });
-      r.append(forget);
-      return r;
-    }),
-  );
-
-  // Adaptive
+  // Adaptive (the EQ tab has no status line since 2026-10-19)
   const adaptive = adaptiveOn();
   const offLine = "Adaptive sound is off.";
   renderLoudStatus();
@@ -1325,24 +1223,6 @@ function renderStatus(): void {
     `Fuller at low volume: when music is quiet, the ear hears the deep and the high sounds less than the middle, so the music sounds thin. "Fuller" means this part adds back bass (around 100 Hz) and a little treble (around 10 kHz) as the volume goes down, by the amounts the standard equal-loudness curves give. At full volume it adds nothing. Gentle adds half of Full. It follows ${both ? "the DeetsMusic volume and the Windows volume together" : "the DeetsMusic volume only"}.`,
     "Headphone crossfeed: on headphones each ear hears only its own side, which sounds unnatural when a song puts an instrument in one ear only. Crossfeed mixes a little of each side into the other, as speakers in a room do. On Auto it turns on only when Windows reports headphones or a headset.",
   ]);
-
-  // Review
-  const first = setting("soundFirstOn");
-  const due = sound.reviewDue();
-  const reviewed = setting("soundReviewed");
-  const isDue = !!due && !reviewed && Date.now() >= due;
-  reviewStatus.textContent = !first
-    ? "Asks whether to keep the effects this long after you first turn one on"
-    : reviewed
-      ? "You chose to keep the effects"
-      : due
-        ? isDue ? "Time to decide whether to keep the effects" : `Asks whether to keep the effects on ${day(due)}`
-        : "Never asks whether to keep the effects";
-  reviewPill.title = `${reviewStatus.textContent}. Click for the next choice`;
-  showPart(reviewActions, isDue);
-
-  // Meter
-  renderMeter();
 }
 
 // ── The song's shape (SOUND.md §2.5): read before any effect, averaged over the song ─────
@@ -1467,10 +1347,10 @@ function readingText(): string {
   return parts.length ? `This song is ${parts.join(" and ")}.` : "This song is evenly balanced.";
 }
 
-function renderReading(): void {
+function renderReading(opening = false): void {
   const text = readingText();
   infoBtn.title = `${text} Click for the numbers`;
-  if (infoBody.hidden) return;
+  if (!opening && !partShown(infoBody)) return;
   const zb = zoneBalance();
   const rows = el("div", "sound__balance");
   (zb ?? []).forEach((z) => {
