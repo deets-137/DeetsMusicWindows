@@ -294,10 +294,14 @@ function testStatus(): { word: string; tone: CellVerdict; hint: string } {
   const rtt = median(r.ping.rtts);
   const lost = r.ping.sent - r.ping.rtts.length;
   const v = testVerdict(r.mbps);
+  // The numbers themselves (his ask, 2026-10-19: "XX Mbps | X ms"), the download speed and the
+  // ping's round trip; the word they earn, the age and any lost ping are the hint. A slow
+  // result still takes the Bad color.
+  const mbps = `${r.mbps >= 10 ? Math.round(r.mbps) : r.mbps.toFixed(1)} Mbps`;
   return {
-    word: VERDICT_WORDS[v],
+    word: rtt === null ? mbps : `${mbps} | ${Math.round(rtt)} ms`,
     tone: v,
-    hint: `${when}: ${r.mbps >= 10 ? Math.round(r.mbps) : r.mbps.toFixed(1)} Mbps down, ${rtt === null ? "no ping back" : `${Math.round(rtt)} ms round trip`}${lost ? `, ${lost} of ${r.ping.sent} pings lost` : ""}.`,
+    hint: `${when}: ${VERDICT_WORDS[v]} for music. ${mbps} down, ${rtt === null ? "no ping back" : `${Math.round(rtt)} ms round trip`}${lost ? `, ${lost} of ${r.ping.sent} pings lost` : ""}.`,
   };
 }
 

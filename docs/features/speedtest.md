@@ -393,8 +393,8 @@ the EQ grid's line. Each threshold's reason is beside it in `src/net-rules.ts`.
    status word on the right (§10). Within 30 s Internet reads "Good". Hover it: "0 % of pings lost
    in the last 5 min, N ms round trip." The newest cell is green.
 3. Hover a cell: its time and numbers.
-4. Click **Test**: Speed reads "Testing…", then "Good". Hover it: "Just now: N Mbps down, N ms
-   round trip." The log has one `net: test` line.
+4. Click **Test**: Speed reads "Testing…", then "N Mbps | N ms". Hover it: "Just now: Good for
+   music. N Mbps down, N ms round trip." The log has one `net: test` line.
 5. Pause. The ping stops (`net:watch {on:false}` in `diag`); the newest Internet cells go empty.
 6. Turn Wi-Fi off (or pull the cable): the title says Bad, the car turns the Bad color, the
    Internet row reads Bad at once (its hint: "Offline.") and its newest cell is Bad. Back on: the drop's minutes stay Bad, the title goes back
@@ -440,8 +440,9 @@ place ("Testing…", then the word).
   word on the right: Good, OK or Bad over the last 5 minutes (the title's words and window),
   "–" while it has nothing to judge. The numbers and what they mean are that word's hover
   hint, in sentences; for a Bad row the hint ends with the advice that was the red line under
-  it. The Test row reads "Speed" and the Test's status the same way (`testVerdict`), its
-  Mbps, round trip and age in the hint.
+  it. The Test row reads "Speed" and, after a test, its numbers: "N Mbps | N ms" (his ask, later
+  the same evening: the speed brought back), in the Bad color when `testVerdict` says Bad; the
+  word it earns, its age and any lost ping are the hint. Before a test "–"; a failed test "Bad".
 
 **What Claude decided inside his calls (for his OK):**
 - Only Bad takes a color, as the title's word does; "–" is in the subtext color.

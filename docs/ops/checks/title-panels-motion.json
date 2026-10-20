@@ -294,7 +294,7 @@
         {
           "probe": "JSON.stringify({ speed: document.querySelector('#net-panel .net__result').textContent, hint: document.querySelector('#net-panel .net__result').dataset.hint, disabled: document.querySelector('[data-net-test]').disabled })",
           "expect": {
-            "speed": "/^(Good|OK|Bad)$/",
+            "speed": "/^[0-9.]+ Mbps( [|] [0-9]+ ms)?$/",
             "hint": "/Mbps down/",
             "disabled": false
           },
@@ -409,7 +409,7 @@
         {
           "probe": "JSON.stringify({ speed: document.querySelector('#net-panel .net__result').textContent, hint: document.querySelector('#net-panel .net__result').dataset.hint, disabled: document.querySelector('[data-net-test]').disabled })",
           "expect": {
-            "speed": "/^(Good|OK|Bad)$/",
+            "speed": "/^[0-9.]+ Mbps( [|] [0-9]+ ms)?$/",
             "hint": "/Mbps down/",
             "disabled": false
           },
