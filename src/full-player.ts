@@ -33,7 +33,7 @@ import { TELEMETRY } from "./telemetry-on";
 import { registerAction, registerFact } from "./rules";
 import { refreshPlayerState } from "./player";
 import { setFullArtPx, stageArtPx } from "./queue-rows";
-import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, type Box, type RowsPlace } from "./full-player-layout";
+import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight, type Box, type RowsPlace } from "./full-player-layout";
 import {
   clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, stageGapShared, type Slot,
 } from "./card-grow";
@@ -598,6 +598,101 @@ function stillOf(panel: HTMLElement, r: DOMRect): HTMLElement | null {
   queueStills.push(copy);
   return copy;
 }
+// ── the moving card box (§14.10, Max) ──────────────────────────────────────────
+// In Max, Now Playing rests in column 1 and is full over the columns beside it, so a clip on the
+// card cannot take it from one box to the other: the close wiped the card off to its left edge,
+// a cut with no rim that crossed the cards (his report, Glass, 2026-10-19). Now an empty card
+// box (`.fp-ghost`: the card's own fill, rim, corners and shadow) moves and changes size between
+// the two boxes while the real card waits unseen; the rows come in when it lands. An empty box
+// lays out alone, so moving its edges costs one small layout a frame.
+let ghost: HTMLElement | null = null;
+function makeGhost(panel: HTMLElement, r: DOMRect): HTMLElement | null {
+  dropGhost();
+  if (!opts) return null;
+  const g = document.createElement("div");
+  g.className = "panel fp-ghost";
+  g.inert = true;
+  g.setAttribute("aria-hidden", "true");
+  // The album glow (`.np__aurora`, the skins that show it) rides along: its colors are on the
+  // card's `.np` (album-color.ts), and its turn goes on from the angle the real one shows now,
+  // or the glow would jump at the start and at the landing.
+  const np = panel.querySelector<HTMLElement>(".np");
+  const aurora = np?.querySelector<HTMLElement>(":scope > .np__aurora");
+  if (np && aurora) {
+    g.style.cssText = np.style.cssText;
+    const copy = aurora.cloneNode(false) as HTMLElement;
+    g.appendChild(copy);
+    const real = aurora.getAnimations({ subtree: true });
+    copy.getAnimations({ subtree: true }).forEach((a, i) => {
+      const r = real[i];
+      if (r && r.currentTime !== null) a.currentTime = r.currentTime;
+      if (r && r.playState !== "running") a.pause();
+    });
+  }
+  const box = bentoBox(r, bentoOrigin());
+  g.style.left = `${box.left}px`;
+  g.style.top = `${box.top}px`;
+  g.style.width = `${box.width}px`;
+  g.style.height = `${box.height}px`;
+  opts.bento.appendChild(g);
+  ghost = g;
+  return g;
+}
+function dropGhost(): void {
+  ghost?.remove();
+  ghost = null;
+}
+/** The box's motion from `a` to `b` (viewport rects), and the resting still's cut that follows
+ *  its left edge. The real card is held unseen for as long (its rows wait for the landing).
+ *  `artA` / `artB`: the cover's boxes at each end. The glow is centered on the cover and sized by
+ *  it in the card (styles.css), so its copy moves with the flying cover: the cover and the box
+ *  move on the same easing, so the glow's place inside the box is linear too, and two keyframes
+ *  hold it on the cover for the whole motion. */
+function ghostMotion(panel: HTMLElement, a: DOMRect, b: DOMRect, artA: DOMRect, artB: DOMRect, rest: DOMRect, dur: number, ease: string): Animation[] {
+  const g = makeGhost(panel, a);
+  if (!g) return [];
+  const o = bentoOrigin();
+  const at = (r: DOMRect) => {
+    const x = bentoBox(r, o);
+    return { left: `${x.left}px`, top: `${x.top}px`, width: `${x.width}px`, height: `${x.height}px` };
+  };
+  const timing = { duration: dur, easing: ease, fill: "both" as const };
+  const anims = [
+    g.animate([at(a), at(b)], timing),
+    panel.animate([{ opacity: 0 }, { opacity: 0 }], timing),
+  ];
+  const glow = g.querySelector<HTMLElement>(".np__aurora");
+  if (glow) {
+    const reach = parseFloat(getComputedStyle(glow).getPropertyValue("--album-aurora-reach")) || 1;
+    const gs = getComputedStyle(g);
+    const edge = parseFloat(gs.borderLeftWidth) || 0;
+    const radius = Math.max(0, (parseFloat(gs.borderTopLeftRadius) || 0) - edge);
+    // The glow's square in the box's padding box, around the cover, and a clip to the box's
+    // padding box in the square's own frame. The box's `overflow: hidden` alone let the turning
+    // layer out while the motion ran (a square past the box, Glass, 2026-10-19). Each value is
+    // linear in the motion's progress, as the square's place is.
+    const halo = (box: DOMRect, art: DOMRect) => {
+      const side = art.width * reach;
+      const x = art.left + art.width / 2 - box.left - edge - side / 2;
+      const y = art.top + art.height / 2 - box.top - edge - side / 2;
+      const w = box.width - 2 * edge;
+      const h = box.height - 2 * edge;
+      return {
+        left: `${x}px`, top: `${y}px`, width: `${side}px`, height: `${side}px`,
+        clipPath: `inset(${-y}px ${x + side - w}px ${y + side - h}px ${-x}px round ${radius}px)`,
+      };
+    };
+    anims.push(glow.animate([halo(a, artA), halo(b, artB)], timing));
+  }
+  if (still) {
+    still.classList.add("is-bare");
+    const pad = clipPad();
+    const cut = (left: number) => `inset(${-pad}px ${stillCutRight(rest, left)}px ${-pad}px ${-pad}px)`;
+    anims.push(still.animate([{ clipPath: cut(a.left) }, { clipPath: cut(b.left) }], timing));
+  }
+  return anims;
+}
+
 /** End a stacked motion's parts: the stills go, the Queue's own motion and hold end. */
 function dropStackBits(): void {
   queueStills.forEach((s) => s.remove());
@@ -739,11 +834,16 @@ export async function openFullPlayer(cause: string): Promise<void> {
     const fly = makeFlight(art, toArt, big);
     if (fly) art.style.visibility = "hidden";
     placeStill(restStill);
-    const anims: Animation[] = [
-      panel.animate([{ clipPath: clipBetween(fullClipFrom(from, to, surface, pad), to, pad, radius) }, { clipPath: clipOpen(pad, radius) }], {
-        duration: m.dur, easing: m.ease, fill: "both",
-      }),
-    ];
+    // Max: the card box moves from the resting place to the full one (§14.10); Midi: the clip
+    // opens from the strip, which is inside the full box.
+    const moving = surface === "max";
+    const anims: Animation[] = moving
+      ? ghostMotion(panel, from, to, fromArt, toArt, from, m.dur, m.ease)
+      : [
+          panel.animate([{ clipPath: clipBetween(fullClipFrom(from, to, surface, pad), to, pad, radius) }, { clipPath: clipOpen(pad, radius) }], {
+            duration: m.dur, easing: m.ease, fill: "both",
+          }),
+        ];
     if (fly) anims.push(flyAnim(fly, fromArt, toArt, m.dur, m.ease, false));
     const move = stacked ? stackMove() : null;
     if (queue && fromQueue && move) {
@@ -783,13 +883,15 @@ export async function openFullPlayer(cause: string): Promise<void> {
       rowsIn = true;
       enterBand(panel);
     };
-    const rowsTimer = window.setTimeout(rows, m.rowsAt);
+    // The moving box carries no rows: they come in when it lands, in the real card.
+    const rowsTimer = moving ? 0 : window.setTimeout(rows, m.rowsAt);
     await Promise.all(anims.map((a) => a.finished.catch(() => {})));
     window.clearTimeout(rowsTimer);
     anims.forEach((a) => a.cancel());
     fly?.remove();
     art.style.visibility = "";
     if (my === gen) {
+      dropGhost(); // a close that took over owns the box now
       dropStill(); // a close that took over owns the copy now
       queueStills.forEach((s) => s.remove());
       queueStills = [];
@@ -841,7 +943,10 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   const surface = surfaceNow();
   const my = ++gen;
   const m = withMotion && !busy ? motion() : null;
-  // A close during the open's motion: the open's animations end, then the snap.
+  // A close during the open's motion: the open's animations end, then the snap. Its moving box
+  // is read first: the close's box starts where that one is now, not at the full box.
+  const midway = ghost ? rect(ghost) : null;
+  dropGhost();
   panel?.getAnimations().forEach((a) => a.cancel());
   opts?.hosts.queue?.getAnimations().forEach((a) => a.cancel());
   document.querySelectorAll(".np__fly").forEach((f) => f.remove());
@@ -857,6 +962,7 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   const covered = coveredHosts();
   const end = () => {
     full = false;
+    dropGhost();
     dropHistory(cause !== "surface" && cause !== "layout"); // those remount the slots
     dropStackBits();
     unpin(); // each held card is at its resting box already: the grid takes it there, no jump
@@ -924,11 +1030,15 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   const fly = makeFlight(art, toArt, null);
   if (fly) art.style.visibility = "hidden";
   placeStill(restStill);
-  const anims: Animation[] = [
-    panel.animate([{ clipPath: clipOpen(pad, radius) }, { clipPath: clipBetween(fullClipFrom(rest, to, surface, pad), to, pad, radius) }], {
-      duration: m.collapseDur, easing: m.ease, fill: "both",
-    }),
-  ];
+  // Max: the card box moves back to the resting place (§14.10); Midi: the clip closes to the strip.
+  const moving = surface === "max";
+  const anims: Animation[] = moving
+    ? ghostMotion(panel, midway ?? to, rest, toArt, restArt, rest, m.collapseDur, m.ease)
+    : [
+        panel.animate([{ clipPath: clipOpen(pad, radius) }, { clipPath: clipBetween(fullClipFrom(rest, to, surface, pad), to, pad, radius) }], {
+          duration: m.collapseDur, easing: m.ease, fill: "both",
+        }),
+      ];
   if (fly) anims.push(flyAnim(fly, restArt, toArt, m.collapseDur, m.ease, true));
   if (stacked && queue && toQueue && restQueue) {
     // Stacked (§14.4): the Queue goes back to its column, held at its resting box, so the grid's
@@ -969,7 +1079,12 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   art.style.visibility = "";
   covered.forEach((h) => h.classList.remove("is-uncovering"));
   endFrames();
-  if (still) {
+  if (moving) {
+    // The box landed on the bare still: the real card takes the place, its rows come in.
+    dropGhost();
+    dropStill();
+    enterBand(panel);
+  } else if (still) {
     // The copy already shows the resting rows in this place: the real card takes over in the
     // same frame, with no fade (a fade here would dim rows that were on screen).
     dropStill();

@@ -112,11 +112,11 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-The short list of what is not finished, as of 2026-10-17 (pruned for 0.29.0: everything that
+The short list of what is not finished, as of 2026-10-19 (pruned for 0.30.0: everything that
 shipped or closed went out; the WORKLOG has each day). Each item names where the detail is.
-When an item closes, delete it here and write the day in WORKLOG.md. Every working branch is
-merged into `main` (`twenty-eighth`, `velopack-spike`, `icons-fifteen`, `shixtheenth`), and
-`main` is pushed. Everything up to the 0.29.0 release commit (`2721524`, 2026-10-16) is on
+When an item closes, delete it here and write the day in WORKLOG.md. `seventheenth` and
+`v-thirty` are merged into `main`; `ideas-nineteen` and `net-worked` are not (both are merged on
+`v-thirtyone`, also not merged). Everything up to the 0.30.0 release commit (`b4dffde`) is on
 live; the work committed after it waits on the next release.
 
 ### Open on live: text to fix, watches, data to read
@@ -163,21 +163,11 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   2. **What wakes `main` 9.6 times a second while paused.** Run the dev command recorder
      (`src/ipc-timing.ts`) on a paused dev app to name the callers; fix only a caller that has no
      reason to run while paused. Can ride along with item 1.
-  3. ~~Name the dbhealth thread~~ **done 2026-10-17:** `db-canary`.
-  4. ~~Threads that only sleep~~ **done 2026-10-17:** `ask_for` and the 1 s wait are Tokio timers;
-     20 agent calls on a dev app left the thread count at 49 (DEBUGGING.md § Threads). Committed in
-     `8188179` on `seventheenth`; open: merge, then a release.
+  (Items 3 and 4, the thread names and the Tokio timers, shipped in 0.30.0.)
 
   **Not to do:** fewer Tokio workers (an idle worker costs no CPU, and one blocking task holds
   more of a smaller pool); the watchdog's wakes (the price of freeze detection); WebView2's
   threads (not ours).
-- **Spin FPS (VINYL.md §12): BUILT 2026-10-17, committed `005955e` on `seventheenth`.** His
-  calls: a 120 FPS cap by default after a blind test, and a Settings › Skin settings row *Spin
-  FPS* (60 · 120 · 144 · 240). `display.rs` (the monitor's rate), `display-hz.ts`,
-  `spin-steps.ts` (+ tests), vinyl.ts, the flight copy. `ops/checks/spin-fps.mjs` passes 7 of 7
-  with sound on a dev app he started (§12, Claude's run); rows 4–6 passed on his word
-  (2026-10-17). **Open:** merge into `main`, then a release. `pressVinylFps` joined the usage
-  allow-list; the DeetsSupport copy is deployed (`67b6dc0`, 2026-10-17).
 - **A dev app Claude starts plays again (fixed 2026-10-17, `642943a`):** `npm run dev:app` from
   a Claude shell starts itself outside the Claude package through WMI, on the real dev folder,
   and plays. The private copies of the dev profile are deleted (one dev profile now). Still not
@@ -243,22 +233,26 @@ each step that touches those calls.
      the baseline (only the full player shots ran); and one new hit to read in the frames:
      portrait Glass and Ocean, the Queue list's shown part ~25 px shorter in one frame at the
      close's end (`shots/scratch/smooth-dev-portrait/`).
+  6. **The moving card box** (§14.10, 2026-10-19, his call after his Glass report): in Max the
+     card grows out of its place and shrinks back into it, as an empty card box with the rim and
+     the glow; the old left-edge wipe is gone. Uncommitted on `v-thirtyone`. Open: his desk test
+     (§14.10), stacked Max, the monitor.
   Then a release (the monitor runs first, RELEASE.md §0 step 1a).
 - **The Rewind button in the Max title bar** (2026-10-19, on `ideas-nineteen`;
   [features/listening-time.md](features/listening-time.md) §9). The hourglass right of the updates
   button opens a panel: *Today: N mins*, then Top Listens and SOTD, each list sliding in. One new
-  setting (`rewindToday`). **Open:** his desk test (§9.3, the flip is step 11), his look at §9.2, and
-  whether the Rewind card goes (§9.4). Merged with `main` and the Network panel on `v-thirtyone`
-  for his test (2026-10-19); then into `main`.
+  setting (`rewindToday`). Desk test passed 2026-10-19 (§9.3, his word and the dev log).
+  **Open:** his look at §9.2, whether the Rewind card goes (§9.4), and the merge of
+  `v-thirtyone` into `main`. (The `rewindToday` usage key is in the worker deployed 2026-10-19.)
 - **The Network panel, v1** (2026-10-19, on `net-worked`; merged on `v-thirtyone`, right of the
   Rewind button;
   [features/speedtest.md](features/speedtest.md) §7–§9). The car button in Max (his
   drawing, 2026-10-19), "Network: Good", per link one status word (numbers on hover) and a bar
   for the last hour, the Test row; Wi-Fi out, AirPlay second (speedtest.md §10, his review);
-  the ping every 30 s only while playing; the fetch wrap. Built in a cloud session: tsc, the unit
-  tests and a Windows-target `cargo check` pass; nothing ran on Windows. **Open:** his desk test
-  (§9, tonight), the fetch wrap's A/B (`checks/fetch-wrap.mjs`), his look at what Claude decided
-  (§8.3). The DeetsSupport `/speed` route is live (deployed 2026-10-19, branch `net-worked`).
+  the ping every 30 s only while playing; the fetch wrap. Desk test passed 2026-10-19 (§9, his
+  word and the dev log: 12 Tests, the AirPlay row). **Open:** the fetch wrap's A/B
+  (`checks/fetch-wrap.mjs`, §9 step 8, an agent's), his look at what Claude decided (§8.3). The
+  DeetsSupport `/speed` route is live (deployed 2026-10-19, branch `net-worked`).
 
 - **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
   [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8
@@ -270,42 +264,11 @@ each step that touches those calls.
   rule (`styles.css`) also changes the Queue's and every revealed list's entrance: watch them.
   Next sweep: his pick, or the ledger's order (QUALITY-SWEEP.md §7).
 
-- **The Library ⟳'s hint on a refused click** (ideas/apple-calls.md §4, committed `f0d5cfd` on
-  `seventheenth`): desk test passed 2026-10-17 (§4.1, Claude's run and his word). **Open:** merge
-  into `main`, then a release.
-
-- **Album notes** (features/album-notes.md, 2026-10-17, committed on `main`): built, desk test
-  passed (§8.3, 10 shots, run by Claude on his dev app). Apple's short note in the album box's
-  About; a click opens the full note on every surface; song headings and quoted names play
-  their songs. `notes.rs` (a new cache table, no schema version), `album-notes.ts`,
-  `album-notes-parse.ts`, `openNotes` in present.ts. What Claude decided (§8.2) stands (his
-  call). **Open:** a release. Not run: card memory with a note open, the Search album pane,
-  Mini (§8.3).
-
-- **A card's first screen: one reveal in reading order** (UX-COVERUPS.md §7.14, 2026-10-17,
-  committed `2d3b600` on `main`): steps 2–7 built. The keyed patch (`keyed.ts`) on the engine, Home,
-  the Queue, History, Rewind and Search; late covers fade (`artwork-heal.ts`); the ladder
-  96 · 192 · 480 (`art-size.ts`, his call); mosaics at the size on screen, three at a time, warm
-  at launch; a preconnect; `reveal.ts` (hold, cap, diagonal wave) on every engine card, Home,
-  Search (his S2 A: words at once, covers as one wave per section), the Queue, History, Rewind
-  and the Diary; the launch waits for it; Settings › Cards › *Cover load animations*
-  (`instantCards`). Home no longer waits on Apple. Step 8 measured on his dev app (§7.13):
-  every card open revealed with no cover late. Desk test passed 2026-10-17 (§7.8, run by
-  Claude with four fixes; his "feels good"). W2 is B (his call): an instant card's covers
-  pop in as they load. **Open:** a release. What Claude decided: §7.14.
-
-- **The song facts box** (features/LISTENERS.md §8, 2026-10-17, on `main`): built, desk test
-  passed (§8.10, run by Claude on his dev app with the shots runner). The edge cases and races
-  of §8.11 passed 2026-10-17 (all 20 shots, run by Claude), with two more fixes (one Esc closed
-  the Compass and the view; a long tag ran out of the box). Committed (`21baa9e`, `2710677`).
-  Then a release. Open:
-  the song's Last.fm call asks under Apple's whole artist text; a main-artist form, as the
-  album's, is a fork for him (§8.10). The 2×2 Last.fm box on the Song Credits page; its stats
-  cell opens presentation mode in Max; the About cell's order (`notes-order.ts`: Apple's song
-  part, Last.fm's song wiki, Apple's album note, Last.fm's album wiki) and Settings › Playback ›
-  *Notes from* (one source or none). Apple's two steps join when album notes are built.
-  `listen_counts` gained `tags` and `wiki` (not a schema version: the table is a cache). What
-  Claude decided: §8.8.
+- **Shipped in 0.30.0 (2026-10-18), the leftovers only:** Album notes, not run: card memory
+  with a note open, the Search album pane, Mini (album-notes.md §8.3). The song facts box: the
+  song's Last.fm call asks under Apple's whole artist text; a main-artist form, as the album's,
+  is a fork for him (LISTENERS.md §8.10). The ⟳ hint, the card reveal (UX-COVERUPS.md §7.14)
+  and Spin FPS (VINYL.md §12) have nothing left.
 
 - **Filter and Rulez Playlists** (features/filter-rules.md): live since 0.29.0. Not built: the
   playlist page's own place for the rule (§13.3, his to design).
@@ -390,12 +353,8 @@ each step that touches those calls.
   in the card-systems table (SURFACES-AND-CARDS.md §5). Close it or leave it.
 - **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;
   ask him what is wrong first); Song of the Day "in the sidebar" (ask which sidebar first).
-- **AirPlay tracking (AIRPLAY.md §13.2a–b, his calls 2026-10-17):** `sound:switch` and the
-  `sound:output` reason committed (`9197156`). The stall / drop lines BUILT on a Tokio task (his
-  pick) with crate 0.4.2 (the quiet keep-alive, five readings), committed in DeetsAirplay as
-  `44ac6bb`, pushed, and pinned in Cargo.toml. Desk tests §13.2a and §13.2b passed on his word
-  (2026-10-17). **Open:** merge into `main`, then a release. The `../DeetsMusic-aptel` worktree
-  and its branch were removed 2026-10-17 (his word). The switch timing is left out.
+- **AirPlay tracking (AIRPLAY.md §13.2a–b):** shipped in 0.30.0. Left: the switch timing, left
+  out on purpose.
 - **Designed earlier:**
   the web demo's album light (WEB-DEMO.md §10); deploy a worker without dropping connections
   (ideas/WorkerDeploy.md); SECOND-SEARCH.md, ROOMS.md §19–§20, DeetsOTD.md §9,

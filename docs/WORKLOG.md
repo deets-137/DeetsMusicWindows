@@ -12,6 +12,34 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-19, late — `v-thirtyone`: the full player's moving card box (Max)
+
+His report from the full player's desk test: in Glass the close showed "a weird gap line" while
+the player shrank back. Shots on his dev app (Glass, 1080 × 950, Max, not stacked) showed the
+cause: the close wiped the card toward the full box's left edge with a clip, and the clip's edge
+had no rim and crossed the cards. Two forks went to him: a rim on the wipe, or the card back into
+its own box. He picked the box for every Max layout. Built: an empty card box that moves and
+changes size, a bare still cut where it covers the resting place, and the album glow riding with
+the cover (fullscreen-player.md §14.10). Two faults found in the frames and fixed: the glow copy
+sized itself by the window (no size container), and its turning layer escaped the box's clip
+while running. Checks: `docs/ops/checks/fp-move.json` passes in 5 skins; `npm test` (361),
+`tsc`, `vite build`. The Mod system session was asked first and touches none of these files; its
+Metal draft was turned off for each run and put back (Vanilla, acrylic). Not run: stacked Max,
+the motion monitor.
+
+## 2026-10-19, late — desk tests closed from the log; HANDOFF pruned for 0.30.0
+
+His word: the Rewind button and the Network panel are built and tested on `v-thirtyone`. The
+dev log (`deetsmusic.1.log` and `deetsmusic.log`, 20:48–22:57) agrees: hand runs of the Rewind
+panel (Top Listens and SOTD in and out), 12 Network Tests (2 MB, 46–77 Mbps, 3 of 3 pings), the
+AirPlay row's arrival. Both marked passed (listening-time.md §9.3, speedtest.md §9). Still open:
+the fetch wrap's A/B (speedtest.md §9 step 8, DESK-TESTS.md A10): the log has no
+`[perf] fetchwrap` line. Not in the log, so not evidenced: the Rewind Sort pop, the Network drop.
+The full player's desk test (fullscreen-player.md §14.5) and the Rewind sweep's (DEETS-REWIND.md
+§8.5) have no lines in these logs (no `player` open), so both stay open. HANDOFF › Open now: the
+seven items that said "merge, then a release" were in the 0.30.0 release commit `b4dffde`
+(checked with `git merge-base`); their entries went, their leftovers stay as one line.
+
 ## 2026-10-19, late — `v-thirtyone`: the last raw motion values on tokens; a Motion view in TOKENS.md
 
 His ask: count how much of the app's motion is on tokens, then put the rest on tokens and

@@ -1,0 +1,292 @@
+{
+  "about": "The moving card box (fullscreen-player.md §14.10): in Max, Now Playing goes between its resting box in column 1 and the full one as an empty card box that moves and changes size, with the card rim, corners, shadow and album glow; the resting place is filled by a bare still cut where the box covers it. Open and close in five skins on the dev app; the probes check that nothing is left (no box, no still) and the real card is visible after each. The first shot remembers the skin and the last puts it back.",
+  "desk_test": "features/fullscreen-player.md §14.10",
+  "made": "2026-10-19",
+  "pass": "Each probe expect holds. In the strips: the close is the card shrinking into its own place (no cut edge crossing the cards, no gray square past the box), the open is the reverse, and the rows come in after the box lands.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/fp-move.json   (needs npm run dev:app running in Max; not stacked unless the window is taller than wide)",
+  "shots": [
+    {
+      "id": "fp-move-glass",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 5,
+      "steps": [
+        {
+          "eval": "window.__fpMoveSkin = window.__store.get(\"skin\")"
+        },
+        {
+          "eval": "window.__store.set(\"skin\",\"glass\")"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": true,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": false,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "closed"
+        }
+      ],
+      "covers": "features/fullscreen-player.md"
+    },
+    {
+      "id": "fp-move-vanilla",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 5,
+      "steps": [
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": true,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": false,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "closed"
+        }
+      ],
+      "covers": "features/fullscreen-player.md"
+    },
+    {
+      "id": "fp-move-press",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 5,
+      "steps": [
+        {
+          "eval": "window.__store.set(\"skin\",\"press\")"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": true,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": false,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "closed"
+        }
+      ],
+      "covers": "features/fullscreen-player.md"
+    },
+    {
+      "id": "fp-move-ocean",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 5,
+      "steps": [
+        {
+          "eval": "window.__store.set(\"skin\",\"ocean\")"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": true,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": false,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "closed"
+        }
+      ],
+      "covers": "features/fullscreen-player.md"
+    },
+    {
+      "id": "fp-move-cyber",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 5,
+      "steps": [
+        {
+          "eval": "window.__store.set(\"skin\",\"cyber\")"
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "probe": "JSON.stringify(window.__full.state())",
+          "expect": {
+            "full": false
+          },
+          "name": "rest"
+        },
+        {
+          "click": ".grow-zone[data-player-side=\"right\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1600
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": true,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "open"
+        },
+        {
+          "click": ".grow-zone[data-act=\"collapse\"]:not([hidden])",
+          "frames": 40
+        },
+        {
+          "wait": 1400
+        },
+        {
+          "probe": "JSON.stringify({full: window.__full.state().full, ghosts: document.querySelectorAll(\".fp-ghost\").length, stills: document.querySelectorAll(\".np-still\").length, op: getComputedStyle(document.querySelector(\".panel[data-slot=np]\")).opacity})",
+          "expect": {
+            "full": false,
+            "ghosts": 0,
+            "stills": 0,
+            "op": "1"
+          },
+          "name": "closed"
+        },
+        {
+          "eval": "window.__store.set(\"skin\", window.__fpMoveSkin ?? \"cyber\")"
+        }
+      ],
+      "covers": "features/fullscreen-player.md"
+    }
+  ]
+}

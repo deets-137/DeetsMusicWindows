@@ -1,7 +1,7 @@
 // full-player-layout.ts: the full player's pure rules (features/fullscreen-player.md §12.2).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rowsPlace, fullArtPx, fullClipFrom, flightFrom } from "../src/full-player-layout.ts";
+import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight } from "../src/full-player-layout.ts";
 
 test("2026-10-11 a wide card has the controls under the cover, never beside it", () => {
   assert.equal(rowsPlace(1100, 700, 356, 150, 12), "below");
@@ -57,6 +57,18 @@ test("Midi opens from the strip, held inside the full box", () => {
   const rest = { left: 11, top: 52, right: 484, bottom: 200 };
   const full = { left: 12, top: 52, right: 483, bottom: 658 };
   assert.deepEqual(fullClipFrom(rest, full, "midi"), { left: 12, top: 52, right: 483, bottom: 200 });
+});
+
+test("2026-10-19 the resting still shows only where the moving box is not", () => {
+  // His 1080 × 950 Max window: the resting card in column 1, the full card over columns 2–3.
+  const rest = { left: 12, top: 52, right: 352, bottom: 560 };
+  // The box starts on the full card, right of the place: the still is cut past its own edge,
+  // so it shows whole (the Queue covers it at that moment).
+  assert.equal(stillCutRight(rest, 365), -13);
+  // Halfway, the box's left edge is inside the place: the still shows left of it only.
+  assert.equal(stillCutRight(rest, 188), 164);
+  // Landed: the box is on the place, the still is cut to nothing.
+  assert.equal(stillCutRight(rest, 12), rest.right - rest.left);
 });
 
 test("the flight puts the large picture on the small one", () => {

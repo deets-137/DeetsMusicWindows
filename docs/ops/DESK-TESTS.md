@@ -123,7 +123,8 @@ Terms:
 
 ## 3. The list
 
-> **State on 2026-10-19: two rows are open,** **A10** (the Network panel, built 2026-10-19) and **B21** (deetsmeter's cold start, HANDOFF.md › Open
+> **State on 2026-10-19: two rows are open,** **A10** (the Network panel: §9 passed on his word
+> 2026-10-19; only the fetch wrap's A/B is left, an agent's) and **B21** (deetsmeter's cold start, HANDOFF.md › Open
 > now). Every other row passed: the runs of 2026-09-27 to 2026-10-12, his report of 2026-10-13,
 > his word of 2026-10-17 (B22) and the live log of 2026-10-17 (B20, §5). The
 > rows stay as a record and for a regression run; a new open test is a new row.

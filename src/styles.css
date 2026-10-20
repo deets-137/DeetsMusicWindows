@@ -4844,6 +4844,26 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   grid-area: auto !important;
 }
 .panel.np-still .np__art { visibility: hidden; } /* the flight carries the cover */
+/* Under the moving card box (full-player.ts ghostMotion, Max) the still is a bare card: its rows
+   come in with the real card when the box lands, so they are not shown twice. */
+.panel.np-still.is-bare :is(.np__center, .np__aurora) { visibility: hidden; }
+/* (Its glow too: the cover that hides the glow's bright middle is in flight, and the moving box
+   carries the glow with it.) */
+/* The moving card box (full-player.ts makeGhost, fullscreen-player.md §14.10): an empty card
+   (the .panel primitive's fill, rim, corners and shadow) that carries Now Playing between its
+   resting box and the full one in Max. Over the cards and the Queue, under the cover's flight
+   (fixed, over the bento). JS sets and moves its box. */
+.bento > .panel.fp-ghost {
+  position: absolute;
+  margin: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+/* The album glow's copy: the box clips it to its corners, as the card's own aurora box does. JS
+   moves the copy as the glow's square around the flying cover; its turning layer fills it. */
+.bento > .panel.fp-ghost { overflow: hidden; }
+.panel.fp-ghost > .np__aurora { inset: auto; border-radius: 0; overflow: visible; }
+.panel.fp-ghost > .np__aurora::before { left: 50%; top: 50%; width: 100%; }
 /* The cover's flight copy: over the cards, under the menus; placed and scaled by JS. */
 .np__fly {
   position: fixed;

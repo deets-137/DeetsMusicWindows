@@ -1,12 +1,13 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-19
 sources: [src/rewind-btn.ts, src/styles/rewind-top.css, src/rewind.ts, src/rewind-window.ts, src/rewind-card.ts, src/stats.ts, src/updates-btn.ts, index.html, tests/rewind-window.test.ts]
 updated: 2026-10-19
 ---
 # Listening time — the Rewind button in the title bar
 
-> **V1 BUILT 2026-10-19 on `ideas-nineteen`; his desk test is open (§9.3).** §8 is his calls,
+> **V1 BUILT 2026-10-19 on `ideas-nineteen`; desk test passed 2026-10-19 on `v-thirtyone`
+> (§9.3, his word and the dev log).** §8 is his calls,
 > §9 the as-built record. Read §9 first: where it disagrees with §3–§7, §9 is the code. §1–§7
 > are the idea as written before his calls; §4 (the breakdown) and the forks F4–F7 are not
 > built and wait for a later talk.
@@ -236,6 +237,13 @@ No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.
    dots. Open the panel: the glass turns a half turn. Close it (the button, Escape, a click
    outside): it turns another half turn the same way, never back. With Windows' animation
    effects off, it flips at once.
+
+**Result: passed 2026-10-19** (his word: "built and tested", on `v-thirtyone`). The dev log
+(`deetsmusic.1.log`, `deetsmusic.log`, 20:48–22:57) has hand runs beside the shots' runs: at
+2,129,855 ms the panel opened on Top Listens, then Top Listens out and in, SOTD, SOTD over Top
+Listens (steps 2, 4, 6), and later runs open and close it at hand intervals. Not in the log
+(its lines do not cover them): the Sort pop's pick (step 5, `rewindTop:view` never fired in
+these logs) and the *Today's time in* row (step 3).
 
 ### 9.4 Open
 

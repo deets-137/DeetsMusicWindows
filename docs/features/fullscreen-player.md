@@ -989,3 +989,54 @@ inside a box), and it ran on the demo only. Since 2026-10-19 it has TELEPORT and
 proved on the code before ef5bcc9, and `--dev` runs the open and close on the dev app at his
 window sizes ([the monitor's section](../ops/checks/README.md), §2a there).
 
+### 14.10 The moving card box (Max; built 2026-10-19, his call)
+
+> **Part:** built · 2026-10-19 · desk test: his (below)
+
+**His report (2026-10-19, Glass):** "when the player shrinks back, the animation occurs only in
+the cards so it looks like there's a weird gap line as the player shrinks back into its own box."
+The frames (Glass, his 1080 × 950 Max window, not stacked) showed why. Since §9.4.3, the close in
+Max wiped the card toward the full box's left edge with a clip (`fullClipFrom`), because the
+resting box (column 1) is outside the full box. A clip cuts the card's border off, so the moving
+edge had no rim, and it crossed the Home, Playlists and Library cards. Glass is see-through, so
+the cards' own edges showed through the card. **His call:** the card goes back into its own box,
+in every Max layout, the close and the open.
+
+**As built:**
+- `makeGhost` / `ghostMotion` (full-player.ts): an empty `.panel.fp-ghost` in the bento has the
+  card's own fill, rim, corners and shadow (the `.panel` primitive, so every skin's look). It
+  moves and changes size between the full box and the resting box (`left/top/width/height`, one
+  small layout a frame: the box is empty). The real card is held at opacity 0 for the motion. When
+  the box lands, the real card takes the place and its rows come in (`enterBand`). The open does
+  the reverse, so its rows now come in at the landing, not at `--grow-rows-at`.
+- The resting place in column 1 keeps its still (`restCopy`, the wallpaper hole of 2026-10-14). It
+  is bare now (`.np-still.is-bare`: no rows, no glow), and it is cut where the box covers it
+  (`stillCutRight`, full-player-layout.ts, tested). Two Glass cards never overlap.
+- The album glow (`.np__aurora`) rides in the box: a copy, its turn set to the real one's angle,
+  moved as the glow's square around the flying cover. The cover and the box move on the same
+  easing, so two keyframes keep the glow on the cover for the whole motion. The copy carries its
+  own clip to the box's corners: the box's `overflow: hidden` alone let the turning layer out
+  while the motion ran (a gray square past the box, in the first run).
+- A close during the open starts its box where the open's box is.
+- Midi is unchanged: its strip is inside the full box, so the clip still opens and closes it.
+
+**What Claude decided inside his call (for his look):** the box is the `.panel` primitive with
+no new tokens (the motion keeps the full player's own tokens and easing); the bare still, with
+no rows and no glow; the open's rows at the landing (the moving box cannot carry the rows, which
+are laid out for the full box); the glow scaled with the cover (as the card does at both ends).
+
+**Checked:** [../ops/checks/fp-move.json](../ops/checks/fp-move.json), open and close in 5 skins
+on his dev app (Max landscape): every probe passed, and the close strip in Glass and Press is the
+card going into its place. `npm test` (361) and `vite build` pass. **Not run:** stacked Max (a
+portrait window), the motion monitor (`smooth.mjs --dev`, before the release), and the frame
+cost on a quiet PC (the runs were at 30–35 % CPU; the drop counts match the old clip runs at the
+same load).
+
+**Desk test (his):**
+1. Max, Glass. Open the full player and close it: the card grows out of its place and shrinks
+   back into it, with its rim all the way. No line crosses the cards.
+2. The same in Press, Ocean, Cyber and Vanilla.
+3. An album with strong colors: the glow stays around the cover during the motion.
+4. Close during the open: the box turns back from where it is.
+5. Max portrait (stacked): the card goes from its place to the top band and back.
+

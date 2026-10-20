@@ -1,12 +1,13 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-19
 sources: [src/net.ts, src/net-rules.ts, src/net-feed.ts, src/fetch-wrap.ts, src/styles/net.css, src-tauri/src/net.rs, src-tauri/src/airplay.rs, src-tauri/src/apple_calls.rs, src/airplay.ts, src/player.ts, src/room.ts, src/friends.ts, src/perf.ts, src/compass.ts, src/apple-health.ts, index.html, tests/net-rules.test.ts, docs/ops/checks/fetch-wrap.mjs, ../DeetsSupport/src/index.js]
 updated: 2026-10-19
 ---
 # Speed test — a race car button and a panel for the network's health
 
-> **Built 2026-10-19 (v1) on `net-worked`; desk test open (§9, his, tonight).** §7 his calls for v1
+> **Built 2026-10-19 (v1) on `net-worked`; desk test passed 2026-10-19 on `v-thirtyone` (§9, his
+> word and the dev log); the fetch wrap's A/B (§9 step 8) is still open.** §7 his calls for v1
 > (2026-10-19); §8 the as-built record; §9 the desk test. The worker's `/speed` route is on the
 > DeetsSupport branch `net-worked`, **deployed 2026-10-19** at his word (version 44de8440, with
 > `velopack` merged in; `/speed` answers `2097152 200`). The text below §7 is the design
@@ -407,6 +408,15 @@ the EQ grid's line. Each threshold's reason is beside it in `src/net-rules.ts`.
 9. The worker: once deployed, `curl -s -o /dev/null -w '%{size_download} %{http_code}\n'
    https://support.deets.solutions/speed` → `2097152 200`. Until then, step 4 shows "The test
    did not finish".
+
+**Result: steps 1–7 and 9 passed 2026-10-19** (his word: "built and tested", on `v-thirtyone`,
+with his review in §10 made on the panel itself). The dev log, 20:48–22:57: 12 Tests by hand and
+by the shots, each one `net: test` line of 2,097,152 bytes at 46–77 Mbps with 3 of 3 pings back
+(steps 4, 9); the AirPlay row came (`net:row {"came":["airplay"]}`, step 7); the title went
+Good → OK → Good (`net:verdict`). Not in the log: a drop (step 6, no `net:offline` line) and the
+ping's stop on pause (step 5, no `net:watch` line). **Step 8 is open:** the log has no
+`[perf] fetchwrap` line (and no `click→sound` line, which it rides on), and the A/B has not
+run (DESK-TESTS.md A10).
 
 ## 10. Revised 2026-10-19, evening (his calls)
 

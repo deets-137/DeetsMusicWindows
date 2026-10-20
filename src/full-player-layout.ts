@@ -32,7 +32,8 @@ export function fullArtPx(boxCssPx: number, dpr: number, base: number): number {
   return Math.min(2000, Math.max(base, want));
 }
 
-/** The box the open's clip starts from (§9.2.2). Midi: the strip, which is inside the full
+/** The box the open's clip starts from (§9.2.2). Midi only since 2026-10-19: Max moves a card
+ *  box instead (§14.10, `stillCutRight`). Midi: the strip, which is inside the full
  *  box. Max: the rest box is in the stage column, OUTSIDE the full box, so the card opens from
  *  a zero-width line on the full box's left edge (the gap beside the stage). `pad` is the clip's
  *  own pad (clipBetween opens every edge past the box by it, for the shadow): the line's edges
@@ -47,6 +48,17 @@ export function fullClipFrom(rest: Box, full: Box, surface: "midi" | "max", pad 
     top: Math.max(rest.top, full.top),
     bottom: Math.min(rest.bottom, full.bottom),
   };
+}
+
+/** Max's moving card box (§14.10): Now Playing's resting place in column 1 is filled by a bare
+ *  still of the card, cut where the moving box covers it, so the two never overlap (two Glass
+ *  cards on top of each other showed a darker patch). The box covers the place from top to
+ *  bottom in every Max layout (its top and bottom edges never come inside the place's), so the
+ *  cut is only the still's right edge: the box's left edge, in the still's own frame. Linear in
+ *  the box's left edge, so a keyframe at each end of the motion follows the box exactly (the
+ *  same easing). Returns the `inset()` right value at a box whose left edge is `boxLeft`. */
+export function stillCutRight(rest: Box, boxLeft: number): number {
+  return rest.right - boxLeft;
 }
 
 /** The transform that puts a picture at `from` onto `to` (a flight copy laid out at `to`):
