@@ -1,6 +1,7 @@
 // The Network button and its panel (docs/features/speedtest.md §7–§8, his calls 2026-10-19). The
-// Max title bar button right of the updates button; his race car glyph (a placeholder drawing
-// until his, §7 N7). The glyph turns the Bad color while the title says Bad (F3).
+// Max title bar button right of the Rewind button; the car from his drawing (2026-10-19). Each
+// open drives it off to the right as the next one drives in from the left; each close, the
+// other way (`drive`). The glyph turns the Bad color while the title says Bad (F3).
 //
 // The panel, top to bottom (his layout):
 //   - the title line, "Network: Good" (Good · OK · Bad, his words), in the title face, bold;
@@ -31,6 +32,7 @@ import {
   type Minute, type CellVerdict, type Verdict,
 } from "./net-rules";
 import * as diag from "./diag";
+import { tokenMs } from "./boot-cover";
 
 const HOUR = 60;
 const PING_EVERY_MS = 30_000;
@@ -485,5 +487,37 @@ export function initNetwork(): void {
     },
   });
   window.addEventListener("resize", () => { if (panel && !panel.hidden) keepRightInWindow(root!, panel); });
+
+  // The car drives (his ask, 2026-10-19), as the updates arrows roll: on an open it leaves to the
+  // right, out of the glyph's box, and the next one comes in from the left; on a close, the
+  // other way. By any path (the button, a click away, Escape, the Compass). A close of a panel
+  // that was already shut sets `hidden` again, so only a real change drives it.
+  let shut = panel.hidden;
+  new MutationObserver(() => {
+    if (panel!.hidden === shut) return;
+    shut = panel!.hidden;
+    drive(shut ? -1 : 1);
+  }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   paint();
+}
+
+/** One drive of the car: `dir` 1 leaves to the right, −1 to the left. The exit on the app's own
+ *  curve, the entry on the roll's (the Compass needle's overshoot, a car settling as it stops). */
+function drive(dir: 1 | -1): void {
+  const car = btn?.querySelector(".net__car");
+  if (!car || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const cs = getComputedStyle(document.documentElement);
+  const x = parseFloat(cs.getPropertyValue("--net-drive-x")) || 0;
+  const enter = cs.getPropertyValue("--net-drive").trim().replace(/^\S+\s*/, "") || "ease";
+  const leave = cs.getPropertyValue("--ease-ui").trim() || "ease";
+  car.getAnimations().forEach((a) => a.cancel());
+  car.animate(
+    [
+      { transform: "translateX(0)", opacity: 1, easing: leave },
+      { transform: `translateX(${dir * x}px)`, opacity: 0, offset: 0.4 },
+      { transform: `translateX(${-dir * x}px)`, opacity: 0, offset: 0.4, easing: enter },
+      { transform: "translateX(0)", opacity: 1 },
+    ],
+    { duration: tokenMs("--net-drive") },
+  );
 }

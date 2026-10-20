@@ -25,6 +25,17 @@ had no DeetsSupport checkout), so `npm run usage:keys` wrote it there; that file
 in `../DeetsSupport` and needs a worker deploy (his call) before the key is stored. Checks:
 `npm run check` and `vite build` pass. Not run: either feature's desk test (his, tonight).
 
+Later the same sitting, his drawings of both glyphs and their motion. The hourglass: a flat top
+and base, sand as dots; a half turn at each open and each close, always the same way (the
+Compass needle's way: an angle that only grows, `--rewind-top-flip` = `--compass-spin`). The
+car: straight lines, a rear wing, two wheels of one size; the open drives it off to the right as
+the next one comes in from the left, the close the other way (the updates arrows' roll turned
+sideways: `drive` in net.ts, `--net-drive` = `--updates-roll`). Each watches its panel's
+`hidden`, and only a real change moves it (`close()` sets `hidden` on a shut panel too).
+Claude's within his ask: the dot count and places (3 in the top bulb, 6 in the base, sized to
+read at 16 px), the exit fading as the arrows do, both curves and distances borrowed, not new.
+listening-time.md §9.3 step 11, speedtest.md §9 step 1.
+
 ## 2026-10-19 — The Network panel, v1 (`net-worked`)
 
 **His ask:** design and build v1 of the network widget on a new branch `net-worked` off `main`:

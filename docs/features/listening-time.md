@@ -232,6 +232,10 @@ No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.
    back. No row's text and no "N plays" moves sideways; the bar sits at the panel's right edge.
 10. The chips: Top Listens and SOTD are one width, the same shape as the Sound panel's chips;
    the view chip's caret turns while its pop is open.
+11. The hourglass (his drawing, 2026-10-19, on `v-thirtyone`): a flat top and base, sand as
+   dots. Open the panel: the glass turns a half turn. Close it (the button, Escape, a click
+   outside): it turns another half turn the same way, never back. With Windows' animation
+   effects off, it flips at once.
 
 ### 9.4 Open
 
@@ -239,6 +243,7 @@ No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.
   fork for him once the panel covers what the card does (the time spans, Playlists, Make
   playlist, picks and drag), and Mini and Midi have a way in.
 - What sits under Today (his F3: "we can chat user flow"), and §4's breakdown with F4–F7.
-- His hourglass glyph.
+- ~~His hourglass glyph.~~ Drawn from his sketch and made to flip, 2026-10-19 (§9.3 step 11):
+  `index.html`, `--rewind-top-flip` (the Compass needle's turn), the observer in rewind-btn.ts.
 - A `loading.json` clip for the panel's wait (CLAUDE.md checklist 17), and a shots list of §9.3
   on the dev app (DESK-TESTS.md §6): not run from this cloud session (no Windows dev app here).

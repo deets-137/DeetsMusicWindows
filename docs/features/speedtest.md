@@ -291,6 +291,10 @@ his:
 - **N6 — the Test file: yes**, a `/speed` route on DeetsSupport, bytes made per request.
 - **N7 — the glyph: (a)** Claude draws a placeholder race car from his words (a low body, a
   rear wing, two wheels, a speed line); he replaces it. The warning's final form (F3) is his.
+  **Replaced 2026-10-19** by his drawing: straight lines, a rear wing, two wheels of one size,
+  no speed line. His motion: the open drives the car off to the right as the next one drives in
+  from the left; the close, the other way (`drive` in net.ts, `--net-drive` = the updates
+  arrows' roll). The warning is still the Bad color.
 
 ## 8. As built (2026-10-19)
 
@@ -381,7 +385,9 @@ the EQ grid's line. Each threshold's reason is beside it in `src/net-rules.ts`.
 
 ## 9. Desk test (his, on the dev app)
 
-1. `npm run dev:app`, Max. The race car is right of the updates button. Hover: "Network: Good".
+1. `npm run dev:app`, Max. The car is right of the Rewind button (on `v-thirtyone`). Hover:
+   "Network: Good". Open the panel: the car drives off to the right and the next one drives in
+   from the left. Close it: off to the left, in from the right.
 2. Play a song. Open the panel: "Network: Good"; Internet, Apple Music, Stream (and Wi-Fi on
    Wi-Fi). Within 30 s the Internet line reads "N ms · 0 % lost". The newest cell is green.
 3. Hover a cell: its time and numbers.

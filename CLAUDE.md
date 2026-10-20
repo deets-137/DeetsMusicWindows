@@ -199,13 +199,13 @@ for word, with RELEASE.md's section numbers.
   §5.1 the probes (46 % of real albums have notes, singles none); §6 a Library album's real
   artist; §8 the as-built record, and what Claude decided (§8.2, his OK).
 - `listening-time.md` — V1 BUILT 2026-10-19 on `ideas-nineteen`, desk test open (§9.3): the
-  Rewind button in the Max title bar (his hourglass, to be redrawn), its panel: *Today: N mins*
+  Rewind button in the Max title bar (his hourglass, flips on open and close), its panel: *Today: N mins*
   (Settings › Rewind › *Today's time in*, `rewindToday`), Top Listens (all time, most played, the
   Library's Sort pop for Songs / Albums / Artists and ↑ ↓) and SOTD (picks, newest first).
   `src/rewind-btn.ts`. His calls §8; §9 the as-built record and what Claude decided (§9.2). The
   Rewind card stays until he decides (§9.4); the breakdown by genre and weekday (§4) is not built.
 - `speedtest.md` — BUILT 2026-10-19 (v1, on `net-worked`), desk test open (§9, his): the Max
-  title bar's race car button (a placeholder drawing until his) and its panel: "Network: Good"
+  title bar's car button (his drawing; it drives off on open and close) and its panel: "Network: Good"
   (Good · OK · Bad), one status bar per link for the last hour (Internet, Wi-Fi, Apple Music,
   Stream, AirPlay; AirPlay also draws its round trip and resends as lines), the Test row (ping +
   2 MB from DeetsSupport's `/speed`, counted and dropped). The ping (`net.rs`, `IcmpSendEcho`)

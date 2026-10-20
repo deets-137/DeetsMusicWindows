@@ -343,5 +343,17 @@ export function initRewindButton(): void {
   });
   // The panel's close closes the view pop with it.
   new MutationObserver(() => { if (panel.hidden) viewDrop.close(); }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+  // The hourglass turns a half turn at each open and each close, by any path (his ask,
+  // 2026-10-19), always the same way, so it keeps flipping as a real one would. The angle only
+  // grows; the CSS transition on --rewind-top-angle does the motion. A close of a panel that
+  // was already shut sets `hidden` again, so only a real change turns it.
+  let angle = 0;
+  let shut = panel.hidden;
+  new MutationObserver(() => {
+    if (panel.hidden === shut) return;
+    shut = panel.hidden;
+    angle += 180;
+    btn.style.setProperty("--rewind-top-angle", `${angle}deg`);
+  }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
   window.addEventListener("resize", () => { if (!panel.hidden) keepRightInWindow(root, panel); });
 }
