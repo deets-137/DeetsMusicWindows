@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 54 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 662 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
+| Skin (everything else) | skin.css base block | 664 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
 
 ## Theme roles
 
@@ -318,7 +318,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--web-panel-w` | `256px` | — | The web button's panel under the Playlists header. Controls share the sleep panel's chip shape; colors are theme roles. |
+| `--web-panel-w` | `296px` | — | The web button's panel under the Playlists header. Controls share the sleep panel's chip shape; colors are theme roles. — 256 until 2026-10-19: wider for the "How Web picks songs" text (his ask) |
 | `--web-panel-max-h` | `480px` | — | ten genre chips and five artists fit; more scrolls |
 | `--web-panel-pad` | `var(--space-2)` | — |  |
 | `--web-row-h` | `32px` | — | an artist row |
@@ -328,7 +328,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--web-days-min-w` | `56px` | — | "30 days" and "1 day" are the same width: the row does not move as it cycles */    /* a song's artist line never takes more than half the row from its title |
 | `--web-opt-min-w` | `32px` | — | a Reach / Size option: 1 and 100 are the same width |
 | `--web-chip-radius` | `var(--radius-control)` | — |  |
-| `--web-title-tracking` | `0.06em` | — | the panel title, the create menu's label voice |
+| `--web-title-tracking` | `var(--room-title-tracking)` | — | the panel title's family (.room__title), his ask 2026-10-19 |
+| `--web-fold-bg` | `var(--sound-fold-bg)` | — | "How Web picks songs": the Sound panel's fold (.sound__fold) |
+| `--web-fold-lh` | `var(--sound-status-lh)` | — | its lines: the Sound fold's help text (.sound__why) |
 | `--web-icon-stroke` | `1.8` | — | thinner than the header's 2: five small rings stay open at 16px |
 | `--web-top-btn-size` | `var(--traffic-size)` | — | the title bar's Web item: level with the other title bar icons |
 | `--web-link-offset` | `2px` | — | Retry / Read again: the underline clears the descenders |

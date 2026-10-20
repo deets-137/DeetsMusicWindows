@@ -470,6 +470,31 @@ type Row =
   | { kind: "apple"; seed: WebSeed }
   | { kind: "search"; term: string };
 
+/** The i: the Sound panel's info glyph (sound-panel.ts `infoBtn`). */
+const INFO_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>';
+
+/** The "How Web picks songs" fold (PLAYLIST-WEB.md §13): his three paragraphs (2026-10-19),
+ *  with the panel's picks now in the slots. Pure: the panel passes its state in. */
+export function howText(o: {
+  seed: string | null;
+  seedArtists: string | null;
+  kind: SeedKind;
+  reach: number;
+  genres: string[];
+}): string[] {
+  const word = o.kind === "artist" ? "artist" : o.kind === "song" ? "song" : "album";
+  const genre = !o.genres.length
+    ? "genre"
+    : o.genres.length === 1
+      ? o.genres[0]
+      : `${o.genres.slice(0, -1).join(", ")} and ${o.genres[o.genres.length - 1]}`;
+  return [
+    `With ${o.seed ?? `the ${word} you pick`} as a seed, the web finds other artists who've worked with ${o.seedArtists ?? "the seed's artists"} in the past (features, collabs, etc). From there, the web goes ${o.reach} artists out (think 6 degrees of Kevin Bacon) and checks their top songs' primary versions before webbing out again if needed. The seed's own songs are limited to 50% of the playlist.`,
+    "Discover puts songs you don't have in your library first, while familiar prioritizes hearted songs, then played songs, then songs in your library. Mix keeps Apple's top songs order.",
+    `The selected ${genre} limits what genre of songs may appear.`,
+  ];
+}
+
 const SEARCH_GLYPH =
   '<svg class="web__hit-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>';
 
@@ -546,7 +571,10 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-label", heading);
   panel.innerHTML = `
-    <div class="web__title">${esc(heading)}</div>
+    <div class="web__head"><span class="web__title">${esc(heading)}</span>
+      <button class="panel__action web__info" type="button" aria-expanded="false" aria-controls="${uid}-how" aria-label="How Web picks songs"
+        title="How Web picks songs. Click to open or close">${INFO_GLYPH}</button></div>
+    <div class="web__fold" id="${uid}-how" hidden></div>
     <div class="web__row" title="Start the web from an artist, a song or an album">
       <span class="web__label">Start</span>
       <div class="web__seg" data-seg="kind">${KINDS.map((o) => `<button class="web__opt" type="button" data-value="${o.value}" aria-pressed="false">${o.label}</button>`).join("")}</div>
@@ -593,6 +621,8 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
   const lifeEl = q<HTMLElement>(".web__life");
   const tempBtn = q<HTMLButtonElement>('[data-life="temp"]');
   const daysBtn = q<HTMLButtonElement>("[data-days]");
+  const infoBtn = q<HTMLButtonElement>(".web__info");
+  const howEl = q<HTMLElement>(".web__fold");
 
   let rows: Row[] = [];
   let active = 0; // the row Enter picks
@@ -664,6 +694,73 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
         else b.removeAttribute("title");
       }
     }
+    renderHow();
+  };
+
+  /** The "How Web picks songs" fold follows the picks while it is open. */
+  const renderHow = () => {
+    if (howEl.hidden) return;
+    const lines = howText({
+      seed: seed ? seedName(seed) : null,
+      seedArtists: seed ? seedLine(seed) || seedName(seed) : null,
+      kind: seed?.kind ?? kind,
+      reach: reachNow(),
+      genres: [...picked],
+    });
+    const ps = [...howEl.children];
+    lines.forEach((t, i) => {
+      const p = (ps[i] as HTMLElement | undefined) ?? howEl.appendChild(document.createElement("p"));
+      if (p.textContent !== t) p.textContent = t;
+    });
+    for (const p of ps.slice(lines.length)) p.remove();
+  };
+  // The fold opens and closes on its own height, its padding with it (border-box while it
+  // moves), so the rows under it slide instead of jumping: the Sound panel's `showPart`. The
+  // shots (docs/ops/checks/web-how-motion.json, 2026-10-19) caught the first build pushing every
+  // row out of the panel in one frame, then fading the text in.
+  let howAnim: Animation | null = null;
+  let howOpen = false;
+  const toggleHow = () => {
+    howOpen = !howOpen;
+    const on = howOpen;
+    infoBtn.setAttribute("aria-expanded", String(on));
+    diag.log("web:how", { open: on });
+    const from = howAnim ? howEl.getBoundingClientRect().height : on ? 0 : howEl.offsetHeight;
+    howAnim?.cancel();
+    howAnim = null;
+    howEl.style.overflow = "";
+    howEl.style.boxSizing = "";
+    howEl.hidden = false;
+    renderHow(); // the text is in before the height is measured
+    if (panel.hidden || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      howEl.hidden = !on;
+      return;
+    }
+    const full = howEl.offsetHeight;
+    const cs = getComputedStyle(howEl);
+    const pt = parseFloat(cs.paddingTop) || 0;
+    const pb = parseFloat(cs.paddingBottom) || 0;
+    const gap = parseFloat(getComputedStyle(panel).rowGap) || 0;
+    const at = (h: number, opacity: number) => {
+      const k = full > 0 ? Math.min(1, h / full) : 0;
+      return { height: `${h}px`, paddingTop: `${pt * k}px`, paddingBottom: `${pb * k}px`, marginTop: `${-gap * (1 - k)}px`, opacity };
+    };
+    howEl.style.overflow = "hidden";
+    howEl.style.boxSizing = "border-box";
+    const dur = tokenMs("--pop-grow");
+    frames.during("fold", dur + 100, on ? "web-how-open" : "web-how-close");
+    const a = howEl.animate(on ? [at(from, 0), at(full, 1)] : [at(from, 1), at(0, 0)], {
+      duration: dur,
+      easing: getComputedStyle(panel).getPropertyValue("--pop-ease").trim() || "ease",
+    });
+    howAnim = a;
+    a.onfinish = () => {
+      if (howAnim !== a) return;
+      howAnim = null;
+      howEl.style.overflow = "";
+      howEl.style.boxSizing = "";
+      if (!on) howEl.hidden = true;
+    };
   };
 
   // The panel's height moves from `from` to the new content's height instead of jumping (a
@@ -871,6 +968,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
   };
 
   const renderChips = () => {
+    renderHow();
     chipsEl.innerHTML = "";
     if (!result) return show(chipsEl, false);
     const counts = new Map<string, number>();
@@ -1184,6 +1282,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
   });
   panel.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
+    if (t.closest(".web__info")) return toggleHow();
     const hit = t.closest<HTMLElement>(".web__hit[data-i]");
     if (hit) {
       activate(rows[Number(hit.dataset.i)]);
@@ -1232,6 +1331,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
       else picked.add(g);
       chip.setAttribute("aria-pressed", String(picked.has(g)));
       renameDefault();
+      renderHow();
       return renderReady();
     }
     if (t.closest(".web__make")) void make();

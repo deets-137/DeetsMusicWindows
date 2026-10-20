@@ -12,6 +12,15 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-19, late — `v-thirtyone`: the Web panel's i and its title
+
+His ask: an i at the top of the Web panel that says how the web picks songs, in plain words;
+and the panel's title in the other panels' title face. His calls: a fold under the title like
+the Sound panel's i (not a page that replaces the rows), and live text that names the picks
+now. Built: PLAYLIST-WEB.md §13 (the lines §13.2, the as-built §13.3, the desk test §13.4).
+The title now uses the `.room__title` rule (bold title face, `--fs-text`, `--title`, no
+capitals). Desk test open.
+
 ## 2026-10-19, late — `v-thirtyone`: the Sound panel's lower box removed
 
 His ask, from a screenshot: the box under the Equalizer's preset row was not intuitive or

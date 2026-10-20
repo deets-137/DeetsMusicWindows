@@ -1,0 +1,205 @@
+{
+  "about": "The title bar's Web panel on the dev app (his library): the panel's open, the i opening the \"How Web picks songs\" fold (the panel grows to it, the paragraphs enter), a Start row press with the fold open (the text changes, the panel's height follows), the i closing the fold (the panel shrinks), the close. In Press and in Glass (the heaviest to draw). Each shot sets the skin through its \"settings\" (the runner puts the old value back), never a look, and first shuts the fold and the panel if an earlier run left them open. No setting changes: the Start row is the panel's own state, so no web is built and no Apple call is made.",
+  "desk_test": "features/PLAYLIST-WEB.md §13.4",
+  "made": "2026-10-19",
+  "pass": "Each probe's expect holds. In the console file: each [perf] frames line for web, web-kind and the fold with dropped under 3 % and worst under 17 ms at the display's rate. In the strips: the fold's paragraphs enter in order, the panel's bottom edge moves with the fold (no jump at the start or the end), the title row and the i do not move, and the close leaves nothing behind.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/web-how-motion.json   (needs `npm run dev:app` running, its window on screen, the Web item in the title bar)",
+  "shots": [
+    {
+      "id": "web-how-press",
+      "covers": "features/PLAYLIST-WEB.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 9,
+      "steps": [
+        {
+          "eval": "(() => { const p = document.querySelector('.web[aria-label=\\\"Web\\\"]'); if (!p.querySelector('.web__fold').hidden) p.querySelector('.web__info').click(); if (!p.hidden) document.getElementById('web-btn').click(); })()"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.querySelector('.web[aria-label=\"Web\"]').hidden, fold: document.querySelector('.web[aria-label=\"Web\"] .web__fold').hidden })",
+          "expect": {
+            "shut": true,
+            "fold": true
+          },
+          "name": "rest"
+        },
+        {
+          "click": "#web-btn",
+          "frames": 45,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ open: !document.querySelector('.web[aria-label=\"Web\"]').hidden, title: getComputedStyle(document.querySelector('.web[aria-label=\"Web\"] .web__title')).textTransform })",
+          "expect": {
+            "open": true,
+            "title": "none"
+          },
+          "name": "open"
+        },
+        {
+          "click": ".web[aria-label=\"Web\"] .web__info",
+          "frames": 45,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "(() => { const p = document.querySelector('.web[aria-label=\"Web\"]'); const f = p.querySelector('.web__fold'); return JSON.stringify({ fold: !f.hidden, paras: f.children.length, kevin: /Kevin Bacon/.test(f.textContent), expanded: p.querySelector('.web__info').getAttribute('aria-expanded'), growing: p.classList.contains('is-growing') }); })()",
+          "expect": {
+            "fold": true,
+            "paras": 3,
+            "kevin": true,
+            "expanded": "true",
+            "growing": false
+          },
+          "name": "fold open"
+        },
+        {
+          "click": ".web[aria-label=\"Web\"] [data-seg=\"kind\"] [data-value=\"song\"]",
+          "frames": 40,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "(() => { const p = document.querySelector('.web[aria-label=\"Web\"]'); return JSON.stringify({ paras: p.querySelector('.web__fold').children.length, growing: p.classList.contains('is-growing') }); })()",
+          "expect": {
+            "paras": 3,
+            "growing": false
+          },
+          "name": "kind song"
+        },
+        {
+          "click": ".web[aria-label=\"Web\"] [data-seg=\"kind\"] [data-value=\"artist\"]",
+          "frames": 40,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "click": ".web[aria-label=\"Web\"] .web__info",
+          "frames": 45,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "(() => { const p = document.querySelector('.web[aria-label=\"Web\"]'); return JSON.stringify({ fold: p.querySelector('.web__fold').hidden, expanded: p.querySelector('.web__info').getAttribute('aria-expanded'), growing: p.classList.contains('is-growing') }); })()",
+          "expect": {
+            "fold": true,
+            "expanded": "false",
+            "growing": false
+          },
+          "name": "fold shut"
+        },
+        {
+          "click": "#web-btn",
+          "frames": 40
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "JSON.stringify({ shut: document.querySelector('.web[aria-label=\"Web\"]').hidden })",
+          "expect": {
+            "shut": true
+          },
+          "name": "closed"
+        }
+      ],
+      "settings": {
+        "skin": "press"
+      }
+    },
+    {
+      "id": "web-how-glass",
+      "covers": "features/PLAYLIST-WEB.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 9,
+      "steps": [
+        {
+          "eval": "(() => { const p = document.querySelector('.web[aria-label=\\\"Web\\\"]'); if (!p.querySelector('.web__fold').hidden) p.querySelector('.web__info').click(); if (!p.hidden) document.getElementById('web-btn').click(); })()"
+        },
+        {
+          "wait": 600
+        },
+        {
+          "wait": 1800
+        },
+        {
+          "click": "#web-btn",
+          "frames": 45,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "click": ".web[aria-label=\"Web\"] .web__info",
+          "frames": 45,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "click": ".web[aria-label=\"Web\"] [data-seg=\"kind\"] [data-value=\"album\"]",
+          "frames": 40,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "click": ".web[aria-label=\"Web\"] [data-seg=\"kind\"] [data-value=\"artist\"]",
+          "frames": 40,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "click": ".web[aria-label=\"Web\"] .web__info",
+          "frames": 45,
+          "region": ".web[aria-label=\"Web\"]"
+        },
+        {
+          "wait": 800
+        },
+        {
+          "click": "#web-btn",
+          "frames": 40
+        },
+        {
+          "wait": 800
+        },
+        {
+          "probe": "(() => { const p = document.querySelector('.web[aria-label=\"Web\"]'); return JSON.stringify({ shut: p.hidden, fold: p.querySelector('.web__fold').hidden, growing: p.classList.contains('is-growing') }); })()",
+          "expect": {
+            "shut": true,
+            "fold": true,
+            "growing": false
+          },
+          "name": "closed"
+        },
+        {
+          "wait": 1500
+        }
+      ],
+      "settings": {
+        "skin": "glass"
+      }
+    }
+  ]
+}

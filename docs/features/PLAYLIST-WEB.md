@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-16
 sources: [src/web.ts, src-tauri/src/web.rs, src/playlists-card.ts, src/playlist-expiry.ts, src/player.ts]
-updated: 2026-09-29
+updated: 2026-10-19
 ---
 # DeetsMusic — the playlist web
 
@@ -745,3 +745,81 @@ His call (2026-09-29): a list that ends with Repeat off goes on like an autoplay
 QUEUE.md §The end of a list, steps 1–6. Also: 7. The Playlists card lists the web with
 "Expires <tomorrow's date>". 8. An album from Search (a `search-albums:` context) ends: the web's
 log line reads `web:listEnd {fire: "album"}` and `web: built seed=album:<title>`.
+
+## 13. How Web picks songs: the i (2026-10-19)
+> **Part:** built · 2026-10-19
+
+The panel's title row has an i at its right end. A click opens a fold under the title that
+says, in short lines, how the web picks songs (§4). A second click closes it.
+
+### 13.1 Decisions (his calls, 2026-10-19)
+- **A fold under the title**, the Sound panel's i and fold (`sound-panel.ts` `infoBtn`), not a
+  page that replaces the rows. The controls stay in view.
+- **Live text**: each line names the panel's picks now (the seed, Reach, Size, Prefer, the
+  genre chips, the seed filter) and changes when they change.
+- **The fold's motion** keeps the shared curve (`--pop-grow` on `--pop-ease`, fast start, soft
+  stop), the same as the Sound panel's fold (his call after the shots, 2026-10-19).
+- **The title** takes the Room, Sound and Rewind panels' title rule (the title face, bold,
+  `--fs-text`, `--title`, no capitals).
+
+### 13.2 The text (his words, 2026-10-19; a first try, he reworks it to fit the panel)
+Three paragraphs. The slots in *italics* follow the panel:
+
+> With *the seed* as a seed, the web finds other artists who've worked with *the seed's artists*
+> in the past (features, collabs, etc). From there, the web goes *Reach* artists out (think 6
+> degrees of Kevin Bacon) and checks their top songs' primary versions before webbing out again
+> if needed. The seed's own songs are limited to 50% of the playlist.
+>
+> Discover puts songs you don't have in your library first, while familiar prioritizes hearted
+> songs, then played songs, then songs in your library. Mix keeps Apple's top songs order.
+
+Two edits to his first text, his OK: "The seed artist's songs" became "The seed's own songs" (the
+half holds the picked song's or album's songs too, §4), and Familiar names played and library
+songs after hearted ones (the `mine` order, §4). The panel is 296 px wide (`--web-panel-w`, 256
+before) so the text has room.
+>
+> The selected *genre* limits what genre of songs may appear.
+
+- *the seed*: the picked artist, song or album; none yet: "the *artist* you pick".
+- *the seed's artists*: a song's or album's artist line; an artist seed: its name; none yet:
+  "the seed's artists".
+- *Reach*: the reach the build uses (an album stops at 2).
+- *genre*: the picked chips ("R&B/Soul and Pop"); none picked: the word "genre".
+
+The first try (2026-10-19, eight short lines, Claude's) was replaced the same day.
+
+### 13.3 As built
+- `howText()` in `web.ts` (pure, the lines from the panel's state); `renderHow` writes them,
+  only while the fold is open, from `renderSegs`, `renderChips` and a chip press.
+- The i is a `panel__action` square with the Sound panel's glyph; open, it takes
+  `.sound__info`'s picked look (`.web__info[aria-expanded="true"]`). Hint: "How Web picks
+  songs. Click to open or close" (ONBOARDING.md §1).
+- The fold (`.web__fold`) is the Sound fold's box: `--web-fold-bg` → `--sound-fold-bg`,
+  `--web-fold-lh` → `--sound-status-lh`, subtext color.
+- **The motion** (`toggleHow`, the Sound panel's `showPart`): the fold opens and closes on its
+  own height, its padding and the gap above it with it (`box-sizing: border-box` while it
+  moves), and fades in and out, over `--pop-grow` on `--pop-ease`. The text is written before
+  the height is measured. A click mid-move starts from the height on screen. `flex: 0 0 auto`
+  keeps the full panel from squeezing it. Reduced motion snaps. `frames.during("fold",
+  "web-how-open" / "web-how-close")`.
+- **The shots (2026-10-19, `docs/ops/checks/web-how-motion.json`, dev app, Press and Glass at
+  244 Hz).** The first build grew the panel instead (`animateHeight`): every row left the panel
+  in one frame, and the text faded in on its own; the close snapped. The second build's fold was
+  squeezed by the panel's max height (overflow hidden lets a flex item shrink) and jumped to its
+  height at the end. After both fixes: open 50 % at +73 ms, 90 % at +113 ms; the rows slide
+  down and up with the fold; Press drops 0–14 % of the fold's frames, worst 8 ms; Glass 10–29 %,
+  worst 13 ms (its frost redraw, as the Sound panel's).
+- Log: `web:how {open}`.
+- What Claude decided inside his calls: plain paragraphs (the Sound fold has
+  none); the fold closed on every new panel mount; the i in both Web panels (the title bar's and
+  the Playlists card's).
+
+### 13.4 Desk test
+1. Open the title bar's Web panel. The title reads "Web" in the same face and size as the
+   Rewind panel's title.
+2. Click the i. The fold opens under the title with 3 paragraphs. The i shows as picked.
+3. With the fold open, pick Reach 3. The first paragraph says "goes 3 artists out".
+4. Pick an artist and wait for the chips. Press a genre chip. The last paragraph names it.
+5. Pick an album with Reach 3 set. The first paragraph says "goes 2 artists out".
+6. Click the i again. The fold closes and the panel shrinks.
+7. The Playlists card's web button: its panel ("Playlist web") has the same i.

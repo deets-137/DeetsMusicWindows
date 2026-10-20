@@ -280,7 +280,7 @@
   /* -- playlist web (src/web.ts, PLAYLIST-WEB.md) ------------ */
   /* The web button's panel under the Playlists header. Controls share the sleep
      panel's chip shape; colors are theme roles. */
-  --web-panel-w:        256px;
+  --web-panel-w:        296px;  /* 256 until 2026-10-19: wider for the "How Web picks songs" text (his ask) */
   --web-panel-max-h:    480px;  /* ten genre chips and five artists fit; more scrolls */
   --web-panel-pad:      var(--space-2);
   --web-row-h:          32px;   /* an artist row */
@@ -290,8 +290,10 @@
   --web-days-min-w:     56px;   /* "30 days" and "1 day" are the same width: the row does not move as it cycles */    /* a song's artist line never takes more than half the row from its title */
   --web-opt-min-w:      32px;   /* a Reach / Size option: 1 and 100 are the same width */
   --web-chip-radius:    var(--radius-control);
-  --web-title-tracking: 0.06em; /* the panel title, the create menu's label voice */
-  --web-icon-stroke:    1.8;    /* thinner than the header's 2: five small rings stay open at 16px */
+  --web-title-tracking: var(--room-title-tracking); /* the panel title's family (.room__title), his ask 2026-10-19 */
+  --web-fold-bg:        var(--sound-fold-bg);    /* "How Web picks songs": the Sound panel's fold (.sound__fold) */
+  --web-fold-lh:        var(--sound-status-lh);  /* its lines: the Sound fold's help text (.sound__why) */
+  --web-icon-stroke:    1.8;   /* thinner than the header's 2: five small rings stay open at 16px */
   --web-top-btn-size:   var(--traffic-size); /* the title bar's Web item: level with the other title bar icons */
   --web-link-offset:    2px;    /* Retry / Read again: the underline clears the descenders */
   --web-shrink-dur:     0.32s;  /* "Shrink to chip": the panel closing in on the artist row (a plain time: JS reads it) */
