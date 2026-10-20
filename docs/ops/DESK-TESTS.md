@@ -435,3 +435,51 @@ against what the code suggests, likelihood × impact, and whether CDP can script
 each scenario against the code yourself: an agent reads, it does not run. A real fault becomes a
 fix and a shot with an `expect`. A fork goes to him. A fault older than the feature is noted.
 The first run: two agents, 39 scenarios, 7 fixes (LISTENERS.md §8.11).
+
+### 6.6 Motion and transitions: catch the smallest piece (his ask, 2026-10-20)
+
+**What happened.** The Metal draft's cover change (docs/ideas/metal.md §6.1) passed seven
+independent design reviews and Claude's own frame checks. Then he found four faults in a few
+minutes of use: a 133 ms stall in the middle of a turn, a blank cover that flashed in a side
+slot, doubled edges where two layers of one cover overlapped, and jumps, pops and wrong covers
+on rapid Back / Next. Every one was real, and every one could have been found before hand-over.
+Claude skipped §6.5 (the break-it pass) and the motion monitor (QUALITY-SWEEP.md §3a), chased a
+design score instead, tested only one gentle press on covers already cached, judged motion from
+small contact sheets, and never read the timing data the runner already recorded. The reviewer
+afterwards: it had one press, eleven small frames, no timings, and was asked to score, not to
+find faults.
+
+**The rule.** A feature that moves something (a transition, a swap, a panel, a scrubber, a
+reveal) is not handed over, and is not sent for a review, until steps 1–5 below are done, in
+order. A design review (step 6) comes last and never replaces them.
+
+1. **The break-it pass (§6.5), always, three agents.** One Sonnet agent per lens of
+   QUALITY-SWEEP.md §4 (workflow and keyboard; data and timing; neighbors and load), with the
+   brief of its §5. For motion, add to each brief: "what if it is done twice, fast, backwards,
+   mid-motion, or on content that is not loaded yet". Triage every scenario against the code.
+2. **The motion cases, scripted on the dev app, every time:**
+   - **cold**: the first time, with nothing cached (`{ "clearCache": true }`);
+   - **reverse**: the other direction (Back as well as Next; close as well as open);
+   - **rapid**: three to five presses ~250 ms apart, which interrupt motion mid-way;
+   - **same content**: a change where nothing visible differs (two songs, one cover);
+   - **neighbors**: a theme change, a surface or window-size change, reduced motion, during it;
+   - **his real gesture**: when he reports one, script exactly his order and pace.
+   Each run ends where it started (his song, paused) and says so.
+3. **The timing gate.** Read `changes[].pops` in the clip's `.frames.json` (SHOTS.md §5f): the
+   largest gap between two changes in the middle of a motion. Over ~50 ms is a stall to explain
+   before anything else. Read the `[perf] frames` lines for the worst frame and long tasks.
+4. **The motion monitor** (QUALITY-SWEEP.md §3a, `checks/smooth-monitor.js`) armed over the
+   moving parts, with `expect` on its report: no flash, no snap, no jitter that is not designed.
+5. **Frames, read properly.** Sample by time, not by index (the frame on screen at evenly spaced
+   moments: a 4 ms frame must not weigh like a 70 ms one). Read every real frame of a fault at
+   full size, cropped to the part that moves (each side slot, each layer), with its ms. Compare
+   frame to frame for a layer that should not be there (a doubled edge is 1–2 px).
+6. **A review, if one is wanted, asks two questions with two kinds of material.** A design score
+   from the frames, and, separately, a fault hunt: "find stalls, flashes, doubled edges, jumps
+   and wrong content". The fault hunt gets every frame with its ms, 2× crops of each moving
+   region, frame-to-frame difference images, and the sequences of step 2 (cold and warm side by
+   side, reverse, rapid). A score never closes a fault hunt.
+
+Keep the step-2 lists in `docs/ops/checks/` with their `expect`s, so the next change to the same
+motion runs them as a regression test. The first lists are `shots/scratch/metal-next-back.json`
+and `metal-rapid.json` (to move to `checks/` when Metal is built).

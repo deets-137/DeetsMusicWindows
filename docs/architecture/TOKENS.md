@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 49 |
 | Theme (color roles) | themes.css | 54 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 670 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
+| Skin (everything else) | skin.css base block | 678 tokens · overrides: vanilla 4, press 70, ocean 45, glass 73, cyber 69 |
 
 ## Theme roles
 
@@ -562,6 +562,14 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--vinyl-swap-ease` | `ease-in-out` | press |  |
 | `--vinyl-swap-travel` | `110%` | — | of the disc: far enough to leave the cover box |
 | `--vinyl-swap-fade` | `0` | — | opacity at the far end of the slide |
+| `--cover-swap` | `none` | — | a plain cover's move on a song change (vinyl.ts): none, or zoetrope (the Metal draft, docs/ideas/metal.md §6.1); the record's slide wins where it shows |
+| `--zoetrope-run` | `0.5` | — | the zoetrope's ends (vinyl.ts): how far off to the side, × the cover's width |
+| `--zoetrope-turn` | `58` | — | … turned this many degrees on the drum |
+| `--zoetrope-scale` | `0.6` | — | … at this size |
+| `--zoetrope-fade` | `0` | — | … at this opacity |
+| `--zoetrope-dim` | `1` | — | … at this brightness |
+| `--zoetrope-stagger` | `0` | — | 0–1 of the turn: the next cover waits while the old one retreats first; 0 = together |
+| `--zoetrope-leave-ease` | `` | — | the old cover's retreat curve; empty: the turn's own (--vinyl-swap-ease) |
 | `--ap-panel-w` | `220px` | — | AirPlay "Play on" panel (AIRPLAY.md) |
 | `--ap-row-h` | `var(--icon-lg)` | — |  |
 | `--ap-dot` | `0.9em` | — | the ✓ gutter on a row |
@@ -993,8 +1001,8 @@ reader is a token nothing uses.
 | `--ocean-ripple-ease` | `cubic-bezier(0.2, 0.6, 0.35, 1)` | — | styles.css |
 | `--np-title-scroll-delay` | `350ms` | — | styles.css |
 | `--np-title-scroll-back` | `var(--dur-med)` | — | styles.css |
-| `--vinyl-swap-dur` | `0.4s` | press | vinyl.ts |
-| `--vinyl-swap-ease` | `ease-in-out` | press | vinyl.ts |
+| `--vinyl-swap-dur` | `0.4s` | press | dev/metal-draft.ts, vinyl.ts |
+| `--vinyl-swap-ease` | `ease-in-out` | press | styles/skin.css, vinyl.ts |
 | `--ap-pulse` | `1.2s` | — | styles.css |
 | `--ap-caret-dur` | `0.32s` | — | styles.css |
 | `--pop-in` | `var(--dur-med)` | — | extension/styles/skin.css, card-grow.ts, pop.ts, reveal.ts, rewind-btn.ts, styles.css, styles/skin.css |
@@ -1054,10 +1062,10 @@ reader is a token nothing uses.
 | `--theme-morph-ease` | `ease-in-out` | — | styles.css |
 | `--theme-morph-hand-ease` | `ease-out` | — | appearance.ts, styles.css |
 | `--search-pulse-dur` | `0.9s` | — | extension/popup/popup.css, styles.css, styles/skin.css |
-| `--dur-fast` | `0.12s` | press, glass, cyber | extension/styles/skin.css, copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
+| `--dur-fast` | `0.12s` | press, glass, cyber | extension/styles/skin.css, copy-edit.ts, dev/metal-draft.css, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
 | `--dur-med` | `0.18s` | press | extension/popup/popup.css, extension/popup/popup.js, extension/styles/skin.css, styles.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/walk.css |
 | `--dur-spin` | `0.7s` | — | extension/popup/popup.css, styles.css |
-| `--ease-ui` | `ease` | — | extension/popup/popup.css, extension/styles/skin.css, copy-edit.ts, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
+| `--ease-ui` | `ease` | — | extension/popup/popup.css, extension/styles/skin.css, copy-edit.ts, dev/metal-draft.css, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
 | `--pulse-ease` | `ease-in-out` | — | extension/popup/popup.css, styles.css |
 | `--sh-cross-dur` | `0.42s` | — | styles.css |
 | `--rp-loop-dur` | `0.5s` | — | styles.css |

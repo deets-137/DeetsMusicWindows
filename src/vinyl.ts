@@ -215,6 +215,9 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
   const spinEl = () => slot?.querySelector<HTMLElement>(".vinyl__spin") ?? null;
   const held = () => suspended || root.dataset.ambient === "paused";
   const isRecordHere = () => getComputedStyle(box).getPropertyValue("--vinyl").trim() === "1";
+  // A skin may move a plain cover on a song change too (--cover-swap, base `none`): `zoetrope`
+  // is the Metal draft's (docs/ideas/metal.md §6.1). The record's own slide wins where it shows.
+  const coverSwap = () => getComputedStyle(box).getPropertyValue("--cover-swap").trim() || "none";
 
   const setDuration = (duration: number) => {
     const d = duration > 0 && isFinite(duration) ? duration : 0;
@@ -330,7 +333,11 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
     const img = el.querySelector("img");
     const decoded = img ? img.decode().catch(() => {}) : Promise.resolve();
     const wait = new Promise((r) => window.setTimeout(r, DECODE_WAIT_MS));
-    void Promise.race([decoded, wait]).then(() => {
+    // The zoetrope's old cover retreats first and needs nothing from the new picture, so it
+    // starts at once: waiting for the decode left a still moment after the press (the review).
+    // The new cover waits in its slot meanwhile (--zoetrope-stagger), time enough to decode.
+    const now = !isRecordHere() && coverSwap() === "zoetrope";
+    void (now ? Promise.resolve() : Promise.race([decoded, wait])).then(() => {
       el.style.opacity = "";
       if (mine !== gen || !old.isConnected) return; // a newer change already cleared it
       const cs = getComputedStyle(box);
@@ -342,6 +349,70 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
       const duration = ms(cs.getPropertyValue("--vinyl-swap-dur")) * scale;
       const easing = cs.getPropertyValue("--vinyl-swap-ease").trim() || "ease-in-out";
       const d = back ? -1 : 1;
+      if (!isRecordHere() && coverSwap() === "zoetrope") {
+        // Two songs from one album share a cover: turning a picture onto itself reads as a
+        // glitch (the design review, metal.md §6.1), so the cover simply stays.
+        const pic = (e: HTMLElement) => e.querySelector("img")?.src ?? "";
+        if (pic(old) && pic(old) === pic(el)) { old.remove(); return; }
+        // Covers on a drum: the old one shrinks and turns away to the left, the next comes in
+        // from the right, turned, and grows to the front. Back runs it the other way. The box
+        // clips it (the draft's clip-path); a theme fade must not lift it out (metal-draft.css).
+        // Where the turn starts and ends is the skin's (--zoetrope-*): far off and faded by
+        // default; with the draft's peek, exactly where the side covers wait, dimmed as they are.
+        const num = (p: string, dflt: number) => { const v = parseFloat(cs.getPropertyValue(p)); return Number.isFinite(v) ? v : dflt; };
+        const run = old.offsetWidth * num("--zoetrope-run", 0.5) * d;
+        const turn = num("--zoetrope-turn", 58) * d;
+        const small = num("--zoetrope-scale", 0.6);
+        const away = num("--zoetrope-fade", 0);
+        const dim = `brightness(${num("--zoetrope-dim", 1)})`;
+        const drum = (dx: number, deg: number, s: number) => `perspective(900px) translateX(${dx}px) rotateY(${deg}deg) scale(${s})`;
+        // --zoetrope-stagger (0–1): how long the next cover waits in its slot while the old one
+        // retreats first (his call, 2026-10-20: the next cover must not land on top of the old
+        // one). The two trade depth on the way, so the arriving cover passes in front only once
+        // the old one has stepped back. 0 (the base): both move together.
+        const stagger = Math.min(0.8, Math.max(0, num("--zoetrope-stagger", 0)));
+        const back = Math.min(1, stagger + 0.35);
+        const front = { transform: drum(0, 0, 1), opacity: 1, filter: "brightness(1)" };
+        const behind = (dx: number, deg: number) => ({ transform: drum(dx, deg, small), opacity: away, filter: dim });
+        // The retreat has its own curve (--zoetrope-leave-ease; empty: the turn's): an ease-out
+        // spent the retreat in its first ~100 ms, and the screen then stood still until the next
+        // cover set off, which read as the turn sticking (his report, 2026-10-20).
+        const leave = cs.getPropertyValue("--zoetrope-leave-ease").trim() || easing;
+        // A press during a turn: the cover that was arriving leaves from where it is now, not
+        // from the front (it jumped there for a frame: his report, rapid Back / Next).
+        const at = getComputedStyle(old);
+        const from = {
+          transform: at.transform === "none" ? front.transform : at.transform,
+          opacity: Number(at.opacity),
+          filter: at.filter === "none" ? front.filter : at.filter,
+        };
+        old.getAnimations().forEach((a) => a.cancel());
+        old.style.opacity = "";
+        old
+          .animate(
+            [{ ...from, zIndex: 3, easing: leave }, { ...behind(-run, -turn), zIndex: 1, offset: back }, { ...behind(-run, -turn), zIndex: 1 }],
+            { duration, fill: "forwards" },
+          )
+          .finished.then(() => old.remove(), () => old.remove());
+        // The next cover shows only once its picture is decoded, then leaves its slot: shown
+        // before, it was a blank square over the waiting side cover, which seemed to change
+        // color before anything moved (his report, 2026-10-20). Until then the side cover holds
+        // the slot. It keeps to the turn's clock: what is left of the wait, then the move.
+        el.style.opacity = "0";
+        const t0 = performance.now();
+        void Promise.race([decoded, wait]).then(() => {
+          if (mine !== gen || !el.isConnected) return; // a newer press took over: it stays hidden
+          el.style.opacity = "";
+          const late = performance.now() - t0;
+          const hold = Math.max(0, duration * stagger - late);
+          const move = Math.max(duration * (1 - stagger), duration * 0.4);
+          el.animate(
+            [{ ...behind(run, turn), zIndex: 1, easing }, { ...front, zIndex: 2 }],
+            { duration: move, delay: hold, fill: "backwards" },
+          );
+        });
+        return;
+      }
       const w = old.offsetWidth * travel * x * d;
       const h = old.offsetHeight * travel * y * d;
       old
@@ -431,11 +502,18 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
       started = false;
       shownAt = performance.now();
       anim = null; // the leaving disc keeps its own animation until it is removed
-      box.querySelectorAll(".vinyl--out").forEach((e) => e.remove()); // a quick run of skips
+      // A quick run of skips. Under the zoetrope a cover still on its way out fades from where it
+      // is: removed at once, it popped (his report, 2026-10-20: rapid Back / Next).
+      const fadeOut = !isRecordHere() && coverSwap() === "zoetrope" && !reduced();
+      box.querySelectorAll<HTMLElement>(".vinyl--out").forEach((e) => {
+        if (!fadeOut) { e.remove(); return; }
+        e.animate([{ opacity: getComputedStyle(e).opacity }, { opacity: 0 }], { duration: 120, fill: "forwards" })
+          .finished.then(() => e.remove(), () => e.remove());
+      });
       const el = build(s);
       slot = el;
       place(el);
-      if (old && old.querySelector("img") && s && !held() && !reduced() && isRecordHere()) {
+      if (old && old.querySelector("img") && s && !held() && !reduced() && (isRecordHere() || coverSwap() !== "none")) {
         slide(old, el, back);
       } else {
         old?.remove();

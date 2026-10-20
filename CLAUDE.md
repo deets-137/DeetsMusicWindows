@@ -314,6 +314,15 @@ The probes (§6, `ops/checks/spotify-probe.ps1`) ran 2026-10-18 (§6.3): the con
 `launch.md` — a first draft (2026-10-18), not posted: the Product Hunt listing and one Reddit
 post per community (r/AppleMusic, r/Windows11, r/SideProject, r/rust); he rewrites the words
 (his note). §4 the answers to ready; §5 the open questions (the tip jar, the Apple terms).
+`metal.md` — an idea (2026-10-19), a dev-only draft BUILT 2026-10-20 (§6.1): an elegant
+brushed-steel (or acrylic) sixth skin over every theme, the app's own UI pieces only (his calls
+§1). The draft: `src/dev/metal-draft.*` over Vanilla, picked in dev from the title menu's Skin
+list, tuned in Settings › Skin settings; the thumbwheel scrubber; the zoetrope cover change with
+the peek (`--cover-swap`, `--zoetrope-*` in skin.css, read by vinyl.ts). §6.1 records every
+review round, his reports and the break-it pass. §4 the token survey (primitives, §4.4).
+`mods.md` — an idea (2026-10-19): skins and themes a user downloads (a `.deetsmod` file, values
+only, no code or CSS, §6), built on metal.md's primitives; his marketplace page beside Hop in for
+a first load (§1); new theme slots later (§4, his note); the DeetsRGB widget talk as a record (§7).
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
@@ -343,6 +352,12 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
   only session driving it. The method, its safety rules and the first run's review:
   DESK-TESTS.md §6; the runner's steps: SHOTS.md §5i. A shots list is the existing tool, not a
   throwaway harness.
+- **Anything that moves (2026-10-20, his ask): DESK-TESTS.md §6.6 before hand-over or review.**
+  The break-it pass (three Sonnet agents, §6.5) is not optional; then the cold, reverse, rapid
+  and same-content cases scripted on the dev app, the timing gate (no gap over ~50 ms in
+  `changes[].pops` mid-motion), the motion monitor, and frames read by time at full size. A
+  design score never replaces a fault hunt: the Metal cover change passed seven reviews and he
+  still found four faults in minutes.
 - **Unit tests on pure logic (2026-09-25):** `npm test` runs `tests/*.test.ts` on Node's
   built-in runner, no test dependency. `npm run check` = tsc + tests + docs:check + cargo
   check + cargo test (~15 s), and the pre-push hook (`.githooks/pre-push`) runs it. A test

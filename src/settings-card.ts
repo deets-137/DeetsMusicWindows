@@ -159,6 +159,18 @@ interface RangeRow {
 type Row = (ToggleRow | ChoiceRow | SplitRow | HtmlRow | RangeRow | HeadRow) & { when?: () => boolean };
 const shown = (rows: Row[]): Row[] => rows.filter((r) => !r.when || r.when());
 
+// Dev-only rows at the end of Skin settings: the Metal draft's (src/dev/metal-draft.ts,
+// docs/ideas/metal.md §6.1) adds them, and calls the redraw when its own state changes. A
+// release build imports no dev module, so the list stays empty there.
+export type DevSkinRow = Row;
+const devSkinRows: Row[] = [];
+const devRedraws = new Set<() => void>();
+export function addDevSkinRows(rows: DevSkinRow[]): void {
+  devSkinRows.push(...rows);
+  devRedraws.forEach((f) => f());
+}
+export const redrawDevSkinRows = (): void => devRedraws.forEach((f) => f());
+
 // ── New marks (QUICK-SETTINGS.md §10): a row or a section that is new wears the N badge
 //    beside its name, in the Settings card and in the quick panel alike, until the pointer
 //    first rests on it. To flag a new setting, add one line here, and never take it out:
@@ -3071,6 +3083,14 @@ function mountSettings(
   });
   const unsubFiles = onFilesChange(() => render()); // a picture added, renamed or deleted
   const unsubSkin = onSkinChange(() => render()); // skin-only rows come and go
+  // The dev-only Skin settings rows (addDevSkinRows): take any new ones, then draw.
+  const skinRows = sections.find((s) => s.title === "Skin settings")?.rows;
+  const takeDevRows = () => {
+    if (skinRows) for (const r of devSkinRows) if (!skinRows.includes(r)) skinRows.push(r);
+    if (alive) render();
+  };
+  if (devSkinRows.length && skinRows) for (const r of devSkinRows) skinRows.push(r);
+  devRedraws.add(takeDevRows);
   const unsubLibAdd = onLibraryAddChange(render);
   const unsubSuggest = onSuggestChange(() => { if (alive) render(); }); // the Suggest Less count
   // An agent set a value Rust owns (agent-settings.ts): read the cached ones again.
@@ -3258,6 +3278,7 @@ function mountSettings(
       chips.forEach((c) => c.destroy());
       unsubSotd();
       unsubSkin();
+      devRedraws.delete(takeDevRows);
       unsubFiles();
       unsubLibAdd();
       unsubSuggest();

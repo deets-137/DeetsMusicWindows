@@ -758,6 +758,8 @@ window.addEventListener("DOMContentLoaded", () => {
   later.push(["initTitleWeb", () => initTitleWeb()]); // the title bar's Web item (PLAYLIST-WEB.md §1a)
   // The copy editor's pencil (COPY-EDIT.md): dev only, so the release bundle drops the import.
   if (import.meta.env.DEV) later.push(["initCopyEdit", () => void import("./copy-edit").then((m) => m.initCopyEdit())]);
+  // The Metal draft (docs/ideas/metal.md §6.1): dev only, a console handle over Vanilla.
+  if (import.meta.env.DEV) later.push(["initMetalDraft", () => void import("./dev/metal-draft").then((m) => m.initMetalDraft())]);
   later.push(["initCompass", () => initCompass()]); // Ctrl+Space's bar (COMPASS.md); after the Sound and Sleep panels it can open
   later.push(["initPlaylistExpiry", () => initPlaylistExpiry()]); // temporary web playlists (PLAYLIST-WEB.md §10)
   later.push(["initPlaylistRefresh", () => initPlaylistRefresh()]); // how often a mirrored Apple playlist re-reads its songs (PLAYLIST-REFRESH.md)

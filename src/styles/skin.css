@@ -551,6 +551,14 @@
   --vinyl-swap-ease:    ease-in-out;
   --vinyl-swap-travel:  110%;         /* of the disc: far enough to leave the cover box */
   --vinyl-swap-fade:    0;            /* opacity at the far end of the slide */
+  --cover-swap:         none;         /* a plain cover's move on a song change (vinyl.ts): none, or zoetrope (the Metal draft, docs/ideas/metal.md §6.1); the record's slide wins where it shows */
+  --zoetrope-run:       0.5;          /* the zoetrope's ends (vinyl.ts): how far off to the side, × the cover's width */
+  --zoetrope-turn:      58;           /* … turned this many degrees on the drum */
+  --zoetrope-scale:     0.6;          /* … at this size */
+  --zoetrope-fade:      0;            /* … at this opacity */
+  --zoetrope-dim:       1;            /* … at this brightness */
+  --zoetrope-stagger:   0;            /* 0–1 of the turn: the next cover waits while the old one retreats first; 0 = together */
+  --zoetrope-leave-ease: ;           /* the old cover's retreat curve; empty: the turn's own (--vinyl-swap-ease) */
   /* AirPlay "Play on" panel (AIRPLAY.md) */
   --ap-panel-w:     220px;
   --ap-row-h:       var(--icon-lg);
