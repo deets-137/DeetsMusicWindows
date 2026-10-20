@@ -991,7 +991,7 @@ window sizes ([the monitor's section](../ops/checks/README.md), §2a there).
 
 ### 14.10 The moving card box (Max; built 2026-10-19, his call)
 
-> **Part:** built · 2026-10-19 · desk test: his (below)
+> **Part:** built · 2026-10-19 · desk test: passed 2026-10-19 (his word: "Tested and good to go")
 
 **His report (2026-10-19, Glass):** "when the player shrinks back, the animation occurs only in
 the cards so it looks like there's a weird gap line as the player shrinks back into its own box."

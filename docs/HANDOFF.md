@@ -235,8 +235,8 @@ each step that touches those calls.
      close's end (`shots/scratch/smooth-dev-portrait/`).
   6. **The moving card box** (§14.10, 2026-10-19, his call after his Glass report): in Max the
      card grows out of its place and shrinks back into it, as an empty card box with the rim and
-     the glow; the old left-edge wipe is gone. Uncommitted on `v-thirtyone`. Open: his desk test
-     (§14.10), stacked Max, the monitor.
+     the glow; the old left-edge wipe is gone. Committed `98e5a78` on `v-thirtyone`; desk test
+     passed 2026-10-19 (his word). Open: the monitor before the release.
   Then a release (the monitor runs first, RELEASE.md §0 step 1a).
 - **The Rewind button in the Max title bar** (2026-10-19, on `ideas-nineteen`;
   [features/listening-time.md](features/listening-time.md) §9). The hourglass right of the updates
