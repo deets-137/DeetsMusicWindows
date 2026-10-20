@@ -12,6 +12,43 @@ updated: 2026-10-19
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-19, evening — `v-thirtyone`: the Rewind button and the Network panel together
+
+His ask: one local branch to test both new title bar buttons. `v-thirtyone` is `main` (the full
+player and motion monitor commits, pushed the same evening) with `ideas-nineteen` merged, then
+`net-worked`. The conflicts were all "keep both": the docs (HANDOFF, this file, CLAUDE.md), the
+two buttons' markup in `index.html`, their imports and `later.push` lines in `main.ts`, their
+Compass rows and their `skin.css` blocks. TOKENS.md regenerated. Order in the Max title bar: the
+updates button, Rewind, then Network (each sits in the row by its HTML order; his to change).
+Found: `rewindToday` was not in DeetsSupport's copy of the usage allow-list (the cloud session
+had no DeetsSupport checkout), so `npm run usage:keys` wrote it there; that file is uncommitted
+in `../DeetsSupport` and needs a worker deploy (his call) before the key is stored. Checks:
+`npm run check` and `vite build` pass. Not run: either feature's desk test (his, tonight).
+
+## 2026-10-19 — The Network panel, v1 (`net-worked`)
+
+**His ask:** design and build v1 of the network widget on a new branch `net-worked` off `main`:
+the race car, "Network:" Good / OK / Bad in bold title text, graphs of how stable the network
+has been (packet loss, dropped connections), and the ad-hoc Test at the bottom, the result left
+of a right-aligned Test button. Claude pushed back on three points: the webview cannot see
+internet packet loss, drops are events, and line graphs of Chromium's rounded estimate sit flat.
+His calls: N1 a (Good · OK · Bad), N2 c (a status bar per link, plus AirPlay lines), N3 b (a
+Rust ping while playing), N4 b (the fetch wrap now), N5 b (the Wi-Fi row), N6 yes (the
+`/speed` route), N7 a (a placeholder glyph). speedtest.md §7.
+
+**Built** (speedtest.md §8): `net.rs` (ping, Wi-Fi, Test), `apple_calls_minutes`, AirPlay's stats
+to the front end, `net-feed.ts`, `net-rules.ts` + 12 tests, `fetch-wrap.ts` + the
+`[perf] fetchwrap` line, `net.ts` + `styles/net.css`, the Compass row, demo handlers, the A/B
+script `checks/fetch-wrap.mjs`. The doc moved from `ideas/` to `features/`. DeetsSupport: `GET
+/speed` and `SPEED_RL` on its own `net-worked` branch, not deployed.
+
+**Checks run** (a Linux cloud session, no Windows): `tsc`, `vite build`, the unit tests,
+`docs:check` (only the 8 failures of sibling repos absent from the container), and `cargo check
+--target x86_64-pc-windows-gnu` (clean). Not run: the app, the demo (it threw at its seed: no
+`sotd/songs.json` in the container), the A/B, `cargo test` on Windows.
+
+**Next:** his desk test tonight (§9), then the A/B on `dev:built`.
+
 ## 2026-10-19 — The Rewind button (listening time V1), on `ideas-nineteen`
 
 **The idea** ([features/listening-time.md](features/listening-time.md), then in `ideas/`): a title

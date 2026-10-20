@@ -26,6 +26,7 @@ import { installLicenseWatch, licenseTrace, inFlightNow } from "./license-watch"
 import { errorFields, compactEvent } from "./license-reply";
 import { cancelled } from "./rules";
 import { outputKind } from "./sound";
+import { netNote } from "./net-feed";
 import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S, MID_STALL_MS, endStallArms, endStallStep } from "./pause-rules";
 import { roomDriftTick } from "./room";
 import * as stats from "./stats";
@@ -1008,6 +1009,7 @@ function logPauseSource(): void {
   if (playing) {
     window.clearTimeout(stallTimer);
     if (stall) {
+      netNote({ kind: "stall", s: (performance.now() - stall.since) / 1000 });
       diag.log("player:stall-end", { s: Math.round((performance.now() - stall.since) / 1000), after: stall.after });
       stall = null;
     }
@@ -1061,6 +1063,7 @@ function endMidStall(end: string): void {
   midStall = null;
   const secs = (performance.now() - s.since) / 1000;
   if (secs >= 1 || end !== "played") diag.log("player:buffer", { id: s.id, at: Math.round(s.at), s: Math.round(secs), end, mode });
+  if (secs >= 1) netNote({ kind: "stall", s: secs }); // a seek's short buffer is not a stall
 }
 
 function checkMidStall(): void {
@@ -4085,6 +4088,9 @@ export const volumeOnSpeaker = (): boolean => !!volumeSink;
 
 const AUTO_LOW_BELOW_MBPS = 0.5;
 const AUTO_HIGH_ABOVE_MBPS = 1;
+
+/** The stream's bitrate now, kbps (256 or 64); null before MusicKit is up. The Network panel. */
+export const streamKbps = (): number | null => (typeof music?.bitrate === "number" ? music.bitrate : null);
 
 function networkDownlink(): number | undefined {
   const d = (navigator as any).connection?.downlink;

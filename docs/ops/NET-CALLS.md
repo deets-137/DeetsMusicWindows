@@ -126,7 +126,7 @@ more services.
     the webview, cache hits and KB down. Cost: a histogram per group; the webview numbers depend
     on probe N1.
   - B: the count and the class only (what Apple has today). Cost: no timing data for the network
-    health panel ([ideas/speedtest.md](../ideas/speedtest.md)).
+    health panel ([ideas/speedtest.md](../features/speedtest.md)).
 - **F2 — a place for the user to see it.**
   - **A (recommended):** a *Network* section in Settings › Updates (or the speed test panel when
     it is built): calls today and this week per service, failures, cache hits, and the 429

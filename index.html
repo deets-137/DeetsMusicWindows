@@ -259,6 +259,15 @@
         <div class="rewind-top__panel pop" id="rewind-panel" role="group" aria-label="Rewind" data-frames="rewind-top" data-tauri-drag-region="false" hidden></div>
       </div>
 
+      <!-- The Network button (docs/features/speedtest.md): right of the Rewind button, Max only
+           (styles/net.css). The race car (his pick; a placeholder drawing until his: a low body,
+           a rear wing, two wheels, a speed line). It takes the Bad color while the network is Bad.
+           The panel: "Network: Good", a bar per link for the last hour, the Test row. src/net.ts. -->
+      <div class="net" id="net" hidden>
+        <button class="net__btn" id="net-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Network" title="Network: how steady the connection has been"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.1 15.4H4.6v-3l4.6-.6 2.6-2.4h3.6l2.2 2.4 3.4 1v2.6h-1.6"/><path d="M10.1 15.4h5.3"/><circle cx="8.1" cy="15.6" r="2"/><circle cx="17.4" cy="15.6" r="2"/><path d="M5.6 11.9V8.8M3.6 8.6h4.2"/><path d="M1 13.4h2"/></svg></button>
+        <div class="net__panel pop app-scroll" id="net-panel" role="group" aria-label="Network" data-frames="net" data-tauri-drag-region="false" hidden></div>
+      </div>
+
       <div class="drag-region" data-tauri-drag-region></div>
 
       <!-- The Compass (COMPASS.md): the bar Ctrl+Space drops under the title bar, in every

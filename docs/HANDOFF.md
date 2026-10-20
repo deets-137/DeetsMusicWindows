@@ -248,7 +248,16 @@ each step that touches those calls.
   [features/listening-time.md](features/listening-time.md) §9). The hourglass right of the updates
   button opens a panel: *Today: N mins*, then Top Listens and SOTD, each list sliding in. One new
   setting (`rewindToday`). **Open:** his desk test (§9.3), his look at §9.2, his hourglass, and
-  whether the Rewind card goes (§9.4). Then merge into `main`.
+  whether the Rewind card goes (§9.4). Merged with `main` and the Network panel on `v-thirtyone`
+  for his test (2026-10-19); then into `main`.
+- **The Network panel, v1** (2026-10-19, on `net-worked`; merged on `v-thirtyone`, right of the
+  Rewind button;
+  [features/speedtest.md](features/speedtest.md) §7–§9). The race car button in Max (a
+  placeholder glyph until his), "Network: Good", a bar per link for the last hour, the Test row;
+  the ping every 30 s only while playing; the fetch wrap. Built in a cloud session: tsc, the unit
+  tests and a Windows-target `cargo check` pass; nothing ran on Windows. **Open:** his desk test
+  (§9, tonight), the fetch wrap's A/B (`checks/fetch-wrap.mjs`), his look at what Claude decided
+  (§8.3), his glyph, and the DeetsSupport `/speed` deploy (branch `net-worked` there; his call).
 
 - **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
   [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8

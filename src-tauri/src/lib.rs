@@ -25,6 +25,7 @@ use lock::LockExt;
 mod log;
 mod loudness;
 mod mcp_install;
+mod net;
 mod model;
 mod media;
 mod notes;
@@ -383,6 +384,10 @@ pub fn run() {
         .on_window_event(|win, ev| tray::on_window_event(win, ev))
         .invoke_handler(invoke_with_watchdog(tauri::generate_handler![
             apple::apple_developer_token,
+            net::net_ping,
+            net::net_wifi,
+            net::net_test,
+            apple_calls::apple_calls_minutes,
             apple::apple_developer_token_retry,
             app_restart,
             apple::apple_remote_config,

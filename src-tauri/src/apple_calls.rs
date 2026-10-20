@@ -92,6 +92,29 @@ fn class_of(status: Option<u16>) -> usize {
     CLASSES.iter().position(|c| *c == name).unwrap_or(0)
 }
 
+/// The last hour's calls by minute, for the Network panel's Apple Music bar
+/// (docs/features/speedtest.md §8): (the minute since the epoch, fine, failed). Failed is a
+/// 429, a 5xx or no reply: the network's trouble or Apple's, never a 401 / 403 / 404.
+static MINUTES: Mutex<std::collections::VecDeque<(u64, u32, u32)>> = Mutex::new(std::collections::VecDeque::new());
+const MINUTES_KEPT: usize = 60;
+
+fn note_minute(status: Option<u16>) {
+    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_secs() / 60).unwrap_or(0);
+    let bad = matches!(status, None | Some(429) | Some(500..=599));
+    let mut m = MINUTES.lock_or_recover();
+    match m.back_mut() {
+        Some(last) if last.0 == now => {
+            if bad { last.2 += 1 } else { last.1 += 1 }
+        }
+        _ => {
+            m.push_back((now, u32::from(!bad), u32::from(bad)));
+            while m.len() > MINUTES_KEPT {
+                m.pop_front();
+            }
+        }
+    }
+}
+
 /// One reply (or `None`: no reply at all). The retry after a 401 heal counts again: Apple saw
 /// two requests.
 pub fn count(kind: Kind, url: &str, status: Option<u16>) {
@@ -101,6 +124,7 @@ pub fn count(kind: Kind, url: &str, status: Option<u16>) {
         t.hour[g][c] += 1;
         t.total[g][c] += 1;
     }
+    note_minute(status);
     crate::usage::note_apple(g, c); // the week's health counts (USAGE-COUNTS.md §3.3)
 }
 
@@ -323,6 +347,13 @@ pub fn apple_calls_status() -> serde_json::Value {
         (summary(&t.hour).0, summary(&t.total).0)
     };
     serde_json::json!({ "hour": hour, "total": total, "backoffS": backing_off().map(|d| d.as_secs()) })
+}
+
+/// The Network panel: the last hour of Apple calls by minute, and the back-off now.
+#[tauri::command]
+pub fn apple_calls_minutes() -> serde_json::Value {
+    let m: Vec<serde_json::Value> = MINUTES.lock_or_recover().iter().map(|(t, ok, bad)| serde_json::json!({ "m": t, "ok": ok, "bad": bad })).collect();
+    serde_json::json!({ "minutes": m, "backoffS": backing_off().map(|d| d.as_secs()) })
 }
 
 #[cfg(test)]

@@ -184,6 +184,19 @@
   --rewind-top-chip-w:       88px;                   /* Top Listens and SOTD at one width; the view chip fits "Artists" and its caret */
   --rewind-top-today-fs:     var(--fs-title);        /* the Today number: the panel's one large line */
   --rewind-top-list-max-h:   320px;                  /* a list scrolls past this; the panel stays under the window */
+  /* The Network button and panel (docs/features/speedtest.md): the updates button's family. */
+  --net-btn-size:            var(--traffic-size);
+  --net-panel-w:             var(--quick-panel-w);   /* the cog's panel family: one width */
+  --net-panel-max-h:         var(--quick-panel-max-h);
+  --net-panel-pad:           var(--quick-panel-pad);
+  --net-title-fs:            var(--updates-ver-fs);  /* "Network: Good": the updates panel's title size */
+  --net-head-gap:            3px;                    /* a row's name line to its bar */
+  --net-cell-h:              10px;                   /* one minute of the last hour */
+  --net-cell-gap:            1px;
+  --net-cell-radius:         1px;
+  --net-graph-h:             28px;                   /* the AirPlay lines under its bar */
+  --net-good-strength:       60%;                    /* a Good cell is quieter than a Bad one, so */
+  --net-ok-strength:         85%;                    /* the bar reads in a one-color theme too */
   /* The Settings split pill's line between its halves (settings.css): readable on every theme.
      --border alone vanished on the light themes (his screenshot, 2026-10-16). */
   --split-rule-strength:     45%;

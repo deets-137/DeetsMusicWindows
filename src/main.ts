@@ -4,6 +4,9 @@ import "./boot-prefetch";
 // SECOND, in telemetry builds: it wraps the timer functions, so it must load before any module
 // can start a timer (page-sample.ts; DEBUGGING.md § The page sample). It makes no call.
 import "./page-sample";
+// THIRD: the fetch wrap sits under MusicKit and the license watch, so it loads before either
+// (speedtest.md §5.3). It makes no call and starts no timer.
+import "./fetch-wrap";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { type ThemeName, syncWindowBackground } from "./theme";
 import { initLook, pickLook } from "./look";
@@ -65,6 +68,7 @@ import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
 import { initUpdatesButton } from "./updates-btn";
 import { initRewindButton } from "./rewind-btn";
+import { initNetwork } from "./net";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
 import { initQuickPanel } from "./quick-panel";
@@ -577,6 +581,7 @@ window.addEventListener("DOMContentLoaded", () => {
   later.push(["initUpdater", () => initUpdater()]); // RELEASE.md §6: scheduled checks per Settings › Updates
   later.push(["initUpdatesButton", () => initUpdatesButton()]); // the Max title bar's updates button (docs/features/UpdatesButton.md)
   later.push(["initRewindButton", () => initRewindButton()]); // the Max title bar's Rewind button (docs/features/listening-time.md)
+  later.push(["initNetwork", () => initNetwork()]); // the Max title bar's Network button (docs/features/speedtest.md)
   // Warm MusicKit + the DRM module under the launch cover, as the window shows, so the
   // session's first click pays neither (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the
   // click before this). It waited a fixed 1.5 s after the handler until 2026-09-29.

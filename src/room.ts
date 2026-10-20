@@ -50,6 +50,7 @@ import { busy, busyOver, causeOf } from "./busy";
 import * as diag from "./diag";
 import { plainError } from "./plain-error";
 import { WEB_ROOMS } from "./platform";
+import { netNote } from "./net-feed";
 
 // ── the wire (mirrors DeetsMusicRooms/src/protocol.js, its own repo) ─────────
 
@@ -887,6 +888,7 @@ function onClose(code: string): void {
   const wait = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
   attempt += 1;
   diag.log("room:reconnect", { code, attempt, wait });
+  netNote({ kind: "drop", what: "room" });
   // Not on the first retry — a flaky second is not a busy service — and never per retry
   // after that, because `busy` has its own ten-minute floor (FRIENDS.md §5.2, rule 1).
   if (attempt === 3) busy(SERVICE, "gone");

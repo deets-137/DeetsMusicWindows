@@ -1,12 +1,17 @@
 ---
-status: idea
-desk_test: none
-sources: [src/airplay.ts, src-tauri/src/airplay.rs, src/player.ts, src/apple-health.ts, src/rules-facts.ts, src-tauri/src/apple_calls.rs, index.html]
-updated: 2026-10-16
+status: built
+desk_test: open
+sources: [src/net.ts, src/net-rules.ts, src/net-feed.ts, src/fetch-wrap.ts, src/styles/net.css, src-tauri/src/net.rs, src-tauri/src/airplay.rs, src-tauri/src/apple_calls.rs, src/airplay.ts, src/player.ts, src/room.ts, src/friends.ts, src/perf.ts, src/compass.ts, src/apple-health.ts, index.html, tests/net-rules.test.ts, docs/ops/checks/fetch-wrap.mjs, ../DeetsSupport/src/index.js]
+updated: 2026-10-19
 ---
 # Speed test — a race car button and a panel for the network's health
 
-> An idea (2026-10-16), not built. His ask, with a drawing of a race car (a low body, a rear
+> **Built 2026-10-19 (v1) on `net-worked`; desk test open (§9, his, tonight).** §7 his calls for v1
+> (2026-10-19); §8 the as-built record; §9 the desk test. The worker's `/speed` route is on the
+> DeetsSupport branch `net-worked`, **not deployed** (his call). The text below §7 is the design
+> as it was; where it disagrees with §8, §8 is the code.
+>
+> An idea (2026-10-16). His ask, with a drawing of a race car (a low body, a rear
 > wing, two wheels, a speed line): a title bar button with the race car glyph. It opens a panel
 > that tells the user how good their network is for music: the internet link, Apple Music, the
 > stream, and the AirPlay link. His words: "without much extra tooling if possible". §1 is
@@ -263,3 +268,132 @@ A result outside a line is a finding. It is fixed, or the wrap stays off.
   auto-published.
 - The dev telemetry gets one `[perf] fetchwrap …` line per song start (pieces, bytes, ms,
   faults), so any later click→sound line shows whether the wrap was in the path.
+
+## 7. v1 — his calls (2026-10-19)
+
+> **Part:** built · 2026-10-19
+
+His layout: the panel opens on a title line, **"Network:"** and the verdict in the title face,
+bold. Under it, graphs of how steady the network has been: packet loss, dropped connections.
+At the bottom, the Test: the result on the left, a **Test** button on the right. The forks, each
+his:
+
+- **N1 — the words: Good · OK · Bad** (his, spelled "OK"). They replace §0's Good / Fair / Poor.
+- **N2 — the graphs: (c)** a status-page bar per link, 60 cells, one per minute of the last
+  hour, plus two lines on the AirPlay row (its round trip and its resent share), the one link
+  whose numbers are continuous. Line graphs for the rest were ruled out: Chromium rounds its
+  estimate, and most signals are events, so a line would sit flat.
+- **N3 — internet packet loss: (b)** a ping from Rust to `support.deets.solutions` (our own
+  worker on Cloudflare) every 30 s, **only while music plays**. It is the one packet-loss number
+  the app has for the internet link; a webview cannot ping.
+- **N4 — the fetch wrap in v1: (b)** built as §5.3 says. He runs §6 on his machine.
+- **N5 — the Wi-Fi row: (b)** in v1, from the WLAN API.
+- **N6 — the Test file: yes**, a `/speed` route on DeetsSupport, bytes made per request.
+- **N7 — the glyph: (a)** Claude draws a placeholder race car from his words (a low body, a
+  rear wing, two wheels, a speed line); he replaces it. The warning's final form (F3) is his.
+
+## 8. As built (2026-10-19)
+
+> **Part:** built · 2026-10-19
+
+### 8.1 What each row reads
+
+| Row | Shows when | Reads | A cell is Bad when (net-rules.ts) |
+|---|---|---|---|
+| **Internet** | always | `offline` events; `net_ping` (3 echoes per 30 s while playing); Rooms and Friends (home) socket closes | offline; 3 of 6 echoes lost; median round trip ≥ 250 ms; 3 socket drops |
+| **Wi-Fi** | a Wi-Fi reading this hour | `net_wifi` (60 s while playing, and on each open): Windows' signal quality | quality < 40 (OK < 65) |
+| **Apple Music** | always | `apple_calls_minutes` (Rust's last 60 minutes of calls: fine / failed); `apple-health` trouble now | 3 failed calls, or only failures; trouble `app` or `offline` now |
+| **Stream** | always | mid-song pauses to load ≥ 1 s and song-end gaps (player.ts); the fetch wrap's piece speeds | 2 pauses, or 10 s of pause |
+| **AirPlay** | a speaker this hour | each `airplay_status` poll (2 s while connected): the crate's `Stats`, now in `Connected` | resent ≥ 2 % of packets (OK: 0.5 %, a gap from the PC, or a p95 ≥ 150 ms) |
+
+A minute with nothing to judge (no ping while paused, no Apple call) is an empty cell, drawn in
+the EQ grid's line. Each threshold's reason is beside it in `src/net-rules.ts`.
+
+- **The title** is the worst cell of any shown row in the last 5 minutes; offline now is Bad;
+  nothing to judge is Good. The button's glyph takes the Bad color while the title says Bad
+  (F3, a placeholder for his drawing).
+- **The row's line** (right of its name): the numbers now: "24 ms · 0 % lost", "Signal 72 % ·
+  866 Mbps link", "12 calls this hour, 1 failed", "256 kbps · 0 pauses this hour · songs load at
+  9.4 Mbps", "HomePod · 12 ms · 0.1 % resent". A row Bad in the last 5 minutes shows one line
+  under its bar in the user's terms ("Songs may pause to load.").
+- **A cell's hover hint:** its time and its numbers ("2:14 PM · 6 of 6 pings back · 24 ms").
+- **The Test row:** "Pings our server, then downloads 2 MB" before the first test; "Testing…";
+  then "38 Mbps · 42 ms · 2 min ago" (a lost echo adds "· 1 lost"). The Bad tone (under 0.5 Mbps)
+  takes the Bad color. The Test does not change the title.
+
+### 8.2 The parts
+
+- **`src-tauri/src/net.rs`** — `net_ping(n)` (`IcmpSendEcho`, 1 s per echo, at most 5, IPv4 of
+  the worker's host; no admin right), `net_wifi()` (`WlanOpenHandle` → the connected adapter's
+  `wlanSignalQuality` and receive rate; `None` on Ethernet or with the WLAN service off),
+  `net_test()` (3 echoes, then `GET support.deets.solutions/speed`, each piece counted and
+  dropped; one `net: test …` log line). Each is `spawn_blocking` or async: no new thread.
+  Two `windows` features (`Win32_NetworkManagement_IpHelper`, `_WiFi`), no new crate.
+- **`apple_calls.rs`** — `note_minute` beside `count`: a 60-entry ring of (minute, fine, failed);
+  failed = 429, 5xx or no reply. `apple_calls_minutes` reads it.
+- **`airplay.rs`** — `Connected` carries `rttMs`, `rttP95Ms`, `packets`, `resends`, `starved`.
+- **`src/net-feed.ts`** — the feed, with no imports: `stall` (player.ts), `drop` (room.ts, the
+  Friends home socket in friends.ts), `airplay` (airplay.ts, each poll), `piece` (the wrap).
+- **`src/net-rules.ts`** — pure: the verdicts, the title, the Test's tone, the wrap's host test
+  and piece speed (tests/net-rules.test.ts, 12 tests).
+- **`src/fetch-wrap.ts`** — §5.3 as designed: one host test per `fetch`; on Apple's song server,
+  `Content-Length` from the same Response; the time from a `PerformanceObserver` on resource
+  entries, matched to the call by URL and start time (within 50 ms). Under MusicKit and under the
+  license watch (license-watch.ts wraps on top at `initPlayer`), so main.ts imports it third.
+  Faults: 3 and it passes every call straight through (it cannot unwrap: the license watch sits
+  on top). `deets.dev.fetchWrap = "off"` + a reload never installs it. Dev: `__fetchWrap.stats()`;
+  one `[perf] fetchwrap {…}` line after each `[perf] click→sound` line (pieces, timed, bytes,
+  ms, unseen, faults, costPerCallMs). `unseen` counts song downloads Resource Timing saw that
+  no wrapped `fetch` made: if MusicKit reads the song by XHR, it says so on the first play.
+- **`src/net.ts`** + **`styles/net.css`** — the button and the panel on `makeDropdown`, `.pop` and
+  `enterRows`; `keepRightInWindow`. The panel rebuilds only when a row comes or goes, and
+  otherwise patches each cell, so a hover hint stays put. Timers: the ping (30 s) and Wi-Fi (60 s)
+  only while music plays; a 5 s re-read only while the panel is open. Diag: `net:watch`,
+  `net:verdict`, `net:open`, `net:test`, `net:offline` / `net:online`, `net:ping` (once, on a fault).
+- **Compass:** "Network" in Places (Max only), aliases speed test, internet, wifi, ping,
+  connection, packet loss.
+- **The worker** (DeetsSupport `net-worked`): `GET /speed` → 2 MB, a 64 KB random block 32
+  times, `application/octet-stream`, `no-store`, `SPEED_RL` 6 a minute per IP. Not deployed.
+- **Demo:** handlers for the four commands (a steady made-up link).
+
+### 8.3 What Claude decided inside his calls (for his OK)
+
+1. **The Test runs in Rust**, not the webview: the worker's CORS list does not hold the app's
+   origin, and Rust counts and drops the bytes with nothing on disk (F1's rule holds).
+2. **The Test pings first** (3 echoes), so its line has a round trip; the download alone would
+   time a fresh TLS connection.
+3. **The Wi-Fi read** runs every 60 s while playing (and on each open), not every 30 s.
+4. **The colors** are the traffic lights' three (`--go`, `--pause`, `--stop`), with Good drawn
+   quieter than OK so a one-color theme (Moonlight, Black-Red, the yellow one) still tells
+   them apart. The title's word stays in the title ink; only Bad takes the Bad color.
+5. **No settings key, no New badge, no rule fact** in v1. The `network` rule fact (§4) and an
+   agent route stay for later.
+6. **The thresholds** in §8.1 (each with its reason in net-rules.ts).
+7. **The button's place:** right of the updates button.
+
+### 8.4 Known limits
+
+- Cloudflare's edge may drop an echo under its own load; a lost echo there reads as loss on
+  the user's link. Watch the Internet row against the Stream row.
+- The bars start empty at each launch (memory only, F1's rule).
+- The ping and the Rust code were type-checked for Windows in a cloud session (the
+  `x86_64-pc-windows-gnu` target), never run. The demo could not start there either.
+
+## 9. Desk test (his, on the dev app)
+
+1. `npm run dev:app`, Max. The race car is right of the updates button. Hover: "Network: Good".
+2. Play a song. Open the panel: "Network: Good"; Internet, Apple Music, Stream (and Wi-Fi on
+   Wi-Fi). Within 30 s the Internet line reads "N ms · 0 % lost". The newest cell is green.
+3. Hover a cell: its time and numbers.
+4. Click **Test**: "Testing…", then "N Mbps · N ms · just now". The log has one `net: test` line.
+5. Pause. The ping stops (`net:watch {on:false}` in `diag`); the newest Internet cells go empty.
+6. Turn Wi-Fi off (or pull the cable): the title says Bad, the car turns the Bad color, the
+   Internet row's newest cell is Bad. Back on: the drop's minutes stay Bad, the title goes back
+   to Good after 5 minutes.
+7. AirPlay to a speaker: the AirPlay row and its two lines appear.
+8. The fetch wrap: after a play, `grep "\[perf\] fetchwrap" …deetsmusic.log | tail -1`:
+   `pieces` > 0 and `unseen` 0 means MusicKit reads songs with `fetch`; `faults` 0. Then run
+   `node docs/ops/checks/fetch-wrap.mjs` on `dev:built` (§6.2).
+9. The worker: once deployed, `curl -s -o /dev/null -w '%{size_download} %{http_code}\n'
+   https://support.deets.solutions/speed` → `2097152 200`. Until then, step 4 shows "The test
+   did not finish".

@@ -144,5 +144,9 @@ features = [
   "Management_Deployment",
   "Win32_Storage_Packaging_Appx",
   "Win32_Storage_EnhancedStorage",
+  # The Network panel (net.rs, docs/features/speedtest.md): IcmpSendEcho for the ping, the WLAN
+  # API for the Wi-Fi signal. Features of the crate the app already has; no new download.
+  "Win32_NetworkManagement_IpHelper",
+  "Win32_NetworkManagement_WiFi",
 ]
 

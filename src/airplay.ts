@@ -16,6 +16,7 @@ import { setVolumeSink, reflectExternalVolume, pausePlayback, isPlayingNow, play
 import { enterRows } from "./pop";
 import { setAirplayOutput, armTap, setSink } from "./sound";
 import { toast } from "./toast";
+import { netNote } from "./net-feed";
 import * as diag from "./diag";
 
 export interface Speaker {
@@ -35,6 +36,12 @@ interface Connected {
   tap: boolean;
   /** Tap mode, the player playing, no chunk for 10 s (§12 item 13). */
   tapStarved: boolean;
+  /** The link's health, the session's running counts (the Network panel, speedtest.md §8). */
+  rttMs: number;
+  rttP95Ms: number;
+  packets: number;
+  resends: number;
+  starved: number;
 }
 type Capture = "app" | "system";
 interface Status {
@@ -140,6 +147,8 @@ const refresh = async () => {
       if (wasConnected && !s.connected && s.error) note = s.error; // "Lost Living Room."
       if (!s.firewallSeeded && !note) note = null;
     }
+    const c = s.connected;
+    netNote({ kind: "airplay", stats: c ? { speaker: c.speaker.name, rttMs: c.rttMs, rttP95Ms: c.rttP95Ms, packets: c.packets, resends: c.resends, starved: c.starved } : null });
   } catch (e) {
     console.warn("[airplay] status", e);
   }

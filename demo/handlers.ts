@@ -635,6 +635,16 @@ const H: Record<string, Handler> = {
   airplay_status: () => ({ connected: null, connecting: null, error: null, lastSpeaker: null, speakers: [], firewallSeeded: true, capture: "app" }),
   airplay_scan: () => [],
 
+  // The Network panel (docs/features/speedtest.md): a steady link, made up. No echo or download
+  // leaves a web page.
+  net_ping: (a) => {
+    const n = Number(a?.n ?? 3);
+    return { sent: n, rtts: Array.from({ length: n }, (_, i) => 22 + ((i * 7) % 9)) };
+  },
+  net_wifi: () => ({ quality: 78, rxMbps: 866 }),
+  net_test: () => new Promise((r) => setTimeout(() => r({ bytes: 2097152, ms: 420, mbps: 39.9, ping: { sent: 3, rtts: [23, 25, 22] } }), 1200)),
+  apple_calls_minutes: () => ({ minutes: [], backoffS: null }),
+
   // Your own files (0.25.1): none on a web page. Without it, user-files.ts logs a TypeError on
   // every load (found by the shots console, 2026-09-28).
   user_files_list: () => ({ files: [], migrated: null }),
