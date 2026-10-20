@@ -568,6 +568,11 @@ Metal is values and hooks only, over the app's existing UI).
 - **F4, the hairline in Press and Cyber** (§4.1). Every built-in skin keeps 1 px solid, and
   Press and Cyber get one look each in the shots after Step 2 (recommended). Or only Metal
   ever uses the token.
+- **F7, the font** (his ask, 2026-10-20; review set for 2026-10-21). Today `--font-title` is
+  Bahnschrift (Windows' own DIN) over Segoe UI Variable, nothing bundled (skin.css, Metal). An
+  independent Fable design reviewer (`model: "fable"`, no build context) looks at Metal on the
+  dev app in each theme and proposes better title (and body) faces, each with its license and
+  bundle size. He picks; the font then goes in `fonts.css` like the other skins'.
 
 ## 8. Probes before a build
 

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.0
 desk_test: passed 2026-09-19
 sources: [src/card-grow.ts, src/add-square.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
-updated: 2026-10-14
+updated: 2026-10-20
 ---
 # DeetsMusic — growing a card
 
@@ -960,3 +960,24 @@ stays 0.4); step 5 (reduced motion) not run (DESK-TESTS.md §5).
    (dev:built holds DevTools shut; the eval script reaches the page over CDP). If the new order drops
    frames on your PC, that is the fork: keep 0.4, try 0.5, or go back to 1.
 5. Reduced motion (Windows › Accessibility › Animation effects off): grow and collapse snap.
+
+## 20. Stress test and independent review (his ask, 2026-10-20; set for 2026-10-21)
+
+> **Part:** idea · 2026-10-20
+
+Not started. His ask: a full stress test of the card grow motion and an independent Fable
+review, to capture every quirk. Nothing is changed before the findings are ranked and he sees
+them.
+
+- **Scope:** grow and collapse (§1–§13a), Fill in Max, the drill swap (§14), drill in place
+  (§15), `expandCard` (§17), grow rules (§18), the timing pass (§19, with its unrun step 5,
+  reduced motion). Every skin (Metal included), Midi and Max, each Max layout (MAX-CARDS.md).
+- **The stress test:** DESK-TESTS.md §6.6 on the dev app: the Sonnet break-it pass (§6.5), then
+  the cold, reverse, rapid and same-content cases scripted (a grow pressed during a collapse, a
+  drill during a grow, a surface or skin change mid-grow, a window resize mid-grow), the timing
+  gate (no gap over ~50 ms in `changes[].pops`), the motion monitor, frames read by time at full
+  size. The list goes in `docs/ops/checks/`.
+- **The Fable review:** a separate agent (`model: "fable"`) with no build context reads the
+  frame strips and the code and lists faults, ranked. A fault hunt, not a design score
+  (CLAUDE.md › How to verify).
+- **Out:** the findings, ranked, into HANDOFF › Open now; one fix at a time.

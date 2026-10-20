@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 # DeetsMusic — Work log
 
@@ -11,6 +11,12 @@ updated: 2026-10-19
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-20, late — two reviews set for 2026-10-21 (doc only)
+
+- His ask: a full stress test and an independent Fable review of the card grow motion
+  (CARD-GROW.md §20), and an independent Fable design review of Metal's font (metal.md §7, F7).
+  Both in HANDOFF › Open now. Nothing built.
 
 ## 2026-10-20 — `v-thirtyone`: the Metal skin, from idea to a real skin
 

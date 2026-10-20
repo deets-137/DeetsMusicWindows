@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 # DeetsMusic — Handoff
 
@@ -208,6 +208,18 @@ each step that touches those calls.
 - **Suggest Less and proactive skips** (SUGGEST-LESS.md): live since 0.29.0; schema **v20**.
   §12 is the as-built record. The DeetsSupport usage allow-list copy is deployed (2026-10-17,
   DeetsSupport `9f49f84` and `67b6dc0`, pushed).
+
+### Set for 2026-10-21 (his ask, 2026-10-20; doc only, not started)
+
+- **A full stress test and an independent Fable review of the card grow motion**, to find its
+  quirks. Grow, Fill in Max, collapse, the drill swap, `expandCard`, grow rules, in every skin
+  and surface. The method is DESK-TESTS.md §6.6 (the break-it pass, the cold / reverse / rapid /
+  same-content cases on the dev app, the timing gate, frames read by time); the Fable reviewer
+  (`model: "fable"`) works apart from the build context and hunts faults, not a design score.
+  Detail and the open step 5: [CARD-GROW.md](cards/CARD-GROW.md) §20.
+- **An independent Fable design review of the Metal skin's font.** Today `--font-title` is
+  Bahnschrift over Segoe UI Variable (nothing bundled). The reviewer proposes better faces;
+  he picks (a fork). [metal.md](features/metal.md) §7, F7.
 
 ### Built, waiting on a release or a desk test
 
