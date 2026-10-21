@@ -12,7 +12,10 @@ updated: 2026-09-17
 > `src-tauri/src/bridge.rs` (loopback server + the now-playing hub), `src/np-bus.ts`
 > (main-window half of the hub). Last checked against the app **2026-09-17** (v0.9.5):
 > routes unchanged, skin list current (Cyber), token CSS re-synced, `manifest.version`
-> now tracks the app.
+> now tracks the app. **2026-10-21:** Happy added to the options page's skin list; the token CSS
+> and fonts (Baloo 2, Quicksand, Pixelify Sans) re-synced from the committed `src/styles/`. The
+> extension draws no scene: Happy there is its type, shapes and cards. The hand-made Metal line
+> in the old copy went with the sync: the app's base `skin.css` now sets the same values.
 
 ## 1. What it is
 

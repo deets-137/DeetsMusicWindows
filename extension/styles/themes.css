@@ -34,15 +34,6 @@
    theme-accent-sourced. Declared once — each var() resolves against
    the ACTIVE theme's roles. No album hex ever lives in CSS. */
 :root {
-  /* Metal (docs/features/metal.md): light and shade on the metal, the same in every theme
-     (light is white, shade is black), stronger on the light aluminums. Only Metal reads them. */
-  --metal-edge:     light-dark(rgba(0, 0, 0, 0.22), rgba(255, 255, 255, 0.12));
-  --metal-edge-hi:  light-dark(rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.16));
-  --metal-edge-lo:  light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.6));
-  --metal-contact:  rgba(0, 0, 0, 0.3);   /* a card's crisp contact shadow */
-  --metal-cast:     rgba(0, 0, 0, 0.16);  /* its short cast shadow */
-  --metal-sheen-hi: rgba(255, 255, 255, 0.38); /* the polished face on an accent fill */
-  --metal-sheen-lo: rgba(0, 0, 0, 0.24);
   --album-bg: var(--surface);
   --album-c1: var(--go);
   --album-c2: var(--stop);
@@ -60,7 +51,7 @@
 
   /* Picked rows (multi-select, NEXT-VERSION §19): a picked row fills with the theme's own
      --title ink at the strength the SKIN sets, so a block of picks reads as one shape in
-     every theme. Derived once here — no theme block names a picked color of its own. */
+     every theme. Derived once here; Black-Red alone softens it (its block says why). */
   --picked: color-mix(in srgb, var(--title) var(--picked-strength), transparent);
 
   /* Apple Music icon fill: Apple's black file on light themes, the white file on dark.
@@ -69,10 +60,28 @@
   /* Discord's symbol (the quick panel): its brand kit has the same black and white files,
      and the same rule, so it follows the Apple Music mark. */
   --discord-mark: var(--apple-music-mark);
-  /* The quick panel's New badge (QUICK-SETTINGS.md §8): black on a light theme, white on a
-     dark one, the N the other — the same black and white pair as the marks beside it. */
-  --new-badge:     var(--apple-music-mark);
-  --new-badge-ink: light-dark(var(--paint-apple-music-white), var(--paint-apple-music-black));
+  /* The mark dots (his design, 2026-09-26). Yellow: the New badge (QUICK-SETTINGS.md §8) —
+     warm amber on a light theme, where plain yellow fades into the menu; hi-vis yellow on a
+     dark one. Green: a rule set the value; scarlet: your pick holds (the rule chip, RULES.md
+     §9). The deep paint on a light theme, the brighter one of the pair on a dark theme. */
+  --new-badge:      light-dark(var(--paint-amber-glow), var(--paint-hazard));
+  --rule-chip-rule: light-dark(var(--paint-forest), var(--paint-fern));
+  --rule-chip-hand: light-dark(var(--paint-blood), var(--paint-siren));
+  /* The updates button while an update is offered (docs/features/UpdatesButton.md): the New
+     badge's yellow, the app's one color for "something new for you". */
+  --updates-lit:    var(--new-badge);
+  /* The updates panel's status when a check failed: the error toast's edge. */
+  --updates-bad:    var(--stop);
+  /* The Network panel (docs/features/speedtest.md): Good · OK · Bad are the traffic lights'
+     three, so a cell reads like the window's own lights. Good sits quieter than OK, OK than Bad
+     (the skin's strengths), so a one-color theme still tells them apart. An empty minute is
+     the EQ grid's line. */
+  --net-good:       color-mix(in srgb, var(--go) var(--net-good-strength), transparent);
+  --net-ok:         color-mix(in srgb, var(--pause) var(--net-ok-strength), transparent);
+  --net-bad:        var(--stop);
+  --net-none:       color-mix(in srgb, var(--subtext) var(--sound-grid-strength), transparent);
+  /* The line between a split pill's halves (settings.css): the subtext ink at the skin's strength. */
+  --split-rule:     color-mix(in srgb, var(--subtext) var(--split-rule-strength), transparent);
 
   /* The Sound panel's plot (SOUND.md §2.3): the curve in the title ink, its fill and the
      song's shape at the strengths the SKIN sets, the song in the second plate so it never
@@ -95,10 +104,51 @@
   --rail-ink:      var(--subtext);
   --rail-ink-lit:  var(--title);
 
+  /* The full player's band (features/fullscreen-player.md §7, item 6): a fixed DARK band over the
+     bottom of the cover that holds the rows. Dark in every theme: a light theme's own dark
+     ink (--title), a dark theme's canvas, at the strength the skin sets. The ink on it is
+     the light one of the same pair, so the rows read on the band in every theme. Derived
+     once here — no theme block names a band color of its own. */
+  --np-band:     color-mix(in srgb, light-dark(var(--title), var(--canvas)) var(--np-band-strength), transparent);
+  --np-band-ink: light-dark(var(--canvas), var(--title));
+  --np-band-sub: color-mix(in srgb, var(--np-band-ink) var(--np-band-sub-strength), transparent);
+
+  /* The Last.fm counts badge (features/LISTENERS.md §4): a chip that sits on the cover (Max)
+     or on the band (the full player). Its fill and ink are the card's own pair, fixed HERE so
+     the band's remap of --title and --text on the rows (styles.css) cannot reach them: the ink
+     always contrasts with the chip's fill, in every theme (his ask, 2026-10-12). */
+  --np-listen-fill: var(--panel);
+  --np-listen-ink:  var(--title);
+  --np-listen-sub:  var(--subtext);
+
   /* The glint: light catching a glass edge (the Glass lens playhead, styles.css §Fancy
      scrubbers). Light is white in every theme, so this is the one role no theme remaps;
      a little dimmer on dark themes so it does not blaze. */
   --glint: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65));
+
+  /* Metal (docs/features/metal.md): light and shade on the metal, the same in every theme
+     (light is white, shade is black), stronger on the light aluminums. Only Metal reads them. */
+  --metal-edge:     light-dark(rgba(0, 0, 0, 0.22), rgba(255, 255, 255, 0.12));
+  --metal-edge-hi:  light-dark(rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.16));
+  --metal-edge-lo:  light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.6));
+  --metal-contact:  rgba(0, 0, 0, 0.3);   /* a card's crisp contact shadow */
+  --metal-cast:     rgba(0, 0, 0, 0.16);  /* its short cast shadow */
+  --metal-sheen-hi: rgba(255, 255, 255, 0.38); /* the polished face on an accent fill */
+  --metal-sheen-lo: rgba(0, 0, 0, 0.24);
+
+  /* The sky over a scene skin (Happy; scene.ts picks the part of the day and blends to the
+     next). Top, then the horizon. A theme may tint its own; none does yet. */
+  --sky-day:       var(--paint-sky-day);
+  --sky-day-low:   var(--paint-sky-day-low);
+  --sky-dawn:      var(--paint-sky-dawn);
+  --sky-dawn-low:  var(--paint-sky-dawn-low);
+  --sky-dusk:      var(--paint-sky-dusk);
+  --sky-dusk-low:  var(--paint-sky-dusk-low);
+  --sky-night:     var(--paint-sky-night);
+  --sky-night-low: var(--paint-sky-night-low);
+  /* A sprite's speech bubble is drawn paper with an ink outline (the skin's art), the same in
+     every theme, so its words take that ink, not the theme's text. */
+  --bubble-ink:    var(--paint-bubble-ink);
 }
 
 [data-theme="lilac"] {
@@ -257,6 +307,9 @@
   --pause:   var(--paint-blood);
   --traffic-glyph: rgba(0, 0, 0, 0.70);  /* crisper stroke on hot red fills */
   --title:   var(--paint-siren);
+  /* A softer picked fill (his call, 2026-10-14): the fill is the siren itself, so at the skin's
+     full strength it lifts the ground under the siren text below 4.5:1. 0.64 × 14 % ≈ 9 %. */
+  --picked:  color-mix(in srgb, var(--title) calc(var(--picked-strength) * 0.64), transparent);
   --text:    var(--paint-ash-white);
   --subtext: var(--paint-ember);
 
@@ -276,5 +329,30 @@
 }
 
 /* Metal over Black & Yellow (his example, metal.md §1): dark steel with gold, not hi-vis
-   yellow. The one place a skin changes a theme's title: the theme names the paint. */
-[data-skin="metal"][data-theme="black-yellow"] { --title: var(--paint-gold-leaf); }
+   yellow: the theme names the paint. */
+[data-hook-material="metal"][data-theme="black-yellow"] { --title: var(--paint-gold-leaf); }
+/* Metal's text roles where a theme's own fall short on the brushed plates and the lighter controls
+   as they render (the grain lifts them; the readability check, 2026-10-20). Each theme keeps its
+   own hue; only the lightness moves. */
+[data-hook-material="metal"][data-theme="moonlight"] { --text: var(--paint-moon-steel-text); --subtext: var(--paint-moon-steel-subtext); }
+[data-hook-material="metal"][data-theme="black-red"] { --title: var(--paint-anodized-red); --subtext: var(--paint-anodized-red-subtext); }
+[data-hook-material="metal"][data-theme="lilac"] { --subtext: var(--paint-lilac-metal-subtext); }
+[data-hook-material="metal"][data-theme="green"] { --text: var(--paint-green-metal-text); --subtext: var(--paint-green-metal-subtext); }
+/* Metal over Sepia: brushed brass (his call, 2026-10-20; metal.md §6.7). Sepia's own light
+   parchment reads as wood or paper under the brush, and brass needs a darker plate; its dark ink
+   would fail on one, so under Metal only Sepia turns dark: the scheme (every light-dark() value
+   Metal reads takes its dark side), the plate and floor, and the text roles. Sepia stays as it is
+   in every other skin. No new theme: one block, as Black & Yellow's gold above. */
+[data-hook-material="metal"][data-theme="sepia"] {
+  color-scheme: dark;
+  --metal:       var(--paint-brass);
+  --metal-floor: var(--paint-brass-floor);
+  --title:   var(--paint-brass-gold);
+  --text:    var(--paint-brass-cream);
+  --subtext: var(--paint-brass-sand);
+  --border:        rgba(243, 231, 201, 0.14);   /* cream @ low alpha */
+  --panel-border:  rgba(243, 231, 201, 0.28);
+  --scrollbar:       rgba(233, 196, 106, 0.26);  /* brass gold @ low alpha */
+  --scrollbar-hover: rgba(233, 196, 106, 0.46);
+  --traffic-glyph: rgba(0, 0, 0, 0.6);
+}

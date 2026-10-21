@@ -331,7 +331,8 @@ not load while a game held the CPU, and the dev app was not started.
 **Next session:**
 1. Start the dev app, switch to Happy, read the `scene:*` / `pet:*` diag lines, fix what breaks.
 2. Run `public-layer.json` (and the six skins by eye) with the CPU free.
-3. The extension's options page and style copies; DeetsSolutions' skin list (another repo).
+3. DeetsSolutions' skin list (another repo). (The extension's options page and style copies:
+   done 2026-10-21, EXTENSION.md.)
 4. The full desk test with the break-it pass (DESK-TESTS.md §6.6), then hand over.
 
 **For him to look at first** (decided inside his calls, all tunable tokens): the edge clouds
