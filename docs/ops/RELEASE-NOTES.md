@@ -41,6 +41,34 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.31.0 — 2026-10-20
+
+**Metal, a sixth skin.** Finely brushed steel over every theme, with sharp corners, a
+thumbwheel scrubber and Bahnschrift titles. Sepia becomes brushed brass. On a song change the
+cover turns away on a drum while the next one comes forward, and in Max the previous and next
+covers wait at its sides. Settings › Skin settings › *Material*, *Grain*, *Cover change* and
+*Peek*.
+
+**Rewind in the Max title bar.** The hourglass button opens your listening time today, your
+Top Listens (songs, albums or artists) and your Songs of the Day.
+
+**Network panel in the Max title bar.** The car button shows "Network: Good", OK or Bad, one
+row per link (Internet, AirPlay, Apple Music, Stream) with a bar for the last hour, and a
+speed test.
+
+**Graphics come back by themselves.** When Windows draws the app in software after a driver
+problem, the app restarts quietly while its window is hidden, as soon as the graphics card
+works again, and keeps the music playing. A new *Reduce motion* row in Settings › Motion turns
+every heavy effect off at once.
+
+**Smoother card grow and full player.** A growing card moves as one whole card, and Escape
+reverses an open. In Max the full player grows out of the card's place and shrinks back into
+it. In two-card Max, more card edges grow a card.
+
+**Tidier Sound, Sleep and Web panels.** *Remember each output* is its own row under the
+Equalizer, the Sleep panel's *End of Up Next* is now *End of Queue*, and the Web panel's i
+explains how Web picks songs.
+
 ## 0.30.0 — 2026-10-18
 
 **Apple's album notes.** An album's box shows Apple's editorial note in About. Click it for
