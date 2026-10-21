@@ -752,7 +752,7 @@ Press) and with the monitor in every skin; the new baseline is §2a of the check
 
 ## 14. The stacked open and close, made smooth (design pass, 2026-10-18)
 
-> **Part:** built · 2026-10-18 · desk test open (§14.5). F1 decided by him: per skin (§14.7).
+> **Part:** built · 2026-10-18 · desk test passed 2026-10-20 (§14.5, his word). F1 decided by him: per skin (§14.7).
 > §14.6–§14.8 are the as-built record; where they disagree with §14.3–§14.4, they are the code.
 
 His report (2026-10-18, Max on his portrait screen, 1080 × 1872, Cyber, 244 Hz): the open to

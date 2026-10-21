@@ -424,8 +424,8 @@ low.
 
 ### 10.10 As built (2026-10-20)
 
-> **Part:** built · 2026-10-20 · uncommitted; desk test run by Claude (§10.11); his look and the
-> real driver test (P4) open
+> **Part:** built · 2026-10-20 · desk test run by Claude (§10.11); his hand test passed
+> 2026-10-20 (his word). The real driver test (P4) waits on a real driver failure
 
 **Where it lives.**
 

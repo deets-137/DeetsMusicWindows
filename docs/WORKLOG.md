@@ -12,6 +12,20 @@ updated: 2026-10-20
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-20, late — four desk tests closed, Metal's last forks, the merge, 0.31.0
+
+- `npm run storage -- --prune`: 51 incremental folders, 12.44 GB freed (the build folders were
+  at 42.89 GB). It refused once while the dev runner's `cargo run` was open.
+- His word: "I'm pretty sure I hand tested everything including metal", then "yes, mark all four
+  passed". Passed 2026-10-20: Metal (DESK-TESTS.md A11), the full player §14.5, the card grow
+  shell (CARD-GROW.md §21), the graphics card back by itself (GRAPHICS-FALLBACK.md §10). The log
+  had no `ui:act` lines to read (it rotated at 18:18); DESK-TESTS.md §5 has the row.
+- Metal's last forks closed (metal.md §7): F6 both materials as the Material row, Steel the
+  default, with Zoetrope and Peek on (already the store's defaults); F4 every skin keeps 1 px
+  solid. Metal was already in the release picker, the look schedule and the extension's options:
+  the dev draft went when the skin was built, so nothing gated it.
+- His call: commit, push, fast-forward `v-thirtyone` into `main`, and mint 0.31.0.
+
 ## 2026-10-20, night — the card grow stress test, the Fable review, and the shell
 
 - His ask: a review of the card grow visuals — a Sonnet agent for workflows that break it, a Fable

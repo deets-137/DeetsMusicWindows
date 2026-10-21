@@ -120,7 +120,7 @@ for word, with RELEASE.md's section numbers.
   back to WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers
   a restart; Settings › Motion › *If graphics fail*; the `graphics` fact (`src/gpu.ts`); the
   WebView2 `ProcessFailed` watch (`src-tauri/src/gpu.rs`). §9 is the as-built record. §10
-  BUILT 2026-10-20 (uncommitted), desk test and break-it pass run by Claude (§10.11): the app
+  BUILT 2026-10-20, desk test and break-it pass run by Claude (§10.11), his hand test passed: the app
   gets the card back by a quiet restart while its window is hidden (`gpu-rules.ts`), and the
   *Reduce motion* row is the catch-all for every heavy feature. Every animation asks
   `motionReduced()` (`src/motion.ts`), every sheet keys on `[data-motion="reduced"]`; never a
@@ -145,7 +145,7 @@ for word, with RELEASE.md's section numbers.
   removed): Now Playing grows so the cover is as large as the window allows, Midi and Max
   only. §6–§7 the decisions, §9 the motion, §10 the edge zones, §13 the as-built record.
   Mini's player view and a turning Press copy in the flight are open. §14 BUILT 2026-10-18,
-  desk test open: the stacked open and close per skin (`--player-stack-move`: fade, or slide in
+  desk test passed 2026-10-20: the stacked open and close per skin (`--player-stack-move`: fade, or slide in
   Press and Cyber), held cards (`.fp-pin`), and the regular Max Queue's rows riding its edge.
 - `BACKUP.md` — DESIGNED, not built (2026-10-11): one backup file (no secrets, no caches),
   *Back up now* plus a weekly copy to a folder, restore = replace all on a fresh install (his
@@ -218,8 +218,8 @@ for word, with RELEASE.md's section numbers.
   runs every 30 s only while music plays. The header-only fetch wrap (`src/fetch-wrap.ts`, §5.3)
   gives the song pieces' speed; its A/B is `docs/ops/checks/fetch-wrap.mjs` (§6). His calls §7;
   §8 the as-built record. The worker route is deployed (2026-10-19).
-- `metal.md` — BUILT 2026-10-20 on `v-thirtyone`; the agent's stress test done and an independent
-  design review at 9/10 (§6.7), his look open (DESK-TESTS.md A11): the sixth skin, Metal. Finely brushed steel or acrylic over every theme (each theme
+- `metal.md` — BUILT 2026-10-20 on `v-thirtyone`, desk test passed 2026-10-20 (his word, DESK-TESTS.md
+  A11); the agent's stress test and an independent design review at 9/10 (§6.7): the sixth skin, Metal. Finely brushed steel or acrylic over every theme (each theme
   names `--metal` / `--metal-floor`; gold titles on Black & Yellow), sharp corners, the thumbwheel
   scrubber, the zoetrope cover change with the peek (`--cover-swap`, `--zoetrope-*`, vinyl.ts;
   `src/metal.ts` draws the textures, the side covers and the word fade). Settings › Skin settings:

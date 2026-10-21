@@ -115,9 +115,9 @@ extension's icons are LANCZOS resizes of the same file.
 The short list of what is not finished, as of 2026-10-19 (pruned for 0.30.0: everything that
 shipped or closed went out; the WORKLOG has each day). Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md. `seventheenth` and
-`v-thirty` are merged into `main`; `ideas-nineteen` and `net-worked` are not (both are merged on
-`v-thirtyone`, also not merged). Everything up to the 0.30.0 release commit (`b4dffde`) is on
-live; the work committed after it waits on the next release.
+`v-thirty` are merged into `main`; so is `v-thirtyone` (fast-forwarded 2026-10-20, his call),
+which carries `ideas-nineteen` and `net-worked`. Everything up to the 0.30.0 release commit
+(`b4dffde`) is on live; the work committed after it waits on the next release (0.31.0).
 
 ### Open on live: text to fix, watches, data to read
 
@@ -224,7 +224,7 @@ each step that touches those calls.
   Midi's short measure, the Midi stale fill, the title ahead of the edge, and his "flash" report:
   the rows wave in at 0.4 of the open and of the collapse at the full stagger, as live. Fable on the final build: Max 8/10 (live code 5), Midi 7; Claude's check against
   live: no regression (48 clips, every probe; grow-settle.py clean; worst gaps ≤ 29 ms without
-  the recorder). Desk test: his hand test, §21.4 steps 1–10. Not moved yet: the full player and
+  the recorder). Desk test passed 2026-10-20 (his word, §21.4 steps 1–10). Not moved yet: the full player and
   Presentation mode (still the clip and pad); the curve and each skin's own grow motion (his
   calls); a covered card's hairline coming back late (same as live); the Queue title a few px
   above the edge for ~3 frames (§21.6).
@@ -235,7 +235,7 @@ each step that touches those calls.
   hidden or minimized (between songs if music plays) and comes back the same way, playing on;
   on screen a toast asks. A *Reduce motion* row (first in Settings › Motion, locked On under
   Windows' reduced motion) is the catch-all the graphics rule now holds. Desk test and the
-  break-it pass run by Claude (§10.11). Open: his look; the song-start restart with music and
+  break-it pass run by Claude (§10.11); his hand test passed 2026-10-20 (his word). Open: the song-start restart with music and
   its gap (P3); a real driver change (P4, his: the Parsec adapter off and on); Glass's blur
   cost (P2).
 
@@ -244,15 +244,17 @@ each step that touches those calls.
   the thumbwheel scrubber, the zoetrope cover change with the peek, four Settings rows, font B
   (Bahnschrift titles and SemiCondensed labels, §7 F7, his pick). The agent's stress test is done:
   the break-it pass, the scripted motion lists (`docs/ops/checks/metal-*.json`), an independent
-  design review at 9/10, the readability check at 0 failures in all six Metal looks. **Open: his
-  look** (DESK-TESTS.md row A11), Midi / Mini / the full player by hand; the texture under software
-  drawing stays on (only the 3D turn is in the graphics fallback). Lessons for the next stress
-  test: DESK-TESTS.md §6.7. DeetsSolutions' skin list is his call. Not released.
+  design review at 9/10, the readability check at 0 failures in all six Metal looks. His desk
+  test passed 2026-10-20 (his word, DESK-TESTS.md row A11). Defaults (his call, 2026-10-20):
+  Steel, Cover change on Zoetrope, Peek on. The texture under software drawing stays on (only
+  the 3D turn is in the graphics fallback). Lessons for the next stress test: DESK-TESTS.md §6.7.
+  **Open:** DeetsSolutions' skin list and the sign-in page's skin assets (`npm run signin:assets`
+  and a DeetsSupport deploy, RELEASE.md §0b): his call. Not released.
 - **The full player's frames** (2026-10-18 and 2026-10-19, on `main`; fullscreen-player.md
   §14, §14.9). The stacked open and close per skin, the frame recorder (`frame-why.mjs`), and
   the player's state moved from `<html>` to the bento (the close's last frame restyles 256–536
   elements, not 1,500–1,868). **Open, for the next sitting:**
-  1. His desk test (§14.5), which now also covers the state move: the Compass over the full
+  1. His desk test (§14.5): passed 2026-10-20 (his word). It covered the state move: the Compass over the full
      player, the toasts under the title bar, the flip and the History column, stacked and not.
      Nothing on screen should differ from 0.30.0.
   2. Measure again on a quiet PC: the 2026-10-19 A/B ran with the CPU at 90 % (a game was

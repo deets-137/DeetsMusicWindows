@@ -1000,7 +1000,7 @@ to capture every quirk.
 
 ## 21. The shell: the fix for §20 (his calls 2026-10-20; BUILT the same night)
 
-> **Part:** built · 2026-10-20
+> **Part:** built · 2026-10-20 · desk test passed 2026-10-20 (his word, DESK-TESTS.md §5)
 
 ### 21.1 His calls
 

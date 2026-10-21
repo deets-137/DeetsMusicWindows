@@ -1,14 +1,14 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-20
 sources: [src/styles/skin.css, src/styles/themes.css, src/styles.css, src/look-ids.ts, src/metal.ts, src/skin-settings.ts, src/vinyl.ts, src/settings-card.ts]
 updated: 2026-10-20
 ---
 # Metal — a brushed-metal skin, and the token cleanup it needs
 
-> **An idea, opened 2026-10-19** in a talk with the owner ("can we chat theoretically about a
-> mod system"). Nothing is decided and nothing is built. Every fork in §7 is his. Do not tell a
-> user the app does this.
+> **Built 2026-10-20, desk test passed the same night (his word).** Opened 2026-10-19 as an idea
+> in a talk with the owner ("can we chat theoretically about a mod system"). Every fork in §7 is
+> closed. §6.4 and §6.7 are the as-built record.
 
 Metal is a sixth skin. It is also the test case for skins a user downloads
 ([mods.md](../ideas/mods.md)): if Metal can be made from token values alone, most skins can. This doc
@@ -487,7 +487,7 @@ is deleted.
 - **The check:** the same before / after sets. At the defaults nothing changes.
 
 ### 6.4 Step 3: the Metal skin
-> **Part:** built · 2026-10-20 · desk test open (2026-10-21)
+> **Part:** built · 2026-10-20 · desk test passed 2026-10-20 (his word, DESK-TESTS.md §5)
 
 **As built (2026-10-20), his calls: the cleanup first; four Settings rows.**
 - **Step 1 (primitives):** the inventory showed the skins vary each shape on purpose (Glass
@@ -560,7 +560,7 @@ slots. They are in [mods.md](../ideas/mods.md), and they build on Step 1's primi
 
 ### 6.7 The stress test and the design review loop (2026-10-20, his ask)
 
-> **Part:** built · 2026-10-20 · desk test: his look (DESK-TESTS.md A11)
+> **Part:** built · 2026-10-20 · desk test passed 2026-10-20: his look (his word, DESK-TESTS.md A11)
 
 His ask: stress test Metal, have an independent Fable reviewer score the Metal implementation
 only (pictures, no code), and work until it gives 9/10. Run on his dev app (Max, Black & Yellow,
@@ -695,11 +695,10 @@ above.
 Closed 2026-10-19 (§1): Metal over every theme; the cleanup first; no new pieces (F1 and F5:
 Metal is values and hooks only, over the app's existing UI).
 
-- **F6, the material.** Brushed stainless steel or textured acrylic paint. Both run on the dev
-  app (§6.1); he compares them there.
-- **F4, the hairline in Press and Cyber** (§4.1). Every built-in skin keeps 1 px solid, and
-  Press and Cyber get one look each in the shots after Step 2 (recommended). Or only Metal
-  ever uses the token.
+- **F6, the material.** **Closed 2026-10-20 (his call): both, as the Material row; Steel is the
+  default**, with Cover change on Zoetrope and Peek on (`settings-store.ts`).
+- **F4, the hairline in Press and Cyber** (§4.1). **Closed 2026-10-20:** every built-in skin
+  keeps 1 px solid; no skin uses the hairline hooks yet.
 - **F7, the font** (his ask, 2026-10-20). **Closed 2026-10-20: B (below).** Today `--font-title` is
   Bahnschrift (Windows' own DIN) over Segoe UI Variable, nothing bundled (skin.css, Metal). An
   independent Fable design reviewer (`model: "fable"`, no build context) looks at Metal on the
