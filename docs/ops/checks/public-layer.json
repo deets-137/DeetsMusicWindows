@@ -1,0 +1,224 @@
+{
+  "about": "The public layer (mods.md §10.1): each skin sets its hooks on <html>, and the rules that used to name the skin apply through the hook. One Max picture per skin with the Fancy scrubber on; the probe reads the hooks and one style only the hooked rule sets.",
+  "desk_test": "docs/features/happy.md §1.9 step 1",
+  "made": "2026-10-21",
+  "pass": "Six shots, no EXPECT FAIL; each picture shows that skin's own scrubber and canvas.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/public-layer.json",
+  "shots": [
+    {
+      "id": "public-layer-press",
+      "covers": "docs/ideas/mods.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "settings": {
+        "fancyScrubber": true
+      },
+      "steps": [
+        {
+          "wait": 600
+        },
+        {
+          "probe": "(() => { const r = document.documentElement, h = document.querySelector('.scrub__handle'), cs = h && getComputedStyle(h), tb = document.querySelector('.titlebar'); return JSON.stringify({ skin: r.dataset.skin, scrub: r.dataset.hookScrub || '', material: r.dataset.hookMaterial || '', sea: r.dataset.hookSea || '', record: r.dataset.hookRecord || '', wallpaper: r.dataset.hookWallpaper || '', handleW: cs ? cs.width : null, handleMask: cs ? (cs.maskImage === 'none' ? 'none' : 'image') : null, titlebarSeam: tb ? getComputedStyle(tb).boxShadow !== 'none' : null }); })()",
+          "name": "press hooks",
+          "expect": {
+            "skin": "press",
+            "scrub": "nib",
+            "material": "",
+            "sea": "",
+            "record": "on",
+            "wallpaper": "",
+            "handleW": "14px",
+            "handleMask": "none",
+            "titlebarSeam": false
+          }
+        }
+      ],
+      "frame": "app",
+      "looks": [
+        {
+          "theme": "moonlight",
+          "skin": "press"
+        }
+      ]
+    },
+    {
+      "id": "public-layer-ocean",
+      "covers": "docs/ideas/mods.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "settings": {
+        "fancyScrubber": true
+      },
+      "steps": [
+        {
+          "wait": 600
+        },
+        {
+          "probe": "(() => { const r = document.documentElement, h = document.querySelector('.scrub__handle'), cs = h && getComputedStyle(h), tb = document.querySelector('.titlebar'); return JSON.stringify({ skin: r.dataset.skin, scrub: r.dataset.hookScrub || '', material: r.dataset.hookMaterial || '', sea: r.dataset.hookSea || '', record: r.dataset.hookRecord || '', wallpaper: r.dataset.hookWallpaper || '', handleW: cs ? cs.width : null, handleMask: cs ? (cs.maskImage === 'none' ? 'none' : 'image') : null, titlebarSeam: tb ? getComputedStyle(tb).boxShadow !== 'none' : null }); })()",
+          "name": "ocean hooks",
+          "expect": {
+            "skin": "ocean",
+            "scrub": "float",
+            "material": "",
+            "sea": "on",
+            "record": "",
+            "wallpaper": "",
+            "handleW": "11px",
+            "handleMask": "none",
+            "titlebarSeam": false
+          }
+        }
+      ],
+      "frame": "app",
+      "looks": [
+        {
+          "theme": "moonlight",
+          "skin": "ocean"
+        }
+      ]
+    },
+    {
+      "id": "public-layer-glass",
+      "covers": "docs/ideas/mods.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "settings": {
+        "fancyScrubber": true
+      },
+      "steps": [
+        {
+          "wait": 600
+        },
+        {
+          "probe": "(() => { const r = document.documentElement, h = document.querySelector('.scrub__handle'), cs = h && getComputedStyle(h), tb = document.querySelector('.titlebar'); return JSON.stringify({ skin: r.dataset.skin, scrub: r.dataset.hookScrub || '', material: r.dataset.hookMaterial || '', sea: r.dataset.hookSea || '', record: r.dataset.hookRecord || '', wallpaper: r.dataset.hookWallpaper || '', handleW: cs ? cs.width : null, handleMask: cs ? (cs.maskImage === 'none' ? 'none' : 'image') : null, titlebarSeam: tb ? getComputedStyle(tb).boxShadow !== 'none' : null }); })()",
+          "name": "glass hooks",
+          "expect": {
+            "skin": "glass",
+            "scrub": "lens",
+            "material": "",
+            "sea": "",
+            "record": "",
+            "wallpaper": "on",
+            "handleW": "14px",
+            "titlebarSeam": false
+          }
+        }
+      ],
+      "frame": "app",
+      "looks": [
+        {
+          "theme": "moonlight",
+          "skin": "glass"
+        }
+      ]
+    },
+    {
+      "id": "public-layer-cyber",
+      "covers": "docs/ideas/mods.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "settings": {
+        "fancyScrubber": true
+      },
+      "steps": [
+        {
+          "wait": 600
+        },
+        {
+          "probe": "(() => { const r = document.documentElement, h = document.querySelector('.scrub__handle'), cs = h && getComputedStyle(h), tb = document.querySelector('.titlebar'); return JSON.stringify({ skin: r.dataset.skin, scrub: r.dataset.hookScrub || '', material: r.dataset.hookMaterial || '', sea: r.dataset.hookSea || '', record: r.dataset.hookRecord || '', wallpaper: r.dataset.hookWallpaper || '', handleW: cs ? cs.width : null, handleMask: cs ? (cs.maskImage === 'none' ? 'none' : 'image') : null, titlebarSeam: tb ? getComputedStyle(tb).boxShadow !== 'none' : null }); })()",
+          "name": "cyber hooks",
+          "expect": {
+            "skin": "cyber",
+            "scrub": "bolt",
+            "material": "",
+            "sea": "",
+            "record": "",
+            "wallpaper": "",
+            "handleMask": "image",
+            "titlebarSeam": false
+          }
+        }
+      ],
+      "frame": "app",
+      "looks": [
+        {
+          "theme": "moonlight",
+          "skin": "cyber"
+        }
+      ]
+    },
+    {
+      "id": "public-layer-metal",
+      "covers": "docs/ideas/mods.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "settings": {
+        "fancyScrubber": true
+      },
+      "steps": [
+        {
+          "wait": 600
+        },
+        {
+          "probe": "(() => { const r = document.documentElement, h = document.querySelector('.scrub__handle'), cs = h && getComputedStyle(h), tb = document.querySelector('.titlebar'); return JSON.stringify({ skin: r.dataset.skin, scrub: r.dataset.hookScrub || '', material: r.dataset.hookMaterial || '', sea: r.dataset.hookSea || '', record: r.dataset.hookRecord || '', wallpaper: r.dataset.hookWallpaper || '', handleW: cs ? cs.width : null, handleMask: cs ? (cs.maskImage === 'none' ? 'none' : 'image') : null, titlebarSeam: tb ? getComputedStyle(tb).boxShadow !== 'none' : null }); })()",
+          "name": "metal hooks",
+          "expect": {
+            "skin": "metal",
+            "scrub": "wheel",
+            "material": "metal",
+            "sea": "",
+            "record": "",
+            "wallpaper": "",
+            "titlebarSeam": true
+          }
+        }
+      ],
+      "frame": "app",
+      "looks": [
+        {
+          "theme": "moonlight",
+          "skin": "metal"
+        }
+      ]
+    },
+    {
+      "id": "public-layer-vanilla",
+      "covers": "docs/ideas/mods.md",
+      "kind": "picture",
+      "source": "demo",
+      "size": "max",
+      "settings": {
+        "fancyScrubber": true
+      },
+      "steps": [
+        {
+          "wait": 600
+        },
+        {
+          "probe": "(() => { const r = document.documentElement, h = document.querySelector('.scrub__handle'), cs = h && getComputedStyle(h), tb = document.querySelector('.titlebar'); return JSON.stringify({ skin: r.dataset.skin, scrub: r.dataset.hookScrub || '', material: r.dataset.hookMaterial || '', sea: r.dataset.hookSea || '', record: r.dataset.hookRecord || '', wallpaper: r.dataset.hookWallpaper || '', handleW: cs ? cs.width : null, handleMask: cs ? (cs.maskImage === 'none' ? 'none' : 'image') : null, titlebarSeam: tb ? getComputedStyle(tb).boxShadow !== 'none' : null }); })()",
+          "name": "vanilla hooks",
+          "expect": {
+            "skin": "vanilla",
+            "scrub": "",
+            "material": "",
+            "sea": "",
+            "record": "",
+            "wallpaper": ""
+          }
+        }
+      ],
+      "frame": "app",
+      "looks": [
+        {
+          "theme": "moonlight",
+          "skin": "vanilla"
+        }
+      ]
+    }
+  ]
+}

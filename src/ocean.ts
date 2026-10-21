@@ -19,7 +19,7 @@
 // Only while Ocean is the skin. Animate backgrounds Off, reduced motion or a hidden window: no
 // heave and no ripples (the bands also hold still, in CSS).
 
-import { onSkinChange, currentSkin } from "./skin";
+import { onSkinChange, hook } from "./skin";
 import { onPlayerState, onPlayIntent, isPlayingNow } from "./player";
 import { onMeter } from "./sound";
 import { onDragLand } from "./row-drag";
@@ -54,7 +54,7 @@ const pending = new Map<number, (b: Blob | null) => void>();
 const urls = new WeakMap<HTMLElement, string>();
 
 const root = document.documentElement;
-const active = () => currentSkin() === "ocean" && !!sea;
+const active = () => hook("sea") === "on" && !!sea;
 const reduced = () => motionReduced();
 /** The responses (heave, ripples) run only with motion allowed and the window seen. */
 const responsive = () => active() && root.dataset.bgMotion !== "off" && !reduced() && root.dataset.ambient !== "paused";
@@ -376,9 +376,9 @@ export function initOcean(): void {
     if (k === "oceanLight") setAlbumLight(setting("oceanLight"));
   });
 
-  if (currentSkin() === "ocean") enter();
-  onSkinChange((name) => {
-    if (name === "ocean") enter();
+  if (hook("sea") === "on") enter();
+  onSkinChange(() => {
+    if (hook("sea") === "on") enter();
     else calm();
   });
   // A theme (or the look schedule) changes the water and the ink: repaint and re-tint.

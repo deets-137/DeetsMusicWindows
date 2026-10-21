@@ -36,6 +36,7 @@ const SKIN_FONTS: Record<SkinName, string[]> = {
   glass: ['12px "Liberation Sans"'],
   "cyber": ['12px "Orbitron"', '12px "Rajdhani"'],
   metal: ['12px "Bahnschrift"', '12px "Segoe UI Variable Text"'], // Windows' own faces: nothing bundled, only warmed
+  happy: ['12px "Baloo 2"', '600 12px "Quicksand"', '12px "Pixelify Sans"'],
 };
 
 interface Job {

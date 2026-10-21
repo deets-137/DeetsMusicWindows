@@ -96,6 +96,19 @@ moss-green tufts over dark soil). Cropped to a 128×17 tile for v1
   from. You have permission to non-destructively copy and modify them with care and
   precision." DeetsLife was up to date with GitHub (4e67600). §5.1 lists what was borrowed.
 
+### 1.9 v1, and what comes after (2026-10-21)
+
+- **F5 b** (mods.md §8): every skin is held to the public layer, the built-in six too.
+- **The first round of fetch comes 10 s after the window shows**; the 25–40 s between rounds
+  stands. The other drafts in §2.1a and §2.3 (the Sky row, the odds, the bottom-left corner)
+  stand as written.
+- **v1 is §1.1 to §1.8.** "Once we have an MVP built, I plan to work on card corners / edges,
+  motions, and the title bar piece." Those are v2.
+
+**The build order:** (1) every skin onto the public layer, pixel for pixel (mods.md §10.1);
+(2) the slots Happy uses and the `happy` skin id; (3) the canvas; (4) the tennis-ball
+scrubber; (5) the cover pushes; (6) fetch. Step 1 is proved by pictures before step 2 starts.
+
 ## 2. The public layer Happy needs
 
 > **Part:** idea · 2026-10-21
@@ -148,7 +161,7 @@ Happy sits beside him, on the side Deets throws to, facing you (`happy/sit_down`
 
 | | The site | Happy (draft) |
 |---|---|---|
-| First play after the window shows | 4–12 s | 20–40 s |
+| First play after the window shows | 4–12 s | 10 s (his call, 2026-10-21) |
 | Between plays | 12–30 s | 25–40 s, about one every 30 s |
 | The sprite cycle | 7 fps, `steps(4)` | the same (it belongs to the art) |
 | Walk speed | 70 px/s | 70 px/s; Happy's run 140 px/s, the walk frames at 10 fps |
@@ -272,3 +285,57 @@ and deletes that file, the script never touches the strip again.
   `run_side` (v1 can use the walk, faster), the sun, moon, clouds and the bubble.
 - The DeetsMusic copies of `walk_side`, `sit_side` and `idle_down` match DeetsLife's byte for
   byte.
+- **Placeholders (2026-10-21):** `make_drafts.py` also draws a sun, rays, a moon, three clouds
+  and the speech bubble as `.draft` placeholders, so v1 shows them until he draws his own.
+
+## 6. The build, where it stands (2026-10-21, paused at his word)
+
+> **Part:** built, not run · 2026-10-21 · on `happy-thirtytwo`
+
+He paused the session here ("commit and push where you are"). Everything below typechecks,
+`npm test` (377) and `docs:check` pass. **Nothing has run in the app yet**: the demo check could
+not load while a game held the CPU, and the dev app was not started.
+
+**Step 1, every skin on the public layer (mods.md §10.1): built.**
+- The hooks: `--hook-scrub | material | sea | record | wallpaper | scene` in skin.css; skin.ts
+  copies each onto `<html>` as `data-hook-*` (`hook()` reads one). The 40 rules in styles.css and
+  the 6 in themes.css that named a skin now select on a hook (same specificity); metal.ts,
+  ocean.ts, vinyl.ts and wallpaper.ts read hooks; the tray paints them through `paintSkin`.
+- The 41 names a skin set that the base lacked are declared in the base as `initial` (the
+  same as unset). `scripts/skin-resolve.mjs` proves no token value changed in any of the 25
+  skin contexts against HEAD.
+- docs:check 33 (*public layer*): a skin block sets only base names or theme roles; HOOKS
+  matches the base; no other sheet or script names a skin (Settings rows excepted); a raw base
+  value of a kind a mod sets reads a token, or is listed in `scripts/skin-raw-base.txt`.
+- The runtime proof is `docs/ops/checks/public-layer.json` (each skin's hooks and one hooked
+  style): **not run yet.**
+
+**Step 2 onward, the Happy skin: built, not run.**
+- `happy` in `SkinName`, the title menu (hint drafted: *Happy the puppy on the grass under a
+  sky. He moves the covers for you*), the look schedule, the font warm-up. Fonts bundled:
+  Baloo 2, Quicksand, Pixelify Sans (variable, latin + latin-ext, OFL; NOTICE.txt).
+- skin.css: the public scene and sprite tokens (`--scene-*`, `--pet-*`, `--friend-*`,
+  `--bubble*`, `--scrub-ball*`, `--card-opacity`, `--font-skin`, `--vinyl-swap-delay`,
+  `--vinyl-swap-in-travel`), then the Happy block. palette.css / themes.css: the sky roles
+  (`--sky-day … --sky-night-low`, one natural sky in every theme) and `--bubble-ink`.
+- styles.css "Scene": the two layers, the sky, the sun and rays, the clouds, the grass, the
+  sprites, the bubble, the rope, the ball playhead; `.app-body` gains `--scene-floor` below.
+- `src/sky-phase.ts` (pure, `tests/sky-phase.test.ts`), `src/scene.ts` (placing, the sky),
+  `src/pet.ts` (rest, fetch, the three pushes, the handover). `npm run happy:art` copies the
+  drawings into `src/assets/skins/happy/`.
+- Settings › Skin settings: *Sky* (`happySky`) and *Card opacity* (`happyCardOpacity`, 80):
+  store, agent specs, AGENT.md, SETTINGS.md, New marks; `happySky` is NOT_REPORTED for now, as
+  Metal's rows; his call is to send both (USAGE-COUNTS.md §1 item 11, with the worker deploy). vinyl.ts: the plain slide takes the delay and the in-place fill;
+  slider.ts publishes `--slider-frac`.
+
+**Next session:**
+1. Start the dev app, switch to Happy, read the `scene:*` / `pet:*` diag lines, fix what breaks.
+2. Run `public-layer.json` (and the six skins by eye) with the CPU free.
+3. The extension's options page and style copies; DeetsSolutions' skin list (another repo).
+4. The full desk test with the break-it pass (DESK-TESTS.md §6.6), then hand over.
+
+**For him to look at first** (decided inside his calls, all tunable tokens): the sun and the edge
+clouds can only reach a little over the cards in Max (`--scene-sun-over` 0.18,
+`--scene-cloud-over` 0.12), so the sun is mostly clipped at the title bar; a sky behind the
+title bar may be the answer, with the v2 title bar. The sky colors (one natural sky, or tinted
+per theme) are open.

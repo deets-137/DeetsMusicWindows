@@ -144,6 +144,7 @@
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="glass"        data-skin-choice="glass"        title="Frosted panels over a soft glow">Glass</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="cyber" data-skin-choice="cyber" title="Lightning behind the cards, machined type">Cyber</button>
               <button class="flyout__item" type="button" role="menuitemradio" data-skin="metal" data-skin-choice="metal" title="Brushed steel panels with sharp edges. Covers turn on a drum">Metal</button>
+              <button class="flyout__item" type="button" role="menuitemradio" data-skin="happy" data-skin-choice="happy" title="Happy the puppy on the grass under a sky. He moves the covers for you">Happy</button>
             </div>
           </div>
 
@@ -482,6 +483,16 @@
         </div></div>
       </div>
 
+      <!-- Scene, back (--hook-scene; Happy): the sky (two layers, so one part of the day fades
+           into the next) and far clouds drifting behind the cards. scene.ts paints the sky. -->
+      <div class="scene scene--back" aria-hidden="true">
+        <div class="scene__sky scene__sky--from"></div>
+        <div class="scene__sky scene__sky--to"></div>
+        <div class="scene__cloud scene__cloud--far scene__cloud--f1"></div>
+        <div class="scene__cloud scene__cloud--far scene__cloud--f2"></div>
+        <div class="scene__cloud scene__cloud--far scene__cloud--f3"></div>
+      </div>
+
       <!-- Each .panel is a mount HOST. The layout manager (src/layout.ts) mounts a card into
            each slot from the persisted assignment; the two content slots are swappable via
            their title picker. Now Playing is anchored to the top slot. -->
@@ -504,6 +515,18 @@
         <!-- The full player's History column (Max, a wide card; ideas/fullscreen-player.md §13).
              Not a slot: full-player.ts mounts a History card here while it shows. -->
         <section class="panel fp-history"></section>
+      </div>
+
+      <!-- Scene, front (--hook-scene; Happy, docs/features/happy.md): over the cards, never
+           taking a click — the sun or moon at the top-right card's corner, clouds at card edges,
+           the grass along the bottom, and the floor where pet.ts puts Deets and Happy.
+           scene.ts places the sun and clouds by the cards' boxes. -->
+      <div class="scene scene--front" aria-hidden="true">
+        <div class="scene__sun"><i class="scene__rays"></i><i class="scene__disc"></i><i class="scene__moon"></i></div>
+        <div class="scene__cloud scene__cloud--edge scene__cloud--e1"></div>
+        <div class="scene__cloud scene__cloud--edge scene__cloud--e2"></div>
+        <div class="scene__grass"></div>
+        <div class="scene__floor"></div>
       </div>
     </main>
   </body>

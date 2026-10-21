@@ -34,6 +34,8 @@ import { initWalk } from "./walk";
 import { initLayout } from "./layout";
 import { initSkinSettings } from "./skin-settings";
 import { initMetal } from "./metal";
+import { initScene } from "./scene";
+import { initPet } from "./pet";
 import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
 import { toast } from "./toast";
 import { repairText, type LoadProblems } from "./settings-repair";
@@ -210,6 +212,8 @@ window.addEventListener("DOMContentLoaded", () => {
   boot("initOcean", () => initOcean()); // the Ocean sea's textures, album light, breath and ripples; inert under other skins
   boot("initAmbient", () => initAmbient()); // pause the skins' decorative loops while the window is minimized / in the tray
   boot("initWallpaper", () => initWallpaper()); // Glass › Canvas: the album covers or a chosen picture behind the cards; inert otherwise
+  boot("initScene", () => initScene()); // a scene skin's sky, sun, clouds and ground (Happy, docs/features/happy.md); inert otherwise
+  boot("initPet", () => initPet()); // its pet and friend: fetch, the rest pose, the cover pushes; inert otherwise
   boot("initArtworkHeal", () => initArtworkHeal()); // retry cover <img>s that fail to load (sleep/wake, network blips)
   boot("initSound", () => initSound()); // before MusicKit's first play: routes its <audio> through the effects when one is on (SOUND.md §1)
   // Match loudness: measures songs and sets each one's gain (SOUND.md §3A). Hidden with Adaptive

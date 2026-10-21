@@ -46,6 +46,7 @@ export function makeSlider(el: HTMLElement, opts: SliderOptions): SliderHandle {
 
   const reflect = (frac: number) => {
     el.style.setProperty("--slider-fill", `${(clamp01(frac) * 100).toFixed(2)}%`);
+    el.style.setProperty("--slider-frac", clamp01(frac).toFixed(4)); // the same, as a plain number (the Happy ball picks its roll frame from it)
   };
 
   // The drag state is on the element for the skins' handle motion (SCRUBBERS in

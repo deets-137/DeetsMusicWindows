@@ -67,3 +67,30 @@ Files:   Spectral-Regular.woff2
 Copyright (c) The Spectral Project Authors (Production Type).
 Upstream: https://github.com/productiontype/Spectral
 Bundled as a latin-subset WOFF2 (via Fontsource); otherwise unmodified.
+
+
+Baloo 2  (Happy skin — title)
+-----------------------------
+Files:   Baloo2-Var-latin.woff2, Baloo2-Var-latinext.woff2
+Copyright (c) The Baloo 2 Project Authors (Ek Type).
+Upstream: https://github.com/EkType/Baloo2
+Bundled as the variable latin and latin-ext WOFF2 subsets served by Google
+Fonts (weights 400-800); otherwise unmodified.
+
+
+Quicksand  (Happy skin — body)
+------------------------------
+Files:   Quicksand-Var-latin.woff2, Quicksand-Var-latinext.woff2
+Copyright (c) The Quicksand Project Authors (Andrew Paglinawan).
+Upstream: https://github.com/andrew-paglinawan/QuicksandFamily
+Bundled as the variable latin and latin-ext WOFF2 subsets served by Google
+Fonts (weights 300-700); otherwise unmodified.
+
+
+Pixelify Sans  (Happy skin — the skin's own words)
+--------------------------------------------------
+Files:   PixelifySans-Var-latin.woff2, PixelifySans-Var-latinext.woff2
+Copyright (c) The Pixelify Sans Project Authors (Stefie Justprince).
+Upstream: https://github.com/eifetx/Pixelify-Sans
+Bundled as the variable latin and latin-ext WOFF2 subsets served by Google
+Fonts (weights 400-700); otherwise unmodified.

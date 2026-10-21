@@ -140,9 +140,9 @@ so it is out of scope here. Three facts from the talk, kept as a record:
 - **F3, distribution.** Files only, or a gallery on deets.solutions. Signed authors, or
   "unknown author" on all.
 - **F4, the marketplace page** (§1). Its place in Hop in, and what it shows on a first load.
-- **F5, who is held to the public layer** (§10). Mods only, and a built-in skin may still set
-  feature tokens (recommended: the built-in skins vary each shape on purpose, metal.md §6.4), or
-  every skin.
+- **F5, who is held to the public layer** (§10). **Closed 2026-10-21: every skin (his call:
+  "we made an effort to tokenize so shouldn't be too large in scope").** The measure and the plan
+  are §10.1.
 
 ## 9. What tokens reach today: the Halloween test
 
@@ -195,6 +195,31 @@ Tokens cover about half of a fully decked-out skin.
   scroller without `app-scroll` fails.
 - A built-in skin may still set feature tokens directly (fork F5), so the built-in skins keep
   their deliberate differences.
+
+### 10.1 Every skin on the public layer: the measure (2026-10-21)
+
+Measured in `skin.css` on `happy-thirtytwo` (comments taken out):
+
+- **697 base tokens** in `[data-skin]`: **198** already read another token, **499** hold a
+  raw value. **543** of them no skin changes.
+- **The six skins set 202 names:** 154 base tokens and 48 of their own (Metal 30, Glass 15,
+  Ocean 3). Per skin: Glass 83, Metal 81, Press 72, Cyber 69, Ocean 52, Vanilla 4.
+- **The skins vary shapes on purpose, but in families.** The 12 radius tokens the skins change
+  move in about 5 groups (panel, popover, control, tile and art, pill). Glass rounds tiles and
+  pills 12 px and row art 8 px; Cyber squares tiles and rounds pills 2 px.
+
+**The plan:**
+
+1. **The skins move onto the public layer, pixel for pixel.** Each family a skin changes gets
+   primitives fine enough to hold every skin's values (radius: about 5, not 1). A skin's own
+   effect (Ocean's sea, Press's record, Metal's drum, the aurora) stays a named **hook** in the
+   public layer, so a mod can set it too. The public layer comes to about 63 roles and 100 to
+   130 skin names, not the 40 to 60 hoped for in §10.
+2. **The proof is pictures:** the shots runner in every skin and theme, before and after, with
+   no pixel changed.
+3. **The base rule** (docs:check) holds the kinds a mod can set: radius, time, easing, type,
+   shadow, spacing (about 140 raw base values to alias). A size that belongs to one control or
+   one drawing (182 px sizes: a sprite's 32 px, a knob's height) stays raw, marked as such.
 
 **The Happy skin is the reference** ([happy.md](../features/happy.md)). It is built only on the
 public layer and uses every part of it. A mod author reads it to see what a skin can do.

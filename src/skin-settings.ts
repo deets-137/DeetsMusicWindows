@@ -14,12 +14,15 @@
 // Metal: `metalMaterial` → `data-metal-material`; `metalCoverChange` → `data-metal-cover`
 //        (skin.css turns it into --cover-swap); `metalPeek` → `data-metal-peek`, present only
 //        with the zoetrope on. metal.ts draws the textures (it reads `metalGrain` itself).
+// Happy: `happyCardOpacity` (0–100) → --card-opacity, the public token any see-through skin reads
+//        (docs/features/happy.md). scene.ts reads `happySky` itself.
 // The skin blocks in skin.css read them; other skins ignore them.
 
 import { setting, effective, onSettingsChange, GLASS_LOCKED } from "./settings-store";
 
-type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "glassDiffusion" | "oceanSand" | "oceanCardOpacity" | "oceanLight";
+type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "glassDiffusion" | "oceanSand" | "oceanCardOpacity" | "oceanLight" | "happyCardOpacity";
 const PROPS: Record<SliderKey, [string, string]> = {
+  happyCardOpacity: ["--card-opacity", ""],
   glassDiffusion: ["--glass-diffusion", ""],
   glassTint: ["--glass-tint", "%"],
   glassBacklight: ["--glass-backlight", ""],

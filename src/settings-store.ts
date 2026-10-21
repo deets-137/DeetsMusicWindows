@@ -159,6 +159,12 @@ export interface Settings {
   /** Metal only, with the zoetrope: in Max and the player view, the previous and next songs'
    *  covers wait behind the cover, and the turn runs between them. `data-metal-peek` on <html>. */
   metalPeek: boolean;
+  /** Happy only (docs/features/happy.md §2.3): the sky behind the cards. `follow` walks night,
+   *  dawn, day and dusk on the sun's times where you are; the others hold one part. scene.ts. */
+  happySky: "follow" | "day" | "sunrise" | "sunset" | "night";
+  /** Happy only (his call H3 b): how solid the cards are, 0–100; lower shows the sky through
+   *  them. skin-settings.ts publishes it as --card-opacity. */
+  happyCardOpacity: number;
   /** Hover hints (ONBOARDING.md §1; src/hint.ts): the themed box every `title` becomes.
    *  Off = no hover text at all, of either kind. */
   hoverHints: boolean;
@@ -562,6 +568,8 @@ export const DEFAULTS: Settings = {
   metalGrain: "fine", // finely brushed (his "finely brushed stainless steel"); faint, medium, strong to taste
   metalCoverChange: "zoetrope", // his design: shrink and turn out while the next comes in from the right
   metalPeek: true, // "Let's test Peek" (2026-10-20): the neighbors wait at the sides
+  happySky: "follow", // happy.md §2.3 (drafted, his "as written" 2026-10-21): the sky follows the day
+  happyCardOpacity: 80, // Ocean's default (his call for Ocean, 2026-10-11): the sky shows a little through the cards
   hoverHints: true,
   hoverHintDelay: "normal",
   hoverSongNames: "always", // user's call 2026-09-15: name the song on every row, not only cut-off ones

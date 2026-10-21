@@ -20,6 +20,7 @@ import { makeSlider } from "./slider";
 import { log } from "./diag";
 import { mountVinyl } from "./vinyl";
 import { applyVinylAttrs, isVinylKey } from "./skin-settings";
+import { paintSkin, type SkinName } from "./skin";
 import { onSettingsChange } from "./settings-store";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { initHints } from "./hint";
@@ -399,7 +400,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   listen<{ theme: string; skin: string }>("appearance", (e) => {
     if (e.payload.theme) document.documentElement.dataset.theme = e.payload.theme;
-    if (e.payload.skin) document.documentElement.dataset.skin = e.payload.skin;
+    if (e.payload.skin) paintSkin(e.payload.skin as SkinName); // and its hooks (skin.ts)
     fit();
   });
   // Reduce motion (GRAPHICS-FALLBACK.md §10.4): the main window's switch (reduce-motion.ts).

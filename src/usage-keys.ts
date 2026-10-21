@@ -70,4 +70,5 @@ export const NOT_REPORTED: Readonly<Record<string, string>> = {
   metalGrain: "Metal's rows: his call before they are sent",
   metalCoverChange: "Metal's rows: his call before they are sent",
   metalPeek: "Metal's rows: his call before they are sent",
+  happySky: "Happy's rows: his call before they are sent",
 };

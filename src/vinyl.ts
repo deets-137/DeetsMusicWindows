@@ -20,6 +20,7 @@ import { TELEMETRY } from "./telemetry-on";
 import { spinEasing } from "./spin-steps";
 import { displayHz, onDisplayHz } from "./display-hz";
 import { motionReduced } from "./motion";
+import { hook } from "./skin";
 
 // Dev-only telemetry (VINYL.md §Telemetry), gated on Vite's DEV flag like frames.ts: a
 // `[perf] vinyl snap …` line for every jump and one `[perf] vinyl song …` summary per song,
@@ -64,7 +65,7 @@ const SEEK_NEAR_S = 1; // …until one lands within this of it
 
 const root = document.documentElement;
 const reduced = () => motionReduced();
-const spinWanted = () => root.dataset.skin === "press" && setting("pressVinyl") === "spin" && !reduced();
+const spinWanted = () => hook("record") === "on" && setting("pressVinyl") === "spin" && !reduced();
 
 /** The period for a song: one turn at the chosen speed, stretched so the song lasts a whole
  *  number of turns. Every speed keeps that rule, so a disc always starts and ends upright. */
@@ -470,15 +471,22 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
       }
       const w = old.offsetWidth * travel * x * d;
       const h = old.offsetHeight * travel * y * d;
+      // A sprite that moves the cover (--cover-swap: pet; pet.ts sets these on the box for the
+      // change) holds the slide for its run-up, and the new cover may fill in where it is.
+      const delay = ms(cs.getPropertyValue("--vinyl-swap-delay")) * scale;
+      const inTravel = parseFloat(cs.getPropertyValue("--vinyl-swap-in-travel"));
+      const inK = Number.isFinite(inTravel) ? inTravel : 1;
       old
         .animate([{ transform: "translate(0px, 0px)", opacity: 1 }, { transform: `translate(${w}px, ${h}px)`, opacity: fade }], {
           duration,
+          delay,
           easing,
-          fill: "forwards",
+          fill: "both",
         })
         .finished.then(() => old.remove(), () => old.remove());
-      el.animate([{ transform: `translate(${-w}px, ${-h}px)`, opacity: fade }, { transform: "translate(0px, 0px)", opacity: 1 }], {
+      el.animate([{ transform: `translate(${-w * inK}px, ${-h * inK}px)`, opacity: inK ? fade : 0 }, { transform: "translate(0px, 0px)", opacity: 1 }], {
         duration,
+        delay,
         easing,
         fill: "backwards",
       });

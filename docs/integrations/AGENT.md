@@ -405,6 +405,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   Medium | Strong), `metalCoverChange` (Zoetrope | Off), `metalPeek` (on | off; with Zoetrope)
   — each `[Metal only]`; a set under another skin is stored, and the reply says it shows while
   Metal is the skin.
+- The Happy rows (2026-10-21, happy.md §2.3): `happySky` (Follow the time | Day | Sunrise |
+  Sunset | Night) and `happyCardOpacity` (0–100, 80 by default) — each `[Happy only]`; a set
+  under another skin is stored, and the reply says it shows while Happy is the skin.
 - A slider takes a whole number 0–100 (`oceanSand`, `glassBacklight`, `glassTint`,
   `glassCanvasGlow`, `glassCanvasDim`), with or without `%`. The four Glass sliders are
   `[Glass only, with Fancy Glass on]`: while `glassFancy` is off they store a value but the look

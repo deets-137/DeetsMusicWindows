@@ -31,6 +31,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join, posix } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { COPIES, render as renderCopy } from "./docs-copies.mjs";
+import { blocks as skinBlocks } from "./skin-resolve.mjs";
 // Node strips the types; the file has no imports of its own (check 31).
 import { LEAD_RULE_AFTER, leadFaults, releaseEntries, versionAfter } from "../src/release-leads.ts";
 
@@ -63,6 +64,7 @@ const SHIPPED_LINKS = [
 // Check 25: the modules that place a floating box by hand, each with its reason. A popover
 // rides makeDropdown / openContextMenuUnder / openContextMenu (CLAUDE.md checklist 13).
 const PLACERS = {
+  "src/pet.ts": "a sprite's speech bubble over its head on the scene layer (happy.md §2.1a), not a popover",
   "src/context-menu.ts": "the menu itself",
   "src/collection-card.ts": "placePop: the Sort / View pop's panel, on makeDropdown",
   "src/settings-card.ts": "the Settings menus' panels, on makeDropdown",
@@ -514,6 +516,54 @@ export function check() {
     }
   }
 
+  // 33. The public layer (mods.md §10.1, his call F5 b, 2026-10-21): every skin sets values
+  //     only, through names the base declares, and a rule that belongs to one look asks for a
+  //     hook, never for a skin by name. So a mod can do anything a built-in skin does.
+  {
+    const SKIN = "src/styles/skin.css";
+    const css = read(SKIN);
+    const bs = skinBlocks(css);
+    const base = new Map();
+    for (const b of bs) if (b.sel === "[data-skin]") for (const [k, v] of b.decls) base.set(k, v);
+    const roles = new Set([...read("src/styles/themes.css").matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]));
+    // (a) a skin block sets only names the base declares, or theme roles
+    for (const b of bs) {
+      if (b.sel === "[data-skin]" || !/data-skin="/.test(b.sel)) continue;
+      for (const [k] of b.decls)
+        if (!base.has(k) && !roles.has(k)) fail(33, SKIN, 0, `${b.sel.slice(0, 60)} sets ${k}, which the [data-skin] base does not declare (declare it there, \`initial\` if it has no default)`);
+    }
+    // (b) the hooks the base declares are the hooks skin.ts copies
+    const declared = [...base.keys()].filter((k) => k.startsWith("--hook-")).map((k) => k.slice(7)).sort();
+    const copied = (/export const HOOKS = \[([^\]]*)\]/.exec(read("src/skin.ts"))?.[1] ?? "").match(/[a-z-]+/g)?.sort() ?? [];
+    if (declared.join() !== copied.join()) fail(33, "src/skin.ts", 0, `HOOKS (${copied.join(", ")}) is not the base's --hook-* list (${declared.join(", ")})`);
+    // (c) no other sheet selects a skin by name
+    for (const f of tracked().filter((f) => f.startsWith("src/") && f.endsWith(".css") && f !== SKIN)) {
+      read(f).split("\n").forEach((line, i) => {
+        if (/\[data-skin="[a-z-]+"\]/.test(line.replace(/\/\*.*?\*\//g, "")))
+          fail(33, f, i + 1, 'a rule for one skin by name — select on its hook (`[data-hook-…]`, skin.css "hooks")');
+      });
+    }
+    // (d) no script tests for a skin by name, outside a built-in skin's own Settings rows
+    const SKIN_NAME_OK = {
+      "src/settings-card.ts": "a built-in skin's own Settings rows show only under that skin",
+      "src/agent-settings.ts": "the same rows' notes for the agent",
+      "src/skin.ts": "the skin attribute itself",
+    };
+    for (const f of tracked().filter((f) => f.startsWith("src/") && f.endsWith(".ts") && !SKIN_NAME_OK[f])) {
+      read(f).split("\n").forEach((line, i) => {
+        if (/(currentSkin\(\)|dataset\.skin)\s*[!=]==\s*["'`]/.test(line))
+          fail(33, f, i + 1, 'a test for one skin by name — read its hook (`hook("…")` from ./skin)');
+      });
+    }
+    // (e) a base value of a kind a mod sets (radius, time, easing, type, shadow, spacing) reads
+    //     another token; the raw ones from before the rule are listed in skin-raw-base.txt
+    const KIND = /radius|-dur\b|-dur-|delay|ease|shadow|^--fw-|^--fs-|^--font-|gap|-pad\b|-pad-|^--space-|stagger/;
+    const grand = new Set(read("scripts/skin-raw-base.txt").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")));
+    for (const [k, v] of base)
+      if (KIND.test(k) && !/var\(/.test(v) && !/^(initial|none|0(px|s|ms|%)?)$/.test(v) && !grand.has(k)) // a zero is a no-op
+        fail(33, SKIN, 0, `${k}: ${v} is a raw value of a kind a mod sets — read a public token (var(--…)), or list it in scripts/skin-raw-base.txt with why`);
+  }
+
   return { facts, docs: docs.length };
 }
 
@@ -522,7 +572,7 @@ export function report({ facts, docs }) {
   const names = {
     1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links",
     20: "settings keys", 21: "toast sites", 22: "hover hints", 23: "scrollers", 24: "right-click ledger", 25: "popover placers", 26: "list keys",
-    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger", 31: "release leads", 32: "reduced motion",
+    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger", 31: "release leads", 32: "reduced motion", 33: "public layer",
   };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);

@@ -1052,6 +1052,100 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
+
+  /* -- hooks (mods.md §10.1, happy.md §1.9) -------------------
+     A rule that belongs to one look asks for its hook, never for a skin by name: skin.ts copies
+     each --hook-* onto <html> as data-hook-* (`--hook-scrub: float` → data-hook-scrub="float"),
+     and the rule selects on that attribute. Any skin, or a mod, gets the look by setting the hook.
+     `none` leaves the attribute off. docs:check 33 fails a [data-skin="…"] rule outside this file. */
+  --hook-scrub:     none;   /* the Fancy scrubber's playhead: nib (Press) · float (Ocean) · lens (Glass) · bolt (Cyber) · wheel (Metal) */
+  --hook-material:  none;   /* a material's own rules: metal (the brushed plates, the stage, the title bar seam, the theme corrections in themes.css; metal.ts) */
+  --hook-sea:       none;   /* on: the sea under the cards (ocean.ts) */
+  --hook-record:    none;   /* on: the cover can be a turning record (vinyl.ts; Settings › Record) */
+  --hook-wallpaper: none;   /* on: the canvas can show the covers or a picture (wallpaper.ts; Settings › Canvas) */
+  --hook-scene:     none;   /* on: a scene around the cards — a sky, a sun or moon, clouds, the ground, and sprites that live there (scene.ts, pet.ts; Happy) */
+
+  /* -- the scene (happy.md §2; mods.md §11) --------------------
+     What a scene skin gives: pictures (url()) and a few sizes in the art's own pixels. The app
+     draws them at --scene-px (scene.ts sets it: whole device pixels, 2× in Max, 1.5× elsewhere,
+     his call H8). The sky's colors are theme roles (themes.css --sky-*). */
+  --scene-floor:      0px;   /* room under the cards for the ground, so only its top reaches over their edges */
+  --scene-grass:      none;  /* a tile that repeats along the window's bottom */
+  --scene-grass-h:    0;     /* its height, in art pixels */
+  --scene-grass-feet: 0;     /* the row (from its top) where feet stand */
+  --scene-sun:        none;
+  --scene-sun-rays:   none;  /* turns slowly behind the sun (radiate) */
+  --scene-moon:       none;  /* at night, in the sun's place */
+  --scene-cloud-1:    none;  /* small · medium · large */
+  --scene-cloud-2:    none;
+  --scene-cloud-3:    none;
+  --scene-sun-over:   0.18;  /* the share of the sun that reaches over the top-right card's corner (its padding, not its header's buttons) */
+  --scene-cloud-over: 0.12;  /* the share of an edge cloud over its card's outer edge */
+  --scene-ray-turn:   150s;  /* one turn of the rays */
+  --scene-ray-pulse-dur: 5s; /* the rays' glow, one way */
+  --scene-ray-dim:    0.65;  /* the rays at the low end of the glow */
+  --scene-cloud-trip: 240s;  /* a far cloud's trip across the window */
+  --scene-bob:        2px;   /* how far an edge cloud rises and falls */
+  --scene-bob-dur:    7s;    /* one rise or fall */
+  --scene-sky-fade-dur: 60s; /* the sky's blend steps once a minute (scene.ts); each step eases in over this */
+  --bubble-pad:       var(--space-1);  /* the words' room inside the bubble, past its drawn border */
+  --bubble-gap:       var(--space-1);  /* the bubble's tail above the speaker's head */
+  --bubble-hold-dur:  1.6s;  /* how long a bubble shows (happy.md §2.1a) */
+  --card-opacity:     100;   /* how solid a see-through skin's cards are, 0–100 (a skin's own row sets it) */
+  --font-skin:        var(--font-body); /* the skin's own words: a sprite's speech bubble */
+
+  /* The pet and its friend (pet.ts): one strip per pose, frames side by side, square unless a
+     -w gives the frame's width in art pixels. Side poses face left. A blank strip falls back. */
+  --pet-sit:          none;  /* resting, facing you */
+  --pet-idle:         none;  /* standing, side-on */
+  --pet-walk:         none;
+  --pet-run:          none;
+  --pet-push-head:    none;
+  --pet-stand-up:     none;  --pet-stand-up-w:    0;
+  --pet-stand-push:   none;  --pet-stand-push-w:  0;
+  --pet-run-ball:     none;
+  --pet-drop-ball:    none;
+  --pet-keep-ball:    none;  /* keeping the ball, facing you */
+  --friend-idle:      none;  /* standing, facing you */
+  --friend-throw:     none;
+  --friend-watch:     none;
+  --pet-ball:         none;  /* the fetch ball */
+  --bubble:           none;  /* the speech bubble, a 9-slice */
+  --bubble-slice:     0;     /* its corner, in art pixels */
+  --bubble-tail:      none;
+  --bubble-tail-w:    0;     /* its size, in art pixels */
+  --bubble-tail-h:    0;
+  --scrub-ball:       none;  /* the ball playhead (--hook-scrub: ball): one roll, frames side by side */
+  --scrub-ball-px:    0;     /* one frame's size, in art pixels */
+  --scrub-ball-frames: 1;
+  --scrub-ball-roll:  0;     /* frames it turns over the whole track */
+
+  /* A cover change a sprite takes part in (--cover-swap: pet; pet.ts sets these on the cover for
+     each change): the slide waits for the sprite, and the new cover may fill in where it is. */
+  --vinyl-swap-delay:     0s;
+  --vinyl-swap-in-travel: 1;   /* × the slide: 0 = the new cover fades in in place */
+
+  /* -- declared, unset (mods.md §10.1) ------------------------
+     The names a skin sets beyond the tokens above. `initial` is the same as never set: a var()
+     that reads one falls back exactly as before. Declared here so the base holds every name a
+     skin may set (docs:check 33). A theme role (themes.css) is never declared here: this sheet
+     loads after themes.css and would wipe it. */
+  --title-tracking: initial;  --font-caps: initial;   --fw-caps: initial;
+  --caps-tracking: initial;   --caps-grow: initial;   --caps-figures: initial;
+  --action-text-ink: initial;
+  --sand-reach-min: initial;  --sand-reach-max: initial;                      /* Ocean's sand edges */
+  --canvas-go: initial;       --canvas-stop: initial;  --canvas-pause: initial; /* Glass's aurora inks */
+  --glass-glow: initial;      --glass-dim: initial;    --glass-light: initial;
+  --glass-frost-sat: initial; --glass-frost-layer: initial; --glass-frost-paint: initial;
+  --glass-frost-ground: initial; --glass-frost-glow: initial;
+  --glass-frost-go: initial;  --glass-frost-stop: initial; --glass-frost-pause: initial;
+  --glass-backlight-paint: initial;
+  --metal-peek-cover-inset: initial; --metal-peek-dim: initial; --metal-drum-back: initial;
+  --metal-cover-shadow: initial; --metal-cover-rim: initial; --metal-perspective: initial;
+  --metal-slot-h: initial;    --metal-slot-radius: initial; --metal-slot-shadow: initial;
+  --metal-wheel-w: initial;   --metal-wheel-h: initial;  --metal-wheel-radius: initial;
+  --metal-wheel-pitch: initial; --metal-wheel-roll: initial; --metal-wheel-lift: initial;
+  --metal-wheel-shadow: initial; --metal-badge-in: initial;
 }
 
 /* Vanilla — the reference skin. It IS the base, so this block holds
@@ -1078,6 +1172,8 @@
    (Retired the Desk skin, 2026-08-10 — same slot, new idiom.)
    ============================================================ */
 [data-skin="press"] {
+  --hook-scrub:  nib;   /* the I-beam playhead (styles.css §Fancy scrubbers) */
+  --hook-record: on;    /* the cover can be a record (vinyl.ts) */
   /* sound panel: an ink-line curve, square plot, no glow (printed, not lit) */
   --sound-curve-w:       1.5px;
   --sound-graph-radius:  0px;
@@ -1194,6 +1290,8 @@
    beneath. Engraved caps title on a serene serif body.
    ============================================================ */
 [data-skin="ocean"] {
+  --hook-scrub: float;  /* the bobbing float and its ripple */
+  --hook-sea:   on;     /* the sea under the cards (ocean.ts) */
   /* sound panel: the curve glows like light under water */
   --sound-curve-glow:        drop-shadow(0 0 4px var(--eq-curve));
   --sound-fill-strength:     22%;
@@ -1339,6 +1437,8 @@
    color is still derived from a theme role, never named here.
    ============================================================ */
 [data-skin="glass"] {
+  --hook-scrub:     lens;  /* the lens with its sheen */
+  --hook-wallpaper: on;    /* Settings › Canvas: covers or a picture (wallpaper.ts) */
   /* sound panel: a lit edge on the curve, a brighter fill behind the frost */
   --sound-curve-glow:    drop-shadow(0 0 2px var(--glint));
   --sound-fill-strength: 24%;
@@ -1569,6 +1669,7 @@
    jolt. Intensity dials are catalogued in FUTURE-SETTINGS §13.
    ============================================================ */
 [data-skin="cyber"] {
+  --hook-scrub: bolt;    /* the breathing bolt */
   /* full player motion (features/fullscreen-player.md §9.4): the grow's values for now */
   --player-dur:          0.34s;
   --player-ease:         var(--pop-ease);
@@ -1690,6 +1791,8 @@
    src/metal.ts from Settings › Skin settings (Material, Grain).
    ============================================================ */
 [data-skin="metal"] {
+  --hook-scrub:    wheel;  /* the thumbwheel */
+  --hook-material: metal;  /* the brushed plates and the rest of Metal's own rules (styles.css "Metal", themes.css, metal.ts) */
   /* type: Windows' own DIN (Bahnschrift) over Segoe UI Variable; nothing to bundle */
   --font-title: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", sans-serif;
   --font-body:  "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
@@ -1824,6 +1927,74 @@
   --panel-blend:    overlay, normal;   /* the relief reads as paint (soft-light hid it: the review) */
   --control-blend:  overlay;
   --metal-edge-hi:  light-dark(color-mix(in srgb, white 55%, transparent), color-mix(in srgb, white 6%, transparent));
+}
+
+/* ============================================================
+   HAPPY — the reference skin (docs/features/happy.md). Happy the
+   puppy and Deets on the grass under a sky that follows the day.
+   Built on the public layer only (mods.md §10–§11): it sets hooks,
+   scene pictures and sprites, nothing a mod could not set. The
+   corners, edges, motion and title bar are v2 (his plan, §1.9):
+   until then they are Vanilla's.
+   ============================================================ */
+[data-skin="happy"] {
+  --hook-scene: on;
+  --hook-scrub: ball;      /* the tennis ball */
+  --cover-swap: pet;       /* Happy moves the covers (pet.ts) */
+
+  /* type (his pick, §1.4): Baloo 2 titles, Quicksand body at 500 and up, Pixelify Sans for the skin's words */
+  --font-title: "Baloo 2", "Segoe UI Variable Display", system-ui, sans-serif;
+  --font-body:  "Quicksand", "Segoe UI Variable Text", system-ui, sans-serif;
+  --font-skin:  "Pixelify Sans", "Quicksand", ui-monospace, monospace;
+  --fw-title:   700;
+  --fw-text:    500;
+  --fw-subtext: 500;
+
+  /* see-through cards (his call H3 b): the sky shows through; Settings › Skin settings ›
+     Card opacity sets --card-opacity (skin-settings.ts). The sticky bars blur what scrolls
+     under them, as Ocean's do. */
+  --panel:               color-mix(in srgb, var(--surface) calc(var(--card-opacity) * 1%), transparent);
+  --spane-bg:            transparent;
+  --sticky-bar-backdrop: blur(10px);
+
+  /* the scene (art-template/happy/; npm run happy:art copies it here) */
+  --scene-grass:      url("../assets/skins/happy/scene/grass_tile.png");
+  --scene-grass-h:    17;
+  --scene-grass-feet: 6;
+  --scene-floor:      calc((var(--scene-grass-h) - var(--scene-grass-feet)) * var(--scene-px, 2) * 1px);
+  --scene-sun:        url("../assets/skins/happy/scene/sun.png");
+  --scene-sun-rays:   url("../assets/skins/happy/scene/sun_rays.png");
+  --scene-moon:       url("../assets/skins/happy/scene/moon.png");
+  --scene-cloud-1:    url("../assets/skins/happy/scene/cloud_small.png");
+  --scene-cloud-2:    url("../assets/skins/happy/scene/cloud_medium.png");
+  --scene-cloud-3:    url("../assets/skins/happy/scene/cloud_large.png");
+
+  /* Happy and Deets (DeetsLife's art, his permission; drafts until he redraws them) */
+  --pet-sit:          url("../assets/skins/happy/happy/sit_down.png");
+  --pet-idle:         url("../assets/skins/happy/happy/idle_side.png");
+  --pet-walk:         url("../assets/skins/happy/happy/walk_side.png");
+  --pet-run:          url("../assets/skins/happy/happy/run_side.png");
+  --pet-push-head:    url("../assets/skins/happy/happy/push_head_side.png");
+  --pet-stand-up:     url("../assets/skins/happy/happy/stand_up_side.png");
+  --pet-stand-up-w:   40;
+  --pet-stand-push:   url("../assets/skins/happy/happy/stand_push_side.png");
+  --pet-stand-push-w: 40;
+  --pet-run-ball:     url("../assets/skins/happy/happy/run_ball_side.png");
+  --pet-drop-ball:    url("../assets/skins/happy/happy/drop_ball_side.png");
+  --pet-keep-ball:    url("../assets/skins/happy/happy/keep_ball_down.png");
+  --friend-idle:      url("../assets/skins/happy/deets/idle_down.png");
+  --friend-throw:     url("../assets/skins/happy/deets/throw_side.png");
+  --friend-watch:     url("../assets/skins/happy/deets/watch_side.png");
+  --pet-ball:         url("../assets/skins/happy/scene/ball_small.png");
+  --bubble:           url("../assets/skins/happy/scene/bubble.png");
+  --bubble-slice:     5;
+  --bubble-tail:      url("../assets/skins/happy/scene/bubble_tail.png");
+  --bubble-tail-w:    7;
+  --bubble-tail-h:    6;
+  --scrub-ball:        url("../assets/skins/happy/scene/tennis_ball.png");
+  --scrub-ball-px:     12;
+  --scrub-ball-frames: 8;
+  --scrub-ball-roll:   40;   /* about five turns over a song */
 }
 
 /* Cyber's strike cycle: the bolt is wiped in top→bottom over ~60% of

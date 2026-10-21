@@ -19,7 +19,7 @@
 // wallpaper fades out and the plain aurora comes back.
 
 import { invoke } from "@tauri-apps/api/core";
-import { onSkinChange, currentSkin } from "./skin";
+import { onSkinChange, hook } from "./skin";
 import { onPlayerState } from "./player";
 import { getUpcoming, getHistory, getPlan, type TrackHandle } from "./queue";
 import { trackById } from "./track-store";
@@ -76,7 +76,7 @@ let resizeTimer = 0;
 const reduced = () => motionReduced();
 const hidden = () => root.dataset.ambient === "paused";
 // `effective`: a rule may hold the canvas and the picture (RULEZ.md §5.2, two rule keys).
-const mode = (): "aurora" | "covers" | "picture" => (currentSkin() === "glass" ? effective("glassCanvas") : "aurora");
+const mode = (): "aurora" | "covers" | "picture" => (hook("wallpaper") === "on" ? effective("glassCanvas") : "aurora");
 const ms = (token: string) => (reduced() ? 0 : tokenMs(token));
 /** The layer's fade curve; it rides with --wallpaper-fade-dur. */
 const fadeEase = () => getComputedStyle(root).getPropertyValue("--wallpaper-fade-ease").trim() || "ease";
@@ -421,7 +421,7 @@ function leave(fade: boolean): void {
 async function update(reason: string): Promise<void> {
   if (!layer) return;
   const m = mode();
-  if (m === "aurora") return leave(currentSkin() === "glass");
+  if (m === "aurora") return leave(hook("wallpaper") === "on");
   if (hidden()) {
     dirty = true;
     return;

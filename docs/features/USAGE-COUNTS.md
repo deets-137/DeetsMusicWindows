@@ -51,6 +51,12 @@ the fork test, and he did not object):
    then folded into share counters; he chose 13 months ("make it 13 months, same as the
    counters"), so there is no fold.
 10. **The update notice gates the first send** (§7).
+11. **Send the skin rows too (his call, 2026-10-21).** His words: "we should send metal as well,
+    its not privacy invading or identifiable." Metal's four choice rows (`metalMaterial`,
+    `metalGrain`, `metalCoverChange`, `metalPeek`) and Happy's Sky (`happySky`) move from
+    NOT_REPORTED to REPORTED in `src/usage-keys.ts`. **Not done yet:** it needs `npm run
+    usage:keys` (the worker's copy in DeetsSupport) and a DeetsSupport deploy, which is his call;
+    the app and the worker must change together, or the worker drops the new keys.
 
 ## 2. The privacy rules
 

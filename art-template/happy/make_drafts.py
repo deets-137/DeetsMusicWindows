@@ -245,6 +245,86 @@ def tennis(angle, size=12):
 
 
 save("scene/tennis_ball", strip([tennis(-k * math.pi / 4) for k in range(8)]))
+
+
+# ---- Placeholders for his drawings: the sun, the rays, the moon, the clouds, the bubble ----
+def disc(im, cx, cy, r, color):
+    for y in range(im.height):
+        for x in range(im.width):
+            if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r:
+                im.putpixel((x, y), color)
+
+
+SUN_RIM, SUN_FACE, SUN_HI = (255, 176, 46, 255), (255, 214, 74, 255), (255, 240, 160, 255)
+sun = Image.new("RGBA", (48, 48), CLEAR)
+disc(sun, 24, 24, 20, SUN_RIM)
+disc(sun, 24, 24, 18, SUN_FACE)
+disc(sun, 18, 17, 5, SUN_HI)
+save("scene/sun", sun)
+
+rays = Image.new("RGBA", (80, 80), CLEAR)
+RAY = (255, 226, 120, 200)
+for k in range(12):
+    a = k * math.pi / 6
+    for d in range(28, 37):
+        for w in (-1, 0, 1):
+            x = 40 + d * math.cos(a) - w * math.sin(a)
+            y = 40 + d * math.sin(a) + w * math.cos(a)
+            if 0 <= int(x) < 80 and 0 <= int(y) < 80:
+                rays.putpixel((int(x), int(y)), RAY)
+save("scene/sun_rays", rays)
+
+MOON, MOON_SHADE = (241, 235, 208, 255), (214, 205, 172, 255)
+moon = Image.new("RGBA", (40, 40), CLEAR)
+disc(moon, 20, 20, 16, MOON)
+cut = Image.new("RGBA", (40, 40), CLEAR)
+disc(cut, 27, 15, 14, (0, 0, 0, 255))
+for y in range(40):
+    for x in range(40):
+        if cut.getpixel((x, y))[3]:
+            moon.putpixel((x, y), CLEAR)
+disc(moon, 12, 24, 2.2, MOON_SHADE)
+disc(moon, 16, 31, 1.6, MOON_SHADE)
+save("scene/moon", moon)
+
+CLOUD, CLOUD_SHADE = (255, 255, 255, 255), (214, 228, 240, 255)
+
+
+def cloud(w, h, puffs):
+    im = Image.new("RGBA", (w, h), CLEAR)
+    for cx, cy, r in puffs:
+        disc(im, cx, cy + 1.5, r, CLOUD_SHADE)
+    for cx, cy, r in puffs:
+        disc(im, cx, cy, r - 0.5, CLOUD)
+    return im
+
+
+save("scene/cloud_small", cloud(48, 24, [(12, 15, 8), (24, 11, 10), (36, 15, 8)]))
+save("scene/cloud_medium", cloud(72, 32, [(14, 21, 10), (30, 14, 13), (46, 16, 12), (60, 22, 9)]))
+save("scene/cloud_large", cloud(112, 40, [(16, 27, 11), (34, 18, 15), (56, 14, 17), (78, 19, 14), (96, 27, 11)]))
+
+INK, PAPER = (43, 38, 32, 255), (255, 253, 248, 255)
+bubble = Image.new("RGBA", (15, 15), CLEAR)
+for y in range(15):
+    for x in range(15):
+        # a rounded box: the corner cut by 2, the outline 1 px of ink
+        cx = min(x, 14 - x)
+        cy = min(y, 14 - y)
+        if cx + cy < 2:
+            continue
+        edge = cx == 0 or cy == 0 or cx + cy == 2
+        bubble.putpixel((x, y), INK if edge else PAPER)
+save("scene/bubble", bubble)
+tail = Image.new("RGBA", (7, 6), CLEAR)
+for y in range(6):
+    for x in range(7):
+        half = 3 - y * 0.6
+        if abs(x - 3) <= half:
+            edge = abs(x - 3) > half - 1 or y == 5
+            tail.putpixel((x, y), INK if edge else PAPER)
+for x in range(1, 6):
+    tail.putpixel((x, 0), PAPER)  # opens into the bubble above
+save("scene/bubble_tail", tail)
 small = Image.new("RGBA", (4, 4), CLEAR)
 stamp(small, BALL_SMALL, 0, 0)
 save("scene/ball_small", small)

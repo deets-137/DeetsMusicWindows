@@ -109,4 +109,16 @@
   --paint-lilac-metal-subtext: #484260; /* Lilac */
   --paint-green-metal-text:    #32412A; /* Green */
   --paint-green-metal-subtext: #3E4B34;
+
+  /* the sky over a scene skin (Happy, docs/features/happy.md §1.2): top and horizon for each
+     part of the day. A natural sky, the same in every theme until he says otherwise. */
+  --paint-sky-day:            #5FA8E0;
+  --paint-sky-day-low:        #CDE9F8;
+  --paint-sky-dawn:           #8AA9D6;
+  --paint-sky-dawn-low:       #FFC79A;
+  --paint-sky-dusk:           #4D4C99;
+  --paint-sky-dusk-low:       #FF8C5A;
+  --paint-sky-night:          #0C1430;
+  --paint-sky-night-low:      #2A3768;
+  --paint-bubble-ink:         #2B2620; /* the words in a sprite's speech bubble: the bubble art's own outline ink */
 }

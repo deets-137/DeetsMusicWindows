@@ -222,6 +222,8 @@ const NEW_MARKS: NewMark[] = [
   { section: "Skin settings", row: "metalgrain", skin: "metal" }, // Metal's Grain
   { section: "Skin settings", row: "metalcover", skin: "metal" }, // Metal's Cover change
   { section: "Skin settings", row: "metalpeek", skin: "metal" }, // Metal's Peek
+  { section: "Skin settings", row: "happysky", skin: "happy" }, // Happy's Sky, built 2026-10-21 (happy.md)
+  { section: "Skin settings", row: "happycards", skin: "happy" }, // Happy's Card opacity
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -458,8 +460,8 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "motion", label: "Motion", hint: "Reduce motion, the three Animate rows, Fancy scrubber, and If graphics fail", keys: ["reduceMotion", "appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
   {
-    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, and the Press record player",
-    keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps", "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek"],
+    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, the Press record player, Metal's four rows, and Happy's sky and card opacity",
+    keys: ["happySky", "happyCardOpacity", "oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps", "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -1465,6 +1467,25 @@ function mountSettings(
           get: () => setting("metalPeek"),
           set: (on) => setSetting("metalPeek", on),
           when: () => currentSkin() === "metal" && ownSetting("metalCoverChange") === "zoetrope",
+        },
+        // Happy (docs/features/happy.md §2.3; his calls H3 b and "as written", 2026-10-21)
+        {
+          kind: "choice", id: "happysky", label: "Sky", key: "happySky", menu: true,
+          hint: "Happy only. Follow the time: night, sunrise, day and sunset where you are. Or hold one",
+          options: [
+            { value: "follow", label: "Follow the time" },
+            { value: "day", label: "Day" },
+            { value: "sunrise", label: "Sunrise" },
+            { value: "sunset", label: "Sunset" },
+            { value: "night", label: "Night" },
+          ],
+          when: () => currentSkin() === "happy",
+        },
+        {
+          kind: "range", id: "happycards", label: "Card opacity", key: "happyCardOpacity", min: 0, max: 100, unit: "%",
+          hint: "Happy only. How solid the cards are. Lower: the sky shows through",
+          preview: (v) => previewSkin("happyCardOpacity", v),
+          when: () => currentSkin() === "happy",
         },
       ],
     },

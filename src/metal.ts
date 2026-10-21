@@ -13,7 +13,7 @@
 // data-metal-peek); this file draws and moves. Every motion runs on one clock (turnMs): the
 // turn's duration × --motion-scale, and nothing under reduced motion or a hidden window.
 // Built from the dev draft and its reviews (metal.md §6.1); DESK-TESTS.md §6.6 is its test.
-import { currentSkin, onSkinChange } from "./skin";
+import { hook, onSkinChange } from "./skin";
 import { setting, onSettingsChange } from "./settings-store";
 import { getCurrent, getHistory, getUpcoming, onQueueChange } from "./queue";
 import { artURL, coverArtPx, resolveEntry } from "./queue-rows";
@@ -123,7 +123,7 @@ function wireTextFade(): void {
       return c;
     };
     // Copies are made only under Metal: every other skin cloned the words on every change for nothing.
-    const isMetal = () => document.documentElement.dataset.skin === "metal";
+    const isMetal = () => hook("material") === "metal";
     let ghost: HTMLElement | null = isMetal() ? copy() : null;
     let last = title.textContent;
     let shown: HTMLElement | null = null;
@@ -216,7 +216,7 @@ let seenSong: string | null = null;
 let seenAt = 0; // when the queue first named this song
 function peekSync(): void {
   wireTextFade();
-  const on = document.documentElement.dataset.metalPeek !== undefined && currentSkin() === "metal" && onStage();
+  const on = document.documentElement.dataset.metalPeek !== undefined && hook("material") === "metal" && onStage();
   const cur = getCurrent();
   const songNow = cur ? cur.catalogId ?? cur.libraryId ?? null : null;
   if (songNow !== seenSong) { seenSong = songNow; seenAt = performance.now(); }
@@ -343,7 +343,7 @@ function paintMaterial(): void {
   const root = document.documentElement;
   const props = ["--metal-texture", "--metal-texture-fine", "--metal-size", "--metal-size-fine"];
   const run = ++painted;
-  if (currentSkin() !== "metal") { props.forEach((p) => root.style.removeProperty(p)); return; }
+  if (hook("material") !== "metal") { props.forEach((p) => root.style.removeProperty(p)); return; }
   const grain = GRAIN[setting("metalGrain")] ?? GRAIN.fine;
   const draw = setting("metalMaterial") === "acrylic" ? acrylic : steel;
   const fine = Math.round(TILE / 2);
@@ -420,7 +420,7 @@ export function initMetal(): void {
   // grown), at most one look a frame: it ran on every DOM change in the app before.
   let looking = false;
   new MutationObserver(() => {
-    if (looking || document.documentElement.dataset.metalPeek === undefined || currentSkin() !== "metal" || !onStage()) return;
+    if (looking || document.documentElement.dataset.metalPeek === undefined || hook("material") !== "metal" || !onStage()) return;
     looking = true;
     requestAnimationFrame(() => {
       looking = false;

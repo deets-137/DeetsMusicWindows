@@ -293,6 +293,8 @@ const SPECS: Spec[] = [
   storeChoice("Skin settings", "metalGrain", "Grain", [{ value: "faint", label: "Faint" }, { value: "fine", label: "Fine" }, { value: "medium", label: "Medium" }, { value: "strong", label: "Strong" }], { only: "Metal only", note: skinNote("metal", "Metal") }),
   storeChoice("Skin settings", "metalCoverChange", "Cover change", [{ value: "zoetrope", label: "Zoetrope" }, { value: "off", label: "Off" }], { only: "Metal only", note: skinNote("metal", "Metal") }),
   storeToggle("Skin settings", "metalPeek", "Peek", { only: "Metal only, with Cover change on Zoetrope", note: skinNote("metal", "Metal") }),
+  storeChoice("Skin settings", "happySky", "Sky", [{ value: "follow", label: "Follow the time" }, { value: "day", label: "Day" }, { value: "sunrise", label: "Sunrise" }, { value: "sunset", label: "Sunset" }, { value: "night", label: "Night" }], { only: "Happy only", note: skinNote("happy", "Happy") }),
+  storeRange("Skin settings", "happyCardOpacity", "Card opacity", { only: "Happy only", note: skinNote("happy", "Happy") }),
   {
     key: "menuMode", label: "Open menus on hover", section: "Menus, hints and notices", kind: "toggle", options: ON_OFF,
     get: () => (setting("menuMode") === "hover" ? "on" : "off"),

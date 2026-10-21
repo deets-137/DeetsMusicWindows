@@ -135,6 +135,20 @@
   --metal-cast:     rgba(0, 0, 0, 0.16);  /* its short cast shadow */
   --metal-sheen-hi: rgba(255, 255, 255, 0.38); /* the polished face on an accent fill */
   --metal-sheen-lo: rgba(0, 0, 0, 0.24);
+
+  /* The sky over a scene skin (Happy; scene.ts picks the part of the day and blends to the
+     next). Top, then the horizon. A theme may tint its own; none does yet. */
+  --sky-day:       var(--paint-sky-day);
+  --sky-day-low:   var(--paint-sky-day-low);
+  --sky-dawn:      var(--paint-sky-dawn);
+  --sky-dawn-low:  var(--paint-sky-dawn-low);
+  --sky-dusk:      var(--paint-sky-dusk);
+  --sky-dusk-low:  var(--paint-sky-dusk-low);
+  --sky-night:     var(--paint-sky-night);
+  --sky-night-low: var(--paint-sky-night-low);
+  /* A sprite's speech bubble is drawn paper with an ink outline (the skin's art), the same in
+     every theme, so its words take that ink, not the theme's text. */
+  --bubble-ink:    var(--paint-bubble-ink);
 }
 
 [data-theme="lilac"] {
@@ -316,20 +330,20 @@
 
 /* Metal over Black & Yellow (his example, metal.md §1): dark steel with gold, not hi-vis
    yellow: the theme names the paint. */
-[data-skin="metal"][data-theme="black-yellow"] { --title: var(--paint-gold-leaf); }
+[data-hook-material="metal"][data-theme="black-yellow"] { --title: var(--paint-gold-leaf); }
 /* Metal's text roles where a theme's own fall short on the brushed plates and the lighter controls
    as they render (the grain lifts them; the readability check, 2026-10-20). Each theme keeps its
    own hue; only the lightness moves. */
-[data-skin="metal"][data-theme="moonlight"] { --text: var(--paint-moon-steel-text); --subtext: var(--paint-moon-steel-subtext); }
-[data-skin="metal"][data-theme="black-red"] { --title: var(--paint-anodized-red); --subtext: var(--paint-anodized-red-subtext); }
-[data-skin="metal"][data-theme="lilac"] { --subtext: var(--paint-lilac-metal-subtext); }
-[data-skin="metal"][data-theme="green"] { --text: var(--paint-green-metal-text); --subtext: var(--paint-green-metal-subtext); }
+[data-hook-material="metal"][data-theme="moonlight"] { --text: var(--paint-moon-steel-text); --subtext: var(--paint-moon-steel-subtext); }
+[data-hook-material="metal"][data-theme="black-red"] { --title: var(--paint-anodized-red); --subtext: var(--paint-anodized-red-subtext); }
+[data-hook-material="metal"][data-theme="lilac"] { --subtext: var(--paint-lilac-metal-subtext); }
+[data-hook-material="metal"][data-theme="green"] { --text: var(--paint-green-metal-text); --subtext: var(--paint-green-metal-subtext); }
 /* Metal over Sepia: brushed brass (his call, 2026-10-20; metal.md §6.7). Sepia's own light
    parchment reads as wood or paper under the brush, and brass needs a darker plate; its dark ink
    would fail on one, so under Metal only Sepia turns dark: the scheme (every light-dark() value
    Metal reads takes its dark side), the plate and floor, and the text roles. Sepia stays as it is
    in every other skin. No new theme: one block, as Black & Yellow's gold above. */
-[data-skin="metal"][data-theme="sepia"] {
+[data-hook-material="metal"][data-theme="sepia"] {
   color-scheme: dark;
   --metal:       var(--paint-brass);
   --metal-floor: var(--paint-brass-floor);
