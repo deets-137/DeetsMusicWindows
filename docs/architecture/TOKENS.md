@@ -794,10 +794,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--swap-mid` | `scale(1)` | press, ocean, cyber |  |
 | `--swap-fade` | `1` | cyber |  |
 | `--swap-stagger` | `0s` | press |  |
-| `--grow-dur` | `0.34s` | — | -- card grow (card-grow.ts, CARD-GROW.md) -- A card opens over its neighbor: the final layout is set once and a clip opens from the old box to the new one over --grow-dur / --grow-ease while the body's content fades (--grow-body-fade) and the rows come back in through the pop tokens. --grow-clip-pad opens the clip past the box by the card shadow's reach, so the shadow is not cut off during the motion (0 under a skin with no shadow). The zone bar is the accent line in the gap that shows which card will grow; the rail is the A–Z column of a grown list; the col widths are the fixed columns of a grown song list. |
+| `--grow-dur` | `0.34s` | — | -- card grow (card-grow.ts, CARD-GROW.md) -- A card opens over its neighbor: the final layout is set once, the card's surface (the shell, §21) moves from the old box to the new one over --grow-dur / --grow-ease, and the content is clipped to it while the rows come in through the pop tokens. --grow-clip-pad is the FULL PLAYER's now (its clip opens past the box by the card shadow's reach); the grow's shell carries its own shadow. The zone bar is the accent line in the gap that shows which card will grow; the rail is the A–Z column of a grown list; the col widths are the fixed columns of a grown song list. |
 | `--grow-ease` | `var(--pop-ease)` | — |  |
-| `--grow-body-fade` | `0.09s` | — | the rebuilt body fades in once the clip is open |
-| `--grow-rows-at` | `0.4` | — | The rows come in at this fraction of --grow-dur, not at its end: on the pop ease the clip looks ~88% open at 0.4, and the soft stop that follows read as an empty card (the motion review, 2026-09-28). 1 = the old order (rows after the clip). A fraction, so it follows --grow-dur. |
+| `--grow-body-fade` | `0.09s` | — | the rebuilt body fades in as its rows enter |
+| `--grow-rows-at` | `0.4` | — | The rows come in at this fraction of --grow-dur, as a wave at the full --grow-rows-stagger (his call 2026-09-28, kept 2026-10-13). 0 was tried on 2026-10-20 (§21): the rows dropped out at the click and came back while the edge moved fast, and he saw a flash where live had "an elegant wave"; back to 0.4 the same night. A fraction, so it follows --grow-dur. |
 | `--grow-collapse-dur` | `0.24s` | — | the collapse: the same curve, shorter (his call, 2026-09-28) |
 | `--grow-rows-stagger` | `0.012s` | — | every row on screen enters; shorter than --pop-stagger |
 | `--grow-clip-pad` | `0px` | press, ocean, glass |  |
@@ -818,7 +818,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-col-plays` | `3.6em` | — |  |
 | `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | -- full player (full-player.ts, features/fullscreen-player.md §9.4, §12) -- Now Playing grows so the cover is as large as the window allows. The cover flies from its rest place to its full place while a clip opens the card; the rows and the band come in at --player-rows-at of the open. Each skin restates the four motion values in its own block (his call, 2026-10-02): the grow's values in the first version, so a skin can get its own shape later as a change of values. --player-art-wait: how long the open waits for the large cover file to decode before it flies with what it has. --full-wide-w: a card at least this much wider than tall is WIDE: the controls sit under the cover, which gives up their height (his call, 2026-10-11: no column beside the cover). A card that is not wide has them under the cover only when the space there holds them, else OVER it on the band. A resize that moves them slides them in --player-dur. --np-band-strength: how opaque the band under the rows is. |
 | `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber |  |
-| `--player-rows-at` | `var(--grow-rows-at)` | press, ocean, glass, cyber |  |
+| `--player-rows-at` | `0.4` | press, ocean, glass, cyber | the grow's old value: the full player still opens with a clip (CARD-GROW.md §21) |
 | `--player-collapse-dur` | `var(--grow-collapse-dur)` | press, ocean, glass, cyber |  |
 | `--player-art-wait` | `0.25s` | — |  |
 | `--full-wide-w` | `356px` | — |  |
@@ -1070,9 +1070,9 @@ reader is a token nothing uses.
 | `--swap-ease` | `var(--nav-ease)` | — | styles.css |
 | `--grow-dur` | `0.34s` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
 | `--grow-ease` | `var(--pop-ease)` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
-| `--grow-body-fade` | `0.09s` | — | extension/styles/skin.css, full-player.ts, styles.css, styles/skin.css |
+| `--grow-body-fade` | `0.09s` | — | extension/styles/skin.css, full-player.ts, styles.css |
 | `--grow-collapse-dur` | `0.24s` | — | card-grow.ts, present.ts, styles.css, styles/skin.css |
-| `--grow-rows-stagger` | `0.012s` | — | card-grow.ts, styles.css |
+| `--grow-rows-stagger` | `0.012s` | — | card-grow.ts, styles.css, styles/skin.css |
 | `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | full-player.ts, styles/skin.css |
 | `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber | full-player.ts |
 | `--player-collapse-dur` | `var(--grow-collapse-dur)` | press, ocean, glass, cyber | full-player.ts |
