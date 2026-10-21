@@ -1079,12 +1079,17 @@
   --scene-cloud-1:    none;  /* small · medium · large */
   --scene-cloud-2:    none;
   --scene-cloud-3:    none;
-  --scene-sun-over:   0.18;  /* the share of the sun that reaches over the top-right card's corner (its padding, not its header's buttons) */
+  --scene-sun-inset:  2;     /* the sun's gap from the window's top and right edges, in art px: it sits in the sky behind the title bar and over the top-right card's corner */
+  --scene-sun-away-dur: calc(var(--dur-med) * 2); /* the sun slides out of the pointer's way (scene.ts) */
+  --scene-sun-back-dur: calc(var(--dur-med) * 5); /* and back home once the pointer has left */
+  --scene-titlebar-halo: none; /* an edge around each word and icon on the sky in the title bar, so they read on any sky (a filter) */
   --scene-cloud-over: 0.12;  /* the share of an edge cloud over its card's outer edge */
   --scene-ray-turn:   150s;  /* one turn of the rays */
   --scene-ray-pulse-dur: 5s; /* the rays' glow, one way */
   --scene-ray-dim:    0.65;  /* the rays at the low end of the glow */
-  --scene-cloud-trip: 240s;  /* a far cloud's trip across the window */
+  --scene-cloud-trip: 240s;  /* a far cloud's trip across the window (each cloud 0.7–1.5× this; the small ones, farther away, slower) */
+  --scene-far-clouds: 9;     /* far clouds drifting behind the cards, at scattered heights in the top 60 % */
+  --scene-edge-clouds: 4;    /* clouds resting on the outer edges of the cards (left and right columns) */
   --scene-bob:        2px;   /* how far an edge cloud rises and falls */
   --scene-bob-dur:    7s;    /* one rise or fall */
   --scene-sky-fade-dur: 60s; /* the sky's blend steps once a minute (scene.ts); each step eases in over this */
@@ -1106,9 +1111,9 @@
   --pet-run-ball:     none;
   --pet-drop-ball:    none;
   --pet-keep-ball:    none;  /* keeping the ball, facing you */
-  --friend-idle:      none;  /* standing, facing you */
-  --friend-throw:     none;
-  --friend-watch:     none;
+  --friend-idle:      none;  --friend-idle-w:     0;  /* standing, facing you */
+  --friend-throw:     none;  --friend-throw-w:    0;
+  --friend-watch:     none;  --friend-watch-w:    0;  /* a strip's -w is one frame's width in art px; 0 = square frames */
   --pet-ball:         none;  /* the fetch ball */
   --bubble:           none;  /* the speech bubble, a 9-slice */
   --bubble-slice:     0;     /* its corner, in art pixels */
@@ -1964,6 +1969,12 @@
   --scene-floor:      calc((var(--scene-grass-h) - var(--scene-grass-feet)) * var(--scene-px, 2) * 1px);
   --scene-sun:        url("../assets/skins/happy/scene/sun.png");
   --scene-sun-rays:   url("../assets/skins/happy/scene/sun_rays.png");
+  /* the title bar on the sky: a crisp one-pixel edge in the theme's card color, and a soft one
+     past it, so dark ink reads on a night sky and light ink on a day sky (happy.md) */
+  --scene-titlebar-halo:
+    drop-shadow(1px 0 0 var(--canvas)) drop-shadow(-1px 0 0 var(--canvas))
+    drop-shadow(0 1px 0 var(--canvas)) drop-shadow(0 -1px 0 var(--canvas))
+    drop-shadow(0 0 var(--space-half) color-mix(in srgb, var(--canvas) 70%, transparent));
   --scene-moon:       url("../assets/skins/happy/scene/moon.png");
   --scene-cloud-1:    url("../assets/skins/happy/scene/cloud_small.png");
   --scene-cloud-2:    url("../assets/skins/happy/scene/cloud_medium.png");
@@ -1983,14 +1994,15 @@
   --pet-drop-ball:    url("../assets/skins/happy/happy/drop_ball_side.png");
   --pet-keep-ball:    url("../assets/skins/happy/happy/keep_ball_down.png");
   --friend-idle:      url("../assets/skins/happy/deets/idle_down.png");
+  --friend-idle-w:    32;   /* Deets is 32 × 64: his frames are not square */
   --friend-throw:     url("../assets/skins/happy/deets/throw_side.png");
+  --friend-throw-w:   32;
   --friend-watch:     url("../assets/skins/happy/deets/watch_side.png");
+  --friend-watch-w:   32;
   --pet-ball:         url("../assets/skins/happy/scene/ball_small.png");
   --bubble:           url("../assets/skins/happy/scene/bubble.png");
   --bubble-slice:     5;
-  --bubble-tail:      url("../assets/skins/happy/scene/bubble_tail.png");
-  --bubble-tail-w:    7;
-  --bubble-tail-h:    6;
+  /* no tail: just the bubble (his call, 2026-10-21); bubble_tail.png stays in the art set */
   --scrub-ball:        url("../assets/skins/happy/scene/tennis_ball.png");
   --scrub-ball-px:     12;
   --scrub-ball-frames: 8;

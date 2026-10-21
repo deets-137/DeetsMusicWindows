@@ -484,13 +484,11 @@
       </div>
 
       <!-- Scene, back (--hook-scene; Happy): the sky (two layers, so one part of the day fades
-           into the next) and far clouds drifting behind the cards. scene.ts paints the sky. -->
+           into the next) and far clouds drifting behind the cards. scene.ts paints the sky and
+           makes the clouds (--scene-far-clouds of them). -->
       <div class="scene scene--back" aria-hidden="true">
         <div class="scene__sky scene__sky--from"></div>
         <div class="scene__sky scene__sky--to"></div>
-        <div class="scene__cloud scene__cloud--far scene__cloud--f1"></div>
-        <div class="scene__cloud scene__cloud--far scene__cloud--f2"></div>
-        <div class="scene__cloud scene__cloud--far scene__cloud--f3"></div>
       </div>
 
       <!-- Each .panel is a mount HOST. The layout manager (src/layout.ts) mounts a card into
@@ -523,8 +521,6 @@
            scene.ts places the sun and clouds by the cards' boxes. -->
       <div class="scene scene--front" aria-hidden="true">
         <div class="scene__sun"><i class="scene__rays"></i><i class="scene__disc"></i><i class="scene__moon"></i></div>
-        <div class="scene__cloud scene__cloud--edge scene__cloud--e1"></div>
-        <div class="scene__cloud scene__cloud--edge scene__cloud--e2"></div>
         <div class="scene__grass"></div>
         <div class="scene__floor"></div>
       </div>

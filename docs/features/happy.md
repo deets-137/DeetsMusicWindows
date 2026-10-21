@@ -334,8 +334,81 @@ not load while a game held the CPU, and the dev app was not started.
 3. The extension's options page and style copies; DeetsSolutions' skin list (another repo).
 4. The full desk test with the break-it pass (DESK-TESTS.md §6.6), then hand over.
 
-**For him to look at first** (decided inside his calls, all tunable tokens): the sun and the edge
-clouds can only reach a little over the cards in Max (`--scene-sun-over` 0.18,
-`--scene-cloud-over` 0.12), so the sun is mostly clipped at the title bar; a sky behind the
-title bar may be the answer, with the v2 title bar. The sky colors (one natural sky, or tinted
-per theme) are open.
+**For him to look at first** (decided inside his calls, all tunable tokens): the edge clouds
+reach a little over the cards (`--scene-cloud-over` 0.12). The sky colors (one natural sky, or
+tinted per theme) are open.
+
+**First look on the web demo (2026-10-21, his report and his calls):**
+- Fixed: Deets drew at 64 art px wide (his frames are 32 × 64; `--friend-*-w` now says so), so he
+  looked stretched and the throw and watch strips showed two of him; a pose played once stopped
+  one frame past its last and vanished (`scene-frames-once`); the bubble's pop-in replaced its
+  centering (`translate`), and at rest by the window's edge it lost its left half (pet.ts keeps it
+  inside the window, `--tail-x` points the tail at his head). Then his call: no tail, just the
+  bubble (Happy sets no `--bubble-tail`; a mod still can).
+- Clouds (his ask: more, and less regular): scene.ts makes them. `--scene-far-clouds` 9 at
+  scattered heights in the top 60 %, each its own size (40 % small, 35 % medium, 25 % large),
+  speed (the small ones slower and paler) and start; `--scene-edge-clouds` 4, taking turns between
+  the left and right columns' outer edges, two on a card in its upper and lower halves. One
+  seeded draw a session, so a resize keeps them.
+- The sky behind the title bar (his call): the body and the scene layers reach up over the title
+  bar (`overflow: clip` + `overflow-clip-margin`), the sky starts at the window's top, the title
+  bar sits over it with no fill (a first dark shade, `--scene-titlebar-scrim`, was replaced: see
+  the readability check below). The sun sits in the window's top-right corner (`--scene-sun-inset` 2 art px), its lower
+  part over the top-right card's corner (his call: it may cover that corner).
+- The sun makes way (his ask): a pointer within 1.3 × its radius sends it up behind the window's
+  top when the pointer comes from below (the card's ⟳), or out past the right edge when it comes
+  from the title bar; a third of its radius stays in sight. It comes home past 1.9 × the radius,
+  or when the pointer leaves the window (`--scene-sun-away-dur`, `--scene-sun-back-dur`).
+  `scene:sun-away` / `scene:sun-home` in the diag ring. The sun had never drawn: a `background`
+  shorthand on `.scene__sun i` reset its picture (now longhands).
+- Happy at the cover, smoother (his ask: "when he's mid run, mid stride"), pet.ts `onTurn`:
+  - Back pushed the wrong way: pet.ts set `--vinyl-x: 1` for Back and vinyl.ts flips Back too, so
+    the cover went left while he pushed right. `--vinyl-x` is now always -1 (Next: left; Back: right).
+  - The slide's shape is set before any await (a first strip load came after vinyl.ts read it).
+  - He moves with the cover, frame by frame (the leaving cover's own transform), not on his own
+    clock: vinyl.ts starts the slide when the new cover decodes, up to 300 ms later.
+  - He never fades in standing still. Head and stand: he runs in past the card's edge on the
+    cover's trailing side (the layer clips to the card). Rope: he runs out from behind the cover
+    (the cover's box hides him, his narration §1.1), stands with the rope taut until the cover
+    moves, then runs with it. A fast press: he runs from where he is, facing where he goes.
+  - Every run's stride keeps pace with its speed (`strideFps`), so his feet never slide.
+  - The rope's pull takes him past the card's edge: from there he goes straight back to the
+    grass (the old 0.42 s walk back over ~350 px is gone). After a sit he runs off past the
+    nearer card edge instead of fading.
+  - Leaving the grass mid-run he keeps his direction (no turn on the spot); the dash eases in.
+  - The stand gets a longer lead (`STAND_LEAD_MS` 450, the rise at 12 fps) and a press from the
+    grass adds `DASH_MS` to the lead, so the grass Happy is gone before he shows by the cover.
+  His test on the web demo: smooth, but his art looked softened. Cause: his layer (`.pet-push`)
+  sits in the card, outside `.scene`, so the scene's `image-rendering: pixelated` never reached
+  him. Now `.pet-push .scene__actor` has it too.
+- Never cut by the card (his call, 2026-10-21: "he shouldn't fully detach from the card but
+  when he's sitting down, he can sit over the border"). The card crop is gone. In Max the cover
+  nearly fills the card (about 20 px of card beside it), so a crop switched on or off while he
+  overlapped an edge popped part of him. Now:
+  - He comes out from behind the cover: only the cover's box hides him then, and that clip is
+    set or cleared only while no part of him is over the cover. Head and stand: out past the
+    trailing edge, a turn, then the head press (0.1 s) or the rise. Rope: he waits behind the
+    cover (no lead now) and runs out with it, the rope showing once his back clears the edge;
+    he stops with part of him still on the card (`ropeEnd`) and sits there over the border.
+  - He leaves by running a short way (0.8 of his width) toward the nearer card edge as he fades.
+  - His card rides over its neighbors while he is out (`.panel:has(> .pet-push)`).
+  His test: looks great.
+- The title bar's readability on the sky (his ask: keep the colors, raise readability). Read on
+  the web demo from the theme roles, title / icons, contrast with the old shade:
+
+  | Theme | Day | Dawn | Dusk | Night | On its card |
+  |---|---|---|---|---|---|
+  | Lilac | 3.4 / 2.0 | 3.6 / 2.1 | 1.4 / 1.2 | 1.4 / 2.4 | 9.8 / 5.6 |
+  | Green | 3.2 / 1.9 | 3.4 / 2.0 | 1.3 / 1.3 | 1.5 / 2.5 | 10.4 / 6.0 |
+  | Sepia | 3.4 / 1.8 | 3.7 / 1.9 | 1.4 / 1.3 | 1.4 / 2.6 | 11.6 / 6.1 |
+  | Moonlight | 3.2 / 1.9 | 3.0 / 1.8 | 7.8 / 4.5 | 15.1 / 8.8 | 13.0 / 7.5 |
+  | Black & Yellow | 2.7 / 2.3 | 2.5 / 2.2 | 6.5 / 5.6 | 12.7 / 10.8 | 13.4 / 11.5 |
+  | Black & Red | ~1.2 / 1.7 | ~1.1 / 1.8 | ~2.9 / 1.5 | 5.5 / 2.8 | high |
+
+  The light themes' dark ink failed on dusk and night, the dark themes' light ink on day, the
+  icons nearly everywhere; the shade hurt the light themes. The fix keeps every ink color and the
+  clear sky: each word and icon on the sky gets a crisp one-pixel edge in its theme's card color
+  (`--canvas`) and a soft one past it (`--scene-titlebar-halo`, a filter), the color the ink was
+  made for. The volume pill and the window buttons keep their own fill. Checked by eye in the
+  demo on each theme's hardest sky (Lilac night, Sepia dusk, Moonlight day, Black & Red day):
+  all read.

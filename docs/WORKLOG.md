@@ -12,6 +12,29 @@ updated: 2026-10-20
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-21, later — Happy: the first look on the web demo
+
+He ran the Happy skin in the web demo (the dev app was busy with another session) and reported
+what he saw; each fix went back to him on the demo. The record is happy.md, "First look on the
+web demo".
+
+- Deets drew twice as wide (his frames are 32 × 64); a pose played once vanished at its end; the
+  speech bubble sat off his head and lost its left half at the window's edge. Fixed. His call: no
+  tail on the bubble.
+- Clouds (his ask: more, less regular): 9 far and 4 edge clouds, each its own size, height,
+  speed and start.
+- His calls: the sky behind the title bar; the sun in the top-right corner, over the card's
+  corner, sliding out of the pointer's way. The sun had never drawn (a `background` shorthand).
+- Happy at the cover: Back pushed the wrong way (two flips cancelled); he now moves with the
+  cover frame by frame, runs in and out of sight from behind the cover, keeps his stride in pace,
+  draws sharp, and may sit over the card's border but never leaves it (his call).
+- The title bar's readability on the sky, all six themes (the table in happy.md): a thin edge
+  in each theme's card color keeps every ink color and the clear sky. Checked by eye on the
+  hardest sky of four themes.
+- Not done: the extension's options list has no Happy yet (it needs the style copies, happy.md
+  "Next session" item 3). He will redo some of the art before the merge and release.
+- Committed on `happy-thirtytwo`.
+
 ## 2026-10-21 — Top Listens' three boxes
 
 His ask: the row over the Rewind panel's Top Listens list becomes three boxes: what it ranks,
