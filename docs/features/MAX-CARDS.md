@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.0
 desk_test: passed 2026-10-12
 sources: [src/layout.ts, src/layout-rules.ts, src/card-grow.ts, src/full-player.ts, src/styles.css, index.html, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/rulez-words.ts, src/rulez-logs.ts, src/compass.ts, src/appearance.ts, src/boot-cover.ts, src/rulez-card.ts, src/surface.ts]
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 # DeetsMusic — Max cards: one, two or four content cards in Max
 
@@ -443,3 +443,18 @@ Where this section and §4 disagree, this section is the code.
 - **The surface menu's Max hint** names the count (§9.2): `markMax()` sets the item's `title`
   from `MAX_HINT` in `layout.ts`; hint.ts adopts each new value. `index.html` keeps the
   four-card text for the first paint.
+
+## 12. A layout change has no motion (an idea, 2026-10-21)
+> **Part:** idea · 2026-10-21 · not designed; his to discuss before a build (his ask)
+
+Found while recording the launch tour (guide/SHOTS.md §5k), where a rule changes the layout
+when a song starts (4 cards → 2 columns → 4 cards). The frames (take 5, 2026-10-21, read at
+15 fps): the change lands in one frame. The cards that stay jump to their new size and place,
+the new ones appear, and nothing moves between the two layouts. A hand pick in Settings does the
+same (§4: "a hidden slot has no animation that the user sees"). The card swap (CARD-SWAP.md)
+and the grow (CARD-GROW.md) both move; this is the one layout change that does not.
+
+Ideas (none decided): the cards that stay glide to their new boxes (the grow's FLIP motion), and
+the cards that come or go use the skin's `--swap-*` shape; or the launch cover's lift, as a look
+change does (UX-COVERUPS.md §6a); or keep the snap and say so. Open: whether a rule's change and
+a hand pick move the same way.

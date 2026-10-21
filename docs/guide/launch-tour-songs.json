@@ -1,0 +1,66 @@
+{
+  "about": "The launch tour's songs, in play order (his picks, 2026-10-21; guide/SHOTS.md §5k). launch-tour-queue.mjs loads the ids; launch-tour-rules.cjs makes one rule per song from the album (the rules match the album, so it must be Apple's album name exactly). A song with an empty id is skipped, and so is its beat. `stand_in` marks a song he has not picked yet. `caption` is what Deets says in his speech bubble when the song's look lands (his words; the skin's name is the placeholder, 2026-10-21). `end` is his last line; empty = none.",
+  "songs": [
+    {
+      "look": "press",
+      "title": "Sisters With Me",
+      "artist": "Tom Misch",
+      "id": "1868437921",
+      "album": "Full Circle",
+      "caption": "Press"
+    },
+    {
+      "look": "ocean",
+      "title": "Time Bomb",
+      "artist": "The Chainsmokers",
+      "id": "1637995424",
+      "album": "So Far So Good",
+      "maxCards": "4",
+      "caption": "Ocean"
+    },
+    {
+      "look": "glass",
+      "title": "Till Forever Falls Apart",
+      "artist": "Ashe & FINNEAS",
+      "id": "1561072491",
+      "album": "Ashlyn",
+      "maxCards": "2cols",
+      "stand_in": true,
+      "caption": "Glass"
+    },
+    {
+      "look": "metal",
+      "title": "La Source_Valentines Day",
+      "artist": "David Norland, Dark Bardo & Nat Vazer",
+      "id": "6796147226",
+      "album": "La Source",
+      "player": "open",
+      "caption": "Metal"
+    },
+    {
+      "look": "metal",
+      "title": "",
+      "artist": "",
+      "id": "",
+      "album": "",
+      "note": "The second Metal song (his pick, open): Next from La Source into it shows the zoetrope.",
+      "caption": ""
+    },
+    {
+      "look": "cyber",
+      "title": "Flower In A Hurricane",
+      "artist": "Justice",
+      "id": "6819802968",
+      "album": "Flower In A Hurricane [from GTAVI] - Single",
+      "caption": "Cyber"
+    }
+  ],
+  "web": {
+    "note": "The web's song is his pick (open). Today the web starts from the Cyber song. `caption` is Deets's line as the web builds (placeholder: the menu row's name).",
+    "caption": "Start a Web"
+  },
+  "end": {
+    "caption": "",
+    "note": "His end line (the name, Apple Music for Windows, the URL: the review's suggestion). Empty until he writes it."
+  }
+}

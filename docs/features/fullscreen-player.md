@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.1
 desk_test: passed 2026-10-11
 sources: [src/full-player.ts, src/full-player-layout.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-19
+updated: 2026-10-21
 ---
 # Full player — grow the Now Playing card
 
@@ -1060,4 +1060,44 @@ same load).
 3. An album with strong colors: the glow stays around the cover during the motion.
 4. Close during the open: the box turns back from where it is.
 5. Max portrait (stacked): the card goes from its place to the top band and back.
+
+## 15. A look change while the player is open (an idea, 2026-10-21)
+> **Part:** idea · 2026-10-21 · not designed; his to discuss before a build (his ask)
+
+**What happens today.** A theme or skin change runs the launch cover (UX-COVERUPS.md §6a):
+the cover fades in, holds opaque while the look changes, then lifts as the cards rise. In the
+card view this reads as a relaunch. In the full player the one card IS the screen, so the whole
+window goes dark, the cover art included, although the cover is the same picture before and
+after.
+
+**Measured** (the launch tour, take 4, 2026-10-21; dev app, Max 1080 × 950, Black & Yellow,
+frames read at 20 fps from `shots/launch-tour/0.31.0/take4.mp4`):
+
+| Change | Veil (fade to dark) | Opaque hold (only the cover color) | Lift | Total |
+|---|---|---|---|---|
+| Press → Ocean | ~150 ms | ~200 ms | ~400 ms | ~0.8 s |
+| Ocean → Glass | ~150 ms | ~450 ms | ~350 ms, then the Glass canvas and frost settle ~200 ms later | ~1.2 s |
+| Glass → Metal | ~200 ms | ~250 ms | ~250 ms; the Queue's text fades in ~400 ms after the cover | ~1.1 s |
+| Metal → Cyber | ~100 ms | ~150 ms | ~350 ms with Cyber's skew | ~0.6 s |
+
+Every frame is smooth (no jump, no gap over ~50 ms in the frames read), so nothing is broken.
+What a viewer sees is a blink to black between two looks of the same song. Glass arrives in two
+steps (the card, then its canvas); Metal's Queue arrives after its cover.
+
+**The launch clip** (SHOTS.md §5k) cuts the opaque hold, so each change reads as a short dip to
+dark. A real change would replace that cut.
+
+**Ideas for a skin-to-skin change in the full player** (none decided; his to pick or redraw):
+- **The cover stays.** The cover box rides above the veil; only the frame, the type and the
+  background change under it, then the new frame settles around the same cover. The least
+  motion; it says "same song, new look".
+- **A per-pair hand-off.** The outgoing skin's own cover motion carries it out: Press's record
+  stops and squares into the new frame, Metal's zoetrope turns it, Cyber's skew snaps it. The
+  most character; a new piece of motion for each skin, so 6 × 5 pairs or one "out" and one
+  "in" per skin.
+- **A shorter hold.** Keep today's cover with the hold cut to the fonts' load (one frame when
+  the fonts are warm). The least work; still a blink.
+
+Open questions: does it apply only in the full player, or to the card view too (where the
+relaunch reads well)? Does a rule's change (the launch tour's) use the same motion as a click?
 

@@ -651,6 +651,129 @@ async function takeRecord(page) {
 /** A clip in progress: a `reload` step keeps what the old page recorded. */
 const recording = { on: false, kept: [] };
 
+// ── the guide (2026-10-21, his ask for the launch clip) ─────────────────────────
+// `"guide": true` on a clip: Deets and Happy, the first-run walk's sprites, walk to each
+// control before a click, rightclick or hover touches it, so a viewer sees where the input
+// went (the runner shows no pointer). The tour's own sprites and walk.css, with no speech
+// card (`"guide": { "scale": 3 }` draws them larger). `{ "walk": selector | "rest" }` moves them without an input; `"side"` on any of those
+// steps picks below / above / left / right of the target; `"guide": false` on a step skips the walk.
+const guide = { on: false, travel: 750, restAfter: 0 };
+const GUIDE_JS = `(() => {
+  document.querySelector(".shots-guide")?.remove();
+  const layer = document.createElement("div");
+  layer.className = "walk shots-guide";
+  layer.style.zIndex = "2147483000"; // over menus and the full player, unlike the tour
+  const stop = document.createElement("div");
+  stop.className = "walk__stop";
+  stop.dataset.tuck = "1";
+  stop.dataset.point = "none";
+  if (window.__shotsGuideScale) stop.style.setProperty("--walk-scale", String(window.__shotsGuideScale));
+  const s = "/src/assets/sprites/";
+  stop.style.setProperty("--walk-deets-idle", 'url("' + s + 'deets/idle_down.png")');
+  stop.style.setProperty("--walk-deets-walk", 'url("' + s + 'deets/walk_side.png")');
+  stop.style.setProperty("--walk-happy-sit", 'url("' + s + 'happy/sit_side.png")');
+  stop.style.setProperty("--walk-happy-walk", 'url("' + s + 'happy/walk_side.png")');
+  stop.innerHTML = '<div class="walk__pair"><div class="walk__sprite walk__deets"></div><div class="walk__sprite walk__happy"></div></div>';
+  // Deets's speech bubble (his call, 2026-10-21: the captions are Deets talking, in Pixelify Sans,
+  // the Happy skin's pixel face). Square, ink-edged, with a stepped tail down to his head; out of
+  // the flow, so the pair's size (and the quiet-spot search) ignores it.
+  const bubble = document.createElement("div");
+  bubble.className = "shots-guide__say";
+  bubble.style.cssText = "position:absolute;left:0;bottom:calc(100% + 14px);max-width:360px;width:max-content;padding:8px 14px 9px;background:#fffdf5;color:#141414;border:3px solid #141414;box-shadow:4px 4px 0 rgba(0,0,0,.45);font:500 24px/1.15 'Pixelify Sans',monospace;letter-spacing:.5px;white-space:pre-line;transform-origin:20px 100%;opacity:0;transform:scale(.6);transition:opacity 90ms steps(2),transform 120ms steps(3);pointer-events:none";
+  const tail = document.createElement("div");
+  tail.style.cssText = "position:absolute;left:18px;top:100%;width:12px;height:9px;background:#141414;clip-path:polygon(0 0,100% 0,100% 33%,67% 33%,67% 67%,33% 67%,33% 100%,0 100%)";
+  bubble.append(tail);
+  const words = document.createElement("span");
+  bubble.prepend(words);
+  stop.append(bubble);
+  layer.append(stop);
+  document.body.append(layer);
+  // \`"guide": { "travel": ms }\` walks faster than the tour (a clip shown once, not a lesson).
+  if (window.__shotsGuideTravel) stop.style.setProperty("--walk-travel", window.__shotsGuideTravel + "ms");
+  const cs = getComputedStyle(stop);
+  const tv = cs.getPropertyValue("--walk-travel").trim();
+  const travel = tv.endsWith("ms") ? parseFloat(tv) : parseFloat(tv) * 1000 || 750;
+  const px = (t, d) => parseFloat(cs.getPropertyValue(t)) || d;
+  let lastX = null, timer = 0, restTimer = 0, sayTimer = 0;
+  // How much the pair would hide at (x, y): a grid of points under its box, each one scored by
+  // what is there. The song's cover, title and controls, a menu and a notice weigh most; any
+  // picture, text or control weighs 1; a card's bare background or a gap weighs 0 (review 1,
+  // 2026-10-21: the corner rest stood on the Queue's playing row).
+  const HERO = ".np__art, .np__meta, .np__title, .np__controls, .ctx-menu, .toast, .compass, .metal-peek";
+  const BUSY = "img, canvas, svg, button, a, input, [role=button], h1, h2, h3, p, span, li, [class*=title], [class*=row]";
+  function cost(x, y, w, h) {
+    let c = 0;
+    for (let i = 0; i < 4; i++) for (let k = 0; k < 4; k++) {
+      const el = document.elementFromPoint(x + ((i + 0.5) * w) / 4, y + ((k + 0.5) * h) / 4);
+      if (!el || el === document.documentElement || el === document.body) continue;
+      c += el.closest(HERO) ? 4 : el.closest(BUSY) ? 1 : 0;
+    }
+    return c;
+  }
+  function quiet() {
+    const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+    const w = stop.offsetWidth, h = stop.offsetHeight, edge = px("--space-2", 8);
+    const from = { x: parseFloat(stop.style.left) || edge, y: parseFloat(stop.style.top) || vh - h - edge };
+    let best = null;
+    for (let y = vh - h - edge; y >= edge; y -= 24) for (let x = edge; x <= vw - w - edge; x += 24) {
+      // the least hidden; then lower on the screen (they stand on a floor); then the shorter walk
+      const score = cost(x, y, w, h) * 10 + ((vh - h - y) / vh) * 4 + (Math.hypot(x - from.x, y - from.y) / Math.hypot(vw, vh)) * 3;
+      if (!best || score < best.score) best = { x, y, score };
+    }
+    return best;
+  }
+  function place(x, y) {
+    const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+    const w = stop.offsetWidth, h = stop.offsetHeight, edge = px("--space-2", 8);
+    x = Math.round(Math.max(edge, Math.min(x, vw - w - edge)));
+    y = Math.round(Math.max(edge, Math.min(y, vh - h - edge)));
+    if (lastX === null) { stop.style.transition = "none"; stop.style.left = x + "px"; stop.style.top = y + "px"; stop.offsetWidth; stop.style.transition = ""; lastX = x; return 0; }
+    stop.dataset.way = x >= lastX ? "right" : "left";
+    lastX = x;
+    stop.dataset.move = "walk";
+    stop.style.left = x + "px";
+    stop.style.top = y + "px";
+    clearTimeout(timer);
+    timer = setTimeout(() => delete stop.dataset.move, travel);
+    return travel;
+  }
+  window.__shotsGuide = {
+    travel,
+    to(r, side) {
+      clearTimeout(restTimer);
+      const w = stop.offsetWidth, h = stop.offsetHeight, gap = px("--walk-gap", 10);
+      const vh = document.documentElement.clientHeight;
+      const cx = r.x + r.w / 2 - w / 2;
+      side = side || (r.y + r.h + gap + h <= vh ? "below" : "above");
+      if (side === "below") return place(cx, r.y + r.h + gap);
+      if (side === "above") return place(cx, r.y - gap - h);
+      if (side === "left") return place(r.x - gap - w, r.y + r.h - h);
+      return place(r.x + r.w + gap, r.y + r.h - h);
+    },
+    // the quietest place on screen now (not a fixed corner: a layout change moves what is there)
+    rest() { clearTimeout(restTimer); const q = quiet(); return q ? place(q.x, q.y) : 0; },
+    // after a press: stand by the control a beat, then step out of the way of what it changes
+    restSoon(ms) { clearTimeout(restTimer); restTimer = setTimeout(() => window.__shotsGuide?.rest(), ms); },
+    // a caption: the bubble pops in over Deets, holds \`ms\`, then goes
+    say(text, ms) {
+      clearTimeout(sayTimer);
+      words.textContent = text;
+      bubble.style.opacity = "1";
+      bubble.style.transform = "scale(1)";
+      sayTimer = setTimeout(() => { bubble.style.opacity = "0"; bubble.style.transform = "scale(.6)"; }, ms);
+    },
+    remove() { layer.remove(); delete window.__shotsGuide; },
+  };
+})()`;
+
+/** Walk the guide to a selector's box (or its rest corner) and wait until it arrives. */
+async function guideTo(page, target, side) {
+  const ms = target === "rest"
+    ? await evaluate(page, "__shotsGuide.rest()")
+    : await evaluate(page, `(() => { const el = document.querySelector(${JSON.stringify(target)}); el.scrollIntoView({ block: "nearest" }); const r = el.getBoundingClientRect(); return __shotsGuide.to({ x: r.x, y: r.y, w: r.width, h: r.height }, ${JSON.stringify(side ?? null)}); })()`);
+  if (ms) await sleep(ms + 150); // arrive, then stand a beat before the input
+}
+
 const KEYS = {
   Space: { key: " ", code: "Space", vk: 32 },
   Enter: { key: "Enter", code: "Enter", vk: 13 },
@@ -697,6 +820,22 @@ async function mouse(page, type, at, extra = {}) {
 }
 
 async function runStep(page, step) {
+  if ("walk" in step) {
+    if (guide.on) await guideTo(page, step.walk === "rest" ? "rest" : (await waitFor(page, step.walk), step.walk), step.side);
+    return;
+  }
+  if ("say" in step) {
+    // `{ "say": "text", "ms": 1800 }`: Deets's speech bubble; it does not wait for the bubble
+    if (guide.on) await evaluate(page, `__shotsGuide.say(${JSON.stringify(step.say)}, ${Number(step.ms) || 1800})`);
+    return;
+  }
+  if (guide.on && step.guide !== false) {
+    const target = step.click ?? step.rightclick ?? step.hover;
+    if (typeof target === "string") {
+      await waitFor(page, target);
+      await guideTo(page, target, step.side);
+    }
+  }
   if ("wait" in step) {
     if (typeof step.wait === "number") return sleep(step.wait);
     return waitFor(page, step.wait);
@@ -727,6 +866,9 @@ async function runStep(page, step) {
     await mouse(page, "mouseMoved", at);
     await mouse(page, "mousePressed", at, { clickCount: 1 });
     await mouse(page, "mouseReleased", at, { clickCount: 1 });
+    // `"guide": { "restAfter": ms }`: after a press they step out of the way of what it changes
+    // (`"stay": true` on a step keeps them by the control, e.g. before a second press there)
+    if (guide.on && guide.restAfter && step.stay !== true) await evaluate(page, `__shotsGuide.restSoon(${guide.restAfter})`);
     return;
   }
   if ("rightclick" in step) {
@@ -1235,6 +1377,14 @@ function consoleFile(failure) {
  */
 async function record(page, shot, base, outDir) {
   for (const step of shot.prepare ?? []) await runStep(page, step);
+  if (shot.guide) {
+    // `"guide": { "scale": 3 }` draws the sprites larger than the tour's 2× (a clip shown small)
+    await evaluate(page, `window.__shotsGuideScale = ${Number(shot.guide.scale) || 0}; window.__shotsGuideTravel = ${Number(shot.guide.travel) || 0}`);
+    guide.restAfter = shot.guide.restAfter ?? 0;
+    await evaluate(page, GUIDE_JS);
+    guide.on = true;
+    await guideTo(page, "rest"); // the first place is a jump: they start in the corner
+  }
   const work = mkdtempSync(join(tmpdir(), "deets-clip-"));
   const frames = [];
   const marks = [];
@@ -1398,6 +1548,10 @@ async function record(page, shot, base, outDir) {
     return { file: mp4, poster, strip, stats: { ...brief, drops: stats.gaps.length }, frameSets, loadSets };
   } finally {
     if (casting) await page.send("Page.stopScreencast").catch(() => {});
+    if (guide.on) {
+      guide.on = false;
+      await evaluate(page, "window.__shotsGuide?.remove()").catch(() => {});
+    }
     if (recording.on) {
       recording.on = false;
       await evaluate(page, "__shotsRec.stop()").catch(() => {});
