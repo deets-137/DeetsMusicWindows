@@ -109,10 +109,15 @@ export async function topBy(stat: RewindStat, window: RewindWindow): Promise<Rew
   return topSince(stat, windowStart(window));
 }
 
-/** Ranked rows over every play since `sinceTs` (0: the whole log), minutes-desc. The Rewind
- *  panel's Top Listens reads the whole log and orders by plays (rewind-btn.ts). */
-export async function topSince(stat: Exclude<RewindStat, "picks">, sinceTs: number): Promise<RewindRow[]> {
-  const events = await playEventsSince(sinceTs);
+/** Ranked rows over every play since `sinceTs` (0: the whole log) and before `untilTs` (the
+ *  Rewind panel's Yesterday), minutes-desc. The panel's Top Listens orders them again by its
+ *  middle box (rewind-btn.ts, `rankTop`). */
+export async function topSince(
+  stat: Exclude<RewindStat, "picks">,
+  sinceTs: number,
+  untilTs = Number.POSITIVE_INFINITY,
+): Promise<RewindRow[]> {
+  const events = (await playEventsSince(sinceTs)).filter((e) => e.startedTs < untilTs);
   // Playlist names resolve from the cached list (local + Apple mirrors). A playlist deleted
   // since keeps the name its plays remembered (schema v22: "Name (deleted)", his call
   // 2026-10-18); plays older than that memory share one "Deleted playlists" row. Nothing

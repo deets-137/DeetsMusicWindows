@@ -33,6 +33,41 @@ export function todayStart(now = Date.now()): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
+/** The Rewind panel's Top Listens time box (listening-time.md §10). All time is the default. */
+export type TopSpan = "today" | "yesterday" | "week" | "month" | "year" | "all";
+
+/** The plays a span holds: started at or after `since`, before `until`. Today and Yesterday are
+ *  calendar days from local midnight; the last week, month and year roll back from now, as the
+ *  Rewind card's spans do (his call 2A, 2026-10-21). Yesterday's start is the local midnight of
+ *  the day before, so a daylight-saving day of 23 or 25 hours is the whole day. */
+export function spanBounds(span: TopSpan, now = Date.now()): { since: number; until: number } {
+  const open = Number.POSITIVE_INFINITY;
+  switch (span) {
+    case "today": return { since: todayStart(now), until: open };
+    case "yesterday": {
+      const d = new Date(now);
+      return { since: new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1).getTime(), until: todayStart(now) };
+    }
+    case "week": return { since: windowStart("week", now), until: open };
+    case "month": return { since: windowStart("month", now), until: open };
+    case "year": return { since: windowStart("year", now), until: open };
+    case "all": return { since: 0, until: open };
+  }
+}
+
+/** What Top Listens ranks by: Played (the count of plays) or Listened (the minutes). */
+export type TopRank = "played" | "listened";
+
+/** Top Listens' order. Played: plays, then minutes (his words, 2026-10-19). Listened: minutes,
+ *  then plays. Then the title, so a tie always draws the same way. `asc` turns the whole order. */
+export function rankTop<R extends { plays: number; ms: number; title: string }>(rows: R[], by: TopRank, dir: "desc" | "asc"): R[] {
+  const out = [...rows].sort((a, b) =>
+    (by === "played" ? b.plays - a.plays || b.ms - a.ms : b.ms - a.ms || b.plays - a.plays) || a.title.localeCompare(b.title),
+  );
+  if (dir === "asc") out.reverse();
+  return out;
+}
+
 /** The Rewind panel's Today number. `mins` (his call, 2026-10-19): always minutes, "134 mins".
  *  `hm` (Settings › Rewind › Today's time in): hours and minutes past the hour, "2 hrs 14 mins".
  *  Whole minutes, rounded down, so the number never shows a minute not yet listened. */

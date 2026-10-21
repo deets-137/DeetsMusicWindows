@@ -1,7 +1,7 @@
 // rewind-window.ts: the Rewind card's time spans (DEETS-REWIND.md §8, F5 and his call K3).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dayInWindow, windowStart, todayStart, fmtToday } from "../src/rewind-window.ts";
+import { dayInWindow, windowStart, todayStart, fmtToday, spanBounds, rankTop } from "../src/rewind-window.ts";
 
 /** A local time, as the user's clock reads it. */
 const at = (y: number, m: number, d: number, h = 0, min = 0) => new Date(y, m - 1, d, h, min).getTime();
@@ -52,4 +52,31 @@ test("2026-10-19 the Today number: minutes always, or hours and minutes", () => 
   assert.equal(fmtToday(65 * m, "hm"), "1 hr 5 mins");
   assert.equal(fmtToday(134 * m, "hm"), "2 hrs 14 mins");
   assert.equal(fmtToday(121 * m, "hm"), "2 hrs 1 min");
+});
+
+test("2026-10-21 Top Listens: Today and Yesterday are calendar days", () => {
+  assert.deepEqual(spanBounds("today", at(2026, 10, 21, 15)), { since: at(2026, 10, 21), until: Infinity });
+  assert.deepEqual(spanBounds("yesterday", at(2026, 10, 21, 0, 5)), { since: at(2026, 10, 20), until: at(2026, 10, 21) });
+  // Across a month and a year end.
+  assert.deepEqual(spanBounds("yesterday", at(2027, 1, 1, 9)), { since: at(2026, 12, 31), until: at(2027, 1, 1) });
+});
+
+test("2026-10-21 Top Listens: the last week, month and year roll back from now (his call 2A)", () => {
+  const now = at(2026, 10, 21, 15);
+  assert.equal(spanBounds("week", now).since, windowStart("week", now));
+  assert.equal(spanBounds("month", now).since, windowStart("month", now));
+  assert.equal(spanBounds("year", now).since, windowStart("year", now));
+  assert.deepEqual(spanBounds("all", now), { since: 0, until: Infinity });
+});
+
+test("2026-10-21 Top Listens: Played ranks by plays, Listened by minutes", () => {
+  const rows = [
+    { title: "A", plays: 5, ms: 100 },
+    { title: "B", plays: 3, ms: 900 },
+    { title: "C", plays: 5, ms: 200 },
+  ];
+  assert.deepEqual(rankTop(rows, "played", "desc").map((r) => r.title), ["C", "A", "B"]);
+  assert.deepEqual(rankTop(rows, "listened", "desc").map((r) => r.title), ["B", "C", "A"]);
+  assert.deepEqual(rankTop(rows, "played", "asc").map((r) => r.title), ["B", "A", "C"]);
+  assert.deepEqual(rows.map((r) => r.title), ["A", "B", "C"]); // the input is not changed
 });

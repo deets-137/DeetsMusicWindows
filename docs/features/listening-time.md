@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-10-19
 sources: [src/rewind-btn.ts, src/styles/rewind-top.css, src/rewind.ts, src/rewind-window.ts, src/rewind-card.ts, src/stats.ts, src/updates-btn.ts, index.html, tests/rewind-window.test.ts]
-updated: 2026-10-19
+updated: 2026-10-21
 ---
 # Listening time — the Rewind button in the title bar
 
@@ -284,3 +284,69 @@ fixed and run again on its own (his order):
 What Claude decided inside his ask: the page size (50, Top Listens' cap), the fade-through's
 half-and-half split, the 8 warmed covers. The Network panel needed no fix (open worst 13–42 ms
 under load, 0 drops left after a quiet run).
+
+## 10. Top Listens' three boxes (2026-10-21)
+
+> **Part:** built · 2026-10-21
+
+### 10.1 His ask and his calls
+
+His ask: change the row over the Top Listens list ("Songs ▾ Most played") into three boxes.
+- **Left:** Songs · Albums · Artists, as before, without the order.
+- **Middle:** a dropdown with Played and Listened, and ↑ ↓ for the order.
+- **Right:** the time span: Today · Yesterday · Last week · Last month · Last year · All time.
+  All time is the default.
+
+His calls (2026-10-21): the arrows go inside the middle dropdown, after a divider, as in the
+Library's Sort pop (1A). Last week, month and year roll back from now: 7, 30 and 365 days,
+the Rewind card's spans (2A). Each box remembers its last choice.
+
+### 10.2 As built
+
+- `src/rewind-window.ts`: `spanBounds(span)` gives each span's start and end. Today starts at
+  local midnight. Yesterday is the calendar day before it. The rolling spans use `windowStart`.
+  `rankTop(rows, by, dir)` gives the order. Played ranks by plays, then minutes (his rule,
+  2026-10-19). Listened ranks by minutes, then plays. Then the title, so that ties always
+  draw in the same order. Tests in `tests/rewind-window.test.ts`.
+- `src/rewind.ts`: `topSince` takes an end time (`untilTs`). The Rust command still reads
+  "since", so Yesterday drops today's plays in the front end. No Rust change, no Apple call.
+- `src/rewind-btn.ts`: one `boxHTML` per box and one `makeDropdown` per box. The pick is
+  `{ view, by, dir, span }` in `deets.rewindTop`. Each value is read on its own, so one bad
+  value takes its default. A pick saved before the boxes (view and order only) keeps its view
+  and order, and gets Played and All time.
+- The number at a row's end follows the middle box: "17 plays", or minutes ("52 min",
+  "3 hr 12 min", `fmtListen`). An empty span says "Nothing played yesterday." (or today, in the
+  last week, and so on).
+- `src/styles/rewind-top.css`: the bar spreads the three boxes from edge to edge. The right box's
+  pop hangs from its right edge, so it stays inside the panel. The middle box's label carries
+  the order's arrow at the caret's size.
+
+What Claude decided inside his calls, for his look:
+- The middle box reads "Played ↓". The arrow sits between the word and the caret.
+- The hints: *What Top Listens ranks* · *Rank by plays or by minutes listened, and the order* ·
+  *The time Top Listens counts*. The arrows: *Most / Least played first*, or *Most / Least
+  listened first* with Listened.
+- The empty lines' words (above).
+- The right box's pop opens to the left of the box's right edge.
+- The "Most played" words beside the old box are gone. The middle box says it now.
+
+### 10.3 The desk test
+
+[checks/rewind-boxes.json](../ops/checks/rewind-boxes.json) on the dev app. **Passed
+2026-10-21, run by Claude: all 10 probes held.** The old pick carried over (Songs · Played ·
+All time). The three boxes sat on one row inside the panel. Played rows read "N plays", with the
+counts going down. Listened rows read minutes, going down, then up after ↑. The time pop showed
+the six spans inside the panel, with All time marked. Yesterday and Today drew rows. The pick
+was saved, came back after a reload (Artists · Listened · Today), and SOTD hid the boxes. Then
+the saved pick was put back.
+
+His hand test: open the Rewind panel › Top Listens. Try each box, close the panel, open it
+again, and check that each box kept its choice.
+
+### 10.4 Found while testing
+
+- **Least first showed "Unknown" rows at the top.** With ↑, the list started with plays whose
+  song the app can no longer resolve ("Unknown", "<1 min"). The old "Least played" order showed
+  the same rows. **His call (2026-10-21): drop them.** `topRows` in rewind-btn.ts keeps only
+  rows with a song the app can find (`r.track`). The Rewind card keeps them. The shots list's
+  ↑ probe now expects no "Unknown" row; he waived a rerun of the desk test for this change.

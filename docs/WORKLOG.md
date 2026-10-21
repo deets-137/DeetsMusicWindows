@@ -12,6 +12,15 @@ updated: 2026-10-20
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-21 — Top Listens' three boxes
+
+His ask: the row over the Rewind panel's Top Listens list becomes three boxes: what it ranks,
+Played or Listened with ↑ ↓, and the time span (Today to All time). His calls: the arrows in the
+middle dropdown (1A), rolling spans (2A), each box remembers its choice. Built
+(listening-time.md §10). Desk test `checks/rewind-boxes.json` passed on the dev app, run by
+Claude (10 probes). Found: least-first lists started with "Unknown" rows; his call: drop
+them from Top Listens (§10.4; no rerun, his word). Committed.
+
 ## 2026-10-20, late — four desk tests closed, Metal's last forks, the merge, 0.31.0
 
 - `npm run storage -- --prune`: 51 incremental folders, 12.44 GB freed (the build folders were

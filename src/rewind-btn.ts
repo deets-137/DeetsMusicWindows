@@ -4,8 +4,10 @@
 //     ("Today: 134 mins"); Settings › Rewind › Today's time in shows hours and minutes.
 //   - Top Listens (left) and SOTD (right): each opens its list below, the panel's height
 //     following it; one list at a time, and a second press closes it.
-//   - Top Listens: the whole play log, most played first. Its view dropdown is the Library's
-//     Sort pop: Songs · Albums · Artists, a divider, and ↑ ↓ for the order.
+//   - Top Listens: three boxes over its list (his layout, 2026-10-21; listening-time.md §10).
+//     Left: Songs · Albums · Artists. Middle: Played · Listened, a divider, and ↑ ↓ for the
+//     order (the Library's Sort pop). Right: the time, Today to All time (All time first).
+//     Each box remembers its last choice.
 //   - SOTD: every Song of the Day pick, newest first. Hidden while Song of the Day is off.
 // The rows are the Rewind card's: a plain click does nothing, the right-click carries the verbs.
 // Local only: no Apple call. The numbers come from the play log (rewind.ts).
@@ -19,8 +21,8 @@ import { currentSurface } from "./surface";
 import { tokenMs } from "./boot-cover";
 import { setting, onSettingsChange } from "./settings-store";
 import { onPlayEvent } from "./stats";
-import { listenedToday, topSince, albumKey, fmtPlays, type RewindRow } from "./rewind";
-import { fmtToday } from "./rewind-window";
+import { listenedToday, topSince, albumKey, fmtPlays, fmtListen, type RewindRow } from "./rewind";
+import { fmtToday, spanBounds, rankTop, type TopSpan, type TopRank } from "./rewind-window";
 import { sotdOn, allPicks, dayLabel, pickMenu, onSotdChange } from "./sotd";
 import { tracks as libraryTracks } from "./track-store";
 import { albumOrder, artistOrder, libAlbum } from "./library-card";
@@ -52,26 +54,59 @@ const WARM_COVERS = 8;
 /** The Today number re-reads this often while the panel is open: the play log saves an open
  *  play's minutes every 30 s (stats.ts `checkpoint`), so the number moves while music plays. */
 const TODAY_EVERY_MS = 30_000;
-/** The view and order of Top Listens. Not a setting: a per-install memory, like the card's pills. */
+/** The three boxes of Top Listens. Not a setting: a per-install memory, like the card's pills. */
 const STORE_KEY = "deets.rewindTop";
 
 const VIEW_LABELS: Record<View, string> = { songs: "Songs", albums: "Albums", artists: "Artists" };
+const RANK_LABELS: Record<TopRank, string> = { played: "Played", listened: "Listened" };
+/** His words (2026-10-21), shortest span first. */
+const SPAN_LABELS: Record<TopSpan, string> = {
+  today: "Today", yesterday: "Yesterday", week: "Last week", month: "Last month", year: "Last year", all: "All time",
+};
+/** The empty list's line: "Nothing played <this>." */
+const SPAN_EMPTY: Record<TopSpan, string> = {
+  today: "today", yesterday: "yesterday", week: "in the last week", month: "in the last month", year: "in the last year", all: "yet",
+};
+
+interface Pick { view: View; by: TopRank; dir: Dir; span: TopSpan }
 
 const reduced = () => motionReduced();
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-const loadPick = (): { view: View; dir: Dir } => {
+/** Each value on its own: one unreadable value takes its default, not the whole pick. A pick
+ *  saved before the three boxes (view and order only) keeps them, ranks by plays over all time. */
+const loadPick = (): Pick => {
+  const pick: Pick = { view: "songs", by: "played", dir: "desc", span: "all" };
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? "");
-    if (raw.view in VIEW_LABELS && (raw.dir === "asc" || raw.dir === "desc")) return raw;
+    if (raw.view in VIEW_LABELS) pick.view = raw.view;
+    if (raw.by in RANK_LABELS) pick.by = raw.by;
+    if (raw.dir === "asc" || raw.dir === "desc") pick.dir = raw.dir;
+    if (raw.span in SPAN_LABELS) pick.span = raw.span;
   } catch { /* first run, or storage unavailable */ }
-  return { view: "songs", dir: "desc" };
+  return pick;
 };
-const savePick = (p: { view: View; dir: Dir }) => {
+const savePick = (p: Pick) => {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(p));
   } catch { /* storage unavailable: the pick lasts the session */ }
 };
+
+type Box = "view" | "rank" | "span";
+const BOX_GROUP: Record<Box, string> = { view: "Rank", rank: "Rank by", span: "Time" };
+const DIR_PATH: Record<Dir, string> = { desc: '<path d="M6 2v8M3 7l3 3 3-3" />', asc: '<path d="M6 10V2M3 5l3-3 3 3" />' };
+const dirHint = (by: TopRank, d: Dir) => `${d === "desc" ? "Most" : "Least"} ${by === "played" ? "played" : "listened"} first`;
+
+/** One box: a panel chip with the dropdown caret, and its pop. The span box's pop hangs from its
+ *  right edge, so it stays inside the panel. */
+const boxHTML = (box: Box, hint: string) => `
+        <div class="rewind-top__view${box === "span" ? " rewind-top__view--end" : ""}" data-rt-box="${box}">
+          <button class="sound__pill rewind-top__pill" type="button" aria-haspopup="true" aria-expanded="false" title="${hint}">
+            <span class="rewind-top__label" data-rt-label></span>
+            <svg class="rewind-top__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
+          </button>
+          <div class="rewind-top__pop pop" data-frames="rewind-top-${box}" hidden></div>
+        </div>`;
 
 let dropdown: DropdownHandle | null = null;
 
@@ -103,14 +138,9 @@ export function initRewindButton(): void {
     </div>
     <div class="rewind-top__part" data-rt-body hidden>
       <div class="rewind-top__bar" data-rt-bar>
-        <div class="rewind-top__view">
-          <button class="sound__pill rewind-top__pill" type="button" aria-haspopup="true" aria-expanded="false" title="What Top Listens ranks, and its order">
-            <span data-rt-label></span>
-            <svg class="rewind-top__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
-          </button>
-          <div class="rewind-top__pop pop" data-rt-pop data-frames="rewind-top-view" hidden></div>
-        </div>
-        <span class="rewind-top__what" data-rt-what></span>
+        ${boxHTML("view", "What Top Listens ranks")}
+        ${boxHTML("rank", "Rank by plays or by minutes listened, and the order")}
+        ${boxHTML("span", "The time Top Listens counts")}
       </div>
       <ol class="rewind-top__list app-scroll" data-rt-list></ol>
     </div>`;
@@ -118,11 +148,6 @@ export function initRewindButton(): void {
   const body = panel.querySelector<HTMLElement>("[data-rt-body]")!;
   const bar = panel.querySelector<HTMLElement>("[data-rt-bar]")!;
   const list = panel.querySelector<HTMLElement>("[data-rt-list]")!;
-  const label = panel.querySelector<HTMLElement>("[data-rt-label]")!;
-  const what = panel.querySelector<HTMLElement>("[data-rt-what]")!;
-  const viewWrap = panel.querySelector<HTMLElement>(".rewind-top__view")!;
-  const pill = panel.querySelector<HTMLElement>(".rewind-top__pill")!;
-  const pop = panel.querySelector<HTMLElement>("[data-rt-pop]")!;
   const chipOf = (p: Part) => panel.querySelector<HTMLElement>(`[data-rt-part="${p}"]`)!;
 
   // ── the height follows the content (updates-btn.ts's shape) ──
@@ -171,11 +196,12 @@ export function initRewindButton(): void {
     );
   };
   const topRows = async (): Promise<RewindRow[]> => {
-    const all = await topSince(pick.view, 0);
-    // Most played: plays first, then minutes (his words, 2026-10-19). ↑ turns the whole order.
-    all.sort((a, b) => b.plays - a.plays || b.ms - a.ms || a.title.localeCompare(b.title));
-    if (pick.dir === "asc") all.reverse();
-    return all.slice(0, LIST_CAP);
+    // The span is read at each draw, so an open panel's Today moves on at midnight.
+    const { since, until } = spanBounds(pick.span);
+    // A row with no song the app can still find ("Unknown") is dropped (his call, 2026-10-21):
+    // least first, they filled the top of the list. The Rewind card keeps them.
+    const known = (await topSince(pick.view, since, until)).filter((r) => r.track);
+    return rankTop(known, pick.by, pick.dir).slice(0, LIST_CAP);
   };
   const sotdRows = (): RewindRow[] =>
     [...allPicks()]
@@ -197,7 +223,8 @@ export function initRewindButton(): void {
 
   // ── the pages: a list draws `PAGE` rows, then the next as it nears its end ──
   let shown = 0;
-  const metaOf = (r: RewindRow) => (part === "top" ? fmtPlays(r.plays) : r.meta ?? "");
+  // The number follows the middle box: plays, or the minutes listened.
+  const metaOf = (r: RewindRow) => (part !== "top" ? r.meta ?? "" : pick.by === "played" ? fmtPlays(r.plays) : fmtListen(r.ms));
   const rowsHTML = (from: number, to: number) => rows.slice(from, to).map((r, i) => rowHTML(r, from + i, metaOf(r))).join("");
   list.addEventListener("scroll", () => {
     if (shown >= rows.length || list.scrollTop + list.clientHeight < list.scrollHeight - PAGE_AHEAD_PX) return;
@@ -303,13 +330,12 @@ export function initRewindButton(): void {
     body.hidden = false;
     rows = next;
     bar.hidden = now !== "top";
-    label.textContent = VIEW_LABELS[pick.view];
-    what.textContent = pick.dir === "desc" ? "Most played" : "Least played";
+    paintLabels();
     list.classList.toggle("rewind-top__round", now === "top" && pick.view === "artists");
     shown = Math.min(rows.length, PAGE);
     list.innerHTML = rows.length
       ? rowsHTML(0, shown)
-      : `<li class="rewind-top__empty">${now === "top" ? "Nothing played yet." : "No Songs of the Day yet."}</li>`;
+      : `<li class="rewind-top__empty">${now === "top" ? `Nothing played ${SPAN_EMPTY[pick.span]}.` : "No Songs of the Day yet."}</li>`;
     measureGutter();
     if (!through) enter();
     animateHeight(from);
@@ -364,7 +390,7 @@ export function initRewindButton(): void {
     diag.log("rewindTop:part", { part });
     if (!part) {
       seq++;
-      viewDrop.close();
+      closeBoxes();
       dropGhost();
       slideOut(from);
       return;
@@ -379,44 +405,64 @@ export function initRewindButton(): void {
     if (p) togglePart(p);
   });
 
-  // ── the view dropdown (the Library's Sort pop: choices, a divider, ↑ ↓) ──
-  const popHTML = () => {
-    const opts = (Object.keys(VIEW_LABELS) as View[])
-      .map((v) => `<button class="lib-pop__opt${v === pick.view ? " is-active" : ""}" type="button" data-rt-view="${v}">${VIEW_LABELS[v]}</button>`)
-      .join("");
+  // ── the three boxes (each the Library's Sort pop: choices; the middle one adds a divider and ↑ ↓) ──
+  const optsHTML = <K extends string>(box: Box, labels: Record<K, string>, now: K) =>
+    `<div class="lib-pop__col" role="group" aria-label="${BOX_GROUP[box]}">${(Object.keys(labels) as K[])
+      .map((k) => `<button class="lib-pop__opt${k === now ? " is-active" : ""}" type="button" data-rt-${box}="${k}">${labels[k]}</button>`)
+      .join("")}</div>`;
+  const popHTML = (box: Box) => {
+    if (box === "view") return `<div class="lib-pop__cols">${optsHTML(box, VIEW_LABELS, pick.view)}</div>`;
+    if (box === "span") return `<div class="lib-pop__cols">${optsHTML(box, SPAN_LABELS, pick.span)}</div>`;
     const dirs = (["desc", "asc"] as Dir[])
-      .map(
-        (d) =>
-          `<button class="lib-pop__dir${d === pick.dir ? " is-active" : ""}" type="button" data-rt-dir="${d}" aria-label="${
-            d === "desc" ? "Most played first" : "Least played first"
-          }" title="${d === "desc" ? "Most played first" : "Least played first"}"><svg viewBox="0 0 12 12" aria-hidden="true">${
-            d === "desc" ? '<path d="M6 2v8M3 7l3 3 3-3" />' : '<path d="M6 10V2M3 5l3-3 3 3" />'
-          }</svg></button>`,
-      )
+      .map((d) => {
+        const hint = dirHint(pick.by, d);
+        return `<button class="lib-pop__dir${d === pick.dir ? " is-active" : ""}" type="button" data-rt-dir="${d}" aria-label="${hint}" title="${hint}"><svg viewBox="0 0 12 12" aria-hidden="true">${DIR_PATH[d]}</svg></button>`;
+      })
       .join("");
-    return `<div class="lib-pop__cols"><div class="lib-pop__col" role="group" aria-label="Rank">${opts}</div><div class="lib-pop__col lib-pop__col--dir" role="group" aria-label="Order">${dirs}</div></div>`;
+    return `<div class="lib-pop__cols">${optsHTML(box, RANK_LABELS, pick.by)}<div class="lib-pop__col lib-pop__col--dir" role="group" aria-label="Order">${dirs}</div></div>`;
   };
-  const viewDrop = makeDropdown({
-    root: viewWrap,
-    trigger: pill,
-    panel: pop,
-    onOpen: () => {
-      pop.innerHTML = popHTML();
-      enterRows(pop.querySelectorAll(".lib-pop__opt, .lib-pop__dir"));
-    },
+  const boxes = (["view", "rank", "span"] as Box[]).map((box) => {
+    const wrap = panel.querySelector<HTMLElement>(`[data-rt-box="${box}"]`)!;
+    const pop = wrap.querySelector<HTMLElement>(".rewind-top__pop")!;
+    const drop = makeDropdown({
+      root: wrap,
+      trigger: wrap.querySelector<HTMLElement>(".rewind-top__pill")!,
+      panel: pop,
+      onOpen: () => {
+        pop.innerHTML = popHTML(box);
+        enterRows(pop.querySelectorAll(".lib-pop__opt, .lib-pop__dir"));
+      },
+    });
+    pop.addEventListener("click", (e) => {
+      const t = (e.target as HTMLElement).closest<HTMLElement>("button");
+      if (!t) return;
+      const d = t.dataset;
+      const next: Pick = {
+        view: (d.rtView as View | undefined) ?? pick.view,
+        by: (d.rtRank as TopRank | undefined) ?? pick.by,
+        dir: (d.rtDir as Dir | undefined) ?? pick.dir,
+        span: (d.rtSpan as TopSpan | undefined) ?? pick.span,
+      };
+      e.stopPropagation(); // a choice keeps the pop open, as the Library's Sort pop does
+      if (next.view === pick.view && next.by === pick.by && next.dir === pick.dir && next.span === pick.span) return;
+      pick = next;
+      savePick(pick);
+      pop.innerHTML = popHTML(box);
+      diag.log("rewindTop:view", { ...pick });
+      void drawList(true);
+    });
+    return { box, drop, wrap };
   });
-  pop.addEventListener("click", (e) => {
-    const t = e.target as HTMLElement;
-    const v = t.closest<HTMLElement>("[data-rt-view]")?.dataset.rtView as View | undefined;
-    const d = t.closest<HTMLElement>("[data-rt-dir]")?.dataset.rtDir as Dir | undefined;
-    if (!v && !d) return;
-    e.stopPropagation(); // a choice keeps the pop open, as the Library's Sort pop does
-    pick = { view: v ?? pick.view, dir: d ?? pick.dir };
-    savePick(pick);
-    pop.innerHTML = popHTML();
-    diag.log("rewindTop:view", pick);
-    void drawList(true);
-  });
+  const closeBoxes = () => { for (const b of boxes) b.drop.close(); };
+  /** The pills read the pick: the view, the rank with its arrow, the span. */
+  function paintLabels() {
+    for (const { box, wrap } of boxes) {
+      const label = wrap.querySelector<HTMLElement>("[data-rt-label]")!;
+      if (box === "view") label.textContent = VIEW_LABELS[pick.view];
+      else if (box === "span") label.textContent = SPAN_LABELS[pick.span];
+      else label.innerHTML = `${RANK_LABELS[pick.by]}<svg class="rewind-top__dir" viewBox="0 0 12 12" aria-label="${dirHint(pick.by, pick.dir)}">${DIR_PATH[pick.dir]}</svg>`;
+    }
+  }
 
   // ── right-click: the Rewind card's menus ──
   const albumTracksOf = (r: RewindRow): Track[] => {
@@ -490,10 +536,10 @@ export function initRewindButton(): void {
       diag.log("rewindTop:open", { part });
     },
   });
-  // The panel's close closes the view pop with it.
+  // The panel's close closes the boxes' pops with it.
   new MutationObserver(() => {
     if (!panel.hidden) return;
-    viewDrop.close();
+    closeBoxes();
     dropGhost(); // a swap's fading copy goes with the panel
     stopLeaving(true); // and a slide-out ends where it was going
   }).observe(panel, { attributes: true, attributeFilter: ["hidden"] });

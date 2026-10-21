@@ -1,0 +1,110 @@
+{
+  "about": "The Rewind panel's Top Listens boxes on the dev app (his library): the left box (Songs · Albums · Artists), the middle box (Played · Listened, ↓ ↑) and the right box (Today to All time). Starts from a pick saved before the boxes (view and order only), so the old pick carries over. Checks the labels, the number each row shows, the order by plays or by minutes, that the three boxes sit on one row inside the panel, that the right box's pop stays inside the panel, that each choice is remembered across a reload, and that SOTD hides the boxes. Puts the saved pick back at the end.",
+  "desk_test": "features/listening-time.md §10.3",
+  "made": "2026-10-21",
+  "pass": "Each probe's expect holds. In the strip: the three boxes sit on one row, the pops open under their box, and the list redraws on each choice.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/rewind-boxes.json   (needs `npm run dev:app` running in Max, its window on screen)",
+  "shots": [
+    {
+      "id": "rewind-boxes",
+      "covers": "features/listening-time.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 30,
+      "steps": [
+        {
+          "eval": "sessionStorage.setItem('rt-saved', localStorage.getItem('deets.rewindTop') ?? ''); localStorage.setItem('deets.rewindTop', JSON.stringify({ view: 'songs', dir: 'desc' }))"
+        },
+        { "reload": true },
+        { "wait": 6000 },
+        {
+          "probe": "JSON.stringify({ surface: document.documentElement.dataset.surface, shut: document.getElementById('rewind-panel').hidden })",
+          "expect": { "surface": "max", "shut": true },
+          "name": "rest"
+        },
+        { "click": "#rewind-open" },
+        { "wait": 500 },
+        { "eval": "if (document.querySelector('[data-rt-part=\"top\"]').getAttribute('aria-pressed') !== 'true') document.querySelector('[data-rt-part=\"top\"]').click()" },
+        { "wait": 1200 },
+        {
+          "probe": "(() => { const p = document.getElementById('rewind-panel'), bar = p.querySelector('[data-rt-bar]'), pr = p.getBoundingClientRect(), pad = parseFloat(getComputedStyle(p).paddingRight); const pills = [...bar.querySelectorAll('.rewind-top__pill')]; const tops = new Set(pills.map((b) => Math.round(b.getBoundingClientRect().top))); const meta = [...p.querySelectorAll('[data-rt-list] .qrow__meta')].map((m) => m.textContent); const n = meta.map((t) => parseInt(t, 10)); return JSON.stringify({ labels: pills.map((b) => b.textContent.trim()), oneRow: tops.size === 1, inside: pills.every((b) => b.getBoundingClientRect().right <= pr.right - pad + 0.5), plays: meta.length > 0 && meta.every((t) => /^\\d+ plays?$/.test(t)), desc: n.every((v, i) => i === 0 || v <= n[i - 1]) }); })()",
+          "expect": { "labels": ["Songs", "Played", "All time"], "oneRow": true, "inside": true, "plays": true, "desc": true },
+          "name": "old pick carries over"
+        },
+        { "snap": "rt-boxes-default" },
+        { "click": "[data-rt-box=\"rank\"] .rewind-top__pill" },
+        { "wait": 400 },
+        { "snap": "rt-rank-pop" },
+        { "click": "[data-rt-rank=\"listened\"]", "frames": 20, "region": "#rewind-panel" },
+        { "wait": 900 },
+        {
+          "probe": "(() => { const p = document.getElementById('rewind-panel'); const min = (t) => { if (t === '<1 min') return 0; const h = /(\\d+) hr/.exec(t), m = /(\\d+) min/.exec(t); return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0); }; const meta = [...p.querySelectorAll('[data-rt-list] .qrow__meta')].map((m) => m.textContent); const n = meta.map(min); return JSON.stringify({ label: p.querySelector('[data-rt-box=\"rank\"] .rewind-top__pill').textContent.trim(), popOpen: !p.querySelector('[data-rt-box=\"rank\"] .rewind-top__pop').hidden, mins: meta.length > 0 && meta.every((t) => /min$|hr$/.test(t)), desc: n.every((v, i) => i === 0 || v <= n[i - 1] + 1) }); })()",
+          "expect": { "label": "Listened", "popOpen": true, "mins": true, "desc": true },
+          "name": "listened ranks by minutes"
+        },
+        { "click": "[data-rt-dir=\"asc\"]" },
+        { "wait": 900 },
+        {
+          "probe": "(() => { const p = document.getElementById('rewind-panel'); const min = (t) => { if (t === '<1 min') return 0; const h = /(\\d+) hr/.exec(t), m = /(\\d+) min/.exec(t); return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0); }; const n = [...p.querySelectorAll('[data-rt-list] .qrow__meta')].map((m) => min(m.textContent)); return JSON.stringify({ asc: n.length > 0 && n.every((v, i) => i === 0 || v + 1 >= n[i - 1]), hint: p.querySelector('[data-rt-box=\"rank\"] .rewind-top__dir').getAttribute('aria-label'), unknown: [...p.querySelectorAll('[data-rt-list] .qrow__title')].filter((t) => /^Unknown/.test(t.textContent)).length }); })()",
+          "expect": { "asc": true, "hint": "Least listened first", "unknown": 0 },
+          "name": "the order turns"
+        },
+        { "click": "[data-rt-box=\"span\"] .rewind-top__pill" },
+        { "wait": 400 },
+        {
+          "probe": "(() => { const p = document.getElementById('rewind-panel'), pr = p.getBoundingClientRect(), pop = p.querySelector('[data-rt-box=\"span\"] .rewind-top__pop'), r = pop.getBoundingClientRect(); return JSON.stringify({ rankShut: p.querySelector('[data-rt-box=\"rank\"] .rewind-top__pop').hidden, spanOpen: !pop.hidden, inside: r.left >= pr.left && r.right <= pr.right, opts: [...pop.querySelectorAll('.lib-pop__opt')].map((o) => o.textContent), active: pop.querySelector('.is-active')?.textContent }); })()",
+          "expect": { "rankShut": true, "spanOpen": true, "inside": true, "opts": ["Today", "Yesterday", "Last week", "Last month", "Last year", "All time"], "active": "All time" },
+          "name": "the time pop"
+        },
+        { "snap": "rt-span-pop" },
+        { "click": "[data-rt-span=\"yesterday\"]" },
+        { "wait": 900 },
+        {
+          "probe": "(() => { const p = document.getElementById('rewind-panel'), empty = p.querySelector('.rewind-top__empty'); return JSON.stringify({ label: p.querySelector('[data-rt-box=\"span\"] .rewind-top__pill').textContent.trim(), ok: empty ? empty.textContent === 'Nothing played yesterday.' : p.querySelectorAll('[data-rt-list] [data-idx]').length > 0 }); })()",
+          "expect": { "label": "Yesterday", "ok": true },
+          "name": "yesterday"
+        },
+        { "click": "[data-rt-span=\"today\"]" },
+        { "wait": 900 },
+        {
+          "probe": "(() => { const p = document.getElementById('rewind-panel'), empty = p.querySelector('.rewind-top__empty'); return JSON.stringify({ ok: empty ? empty.textContent === 'Nothing played today.' : p.querySelectorAll('[data-rt-list] [data-idx]').length > 0, saved: JSON.parse(localStorage.getItem('deets.rewindTop')) }); })()",
+          "expect": { "ok": true, "saved": { "view": "songs", "by": "listened", "dir": "asc", "span": "today" } },
+          "name": "today, and the pick is saved"
+        },
+        { "click": "[data-rt-box=\"view\"] .rewind-top__pill" },
+        { "wait": 400 },
+        { "click": "[data-rt-view=\"artists\"]" },
+        { "wait": 900 },
+        {
+          "probe": "(() => { const p = document.getElementById('rewind-panel'); return JSON.stringify({ label: p.querySelector('[data-rt-box=\"view\"] .rewind-top__pill').textContent.trim(), dirs: p.querySelectorAll('[data-rt-box=\"view\"] .lib-pop__dir').length, round: p.querySelector('[data-rt-list]').classList.contains('rewind-top__round') }); })()",
+          "expect": { "label": "Artists", "dirs": 0, "round": true },
+          "name": "the left box has no arrows"
+        },
+        { "reload": true },
+        { "wait": 6000 },
+        { "click": "#rewind-open" },
+        { "wait": 500 },
+        { "eval": "if (document.querySelector('[data-rt-part=\"top\"]').getAttribute('aria-pressed') !== 'true') document.querySelector('[data-rt-part=\"top\"]').click()" },
+        { "wait": 1200 },
+        {
+          "probe": "JSON.stringify({ labels: [...document.querySelectorAll('#rewind-panel [data-rt-bar] .rewind-top__pill')].map((b) => b.textContent.trim()) })",
+          "expect": { "labels": ["Artists", "Listened", "Today"] },
+          "name": "remembered after a reload"
+        },
+        { "click": "[data-rt-part=\"sotd\"]" },
+        { "wait": 900 },
+        {
+          "probe": "JSON.stringify({ barHidden: document.querySelector('#rewind-panel [data-rt-bar]').hidden })",
+          "expect": { "barHidden": true },
+          "name": "SOTD hides the boxes"
+        },
+        { "click": "#rewind-open" },
+        {
+          "eval": "{ const s = sessionStorage.getItem('rt-saved'); if (s) localStorage.setItem('deets.rewindTop', s); else localStorage.removeItem('deets.rewindTop'); sessionStorage.removeItem('rt-saved'); }"
+        },
+        { "reload": true },
+        { "wait": 4000 }
+      ]
+    }
+  ]
+}

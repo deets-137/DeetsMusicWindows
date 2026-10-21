@@ -67,18 +67,24 @@
 
 /* A part: the list a button opened, with its own bar above it. */
 .rewind-top__part { display: flex; flex-direction: column; gap: var(--space-1); min-height: 0; }
-.rewind-top__bar { display: flex; align-items: center; gap: var(--space-2); }
+/* Top Listens' three boxes (his layout, 2026-10-21): what it ranks, by what and its order, the
+   time. One row across the panel, the left box at the left edge, the right box at the right. */
+.rewind-top__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
 /* A swap's copy of the old list (rewind-btn.ts `fadeOld`): over the new one, in the panel's own
    fill, fading out while the new rows enter under it. Never takes the pointer. */
 .rewind-top__ghost {
   position: absolute; z-index: 1; overflow: hidden; pointer-events: none;
   background: var(--menu-surface);
 }
-.rewind-top__what { color: var(--subtext); font-size: var(--fs-subtext); }
-
-/* The view dropdown: the Library's Sort pop (a column of choices, a divider, the ↑ ↓ squares),
-   hung under its pill inside the panel. */
+/* A box's dropdown: the Library's Sort pop (a column of choices; the middle box adds a divider
+   and the ↑ ↓ squares), hung under its pill inside the panel. */
 .rewind-top__view { position: relative; }
+/* The middle box's label carries the order's arrow, at the caret's size. */
+.rewind-top__label { display: inline-flex; align-items: center; gap: var(--space-half); white-space: nowrap; }
+.rewind-top__dir {
+  width: var(--caret-size); height: var(--caret-size);
+  fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
 /* Its trigger: a panel chip with the dropdown caret (the Library pill's caret, turned while open). */
 .rewind-top__pill {
   display: inline-flex; align-items: center; gap: var(--space-1);
@@ -104,6 +110,8 @@
   padding: var(--space-2);
   z-index: 1;
 }
+/* The time box sits at the panel's right edge: its pop hangs from the box's right edge. */
+.rewind-top__view--end .rewind-top__pop { left: auto; right: 0; --pop-origin: top right; }
 
 .rewind-top__list {
   list-style: none; margin: 0; padding: 0;
