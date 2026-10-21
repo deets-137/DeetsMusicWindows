@@ -80,6 +80,7 @@ import { initRulesFiles } from "./rules-files";
 import { initRulesFacts } from "./rules-facts";
 import { initRulesWindow } from "./rules-window";
 import { initGpu } from "./gpu";
+import { initReduceMotion } from "./reduce-motion";
 import { initUsage } from "./usage";
 import { appleBackingOff } from "./apple-health";
 import { ruleChip } from "./rule-chip";
@@ -202,6 +203,9 @@ window.addEventListener("DOMContentLoaded", () => {
   // The rules engine's `surface` fact (RULES.md §5), registered here and not in surface.ts:
   // the unit tests load surface.ts, and the engine's log keeps Node running.
   boot("surfaceFact", () => registerFact("surface", () => (isPlayerView() ? "player" : currentSurface()), { seam: (cb) => onSurfaceChange(cb) }));
+  // Reduce motion (GRAPHICS-FALLBACK.md §10.4): its fact before the cards mount, so a Windows
+  // reduced-motion start never shows a heavy effect for a moment.
+  boot("initReduceMotion", () => initReduceMotion());
   boot("initStorm", () => initStorm()); // storm-layer position re-roll; inert unless the skin opts in
   boot("initOcean", () => initOcean()); // the Ocean sea's textures, album light, breath and ripples; inert under other skins
   boot("initAmbient", () => initAmbient()); // pause the skins' decorative loops while the window is minimized / in the tray

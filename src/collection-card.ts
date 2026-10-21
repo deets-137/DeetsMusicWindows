@@ -7,7 +7,7 @@
 // the left while the child slides in from the right to fill the card; backing out
 // reverses it. The card header (back chevron + title) is fixed chrome; only the
 // body (toolbar + list) slides. The transition's feel is skin-tokened
-// (--nav-dur / --nav-ease) and honours prefers-reduced-motion.
+// (--nav-dur / --nav-ease) and honours reduced motion (motion.ts).
 //
 // Everything is client-side over data the card already holds in memory.
 
@@ -41,6 +41,7 @@ import { searchField, fieldClearHTML } from "./search-field";
 import { patchHTML, keyRow } from "./keyed";
 import { reveal, revealOf } from "./reveal";
 import { mark } from "./marks";
+import { motionReduced } from "./motion";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -1205,7 +1206,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   //  4. a press during the fade calls it back: the old list returns, or the switch retargets;
   //  5. the reader keeps their place: above the rows, the same scroll; in the rows, the top
   //     of the new rows, under the sticky bar.
-  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reducedMotion = () => motionReduced();
   /** What a view shows under its hero: every part but the hero, one level into the head. */
   const listParts = (view: HTMLElement): HTMLElement[] => {
     const out: HTMLElement[] = [];

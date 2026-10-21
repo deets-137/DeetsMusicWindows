@@ -17,7 +17,8 @@ import { invoke } from "@tauri-apps/api/core";
 import * as queue from "./queue";
 import { setting } from "./settings-store";
 import { onTracksChange } from "./track-store";
-import { refreshPlayerState, playbackPosition, setResumeAt } from "./player";
+import { refreshPlayerState, playbackPosition, setResumeAt, playPause, isPlayingNow } from "./player";
+import * as diag from "./diag";
 import { takeBootRead } from "./boot-prefetch";
 
 const SAVE_DEBOUNCE_MS = 500;
@@ -49,6 +50,19 @@ export async function initQueuePersist(): Promise<void> {
       const cur = queue.getCurrent();
       const id = cur?.catalogId ?? cur?.libraryId;
       if (fromUpdate && id && typeof s.at === "number" && s.at > 1) setResumeAt(s.at, id);
+      // The quiet graphics restart (GRAPHICS-FALLBACK.md §10.5): music played, so it plays on, once
+      // the window's parts are up. Autoplay with no press is allowed (tauri.conf.json).
+      if (fromUpdate && id && s.play) {
+        const play = () => {
+          // Play is a toggle: never press it on a song that already plays.
+          if (isPlayingNow()) return;
+          diag.log("gpu:restartPlay", { id, at: Math.round(s.at ?? 0) });
+          playPause("graphicsRestart").catch((e) => console.warn("[queue-persist] play on", e));
+        };
+        // The launch cover may be done already (a slow read): then play now.
+        if (document.documentElement.dataset.boot === undefined) play();
+        else window.addEventListener("deets:boot-done", play, { once: true });
+      }
       refreshPlayerState(); // Now Playing reads the model's current when MusicKit has no item
       // Names/art resolve through the track store, which may still be loading — repaint once it lands.
       const off = onTracksChange((why) => {
@@ -71,14 +85,25 @@ export async function initQueuePersist(): Promise<void> {
   });
 }
 
-/** The update restart (updater.ts): write the blob NOW, with the playback position, and wait
- *  for the write — the installer ends the process, so no unload save runs. */
-export async function flushForRestart(): Promise<void> {
+/** A restart that did not happen (gpu.ts): write the plain blob now, so no later start reads
+ *  the restart marks (`updateRestart`, `play`) and plays a song by itself. */
+export async function saveNow(): Promise<void> {
   if (timer !== undefined) {
     window.clearTimeout(timer);
     timer = undefined;
   }
-  const snap: queue.QueueSnapshot = { ...queue.snapshot(), updateRestart: true, at: playbackPosition() };
+  await invoke("queue_state_set", { json: JSON.stringify(queue.snapshot()) }).catch((e) => console.warn("[queue-persist] save now", e));
+}
+
+/** The update restart (updater.ts): write the blob NOW, with the playback position, and wait
+ *  for the write — the installer ends the process, so no unload save runs. `play`: the quiet
+ *  graphics restart (gpu.ts) asks the next start to play on. */
+export async function flushForRestart(play = false): Promise<void> {
+  if (timer !== undefined) {
+    window.clearTimeout(timer);
+    timer = undefined;
+  }
+  const snap: queue.QueueSnapshot = { ...queue.snapshot(), updateRestart: true, at: playbackPosition(), ...(play ? { play: true } : {}) };
   try {
     await invoke("queue_state_set", { json: JSON.stringify(snap) });
   } catch (e) {

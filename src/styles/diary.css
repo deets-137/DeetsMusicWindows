@@ -84,9 +84,7 @@ img.diary__now-art { object-fit: cover; }
   transform-origin: center left;
   transition: transform var(--hold-ms) var(--ease-ui);
 }
-@media (prefers-reduced-motion: reduce) {
-  .diary__sec.is-holding .lib-shelf { transform: none; }
-}
+:root[data-motion="reduced"] .diary__sec.is-holding .lib-shelf { transform: none; }
 /* A finished entry in a folder row: the tile badge's place and shape, not a button. */
 .diary__tile-done { cursor: default; pointer-events: none; }
 .diary__tile-done svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

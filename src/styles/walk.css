@@ -190,9 +190,7 @@
 
 /* Reduced motion: the sprites are PLACED, not walked, and nothing pulses
    (ONBOARDING §4.2). The walk still works — it just stops moving. */
-@media (prefers-reduced-motion: reduce) {
-  .walk__stop { transition: none; }
-  .walk__stop[data-move="walk"] .walk__sprite { animation: none; }
-  .walk__card, .walk__card.is-leaving, .walk__btn--next { animation: none; }
-  .walk-target { animation: none; outline: var(--focus-ring-w) solid var(--title); }
-}
+:root[data-motion="reduced"] .walk__stop { transition: none; }
+:root[data-motion="reduced"] .walk__stop[data-move="walk"] .walk__sprite { animation: none; }
+:root[data-motion="reduced"] .walk__card, :root[data-motion="reduced"] .walk__card.is-leaving, :root[data-motion="reduced"] .walk__btn--next { animation: none; }
+:root[data-motion="reduced"] .walk-target { animation: none; outline: var(--focus-ring-w) solid var(--title); }

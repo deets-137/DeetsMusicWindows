@@ -18,9 +18,10 @@ import * as diag from "./diag";
 import * as frames from "./frames";
 import { tokenMs } from "./boot-cover";
 import { el } from "./dom";
+import { motionReduced } from "./motion";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 
 // ── Geometry of the plot ────────────────────────────────────────────────────────────
 const F_LO = 20, F_HI = 20000;

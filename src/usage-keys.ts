@@ -64,6 +64,8 @@ export const NOT_REPORTED: Readonly<Record<string, string>> = {
   usageReports: "the switch itself: a report leaves only while it is on",
   // Metal's rows (2026-10-20): not sent until he decides (a new key on the allow-list is his call,
   // USAGE-COUNTS.md §2); the skin itself is already counted through `skin`.
+  // Reduce motion (2026-10-20, GRAPHICS-FALLBACK.md §10.4): not sent until he decides, as above.
+  reduceMotion: "a new Motion row: his call before it is sent",
   metalMaterial: "Metal's rows: his call before they are sent",
   metalGrain: "Metal's rows: his call before they are sent",
   metalCoverChange: "Metal's rows: his call before they are sent",

@@ -30,6 +30,7 @@ import * as diag from "./diag";
 import { TELEMETRY } from "./telemetry-on";
 import { cancelled, registerAction, registerEvent, registerFact } from "./rules";
 import { maxBeyond, maxCanFill, maxNeighbors, type MaxCards, type MaxSlot } from "./layout-rules";
+import { motionReduced } from "./motion";
 
 /** The four content slots, plus the two anchored hosts of the max stage column. `np` is a
  *  COVER TARGET only: it has no `.panel__head`, so it never gets the button or the zones
@@ -92,7 +93,7 @@ const MIDI_NEIGHBOR: Record<Slot, Partial<Record<SideDir, Slot>>> = {
 };
 const DIR_WORD: Record<SideDir, string> = { left: "left", right: "right", up: "up", down: "down" };
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 
 let opts: Opts | null = null;
 let state: GrowState | null = null;

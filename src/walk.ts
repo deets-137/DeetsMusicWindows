@@ -52,6 +52,7 @@ import deetsIdle from "./assets/sprites/deets/idle_down.png";
 import deetsWalk from "./assets/sprites/deets/walk_side.png";
 import happySit from "./assets/sprites/happy/sit_side.png";
 import happyWalk from "./assets/sprites/happy/walk_side.png";
+import { motionReduced } from "./motion";
 
 /** How long a step waits before it admits we were not obvious and offers Next. */
 const NUDGE_MS = 9000;
@@ -279,7 +280,7 @@ function run(from: number): void {
     setSetting("onboardingStep", 0);
     diag.log("walk:end", { why, step: at });
     card.classList.add("is-leaving");
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const still = motionReduced();
     window.setTimeout(() => layer.remove(), still ? 0 : tokenMs("--pop-out"));
     window.removeEventListener("keydown", onKey, true);
     window.removeEventListener("resize", reposition);

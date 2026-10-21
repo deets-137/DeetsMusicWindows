@@ -19,10 +19,11 @@ import { whenSwapSettled } from "./card-swap";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 import type { CardId } from "./cards";
+import { motionReduced } from "./motion";
 
 const reduced = (): boolean => {
   try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return motionReduced();
   } catch {
     return false;
   }

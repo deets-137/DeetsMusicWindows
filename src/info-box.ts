@@ -21,6 +21,7 @@ import { pickNote, type Note, type NoteFrom, type NoteOf } from "./notes-order";
 import { setting } from "./settings-store";
 import { shortText, songPart } from "./album-notes-parse";
 import type { AlbumNotes } from "./album-notes";
+import { motionReduced } from "./motion";
 
 export const ARTIST_INFO_HINTS = {
   tags: "What Last.fm listeners call this artist",
@@ -136,7 +137,7 @@ function pendingBoxHTML(kind: Kind): string {
   if (!setting(KEY_OF[kind])) return "";
   let still = false;
   try {
-    still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    still = motionReduced();
   } catch {
     /* motion on */
   }

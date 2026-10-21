@@ -167,8 +167,29 @@ fn note_main_visibility(app: &AppHandle) {
 static MAIN_SHOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 const READY_FALLBACK: Duration = Duration::from_secs(3);
 
-fn tray_launch() -> bool {
-    std::env::args().any(|a| a == "--tray")
+/// How this start shows its window: "tray" (never here), "min" (minimized, not focused), or
+/// unset (in place, focused). Set once in setup, from `--tray` or a quiet graphics restart's
+/// intent (gpu.rs `take_intent`, GRAPHICS-FALLBACK.md §10.5).
+static LAUNCH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+pub fn set_launch(kind: &str) {
+    let _ = LAUNCH.set(kind.to_string());
+}
+
+pub fn tray_launch() -> bool {
+    LAUNCH.get().is_some_and(|k| k == "tray") || std::env::args().any(|a| a == "--tray")
+}
+
+/// Show the window minimized, without taking the focus: the quiet restart of a window that was
+/// minimized comes back on the taskbar only.
+fn show_minimized(w: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWMINNOACTIVE};
+    if let Ok(h) = w.hwnd() {
+        unsafe {
+            let _ = ShowWindow(HWND(h.0 as _), SW_SHOWMINNOACTIVE);
+        }
+    }
 }
 
 /// The first show of a normal launch, in place (setup applied `windowPos`) and focused.
@@ -183,8 +204,12 @@ fn reveal_main(app: &AppHandle, color: Option<[u8; 3]>) {
         w.set_background_color(Some(tauri::window::Color(r, g, b, 255))).ok();
     }
     state(app).shown_at = Some(Instant::now());
-    w.show().ok();
-    w.set_focus().ok();
+    if LAUNCH.get().is_some_and(|k| k == "min") {
+        show_minimized(&w);
+    } else {
+        w.show().ok();
+        w.set_focus().ok();
+    }
     note_main_visibility(app);
 }
 

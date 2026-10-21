@@ -37,6 +37,7 @@ import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight, type Box
 import {
   clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, stageGapShared, type Slot,
 } from "./card-grow";
+import { motionReduced } from "./motion";
 
 interface Opts {
   hosts: Record<Slot, HTMLElement | null>;
@@ -65,7 +66,7 @@ const root = document.documentElement;
  *  elements, a 50–70 ms close frame, §14.9); on the bento it restyles the cards only. Nothing is
  *  set before init, so the fallback only reads. */
 const fp = (): HTMLElement => opts?.bento ?? root;
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 const rect = (el: Element) => el.getBoundingClientRect();
 const surfaceNow = (): "midi" | "max" | null => {
   const s = currentSurface();

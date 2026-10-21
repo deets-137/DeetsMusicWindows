@@ -26,6 +26,7 @@ import { tokenMs } from "./boot-cover";
 import { bezierAt, parseBezier } from "./stepped-ease";
 import * as frames from "./frames";
 import * as diag from "./diag";
+import { motionReduced } from "./motion";
 
 export const PRESENT_HINTS = {
   close: "Back to the card (Esc)",
@@ -93,7 +94,7 @@ interface Open {
 let open: Open | null = null;
 let closing = false;
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 const fmt = (n: number) => n.toLocaleString();
 // Its own escape: collection-card.ts imports this module, so this one does not import it.
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);

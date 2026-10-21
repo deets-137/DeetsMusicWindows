@@ -109,7 +109,5 @@
   from { transform: scaleX(1); }
   to   { transform: scaleX(0); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .toast { animation: none; }
-  .toast--out { transform: none; transition: none; }
-}
+:root[data-motion="reduced"] .toast { animation: none; }
+:root[data-motion="reduced"] .toast--out { transform: none; transition: none; }

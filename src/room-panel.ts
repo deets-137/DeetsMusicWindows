@@ -41,6 +41,7 @@ import {
 } from "./room";
 import { WEB_ROOMS } from "./platform";
 import { isConnected, requestSignIn } from "./apple";
+import { motionReduced } from "./motion";
 
 /**
  * The web port's panel (docs/features/WebRooms.md §5, §7.1): the same panel with less. No Friends
@@ -180,7 +181,7 @@ export function initRoomPanel(): void {
   });
 }
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 
 /** The Compass reaches the panel through this (COMPASS.md §9). */
 export function openRoomPanel(): void {

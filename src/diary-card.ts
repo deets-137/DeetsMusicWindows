@@ -52,6 +52,7 @@ import {
 import { sortByOrder, moveTo, writeOrder, onRowOrderChange, sectionsMovable, holdFor } from "./row-order";
 import { ROW_PX, TILE_PX } from "./art-size";
 import { reveal, type Reveal } from "./reveal";
+import { motionReduced } from "./motion";
 
 const COLLAPSE_KEY = "deets.diary.collapsed";
 /** The rows the user folded shut (a view preference, as the Playlists folds are). */
@@ -439,7 +440,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     const sa = getComputedStyle(from);
     const start = { radius: sa.borderRadius, bg: sa.backgroundColor, border: sa.borderColor };
     const to = swap();
-    if (!to || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return done?.();
+    if (!to || motionReduced()) return done?.();
     const b = to.getBoundingClientRect();
     const sb = getComputedStyle(to);
     const box = document.createElement("div");
@@ -486,7 +487,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     picking = true;
     diag.log("ui:act", { at: "diary", do: "pick-open" });
     if (!cover || !btn) return renderRoot();
-    if (now && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (now && !motionReduced()) {
       const { ms, easing } = tokenMotion(now, "--diary-morph-dur", "--diary-morph-ease");
       fadeOut(now, ms / 2, easing);
     }
@@ -534,7 +535,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
       pick.outerHTML = topHTML();
       // The album box comes back with the row: it fades in while the bar shrinks to the +.
       const now = body.querySelector<HTMLElement>("[data-now]");
-      if (now && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (now && !motionReduced()) {
         const { ms, easing } = tokenMotion(now, "--diary-morph-dur", "--diary-morph-ease");
         now.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing });
       }

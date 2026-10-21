@@ -13,10 +13,11 @@
 import { tokenMs } from "./boot-cover";
 import { onSettingsChange, setting } from "./settings-store";
 import * as frames from "./frames";
+import { motionReduced } from "./motion";
 
 const reduced = (): boolean => {
   try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return motionReduced();
   } catch {
     return false;
   }

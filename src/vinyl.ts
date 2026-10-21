@@ -19,6 +19,7 @@ import { setting, onSettingsChange } from "./settings-store";
 import { TELEMETRY } from "./telemetry-on";
 import { spinEasing } from "./spin-steps";
 import { displayHz, onDisplayHz } from "./display-hz";
+import { motionReduced } from "./motion";
 
 // Dev-only telemetry (VINYL.md §Telemetry), gated on Vite's DEV flag like frames.ts: a
 // `[perf] vinyl snap …` line for every jump and one `[perf] vinyl song …` summary per song,
@@ -62,7 +63,7 @@ const SEEK_LAND_MS = 1500; // after a scrub, readings far from where it was let 
 const SEEK_NEAR_S = 1; // …until one lands within this of it
 
 const root = document.documentElement;
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 const spinWanted = () => root.dataset.skin === "press" && setting("pressVinyl") === "spin" && !reduced();
 
 /** The period for a song: one turn at the chosen speed, stretched so the song lasts a whole
@@ -486,7 +487,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
 
   // The skin, the window's visibility (ambient.ts) and the row can each start or stop the spin.
   const observer = new MutationObserver(() => sync());
-  observer.observe(root, { attributes: true, attributeFilter: ["data-skin", "data-ambient"] });
+  observer.observe(root, { attributes: true, attributeFilter: ["data-skin", "data-ambient", "data-motion"] });
   const unsubSettings = onSettingsChange((k) => {
     if (k === "pressVinyl") sync();
     // A new speed gives the song a new period. The disc's angle then means something else, so

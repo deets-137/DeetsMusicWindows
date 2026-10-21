@@ -25,6 +25,7 @@
 import * as frames from "./frames";
 import * as diag from "./diag";
 import { enterRows } from "./pop";
+import { motionReduced } from "./motion";
 
 export interface ActionItem {
   label: string;
@@ -148,7 +149,7 @@ export function closeContextMenu(): void {
 const PAD = 6;
 type Place = (w: number, h: number, vw: number, vh: number) => { left: number; top: number };
 
-const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reducedMotion = () => motionReduced();
 
 /** Fill a searching field's results area (`InputItem.onInput`) and grow or shrink it to fit.
  *  The height change is the `--menu-grow-dur` / `--menu-grow-ease` skin tokens; the new rows

@@ -22,6 +22,7 @@ import { enterRows } from "./pop";
 import { toast } from "./toast";
 import * as diag from "./diag";
 import { emit, registerAction, registerEvent } from "./rules";
+import { motionReduced } from "./motion";
 
 type Mode = "off" | "clock" | "song" | "queue";
 
@@ -32,7 +33,7 @@ const WIND_STEPS = [0, 1, 2, 5, 10, 15, 30]; // the wind-down pill's values, in 
 const SONG_END_MS = 1500; // a song change this close to the end is the song's own end, not a click
 const WARN_MS = 60_000; // the "Sleep in 1 minute" toast
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 const clockText = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const hhmmText = (hhmm: string) => {

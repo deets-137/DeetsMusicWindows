@@ -31,6 +31,7 @@ import { parseBezier, parseSeconds, steppedEase } from "./stepped-ease";
 import type { LayerJob } from "./ocean-worker";
 import type { LayerSpec } from "./ocean-texture";
 import * as diag from "./diag";
+import { motionReduced } from "./motion";
 
 /** A pointer-up this recent is the gesture behind a play. */
 const GESTURE_MS = 1200;
@@ -54,7 +55,7 @@ const urls = new WeakMap<HTMLElement, string>();
 
 const root = document.documentElement;
 const active = () => currentSkin() === "ocean" && !!sea;
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 /** The responses (heave, ripples) run only with motion allowed and the window seen. */
 const responsive = () => active() && root.dataset.bgMotion !== "off" && !reduced() && root.dataset.ambient !== "paused";
 

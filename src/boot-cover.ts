@@ -18,12 +18,13 @@ import { effective } from "./settings-store";
 import * as frames from "./frames";
 import * as diag from "./diag";
 import { launchMark } from "./launch-perf";
+import { motionReduced } from "./motion";
 
 const CAP_MS = 2500;
 
 const reducedMotion = (): boolean => {
   try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return motionReduced();
   } catch {
     return false;
   }

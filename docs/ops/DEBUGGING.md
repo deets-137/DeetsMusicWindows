@@ -1844,6 +1844,8 @@ name shows in a debugger and in a crash dump.
 | `update.rs:airplay_shutdown_bounded` | none | up to 3 s | Stops AirPlay before an install or a quit; the caller waits 3 s at most |
 | `velo.rs:download` | none | one update download | The Velopack spike only (`--features velopack`): passes the download's progress to the status (VELOPACK.md §8) |
 | `lib.rs:app_restart` | none | 200 ms | Lets the command's answer go out, then restarts the app |
+| `gpu.rs:gpu_watch_adapters` | `gpu-adapters` | from the first software read to the end of the run; never started on a card | Waits on Windows' adapter-change event; after 20 s with no change, tests for a working hardware adapter and tells the page (GRAPHICS-FALLBACK.md §10.3) |
+| `gpu.rs:app_restart_quiet` | none | 200 ms | The quiet graphics restart: lets the command's answer go out, then restarts the app (§10.5) |
 | `beta.rs:request_pull` | none | 400 ms | The same, for the Beta's data pull (BETA.md) |
 | `mosaic.ts:mosaic-worker.ts` | Web Worker | from the first mosaic | Draws a playlist's mosaic cover (PLAYLISTS.md §11) |
 | `ocean.ts:ocean-worker.ts` | Web Worker | while Ocean draws | Paints the swell layers (OCEAN.md) |

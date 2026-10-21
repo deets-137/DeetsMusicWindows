@@ -23,7 +23,7 @@
 /* The flip (his ask, 2026-10-19): rewind-btn.ts adds a half turn on --rewind-top-angle at each
    open and each close, so the glass always turns the same way, as the Compass needle does. */
 .rewind-top__btn svg { transform: rotate(var(--rewind-top-angle, 0deg)); transition: transform var(--rewind-top-flip); }
-@media (prefers-reduced-motion: reduce) { .rewind-top__btn svg { transition: none; } }
+:root[data-motion="reduced"] .rewind-top__btn svg { transition: none; }
 
 /* ── The panel ── */
 .rewind-top__panel {

@@ -22,6 +22,7 @@ import { emit } from "./rules";
 import { tokenMs } from "./boot-cover";
 import type { CardInstance } from "./cards";
 import * as diag from "./diag";
+import { motionReduced } from "./motion";
 
 export type Part = "apple" | "discord" | "window" | "look" | "help" | "agents" | "fun" | "bugs" | "reset";
 
@@ -98,7 +99,7 @@ const DISCORD_MARK =
 /** Apple's official monochrome Apple Music icon — the one apple-sigil.ts carries. */
 const APPLE_MARK = APPLE_SIGIL.replace(/class="[^"]*"/, 'class="quick__mark quick__mark--apple"');
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 
 let dropdown: DropdownHandle | null = null;
 let openPart: ((part: Part) => void) | null = null;

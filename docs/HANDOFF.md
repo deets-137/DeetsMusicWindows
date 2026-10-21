@@ -220,6 +220,16 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **Get the graphics card back by itself, and Reduce motion** (2026-10-20, on `v-thirtyone`,
+  uncommitted; [GRAPHICS-FALLBACK.md](features/GRAPHICS-FALLBACK.md) §10.10). Rust watches the
+  adapters and says when the card works again; the app restarts by itself while its window is
+  hidden or minimized (between songs if music plays) and comes back the same way, playing on;
+  on screen a toast asks. A *Reduce motion* row (first in Settings › Motion, locked On under
+  Windows' reduced motion) is the catch-all the graphics rule now holds. Desk test and the
+  break-it pass run by Claude (§10.11). Open: his look; the song-start restart with music and
+  its gap (P3); a real driver change (P4, his: the Parsec adapter off and on); Glass's blur
+  cost (P2).
+
 - **The Metal skin** (2026-10-20, on `v-thirtyone`; [metal.md](features/metal.md) §6.4, §6.7). A
   sixth skin in the title menu: brushed steel or acrylic over every theme (Sepia as brushed brass),
   the thumbwheel scrubber, the zoetrope cover change with the peek, four Settings rows, font B
@@ -299,6 +309,7 @@ each step that touches those calls.
   (§10.6).
 
 ### His to design or decide (asks and ideas, not built)
+
 
 - **Redesign the sign-in flow before a public release** (2026-10-17, his words: "I wanted to
   redesign the login flow eventually before public (non-friends) release anyway"). The mark's

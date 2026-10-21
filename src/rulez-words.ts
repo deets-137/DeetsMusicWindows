@@ -177,6 +177,8 @@ export const FACTS: FactWord[] = [
   { id: "dataSaver", section: "Window", label: "Data saver", kind: "bool", yes: "Data saver is on", no: "Data saver is off" },
   // GRAPHICS-FALLBACK.md §4: the WebGL renderer name, read at start, on a GPU-process exit, every 5 min.
   { id: "graphics", section: "Window", label: "Graphics", kind: "choice", choices: [{ value: "accelerated", label: "Graphics card" }, { value: "software", label: "Software" }] },
+  // GRAPHICS-FALLBACK.md §10.4: the Reduce motion row, Windows' reduced motion, or the graphics rule.
+  { id: "motionReduced", section: "Window", label: "Reduce motion", kind: "bool", yes: "Motion is reduced", no: "Motion is not reduced" },
   { id: "card", section: "Window", label: "Card", kind: "choice", choices: "cards" },
   { id: "grown", section: "Window", label: "Grown card", kind: "choice", choices: "cards" },
   // The full player (features/fullscreen-player.md §12.6).
@@ -347,6 +349,7 @@ export const DOS: DoWord[] = [
   keyWord("cardSwapMotion", "Look", "Animate card swaps", ON_OFF),
   keyWord("fancyScrubber", "Look", "Fancy scrubber", ON_OFF),
   keyWord("glassFancy", "Look", "Fancy Glass", ON_OFF),
+  keyWord("reduceMotion", "Look", "Reduce motion", ON_OFF),
   keyWord("friendsListenAlong", "Sharing", "Let friends listen along", ON_OFF),
   keyWord("friendsRoomInvite", "Sharing", "Put my room code on my box", ON_OFF),
   keyWord("toasts", "Window", "Show notices", NOTICES),
@@ -641,7 +644,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   // (2026-10-10: "keeps Collapse on outside click off" was the Party recipe's sentence).
   backgroundMotion: { keep: "keeps background motion" }, appearanceMotion: { keep: "keeps look-change motion" },
   cardSwapMotion: { keep: "keeps card-swap motion" }, fancyScrubber: { keep: "keeps the fancy scrubber" },
-  glassFancy: { keep: "keeps Fancy Glass" }, friendsListenAlong: { keep: "keeps listen-along for friends" },
+  glassFancy: { keep: "keeps Fancy Glass" }, reduceMotion: { keep: "keeps Reduce motion" }, friendsListenAlong: { keep: "keeps listen-along for friends" },
   friendsRoomInvite: { keep: "keeps the room-code invite on my box" }, toasts: { keep: "shows notices for" },
   webPlayNew: { keep: "keeps a web from the song playing" }, webPlayMode: { keep: "keeps a web from the song playing at" },
   webSkipSeed: { keep: "keeps skipping the song you just heard" }, webSkipSeedAt: { keep: "skips the song you just heard past" },

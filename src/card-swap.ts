@@ -9,6 +9,7 @@
 import { effective } from "./settings-store";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
+import { motionReduced } from "./motion";
 
 /** One panel to animate. `from` is the slot its card left; none = a replace (it rises in). */
 export interface SwapMove {
@@ -25,7 +26,7 @@ let pending: { run: () => void; els: HTMLElement[]; timer: number } | null = nul
 
 const reduced = (): boolean => {
   try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return motionReduced();
   } catch {
     return false;
   }
@@ -106,6 +107,8 @@ export function whenSwapSettled(): Promise<void> {
   });
 }
 
+let swapRun = 0; // the newest in step, so an older one's safety timer leaves it alone
+
 /** The in step. The first move is the card the user picked: it passes over the other. */
 export function playSwap(moves: SwapMove[], detail: string): void {
   if (!moves.length || !motionOn()) return closeWinNow();
@@ -139,4 +142,15 @@ export function playSwap(moves: SwapMove[], detail: string): void {
     handlers.set(el, done);
     el.addEventListener("animationend", done);
   });
+  // A step that never ends lands anyway: a hidden panel, or Reduce motion turning on mid-swap
+  // (the animation is cancelled, not ended: no animationend; GRAPHICS-FALLBACK.md §10.11).
+  const cap = tokenMs("--swap-dur") + tokenMs("--swap-stagger") * moves.length + 150;
+  const run = ++swapRun;
+  window.setTimeout(() => {
+    if (run !== swapRun) return; // a later pick owns the panels now
+    const left = moves.filter((m) => m.el.matches(MOVING));
+    if (!left.length) return;
+    left.forEach((m) => clear(m.el));
+    closeWinNow();
+  }, cap);
 }

@@ -73,9 +73,7 @@
   max-width: var(--hint-row-max-w);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hint {
-    transition: none;
-    transform: none;
-  }
+:root[data-motion="reduced"] .hint {
+  transition: none;
+  transform: none;
 }

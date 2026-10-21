@@ -8,11 +8,11 @@ import {
 
 const known: Known = {
   events: new Set(["album.open", "artist.open", "diary.open", "cog", "playlist.create", "sleep.arm", "goto.artist", "goto.album", "shuffle.press"]),
-  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded", "graphics", "soloCard"]),
+  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded", "graphics", "motionReduced", "soloCard"]),
   actions: new Set(["grow", "summon", "sleep", "openIn", "shuffleLibrary"]),
   targets: new Set([
     "key:theme", "key:skin", "key:soundEqPreset", "key:shareActivityApp", "key:shareActivityDiscord", "key:discordRoomInvite", "prop:window.onTop",
-    "key:glassFancy", "key:backgroundMotion", "key:cardSwapMotion", "key:appearanceMotion", "key:glassCanvas", "key:metalCoverChange",
+    "key:glassFancy", "key:backgroundMotion", "key:cardSwapMotion", "key:appearanceMotion", "key:glassCanvas", "key:metalCoverChange", "key:fancyScrubber", "key:reduceMotion",
   ]),
 };
 
@@ -215,23 +215,37 @@ test("Idle shuffle plays (2026-09-27): the library only with no song loaded; Not
   assert.equal(plays("noop", false), false);
 });
 
-test("If graphics fail (2026-10-11; Metal 2026-10-20): Save + tell holds the six effects off while software; Tell only and Off make no rule", () => {
+test("If graphics fail (2026-10-11; §10 2026-10-20): Save + tell holds Reduce motion on and the canvas on Aurora while software; Tell only and Off make no rule", () => {
   const off = (v: RowValues["graphicsFallback"], graphics: string) => resolveState(rows({ graphicsFallback: v }), { graphics }, []).set;
   const soft = off("save", "software");
-  assert.equal(soft.get("key:glassFancy")?.value, false);
-  assert.equal(soft.get("key:backgroundMotion")?.value, "off"); // Off, not Battery saver's Reduced
-  assert.equal(soft.get("key:cardSwapMotion")?.value, false);
-  assert.equal(soft.get("key:appearanceMotion")?.value, false);
-  assert.equal(soft.get("key:glassCanvas")?.value, "aurora");
-  assert.equal(soft.get("key:metalCoverChange")?.value, "off"); // the zoetrope turn (metal.md §6.7)
+  assert.equal(soft.get("key:reduceMotion")?.value, true);
+  assert.equal(soft.get("key:glassCanvas")?.value, "aurora"); // the graphics rule's alone (his call, §10.7)
+  assert.equal(soft.size, 2);
   assert.equal(off("save", "accelerated").size, 0);
   assert.equal(off("tell", "software").size, 0);
   assert.equal(off("off", "software").size, 0);
   // No fact yet (before the first read): nothing holds.
   assert.equal(resolveState(rows({}), {}, []).set.size, 0);
-  // Turn effects on: a session hold on every target sets the rule aside.
-  const holds = ["glassFancy", "backgroundMotion", "cardSwapMotion", "appearanceMotion", "glassCanvas", "metalCoverChange"].map((k) => ({ ruleId: "row:graphicsFallback", target: `key:${k}`, kind: "session" as const }));
+  // A hand change: a session hold on both targets sets the rule aside.
+  const holds = ["reduceMotion", "glassCanvas"].map((k) => ({ ruleId: "row:graphicsFallback", target: `key:${k}`, kind: "session" as const }));
   assert.equal(resolveState(rows({}), { graphics: "software" }, holds).set.size, 0);
+});
+
+test("Reduce motion (2026-10-20, GRAPHICS-FALLBACK.md §10.4): holds the heavy effects off while motion is reduced, never the canvas", () => {
+  const set = (f: Record<string, unknown>) => resolveState(rows({ graphicsFallback: "off" }), f, []).set;
+  const on = set({ motionReduced: true });
+  assert.equal(on.get("key:glassFancy")?.value, false);
+  assert.equal(on.get("key:backgroundMotion")?.value, "off");
+  assert.equal(on.get("key:cardSwapMotion")?.value, false);
+  assert.equal(on.get("key:appearanceMotion")?.value, false);
+  assert.equal(on.get("key:fancyScrubber")?.value, false);
+  assert.equal(on.get("key:metalCoverChange")?.value, "off");
+  assert.equal(on.has("key:glassCanvas"), false); // a still picture: Reduce motion leaves it
+  assert.equal(set({ motionReduced: false }).size, 0);
+  assert.equal(set({}).size, 0); // before the fact registers
+  // A hand change on one row sets the whole rule aside until the next start.
+  const holds = ["glassFancy", "backgroundMotion", "cardSwapMotion", "appearanceMotion", "fancyScrubber", "metalCoverChange"].map((k) => ({ ruleId: "row:reduceMotion", target: `key:${k}`, kind: "session" as const }));
+  assert.equal(resolveState(rows({ graphicsFallback: "off" }), { motionReduced: true }, holds).set.size, 0);
 });
 
 test("the software renderer names (2026-10-11): WARP, SwiftShader, llvmpipe; a card name and unknown are not", () => {

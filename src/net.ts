@@ -35,6 +35,7 @@ import {
 import * as diag from "./diag";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
+import { motionReduced } from "./motion";
 
 declare global {
   interface Window {
@@ -419,7 +420,7 @@ function paint(): void {
 // 2026-10-19). The row grows from nothing, with the panel's gap above it, on --pop-grow and
 // --pop-ease (the panels' grow), so the rows under it glide down and the panel follows.
 function openRoom(els: HTMLElement[]): void {
-  if (!panel || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!panel || motionReduced()) return;
   const gap = parseFloat(getComputedStyle(panel).rowGap) || 0;
   const opts = { duration: tokenMs("--pop-grow"), easing: getComputedStyle(panel).getPropertyValue("--pop-ease").trim() || "ease" };
   frames.during("fold", 250, "open");
@@ -534,7 +535,7 @@ export function initNetwork(): void {
  *  curve, the entry on the roll's (the Compass needle's overshoot, a car settling as it stops). */
 function drive(dir: 1 | -1): void {
   const car = btn?.querySelector(".net__car");
-  if (!car || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!car || motionReduced()) return;
   const cs = getComputedStyle(document.documentElement);
   const x = parseFloat(cs.getPropertyValue("--net-drive-x")) || 0;
   const enter = cs.getPropertyValue("--net-drive").trim().replace(/^\S+\s*/, "") || "ease";

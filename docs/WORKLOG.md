@@ -12,6 +12,33 @@ updated: 2026-10-20
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-20, evening — the live app's stutter, and the graphics auto-retry design
+
+- His report: the live app stuttered. The log and the Windows event logs: the AMD Adrenalin
+  26.10.1 install at 12:15 ended every WebView2 GPU process at 12:16:08 (DeetsMusic and DeetsRGB
+  in the same second); the live app came back on *Microsoft Basic Render Driver* and stayed there
+  until he pressed Restart now at 16:19. The rule held the five effects the whole time, and it
+  still stuttered. After the restart the GPU process loaded `amdxx64.dll`. The dev app was also
+  heavy (its page ~86 % of one core).
+- His ask: an auto-retry that keeps it seamless and reduces motion on software. Designed in
+  GRAPHICS-FALLBACK.md §10 (doc only, nothing built): Rust's adapter event + D3D11 test, a
+  quiet restart that brings back the window state and the music, one app-wide reduced-motion
+  switch (about 25 modules read the OS query on their own today), true toasts, a `noCard` value
+  for a PC with no working driver. Probes P2–P5.
+- His calls the same evening: F1 A (restart by itself only when the window is hidden or
+  minimized), F2 A (between songs too), F3 A changed: a *Reduce motion* row with On · Off only,
+  always on under Windows' reduced motion (said in the hint), the catch-all for every heavy
+  graphics feature. The graphics rule now holds that one key. Open: F4 the list, F5 the toast
+  words, F6 the row's place and hint.
+- His calls then: the canvas stays the graphics rule's alone (Reduce motion leaves it), the drafts
+  approved (F4–F6), "go ahead and build". BUILT the same night, uncommitted (GRAPHICS-FALLBACK.md
+  §10.10): gpu.rs (the card test, the adapter watch thread, the quiet restart's intent file),
+  tray.rs (the minimized start), gpu.ts + gpu-rules.ts (the rule, tested), reduce-motion.ts +
+  motion.ts (the switch; 38 call sites and 34 CSS blocks moved to it; docs:check 32), the row,
+  the play-on start. Desk test on the dev app with `--gpu=off` and a three-agent break-it pass:
+  15 faults fixed (§10.11). Not run: a song-start restart with music (P3), a real driver change
+  (P4, his), Glass's blur cost (P2).
+
 ## 2026-10-20, night (2) — `v-thirtyone`: Metal brass, font B, the texture bake
 
 - His calls: Sepia as brushed brass under Metal, and font B. Brass is one Metal × Sepia block in

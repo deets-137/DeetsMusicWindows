@@ -31,6 +31,7 @@ import { tokenMs } from "./boot-cover";
 import * as diag from "./diag";
 import * as frames from "./frames";
 import type { WallJob, WallTile } from "./wallpaper-worker";
+import { motionReduced } from "./motion";
 
 /** Tiles around the anchor, per the Tiles row (row 5). 0 = the cover alone (1A). */
 const TILE_COUNT = { one: 0, few: 6, some: 12, many: 20 } as const;
@@ -72,7 +73,7 @@ let pictureColors: AlbumPalette | null | undefined; // undefined = not read yet
 let pictureColorsId = ""; // the picture the colors were read for (a rule may swap pictures)
 let resizeTimer = 0;
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 const hidden = () => root.dataset.ambient === "paused";
 // `effective`: a rule may hold the canvas and the picture (RULEZ.md §5.2, two rule keys).
 const mode = (): "aurora" | "covers" | "picture" => (currentSkin() === "glass" ? effective("glassCanvas") : "aurora");

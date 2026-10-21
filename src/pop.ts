@@ -1,8 +1,9 @@
+import { motionReduced } from "./motion";
 // Pop (styles.css §Pop): rows that slide in one after another — a dropdown panel's rows
 // (the "Play on" speakers) and the rows a section fold just opened (Playlists, Radio,
 // Settings). Timing is the --pop-in / --pop-stagger / --pop-ease skin tokens.
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 
 /**
  * Slide `els` in, one after another. Only the first `max` animate: a long section must not

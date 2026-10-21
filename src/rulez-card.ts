@@ -65,6 +65,7 @@ const ROWS: Record<string, { name: string; row: string | null }> = {
   goToTarget: { name: "Go to opens", row: "gototarget" },
   shuffleIdle: { name: "Shuffle with nothing currently playing behavior", row: "shuffleidle" },
   graphicsFallback: { name: "If graphics fail", row: "graphicsfallback" },
+  reduceMotion: { name: "Reduce motion", row: "reducemotion" },
 };
 const builtinKey = (r: Rule): string | undefined => ("row" in r.source ? r.source.row : "fixed" in r.source ? r.source.fixed : undefined);
 const builtinOf = (r: Rule) => {

@@ -41,6 +41,7 @@ import { searchField } from "./search-field";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { checkWeb, webKeep } from "./suggest";
 import { ROW_PX } from "./art-size";
+import { motionReduced } from "./motion";
 
 interface WebSong {
   track: Track;
@@ -733,7 +734,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     howEl.style.boxSizing = "";
     howEl.hidden = false;
     renderHow(); // the text is in before the height is measured
-    if (panel.hidden || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (panel.hidden || motionReduced()) {
       howEl.hidden = !on;
       return;
     }
@@ -771,7 +772,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     grow?.cancel();
     grow = null;
     panel.classList.remove("is-growing");
-    if (panel.hidden || !from || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (panel.hidden || !from || motionReduced()) return;
     const to = panel.offsetHeight;
     if (Math.abs(to - from) < 1) return;
     const dur = tokenMs("--pop-grow");
@@ -805,7 +806,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     if (daysBtn.hidden === !on && !daysAnim) return;
     daysAnim?.cancel();
     daysAnim = null;
-    const moving = animate && !panel.hidden && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const moving = animate && !panel.hidden && !motionReduced();
     daysBtn.hidden = false;
     const cs = getComputedStyle(daysBtn);
     const open = { width: `${daysBtn.offsetWidth}px`, minWidth: `${daysBtn.offsetWidth}px`, paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, opacity: 1 };
@@ -1225,7 +1226,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
       else open();
     };
     // Not tied to Animate card swaps (user's call 2026-09-16): no card changes place here.
-    const moving = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const moving = !motionReduced();
     if (tile && moving && setting("webMakeMotion") === "shrink") return shrinkInto(tile, fly);
     fly();
     dropdown.close(); // after handOff copied the row: the copy lives on <body>

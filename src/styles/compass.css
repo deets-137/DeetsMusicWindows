@@ -156,4 +156,4 @@
    --compass-angle: forward as the bar opens, back the way it came when the bar closed and
    took you nowhere, on through the full circle when it did take you somewhere. */
 .compass__btn svg { transform: rotate(var(--compass-angle, 0deg)); transition: transform var(--compass-spin); }
-@media (prefers-reduced-motion: reduce) { .compass__btn svg { transition: none; } }
+:root[data-motion="reduced"] .compass__btn svg { transition: none; }

@@ -435,6 +435,25 @@ export function check() {
     });
   }
 
+  // 32. Reduced motion is one switch (GRAPHICS-FALLBACK.md §10.4, 2026-10-20): Windows' setting,
+  //     the Reduce motion row, or the graphics rule, as `data-motion="reduced"` on <html>. A module
+  //     asks `motionReduced()` (src/motion.ts) and a sheet keys on `[data-motion="reduced"]`. The
+  //     media query hears Windows only, so a bare one misses the row and the graphics rule.
+  //     reduce-motion.ts reads the query to set the switch; index.html's pre-paint does too.
+  for (const [f, t] of src) {
+    if (f === "src/reduce-motion.ts" || f === "src/motion.ts") continue;
+    t.split("\n").forEach((line, i) => {
+      if (/matchMedia\(\s*["'`]\(prefers-reduced-motion/.test(line))
+        fail(32, f, i + 1, "a bare reduced-motion query — call `motionReduced()` from ./motion (GRAPHICS-FALLBACK.md §10.4)");
+    });
+  }
+  for (const f of files.filter((f) => /^src\/(styles\/)?[^/]+\.css$/.test(f))) {
+    read(f).split("\n").forEach((line, i) => {
+      if (/@media[^{]*prefers-reduced-motion/.test(line))
+        fail(32, f, i + 1, 'a reduced-motion media block — key the rules on `:root[data-motion="reduced"]` (GRAPHICS-FALLBACK.md §10.4)');
+    });
+  }
+
   // 30. Every place the code starts a thread is a row in the thread ledger (DEBUGGING.md
   //     § Threads, 2026-10-13), and every row still has its site. A function has no thread of
   //     its own; only these calls make one, so the ledger is the whole list. A Rust site is
@@ -503,7 +522,7 @@ export function report({ facts, docs }) {
   const names = {
     1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links",
     20: "settings keys", 21: "toast sites", 22: "hover hints", 23: "scrollers", 24: "right-click ledger", 25: "popover placers", 26: "list keys",
-    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger", 31: "release leads",
+    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger", 31: "release leads", 32: "reduced motion",
   };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);

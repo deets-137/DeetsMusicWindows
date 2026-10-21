@@ -147,5 +147,11 @@ features = [
   # The Network panel (net.rs, docs/features/speedtest.md): IcmpSendEcho for the ping. A feature
   # of the crate the app already has; no new download.
   "Win32_NetworkManagement_IpHelper",
+  # Is the graphics card ready again (gpu.rs, docs/features/GRAPHICS-FALLBACK.md §10.3): list the
+  # adapters, make one Direct3D 11 device, and hear Windows' adapter-change event. Features of
+  # the crate the app already has; no new download.
+  "Win32_Graphics_Dxgi",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
 ]
 

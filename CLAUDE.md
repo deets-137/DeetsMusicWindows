@@ -119,7 +119,12 @@ for word, with RELEASE.md's section numbers.
 - `GRAPHICS-FALLBACK.md` — BUILT 2026-10-11, desk test passed 2026-10-12 (§8): when the GPU process falls
   back to WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers
   a restart; Settings › Motion › *If graphics fail*; the `graphics` fact (`src/gpu.ts`); the
-  WebView2 `ProcessFailed` watch (`src-tauri/src/gpu.rs`). §9 is the as-built record.
+  WebView2 `ProcessFailed` watch (`src-tauri/src/gpu.rs`). §9 is the as-built record. §10
+  BUILT 2026-10-20 (uncommitted), desk test and break-it pass run by Claude (§10.11): the app
+  gets the card back by a quiet restart while its window is hidden (`gpu-rules.ts`), and the
+  *Reduce motion* row is the catch-all for every heavy feature. Every animation asks
+  `motionReduced()` (`src/motion.ts`), every sheet keys on `[data-motion="reduced"]`; never a
+  bare `prefers-reduced-motion` (docs:check 32).
 - `HIDE-CARDS.md` — BUILT 2026-10-10, desk test passed 2026-10-10 (§9): Settings › Cards hides any card but
   Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaced
   `rewindCard`); the picker only, the feature keeps working; right-click a name in the picker

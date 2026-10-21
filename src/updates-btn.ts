@@ -26,6 +26,7 @@ import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 import * as diag from "./diag";
 import type { CardInstance } from "./cards";
+import { motionReduced } from "./motion";
 
 /** The website's release notes, every version (the "All release notes" link). */
 const NOTES_URL = "https://deets.solutions/deetsmusic/#releases";
@@ -35,7 +36,7 @@ const NEW_FOLD = "updates::whatsnew";
  *  like the quick panel's folds. */
 const SEEN_KEY = "deets.updates.seen";
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 const readSeen = (): string | null => {

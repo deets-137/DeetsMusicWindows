@@ -30,6 +30,7 @@ import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE
 import { openContextMenu } from "./context-menu";
 import { toast } from "./toast";
 import { cancelled, emit, registerAction, registerEvent, registerFact } from "./rules";
+import { motionReduced } from "./motion";
 
 type Assignment = Partial<Record<Slot, CardId>>;
 
@@ -624,7 +625,7 @@ export function initLayout(): void {
   const slideBodies = (host: HTMLElement, ghost: HTMLElement | null, way: "in" | "back") => {
     const body = host.querySelector<HTMLElement>(":scope > .panel__body, :scope > .coll-body");
     const dur = tokenMs("--nav-dur");
-    if (!body || !ghost || dur <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!body || !ghost || dur <= 0 || motionReduced()) {
       ghost?.remove();
       return;
     }

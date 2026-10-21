@@ -29,6 +29,7 @@ import { mark } from "./marks";
 import * as frames from "./frames";
 import * as diag from "./diag";
 import { hideHintIn } from "./hint";
+import { motionReduced } from "./motion";
 
 export { REVEAL_CARDS } from "./reveal-wave";
 
@@ -63,7 +64,7 @@ export interface Reveal {
   done: Promise<void>;
 }
 
-const reduced = (): boolean => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = (): boolean => motionReduced();
 const underBoot = (): boolean => !!document.documentElement.dataset.boot && document.documentElement.dataset.boot !== "lift";
 
 export const isInstant = (card: string): boolean => setting("instantCards").includes(card);

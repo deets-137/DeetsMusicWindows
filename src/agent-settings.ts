@@ -265,6 +265,7 @@ const SPECS: Spec[] = [
     set: (v) => setSetting("sunShift", Number(v)),
   },
   storeChoice("Look schedule", "lookHold", "Menu pick lasts", [{ value: "next", label: "Until next change" }, { value: "always", label: "For good" }]),
+  storeToggle("Motion", "reduceMotion", "Reduce motion"),
   storeToggle("Motion", "appearanceMotion", "Animate look changes"),
   storeToggle("Motion", "cardSwapMotion", "Animate card swaps"),
   storeToggle("Motion", "fancyScrubber", "Fancy scrubber"),

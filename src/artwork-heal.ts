@@ -1,3 +1,4 @@
+import { motionReduced } from "./motion";
 // Artwork self-healing — recover cover <img>s whose load failed to a transient network
 // drop (sleep/wake, a Wi-Fi blip). Covers are direct <img src> to Apple's CDN with no
 // retry of their own, so a request killed in flight (e.g. the machine suspends mid-fetch)
@@ -59,7 +60,7 @@ function onLoad(e: Event) {
 // carries `data-instant`: its covers show the frame they load, as before.
 
 const FADE_SEL = "img[data-art], img[data-fade]";
-const reduced = (): boolean => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = (): boolean => motionReduced();
 const lateHooks = new Set<(img: HTMLImageElement) => void>();
 /** Hear each late cover as it arrives (reveal.ts logs `reveal:late`). */
 export function onLateArt(fn: (img: HTMLImageElement) => void): () => void {

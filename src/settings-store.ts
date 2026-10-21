@@ -83,6 +83,11 @@ export interface Settings {
    *  `save` holds the heavy effects off with a built-in rule and tells you, `tell` only tells
    *  you, `off` does neither. src/gpu.ts reads the renderer; rules-eval.ts makes the rule. */
   graphicsFallback: "save" | "tell" | "off";
+  /** Reduce motion (GRAPHICS-FALLBACK.md §10.4): the catch-all that turns every animation and
+   *  heavy effect off. Windows' reduced motion always turns it on, whatever this holds. The
+   *  graphics rule sets it while the window draws in software. src/reduce-motion.ts applies it
+   *  as `data-motion` on <html>; the built-in rule `row:reduceMotion` holds the heavy keys. */
+  reduceMotion: boolean;
   /** Ocean only: the card edges break into grains of sand (a dark beach), or the plain soft
    *  glow. skin-settings.ts applies it as `data-ocean-edges` on <html>. */
   oceanEdges: "sand" | "soft";
@@ -527,6 +532,7 @@ export const DEFAULTS: Settings = {
   fancyScrubber: true, // user's call 2026-09-16: on for now, a performance eval decides
   backgroundMotion: "on",
   graphicsFallback: "save", // his call 2026-09-29: every user gets the rule, Cruisin users too (GRAPHICS-FALLBACK.md §2)
+  reduceMotion: false, // his call 2026-10-20 (GRAPHICS-FALLBACK.md §10.7 F3): off; Windows' reduced motion or the graphics rule turns it on
   oceanEdges: "soft", // user's call 2026-09-15: Soft is Ocean's true default; Sand is opt-in
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
   oceanCardOpacity: 80, // his call 2026-10-11 (was 100, solid): the swell shows a little through the cards
@@ -826,7 +832,9 @@ export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDis
   // Layout for Max (MAX-CARDS.md §4.9, his call 2026-10-11): e.g. two cards while on battery.
   "maxCards",
   // Metal's cover change (docs/features/metal.md §6.7): the graphics fallback turns the 3D turn off.
-  "metalCoverChange"] as const;
+  "metalCoverChange",
+  // Reduce motion (GRAPHICS-FALLBACK.md §10.4): the graphics rule holds it on in software.
+  "reduceMotion"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 

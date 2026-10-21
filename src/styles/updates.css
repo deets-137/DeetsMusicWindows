@@ -66,9 +66,7 @@
   pointer-events: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .updates__up, .updates__down, .updates__bar, .updates__got { transition: none; }
-}
+:root[data-motion="reduced"] .updates__up, :root[data-motion="reduced"] .updates__down, :root[data-motion="reduced"] .updates__bar, :root[data-motion="reduced"] .updates__got { transition: none; }
 
 /* ── The panel ── */
 .updates__panel {

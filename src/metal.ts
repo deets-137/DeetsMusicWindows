@@ -18,6 +18,7 @@ import { setting, onSettingsChange } from "./settings-store";
 import { getCurrent, getHistory, getUpcoming, onQueueChange } from "./queue";
 import { artURL, coverArtPx, resolveEntry } from "./queue-rows";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
+import { motionReduced } from "./motion";
 
 const GRAIN = { faint: 0.15, fine: 0.3, medium: 0.5, strong: 0.75 } as const;
 const TILE = 480; // px of one texture tile: the draft's Medium grain size (his pick: Grain size stays fixed)
@@ -94,7 +95,7 @@ const onStage = (): boolean => {
  *  words did not, and their throttled timers left a slot empty: the break-it pass). */
 function turnMs(el: Element): number {
   const root = document.documentElement;
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches || root.dataset.ambient === "paused" || document.hidden) return 0;
+  if (motionReduced() || root.dataset.ambient === "paused" || document.hidden) return 0;
   const cs = getComputedStyle(el);
   const k = parseFloat(cs.getPropertyValue("--motion-scale"));
   return (parseFloat(cs.getPropertyValue("--vinyl-swap-dur")) || 0) * 1000 * (Number.isFinite(k) ? k : 1);

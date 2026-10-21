@@ -23,6 +23,7 @@ import * as frames from "./frames";
 import { mark } from "./marks";
 import { tokenMs, nextFrame, liftSteps } from "./boot-cover";
 import type { SkinName } from "./skin";
+import { motionReduced } from "./motion";
 
 type Kind = "theme" | "skin" | "surface";
 
@@ -51,7 +52,7 @@ let frameDetail = ""; // the open window's detail, repeated on its lift-only lin
 
 const reducedMotion = (): boolean => {
   try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return motionReduced();
   } catch {
     return false;
   }

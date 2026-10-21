@@ -402,6 +402,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.payload.skin) document.documentElement.dataset.skin = e.payload.skin;
     fit();
   });
+  // Reduce motion (GRAPHICS-FALLBACK.md §10.4): the main window's switch (reduce-motion.ts).
+  listen<boolean>("motion-reduced", (e) => {
+    if (e.payload) document.documentElement.dataset.motion = "reduced";
+    else delete document.documentElement.dataset.motion;
+  });
   listen("panel-shown", () => {
     visible = true;
     vinyl.suspend(false);

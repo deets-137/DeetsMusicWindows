@@ -18,6 +18,7 @@ import { setAirplayOutput, armTap, setSink } from "./sound";
 import { toast } from "./toast";
 import { netNote } from "./net-feed";
 import * as diag from "./diag";
+import { motionReduced } from "./motion";
 
 export interface Speaker {
   name: string;
@@ -380,7 +381,7 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     if (el.textContent !== text) el.textContent = text;
   };
 
-  const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = () => motionReduced();
   const token = (name: string) => getComputedStyle(panel).getPropertyValue(name).trim();
   const tokenMs = (name: string) => {
     const v = token(name);

@@ -29,6 +29,8 @@ export type FactId =
   | "battery" | "charging" | "online" | "dataSaver"
   // GRAPHICS-FALLBACK.md §4: "accelerated" or "software", from the WebGL renderer name.
   | "graphics"
+  // GRAPHICS-FALLBACK.md §10.4: Reduce motion is on (the row, Windows, or the graphics rule).
+  | "motionReduced"
   // Route 8 (RULEZ.md §10.1): a song is loaded; the window's size.
   | "loaded" | "windowWidth" | "windowHeight"
   // RULEZ.md §11: the cover's color as a word, and light or dark.
@@ -533,15 +535,25 @@ export interface RowValues {
   graphicsFallback: "save" | "tell" | "off";
 }
 
-/** The heavy effects the graphics rule holds off (GRAPHICS-FALLBACK.md §2.2): Battery saver's
- *  set, with the backgrounds Off (not Reduced) and a Covers or Picture canvas on Aurora. */
-export const GRAPHICS_OFF: { key: string; value: unknown }[] = [
+/** The heavy effects Reduce motion holds off (GRAPHICS-FALLBACK.md §10.7 F4, his list
+ *  2026-10-20). Every transition also becomes a fade or a cut, through `data-motion` on <html>
+ *  (motion.ts): the album aurora and the Press record hold still there. */
+export const REDUCED_OFF: { key: string; value: unknown }[] = [
   { key: "glassFancy", value: false },
   { key: "backgroundMotion", value: "off" },
   { key: "cardSwapMotion", value: false },
   { key: "appearanceMotion", value: false },
-  { key: "glassCanvas", value: "aurora" },
+  { key: "fancyScrubber", value: false },
   { key: "metalCoverChange", value: "off" }, // the zoetrope's 3D turn and the side covers (metal.md §6.7)
+];
+
+/** What the graphics rule holds while the window draws in software (§10.4, his calls
+ *  2026-10-20): Reduce motion on, which brings REDUCED_OFF, and a Covers or Picture canvas on
+ *  Aurora. The canvas is the graphics rule's alone: it is a still picture, costly only in
+ *  software, so Reduce motion leaves it as you set it (his call, §10.7). */
+export const GRAPHICS_OFF: { key: string; value: unknown }[] = [
+  { key: "reduceMotion", value: true },
+  { key: "glassCanvas", value: "aurora" },
 ];
 
 /** A WebGL renderer name that means software drawing: WARP ("Microsoft Basic Render Driver"),
@@ -669,9 +681,19 @@ export function builtinRules(s: RowValues): Rule[] {
     });
   }
 
-  // Motion › If graphics fail (GRAPHICS-FALLBACK.md §3): while the window draws in software, the
-  // heavy effects stay off. Your own values never change. A hand change, or the toast's Turn
-  // effects on, sets the rule aside until the next start. Tell only and Off make no rule.
+  // Motion › Reduce motion (GRAPHICS-FALLBACK.md §10.4): while motion is reduced (the row, or
+  // Windows' own setting, or the graphics rule below), the heavy effects stay off. Always made:
+  // the fact carries Windows' setting, which no row value shows. A hand change on one of them
+  // sets the rule aside until the next start, as the graphics rule did.
+  out.push({
+    id: "row:reduceMotion", kind: "state", source: row("reduceMotion"), on: true,
+    while: { fact: "motionReduced", is: true },
+    set: REDUCED_OFF.map((g) => ({ target: { key: g.key }, value: g.value })), onHand: "session",
+  });
+
+  // Motion › If graphics fail (GRAPHICS-FALLBACK.md §3, §10.4): while the window draws in
+  // software, Reduce motion is on and the canvas is Aurora. Your own values never change. A hand
+  // change sets the rule aside until the next start. Tell only and Off make no rule.
   if (s.graphicsFallback === "save") {
     out.push({
       id: "row:graphicsFallback", kind: "state", source: row("graphicsFallback"), on: true,

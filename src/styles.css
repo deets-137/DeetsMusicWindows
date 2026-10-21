@@ -100,7 +100,7 @@ body {
 .cog__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .cog__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .cog__btn svg { transform: rotate(var(--cog-angle, 0deg)); transition: transform var(--cog-spin); }
-@media (prefers-reduced-motion: reduce) { .cog__btn svg { transition: none; } }
+:root[data-motion="reduced"] .cog__btn svg { transition: none; }
 
 /* ── The quick panel (QUICK-SETTINGS.md) ──────────────────────
    The cog's panel: the Sound / Sleep / Rooms panel family (menu surface, panel radius,
@@ -911,18 +911,16 @@ body {
 .room__half[aria-pressed="true"] { background: var(--picked); color: var(--title); }
 .room__half:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
 
-@media (prefers-reduced-motion: reduce) {
-  /* No bob at all: the primitive's rule, and room-panel.ts stops writing the value. */
-  .room__figure-head { transition: none; transform: none; }
-  .room__fig-body, .room__fig-head { transition: none; }
-  .room__btn[data-away] svg { animation: none; }
-  .room__half, .room__fold-btn, .room__fold-btn::before { transition: none; }
-  /* The parts still change places — they just arrive rather than travel. room-panel.ts
-     also skips the FLIP outright, so nothing is measured for an animation that is off. */
-  .room__part { transition: none; }
-  /* The gutter still opens — it just arrives rather than travels. */
-  .room__panel, .room__members { transition: none; }
-}
+/* No bob at all: the primitive's rule, and room-panel.ts stops writing the value. */
+:root[data-motion="reduced"] .room__figure-head { transition: none; transform: none; }
+:root[data-motion="reduced"] .room__fig-body, :root[data-motion="reduced"] .room__fig-head { transition: none; }
+:root[data-motion="reduced"] .room__btn[data-away] svg { animation: none; }
+:root[data-motion="reduced"] .room__half, :root[data-motion="reduced"] .room__fold-btn, :root[data-motion="reduced"] .room__fold-btn::before { transition: none; }
+/* The parts still change places — they just arrive rather than travel. room-panel.ts
+   also skips the FLIP outright, so nothing is measured for an animation that is off. */
+:root[data-motion="reduced"] .room__part { transition: none; }
+/* The gutter still opens — it just arrives rather than travels. */
+:root[data-motion="reduced"] .room__panel, :root[data-motion="reduced"] .room__members { transition: none; }
 
 /* ── Sound (src/sound-panel.ts, SOUND.md §2.3) ────────────────────────────────
    The EQ-fader icon left of the sleep clock; any effect on = the title color. Its panel:
@@ -1205,9 +1203,7 @@ body {
 .sound__step:disabled { cursor: default; }
 
 
-@media (prefers-reduced-motion: reduce) {
-  .sound__handle, .sound__fader-knob, .sound__btn svg rect, .sound__fold-btn::before, .sound__box { transition: none; }
-}
+:root[data-motion="reduced"] .sound__handle, :root[data-motion="reduced"] .sound__fader-knob, :root[data-motion="reduced"] .sound__btn svg rect, :root[data-motion="reduced"] .sound__fold-btn::before, :root[data-motion="reduced"] .sound__box { transition: none; }
 
 /* ── Playlist web (PLAYLIST-WEB.md): the Playlists card's web button + its panel ──────
    The panel is portaled to <body> (a Glass card is a stacking context; web.ts places it).
@@ -1443,9 +1439,7 @@ body {
 .vol__mute svg { width: 100%; height: 100%; fill: currentColor; }
 .vol__mute:focus-visible, .vol__airplay:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .vol__airplay svg { width: 100%; height: 100%; }
-@media (prefers-reduced-motion: reduce) {
-  .vol__pill { transition: none; }
-}
+:root[data-motion="reduced"] .vol__pill { transition: none; }
 
 /* ── AirPlay (AIRPLAY.md): the square's states + the "Play on" panel ──── */
 .ap-root { position: relative; display: grid; }
@@ -1466,9 +1460,7 @@ body {
 .ap-square[data-state="on"] :is(.ap-caret, .ap-cut) { transform: translateY(calc(-1 * var(--ap-caret-rise))); }
 .ap-square[data-state="on"] .ap-caret { fill: currentColor; }
 .ap-square[data-state="on"] { color: var(--go); }
-@media (prefers-reduced-motion: reduce) {
-  .ap-caret, .ap-cut { transition: none; }
-}
+:root[data-motion="reduced"] .ap-caret, :root[data-motion="reduced"] .ap-cut { transition: none; }
 .ap-square[data-state="connecting"] svg { animation: ap-pulse var(--ap-pulse) var(--pulse-ease) infinite; }
 @keyframes ap-pulse { 50% { opacity: 0.35; } }
 
@@ -1533,15 +1525,13 @@ img.art-in { animation: art-in var(--art-in) var(--pop-ease) var(--reveal-d, 0s)
    lifts the rule over a card sheet loaded after this one. */
 body .reveal-pre { opacity: 0; transition: none; }
 body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; transition: none; }
-@media (prefers-reduced-motion: reduce) {
-  .pop, .flyout { transition: none; }
-  .pop-enter { animation: none; }
-  img.art-in, .reveal-in { animation: none; }
-  .reveal-pre { opacity: 1; }
-  .lib-picked.is-entering { animation: none; }
-  .sleep__ring { transition: none; } /* the dial snaps once a minute (sleep.ts rounds the angle) */
-  .sleep__fade { animation: none; }
-}
+:root[data-motion="reduced"] .pop, :root[data-motion="reduced"] .flyout { transition: none; }
+:root[data-motion="reduced"] .pop-enter { animation: none; }
+:root[data-motion="reduced"] img.art-in, :root[data-motion="reduced"] .reveal-in { animation: none; }
+:root[data-motion="reduced"] .reveal-pre { opacity: 1; }
+:root[data-motion="reduced"] .lib-picked.is-entering { animation: none; }
+:root[data-motion="reduced"] .sleep__ring { transition: none; } /* the dial snaps once a minute (sleep.ts rounds the angle) */
+:root[data-motion="reduced"] .sleep__fade { animation: none; }
 /* Card swap (src/card-swap.ts; skin.css §card swap). JS sets --swap-dx / --swap-dy, the
    offset from the slot the card left. The travel rides `translate` and the skin's shape
    rides `transform`, so a midpoint shape never splits the travel's ease. A replace rises in. */
@@ -1568,9 +1558,7 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
 @keyframes card-swap-rise {
   from { opacity: 0; transform: translateY(var(--pop-shift)) scale(var(--pop-scale)); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .bento .panel.swap-out, .bento .panel.swap-in, .bento .panel.swap-rise { animation: none; }
-}
+:root[data-motion="reduced"] .bento .panel.swap-out, :root[data-motion="reduced"] .bento .panel.swap-in, :root[data-motion="reduced"] .bento .panel.swap-rise { animation: none; }
 .ap__head {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2); /* the square sits near the corner */
@@ -2234,7 +2222,7 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
    so the glyph's spin goes on inside it. None under reduced motion. */
 .panel__action.is-nudged { animation: action-nudge var(--nudge-dur) var(--nudge-ease); }
 @keyframes action-nudge { 40% { transform: scale(var(--nudge-scale)); } }
-@media (prefers-reduced-motion: reduce) { .panel__action.is-nudged { animation: none; } }
+:root[data-motion="reduced"] .panel__action.is-nudged { animation: none; }
 
 /* Collection card body holds a clipping viewport; contexts are panes that slide
    horizontally (push/pop). Within a pane: fixed toolbar, scrolling view. */
@@ -2259,18 +2247,15 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 .coll-pane[data-pos="left"]   { transform: var(--nav-at-left);   opacity: var(--nav-off-opacity); z-index: 0; }
 .coll-pane[data-pos="right"]  { transform: var(--nav-at-right);  opacity: var(--nav-off-opacity); z-index: 0; }
 .coll-pane:not([data-pos="center"]) { pointer-events: none; } /* only the on-screen pane is interactive */
-@media (prefers-reduced-motion: reduce) {
-  .coll-pane { transition: none; }
-  .aurora__blob { animation: none; }  /* freeze the Glass aurora drift */
-  /* Ocean stays VISIBLE, just still: a motionless sea is still a sea (unlike
-     a half-drawn bolt), so the skin keeps its surface instead of going blank. */
-  .ocean__train, .ocean__bob { animation: none; }
-  .ocean__heave, .ocean__glow, .ocean__neon { transition: none; }
-  .storm { display: none; }        /* a frozen half-drawn bolt reads as a bug — hide the layer */
-  /* no hover-lift jump when motion is reduced */
-  .lib-row:hover, .lib-tile:hover, .qrow:hover,
-  .search__song:hover, .search__row:hover, .search__tile:hover, .search__artist:hover { transform: none; }
-}
+:root[data-motion="reduced"] .coll-pane { transition: none; }
+:root[data-motion="reduced"] .aurora__blob { animation: none; }  /* freeze the Glass aurora drift */
+/* Ocean stays VISIBLE, just still: a motionless sea is still a sea (unlike
+   a half-drawn bolt), so the skin keeps its surface instead of going blank. */
+:root[data-motion="reduced"] .ocean__train, :root[data-motion="reduced"] .ocean__bob { animation: none; }
+:root[data-motion="reduced"] .ocean__heave, :root[data-motion="reduced"] .ocean__glow, :root[data-motion="reduced"] .ocean__neon { transition: none; }
+:root[data-motion="reduced"] .storm { display: none; }        /* a frozen half-drawn bolt reads as a bug — hide the layer */
+/* no hover-lift jump when motion is reduced */
+:root[data-motion="reduced"] .lib-row:hover, :root[data-motion="reduced"] .lib-tile:hover, :root[data-motion="reduced"] .qrow:hover, :root[data-motion="reduced"] .search__song:hover, :root[data-motion="reduced"] .search__row:hover, :root[data-motion="reduced"] .search__tile:hover, :root[data-motion="reduced"] .search__artist:hover { transform: none; }
 
 /* Ambient pause (src/ambient.ts): while the window cannot be seen — or when the user
    turns "Animate backgrounds" off — the endless decorative loops hold still.
@@ -2687,10 +2672,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   transform-origin: center left;
   transition: transform var(--hold-ms) var(--ease-ui);
 }
-@media (prefers-reduced-motion: reduce) {
-  .is-holding,
-  .set__section.is-holding .set__head { transform: none; }
-}
+:root[data-motion="reduced"] .is-holding, :root[data-motion="reduced"] .set__section.is-holding .set__head { transform: none; }
 /* The Settings header's search button, while the field holds text (the pill idiom's
    `is-active`, in the icon-square family this header already uses). */
 .panel__action.is-active { background: var(--picked); border-color: var(--title); color: var(--title); }
@@ -3025,9 +3007,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
      size (his ask, 2026-10-13: consistently sized boxes). */
   .artist-info-wrap .artist-info { grid-template-rows: minmax(var(--artist-info-row-min), auto) minmax(var(--artist-info-row-min), auto); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .artist-info__fold, .artist-info__fold-in, .artist-info__toggle::after { transition: none; }
-}
+:root[data-motion="reduced"] .artist-info__fold, :root[data-motion="reduced"] .artist-info__fold-in, :root[data-motion="reduced"] .artist-info__toggle::after { transition: none; }
 .artist-info {
   flex: 1 1 auto;
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1fr 1fr; align-items: start;
@@ -3122,9 +3102,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 }
 .present__count span { font-size: var(--fs-text); color: var(--subtext); }
 .present__age { font-size: var(--fs-subtext); color: var(--subtext); }
-@media (prefers-reduced-motion: reduce) {
-  .present > * { transition: none; }
-}
+:root[data-motion="reduced"] .present > * { transition: none; }
 /* The album box's About, when Apple has a full note: a press on every surface (present.ts
    openNotes), in the stats cell's idiom. */
 .artist-info__about[data-notes] { cursor: pointer; }
@@ -3167,9 +3145,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .notes__mention:hover { text-decoration: underline; }
 .notes__song:focus-visible, .notes__mention:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 .notes__from { margin: 0; font-size: var(--fs-subtext); color: var(--subtext); }
-@media (prefers-reduced-motion: reduce) {
-  .notes__song { transition: none; }
-}
+:root[data-motion="reduced"] .notes__song { transition: none; }
 /* Play / Shuffle (NEXT-VERSION §13): two half-width buttons under the hero (or at the top of
    a song list with no hero). Play is filled with the title ink, Shuffle is the pill outline. */
 .lib-actions { display: flex; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); min-width: 0; }
@@ -3648,9 +3624,7 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .search__tile:focus-within .tile-grip { opacity: 1; }
 .tile-grip:hover { filter: brightness(0.97); }
 html.is-row-dragging .tile-grip { cursor: grabbing; }
-@media (prefers-reduced-motion: reduce) {
-  .tile-grip { transition: none; }
-}
+:root[data-motion="reduced"] .tile-grip { transition: none; }
 
 /* A card's Pinned shelf (PINS.md fork 8): no label, and one hairline under it. Everything
    below the line is the card as it was. */
@@ -3702,10 +3676,8 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 /* The right-clicked Recent pill while its menu is open: the same outline the result rows wear. */
 .search__recent.is-context { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
 
-@media (prefers-reduced-motion: reduce) {
-  .spane { transition: none; }
-  .search__bar--busy .search__busy { animation: none; }
-}
+:root[data-motion="reduced"] .spane { transition: none; }
+:root[data-motion="reduced"] .search__bar--busy .search__busy { animation: none; }
 
 /* ── Now Playing card ───────────────────────────────────────── */
 /* Full-height album cover (left) anchors a middle column holding the now-playing
@@ -3787,13 +3759,8 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
-@media (prefers-reduced-motion: reduce) {
-  /* Snap, like the other motion here: the fill still reports the mode. */
-  .np__shuffle.is-crossing .np__sh-up,
-  .np__shuffle.is-crossing .np__sh-dn,
-  .np__shuffle.is-crossing .np__sh-stop,
-  .np__repeat.is-looping svg { animation: none; }
-}
+/* Snap, like the other motion here: the fill still reports the mode. */
+:root[data-motion="reduced"] .np__shuffle.is-crossing .np__sh-up, :root[data-motion="reduced"] .np__shuffle.is-crossing .np__sh-dn, :root[data-motion="reduced"] .np__shuffle.is-crossing .np__sh-stop, :root[data-motion="reduced"] .np__repeat.is-looping svg { animation: none; }
 .np__repeat { position: relative; }
 .np__repeat-one {
   display: none;
@@ -3847,9 +3814,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 }
 /* Content rides above the aurora. */
 .np__art, .np__center { position: relative; z-index: 1; }
-@media (prefers-reduced-motion: reduce) {
-  .np__aurora::before { animation: none; }  /* static aurora; the crossfade stays (not vestibular) */
-}
+:root[data-motion="reduced"] .np__aurora::before { animation: none; }  /* static aurora; the crossfade stays (not vestibular) */
 .np__center {
   flex: 1 1 auto;
   min-width: 0;
@@ -3995,9 +3960,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 @keyframes scrub-breathe { from { filter: drop-shadow(0 0 var(--scrub-glow-min) var(--title)); } to { filter: drop-shadow(0 0 var(--scrub-glow-max) var(--title)); } }
 @keyframes scrub-flicker { 50% { opacity: 0.3; } }
 
-@media (prefers-reduced-motion: reduce) {
-  .scrub__handle, .scrub__handle::before, .scrub__handle::after { animation: none !important; transition: none; }
-}
+:root[data-motion="reduced"] .scrub__handle, :root[data-motion="reduced"] .scrub__handle::before, :root[data-motion="reduced"] .scrub__handle::after { animation: none !important; transition: none; }
 
 /* The cover: a square as tall as the card's text column (stretched cross axis →
    aspect-ratio), never smaller than --np-cover. The image and the ♪ placeholder are
@@ -4084,9 +4047,7 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
   }
 }
 /* The slide is a Web Animation (vinyl.ts), skipped under reduced motion. */
-@media (prefers-reduced-motion: reduce) {
-  .vinyl__spin { transform: none !important; }
-}
+:root[data-motion="reduced"] .vinyl__spin { transform: none !important; }
 /* Radio: the station's name as a chip over the cover's bottom edge, revealed on hover
    (the artist line already carries it when the track has no artist of its own). */
 .np__station {
@@ -4173,10 +4134,8 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 .np__title-text { display: inline-block; transition: transform var(--np-title-scroll-back) var(--ease-ui) 0ms; }
 .np__title.is-scrolling { text-overflow: clip; }
 .np__title.is-scrolling .np__title-text { transform: translateX(var(--np-title-shift, 0px)); transition: transform var(--np-title-scroll-dur, 0ms) linear var(--np-title-scroll-delay); }
-@media (prefers-reduced-motion: reduce) {
-  .np__title.is-scrolling { text-overflow: ellipsis; }
-  .np__title.is-scrolling .np__title-text { transform: none; transition: none; }
-}
+:root[data-motion="reduced"] .np__title.is-scrolling { text-overflow: ellipsis; }
+:root[data-motion="reduced"] .np__title.is-scrolling .np__title-text { transform: none; transition: none; }
 
 /* ── The Last.fm counts badge (LISTENERS.md §4; his calls 2026-10-12) ──────────────────
    The family is the station chip's (.np__station): a panel wash, subtext type, on the cover.
@@ -4608,10 +4567,8 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .lib-rail__letter:hover { color: var(--rail-ink-lit); background: var(--surface-hover); }
 .lib-rail__letter.is-lit { color: var(--rail-ink-lit); }
 .lib-rail__letter.is-empty { opacity: 0.35; cursor: default; }
-@media (prefers-reduced-motion: reduce) {
-  .bento .panel.is-covering, .bento .panel.is-uncovering { transition: none; }
-  .panel.is-grow-rows > :not(.panel__head) { animation: none; }
-}
+:root[data-motion="reduced"] .bento .panel.is-covering, :root[data-motion="reduced"] .bento .panel.is-uncovering { transition: none; }
+:root[data-motion="reduced"] .panel.is-grow-rows > :not(.panel__head) { animation: none; }
 
 /* ── The full player (src/full-player.ts, docs/features/fullscreen-player.md) ─────────────────
    Now Playing grows so the cover is as large as the window allows. Nothing here applies at
@@ -4942,10 +4899,8 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .lib-view[data-switch] { scrollbar-gutter: stable; }
 /* …then the list under the hero fades out before the new one rises in (collection-card.ts). */
 .is-view-leaving { opacity: 0; transition: opacity var(--view-leave-dur) var(--ease-ui); pointer-events: none; }
-@media (prefers-reduced-motion: reduce) {
-  .split-pill__half { transition: none; }
-  .split-pill__half[aria-busy="true"] { animation: none; }
-}
+:root[data-motion="reduced"] .split-pill__half { transition: none; }
+:root[data-motion="reduced"] .split-pill__half[aria-busy="true"] { animation: none; }
 /* The Full view's rows: a song you have wears the ✓ at rest (fork 4A); the + still waits for
    the hover. In a grown card's columns the square rides the end of the title cell. An
    unreleased song is dimmed, as in Search. */
@@ -4979,9 +4934,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 }
 .rulez__fold.is-shut { grid-template-rows: 0fr; }
 .rulez__fold-in { min-height: 0; overflow: hidden; }
-@media (prefers-reduced-motion: reduce) {
-  .rulez__rule, .rulez__fold { transition: none; }
-}
+:root[data-motion="reduced"] .rulez__rule, :root[data-motion="reduced"] .rulez__fold { transition: none; }
 .rulez__rule.is-open { border-color: var(--border); background: var(--surface); }
 .rulez__bar {
   display: grid;
@@ -5025,9 +4978,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   transform-origin: center left;
   transition: transform var(--hold-ms) var(--ease-ui);
 }
-@media (prefers-reduced-motion: reduce) {
-  .rulez__rule.is-holding > .rulez__bar { transform: none; }
-}
+:root[data-motion="reduced"] .rulez__rule.is-holding > .rulez__bar { transform: none; }
 .rulez__wins { margin: 0 0 var(--space-1) calc(var(--rulez-lead-w) + var(--space-3)); font-size: var(--fs-subtext); color: var(--subtext); font-style: italic; }
 .rulez__lead { display: grid; place-items: center; color: var(--subtext); }
 .rulez__lead svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; stroke: currentColor; stroke-width: 0; }
@@ -5276,6 +5227,4 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 /* under the hand it rises a little; held, it brightens, as metal under a lamp */
 [data-fancy-scrub="on"][data-skin="metal"] .scrub:hover { --handle-scale: var(--metal-wheel-lift); }
 [data-fancy-scrub="on"][data-skin="metal"] .scrub[data-dragging] .scrub__handle { filter: brightness(1.15); }
-@media (prefers-reduced-motion: reduce) {
-  [data-skin="metal"] .np__listen--cover:not([hidden]) { animation: none; }
-}
+:root[data-motion="reduced"][data-skin="metal"] .np__listen--cover:not([hidden]) { animation: none; }

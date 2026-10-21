@@ -30,6 +30,7 @@ import { previewSkin } from "./skin-settings";
 import { setAlbumLight } from "./ocean";
 import { pickWallpaper, setWallpaperFromFile } from "./wallpaper";
 import { userFiles, userFile, renameFile, deleteFile, onFilesChange } from "./user-files";
+import { motionReduced } from "./motion";
 
 /** Fancy Glass's hover hint. The cost is the 2026-09-16 bench (DEBUGGING.md §Fancy Glass). */
 const GLASS_FANCY_HINT = "Glass only. A live blur behind the cards, a moving background, and four sliders. Without a graphics card: about 85% fewer frames";
@@ -72,6 +73,7 @@ import { hiddenCount, clearHidden } from "./home";
 import { displayHz } from "./display-hz";
 import { spinFps } from "./spin-steps";
 import { clearMarks, countText, markCount, onSuggestChange } from "./suggest";
+import { windowsReduced } from "./reduce-motion";
 import {
   sotdSettings, outletStatuses, refreshSotdSettings, onSotdChange,
   postLog, postLine, outletName, STATE_WORD, withdrawPickAsking, type PostRecord,
@@ -199,6 +201,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Connections", row: "mcpsetup" }, // Set up the DeetsMusic MCP, built 2026-10-11 (MCP-INSTALL.md)
   { section: "Window", row: "maxcards" }, // Layout for Max, built 2026-10-11 (MAX-CARDS.md)
   { section: "Motion", row: "graphicsfallback" }, // If graphics fail, built 2026-10-11 (GRAPHICS-FALLBACK.md)
+  { section: "Motion", row: "reducemotion" }, // Reduce motion, built 2026-10-20 (GRAPHICS-FALLBACK.md §10.4)
   { section: "Playback", row: "shuffleoff" }, // Shuffle off plays, unshuffle, built 2026-10-12 (QUEUE.md §Shuffle and unshuffle)
   { section: "Playback", row: "listeners" }, // Show play counts from Last.FM, built 2026-10-12 (LISTENERS.md §4)
   { section: "Playback", row: "artistinfo" }, // Show artist info on the artist's page, built 2026-10-12 (LISTENERS.md §6)
@@ -453,7 +456,7 @@ const RESET_GROUPS: ResetGroup[] = [
     id: "schedule", label: "Look schedule", hint: "Change look at, the day and night looks, the times, and Menu pick lasts",
     keys: ["lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "dayStart", "nightStart", "sunShift", "lookHold"],
   },
-  { id: "motion", label: "Motion", hint: "The three Animate rows, Fancy scrubber, and If graphics fail", keys: ["appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
+  { id: "motion", label: "Motion", hint: "Reduce motion, the three Animate rows, Fancy scrubber, and If graphics fail", keys: ["reduceMotion", "appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
   {
     id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, and the Press record player",
     keys: ["oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps", "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek"],
@@ -1264,6 +1267,19 @@ function mountSettings(
     {
       title: "Motion",
       rows: [
+        {
+          // GRAPHICS-FALLBACK.md §10.4 (his calls F3, F6, 2026-10-20): the catch-all, first in
+          // Motion. On and locked while Windows reduces motion.
+          kind: "toggle", id: "reducemotion", label: "Reduce motion", key: "reduceMotion",
+          hint: () => "Turn off animations and heavy effects. Always on when Windows reduces motion",
+          get: () => windowsReduced() || inForce("reduceMotion"),
+          // Locked rows ignore a set: the Compass toggles a row without reading `locked`, and
+          // would write your stored value while the row reads On (break-it pass, 2026-10-20).
+          set: (on) => {
+            if (!windowsReduced()) setSetting("reduceMotion", on);
+          },
+          locked: windowsReduced,
+        },
         storeToggle("motion", "Animate look changes", "appearanceMotion", () => "Theme and skin changes play the launch animation. Off: they change at once"),
         storeToggle("cardswap", "Animate card swaps", "cardSwapMotion", () => "Cards move to their new places in the skin's own motion. Off: they change at once"),
         storeToggle("fancyscrub", "Fancy scrubber", "fancyScrubber", () => "Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt. Off: a plain handle"),
@@ -3159,7 +3175,7 @@ function mountSettings(
     flashAt = performance.now();
     bootRows = false; // the row it names must be there to scroll to
     render();
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = motionReduced();
     body.querySelector<HTMLElement>(`[data-set-row="${id}"]`)?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
   };
   const takeRequest = () => {

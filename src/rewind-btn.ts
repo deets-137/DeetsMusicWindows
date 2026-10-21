@@ -33,6 +33,7 @@ import { ROW_PX } from "./art-size";
 import * as frames from "./frames";
 import * as diag from "./diag";
 import type { Track } from "./library";
+import { motionReduced } from "./motion";
 
 type Part = "top" | "sotd";
 type View = "songs" | "albums" | "artists";
@@ -56,7 +57,7 @@ const STORE_KEY = "deets.rewindTop";
 
 const VIEW_LABELS: Record<View, string> = { songs: "Songs", albums: "Albums", artists: "Artists" };
 
-const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduced = () => motionReduced();
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 const loadPick = (): { view: View; dir: Dir } => {

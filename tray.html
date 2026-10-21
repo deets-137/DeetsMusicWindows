@@ -26,6 +26,11 @@
           a = a.slice(1);
           document.documentElement.setAttribute(a[1], saved ? (R[saved] || saved) : a[2]);
         });
+        // Reduce motion (GRAPHICS-FALLBACK.md §10.4): Windows' setting or your row, as in
+        // index.html. The main window sends each later change (`motion-reduced`, tray.ts).
+        var reduced = S && S.reduceMotion === true;
+        try { reduced = reduced || window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+        if (reduced) document.documentElement.setAttribute("data-motion", "reduced");
       })();
     </script>
     <link rel="stylesheet" href="/src/styles.css" />

@@ -313,8 +313,13 @@ pub fn run() {
             // main thread; a dev build returns at once.
             tauri::async_runtime::spawn_blocking(identity::on_start);
 
+            // A quiet graphics restart (GRAPHICS-FALLBACK.md §10.5) comes back hidden or
+            // minimized, as its window was.
+            if let Some(kind) = gpu::take_intent(&dir) {
+                tray::set_launch(&kind);
+            }
             // A login launch (`--tray`, the Run-key command) starts in the tray.
-            if std::env::args().any(|a| a == "--tray") {
+            if tray::tray_launch() {
                 tray::start_hidden(app.handle());
             }
             // Any other launch shows the window when the page is ready (`main_ready`);
@@ -383,6 +388,9 @@ pub fn run() {
         })
         .on_window_event(|win, ev| tray::on_window_event(win, ev))
         .invoke_handler(invoke_with_watchdog(tauri::generate_handler![
+            gpu::gpu_card_ready,
+            gpu::gpu_watch_adapters,
+            gpu::app_restart_quiet,
             apple::apple_developer_token,
             net::net_ping,
             net::net_test,

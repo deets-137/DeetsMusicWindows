@@ -237,11 +237,12 @@ Under the sub-heading *Cover load animations* (2026-10-17,
 
 | Control | What it does | Choices |
 |---|---|---|
+| Reduce motion (2026-10-20) | Every transition becomes a fade or a cut; Fancy Glass, the three Animate rows, Fancy scrubber and Metal's cover change hold off (the rows keep your values). Always on, and locked, while Windows reduces motion | on / **off** |
 | Animate look changes | Theme and skin changes play the launch animation | **on** / off |
 | Animate card swaps | Cards move to their new places in the skin's own motion | **on** / off |
 | Fancy scrubber | Each skin's own playhead: the Press nib, the Ocean float, the Glass lens, the charged bolt | **on** / off |
 | Animate backgrounds | The moving backgrounds: the Ocean swell, the Glass aurora, the Cyber storm | **On** / Reduced / Off |
-| If graphics fail | When the graphics card stops and the window draws in software. Save + tell: Fancy Glass, the three Animate rows and a Covers or Picture canvas go off until the next start, and a notice offers a restart. Tell only: the notice only. Off: nothing | **Save + tell** / Tell only / Off |
+| If graphics fail | When the graphics card stops and the window draws in software. Save + tell: Reduce motion goes on and a Covers or Picture canvas shows Aurora until the card is back. When the card works again, the app restarts by itself while its window is hidden (between two songs if music plays), or a notice offers a restart. Tell only: no effects change; the restarts and notices only. Off: nothing | **Save + tell** / Tell only / Off |
 
 Your Windows reduced-motion preference always wins over these.
 

@@ -446,8 +446,11 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   animations" and so on. On (the default) = the card holds until its covers are in,
   then reveals in one wave; off = instant.
 - `graphicsFallback` "If graphics fail" (Save + tell | Tell only | Off, 2026-10-11) is in Motion;
-  Save + tell makes the built-in rule `row:graphicsFallback`, which holds the heavy effects off
+  Save + tell makes the built-in rule `row:graphicsFallback`, which holds Reduce motion on
   while the window draws in software ([GRAPHICS-FALLBACK.md](../features/GRAPHICS-FALLBACK.md)).
+- `reduceMotion` "Reduce motion" (on / off, 2026-10-20) is first in Motion: on turns off every
+  animation and heavy effect. Windows' reduced motion keeps it on whatever an agent sets
+  (GRAPHICS-FALLBACK.md §10.4).
 - `streamQuality` (Auto | High | Low, 2026-09-16): the stream bitrate. A set takes effect from the
   next song; the song that plays does not reload.
 - A time takes `HH:MM` on the hour or the half hour, inside the card's menu range

@@ -407,6 +407,9 @@ export interface QueueSnapshot {
    *  the song comes back whatever Restore on launch says, and resumes at `at` seconds. */
   updateRestart?: boolean;
   at?: number;
+  /** Written only by the quiet graphics restart (GRAPHICS-FALLBACK.md §10.5): music played, so
+   *  the new start plays the song from `at` without a press. */
+  play?: boolean;
 }
 export function snapshot(): QueueSnapshot {
   return { v: 2, history: state.history.slice(), current: state.current, upcoming: state.upcoming.slice(), plan: plan.slice(), savedAt: Date.now() };

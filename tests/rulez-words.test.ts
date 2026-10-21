@@ -61,7 +61,15 @@ test("If graphics fail reads as words (2026-10-12): the canvas alone is not a pi
   const r = builtinRules({ graphicsFallback: "save" } as Parameters<typeof builtinRules>[0]).find((x) => x.id === "row:graphicsFallback")!;
   assert.equal(
     sentenceText(r, lists),
-    "While graphics is Software, DeetsMusic keeps Fancy Glass off and keeps background motion off and keeps card-swap motion off and keeps look-change motion off and keeps the Glass canvas on Aurora.",
+    "While graphics is Software, DeetsMusic keeps Reduce motion on and keeps the Glass canvas on Aurora.",
+  );
+});
+
+test("Reduce motion reads as words (2026-10-20)", () => {
+  const r = builtinRules({ graphicsFallback: "off" } as Parameters<typeof builtinRules>[0]).find((x) => x.id === "row:reduceMotion")!;
+  assert.equal(
+    sentenceText(r, lists),
+    "While motion is reduced, DeetsMusic keeps Fancy Glass off and keeps background motion off and keeps card-swap motion off and keeps look-change motion off and keeps the fancy scrubber off.",
   );
 });
 
