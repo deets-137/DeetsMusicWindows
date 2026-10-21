@@ -711,13 +711,19 @@ function dropStackBits(): void {
  *  header and rows go up and down with the edge; a clip holds its bottom edge where the column
  *  ends. `back`: the close (full → rest). The same edges as the clip it replaces (§14.6). */
 function queueRise(queue: HTMLElement, rest: DOMRect, full: DOMRect, pad: number, dur: number, ease: string, back: boolean): Animation[] {
-  const qr = getComputedStyle(queue).borderRadius || "0px";
   const dy = rest.top - full.top;
-  // The bottom edge gets no shadow pad: the Queue is moved down by `dy`, so a pad there showed its
-  // own body below the column's end (40 px in Glass, past the window's bottom; his report,
-  // 2026-10-20). The other three edges keep the pad for the shadow.
-  const low = { transform: `translateY(${dy}px)`, clipPath: `inset(${-pad}px ${-pad}px ${dy + full.bottom - rest.bottom}px ${-pad}px round ${qr})` };
-  const up = { transform: "none", clipPath: `inset(${-pad}px ${-pad}px 0px ${-pad}px round ${qr})` };
+  // The clip is a path in the Queue's own box: the shadow pad on the top and the sides, and at
+  // the bottom the card's own edge with its rounded corners, at the line where the column ends.
+  // An inset() clip padded on every side showed the Queue's body below that line (the Queue is
+  // moved down by `dy`; 40 px in Glass, past the window), and unpadded at the bottom it cut the
+  // card flat with square corners (his reports, 2026-10-20). Both ends use the same commands, so
+  // the path animates.
+  const r = Math.min(parseFloat(getComputedStyle(queue).borderBottomLeftRadius) || 0, full.width / 2);
+  const w = full.width;
+  const shape = (cut: number): string =>
+    `path("M ${-pad} ${-pad} H ${w + pad} V ${cut - r} H ${w} A ${r} ${r} 0 0 1 ${w - r} ${cut} H ${r} A ${r} ${r} 0 0 1 0 ${cut - r} H ${-pad} Z")`;
+  const low = { transform: `translateY(${dy}px)`, clipPath: shape(full.height - dy - (full.bottom - rest.bottom)) };
+  const up = { transform: "none", clipPath: shape(full.height) };
   return [queue.animate(back ? [up, low] : [low, up], { duration: dur, easing: ease, fill: "both" })];
 }
 /** The skin's stacked motion (skin.css --player-stack-move): fade or slide. */

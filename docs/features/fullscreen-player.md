@@ -859,9 +859,15 @@ has no such jump (its rows fade in at the strip).
 **Fixed 2026-10-20 (his report: "the queue card seems to drop below the bottom of the screen").**
 The clip's bottom edge carried the shadow pad (`--grow-clip-pad`, 40 px in Glass), and the Queue
 is moved down by the gap, so the pad showed 40 px of the Queue's own body below the column's end:
-to y = 978 in a 950 px window, for the whole open and close. The bottom edge now has no pad (the
-other three keep it for the shadow). Measured on the dev app, Glass, 1080 × 950: the lowest
-visible edge was 978 in the open and the close, now 938, the resting bottom.
+to y = 978 in a 950 px window, for the whole open and close. A first fix took the pad off the
+bottom edge, and he saw the next fault: the inset's corners sit `pad` out to each side, so the
+cut crossed the card flat, with square corners. The clip is now a `path()` in the Queue's box:
+the pad on the top and the sides, and at the cut the card's own width and rounded corners (both
+ends of the motion use the same commands, so it animates). Measured on the dev app, Glass,
+1080 × 950: the lowest visible edge was 978 in the open and the close, now 938, the resting
+bottom; a frame frozen at 45 % shows the rounded corners. Left as it is: the cut edge has no
+rim line in Glass (the card's real bottom border is below the cut), and the shadow under the
+bottom edge is cut during the motion.
 
 ### 14.7 As built (2026-10-18)
 

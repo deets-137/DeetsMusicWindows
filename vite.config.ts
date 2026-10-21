@@ -68,8 +68,10 @@ export default defineConfig(async () => ({
       //    `cargo build` in cli/ locks its .pdb files, and watching one crashes vite (EBUSY).
       //    Every cargo `target/` the same way: tools/deetsmeter's .exe crashed it (2026-10-10).
       //    And `shots/`: the runner writes an index.html there, and Vite reloaded the dev app's
-      //    page on it, mid desk test (2026-10-11).
-      ignored: ["**/src-tauri/**", "**/target/**", "**/shots/**"],
+      //    page on it, mid desk test (2026-10-11). And `installers/`: `vpk pack` locks
+      //    RELEASES-deetsmusic while it writes, and the watch crashed vite (EBUSY) during
+      //    both 0.31.0 builds, which left the dev app on an error page (2026-10-20).
+      ignored: ["**/src-tauri/**", "**/target/**", "**/shots/**", "**/installers/**"],
     },
   },
 }));
