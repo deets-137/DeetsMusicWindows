@@ -961,13 +961,29 @@ stays 0.4); step 5 (reduced motion) not run (DESK-TESTS.md §5).
    frames on your PC, that is the fork: keep 0.4, try 0.5, or go back to 1.
 5. Reduced motion (Windows › Accessibility › Animation effects off): grow and collapse snap.
 
-## 20. Stress test and independent review (his ask, 2026-10-20; set for 2026-10-21)
+## 20. Stress test and independent review (his ask, 2026-10-20)
 
-> **Part:** idea · 2026-10-20
+> **Part:** built · 2026-10-20
 
-Not started. His ask: a full stress test of the card grow motion and an independent Fable
-review, to capture every quirk. Nothing is changed before the findings are ranked and he sees
-them.
+RUN 2026-10-20 (brought forward from 2026-10-21), on the live dev app (his call: "real
+performance and real user visuals"). Claude ran every shot; a fresh Fable agent judged the frames
+only (his call: "purely a design reviewer"). The findings were ranked, he saw them, and §21 is
+the fix. His ask: a full stress test of the card grow motion and an independent Fable review,
+to capture every quirk.
+
+- **The lists:** [grow-review.json](../ops/checks/grow-review.json) (the four Max shapes in
+  every skin, Max's other cases in his look, Midi last) and
+  [grow-breakit.json](../ops/checks/grow-breakit.json) (the Sonnet pass's cases, Max first).
+- **The scores (Fable, before §21):** Max 5/10 (elegance 5, cohesiveness 4, smoothness 4,
+  beauty 6); Midi 6/10.
+- **The 23 faults, in short** (the full list is WORKLOG.md › 2026-10-20, night): a collapse
+  asked for during an open hid three cards for ~300 ms (the open's end ran twice); the grown
+  card was empty 200–230 ms after an open and 250–400 ms after a collapse; a tall or Fill
+  collapse lost its title; Glass and Ocean jumped ~40 px at the end of a collapse (the clip
+  pad); a switch to another card snapped; Max's worst frame 50–88 ms (a 52 ms click task); a
+  fast second click on the edge bar pressed a row; a wide grow made tall snapped its width; Pin
+  was lost on Fill; *Layout for Max* ended a Midi grow; and smaller ones (rows out of order in
+  Glass, an invisible edge in Vanilla and Cyber, Metal's cut shadow, the curve's long creep).
 
 - **Scope:** grow and collapse (§1–§13a), Fill in Max, the drill swap (§14), drill in place
   (§15), `expandCard` (§17), grow rules (§18), the timing pass (§19, with its unrun step 5,
@@ -981,3 +997,190 @@ them.
   frame strips and the code and lists faults, ranked. A fault hunt, not a design score
   (CLAUDE.md › How to verify).
 - **Out:** the findings, ranked, into HANDOFF › Open now; one fix at a time.
+
+## 21. The shell: the fix for §20 (his calls 2026-10-20; BUILT the same night)
+
+> **Part:** built · 2026-10-20
+
+### 21.1 His calls
+
+- **Fork 1, A — a card shell.** The card's SURFACE (fill, border, rounded corners, shadow)
+  moves as its own layer from the old box to the new one; only the CONTENT is clipped. Every
+  frame shows a whole card. (B, rejected: keep one clip and fix its numbers.)
+- **Fork 2, A — the title rides the moving edge.** On an up, a left or a Fill grow the content
+  moves with the top and left edges, so the title is never cut or revealed last. This changes
+  §6.4's "the header stays still" for those grows; a right or down grow is as before.
+- **Fork 3, A — a hand-off.** One card grown, another grows: the first closes while the second
+  opens, as one motion of 0.34 s. (B, rejected: one after the other.)
+- "Go for fixes": the plan's no-fork items as written (Escape reverses an open; the edge bar's
+  double click; Pin kept; *Layout for Max* only in Max; rows from the first frame).
+
+### 21.2 As built
+
+- **The shell** (`makeShell`, styles.css §Card grow): a `.grow-shell` inserted just before the
+  card, with two layers, painted from the same tokens as `.panel`. The **fill**
+  (`--panel-paint`, the blend, the backdrop, Ocean's sand pseudo-elements) is sized once to the
+  union of the two boxes, and only its `clip-path` moves: the GPU composites it. The **edge**
+  (border and `--shadow-card`, its inset entries too) changes size. While it runs the card has
+  `is-shelled`: its own paint is off and it sits over the shell (z 2; an opening card and its
+  shell `is-front`, z 3). The first build moved one box whose size changed every frame: 206 ms
+  of GPU raster in one Max open, so the fill was split off. WebView2 155 does not composite a
+  `clip-path`, so the fill's clip still paints each frame; the shell is its own compositor
+  layer (`will-change: transform`), or that paint took the bento's layer with it (a Max
+  collapse: 228 → 88 ms of raster). A layer for the card as well saved too little to keep
+  (150 → 129 ms, in the noise).
+- **The open** (`openRun`): the span is set and the cards rebuild (`emit`); one layout; the
+  content's clip opens from the old box (`clipIn`, no pad: the edge layer carries the shadow);
+  the content's children ride `translate` from the old top-left (fork 2A); the rows wave in at
+  0.4 of the open at the full stagger (§21.7: the first build started them at 0 with a squeezed
+  stagger, and he saw a flash).
+- **The close** (`closeRun`): the span is removed and the card rebuilds at its resting width
+  FIRST, its rows entering at once; the shell closes over it from the grown box; the covered
+  cards fade in under the edge for the whole collapse (a Web Animation from 0, no reflow). The
+  card is never empty and keeps its title.
+- **Runs** (`Run`, `runs`): an open and a close can run at once (the hand-off). Each ends once,
+  on its own flag (the old `oncancel` check of `animating` ran an open's end twice: §20's worst
+  fault). `collapseNow` finishes every run first.
+- **Reverse:** a collapse during the card's own open (Escape, the menu's Collapse, a Compass
+  request, a second Grow press) aborts the open and closes from the shell's box at that moment;
+  a covered card mid-fade turns back from where it is.
+- **A new shape of the same card** (wide → tall, wide → Fill): the shell moves from the old
+  grown box to the new one; a card it no longer covers fades back; Pin holds.
+- **The edge bar's double click:** for 500 ms after a bar's click (Windows' default double-click
+  time), a press within 24 px of it stops at the document (capture) and never reaches a row.
+- **One layout per click** (Max wide, his look: the click 52 → ~10 ms; the first frame 76 → ~9 ms
+  after it): sizes are read once before any write (`placeOf`, `measure`); the Grow button's
+  repaint and the rules' `grown` check run once the motion has ended (`afterMotion`): both read
+  sizes, and the rules' `soloCard` fact lays the page out. `enterRows` (pop.ts) forces a reflow
+  only when a row's entry is still running.
+- **Not changed:** the full player and Presentation mode still open with the clip and the pad
+  (`clipBetween`, `--grow-clip-pad` is theirs now; `--player-rows-at` pinned at 0.4); they move
+  onto the shell in a later step. Reduced motion snaps, as before.
+
+### 21.3 Numbers (dev app, Max, Metal × Sepia, 244 Hz, a busy PC, no recorder attached)
+
+| | open frames | collapse frames | worst gap |
+|---|---|---|---|
+| wide, before §21 | 32 | 15 | 67–71 ms |
+| wide, after §21 | 61 | 48 | 21–29 ms |
+| tall up / Queue up, after | 44–47 | 43–48 | 21–37 ms |
+| Fill, after | 47 | 56 | 21–50 ms |
+
+Midi under the recorder: open 82 frames, collapse 59, worst 8 ms (before: 59 / 51, 21 / 13 ms).
+The click itself: 52 → ~10 ms. A 39–72 ms major garbage collection shows up now and then in the
+dev app's traces; it is not the grow's.
+
+### 21.5 The second review, his Glass report, and the fixes (2026-10-20, later)
+
+- **Fable, second review:** Max 6/10 (from 5), Midi 8/10 (from 6). Its top fault ("the covered
+  card shows through the shell") did not hold at pixel level: the paint order was right, and
+  Vanilla's edge cannot be seen (its card fill is the page's color), so the covered card past the
+  edge looked inside it. A follow-up was sent to ask what it saw.
+- **His report:** on Glass the live app felt "buttery" and the dev app did not; the card's cover
+  background "re-renders" after the grow. True: the shell's `will-change: transform` (and
+  `contain: layout`) made it the box that Glass's window-pinned frost and Canvas covers are drawn
+  against, so the shell drew them in the wrong place and they jumped when the card's own paint
+  came back (+418 → +440 ms). Now `will-change: opacity` and no containment: no jump, and the
+  collapse's raster is lower (50 ms against 70 ms with no hint).
+- **The collapse shows its rows at once** (faults 2, 3, 8 of the review): no entry on a collapse,
+  so the card is never empty for its first frames and a round trip enters the rows once.
+- **Midi measured the grown card short:** the covered card's `is-covering` (which keeps it in its
+  grid cell, §19) had moved after the read, so the shell ended 75 px short and the card jumped.
+  The class is set before the read again.
+- **Now Playing "in pieces" after a Queue collapse** (its fault 4) is the edge sweeping down over
+  it, as designed; in Vanilla the edge cannot be seen, so it reads as parts arriving. Fault 7.
+- **Not fixed, recorded:** reduced motion lays out in two frames (its fault 12); the hand-off's
+  first frame (fault 13, seen at 0.3 scale only); Vanilla's and Cyber's invisible edge and each
+  skin's own grow motion are his design calls.
+- **New check:** [grow-settle.py](../ops/checks/grow-settle.py), run on every grow run: a step's
+  last motion frame against the picture 360 ms later; a change over 6 % of the window fails, a
+  smaller one (a cover loading late) is reported as `load`. The Glass jump: 12.8 %; a late
+  cover: 2.0 %. Press's turning record and Cyber's storm can flag a step whose box takes in Now
+  Playing: read the box.
+- **New shot:** `max-glass-covers` in [grow-review.json](../ops/checks/grow-review.json), his live
+  look (Glass, Sepia, Canvas covers).
+
+### 21.6 The final review against live, and the shell's last form (2026-10-20, night)
+
+- **Fable (a fresh reviewer, final build against the live code's run):** Max 8/10 (live code 5),
+  Midi 7 (live 6); Glass's covers jump gone in every Glass clip. One regression (R1) and one
+  promise not kept (F2), both fixed below; F3 (a covered card's top hairline comes back ~200 ms
+  after a Fill or tall collapse) is the same on live, recorded, not fixed.
+- **R1, the Midi collapse's stale slab:** the fill moved by a `clip-path` on its own layer, and
+  WebView2 sometimes did not paint the new clip, so a stale fill stood over the Library and
+  snapped away. **F2, the title ahead of the edge in an up grow:** a `translate` animation runs on
+  the compositor, the shell's box on the main thread, so the content led the edge when the main
+  thread was late; and the card's `clip-path` (applied while painting) trailed the content.
+- **The shell now** (`makeShell`): a wrapper at the larger box (its own layer, `will-change:
+  opacity`); inside it a CLIP box (overflow hidden, the card's radius) that moves by its box, a
+  FILL at the larger box that moves against the clip so it stays still on screen and is never
+  painted again, and the EDGE (border and shadow) that moves by its box. Measured: a whole
+  surface moved by its box was painted every frame and trailed the content by ~85 px on Glass.
+- **The ride** (fork 2A) is `translate` kept on the main thread by an `outline-offset` that never
+  changes (an animation with one property the compositor cannot run stays on the main thread),
+  each rider its own layer while it moves. A `top` / `left` offset also kept them in step but
+  laid the card out every frame (44 → 21 frames).
+- **The card's clip moves only on the sides the content does not ride**; on a riding side the
+  content follows the edge, so the clip stays at the card's box.
+- **Left as it is:** in a Queue up grow the title can sit a few pixels above the edge for about
+  three frames at the fastest point. The stage column is a size container (`container-type:
+  size`), and the shell's box inside it lands a frame late (with the container off the lag fell
+  from ~65 to ~15 px; the stage's layout needs the container). Live shows the Queue's title only
+  at the end of that grow.
+
+### 21.7 The rows' wave restored (his report, 2026-10-20, late)
+
+His report: a wide History grow "flashes" where live had "an elegant wave". The frames: with
+`--grow-rows-at: 0` and the stagger squeezed so every row landed with the edge (~5 ms a row for
+30 rows), every row dropped out at the click and came back while the edge still moved fast. Live
+waits until 0.4 of the open (the card nearly still) and waves the rows in at the full 12 ms
+stagger. Back to his call of 2026-09-28 (kept 2026-10-13): `--grow-rows-at: 0.4`, the full
+stagger, no squeeze. Measured on the dev app, Glass wide: the card is quiet while the edge opens
+(t80–t200), the wave runs t240–t320 and lands before the motion's last frame, so grow-settle.py
+still passes; 58–65 frames, worst 33 ms.
+
+**The collapse, the same way** (his call: "defer to live if you can make it look great"): the
+body is quiet while the shell starts to close, then the rows at the resting width wave in. Live
+waved them after the shell had landed (blank ~t120–t420, wave t450–t540); this build starts the
+wave at the same point as the open's (`--grow-rows-at` of the collapse's length), so the card is
+quiet ~t60–t180, the rows wave t210–t270 and the card has settled by ~t300. A collapse cut short
+still brings its rows back (`finish` runs the wave). This replaces §21.5's rows-at-once.
+
+### 21.4 Desk test
+
+Claude runs both lists again on the dev app ([grow-breakit.json](../ops/checks/grow-breakit.json),
+then [grow-review.json](../ops/checks/grow-review.json)), every probe with an `expect`; then a
+fresh Fable agent reviews the new frames. His hand test, Max first:
+
+1. Max, your look. Grow a card wide from its edge bar. The card's edge, border and shadow move
+   as one; rows are in from the start; nothing jumps at the end.
+2. Escape at once, during the open. It turns back from where it is.
+3. Fill from a bottom card. The title rides up with the top edge; it is never cut.
+4. Escape from Fill. The card is back in its place at once with its rows; the shell closes over
+   it; the three other cards fade in under the edge. No empty card, no missing title.
+5. Grow the top-left card wide, then grow a bottom card up. The first closes as the second opens.
+6. Double-click an edge bar. The card grows; nothing under the pointer is pressed.
+7. Glass and Ocean: no jump at the end of a collapse; round corners all through.
+8. Glass with Canvas covers (your live look): grow and collapse a few times. The covers inside the
+   card stay still; nothing changes after the card lands. Compare with the live app side by side.
+9. Presentation mode (a facts box's Listening Stats in Max): it opens over a Fill and closes;
+   the stats view and the card move as one, with no empty card.
+10. Midi: grow and collapse. No jump at the end (the shell once ended 75 px short there).
+
+**Against live (Claude, 2026-10-20, before the hand-over).** The baseline is the first run
+(`shots/grow-review/0.30.0`: the grow code live 0.30.0 ships). grow-settle.py: 28 of 65 baseline
+steps still changed after their motion; the final run, none real. Worst gaps under the same
+recorder: opens median 71 → 38 ms, collapses 46 → 25 ms. Without the recorder: Max wide open
+39–51 frames / 21–33 ms, collapse 57–59 / 17–25 ms; Midi open 78–83 / 12–13 ms, collapse 59–60 /
+4–9 ms (live: 59 / 21 and 51 / 13). Every probe in both lists passes (48 clips).
+
+**What Claude decided inside his calls (for his review):**
+- A rule on the `grown` fact (a Rulez condition) now acts when the motion ends, not at the click:
+  reading the facts lays the page out, and a setting a rule changes no longer switches mid-motion.
+- The Grow button's icon and place update when the motion ends (same reason).
+- The edge bar's double-click guard: 500 ms (Windows' default), 24 px around the click.
+- `--grow-rows-at` back at his 0.4 with the full stagger (§21.7); `--player-rows-at` is pinned
+  at 0.4 separately, so the full player does not follow a future grow change.
+- A collapse waves its rows in at 0.4 of its length, like the open (§21.7; it showed them at
+  once for one round, per the second review).
+- The shell is a compositor layer by `will-change: opacity`.

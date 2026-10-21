@@ -1,0 +1,236 @@
+{
+  "about": "The card grow break-it cases (CARD-GROW.md §20), from the Sonnet pass of 2026-10-20, Max first. Races (a collapse queued during an open, a second grow, a surface or layout change mid-open), Metal's clip pad, a wide grow that becomes tall, the double click on an edge, reduced motion. On the running dev app, his own look unless a shot names one.",
+  "desk_test": "cards/CARD-GROW.md §20",
+  "made": "2026-10-20",
+  "pass": "Every probe with an expect passes; every shot ends clean (no grow, no leftover class, no clip). A probe named 'documents' records the behavior for his call and has no expect.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/grow-breakit.json",
+  "shots": [
+    {
+      "id": "a1-queued-collapse-fill",
+      "about": "Max: Fill, with a collapse asked for while the open runs (the title menu's Collapse, a second Grow press, a Compass request do this). The covered cards must fade in during the collapse, not snap at its end; exactly one collapse runs.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "probe": "new Promise((r) => { __grow.grow('left', 'full', 't'); setTimeout(() => { __grow.collapse('t'); setTimeout(() => { const cls = (s) => document.querySelector(`[data-slot=\"${s}\"]`).className; r(JSON.stringify({ right: cls('right'), c: cls('c'), d: cls('d'), shells: document.querySelectorAll('.grow-shell').length })); }, 100); }, 120); })", "expect": { "right": "/is-uncovering/", "c": "/is-uncovering/", "d": "/is-uncovering/", "shells": 1 }, "name": "a collapse 120 ms into a Fill turns it back: the covered cards fade in under one closing shell", "frames": 120 },
+        { "wait": 900 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length, inert: [...document.querySelectorAll('[data-slot]')].filter(e => e.inert).length })", "expect": { "s": null, "stuck": 0, "inert": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "a1-queued-collapse-wide",
+      "about": "Max: the same race on a wide grow, with Escape at +100 ms (dropped today: documents) and the collapse queued by the API.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('left', 'right', 't')" },
+        { "wait": 100 },
+        { "key": "Escape" },
+        { "wait": 500 },
+        { "probe": "JSON.stringify({ grown: !!__grow.state() })", "expect": { "grown": false }, "name": "Escape 100 ms into the open turns it back (§21)" },
+        { "eval": "__grow.collapse('t'); __grow.grow('left', 'right', 't')" },
+        { "wait": 80 },
+        { "eval": "__grow.collapse('t')", "frames": 120 },
+        { "wait": 1400 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length, inert: [...document.querySelectorAll('[data-slot]')].filter(e => e.inert).length })", "expect": { "s": null, "stuck": 0, "inert": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "a2-metal-clip-pad",
+      "about": "Max, Metal: does the card's shadow get cut square during the open and snap in at the end? (Metal sets no --grow-clip-pad.) Moonlight and Sepia.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3,
+      "looks": [{ "theme": "moonlight", "skin": "metal" }, { "theme": "sepia", "skin": "metal" }],
+      "steps": [
+        { "probe": "JSON.stringify({ pad: getComputedStyle(document.documentElement).getPropertyValue('--grow-clip-pad').trim(), shadow: getComputedStyle(document.querySelector('[data-slot=\"c\"]')).boxShadow })", "name": "documents: the pad and the shadow" },
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('c', 'right', 't')", "frames": 100 },
+        { "wait": 900 },
+        { "key": "Escape", "frames": 80 },
+        { "wait": 900 }
+      ]
+    },
+    {
+      "id": "a3-maxcards-in-midi",
+      "about": "Midi: a grow is open; Settings › Layout for Max changes (a Max-only setting). Today the Midi grow ends with no motion.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "midi", "seconds": 3,
+      "steps": [
+        { "eval": "window.__mc = __store.get('maxCards'); __grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('left', 'right', 't')" },
+        { "wait": 900 },
+        { "eval": "__store.set('maxCards', window.__mc === '2cols' ? '4' : '2cols')", "frames": 40 },
+        { "wait": 400 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "left" }, "name": "a Midi grow survives a Max-only setting" },
+        { "eval": "__store.set('maxCards', window.__mc); __grow.state() && __grow.collapse('t')" },
+        { "wait": 900 }
+      ]
+    },
+    {
+      "id": "b1-wide-to-tall",
+      "about": "Max: a wide grow, then the title menu's Grow › Down on the same card. The width shrinks: a snap? The right card comes back at once?",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('left', 'right', 't')" },
+        { "wait": 900 },
+        { "eval": "__grow.grow('left', 'down', 't')", "frames": 100 },
+        { "wait": 900 },
+        { "probe": "JSON.stringify({ d: __grow.state()?.dir, cov: __grow.state()?.covered, right: document.querySelector('[data-slot=\"right\"]').className })", "expect": { "d": "down", "cov": ["c"] }, "name": "state" },
+        { "key": "Escape" },
+        { "wait": 900 }
+      ]
+    },
+    {
+      "id": "b1-pin-then-fill",
+      "about": "Max: a wide grow, Pin, then Fill. Is the pin kept?",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 2.5,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('left', 'right', 't')" },
+        { "wait": 900 },
+        { "eval": "document.querySelector('[data-slot=\"left\"] [data-grow-pin]')?.click()" },
+        { "wait": 200 },
+        { "probe": "JSON.stringify({ pinned: __grow.state()?.pinned })", "name": "pinned before" },
+        { "eval": "__grow.grow('left', 'full', 't')" },
+        { "wait": 900 },
+        { "probe": "JSON.stringify({ pinned: __grow.state()?.pinned })", "expect": { "pinned": true }, "name": "pin kept through Fill" },
+        { "key": "Escape" },
+        { "wait": 900 }
+      ]
+    },
+    {
+      "id": "b2-double-click-landing",
+      "about": "Max: what is under the pointer at the edge bar 150 and 300 ms after a click on it (a fast second click lands there). Probes only; no second click.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 2,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "(() => { const r = document.querySelector('[data-slot=\"left\"] .grow-zone[data-side=\"right\"]').getBoundingClientRect(); window.__pt = [r.left + r.width / 2, r.top + r.height / 2]; })()" },
+        { "hover": "[data-slot=\"left\"] .grow-zone[data-side=\"right\"]" },
+        { "wait": 300 },
+        { "click": "[data-slot=\"left\"] .grow-zone[data-side=\"right\"]" },
+        { "wait": 900 },
+        { "key": "Escape" },
+        { "wait": 900 },
+        { "probe": "new Promise((res) => { const pt = window.__pt; const bar = document.querySelector('[data-slot=\"left\"] .grow-zone[data-side=\"right\"]'); bar.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: pt[0], clientY: pt[1] })); const out = []; const test = () => { const el = document.elementFromPoint(...pt); let reached = false; const f = () => (reached = true); el.addEventListener('click', f); el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: pt[0], clientY: pt[1] })); el.removeEventListener('click', f); out.push(reached); }; [150, 300, 420].forEach((ms) => setTimeout(test, ms)); setTimeout(() => res(JSON.stringify({ reached: out })), 460); })", "expect": { "reached": [false, false, false] }, "name": "a second click 150, 300 and 420 ms after the bar's click stops before the row (timed in the page; never clicks after the 500 ms window: a click there presses a real row)" },
+        { "wait": 600 },
+        { "key": "Escape" },
+        { "wait": 900 }
+      ]
+    },
+    {
+      "id": "b7-surface-mid-open",
+      "about": "Max: Fill, and at +60 ms the surface goes to Midi. Clean after? The rows timer of the dead open fires on the new surface?",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('left', 'full', 't')" },
+        { "wait": 60 },
+        { "eval": "__surface.set('midi')", "frames": 60 },
+        { "wait": 1200 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,.is-grow-rows,[data-grow]').length, inert: [...document.querySelectorAll('[data-slot]')].filter(e => e.inert).length })", "expect": { "s": null, "stuck": 0, "inert": 0 }, "name": "clean in Midi" },
+        { "eval": "__surface.set('max')" },
+        { "wait": 1500 }
+      ]
+    },
+    {
+      "id": "b7-layout-mid-open",
+      "about": "Max: Fill, and at +60 ms Layout for Max goes to two columns. Clean after?",
+      "covers": "features/MAX-CARDS.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3,
+      "settings": { "maxCards": "4" },
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('left', 'full', 't')" },
+        { "wait": 60 },
+        { "eval": "__store.set('maxCards', '2cols')", "frames": 60 },
+        { "wait": 1200 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,.is-grow-rows,[data-grow]').length, inert: [...document.querySelectorAll('[data-slot]')].filter(e => e.inert).length })", "expect": { "s": null, "stuck": 0, "inert": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "b10-geometry",
+      "about": "Max, two columns and two rows: the grown card covers exactly the content area.",
+      "covers": "features/MAX-CARDS.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 2.5,
+      "settings": { "maxCards": "2cols" },
+      "steps": [
+        { "wait": 900 },
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 600 },
+        { "eval": "const r = document.querySelector('[data-slot=\"right\"]').getBoundingClientRect(); const l = document.querySelector('[data-slot=\"left\"]').getBoundingClientRect(); window.__R = r.right; window.__B = Math.max(r.bottom, l.bottom); __grow.grow('left', __grow.dirs('left')[0], 't')" },
+        { "wait": 900 },
+        { "probe": "(() => { const l = document.querySelector('[data-slot=\"left\"]').getBoundingClientRect(); return JSON.stringify({ dr: Math.round(l.right - window.__R), db: Math.round(l.bottom - window.__B) }); })()", "expect": { "dr": 0, "db": 0 }, "name": "fills the content area" },
+        { "key": "Escape" },
+        { "wait": 900 }
+      ]
+    },
+    {
+      "id": "b13-skin-mid-open",
+      "about": "Max: Fill, and at +120 ms the skin changes (Glass ↔ Press). Clean after; how does the clip look?",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 4,
+      "looks": [{ "theme": "moonlight", "skin": "glass" }],
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('left', 'full', 't')" },
+        { "wait": 120 },
+        { "eval": "__store.set('skin', 'press')", "frames": 100 },
+        { "wait": 2000 },
+        { "probe": "JSON.stringify({ s: __grow.state()?.mode, clip: [...document.querySelectorAll('[data-slot]')].filter(e => e.getAnimations().some(a => a.playState === 'running')).length })", "expect": { "s": "full" }, "name": "still filled" },
+        { "key": "Escape" },
+        { "wait": 900 },
+        { "probe": "JSON.stringify({ stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "b15-reduced",
+      "about": "Max, reduced motion: Fill and Escape snap; nothing is left behind.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 2,
+      "steps": [
+        { "reducedMotion": true },
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 500 },
+        { "eval": "__grow.grow('left', 'full', 't')", "frames": 20 },
+        { "wait": 150 },
+        { "probe": "JSON.stringify({ s: __grow.state()?.mode, anims: document.querySelector('[data-slot=\"left\"]').getAnimations().length, cov: document.querySelectorAll('.is-covering').length })", "expect": { "s": "full", "anims": 0, "cov": 0 }, "name": "snapped open" },
+        { "key": "Escape", "frames": 20 },
+        { "wait": 300 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "snapped shut" }
+      ]
+    },
+    {
+      "id": "c1-midi-button-double",
+      "about": "Midi: two presses on the Grow button 120 ms apart (the second says Collapse). Ends clean; covered card fades, rows enter once?",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "midi", "seconds": 3,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('t')" },
+        { "wait": 800 },
+        { "hover": "[data-slot=\"left\"] .panel__head" },
+        { "wait": 400 },
+        { "click": "[data-slot=\"left\"] [data-grow-btn]", "frames": 150 },
+        { "wait": 120 },
+        { "click": "[data-slot=\"left\"] [data-grow-btn]" },
+        { "wait": 1500 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length, inert: [...document.querySelectorAll('[data-slot]')].filter(e => e.inert).length })", "expect": { "s": null, "stuck": 0, "inert": 0 }, "name": "ends clean" }
+      ]
+    }
+  ]
+}

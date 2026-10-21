@@ -1,0 +1,262 @@
+{
+  "about": "The card grow motion on the running dev app, Max first (his most used surface), for the stress test and the independent design review (CARD-GROW.md §20). The four core Max grows in every skin; then Max's other cases (both directions, a grow that escalates to Fill, a switch to another card's grow, a press outside, the two-column and two-row layouts, reduced motion) in his own look; Midi last. Each clip collapses any grow on screen with no motion first.",
+  "desk_test": "cards/CARD-GROW.md §20",
+  "made": "2026-10-20",
+  "pass": "Each open: the edge you clicked moves, rows show before the edge stops, no empty still card, no snap. Each collapse: shorter, the covered card fades back in its own cell. The probes read grown, then clean (no grow, no leftover class, no clip left on a panel). No gap over ~50 ms in pops mid-motion.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/grow-review.json",
+  "shots": [
+    {
+      "id": "max-wide",
+      "about": "Max: the top-left card grows wide over its right neighbor, then Escape.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.2,
+      "looks": [{ "theme": "moonlight", "skin": "*" }],
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "hover": "[data-slot=\"left\"] .grow-zone[data-side=\"right\"]" },
+        { "wait": 300 },
+        { "click": "[data-slot=\"left\"] .grow-zone[data-side=\"right\"]", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "left", "dir": "right" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length, clip: [...document.querySelectorAll('[data-slot]')].filter(e => e.getAnimations().length || e.style.clipPath).length })", "expect": { "s": null, "stuck": 0, "clip": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-tall",
+      "about": "Max: the bottom-left card grows tall up over the card above it, then Escape.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.2,
+      "looks": [{ "theme": "moonlight", "skin": "*" }],
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "hover": "[data-slot=\"c\"] .grow-zone[data-side=\"up\"]" },
+        { "wait": 300 },
+        { "click": "[data-slot=\"c\"] .grow-zone[data-side=\"up\"]", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "c", "dir": "up" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-fill",
+      "about": "Max: the bottom-right card fills all four content cells (growCard full, as the title menu's Fill), then Escape.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.2,
+      "looks": [{ "theme": "moonlight", "skin": "*" }],
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "eval": "__grow.grow('d', 'full', 'review')", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "d", "mode": "full" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-queue-up",
+      "about": "Max: the Queue grows up over Now Playing in the stage column, then Escape.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.2,
+      "looks": [{ "theme": "moonlight", "skin": "*" }],
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "hover": "[data-slot=\"queue\"] .grow-zone[data-side=\"up\"]" },
+        { "wait": 300 },
+        { "click": "[data-slot=\"queue\"] .grow-zone[data-side=\"up\"]", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "queue", "dir": "up" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-glass-covers",
+      "about": "Max, Glass with Canvas covers (his live look, 2026-10-20): a wide grow, Escape, a Fill, Escape. The window-pinned covers must not move in the card at the end of any motion (grow-settle.py). The shell once drew them in the wrong place and they jumped at the end; 47 clips in Moonlight with the aurora missed it.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 6,
+      "looks": [{ "theme": "sepia", "skin": "glass" }],
+      "settings": { "glassCanvas": "covers" },
+      "steps": [
+        { "wait": 1500 },
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 800 },
+        { "eval": "__grow.grow('left', 'right', 'review')", "frames": 140 },
+        { "wait": 900 },
+        { "key": "Escape", "frames": 110 },
+        { "wait": 900 },
+        { "eval": "__grow.grow('d', 'full', 'review')", "frames": 140 },
+        { "wait": 900 },
+        { "key": "Escape", "frames": 110 },
+        { "wait": 900 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-shelled,.grow-shell,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-wide-reverse",
+      "about": "Max: the top-right card grows left over its neighbor (the clipped edge moves left), then Escape.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.2,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "hover": "[data-slot=\"right\"] .grow-zone[data-side=\"left\"]" },
+        { "wait": 300 },
+        { "click": "[data-slot=\"right\"] .grow-zone[data-side=\"left\"]", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "right", "dir": "left" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-tall-down",
+      "about": "Max: the top-left card grows down over the card below it, then Escape.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.2,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "hover": "[data-slot=\"left\"] .grow-zone[data-side=\"down\"]" },
+        { "wait": 300 },
+        { "click": "[data-slot=\"left\"] .grow-zone[data-side=\"down\"]", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "left", "dir": "down" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-wide-then-fill",
+      "about": "Max: a wide grow, then Fill of the same card (the covered right card stays hidden, the two lower cards fade), then Escape from Fill.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 4,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "eval": "__grow.grow('left', 'right', 'review')" },
+        { "wait": 900 },
+        { "eval": "__grow.grow('left', 'full', 'review')", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "left", "mode": "full" }, "name": "filled" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-switch-card",
+      "about": "Max: the top-left card is grown wide; then the bottom-right card grows up (the first grow ends with no motion, CARD-GROW.md growCard). Is the cut seen?",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 4,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "eval": "__grow.grow('left', 'right', 'review')" },
+        { "wait": 900 },
+        { "eval": "__grow.grow('d', 'up', 'review')", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify({ s: __grow.state(), covered: [...document.querySelectorAll('.is-covered')].map(e => e.dataset.slot) })", "expect": { "s": { "slot": "d", "dir": "up" } }, "name": "switched" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-press-outside",
+      "about": "Max: a wide grow, then a press on the Queue (outside the grown card) collapses it (cardGrowOutside).",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.5,
+      "settings": { "cardGrowOutside": true },
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "eval": "__grow.grow('left', 'right', 'review')" },
+        { "wait": 1000 },
+        { "click": "[data-slot=\"queue\"] .panel__title", "frames": 70 },
+        { "wait": 900 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-2cols",
+      "about": "Max, two columns: the left card grows over the right one (the whole content area), then Escape.",
+      "covers": "features/MAX-CARDS.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.2,
+      "settings": { "maxCards": "2cols" },
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 900 },
+        { "eval": "__grow.grow('left', __grow.dirs('left')[0], 'review')", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "left" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-2rows",
+      "about": "Max, two rows: the top card grows over the bottom one, then Escape.",
+      "covers": "features/MAX-CARDS.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 3.2,
+      "settings": { "maxCards": "2rows" },
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 900 },
+        { "eval": "__grow.grow('left', __grow.dirs('left')[0], 'review')", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "left" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "max-reduced",
+      "about": "Max, reduced motion: a wide grow and Escape both snap (no clip, no row entry).",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "max", "seconds": 2.5,
+      "steps": [
+        { "reducedMotion": true },
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "click": "[data-slot=\"left\"] .grow-zone[data-side=\"right\"]", "frames": 30 },
+        { "wait": 600 },
+        { "probe": "JSON.stringify({ s: __grow.state(), anims: document.querySelector('[data-slot=\"left\"]').getAnimations().length })", "expect": { "s": { "slot": "left" }, "anims": 0 }, "name": "snapped" },
+        { "key": "Escape", "frames": 30 },
+        { "wait": 600 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    },
+    {
+      "id": "midi-left-right",
+      "about": "Midi: the left card grows over the right one from its edge bar, then Escape.",
+      "covers": "cards/CARD-GROW.md",
+      "kind": "clip", "source": "dev", "size": "midi", "seconds": 3.2,
+      "steps": [
+        { "eval": "__grow.state() && __grow.collapse('review')" },
+        { "wait": 600 },
+        { "hover": "[data-slot=\"left\"] .grow-zone[data-side=\"right\"]" },
+        { "wait": 300 },
+        { "click": "[data-slot=\"left\"] .grow-zone[data-side=\"right\"]", "frames": 90 },
+        { "wait": 1000 },
+        { "probe": "JSON.stringify(__grow.state())", "expect": { "slot": "left", "dir": "right" }, "name": "grown" },
+        { "key": "Escape", "frames": 70 },
+        { "wait": 800 },
+        { "probe": "JSON.stringify({ s: __grow.state(), stuck: document.querySelectorAll('.is-covering,.is-uncovering,.is-covered,.is-grow-rebuild,[data-grow]').length })", "expect": { "s": null, "stuck": 0 }, "name": "clean" }
+      ]
+    }
+  ]
+}

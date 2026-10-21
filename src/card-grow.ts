@@ -101,15 +101,41 @@ let animating = false;
 /** Resolves when the motion on screen ends (at once when none runs). */
 let settled: Promise<void> = Promise.resolve();
 let settle: () => void = () => {};
-const startMotion = () => {
-  animating = true;
-  settled = new Promise<void>((res) => (settle = res));
+
+/** One card's motion on screen: an open (rest → grown, or one grown shape → another) or a close
+ *  (grown → rest). Two can run at once: the hand-off from one grown card to another (§21,
+ *  fork 3A). `finish` puts the motion's end state at once and is safe to call twice; `abort`
+ *  stops it where it is, for a reverse (Escape during an open). */
+interface Run {
+  slot: Slot;
+  kind: "open" | "close";
+  shell: HTMLElement;
+  /** Covered cards this motion is bringing back (they fade in under it). */
+  returning: Slot[];
+  finish: () => void;
+  abort: () => void;
+}
+const runs = new Set<Run>();
+const addRun = (r: Run) => {
+  runs.add(r);
+  if (runs.size === 1) {
+    animating = true;
+    settled = new Promise<void>((res) => (settle = res));
+  }
 };
-const endMotion = () => {
+const dropRun = (r: Run) => {
+  if (!runs.delete(r) || runs.size) return;
   animating = false;
   settle();
 };
 const subs = new Set<(s: GrowState | null) => void>();
+/** Run `cb` once the grow's motion has ended, just after a paint: work that reads the page's
+ *  sizes (the rules' facts, the Grow button's place) must not run inside the motion. In the
+ *  click it laid the grown card out twice more (15 ms); in a `requestAnimationFrame` it forced
+ *  the first frame's layout early (12 ms); in a task after that paint it was a 14 ms gap in
+ *  the motion (2026-10-20). The microtask lets the click start its motion first. */
+const afterMotion = (cb: () => void): void =>
+  queueMicrotask(() => void settled.then(() => requestAnimationFrame(() => void setTimeout(cb, 0))));
 
 /** The grow now, or null. */
 export const grownState = (): GrowState | null => state;
@@ -224,13 +250,28 @@ function visibleRows(panel: HTMLElement): HTMLElement[] {
 }
 
 /** Every row on screen comes in, one after the next, at the grow's own (shorter) stagger:
- *  a filled card shows ~30 rows, and a row that does not enter reads as "already there". */
-function enterAll(panel: HTMLElement): void {
-  const rows = visibleRows(panel);
+ *  a filled card shows ~30 rows, and a row that does not enter reads as "already there".
+ *  `within` (ms) caps the whole entry, so the last row lands as the edge stops: 25 Queue rows
+ *  at the full stagger ran ~290 ms past the open (the review, CARD-GROW.md §20). */
+const rowsTimers = new WeakMap<HTMLElement, number>();
+function enterAll(panel: HTMLElement, within = 0, measured?: HTMLElement[]): void {
+  const rows = measured ?? visibleRows(panel);
+  // One entry at a time per card: an earlier entry's timer must not end this one's stagger.
+  window.clearTimeout(rowsTimers.get(panel));
+  const popIn = tokenMs("--pop-in");
+  let stagger = tokenMs("--grow-rows-stagger");
+  if (within > 0 && rows.length > 1) stagger = Math.min(stagger, Math.max(0, within - popIn) / (rows.length - 1));
+  panel.style.setProperty("--grow-rows-stagger", `${stagger}ms`);
   panel.classList.add("is-grow-rows"); // scopes --pop-stagger to --grow-rows-stagger
   enterRows(rows, rows.length);
-  const ms = tokenMs("--pop-in") + rows.length * tokenMs("--grow-rows-stagger") + 60;
-  window.setTimeout(() => panel.classList.remove("is-grow-rows"), ms);
+  const ms = popIn + rows.length * stagger + 60;
+  rowsTimers.set(
+    panel,
+    window.setTimeout(() => {
+      panel.classList.remove("is-grow-rows");
+      panel.style.removeProperty("--grow-rows-stagger");
+    }, ms),
+  );
 }
 
 interface Motion {
@@ -253,38 +294,165 @@ const motion = (): Motion | null => {
   return { dur, ease, rowsAt, collapseDur };
 };
 
-/** Grow `slot` in `dir`. A grow on another slot ends the one on screen first (no motion). */
-export function growCard(slot: Slot, dir: GrowDir, cause: string): void {
-  if (!enabled() || animating || !opts) return;
-  const panel = opts.hosts[slot];
-  if (!panel || !isLive(slot)) return;
-  if (dir === "full" && (!canFill() || isStage(slot))) return; // the stage column never fills
-  if (dir !== "full" && !growDirs(slot).includes(dir)) return;
-  if (state && state.slot !== slot) collapseNow("other");
-  if (state && state.slot === slot && state.dir === dir) return;
-  const covered = coveredFor(slot, dir);
-  if (!covered.length) return;
-  const mode = modeOf(dir);
-  const m = motion();
-  const from = rect(panel);
-  const prevCovered = state?.covered ?? [];
-  state = { slot, mode, dir, covered, pinned: false };
-  // Cards that were covered by a smaller grow of this card stay hidden; new ones fade.
-  const fresh = covered.filter((s) => !prevCovered.includes(s));
-  prevCovered.filter((s) => !covered.includes(s)).forEach((s) => uncover(opts!.hosts[s]));
-  if (m) panel.classList.add("is-grow-rebuild");
-  panel.dataset.grow = mode;
-  panel.dataset.growDir = dir;
-  panel.classList.add("is-grown");
-  fresh.forEach((s) => {
-    const h = opts!.hosts[s];
+// ── the motion (§21: the shell, his calls 1A / 2A / 3A, 2026-10-20) ────────────
+// The card's SURFACE (its fill, border, rounded corners and shadow) moves as its own layer, the
+// shell, from the old box to the new one, while the card's own paint is off (`is-shelled`) and
+// only its CONTENT is clipped. So every frame shows a whole card: no shadow cut at the clip, no
+// square corner, no jump when a clip pad comes off (the review, §20). The content rides the
+// moving top and left edges, so the title is never cut or revealed last (fork 2A).
+
+/** Box `r` (viewport edges) in the coordinates of a box whose top left is `inside`. */
+const boxAt = (r: Edges, inside: Pick<Edges, "left" | "top">): Keyframe => ({
+  left: `${r.left - inside.left}px`,
+  top: `${r.top - inside.top}px`,
+  width: `${r.right - r.left}px`,
+  height: `${r.bottom - r.top}px`,
+});
+/** The clip that shows box `from` inside box `to`. Never past `to`: the shell's edge layer
+ *  carries the border and the shadow, so no clip needs a pad. */
+const clipIn = (from: Edges, to: Edges, radius: string): string =>
+  `inset(${Math.max(0, from.top - to.top)}px ${Math.max(0, to.right - from.right)}px ${Math.max(0, to.bottom - from.bottom)}px ${Math.max(0, from.left - to.left)}px round ${radius})`;
+const union = (a: Edges, b: Edges): Edges => ({
+  left: Math.min(a.left, b.left),
+  top: Math.min(a.top, b.top),
+  right: Math.max(a.right, b.right),
+  bottom: Math.max(a.bottom, b.bottom),
+});
+
+/** What the motion reads from the page, read ONCE while the layout is clean: the shell's offset
+ *  parent's top left (the bento, for every slot) and the card's corner radius. A read after a
+ *  write lays the page out again: the first build of the shell laid the grown card out four
+ *  times in one click (38 ms, 2026-10-20). */
+interface Place {
+  origin: Pick<Edges, "left" | "top">;
+  radius: string;
+}
+function placeOf(panel: HTMLElement): Place {
+  const op = panel.offsetParent as HTMLElement | null;
+  const o = op ? rect(op) : { left: 0, top: 0 };
+  return {
+    origin: { left: o.left + (op?.clientLeft ?? 0) - (op?.scrollLeft ?? 0), top: o.top + (op?.clientTop ?? 0) - (op?.scrollTop ?? 0) },
+    radius: getComputedStyle(panel).borderRadius || "0px",
+  };
+}
+
+/** A card's box and its rows on screen, read from one layout. */
+interface Measured {
+  box: Edges;
+  rows: HTMLElement[];
+}
+const measure = (panel: HTMLElement): Measured => ({ box: rect(panel), rows: visibleRows(panel) });
+
+interface Shell {
+  el: HTMLElement;
+  /** The layer whose box is the card's box at each frame (read for a reverse). */
+  edge: HTMLElement;
+  anims: Animation[];
+}
+/** Put the card's surface on its own layer just under the card, moving from `from` to `to`
+ *  (§21). Nothing that is costly to paint is painted again during the motion: the FILL (the
+ *  textured paint: Metal's grain, Glass's frost, Ocean's sand) is painted once at the larger
+ *  box, and a CLIP box (overflow hidden, the card's radius) moves over it while the fill moves
+ *  the other way inside it, so it stays still on screen; the GPU only moves and clips layers.
+ *  The EDGE (border and shadow, no fill) changes size, which is cheap to paint.
+ *  Three earlier forms, all measured on 2026-10-20: one box with no layer of its own painted the
+ *  bento again each frame (206 ms of raster in one Max open); a fill moved by a clip-path, which
+ *  WebView2 paints, sometimes kept a stale fill over the covered card (the final review, Midi
+ *  R1); a whole surface moved by its box was painted again every frame, and on Glass the
+ *  painting fell behind, so the surface trailed the content by ~85 px in a Queue up grow (the
+ *  final review, F2). `front`: an opening card, above a closing one, so in a hand-off the card
+ *  that arrives is on top. */
+function makeShell(panel: HTMLElement, from: Edges, to: Edges, t: KeyframeAnimationOptions, front: boolean, at: Place): Shell {
+  // Writes only: every size was read before (Place), so making the shell lays nothing out.
+  const el = document.createElement("div");
+  el.className = front ? "grow-shell is-front" : "grow-shell";
+  el.setAttribute("aria-hidden", "true");
+  el.innerHTML = `<div class="grow-shell__clip"><div class="grow-shell__fill"></div></div><div class="grow-shell__edge"></div>`;
+  const u = union(from, to);
+  Object.assign(el.style, boxAt(u, at.origin));
+  panel.before(el);
+  panel.classList.add("is-shelled");
+  panel.classList.toggle("is-front", front);
+  const clip = el.firstElementChild as HTMLElement;
+  const fill = clip.firstElementChild as HTMLElement;
+  const edge = el.lastElementChild as HTMLElement;
+  // The fill keeps the larger box and stays still on screen: it moves against its clip.
+  const still = (r: Edges): Keyframe => ({ left: `${u.left - r.left}px`, top: `${u.top - r.top}px` });
+  Object.assign(fill.style, { width: `${u.right - u.left}px`, height: `${u.bottom - u.top}px` });
+  const anims = [
+    clip.animate([boxAt(from, u), boxAt(to, u)], t),
+    fill.animate([still(from), still(to)], t),
+    edge.animate([boxAt(from, u), boxAt(to, u)], t),
+  ];
+  return { el, edge, anims };
+}
+
+/** Covered cards that come back fade in over the motion (`t`). A card still fading OUT (a
+ *  reverse) turns back from where its fade is; a hidden one fades from 0 by its own animation,
+ *  with no reflow to commit a start value (the old way laid the page out once more). */
+function fadeBack(slots: Slot[], t: KeyframeAnimationOptions): void {
+  slots.forEach((s) => {
+    const h = opts?.hosts[s];
     if (!h) return;
-    if (m) h.classList.add("is-covering");
-    else cover(h);
+    h.inert = false;
+    if (h.classList.contains("is-uncovering")) return; // already on its way back
+    if (h.classList.contains("is-covering")) {
+      h.classList.replace("is-covering", "is-uncovering");
+      return;
+    }
+    h.classList.replace("is-covered", "is-uncovering");
+    h.animate([{ opacity: 0 }, { opacity: 1 }], { ...t, fill: "none" });
   });
-  diag.log("grow", { slot, dir, mode, cause, covered: covered.join("+") });
-  emit(); // the card re-reads its state (the Library rebuilds its rows with columns)
-  // The rows come in once, at --grow-rows-at of the open or at its end, whichever is first.
+}
+
+/** The open: the card is at its final box already (its span is set, its rows rebuilt), the
+ *  shell moves from `from` to that box, and the content is clipped to the shell. */
+function openRun(slot: Slot, panel: HTMLElement, from: Edges, fresh: Slot[], returning: Slot[], m: Motion, label: string, at: Place): Run {
+  // The one layout of the click: the card at its final size. Everything else reads before it
+  // (`at`, `from`) or from it (the rows), and writes after it.
+  const to = rect(panel);
+  const rows = m.rowsAt > 0 ? null : visibleRows(panel);
+  // Fork 2A: the content rides the moving top and left edges (an up, a left or a Fill grow).
+  // The riders are the card's children, not its edge zones.
+  const dx = Math.max(0, from.left - to.left);
+  const dy = Math.max(0, from.top - to.top);
+  const riders = dx || dy ? [...panel.children].filter((el): el is HTMLElement => el instanceof HTMLElement && !el.classList.contains("grow-zone")) : [];
+  const t: KeyframeAnimationOptions = { duration: m.dur, easing: m.ease, fill: "both" };
+  const shell = makeShell(panel, from, to, t, true, at);
+  const radius = at.radius;
+  // The content's clip moves only on the sides the content does not ride. On a riding side
+  // the content itself follows the edge and nothing lies beyond it, so the clip stays at the
+  // card's box there. WebView2 applies a clip-path while painting, so a moving one trailed the
+  // riding content by a frame and cut the title (the final review, F2).
+  const start: Edges = { top: dy ? to.top : from.top, left: dx ? to.left : from.left, right: from.right, bottom: from.bottom };
+  const anims: Animation[] = [
+    ...shell.anims,
+    panel.animate([{ clipPath: clipIn(start, to, radius) }, { clipPath: `inset(0 round ${radius})` }], t),
+  ];
+  // On the MAIN thread, in the same frame as the shell's box and the clip. A plain `translate`
+  // animation runs on the compositor and went ahead of the edge whenever the main thread missed
+  // a frame: the title cut for 1–3 frames in an up grow (the final review, F2). An animation
+  // with one property the compositor cannot run stays on the main thread: `outline-offset`,
+  // the same at both ends, so it changes nothing. A `top` / `left` offset also kept them in step
+  // but laid the card out every frame and woke the lazy-load observers (44 → 21 frames).
+  // Each rider is its own layer while it moves, so its picture moves and is not painted again.
+  const placed = riders.map((el) => [el, el.style.willChange] as const);
+  riders.forEach((el) => {
+    el.style.willChange = "transform";
+    anims.push(
+      el.animate(
+        [
+          { translate: `${dx}px ${dy}px`, outlineOffset: "0px" },
+          { translate: "0 0", outlineOffset: "0px" },
+        ],
+        t,
+      ),
+    );
+  });
+  // The rows come in once, at --grow-rows-at of the open (0: from its first frame, §21), as a
+  // wave at the full --grow-rows-stagger, as live did. Squeezing the stagger so every row landed
+  // with the edge (~5 ms a row for 30) made the rows drop out and come back almost together: a
+  // flash, not a wave (his report, 2026-10-20).
   let rowsIn = false;
   let rowsTimer = 0;
   const showRows = () => {
@@ -292,40 +460,179 @@ export function growCard(slot: Slot, dir: GrowDir, cause: string): void {
     if (rowsIn) return;
     rowsIn = true;
     panel.classList.remove("is-grow-rebuild");
-    enterAll(panel);
+    enterAll(panel, 0, rows ?? undefined);
   };
-  const finish = () => {
-    fresh.forEach((s) => cover(opts!.hosts[s]));
-    showRows();
-    endMotion();
-    paintZones();
+  if (m.rowsAt > 0) {
+    panel.classList.add("is-grow-rebuild");
+    rowsTimer = window.setTimeout(showRows, m.rowsAt);
+  } else showRows();
+  const endFrames = frames.begin("grow", label);
+  let over = false;
+  const stop = () => {
+    over = true;
+    window.clearTimeout(rowsTimer);
+    anims.forEach((a) => {
+      a.onfinish = null;
+      a.cancel();
+    });
+    shell.el.remove();
+    placed.forEach(([el, wc]) => (el.style.willChange = wc));
+    panel.classList.remove("is-shelled", "is-front");
+    endFrames();
+    dropRun(run);
   };
+  const run: Run = {
+    slot,
+    kind: "open",
+    shell: shell.edge,
+    returning,
+    finish: () => {
+      if (over) return;
+      stop();
+      fresh.forEach((s) => cover(opts!.hosts[s]));
+      returning.forEach((s) => uncover(opts!.hosts[s]));
+      showRows();
+      paintZones();
+    },
+    abort: () => {
+      if (!over) stop();
+    },
+  };
+  // The open ends ONCE, on its own flag: the old `oncancel` check of `animating` ran the end a
+  // second time when a collapse had started in between, and hid the cards it was bringing back
+  // (the break-it pass, §20, A1).
+  anims[0].onfinish = run.finish;
+  addRun(run);
+  return run;
+}
+
+/** The close: the card is back in its resting box already, with its rows at that width coming
+ *  in; the shell closes over it from `from`, and the covered cards fade back in under the edge.
+ *  The card is never empty and its title never leaves (§20). */
+function closeRun(
+  slot: Slot,
+  panel: HTMLElement,
+  from: Edges,
+  returning: Slot[],
+  m: Motion,
+  cause: string,
+  at: Place,
+  measured: Measured = measure(panel),
+  done?: () => void,
+): Run {
+  const rest = measured.box;
+  const t: KeyframeAnimationOptions = { duration: m.collapseDur, easing: m.ease, fill: "both" };
+  const shell = makeShell(panel, from, rest, t, false, at);
+  const anims = shell.anims;
+  fadeBack(returning, t);
+  // As live (his call, 2026-10-20: "defer to live if you can make it look great"): the body is
+  // quiet while the shell starts to close, then the rows at the resting width wave in. Live
+  // waved them after the shell had landed; here the wave starts at the open's own point
+  // (--grow-rows-at of the collapse), so the card is quiet under 100 ms, the rows are already
+  // in their final places, and the wave settles with the card. (Showing them at once, §21.5,
+  // swapped wide rows for narrow ones in one frame.)
+  let rowsIn = false;
+  const showRows = () => {
+    window.clearTimeout(rowsTimer);
+    if (rowsIn) return;
+    rowsIn = true;
+    panel.classList.remove("is-grow-rebuild");
+    enterAll(panel, 0, measured.rows);
+  };
+  const rowsAt = m.dur > 0 ? (m.rowsAt / m.dur) * m.collapseDur : 0;
+  let rowsTimer = 0;
+  if (rowsAt > 0) {
+    panel.classList.add("is-grow-rebuild");
+    rowsTimer = window.setTimeout(showRows, rowsAt);
+  } else showRows();
+  const endFrames = frames.begin("grow", `${slot} collapse`);
+  let over = false;
+  const run: Run = {
+    slot,
+    kind: "close",
+    shell: shell.edge,
+    returning,
+    finish: () => {
+      if (over) return;
+      over = true;
+      anims.forEach((a) => {
+        a.onfinish = null;
+        a.cancel();
+      });
+      shell.el.remove();
+      panel.classList.remove("is-shelled", "is-front");
+      showRows(); // a collapse cut short (a surface change) still brings its rows back
+      endFrames();
+      returning.forEach((s) => uncover(opts!.hosts[s])); // they faded back in as the shell closed
+      diag.log("grow:collapse", { slot, cause, motion: true });
+      dropRun(run);
+      paintZones();
+      done?.();
+    },
+    abort: () => run.finish(),
+  };
+  anims[0].onfinish = run.finish;
+  addRun(run);
+  return run;
+}
+
+/** Grow `slot` in `dir`. Another card grown hands over to this one: it closes while this one
+ *  opens, as one motion (fork 3A). The same card in a new shape moves from its shape now. */
+export function growCard(slot: Slot, dir: GrowDir, cause: string): void {
+  if (!enabled() || animating || !opts) return;
+  const panel = opts.hosts[slot];
+  if (!panel || !isLive(slot)) return;
+  if (dir === "full" && (!canFill() || isStage(slot))) return; // the stage column never fills
+  if (dir !== "full" && !growDirs(slot).includes(dir)) return;
+  if (state && state.slot === slot && state.dir === dir) return;
+  const m = motion();
+  if (state && state.slot !== slot && !m) collapseNow("other");
+  const covered = coveredFor(slot, dir);
+  if (!covered.length) return;
+  const mode = modeOf(dir);
+  const prev = state;
+  const other = prev && prev.slot !== slot ? prev : null;
+  const leaving = other ? opts.hosts[other.slot] : null;
+  // Read before any write: both boxes now, and where the shell goes (the layout is clean).
+  const leaveFrom = leaving ? rect(leaving) : null;
+  const from = rect(panel);
+  const at = placeOf(panel);
+  const hidden = prev?.covered ?? [];
+  // Pin holds through a new shape of the same card (the break-it pass, §20, B1).
+  state = { slot, mode, dir, covered, pinned: prev?.slot === slot ? prev.pinned : false };
+  // Newly covered cards fade out under the opening edge; cards the last grow covered and this
+  // one does not come back. Cards covered by both stay hidden.
+  const fresh = covered.filter((s) => !hidden.includes(s));
+  const returning = hidden.filter((s) => !covered.includes(s) && s !== slot);
+  if (leaving) {
+    delete leaving.dataset.grow;
+    delete leaving.dataset.growDir;
+    leaving.classList.remove("is-grown");
+  }
+  panel.dataset.grow = mode;
+  panel.dataset.growDir = dir;
+  panel.classList.add("is-grown");
+  diag.log("grow", { slot, dir, mode, cause, covered: covered.join("+"), from: other ? `${other.slot} ${other.dir}` : prev ? prev.dir : "" });
+  emit(); // the cards re-read their state (the Library rebuilds its rows with columns)
   if (!m) {
-    finish();
+    fresh.forEach((s) => cover(opts!.hosts[s]));
+    returning.forEach((s) => uncover(opts!.hosts[s]));
+    panel.classList.remove("is-grow-rebuild");
+    enterAll(panel);
+    paintZones();
     return;
   }
-  // The clip is at its final box already (the layout is set once, above), so rows built now
-  // sit where they end; the clip's soft stop finishes over them.
-  if (m.rowsAt < m.dur) rowsTimer = window.setTimeout(showRows, m.rowsAt);
-  startMotion();
-  const to = rect(panel); // forces the layout at the final size, once
-  const pad = clipPad();
-  const radius = getComputedStyle(panel).borderRadius || "0px";
-  const endFrames = frames.begin("grow", `${slot} ${dir}`);
-  const anim = panel.animate([{ clipPath: clipBetween(from, to, pad, radius) }, { clipPath: clipOpen(pad, radius) }], {
-    duration: m.dur,
-    easing: m.ease,
-    fill: "both",
-  });
-  const done = () => {
-    anim.cancel();
-    endFrames();
-    finish();
-  };
-  anim.onfinish = done;
-  anim.oncancel = () => {
-    if (animating) done();
-  };
+  // The hand-off: the card that was grown closes to its place as this one opens. When this grow
+  // covers it, it fades out with the others instead (it is in `fresh`). Its resting box and rows
+  // are read now, from the same layout as the opening card's.
+  // `is-covering` BEFORE the layout is read: in Midi it is what keeps the covered card in its own
+  // grid cell (§19). After the read, the covered card had dropped into a new row and squeezed the
+  // grown card (448 → 374 px), so the shell ended 75 px short and the card jumped (2026-10-20).
+  fresh.forEach((s) => opts!.hosts[s]?.classList.add("is-covering"));
+  const handOff = leaving && leaveFrom && other && !covered.includes(other.slot) ? { slot: other.slot, panel: leaving, from: leaveFrom, measured: measure(leaving) } : null;
+  openRun(slot, panel, from, fresh, returning, m, `${slot} ${dir}`, at);
+  fadeBack(returning, { duration: m.dur, easing: m.ease });
+  if (handOff) closeRun(handOff.slot, handOff.panel, handOff.from, [], m, "other", at, handOff.measured);
 }
 
 export const cover = (h: HTMLElement | null | undefined) => {
@@ -340,8 +647,10 @@ export const uncover = (h: HTMLElement | null | undefined) => {
   h.inert = false;
 };
 
-/** End the grow at once, no motion (a surface change, a recompose, another slot's grow). */
+/** End the grow at once, no motion (a surface change, a recompose, reduced motion). A motion
+ *  on screen jumps to its end first. */
 function collapseNow(cause: string): void {
+  [...runs].forEach((r) => r.finish());
   if (!state || !opts) return;
   const { slot, covered } = state;
   const panel = opts.hosts[slot];
@@ -354,7 +663,6 @@ function collapseNow(cause: string): void {
   }
   diag.log("grow:collapse", { slot, cause, motion: false });
   state = null;
-  endMotion();
   emit();
   paintZones();
 }
@@ -474,74 +782,33 @@ export function levelLeft(card: string, depth: number): void {
 
 export function collapseGrow(cause: string, withMotion = true): Promise<void> {
   if (!state || !opts) return Promise.resolve();
-  if (animating) return settled.then(() => collapseGrow(cause, withMotion));
   const m = withMotion ? motion() : null;
+  // A collapse during this card's open turns it back from where the edge is (Escape, the menu's
+  // Collapse, a Compass request for a covered card: §21). Any other motion is waited out.
+  const opening = m ? [...runs].find((r) => r.kind === "open" && r.slot === state!.slot) : undefined;
+  if (animating && !opening) return settled.then(() => collapseGrow(cause, withMotion));
   if (!m) {
     collapseNow(cause);
     return Promise.resolve();
   }
-  const { slot, mode, covered } = state;
+  const { slot, covered } = state;
   const panel = opts.hosts[slot];
   if (!panel) {
     collapseNow(cause);
     return Promise.resolve();
   }
-  startMotion();
-  const to = rect(panel);
-  // The box the card returns to: measured with the span off for one layout.
+  // The shell's box now: the grown box, or where a reversed open had got to.
+  const from = opening ? rect(opening.shell) : rect(panel);
+  const at = placeOf(panel);
+  opening?.abort();
+  state = null;
   delete panel.dataset.grow;
-  const rest = rect(panel);
-  panel.dataset.grow = mode;
-  panel.classList.add("is-grow-rebuild");
-  covered.forEach((s) => {
-    const h = opts!.hosts[s];
-    if (!h) return;
-    h.classList.remove("is-covered");
-    h.inert = false;
-    // Opacity 0 at once: .is-covering carries the open's fade, and with it this ran as a
-    // fade OUT from 1 that the fade in then reversed — the card never left 1 (2026-09-28).
-    h.style.transition = "none";
-    h.classList.add("is-covering");
-  });
-  void panel.offsetWidth; // commit the covering state before the fade in
-  covered.forEach((s) => {
-    const h = opts!.hosts[s];
-    if (!h) return;
-    h.style.transition = "";
-    h.classList.remove("is-covering");
-    h.classList.add("is-uncovering"); // fades to 1 over the grow duration
-  });
-  const pad = clipPad();
-  const radius = getComputedStyle(panel).borderRadius || "0px";
-  const endFrames = frames.begin("grow", `${slot} collapse`);
-  const anim = panel.animate([{ clipPath: clipOpen(pad, radius) }, { clipPath: clipBetween(rest, to, pad, radius) }], {
-    duration: m.collapseDur,
-    easing: m.ease,
-    fill: "both",
-  });
-  return new Promise<void>((resolve) => {
-    let ended = false;
-    const done = () => {
-      if (ended) return;
-      ended = true;
-      anim.cancel();
-      endFrames();
-      covered.forEach((s) => uncover(opts!.hosts[s])); // they faded back in as the clip closed; their rows stay put
-      delete panel.dataset.grow;
-      delete panel.dataset.growDir;
-      panel.classList.remove("is-grown");
-      diag.log("grow:collapse", { slot, cause, motion: true });
-      state = null;
-      endMotion();
-      emit(); // the card rebuilds its rows at the old width
-      panel.classList.remove("is-grow-rebuild");
-      paintZones();
-      enterAll(panel);
-      resolve();
-    };
-    anim.onfinish = done;
-    anim.oncancel = done;
-  });
+  delete panel.dataset.growDir;
+  panel.classList.remove("is-grown");
+  emit(); // the card rebuilds its rows at the old width, before the close starts
+  // A reversed open brings back what it covered, and what it was bringing back already.
+  const back = [...covered, ...(opening?.returning ?? [])];
+  return new Promise<void>((resolve) => closeRun(slot, panel, from, back, m, cause, at, undefined, resolve));
 }
 
 /** Pin or unpin the grown card (it then ignores outside clicks). */
@@ -704,16 +971,28 @@ export function attachGrowButton(slot: Slot, host: HTMLElement): GrowButton {
   // them (desk report, 2026-09-17).
   const watchTitle = new MutationObserver(() => place());
   watchTitle.observe(title, { characterData: true, childList: true, subtree: true });
+  // Once the motion has ended (afterMotion), not in the grow's own task: placing the button
+  // reads the header's sizes, and a read there laid the grown card out once more inside the
+  // click (8 ms, 2026-10-20). Its press reads the grow live, so a press during the motion still
+  // does the right thing (a collapse turns the open back).
+  let queued = false;
   const unsub = onGrowChange(() => {
-    if (state?.slot === slot) show();
-    paint();
-    if (!hovered) hide();
+    if (queued) return;
+    queued = true;
+    afterMotion(() => {
+      if (!queued) return; // destroyed meanwhile
+      queued = false;
+      if (state?.slot === slot) show();
+      paint();
+      if (!hovered) hide();
+    });
   });
   if (state?.slot === slot) show(); // a card mounted into a grown slot (a pick while grown)
   paintZones();
   return {
     destroy() {
       unsub();
+      queued = false;
       watchTitle.disconnect();
       zones.forEach((z) => z.remove());
       head.removeEventListener("pointerenter", onEnter);
@@ -814,6 +1093,20 @@ export function stageGapShared(): boolean {
   return opts.slots().some((s) => !isStage(s) && isLive(s) && beyond(s, "left") === "outer" && !!zoneAction(s, "left"));
 }
 
+// A second click on an edge bar lands on the grown card's rows: the bar's place is inside the
+// card once it grows (the break-it pass, §20, B2: a History row under the pointer at +150 ms).
+// For the length of a double click after a bar's click, a press at that place does nothing.
+// Windows' default double-click time; a user's own setting is not readable from the page.
+const DOUBLE_CLICK_MS = 500;
+const GUARD_PX = 24;
+let guard: { x: number; y: number; until: number } | null = null;
+const guardPoint = (x: number, y: number) => (guard = { x, y, until: performance.now() + DOUBLE_CLICK_MS });
+function guarded(e: MouseEvent): boolean {
+  if (!guard || performance.now() > guard.until) return (guard = null), false;
+  if (Math.hypot(e.clientX - guard.x, e.clientY - guard.y) > GUARD_PX) return false;
+  return !(e.target instanceof Element && e.target.closest(".grow-zone"));
+}
+
 /** Give a host its four strips (called with the Grow button, after the card's markup lands). */
 function makeZones(slot: Slot, host: HTMLElement): HTMLElement[] {
   return SIDES.map((side) => {
@@ -828,6 +1121,7 @@ function makeZones(slot: Slot, host: HTMLElement): HTMLElement[] {
       e.stopPropagation();
       const a = zoneAction(slot, side);
       if (!a || animating) return;
+      guardPoint(e.clientX, e.clientY);
       if (a.act === "collapse") void collapseGrow("zone");
       else growCard(slot, a.dir, "zone");
     });
@@ -944,7 +1238,10 @@ export function initCardGrow(o: Opts): void {
   // pressed; a rule whose Do is Keep leaves the grow open. `grown` = the card that is grown.
   registerEvent("grow.outside", { facts: [] });
   registerEvent("grow.back", { facts: [] });
-  registerFact("grown", () => (state ? cardIn(state.slot) : "none"), { seam: (cb) => onGrowChange(() => cb()) });
+  // The check runs once the motion has ended (afterMotion): reading the facts lays the page out
+  // (`soloCard` asks each card for its boxes), and inside the grow's task that was a second
+  // layout of the grown card (7 ms, 2026-10-20). A rule on `grown` acts as the card lands.
+  registerFact("grown", () => (state ? cardIn(state.slot) : "none"), { seam: (cb) => onGrowChange(() => afterMotion(cb)) });
   registerAction("grow", {
     cost: "free",
     run: (axis, ctx, rule) =>
@@ -966,7 +1263,8 @@ export function initCardGrow(o: Opts): void {
     if (k === "cardGrowOutside") emit();
     // Layout for Max changed: collapse with no motion, as on a surface change, before the
     // layout remounts the slots (this listener is wired first).
-    if (k === "maxCards") {
+    // Only in Max: a Midi grow has nothing to do with Max's layout (the break-it pass, §20, A3).
+    if (k === "maxCards" && currentSurface() === "max") {
       collapseNow("layout");
       paintZones();
     }
@@ -975,12 +1273,25 @@ export function initCardGrow(o: Opts): void {
   document.addEventListener("keydown", (e) => {
     // A key that a list already spent on its own Back step (list-keys.ts) is one step, not two:
     // Escape in Rulez folded the open rule AND left Fill (2026-10-06).
-    if (e.key !== "Escape" || !state || animating || e.defaultPrevented) return;
+    // During the card's own open, Escape turns it back (§21); during any other motion it waits.
+    if (e.key !== "Escape" || !state || e.defaultPrevented) return;
+    if (animating && ![...runs].some((r) => r.kind === "open" && r.slot === state!.slot)) return;
     const t = e.target;
     if (t instanceof Element && t.closest("input, textarea, [contenteditable]")) return;
     if (document.querySelector(".ctx-menu, .lib-pop:not([hidden]), .slot-picker__menu:not([hidden]), .pop:not([hidden])")) return;
     void collapseGrow("esc");
   });
+  // The edge bar's double click (guardPoint): the second press stops here, before any card.
+  for (const type of ["pointerdown", "mousedown", "click", "dblclick", "contextmenu"] as const)
+    document.addEventListener(
+      type,
+      (e) => {
+        if (!guarded(e)) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      },
+      { capture: true },
+    );
   // A click outside the grown card (inside the body: another card, the stage) collapses it.
   document.addEventListener(
     "pointerdown",

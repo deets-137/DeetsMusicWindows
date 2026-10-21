@@ -562,6 +562,22 @@ and what to avoid, next time.
 - **One reviewer for continuity across rounds; a fresh one for a separate question** (the fonts),
   so the first one's anchoring does not carry over.
 - **Give it the numbers it cannot see**: the frame counter, cold against warm, what is core app.
+- **Ask it, do not guess** (his permission, 2026-10-20): when a finding is unclear, send the
+  reviewer a follow-up (where exactly, which pixels) and say in the report what was guessed.
+
+**What the card grow review taught (2026-10-20, CARD-GROW.md §21.5)**
+- **Test in his live look, not only the defaults.** 47 clips in Moonlight with Glass's aurora
+  passed; his live Glass uses Canvas covers, and he saw the fault in two clicks. A shot list for
+  motion includes his own look (read his live settings, or ask).
+- **A compositor hint is a visual change: check pixels, not only frames.** `will-change:
+  transform` (and `contain: layout`) make an element the box that `background-attachment: fixed`
+  draws against: Glass's pinned frost and covers moved. Use `will-change: opacity` for a layer.
+- **Nothing may change after a motion ends.** `docs/ops/checks/grow-settle.py` compares a step's
+  last motion frame with the picture 360 ms later. The change curve's 90 % mark hid it: a small
+  late change does not move a percentile.
+- **Read sizes after every class that places a card.** Reordering a grow to read once moved a
+  class out from before the read, and in Midi the covered card fell into a new grid row for that
+  read (the grown card measured 374 px instead of 448).
 
 **Tools in this shell**
 - Write multi-line file content with Edit / Write, or `python - <<'X'` for scripted

@@ -2047,7 +2047,9 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
    ::after — light sand specks. Bottom up: the core rect; a full box subtracts it into
      the rim band; the sparse speck tile (~12% dots, own seed) intersects the band. */
 .panel::before,
-.panel::after {
+.panel::after,
+.grow-shell__fill::before,
+.grow-shell__fill::after {
   content: "";
   display: var(--sand-display, none);
   position: absolute;
@@ -2059,7 +2061,8 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   --sand-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 1 1 1 1 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23g)'/%3E%3C/svg%3E");
   --sand-speck: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='s' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23s)'/%3E%3C/svg%3E");
 }
-.panel::before {
+.panel::before,
+.grow-shell__fill::before {
   background: var(--panel);
   mask-image:
     linear-gradient(#000 0 0),
@@ -2071,7 +2074,8 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   mask-repeat: no-repeat, repeat, no-repeat, no-repeat;
   mask-composite: add, intersect, intersect, add;
 }
-.panel::after {
+.panel::after,
+.grow-shell__fill::after {
   background: var(--sand-ink);
   mask-image: var(--sand-speck), linear-gradient(#000 0 0), linear-gradient(#000 0 0);
   mask-size: var(--sand-tile) var(--sand-tile), 100% 100%, var(--sand-core);
@@ -4377,6 +4381,60 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
 [data-surface="midi"] .panel[data-slot="left"]:is(.is-covered, .is-covering, .is-uncovering)  { grid-area: 2 / 1 / 3 / 2; }
 [data-surface="midi"] .panel[data-slot="right"]:is(.is-covered, .is-covering, .is-uncovering) { grid-area: 2 / 2 / 3 / 3; }
 .bento .panel.is-grown { z-index: 2; }                    /* over the covered cards (swap-top is 1) */
+/* The shell (card-grow.ts, CARD-GROW.md §21): while a card grows or collapses, its SURFACE moves
+   as this layer, from the old box to the new one, and the card's own paint is off, so every
+   frame shows a whole card (fill, border, rounded corners, shadow) and only the content is
+   clipped. The wrapper holds the larger box; the card inside it paints exactly what .panel
+   paints, from the same tokens (the Ocean sand through the ::before / ::after rules above), and
+   moves by its box. Just under its card: the card's content draws over it. An opening card
+   (is-front) sits over a closing one, so in a hand-off the card that arrives is on top. */
+.grow-shell {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  /* Its own compositor layer, so the moving surface paints only this layer, not the bento's.
+     By opacity, never transform or `contain: layout`: either makes the shell the box that a
+     window-pinned background (`background-attachment: fixed`: Glass's frost and its Canvas
+     covers) is drawn against, so the shell drew the covers in the wrong place and they jumped
+     when the card's own paint came back (his report, the live app felt "buttery" and the dev
+     app did not; 2026-10-20). */
+  will-change: opacity;
+}
+/* The clip moves over the fill; the fill stays still on screen and is never painted again (its
+   own layer; by opacity, for the same reason as the shell). The edge changes size. */
+.grow-shell__clip,
+.grow-shell__fill,
+.grow-shell__edge {
+  position: absolute;
+  box-sizing: border-box;
+}
+.grow-shell__clip,
+.grow-shell__edge { border-radius: var(--panel-radius); }
+.grow-shell__clip { overflow: hidden; }
+.grow-shell__fill {
+  will-change: opacity;
+  background: var(--panel-paint);
+  background-blend-mode: var(--panel-blend);
+  -webkit-backdrop-filter: var(--panel-backdrop);
+  backdrop-filter: var(--panel-backdrop);
+  isolation: var(--panel-isolation);
+}
+.grow-shell__edge {
+  border: var(--panel-border-width) solid var(--panel-border);
+  box-shadow: var(--shadow-card);
+}
+.bento .panel.is-shelled {
+  z-index: 2;
+  background: none;
+  box-shadow: none;
+  border-color: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.bento .panel.is-shelled::before,
+.bento .panel.is-shelled::after { display: none; }
+.bento .grow-shell.is-front,
+.bento .panel.is-shelled.is-front { z-index: 3; }
 /* Covered cards: they fade under the opening edge, then they are hidden and inert — no
    paint (Ocean sand, Glass frost) and no input. Collapse fades them back as the clip closes. */
 /* A card fading out under a grown card or the full player takes no click from the start: its

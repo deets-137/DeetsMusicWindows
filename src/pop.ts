@@ -14,8 +14,12 @@ export function enterRows(els: Iterable<Element>, max = 12): void {
   if (reduced()) return;
   const rows = [...els].slice(0, max) as HTMLElement[];
   if (!rows.length) return;
-  rows.forEach((el) => el.classList.remove("pop-enter"));
-  void rows[0].offsetWidth; // restart an animation that was still running
+  // Restart an animation that was still running. The reflow only when one was: it lays the page
+  // out, and a fresh set of rows (a card grow's) has none running (2026-10-20).
+  if (rows.some((el) => el.classList.contains("pop-enter"))) {
+    rows.forEach((el) => el.classList.remove("pop-enter"));
+    void rows[0].offsetWidth;
+  }
   rows.forEach((el, i) => {
     el.style.setProperty("--pop-i", String(i));
     el.classList.add("pop-enter");

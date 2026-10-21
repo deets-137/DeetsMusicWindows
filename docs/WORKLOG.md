@@ -12,6 +12,55 @@ updated: 2026-10-20
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
 
+## 2026-10-20, night — the card grow stress test, the Fable review, and the shell
+
+- His ask: a review of the card grow visuals — a Sonnet agent for workflows that break it, a Fable
+  agent for a score. His corrections on the way: the live dev app, never the demo ("real
+  performance and real user visuals"); Claude runs the shots, the Fable agent is "purely a design
+  reviewer" (a fresh one, clean context); Max first ("my most used surface").
+- Run: `docs/ops/checks/grow-review.json` (33 clips) and `grow-breakit.json` (14), on the dev app,
+  a busy PC (League, Discord). All 33 review probes passed; 4 break-it probes failed.
+- Fable (before): Max 5/10 (elegance 5, cohesiveness 4, smoothness 4, beauty 6), Midi 6/10.
+- The ranked faults he saw (high → low): (1) a collapse during an open hid three cards ~300 ms
+  (the open's `oncancel` ran its end twice); (2) the grown card empty 200–230 ms after the open;
+  (3) empty 250–400 ms after the collapse; (4) a tall or Fill collapse lost its title; (5) a
+  ~40 px jump at the end of a Glass / Ocean collapse (the clip pad); (6) a switch to another card
+  snapped and its covered card popped in then out; (7) Max's worst frame 50–88 ms (his own Fill of
+  Home at 15:26: 21 frames, 71 ms); (8) a fast second click on the edge bar pressed a History row;
+  (9) wide → tall snapped the width; (10) Glass rows out of order; (11) an invisible edge in Vanilla
+  and Cyber; (12) shelves filling in waves; (13) the Queue's rows ran ~290 ms past the open; (14)
+  the curve's 240 ms creep; (15) press → paint 32–112 ms; (16) *Layout for Max* ended a Midi grow;
+  (17) Pin lost on Fill; (18) Metal's cut shadow; (19)–(23) small: the body emptied before the edge
+  moved, a left grow cut the title mid-word, Glass's square corner, Now Playing's text cut before
+  its cover, Cyber has no grow motion of its own. The dev app exited at the end of the run with no
+  log line (unexplained).
+- His calls on the plan: 1A (a shell), 2A (the title rides the edge), 3A (a hand-off); "go for
+  fixes". Built: CARD-GROW.md §21. The first shell (one box changing size) cost 206 ms of GPU
+  raster per open; split into a fill (clip only) and an edge (size). The click's 52 ms came from
+  four layouts: the rules' `soloCard` fact and the Grow button's place read sizes mid-click; both
+  now run after the motion. The shell got its own compositor layer (WebView2 155 paints a
+  clip-path every frame, and the shell's paint took the bento's layer with it: 228 → 88 ms of
+  raster in a collapse). Max wide in his look: 32 → 61 frames, worst gap 67–71 → 21–29 ms; every
+  Max shape under 50 ms. A test click of mine after the guard's window pressed a History row on
+  his dev app (17:53, its queue became History); the B2 shot now never clicks after the window.
+
+- Later the same night: his Glass report (the covers inside the card jumped at the end; live was
+  "buttery") — the shell's `will-change: transform` made it the box for the pinned frost; now
+  `will-change: opacity`. The collapse shows its rows at once. Midi measured the grown card short
+  (`is-covering` had moved after the read). Fable round 2 (6/10) and a follow-up (it withdrew four
+  of its six "covered card inside the shell" cases: Vanilla's edge has no contrast). New check
+  `grow-settle.py` (nothing changes after a motion); new shot `max-glass-covers` (his live look).
+  Fable round 3 against the live code: 8/10 (live 5); R1 (a stale fill in a Midi collapse) and F2
+  (the title ahead of the edge) fixed: the shell is now a clip box over a still fill plus an
+  edge, the ride is a main-thread `translate`, the card's clip does not move on a riding side.
+  Final recording: 48 clips pass, settle clean, no regression without the recorder. Not done:
+  the Queue title a few px above the edge for ~3 frames (the stage's size container).
+- His report on the build: a wide History grow "flashes" where live had "an elegant wave". The
+  rows started at 0 with a squeezed stagger and blinked out and back during the motion. Back to
+  his `--grow-rows-at: 0.4` and the full stagger; the collapse too ("defer to live if you can
+  make it look great"): quiet, then a wave at 0.4 of its length, settled by ~t300 (live ~t540).
+  Committed with the other session's graphics work as two commits (CARD-GROW.md §21.7).
+
 ## 2026-10-20, evening — the live app's stutter, and the graphics auto-retry design
 
 - His report: the live app stuttered. The log and the Windows event logs: the AMD Adrenalin

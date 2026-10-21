@@ -211,17 +211,26 @@ each step that touches those calls.
 
 ### Set for 2026-10-21 (his ask, 2026-10-20; doc only, not started)
 
-- **A full stress test and an independent Fable review of the card grow motion**, to find its
-  quirks. Grow, Fill in Max, collapse, the drill swap, `expandCard`, grow rules, in every skin
-  and surface. The method is DESK-TESTS.md §6.6 (the break-it pass, the cold / reverse / rapid /
-  same-content cases on the dev app, the timing gate, frames read by time); the Fable reviewer
-  (`model: "fable"`) works apart from the build context and hunts faults, not a design score.
-  Detail and the open step 5: [CARD-GROW.md](cards/CARD-GROW.md) §20.
+- (The card grow stress test and Fable review ran on 2026-10-20 instead: see below.)
 
 ### Built, waiting on a release or a desk test
 
-- **Get the graphics card back by itself, and Reduce motion** (2026-10-20, on `v-thirtyone`,
-  uncommitted; [GRAPHICS-FALLBACK.md](features/GRAPHICS-FALLBACK.md) §10.10). Rust watches the
+- **Card grow: the shell (2026-10-20, on `v-thirtyone`; his calls 1A, 2A, 3A).** The stress test and
+  the Fable review ran (CARD-GROW.md §20: Max 5/10, Midi 6/10, 23 faults), and §21 is the fix:
+  the card's surface moves as its own shell (a clip over a still fill, plus an edge), the
+  content rides the moving edge, the collapse rebuilds first, a hand-off between two cards,
+  Escape reverses an open, the edge bar's double click is held, one layout per click. Then
+  (§21.5–§21.7) his Glass report fixed (the covers no longer jump: the shell's layer hint),
+  Midi's short measure, the Midi stale fill, the title ahead of the edge, and his "flash" report:
+  the rows wave in at 0.4 of the open and of the collapse at the full stagger, as live. Fable on the final build: Max 8/10 (live code 5), Midi 7; Claude's check against
+  live: no regression (48 clips, every probe; grow-settle.py clean; worst gaps ≤ 29 ms without
+  the recorder). Desk test: his hand test, §21.4 steps 1–10. Not moved yet: the full player and
+  Presentation mode (still the clip and pad); the curve and each skin's own grow motion (his
+  calls); a covered card's hairline coming back late (same as live); the Queue title a few px
+  above the edge for ~3 frames (§21.6).
+
+- **Get the graphics card back by itself, and Reduce motion** (2026-10-20, on `v-thirtyone`;
+  [GRAPHICS-FALLBACK.md](features/GRAPHICS-FALLBACK.md) §10.10). Rust watches the
   adapters and says when the card works again; the app restarts by itself while its window is
   hidden or minimized (between songs if music plays) and comes back the same way, playing on;
   on screen a toast asks. A *Reduce motion* row (first in Settings › Motion, locked On under

@@ -818,20 +818,20 @@
   --swap-stagger:  0s;
 
   /* -- card grow (card-grow.ts, CARD-GROW.md) --
-     A card opens over its neighbor: the final layout is set once and a clip opens from the
-     old box to the new one over --grow-dur / --grow-ease while the body's content fades
-     (--grow-body-fade) and the rows come back in through the pop tokens. --grow-clip-pad
-     opens the clip past the box by the card shadow's reach, so the shadow is not cut off
-     during the motion (0 under a skin with no shadow). The zone bar is the accent line in
-     the gap that shows which card will grow; the rail is the A–Z column of a grown list;
-     the col widths are the fixed columns of a grown song list. */
+     A card opens over its neighbor: the final layout is set once, the card's surface (the
+     shell, §21) moves from the old box to the new one over --grow-dur / --grow-ease, and the
+     content is clipped to it while the rows come in through the pop tokens. --grow-clip-pad
+     is the FULL PLAYER's now (its clip opens past the box by the card shadow's reach); the
+     grow's shell carries its own shadow. The zone bar is the accent line in the gap that shows
+     which card will grow; the rail is the A–Z column of a grown list; the col widths are the
+     fixed columns of a grown song list. */
   --grow-dur:        0.34s;
   --grow-ease:       var(--pop-ease);
-  --grow-body-fade:  0.09s;             /* the rebuilt body fades in once the clip is open */
-  /* The rows come in at this fraction of --grow-dur, not at its end: on the pop ease the clip
-     looks ~88% open at 0.4, and the soft stop that follows read as an empty card (the motion
-     review, 2026-09-28). 1 = the old order (rows after the clip). A fraction, so it follows
-     --grow-dur. */
+  --grow-body-fade:  0.09s;             /* the rebuilt body fades in as its rows enter */
+  /* The rows come in at this fraction of --grow-dur, as a wave at the full --grow-rows-stagger
+     (his call 2026-09-28, kept 2026-10-13). 0 was tried on 2026-10-20 (§21): the rows dropped
+     out at the click and came back while the edge moved fast, and he saw a flash where live
+     had "an elegant wave"; back to 0.4 the same night. A fraction, so it follows --grow-dur. */
   --grow-rows-at:    0.4;
   --grow-collapse-dur: 0.24s;           /* the collapse: the same curve, shorter (his call, 2026-09-28) */
   --grow-rows-stagger: 0.012s;          /* every row on screen enters; shorter than --pop-stagger */
@@ -871,7 +871,7 @@
      the rows is. */
   --player-dur:          var(--grow-dur);
   --player-ease:         var(--grow-ease);
-  --player-rows-at:      var(--grow-rows-at);
+  --player-rows-at:      0.4;   /* the grow's old value: the full player still opens with a clip (CARD-GROW.md §21) */
   --player-collapse-dur: var(--grow-collapse-dur);
   --player-art-wait:     0.25s;
   --full-wide-w:         356px;
