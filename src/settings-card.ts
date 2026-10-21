@@ -15,6 +15,7 @@
 
 import "./styles/settings.css";
 import { invoke } from "@tauri-apps/api/core";
+import { applyCss } from "./dom";
 import type { AirplayCapture, RustSettings } from "./rust-settings";
 import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
@@ -2485,7 +2486,7 @@ function mountSettings(
   let flashAt = 0;
   const flashOf = (id: string): { cls: string; style: string } =>
     id === flashId
-      ? { cls: " is-flash", style: ` style="animation-delay: -${Math.round(performance.now() - flashAt)}ms"` }
+      ? { cls: " is-flash", style: ` data-css="animation-delay: -${Math.round(performance.now() - flashAt)}ms"` }
       : { cls: "", style: "" };
 
   // The hint rides the row as a hover tooltip (`title`) — the labels stand on their own.
@@ -2504,7 +2505,7 @@ function mountSettings(
       return (
         `<div class="set__row set__row--range${fx.cls}"${mark}${tip}>${label}` +
         `<div class="set__range scrub" role="slider" tabindex="0" data-range="${r.id}" aria-label="${esc(r.label)}" ` +
-        `aria-valuemin="${r.min}" aria-valuemax="${r.max}" aria-valuenow="${v}" style="--slider-fill: ${fill}%">` +
+        `aria-valuemin="${r.min}" aria-valuemax="${r.max}" aria-valuenow="${v}" data-css="--slider-fill: ${fill}%">` +
         `<div class="scrub__track"><div class="scrub__fill"></div></div><span class="scrub__handle" aria-hidden="true"></span></div>` +
         `<span class="set__range-val">${v}${esc(r.unit)}</span></div>`
       );
@@ -2822,6 +2823,7 @@ function mountSettings(
       })
       .join("");
     }
+    applyCss(body); // the rows' inline values (data-css: the CSP refuses style="…", CSP.md §3)
     if (field && caret) {
       const el = body.querySelector<HTMLInputElement | HTMLTextAreaElement>(
         `[data-report="${field}"], [data-sotd="${field}"]`,

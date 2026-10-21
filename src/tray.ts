@@ -24,6 +24,7 @@ import { paintSkin, type SkinName } from "./skin";
 import { onSettingsChange } from "./settings-store";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { initHints } from "./hint";
+import { watchCsp } from "./csp-watch";
 import type { NpState } from "./np-bus";
 import { auroraSlots, type AlbumPalette } from "./album-slots";
 import type { Track } from "./library";
@@ -100,6 +101,7 @@ declare global {
 
 window.addEventListener("DOMContentLoaded", () => {
   const appWindow = getCurrentWindow();
+  watchCsp(); // what the Content Security Policy blocked in the panel (CSP.md §6)
   initHints(); // the panel wears the same hover box as the window (ONBOARDING.md §1)
 
   const npEl = $<HTMLElement>("np");

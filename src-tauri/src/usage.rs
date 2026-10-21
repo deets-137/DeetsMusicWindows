@@ -141,7 +141,9 @@ pub fn note_log(level: &str, msg: &str) {
             c.panics += 1;
             return;
         }
-        let area = AREAS.iter().find(|a| **a == word).copied().unwrap_or("other");
+        // A CSP block is its own area per directive, `csp-connect-src` (CSP.md §9, his call C1).
+        let csp = word.strip_prefix("csp-").filter(|d| *d == "other" || crate::csp::DIRECTIVES.contains(d)).map(|_| word);
+        let area = csp.or_else(|| AREAS.iter().find(|a| **a == word).copied()).unwrap_or("other");
         let map = if level.starts_with("ERROR") { &mut c.error } else { &mut c.warn };
         *map.entry(area.to_string()).or_default() += 1;
     });

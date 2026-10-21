@@ -35,6 +35,8 @@
 //     Since Velopack (2026-10-15) the stop is velo.rs's `stop_clis`.
 // 12. Package identity (IDENTITY.md): the package's publisher is the signing subject, its logos
 //     and resources.pri ship, the exe carries the <msix> element. Added 2026-10-16.
+// 13. The Content Security Policy is set, and no page has an inline `on…=` handler it would
+//     block (docs/architecture/CSP.md §4). Added 2026-10-21.
 // Checks 3, 4 and 11 read Velopack's output since 2026-10-15 (docs/ops/VELOPACK.md).
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
@@ -408,8 +410,24 @@ let docsNote = "docs check clean";
   }
 }
 
+// ── 13. The Content Security Policy (docs/architecture/CSP.md §4) ──────────────────────
+// Tauri hashes each inline <script> by itself, but a hash never allows an inline event
+// handler: an `on…=` attribute in a page would be blocked once the policy enforces, with
+// no sign the owner sees (the MusicKit tag's onerror was the one, moved to a listener).
+{
+  const conf = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+  const csp = conf.app?.security?.csp;
+  if (!csp || typeof csp !== "object" || !csp["script-src"]) failures.push("tauri.conf.json has no CSP (app.security.csp): the webview would load and run anything (CSP.md)");
+  for (const page of ["index.html", "tray.html"]) {
+    const html = readFileSync(join(root, page), "utf8").replace(/<!--[\s\S]*?-->/g, "");
+    const handlers = [...html.matchAll(/<[a-z][^>]*\s(on[a-z]+)\s*=/gi)].map((m) => m[1]);
+    if (handlers.length) failures.push(`${page} has inline event handlers (${handlers.join(", ")}): the CSP blocks them; use addEventListener (CSP.md §4)`);
+  }
+  if (conf.app?.withGlobalTauri) failures.push("withGlobalTauri is on again: nothing reads window.__TAURI__, and it hands any script the API (CSP.md §5)");
+}
+
 if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files and the extension; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the feed is signed; the app stops processes by path only; the identity package matches its signer; ${docsNote}`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files and the extension; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the feed is signed; the app stops processes by path only; the identity package matches its signer; the CSP is set with no inline handlers; ${docsNote}`);

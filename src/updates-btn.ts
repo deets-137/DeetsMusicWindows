@@ -14,6 +14,7 @@
 import "./styles/updates.css";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import built from "virtual:release-notes";
+import { applyCss } from "./dom";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { onUpdateStatus, updateStatus, updateStatusWords, isDevBuild, isRequiredUpdate, checkForUpdate, download, restartNow, type UpdateStatus } from "./updater";
@@ -200,7 +201,7 @@ export function initUpdatesButton(): void {
     else
       act = `<button class="set__half" type="button" data-uact="check" title="Asks music-api.deets.solutions for a newer version">Check now</button>`;
     const pct = s.size ? Math.min(1, s.got / s.size) : 0;
-    const bar = s.state === "downloading" ? `<span class="updates__ver-bar" style="--updates-got: ${pct}"><span></span></span>` : "";
+    const bar = s.state === "downloading" ? `<span class="updates__ver-bar" data-css="--updates-got: ${pct}"><span></span></span>` : "";
     return (
       `<div class="set__row updates__ver" data-uversion><span class="updates__ver-text">` +
       `<span class="updates__ver-name">DeetsMusic ${esc(s.current)}</span>` +
@@ -234,6 +235,7 @@ export function initUpdatesButton(): void {
   const renderTop = () => {
     const s = cur;
     top.innerHTML = s ? versionRow(s) + whatsNew(s) : "";
+    applyCss(top); // the download bar's value (data-css: the CSP refuses style="…", CSP.md §3)
   };
 
   top.addEventListener("click", (e) => {

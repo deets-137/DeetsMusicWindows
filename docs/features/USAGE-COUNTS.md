@@ -159,6 +159,9 @@ a song.
 - **Error counts.** `log.rs` counts each ERROR and WARN line by its area: the word before the
   first `:` in the message (`apple:`, `player:` …). Only areas on a fixed list in the code are
   sent by name. Any other area is added to `other`. The text of a line never leaves the PC.
+  A Content Security Policy block is one WARN line in its own area per directive
+  (`csp-connect-src`, …), so the report counts blocks per directive and never their host
+  (his call C1, 2026-10-21, `architecture/CSP.md` §9, §12.2). The worker takes these names as they are.
 - **Panics, freezes, database write failures.** The panic hook, the freeze watchdog
   (`watchdog.rs`) and the database canary (`dbhealth.rs`) each add to a count.
 - **Apple calls.** The totals from `apple_calls.rs` (its 6 groups × 8 status classes), and the

@@ -6,6 +6,7 @@ mod apple_calls;
 mod beta;
 mod bridge;
 mod credits;
+mod csp;
 mod db_open;
 mod db_thread;
 mod dbhealth;
@@ -130,6 +131,17 @@ pub fn run() {
             // The rolling log first (LOGGING.md): everything below may need to write.
             log::init(&dir);
             beta::log_notes();
+
+            // The windows (CSP.md §6): made here, not from the config, so each page the bundle
+            // serves passes the CSP hook (report or enforce, and a signed relaxation). Tauri
+            // made the config windows at this same point, just before this hook ran, so the
+            // order of everything below is the same. `create: false` in tauri.conf.json.
+            csp::setup(&dir);
+            for cfg in app.config().app.windows.clone() {
+                tauri::WebviewWindowBuilder::from_config(app.handle(), &cfg)?.on_web_resource_request(csp::hook).build()?;
+            }
+            csp::refresh();
+
             let db_path = dir.join("deetsmusic.db");
 
             // First launch of the DEV identifier (`npm run dev:app`, HANDOFF → Run it): seed
@@ -622,6 +634,7 @@ pub fn run() {
             bridge::bridge_log,
             log::diag_flush,
             log::log_event,
+            csp::csp_blocked,
             library::queue_state_get,
             library::queue_state_set,
             library::dead_ids_cached,

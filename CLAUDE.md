@@ -61,10 +61,12 @@ for word, with RELEASE.md's section numbers.
   settings (`effective` / `ownSetting`), the rows that make rules. Built 2026-09-26 on
   `rules-rulez`; §18 is the as-built record. Rules sit under features, never replace one.
   §19 is how a feature uses it. The Rulez card is `features/RULEZ.md`.
-- `CSP.md` — DESIGNED 2026-10-21, being built; C1 his (§9: block counts go home): a Content Security Policy for
-  the webview before the official release. The policy (§3, strict `style-src`), a report-only
-  release through Tauri's `on_web_resource_request` hook and then enforce (§6), a signed
-  relaxation through the remote config as the way back (§7), the desk test (§10).
+- `CSP.md` — BUILT 2026-10-21, desk test open (§10): a Content Security Policy for the webview
+  before the official release. The policy in tauri.conf.json (§3, strict `style-src`); this
+  release is report-only through Tauri's `on_web_resource_request` hook (`csp.rs`
+  `RELEASE_MODE`), the next enforces (§6); a signed relaxation through DeetsSupport's `/config`
+  (`npm run csp:relax`) is the way back (§7, §12.2); blocks are counted per directive (C1, §9).
+  A dev page gets the policy from a Vite plugin, report-only. §12 is the as-built record.
 
 **`docs/cards/`** — card behavior
 - `CARD-GROW.md` — grow a card over its neighbor, Fill in Max, the drill swap.
@@ -584,6 +586,11 @@ shipped features as a tech spec, with the shot of each, for the intro video; he 
   17. **Loading (2026-10-17):** a new card or view that waits for data gets a clip in
      `docs/guide/loading.json` (LOADING-SET.md §3.6), so its wait can be replayed at his real
      timings. A new command it calls needs a demo handler (`demo/handlers.ts`).
+  18. **The CSP (2026-10-21):** a new outside host the PAGE talks to (a fetch, a socket, a
+     picture, a script) is a source in `tauri.conf.json` › `app.security.csp`, or the policy
+     blocks it once it enforces (`architecture/CSP.md` §3). Rust's calls need nothing. No
+     `on…=` attribute in an HTML page (release check 13), no `style="…"` in an `innerHTML`
+     template (set it with `el.style.setProperty` after), no `eval`.
 - **Publishing (2026-09-21):** after `npm run release`, publish on your own ONLY when every
   change since the last release is low risk to the app's integrity (no hang, music plays).
   Otherwise stop and ask him for a hand test. The lists are RELEASE.md §0b.

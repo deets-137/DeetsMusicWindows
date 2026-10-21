@@ -617,6 +617,13 @@ Why Credential Manager over a typed prompt: the password protects a copied key f
 both options protect that equally. Neither protects against malware running as the user.
 The vault lets a Claude session run a full release; a prompt would not.
 
+**The same key signs a CSP relaxation** (`architecture/CSP.md` §7, §12.2): when a release's
+Content Security Policy blocks something it must not (a new MusicKit host), `npm run csp:relax --
+--add "connect-src https://…" --versions "0.32.*"` (or `--mode report`) signs it and prints the
+D1 command that puts it in DeetsSupport's `/config`. Installs fetch it at start and use it from
+the next launch. `--withdraw` prints the command that takes it out. Each release's mode is
+`RELEASE_MODE` in `csp.rs` (report for the first release with the policy, then enforce).
+
 ### 6.7 Publish step
 
 `npm run release:publish`, run only after the installed build passed its checks.

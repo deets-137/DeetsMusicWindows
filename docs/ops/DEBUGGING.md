@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/ipc-timing.ts, src/ipc-core.ts, demo/latency.ts, scripts/latency-profile.mjs, docs/guide/loading.json, scripts/perf-report.mjs, scripts/heaviness-sample.ps1, src/page-sample.ts, src/page-counts.ts, src/source-map-lite.ts, scripts/webview-eval.mjs, scripts/shots.mjs, scripts/boot-log.mjs, scripts/webview-profile.mjs, scripts/frame-why.mjs, src/player.ts, src/diag.ts, src/launch-perf.ts, src/boot-prefetch.ts, src/main.ts]
-updated: 2026-10-19
+updated: 2026-10-21
 ---
 # DeetsMusic — Debugging tools
 
@@ -1798,6 +1798,20 @@ this PC signs a token locally from the `.p8` with no network, so the real test i
 build on a PC (or Windows Sandbox) that never ran DeetsMusic: Wi-Fi off, start the app (the toast
 shows), Wi-Fi on. The toast goes within a few seconds, the library syncs after a sign-in, and a
 song plays with no restart.
+
+## The Content Security Policy — what it blocked (2026-10-21)
+
+`architecture/CSP.md`. Each block the page sees is one WARN line, once per directive + host +
+file per page load: `csp-connect-src: would block new.apple.com (connect-src) from https://…`
+("would block" in report mode, "blocked" when enforced), and a `csp:blocked` event in the diag
+ring.
+1. `grep -a "csp-" deetsmusic.log | tail -20`: what was blocked, the directive, the file.
+2. `grep -a "csp: " deetsmusic.log | tail -3`: the mode at start, and any signed relaxation
+   that applied, was saved or was refused.
+3. On the dev app the policy comes from the Vite plugin (`scripts/csp-dev-plugin.mjs`),
+   report-only. `DEETS_CSP=enforce npm run dev:app` enforces it.
+4. Real installs: the weekly health counts carry `log.warn.csp-<directive>` (USAGE-COUNTS.md
+   §3.3). A count there and a host in a bug report → `npm run csp:relax` (RELEASE.md §6.6).
 
 ## Threads — the ledger (2026-10-13)
 

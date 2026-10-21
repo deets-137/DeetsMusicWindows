@@ -11,10 +11,11 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "DeetsMusic",
         "width": 495,
         "height": 670,
@@ -28,6 +29,7 @@
       },
       {
         "label": "tray",
+        "create": false,
         "title": "DeetsMusic",
         "url": "tray.html",
         "width": 360,
@@ -41,7 +43,27 @@
       }
     ],
     "security": {
-      "csp": null
+      "freezePrototype": true,
+      "csp": {
+        "default-src": "'self'",
+        "script-src": ["'self'", "https://js-cdn.music.apple.com"],
+        "style-src": "'self'",
+        "img-src": ["'self'", "data:", "blob:", "https://*.mzstatic.com", "https://*.blobstore.apple.com","http://cover.localhost", "http://files.localhost", "http://wallpaper.localhost"],
+        "media-src": ["'self'", "blob:", "https://*.apple.com"],
+        "font-src": ["'self'", "data:"],
+        "connect-src": [
+          "'self'", "ipc:", "http://ipc.localhost",
+          "https://*.apple.com", "https://*.mzstatic.com",
+          "http://cover.localhost", "http://files.localhost", "http://wallpaper.localhost",
+          "https://rooms.deets.solutions", "wss://rooms.deets.solutions",
+          "https://musicfriends.deets.solutions", "wss://musicfriends.deets.solutions"
+        ],
+        "worker-src": "'self'",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-src": "'none'"
+      }
     }
   },
   "bundle": {

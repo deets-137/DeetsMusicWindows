@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 import { copyEditPlugin } from "./scripts/copy-edit-plugin.mjs";
 // What's new's bold leads, put in the bundle (vite-release-notes.ts; the demo uses it too).
 import { releaseNotesPlugin } from "./vite-release-notes";
+// The CSP on the dev servers, report-only (docs/architecture/CSP.md §12.1): a dev page never
+// passes Tauri's asset protocol, so its policy would not reach it.
+import { cspDevPlugin } from "./scripts/csp-dev-plugin.mjs";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -31,7 +34,7 @@ function ipcTimingPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [ipcTimingPlugin(), copyEditPlugin(), releaseNotesPlugin()],
+  plugins: [ipcTimingPlugin(), copyEditPlugin(), releaseNotesPlugin(), cspDevPlugin()],
 
   // Two pages: the player (index.html) and the tray panel (tray.html, TRAY.md).
   build: {

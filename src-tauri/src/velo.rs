@@ -163,13 +163,19 @@ struct SignedSource {
     current: String,
 }
 
-fn verify(data: &[u8], sig_b64: &str) -> Result<(), String> {
+/// A minisign signature by the updater key. The feed's check, and csp.rs's relaxation (CSP.md §7).
+pub(crate) fn verify(data: &[u8], sig_b64: &str) -> Result<(), String> {
+    verify_with(PUBKEY, data, sig_b64)
+}
+
+/// `verify` with a given public key, so a test can sign with a throwaway one.
+pub(crate) fn verify_with(pubkey: &str, data: &[u8], sig_b64: &str) -> Result<(), String> {
     use base64::Engine;
     let b64 = |s: &str| -> Result<String, String> {
         let raw = base64::engine::general_purpose::STANDARD.decode(s.trim()).map_err(|e| e.to_string())?;
         String::from_utf8(raw).map_err(|e| e.to_string())
     };
-    let key = minisign_verify::PublicKey::decode(&b64(PUBKEY)?).map_err(|e| e.to_string())?;
+    let key = minisign_verify::PublicKey::decode(&b64(pubkey)?).map_err(|e| e.to_string())?;
     let sig = minisign_verify::Signature::decode(&b64(sig_b64)?).map_err(|e| e.to_string())?;
     key.verify(data, &sig, true).map_err(|e| e.to_string())
 }

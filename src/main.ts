@@ -87,6 +87,7 @@ import { initUsage } from "./usage";
 import { appleBackingOff } from "./apple-health";
 import { ruleChip } from "./rule-chip";
 import { launchMark } from "./launch-perf";
+import { watchCsp } from "./csp-watch";
 
 launchMark("module");
 
@@ -189,6 +190,7 @@ window.addEventListener(
 
 window.addEventListener("DOMContentLoaded", () => {
   launchMark("handler:begin");
+  boot("watchCsp", () => watchCsp()); // what the Content Security Policy blocked, to the ring and the log (CSP.md §6)
   // The rules registry is held in groups (RULES.md §18c): each group's registrations end in ONE
   // relist and check. A group ends where the next part reads what the rules decide: the look
   // (initLook), then the cards (initLayout).

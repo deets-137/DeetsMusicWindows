@@ -130,7 +130,7 @@ function stationInfo(s: Station): NonNullable<PlayerState["station"]> {
 
 // ── MusicKit's script failed to load (2026-09-25) ────────────────────────────
 // A launch with no network (autostart before Wi-Fi, a PC wake) fails index.html's
-// <script>, whose onerror sets `__musicKitFailed`. `musickitloaded` then never fires,
+// <script>, and its error listener sets `__musicKitFailed` (a listener, since CSP.md §4). `musickitloaded` then never fires,
 // initPlayer waits forever, and every click did nothing. Load it again when Windows
 // reports the network back, every MUSICKIT_RETRY_MS, and on a play click; the click
 // itself shows the offline toast (his call: tell, do not replay the click).
