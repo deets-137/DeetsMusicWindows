@@ -865,7 +865,15 @@ cut crossed the card flat, with square corners. The clip is now a `path()` in th
 the pad on the top and the sides, and at the cut the card's own width and rounded corners (both
 ends of the motion use the same commands, so it animates). Measured on the dev app, Glass,
 1080 × 950: the lowest visible edge was 978 in the open and the close, now 938, the resting
-bottom; a frame frozen at 45 % shows the rounded corners. Left as it is: the cut edge has no
+bottom; a frame frozen at 45 % shows the rounded corners. **His third report ("seems we've
+reverted to the first issue") and the frames** (`shots/scratch/fp-queue-cut.json`, the dev app):
+the painted bottom edge rose to ~824 early in the open and fell back, and in the close fell past
+the window. The slide was a `transform` animation, which runs on the compositor, and the clip
+ran on the main thread; the open's long task (~95 ms) let the slide run ahead of the clip. (The
+scripted samples read 938 throughout, because they read the main thread's values: read the
+frames.) The slide is now the registered property `--fp-queue-dy` under `translateY(var(…))`,
+which animates on the main thread with the clip. The frames after: every frame of the open and
+the close has the bottom edge on 938 with its rounded corners. Left as it is: the cut edge has no
 rim line in Glass (the card's real bottom border is below the cut), and the shadow under the
 bottom edge is cut during the motion.
 

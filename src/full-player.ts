@@ -722,9 +722,32 @@ function queueRise(queue: HTMLElement, rest: DOMRect, full: DOMRect, pad: number
   const w = full.width;
   const shape = (cut: number): string =>
     `path("M ${-pad} ${-pad} H ${w + pad} V ${cut - r} H ${w} A ${r} ${r} 0 0 1 ${w - r} ${cut} H ${r} A ${r} ${r} 0 0 1 0 ${cut - r} H ${-pad} Z")`;
-  const low = { transform: `translateY(${dy}px)`, clipPath: shape(full.height - dy - (full.bottom - rest.bottom)) };
-  const up = { transform: "none", clipPath: shape(full.height) };
-  return [queue.animate(back ? [up, low] : [low, up], { duration: dur, easing: ease, fill: "both" })];
+  // The slide is a registered custom property, not `transform`: a transform animation runs on the
+  // compositor and the clip on the main thread, so in a frame where the main thread stalled the
+  // slide ran ahead of the clip and the bottom edge rose in the open and fell past the window in
+  // the close (his report and the frames, 2026-10-20). A custom property animates on the main
+  // thread, so the slide and the clip are computed in the same frame.
+  registerQueueDy();
+  const low = { [QUEUE_DY]: `${dy}px`, clipPath: shape(full.height - dy - (full.bottom - rest.bottom)) };
+  const up = { [QUEUE_DY]: "0px", clipPath: shape(full.height) };
+  queue.style.transform = `translateY(var(${QUEUE_DY}))`;
+  const a = queue.animate(back ? [up, low] : [low, up], { duration: dur, easing: ease, fill: "both" });
+  a.id = "queue-rise";
+  a.addEventListener("cancel", () => {
+    if (!queue.getAnimations().some((x) => x.id === "queue-rise" && x !== a)) queue.style.removeProperty("transform");
+  });
+  return [a];
+}
+const QUEUE_DY = "--fp-queue-dy";
+let queueDyRegistered = false;
+function registerQueueDy(): void {
+  if (queueDyRegistered) return;
+  queueDyRegistered = true;
+  try {
+    CSS.registerProperty({ name: QUEUE_DY, syntax: "<length>", inherits: false, initialValue: "0px" });
+  } catch {
+    // Registered already (a hot reload of this module): the registration stands.
+  }
 }
 /** The skin's stacked motion (skin.css --player-stack-move): fade or slide. */
 const stackMove = (): "fade" | "slide" =>
