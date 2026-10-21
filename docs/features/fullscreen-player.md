@@ -856,6 +856,13 @@ replaces, so the shape is his §9.4.3 ("the Queue grows up over the place Now Pl
 rows now travel with the edge. Checked in the frames: the header lands in place, no jump. Midi
 has no such jump (its rows fade in at the strip).
 
+**Fixed 2026-10-20 (his report: "the queue card seems to drop below the bottom of the screen").**
+The clip's bottom edge carried the shadow pad (`--grow-clip-pad`, 40 px in Glass), and the Queue
+is moved down by the gap, so the pad showed 40 px of the Queue's own body below the column's end:
+to y = 978 in a 950 px window, for the whole open and close. The bottom edge now has no pad (the
+other three keep it for the shadow). Measured on the dev app, Glass, 1080 × 950: the lowest
+visible edge was 978 in the open and the close, now 938, the resting bottom.
+
 ### 14.7 As built (2026-10-18)
 
 **His calls.** F1 per skin: **Fade** in Glass and Ocean, **Slide** in Press and Cyber ("Fade

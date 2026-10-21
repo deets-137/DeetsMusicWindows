@@ -713,8 +713,11 @@ function dropStackBits(): void {
 function queueRise(queue: HTMLElement, rest: DOMRect, full: DOMRect, pad: number, dur: number, ease: string, back: boolean): Animation[] {
   const qr = getComputedStyle(queue).borderRadius || "0px";
   const dy = rest.top - full.top;
-  const low = { transform: `translateY(${dy}px)`, clipPath: `inset(${-pad}px ${-pad}px ${dy + full.bottom - rest.bottom - pad}px ${-pad}px round ${qr})` };
-  const up = { transform: "none", clipPath: clipOpen(pad, qr) };
+  // The bottom edge gets no shadow pad: the Queue is moved down by `dy`, so a pad there showed its
+  // own body below the column's end (40 px in Glass, past the window's bottom; his report,
+  // 2026-10-20). The other three edges keep the pad for the shadow.
+  const low = { transform: `translateY(${dy}px)`, clipPath: `inset(${-pad}px ${-pad}px ${dy + full.bottom - rest.bottom}px ${-pad}px round ${qr})` };
+  const up = { transform: "none", clipPath: `inset(${-pad}px ${-pad}px 0px ${-pad}px round ${qr})` };
   return [queue.animate(back ? [up, low] : [low, up], { duration: dur, easing: ease, fill: "both" })];
 }
 /** The skin's stacked motion (skin.css --player-stack-move): fade or slide. */
