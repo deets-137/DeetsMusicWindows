@@ -1,8 +1,8 @@
 ---
 status: idea
 desk_test: none
-sources: [src/styles/skin.css, src/styles/themes.css, src/look-ids.ts]
-updated: 2026-10-19
+sources: [src/styles/skin.css, src/styles/themes.css, src/styles.css, src/look-ids.ts]
+updated: 2026-10-21
 ---
 # Mods — skins and themes a user downloads, and a page to pick them
 
@@ -140,3 +140,80 @@ so it is out of scope here. Three facts from the talk, kept as a record:
 - **F3, distribution.** Files only, or a gallery on deets.solutions. Signed authors, or
   "unknown author" on all.
 - **F4, the marketplace page** (§1). Its place in Hop in, and what it shows on a first load.
+- **F5, who is held to the public layer** (§10). Mods only, and a built-in skin may still set
+  feature tokens (recommended: the built-in skins vary each shape on purpose, metal.md §6.4), or
+  every skin.
+
+## 9. What tokens reach today: the Halloween test
+
+> **Part:** idea · 2026-10-21 (his question: "imagine a fully decked out Halloween skin — can
+> our tokens handle it, with users using only our tokens?")
+
+Measured on main at 2c1ef97:
+
+- **747 skin tokens** in `skin.css` and **63 theme roles** in `themes.css`.
+- **64 CSS rules** in `styles.css` apply to one skin only (Metal 19, Ocean 7, Press 6,
+  Glass 6, Cyber 3). A mod cannot write these (§6.1).
+- **Five TS files** check the skin id (`metal.ts`, `ocean.ts`, `vinyl.ts`, `wallpaper.ts`,
+  `settings-card.ts`). The sea, the record and the drum are drawn in code.
+- **No shape primitives.** Metal's step 1 tried them and stopped (metal.md §6.4), so a mod
+  that changes corners sets each radius token one by one.
+
+| A Halloween skin wants | Tokens today? | Why |
+|---|---|---|
+| Orange, purple and black | Yes | 63 roles; edits on one of the 6 slots (§4). |
+| A spooky font | Partly | 4 font tokens; nothing loads a mod's font yet (§6.3). |
+| Jagged corners | Yes, but hard | No primitives; hundreds of radius tokens. |
+| Cobweb cards, fog behind them | Partly | Metal's paint hooks (`--panel-blend`, `--control-paint`, `--app-canvas-color`) take an image; nothing loads a mod's own image yet. |
+| Faster or slower motion | Yes | Timings are tokens. |
+| Bats that fly, a candle flicker, a coffin-lid card swap | No | A new animation is keyframes or code. |
+| A pumpkin Play button | No | Icons are inline SVG in 36 TS files; no icon token. |
+| A custom cursor | No | 127 cursor rules, 0 cursor tokens. |
+| A spider on the title bar | No | It needs `content:`, which §6.1 bans. |
+| Sounds | No | The app has no UI sounds. |
+
+Tokens cover about half of a fully decked-out skin.
+
+## 10. The public layer: what makes a mod future-proof
+
+> **Part:** idea · 2026-10-21
+
+"Only use tokens that exist" is not enough, for two reasons:
+
+1. **No small public layer.** A mod would set feature tokens. Rename one and the mod breaks.
+2. **A new feature gets no mod style.** A card built next year with its own raw defaults shows
+   Vanilla inside every older mod.
+
+**The rule:**
+
+- A mod sets only the **public layer**: the theme roles, the primitives, the hooks and the
+  slots (§11). The public layer is versioned by the manifest's `api` (§6.5).
+- **Every feature token in the base takes its default from a public token**
+  (`var(--shape-control)`), never from a raw value. A new card then wears an old mod's look
+  with no change to the mod.
+- `docs:check` enforces it: a new base feature token with a raw value fails, the same way a
+  scroller without `app-scroll` fails.
+- A built-in skin may still set feature tokens directly (fork F5), so the built-in skins keep
+  their deliberate differences.
+
+**The Happy skin is the reference** ([happy.md](../features/happy.md)). It is built only on the
+public layer and uses every part of it. A mod author reads it to see what a skin can do.
+
+## 11. Slots: a mod gives a value or a file, the app draws it
+
+> **Part:** idea · 2026-10-21
+
+Each slot keeps the values-only rule (§6.1): the mod never ships a CSS rule or a script.
+
+- **Image slots:** the mod's own PNG, WebP or SVG in the paint hooks: canvas, panel, control,
+  title bar.
+- **Ornament anchors:** fixed places (the title bar corners, the card corners, the cover frame)
+  that each take an image, an offset and a size. A spider on the title bar, with no `content:`.
+- **An icon set:** SVGs with fixed names (play, pause, next, …), cleaned at install (no
+  script, no remote `href`). The 36 files must first get their icons from one module.
+- **Cursor slots:** one token per cursor kind (default, pointer, grab, text).
+- **Motion presets:** the mod picks from named shapes the app ships (fade, slide, drum, flip)
+  and particle presets (drift, fall, flicker) with its own image. Bats are "drift" with a bat
+  picture. A mod never writes keyframes.
+- **Fonts:** the loader in §6.3.
+- **Sounds** (if the app gets UI sounds): named events with the mod's own short files.

@@ -228,6 +228,10 @@ for word, with RELEASE.md's section numbers.
   stress test, the turn rebuilt by its frames, the baked textures, Sepia as brushed brass (one
   Metal × Sepia block in themes.css) and the readability fixes; §7 F7 font B (Bahnschrift titles,
   SemiCondensed labels through the `--caps-*` hooks).
+- `happy.md` — an idea (2026-10-21), being designed with him piece by piece: the Happy skin,
+  named for the puppy on deets.solutions. The most complete skin and the reference for every mod:
+  built on the public layer only (mods.md §10, §11). §1 his narration; §2 the tokens and slots it
+  needs.
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
@@ -332,6 +336,9 @@ post per community (r/AppleMusic, r/Windows11, r/SideProject, r/rust); he rewrit
 `mods.md` — an idea (2026-10-19): skins and themes a user downloads (a `.deetsmod` file, values
 only, no code or CSS, §6), built on metal.md's primitives; his marketplace page beside Hop in for
 a first load (§1); new theme slots later (§4, his note); the DeetsRGB widget talk as a record (§7).
+§9 the Halloween test (what tokens reach today), §10 the public layer that makes a mod
+future-proof, §11 the slots (images, ornaments, icons, cursors, motion presets); the Happy skin
+is the reference (`features/happy.md`).
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
