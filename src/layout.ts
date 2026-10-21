@@ -16,7 +16,8 @@ import { registry, type CardDef, type CardId, type CardInstance, type MountOpts 
 import { setting, setSetting, effective, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
-import { onCardRequest, requestCard, setCardHostLookup, setDrillSwapCheck, type RequestHow } from "./layout-bus";
+import { onCardRequest, requestCard, setCardHostLookup, setDrillSlide, setDrillSwapCheck, takeNextStill, type RequestHow } from "./layout-bus";
+import { readyIn } from "./reveal";
 import { initCardMemory, cardMemory, rememberCard, setLiveSnapshots } from "./card-memory";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
@@ -24,7 +25,7 @@ import * as diag from "./diag";
 import { applySurface, currentSurface, isPlayerView, onSurfaceChange, type SurfaceName } from "./surface";
 import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card-swap";
 import { initFullPlayer, isFullPlayer, closeFullPlayer } from "./full-player";
-import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, refreshGrowZones, type Slot, type GrowButton } from "./card-grow";
+import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, onRuleGrowStart, refreshGrowZones, ruleGrowComing, type Slot, type GrowButton } from "./card-grow";
 
 import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE_LOCK_HINT, maxCardsOf, maxSlots, keepCard, type MaxCards } from "./layout-rules";
 import { openContextMenu } from "./context-menu";
@@ -598,13 +599,22 @@ export function initLayout(): void {
 
   /** A still copy of a card's body, over its host, for the slide (§14.6). */
   const SCROLLERS = ".lib-view, .spane__scroll, .qcard__list, .panel__body, .search__scroller";
+  // The card's own body. A copy is a `.panel__body` too, and one left from a slide still
+  // running sits FIRST in the host (2026-10-21: a Back mid-slide moved the old copy).
+  const BODY = ":scope > :is(.panel__body, .coll-body):not(.drill-swap__ghost)";
+  /** The slide running in each slot: a new swap ends it first. */
+  const slides = new Map<HTMLElement, () => void>();
   const bodyCopy = (host: HTMLElement): HTMLElement | null => {
-    const body = host.querySelector<HTMLElement>(":scope > .panel__body, :scope > .coll-body");
+    const body = host.querySelector<HTMLElement>(BODY);
     if (!body) return null;
+    // Where the body is now: a swap pressed mid-slide carries its copy on from there.
+    const at = getComputedStyle(body).transform;
+    slides.get(host)?.();
     const copy = body.cloneNode(true) as HTMLElement;
     copy.classList.add("drill-swap__ghost");
     copy.inert = true;
     copy.setAttribute("aria-hidden", "true");
+    if (at && at !== "none") copy.dataset.drillFrom = at;
     // The copy stands exactly where the body is, and keeps every scroll place it showed.
     copy.style.top = `${body.offsetTop}px`;
     copy.style.left = `${body.offsetLeft}px`;
@@ -618,42 +628,173 @@ export function initLayout(): void {
       t.dataset.drillScroll = String(el.scrollTop);
       t.dataset.drillScrollX = String(el.scrollLeft);
     });
+    // The old title stays until the page moves (§22.6): the new card's head comes with its
+    // mount, up to --drill-wait before its page is ready.
+    const head = host.querySelector<HTMLElement>(":scope > .panel__head");
+    if (head) {
+      const h = head.cloneNode(true) as HTMLElement;
+      h.classList.add("drill-swap__head");
+      h.inert = true;
+      h.setAttribute("aria-hidden", "true");
+      h.style.top = `${head.offsetTop}px`;
+      h.style.left = `${head.offsetLeft}px`;
+      h.style.width = `${head.offsetWidth}px`;
+      h.style.height = `${head.offsetHeight}px`;
+      heads.set(copy, h);
+    }
     return copy;
+  };
+  const heads = new WeakMap<HTMLElement, HTMLElement>();
+
+  /** When a `cubic-bezier()` ease has covered `share` of its way, as a share of its time (a
+   *  keyword or a bad value: `share` itself). */
+  const timeAt = (ease: string, share: number): number => {
+    const m = /cubic-bezier\(([^)]+)\)/.exec(ease);
+    const p = m?.[1].split(",").map(Number);
+    if (!p || p.length !== 4 || p.some(Number.isNaN) || share <= 0) return Math.max(0, share);
+    const [x1, y1, x2, y2] = p;
+    const at = (a: number, b: number, s: number) => 3 * a * s * (1 - s) ** 2 + 3 * b * s * s * (1 - s) + s ** 3;
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2;
+      if (at(y1, y2, mid) < share) lo = mid;
+      else hi = mid;
+    }
+    return at(x1, x2, hi);
   };
 
   /** The drill slide between two cards in one slot: the old body out, the new one in. */
-  const slideBodies = (host: HTMLElement, ghost: HTMLElement | null, way: "in" | "back") => {
-    const body = host.querySelector<HTMLElement>(":scope > .panel__body, :scope > .coll-body");
+  const slideBodies = (host: HTMLElement, ghost: HTMLElement | null, way: "in" | "back", id: CardId) => {
+    const body = host.querySelector<HTMLElement>(BODY);
     const dur = tokenMs("--nav-dur");
-    if (!body || !ghost || dur <= 0 || motionReduced()) {
-      ghost?.remove();
+    // A rule grow is on its way for the card that came in (an album or artist opened, RULES.md
+    // §18): the grow is the one motion, as in a card's own drill. The slide under it moved a
+    // blanked body and ended with a jump (2026-10-21). A Back that ends that grow asks for no
+    // slide too: the shrink is its one motion (his call 4A, 2026-10-21).
+    const still = takeNextStill();
+    // A rule grow opens this card (his row on): the old card's copy and title stay over the
+    // slot until the grow's first frame, while the new page fills unseen under the grow's blank
+    // (§22.6, his call 3A). No slide: the grow is the motion.
+    if (body && ghost && dur > 0 && !motionReduced() && ruleGrowComing(id) && !still) {
+      host.appendChild(ghost);
+      const head = heads.get(ghost);
+      const newHead = head ? host.querySelector<HTMLElement>(":scope > .panel__head:not(.drill-swap__head)") : null;
+      if (head) host.appendChild(head);
+      if (newHead) newHead.style.visibility = "hidden";
+      [ghost, ...ghost.querySelectorAll<HTMLElement>(SCROLLERS)].forEach((el) => {
+        if (el.dataset.drillScroll) el.scrollTop = Number(el.dataset.drillScroll);
+      });
+      let gone = false;
+      const drop = () => {
+        if (gone) return;
+        gone = true;
+        ghost.remove();
+        head?.remove();
+        if (newHead) newHead.style.visibility = "";
+      };
+      slides.set(host, drop);
+      onRuleGrowStart(id, drop);
+      window.setTimeout(drop, tokenMs("--drill-wait") + 1500); // a grow that never comes
       return;
     }
-    const ease = getComputedStyle(document.documentElement).getPropertyValue("--nav-ease").trim() || "ease";
-    const from = way === "in" ? "100%" : "-100%";
-    const to = way === "in" ? "-100%" : "100%";
+    if (!body || !ghost || dur <= 0 || motionReduced() || ruleGrowComing(id) || still) {
+      ghost?.remove();
+      // No slide: the grow or the shrink is the motion. A page whose data is in shows at once
+      // with that motion, not a second wave of its own after it (his call 2, 2026-10-21).
+      if (body) void readyIn(body, tokenMs("--drill-wait"));
+      return;
+    }
+    // The skin's own page motion, as a card's level slide has it (his call 1A, 2026-10-21):
+    // Vanilla, Press and Metal slide, Ocean sinks, Glass scales and fades, Cyber skews.
+    const css = getComputedStyle(host);
+    const tok = (n: string, d: string) => css.getPropertyValue(n).trim() || d;
+    let ease = tok("--nav-ease", "ease");
+    const center = tok("--nav-at-center", "none");
+    let from = tok(way === "in" ? "--nav-at-right" : "--nav-at-left", "none");
+    const to = tok(way === "in" ? "--nav-at-left" : "--nav-at-right", "none");
+    const off = Number(tok("--nav-off-opacity", "1"));
+    let ms = dur;
+    // A swap pressed mid-slide (a Back 120 ms into a Go to): the copy leaves from where the
+    // body was, at speed, over the distance left, and the new body comes in right beside it.
+    // On the skin's ease-in-out it stood still ~100 ms with a gap beside it (2026-10-21).
+    const left = ghost.dataset.drillFrom ? 1 - Math.min(1, Math.abs(new DOMMatrix(ghost.dataset.drillFrom).m41) / (body.offsetWidth || 1)) : 1;
+    if (left < 1) {
+      ease = "cubic-bezier(0, 0, 0.2, 1)";
+      ms = Math.max(120, dur * left);
+      from = `translateX(${(way === "in" ? 1 : -1) * left * 100}%)`;
+    }
+    // The copy covers the slot at once, where the body was; the new body waits under it,
+    // unseen, until its page is ready (at most --drill-wait, his call 3A), then both move.
     host.classList.add("is-drill-swap");
     host.appendChild(ghost);
+    const head = heads.get(ghost);
+    const newHead = head ? host.querySelector<HTMLElement>(":scope > .panel__head:not(.drill-swap__head)") : null;
+    if (head) host.appendChild(head);
+    if (newHead) newHead.style.visibility = "hidden";
+    const showHead = () => {
+      head?.remove();
+      if (newHead) newHead.style.visibility = "";
+    };
+    if (ghost.dataset.drillFrom) ghost.style.transform = ghost.dataset.drillFrom;
     [ghost, ...ghost.querySelectorAll<HTMLElement>(SCROLLERS)].forEach((el) => {
       if (el.dataset.drillScroll) el.scrollTop = Number(el.dataset.drillScroll);
       if (el.dataset.drillScrollX) el.scrollLeft = Number(el.dataset.drillScrollX);
     });
-    const end = frames.begin("grow-drill", way);
-    const a = body.animate([{ transform: `translateX(${from})` }, { transform: "translateX(0)" }], { duration: dur, easing: ease });
-    const b = ghost.animate([{ transform: "translateX(0)" }, { transform: `translateX(${to})` }], { duration: dur, easing: ease });
+    body.style.visibility = "hidden";
+    let a: Animation | null = null;
+    let b: Animation | null = null;
     let done = false;
+    let slid = () => {};
+    setDrillSlide(new Promise<void>((r) => (slid = r)));
+    let end = () => {};
     const finish = () => {
       if (done) return;
       done = true;
-      a.cancel();
-      b.cancel();
+      a?.cancel();
+      b?.cancel();
       ghost.remove();
+      showHead();
+      body.style.visibility = "";
+      if (slides.get(host) === finish) slides.delete(host);
       host.classList.remove("is-drill-swap");
       end();
+      slid();
     };
-    b.onfinish = finish;
-    b.oncancel = finish;
-    window.setTimeout(finish, dur + 150); // a hidden panel sends no finish
+    slides.set(host, finish);
+    const wait = left < 1 ? 0 : tokenMs("--drill-wait");
+    void readyIn(body, wait).then(() => {
+      if (done) return; // a newer swap ended this one while it waited
+      body.style.visibility = "";
+      // The title changes when the page is seen to move: --drill-title-at of the way along the
+      // skin's own ease (Ocean's slow start held still ~100 ms under the new title, 2026-10-21).
+      window.setTimeout(showHead, ms * timeAt(ease, Number(tok("--drill-title-at", "0"))));
+      end = frames.begin("grow-drill", way);
+      // A skin whose pages fade (Ocean, Glass, Cyber): the old page is mostly gone before the
+      // new one shows, so the two never read as one muddle mid-way (the review, 2026-10-21).
+      const fades = off < 1 && left === 1;
+      const outBy = fades ? Number(tok("--drill-out-by", "1")) : 1;
+      const inFrom = fades ? Number(tok("--drill-in-from", "0")) : 0;
+      a = body.animate(
+        [
+          { transform: from, opacity: left < 1 ? 1 : off },
+          ...(inFrom > 0 ? [{ opacity: off, offset: inFrom }] : []),
+          { transform: center, opacity: 1 },
+        ],
+        { duration: ms, easing: ease },
+      );
+      b = ghost.animate(
+        [
+          { transform: ghost.dataset.drillFrom ?? center, opacity: 1 },
+          ...(outBy < 1 ? [{ opacity: off, offset: outBy }] : []),
+          { transform: to, opacity: off },
+        ],
+        { duration: ms, easing: ease },
+      );
+      b.onfinish = finish;
+      b.oncancel = finish;
+      window.setTimeout(finish, ms + 150); // a hidden panel sends no finish
+    });
   };
 
   /** Put `id` in `slot`, the card that was there going where `id` came from (or off screen).
@@ -674,7 +815,7 @@ export function initLayout(): void {
     if (!host) return false;
     const ghost = bodyCopy(host);
     const other = comp.slots.find((s) => layout[s] === id);
-    const opts: MountOpts = { memory, onReturn: armReturn ? () => returnFrom(slot) : undefined, returnTitle };
+    const opts: MountOpts = { memory, onReturn: armReturn ? () => returnFrom(slot) : undefined, returnTitle, drilled: way === "in" };
     unmountSlot(slot);
     if (other) unmountSlot(other);
     layout = { ...layout, [slot]: id, ...(other ? { [other]: source } : {}) };
@@ -683,7 +824,7 @@ export function initLayout(): void {
     saveLayout(comp, layout);
     touch(slot);
     refreshGrowZones();
-    slideBodies(host, ghost, way);
+    slideBodies(host, ghost, way, id);
     diag.log("drill", { slot, from: source, to: id, way, exchanged: other ?? "", chain: chains[slot]?.length ?? 0 });
     return true;
   };

@@ -226,6 +226,17 @@ each step that touches those calls.
   live: no regression (48 clips, every probe; grow-settle.py clean; worst gaps ≤ 29 ms without
   the recorder). Desk test passed 2026-10-20 (his word, §21.4 steps 1–10). Not moved yet: the full player and
   Presentation mode (still the clip and pad); the curve and each skin's own grow motion (his
+- **Drill motion review (2026-10-21, on `happy-thirtytwo`; paused by him for the evening).** Go
+  to Album / Artist and Back: five faults fixed (CARD-GROW.md §22.2), his four calls built (§22.4,
+  §22.6: the skin's own swap motion, a 300 ms wait for the page, no wave when warm, his row's
+  Back as one shrink). Fable: round 1 before 3.5 → after 5.5; round 2 after 7 (the swaps 8).
+  The fixes after round 2 (the grow waits for the page, the title on the visible move, a Back
+  during the open) passed all 20 shots; round 3 was stopped before its scores. **Next:** run
+  round 3 (`shots/drill-review/review3/`, sheets made), then the open items: the artist page
+  empty past the 300 ms cap on a first visit (a longer hold is his call), and whether a card's
+  own page slide in Ocean / Glass should cross in order like the swap. His dev app lost
+  *Layout for Max* "4 cards" and the Ocean skin at 13:22 (another session's take), not reset.
+
   calls); a covered card's hairline coming back late (same as live); the Queue title a few px
   above the edge for ~3 frames (§21.6).
 

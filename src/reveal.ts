@@ -62,6 +62,10 @@ export interface Reveal {
   cancel(): void;
   /** Settles at the reveal (or the cancel). */
   done: Promise<void>;
+  /** A slide waits for this hold (CARD-GROW.md §22.6, his call 2026-10-21): when the first
+   *  screen is ready within `ms`, it shows at once with no wave, and the slide carries it in.
+   *  Later, it waves in as usual. */
+  quick(ms: number): void;
 }
 
 const reduced = (): boolean => motionReduced();
@@ -221,8 +225,23 @@ function wave(card: string, tiles: HTMLElement[], spanMs: number): void {
 const live = new WeakMap<HTMLElement, Reveal>();
 /** The reveal holding `body` now, if any (a render nudges it with `check`). */
 export const revealOf = (body: HTMLElement): Reveal | undefined => live.get(body);
+/** Every hold on screen now, by its body: a slide looks for the ones inside its box. */
+const holding = new Map<HTMLElement, Reveal>();
+/** The holds inside `box` now (a card that just mounted, a level just built). */
+export const revealsIn = (box: HTMLElement): Reveal[] => [...holding].filter(([b]) => box.contains(b)).map(([, r]) => r);
 
-const NONE: Reveal = { check: () => {}, cancel: () => {}, done: Promise.resolve() };
+const NONE: Reveal = { check: () => {}, cancel: () => {}, done: Promise.resolve(), quick: () => {} };
+
+/** A slide that is about to bring `box` in waits here (CARD-GROW.md §22.6, his calls 2026-10-21):
+ *  until every hold inside it is ready, at most `ms`. Ready in time, a hold shows at once with no
+ *  wave and the slide carries the page in drawn; past `ms`, the slide goes and the page waves in
+ *  when its data lands. No hold inside: at once. */
+export function readyIn(box: HTMLElement, ms: number): Promise<void> {
+  const rs = revealsIn(box);
+  if (!rs.length || ms <= 0) return Promise.resolve();
+  rs.forEach((r) => r.quick(ms));
+  return Promise.race([Promise.all(rs.map((r) => r.done)).then(() => {}), new Promise<void>((r) => window.setTimeout(r, ms))]);
+}
 
 /** Hold `body` until its first screen is ready (or the cap, or a press), then reveal it. */
 export function reveal(o: RevealOpts): Reveal {
@@ -239,6 +258,7 @@ export function reveal(o: RevealOpts): Reveal {
   const cap = tokenMs(o.capToken ?? "--reveal-cap");
   const span = tokenMs(o.spanToken ?? "--reveal-span");
   let settled = false;
+  let quickUntil = 0; // a slide waits: ready before this, no wave
   let waiting = false; // the pictures' wait has started (the data is in)
   let resolveDone: () => void = () => {};
   const done = new Promise<void>((r) => (resolveDone = r));
@@ -256,6 +276,7 @@ export function reveal(o: RevealOpts): Reveal {
   const finish = () => {
     unwatch();
     live.delete(o.body);
+    holding.delete(o.body);
     o.body.removeAttribute("data-reveal-hold");
     resolveDone();
   };
@@ -270,8 +291,10 @@ export function reveal(o: RevealOpts): Reveal {
     revealedAt.set(o.body, { at: performance.now(), card: o.card });
     rememberFirstScreen(o.card, mosaicKeys(tiles));
     mark("reveal:go", `${why} ${tiles.length - notReady}/${tiles.length}`);
-    diag.log("reveal", { card: o.card, why: o.why ?? "open", ms, go: why, n: tiles.length, late: notReady, boot });
-    if (!boot) wave(o.card, tiles, span);
+    // Ready while a slide still waits for it: the slide is the motion, the page arrives drawn.
+    const still = why === "ready" && performance.now() <= quickUntil;
+    diag.log("reveal", { card: o.card, why: o.why ?? "open", ms, go: why, n: tiles.length, late: notReady, boot, still });
+    if (!boot && !still) wave(o.card, tiles, span);
   };
   const onPress = () => go("press");
   const capTimer = window.setTimeout(() => go("cap"), cap);
@@ -301,8 +324,12 @@ export function reveal(o: RevealOpts): Reveal {
       mark("reveal:go", "cancel");
     },
     done,
+    quick: (ms) => {
+      quickUntil = performance.now() + ms;
+    },
   };
   live.set(o.body, handle);
+  holding.set(o.body, handle);
   if (boot) {
     bootWaits.add(done);
     void done.then(() => bootWaits.delete(done));

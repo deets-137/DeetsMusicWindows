@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 # DeetsMusic — Work log
 
@@ -59,6 +59,36 @@ them from Top Listens (§10.4; no rerun, his word). Committed.
 - His call: commit, push, fast-forward `v-thirtyone` into `main`, and mint 0.31.0.
 
 ## 2026-10-20, night — the card grow stress test, the Fable review, and the shell
+
+## 2026-10-21 — the drill motion review
+
+- His ask: a full motion review of the drilldowns (Go to Album / Artist, Back) with the five checks
+  of DESK-TESTS.md §6.6 and a Fable reviewer to 8. His rules for it: stay on `happy-thirtytwo`;
+  fix a fault only when it is truly a fault and not a change from live.
+- Break-it pass: three Sonnet agents, 45 scenarios. The list: `docs/ops/checks/drill-review.mjs`
+  (20 shots on the dev app, his Max and Midi layouts). Baseline on the live code (stashed fixes),
+  then the fixed code. His row *Grow on album or artist* is Full on his PC: every Go to also fills.
+- Fixed (CARD-GROW.md §22.2): the swap slide under his row's Fill (an empty card ~400 ms), the Fill
+  left on after Back (`levelLeft` read the wrong card), a double slide in every skin (Search's
+  own slide inside the swap's; the results page showed and the album stayed empty), a Back
+  mid-slide (the copy lookup, ended slides, the continuation), a copy replaying its cover's fade.
+- Fable round 1: before 3.5, after 5.5. The rest of its faults are designs: four forks for him
+  (§22.4). Checked at pixel level and not faults: §22.3.
+- On the way: my `swap-rapid` shot's second right-click landed on the stage's Queue (a row still
+  sliding over it), so Search was summoned into `d` and replaced his Playlists card; put back
+  through the picker, and `clean` now checks all four slots. The dev app was restarted by its
+  own runner when another session changed `src-tauri/src/web.rs`; my `dev:app` start lost the
+  build lock and rewrote `.tauri.dev.gen.json` to Vite 1421 (put back to 1420).
+- His calls on the four forks: 1A, 2 (the wave unless the data is there), 3A ("B with the wave
+  if it can be smooth / elegant"), 4A. Built (CARD-GROW.md §22.6); a Fable follow-up on the new
+  frames shaped the fading skins' order and the title's moment. Round 2: after 7 (before 5),
+  the swaps 8/8/8. Then: the rule grow waits for the page (no ♪ square), the title changes when
+  the page is seen to move (by the skin's ease), a Back during the open is one motion. All 20
+  shots pass; round 3 stopped at his word ("we'll pick up in the evening").
+- The dev app twice came up on Vite 1421 (another runner held 1420), which reads a different
+  localStorage: his layout and look looked lost. With his OK I restarted it on 1420. His
+  *Layout for Max* "4 cards" and Ocean skin were lost at 13:22 by another session's interrupted
+  take (its message); the shots set them per shot and put back what they found (Glass, 1 card).
 
 - His ask: a review of the card grow visuals — a Sonnet agent for workflows that break it, a Fable
   agent for a score. His corrections on the way: the live dev app, never the demo ("real

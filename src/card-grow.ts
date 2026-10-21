@@ -31,6 +31,7 @@ import { TELEMETRY } from "./telemetry-on";
 import { cancelled, registerAction, registerEvent, registerFact } from "./rules";
 import { maxBeyond, maxCanFill, maxNeighbors, type MaxCards, type MaxSlot } from "./layout-rules";
 import { motionReduced } from "./motion";
+import { readyIn } from "./reveal";
 
 /** The four content slots, plus the two anchored hosts of the max stage column. `np` is a
  *  COVER TARGET only: it has no `.panel__head`, so it never gets the button or the zones
@@ -709,6 +710,9 @@ export async function growByRule(card: string, axis: "horizontal" | "vertical" |
   try {
     await whenSwapSettled();
     await settled;
+    // The page waits as a slide's does (his call 3A, 2026-10-21): the old page stays until the
+    // new one is drawn, at most --drill-wait, so the grow opens on the album, not a ♪ square.
+    if (blank && drill && motion()) await readyIn(blank, tokenMs("--drill-wait"));
     const slot = opts?.slotOf(card) ?? null;
     if (!slot) return no("not on screen");
     if (state?.slot === slot) return no("already grown");
@@ -716,17 +720,23 @@ export async function growByRule(card: string, axis: "horizontal" | "vertical" |
     const dir = ruleDir(slot, axis, replace);
     if (!dir) return no("no-axis");
     ruleGrowing = true;
+    startNow(card); // the old page leaves on the grow's first frame
     try {
       growCard(slot, dir, `rule:${why}`);
     } finally {
       ruleGrowing = false;
     }
+    // Marked as it starts, not as it lands: a Back during the open ends it as its one motion,
+    // turning back from where the edge is (§22.6, his call 4A; 2026-10-21 a Back 150 ms in
+    // slid first, then shrank).
+    if (state?.slot === slot) ruleMark = { card, slot, depth };
     await settled;
-    const grew = state?.slot === slot;
-    if (grew) ruleMark = { card, slot, depth };
+    const grew = state?.slot === slot && ruleMark?.card === card;
+    if (!grew && ruleMark?.card === card && ruleMark.slot === slot && state?.slot !== slot) ruleMark = null;
     diag.log("grow:rule", { card, axis, dir, why, applied: grew, depth, placed: !!blank });
     return grew;
   } finally {
+    startNow(card); // a grow that did not run: the new page shows now, in place
     if (coming === card) coming = null;
     // A grow that did not run after all: the blanked body comes back, its rows enter.
     if (blank && !(state && opts?.hosts[state.slot] === blank)) {
@@ -767,6 +777,24 @@ function ruleDir(slot: Slot, axis: "horizontal" | "vertical" | "full", replace: 
  *  event places its new level with no slide: the grow is the one motion (RULES.md §18). */
 let coming: string | null = null;
 export const ruleGrowComing = (card: string): boolean => coming === card;
+/** What runs on the coming grow's first frame, or at once when it does not run (§22.6): the
+ *  drill keeps the old page up until then. Each runs once. */
+const onStart = new Map<string, (() => void)[]>();
+export function onRuleGrowStart(card: string, cb: () => void): void {
+  if (coming !== card) return cb();
+  onStart.set(card, [...(onStart.get(card) ?? []), cb]);
+}
+function startNow(card: string): void {
+  const cbs = onStart.get(card);
+  onStart.delete(card);
+  cbs?.forEach((cb) => cb());
+}
+
+/** Would `levelLeft(card, depth)` end a rule grow? A Back that swaps cards asks first: then the
+ *  shrink is its one motion and the swap plays no slide (CARD-GROW.md §22.6, his call 4A). It
+ *  does not ask the cancel event (a rule with Keep): that one fires once, in `levelLeft`. */
+export const ruleGrowEndsAt = (card: string, depth: number): boolean =>
+  !!ruleMark && ruleMark.card === card && depth < ruleMark.depth && state?.slot === ruleMark.slot && motion() !== null;
 
 /** A Back path: `card` now has `depth` levels open. Back past the level a rule grow opened
  *  collapses it, when the grow on screen is still that rule grow. */

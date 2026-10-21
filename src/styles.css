@@ -4917,11 +4917,23 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 .panel.is-drill-swap { overflow: hidden; }
 .panel.is-drill-swap > .panel__body,
 .panel.is-drill-swap > .coll-body { will-change: transform; }
+/* The arriving body over the leaving copy, as a card's own level slide keeps its center pane on
+   top: Ocean and Glass cross the two in place (their --nav-at-* overlap). */
+.panel.is-drill-swap > :is(.panel__body, .coll-body):not(.drill-swap__ghost) { position: relative; z-index: 1; }
 .drill-swap__ghost {
   position: absolute;               /* layout.ts sets top/left/width/height from the body it copies */
   pointer-events: none;
   margin: 0;
+  z-index: 0;
 }
+/* A rule grow's blank hides the card's parts while the new page fills; the old card's copy stays
+   until the grow's first frame (layout.ts, §22.6). */
+.panel.is-grow-rebuild > .drill-swap__ghost { opacity: 1; }
+/* The old title over the new card's head while its page fills (layout.ts, §22.6). */
+.drill-swap__head { position: absolute; pointer-events: none; margin: 0; z-index: 2; }
+/* A copy is a still picture of the card. A clone starts its CSS animations again, so a cover's
+   fade-in (img.art-in) dimmed it as it left (2026-10-21); every part shows its own style. */
+.drill-swap__ghost, .drill-swap__ghost * { animation: none !important; }
 
 /* ── The split pill (split-pill.ts): one header control cut in two ────────────────────────
    "Full | Lib" in the Library (FULL-LIB.md) and the Search card (SEARCH-FIELDS.md §6). The

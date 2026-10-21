@@ -37,6 +37,26 @@ export function setDrillSwapCheck(fn: (id: CardId) => boolean): void {
 /** True when a drill for `id` takes the grown card's place (so a chip would fly to itself). */
 export const drillSwapsInPlace = (id: CardId): boolean => swapCheck(id);
 
+/** The drill swap's slide (CARD-GROW.md §14.6): settles when the last one has ended, or at
+ *  once when none runs. Back waits on it before a rule grow ends, as a card's own Back does. */
+let drillSlide: Promise<void> = Promise.resolve();
+/** Layout-side: the slide that runs now. */
+export function setDrillSlide(p: Promise<void>): void {
+  drillSlide = p;
+}
+export const drillSlid = (): Promise<void> => drillSlide;
+/** The next drill swap plays no slide: a Back whose rule grow ends shrinks as its one motion
+ *  (CARD-GROW.md §22.6, his call 4A). Set just before the Back's swap, taken by the layout. */
+let nextStill = false;
+export const holdNextSlide = (on: boolean): void => {
+  nextStill = on;
+};
+export const takeNextStill = (): boolean => {
+  const v = nextStill;
+  nextStill = false;
+  return v;
+};
+
 /** Layout-side: install the lookup. */
 export function setCardHostLookup(fn: (id: CardId) => HTMLElement | null): void {
   hostLookup = fn;

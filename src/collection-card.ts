@@ -36,10 +36,11 @@ import { esc } from "./dom";
 import { tokenMs } from "./boot-cover";
 import * as diag from "./diag";
 import { emit } from "./rules";
-import { levelLeft, ruleGrowComing } from "./card-grow";
+import { levelLeft, onRuleGrowStart, ruleGrowComing, ruleGrowEndsAt } from "./card-grow";
+import { drillSlid, holdNextSlide } from "./layout-bus";
 import { searchField, fieldClearHTML } from "./search-field";
 import { patchHTML, keyRow } from "./keyed";
-import { reveal, revealOf } from "./reveal";
+import { reveal, revealOf, readyIn } from "./reveal";
 import { mark } from "./marks";
 import { motionReduced } from "./motion";
 
@@ -452,8 +453,9 @@ function sortItems<T>(items: T[], spec: SortSpec<T>, dir: SortDir, nameOf: (x: T
 /** The handle a host card holds onto (declared, not inferred: a host whose own options
  *  reach back through the handle would otherwise build a circular inference). */
 export interface CollectionCardHandle {
-  /** Push a child context programmatically — the same slide/header path as a tile click. */
-  drill(ctx: Context): void;
+  /** Push a child context programmatically — the same slide/header path as a tile click.
+   *  `still`: the level goes in place, no slide (a motion outside the card carries it). */
+  drill(ctx: Context, still?: boolean): void;
   /** Put `ctx` in place of the open level (not the root): no new Back step (FULL-LIB.md). */
   replace(ctx: Context): void;
   /** Draw the open level again. With `ctx`: only when that level is the open one (a level
@@ -1110,10 +1112,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     else v.scrollTop = f.scroll;
   };
 
-  const slide = (incoming: HTMLElement, dir: "push" | "pop", frame: Frame, onDone?: () => void) => {
+  const slide = (incoming: HTMLElement, dir: "push" | "pop", frame: Frame, onDone?: () => void, outgoing = curPane) => {
     animating = true;
     const endFrames = frames.begin("slide", dir);
-    const outgoing = curPane;
     paneFrame = frame;
     incoming.dataset.pos = dir === "push" ? "right" : "left";
     incoming.style.transition = "none"; // place off-screen without animating
@@ -1153,8 +1154,35 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     }
   };
 
-  const drill = (childCtx: Context) => {
-    if (animating) return;
+  /** A level's slide waits for its page (CARD-GROW.md §22.6, his calls 2026-10-21): the old page
+   *  stays while the new one fills, unseen, beside it, at most --drill-wait. Ready in time, it
+   *  slides in drawn with no wave; later, it slides and waves in when its data lands. While it
+   *  waits it is already the pane the renders draw into (`curPane`), so data that lands is
+   *  drawn into it; `gating` keeps a second drill or Back out. `before` runs as it moves (the
+   *  title changes with the page). */
+  let gating = false;
+  const gatedSlide = (pane: HTMLElement, dir: "push" | "pop", f: Frame, why: string, before: () => void, onDone?: () => void) => {
+    const outgoing = curPane;
+    gating = true;
+    pane.dataset.pos = dir === "push" ? "right" : "left";
+    pane.style.transition = "none";
+    pane.style.visibility = "hidden";
+    viewport.appendChild(pane);
+    curPane = pane;
+    paneFrame = f;
+    applyScroll(pane, f); // the first screen the hold waits for is the one that will show
+    holdView(pane, why);
+    void readyIn(pane, tokenMs("--drill-wait")).then(() => {
+      gating = false;
+      if (!pane.isConnected) return; // the card went while it waited
+      pane.style.visibility = "";
+      before();
+      slide(pane, dir, f, onDone, outgoing);
+    });
+  };
+
+  const drill = (childCtx: Context, still = false) => {
+    if (animating || gating) return;
     pick.clear(); // a drill changes which rows are on screen — the picks go with them (§19)
     // remember where we were so back restores scroll
     const v = curPane?.querySelector<HTMLElement>("[data-view]");
@@ -1163,7 +1191,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     if (pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS) f.onBack = pendingReturn.cb;
     pendingReturn = null;
     stack.push(f);
-    setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
+    const header = () => setHeader(false, f.ctx.headerLabel ?? f.ctx.title, !!f.onBack, f.ctx);
     // The rules engine (RULES.md §10): an album or an artist opened. Not from `replace` (the
     // Lib | Full chips) or a card-memory restore, which never come through here. It is told
     // BEFORE the slide: when a rule grow is coming, the level goes in place with no slide and
@@ -1172,12 +1200,39 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const key = f.ctx.key ?? "";
     const opens = f.ctx.opens ?? (key.startsWith("album:") ? "album" : key.startsWith("artist:") ? "artist" : null);
     if (opens) emit(`${opens}.open`, { card: cardId(), facts: { cause: "hand" }, depth: stack.length });
-    if (opens && ruleGrowComing(cardId())) place(f);
-    else {
+    if (opens && ruleGrowComing(cardId()) && !still) {
+      // A rule grow is the motion (RULES.md §18). The old page stays on screen until the grow's
+      // first frame; the new one is built now, unseen, so its hold can be ready by then
+      // (§22.6, his call 3A): the grow opens on a drawn page, the title with it.
+      opts.root.classList.remove("is-grow-rebuild"); // the grow blanks the card itself as it starts
+      const old = curPane;
       const pane = buildPane(f);
-      slide(pane, "push", f);
+      pane.dataset.pos = "center";
+      pane.style.visibility = "hidden";
+      viewport.appendChild(pane);
+      curPane = pane;
+      paneFrame = f;
+      applyScroll(pane, f);
       holdView(pane, "drill");
-    }
+      gating = true;
+      onRuleGrowStart(cardId(), () => {
+        gating = false;
+        header();
+        dropPane(old);
+        old?.remove();
+        pane.style.visibility = "";
+      });
+    } else if (opens && ruleGrowComing(cardId())) {
+      // The drill swap's card (`still`): its slot keeps the old card's copy until the grow.
+      header();
+      place(f);
+    } else if (still) {
+      // The drill swap's slide carries the card in with this level on it (2026-10-21: the
+      // level slid in again inside the card that slid in). The swap waits for its hold.
+      header();
+      place(f);
+      holdView(curPane!, "drill");
+    } else gatedSlide(buildPane(f), "push", f, "drill", header);
   };
 
   /** A new level in place, no slide: a rule grow is the motion, and it enters the rows. */
@@ -1425,7 +1480,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   });
 
   const back = () => {
-    if (animating || stack.length <= 1) return;
+    if (animating || gating || stack.length <= 1) return;
     const top = cur();
     // A level a grown card's drill opened: the layout brings the first card back (CARD-GROW.md
     // §14.4). The level leaves the stack FIRST, so the snapshot taken at the destroy that
@@ -1434,19 +1489,38 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       const ret = top.onBack;
       top.onBack = undefined;
       stack.pop();
-      if (ret()) return levelLeft(cardId(), stack.length);
+      // The card that leaves is the one a rule grew: after `ret` the slot holds the card that
+      // came back, so its id is read first (2026-10-21: the grow stayed on the card that came
+      // back). When that grow ends here, the swap plays no slide and the shrink is the one
+      // motion (his call 4A); otherwise the grow ends once the slide has.
+      const id = cardId();
+      const depth = stack.length;
+      const shrinks = ruleGrowEndsAt(id, depth);
+      holdNextSlide(shrinks);
+      if (ret()) {
+        if (shrinks) levelLeft(id, depth);
+        else void drillSlid().then(() => levelLeft(id, depth));
+        return;
+      }
+      holdNextSlide(false);
       stack.push(top);
     }
     pick.clear();
     const prev = stack[stack.length - 2];
-    setHeader(stack.length - 1 === 1, prev.ctx.headerLabel ?? prev.ctx.title, !!prev.onBack, prev.ctx);
-    const backPane = buildPane(prev);
-    slide(backPane, "pop", prev, () => {
-      stack.pop();
-      levelLeft(cardId(), stack.length); // a rule grow ends when Back leaves its level
-    });
-    // The level comes back rebuilt: warm, it reveals at once, with the same wave (§7.1).
-    holdView(backPane, "back");
+    const header = () => setHeader(stack.length === 1, prev.ctx.headerLabel ?? prev.ctx.title, !!prev.onBack, prev.ctx);
+    // The level leaves the stack now: while the page under it waits and slides, the renders
+    // draw that page (`cur()` and `curPane` agree; 2026-09-29 drew a child under its parent).
+    stack.pop();
+    // Back past the level a rule grow opened: the page goes in place and the shrink is the one
+    // motion, as the open had the grow alone (his call 4A, 2026-10-21).
+    if (ruleGrowEndsAt(cardId(), stack.length)) {
+      header();
+      place(prev);
+      levelLeft(cardId(), stack.length);
+      return;
+    }
+    // The level comes back rebuilt: warm, it slides in drawn; late, it waves in (§22.6).
+    gatedSlide(buildPane(prev), "pop", prev, "back", header, () => levelLeft(cardId(), stack.length));
   };
 
   /** Every level closes at once, no slide: the root is on screen again (`toRoot`). */
@@ -2426,8 +2500,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   return {
     // Push a child context programmatically — same slide/header path as clicking a
     // tile (e.g. Playlists drills straight into a just-created playlist).
-    drill(ctx: Context) {
-      drill(ctx);
+    drill(ctx: Context, still = false) {
+      drill(ctx, still);
     },
     replace,
     reload: (ctx?: Context) => {

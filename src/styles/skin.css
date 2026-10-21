@@ -782,6 +782,18 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
+  /* A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his
+     call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and
+     the page waves in when its data lands. */
+  --drill-wait: 0.3s;
+  /* A card swap in a skin whose pages fade (--nav-off-opacity 0: Ocean, Glass, Cyber): the old
+     page is gone by this share of the motion, and the new one shows from this share, so the
+     two never cross at full (the review, 2026-10-21). A card's own page slide keeps its CSS. */
+  --drill-out-by:  0.55;
+  --drill-in-from: 0.3;
+  /* The card's title changes when its page has moved this share of its way, by the skin's ease
+     (the review, 2026-10-21: a slow-starting ease looked still under the new title). */
+  --drill-title-at: 0.12;
   /* Card memory (CARD-MEMORY.md §4): how long a card's body may stay hidden while a
      restore waits for its data, so the root never flashes before the open level. */
   --memory-wait: 0.4s;

@@ -786,6 +786,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--art-in-from` | `0.3` | — | a late cover's first frame: its square was the ground, so it |
 | `--swap-dur` | `var(--nav-dur)` | — | starts near that weight, not at nothing (desk test 2026-10-17) -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) -- Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to / --swap-out-fade before the remount. In step: each new card plays from the slot it left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place. --swap-from / --swap-mid shape it at the start and the midpoint (use the same transform functions in both); --swap-fade is its starting opacity; --swap-stagger delays the second card. The base = a straight slide, no out step (Glass uses it). A replace rises in (the pop tokens). |
 | `--swap-ease` | `var(--nav-ease)` | — |  |
+| `--drill-wait` | `0.3s` | — | A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and the page waves in when its data lands. |
+| `--drill-out-by` | `0.55` | — | A card swap in a skin whose pages fade (--nav-off-opacity 0: Ocean, Glass, Cyber): the old page is gone by this share of the motion, and the new one shows from this share, so the two never cross at full (the review, 2026-10-21). A card's own page slide keeps its CSS. |
+| `--drill-in-from` | `0.3` | — |  |
+| `--drill-title-at` | `0.12` | — | The card's title changes when its page has moved this share of its way, by the skin's ease (the review, 2026-10-21: a slow-starting ease looked still under the new title). |
 | `--swap-out-dur` | `0s` | cyber |  |
 | `--swap-out-to` | `scale(1)` | cyber |  |
 | `--swap-out-fade` | `1` | cyber |  |
@@ -1147,6 +1151,7 @@ A skin sets these, but the base block never declares them — a token that only 
 - `--metal-wheel-lift (metal)`
 - `--metal-slot-shadow (metal)`
 - `--metal-wheel-shadow (metal)`
+| `--drill-wait` | `0.3s` | — | card-grow.ts, collection-card.ts, layout.ts |
 - `--metal-badge-in (metal)`
 
 ## Palette

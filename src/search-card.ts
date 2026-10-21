@@ -256,8 +256,13 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       headerCbs.forEach((cb) => cb(h));
     },
   });
-  /** Open a level from the results or from a request. */
-  const open = (ctx: Context) => engine.drill(ctx);
+  /** Open a level from the results or from a request. `mountStill`: a request taken at the
+   *  mount of a drill swap, whose slide brings the card in with the level on it already. */
+  let mountStill = false;
+  const open = (ctx: Context) => {
+    if (mountStill) instantNext = true; // the results step aside with no slide too
+    engine.drill(ctx, mountStill);
+  };
 
   /** The menu for a picked set of songs (§19). */
   const picksMenu = (ts: Track[], context: string): MenuItem[] =>
@@ -733,6 +738,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     back: () => false,
   });
   // …or BY a drill (CARD-GROW.md §14.5): the intent waits in go-to.ts until this card exists.
+  mountStill = !!mountOpts?.drilled;
   const heldDrill = takeDrillRequest();
   if (heldDrill) runDrill(heldDrill);
   const heldPane = takePlaylistPaneRequest();
@@ -743,6 +749,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   if (heldArtist) runArtistPane(heldArtist);
   const heldSong = takeSongPaneRequest();
   if (heldSong) runSongPane(heldSong);
+  mountStill = false;
 
   /** Card memory (CARD-MEMORY.md §5a): the term, the results place, and the open levels. */
   const snapshot = (): SearchSnapshot => ({

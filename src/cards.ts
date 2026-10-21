@@ -46,6 +46,9 @@ export interface MountOpts {
   onReturn?: () => boolean;
   /** The card the return goes to, for the Back button's hint. */
   returnTitle?: string;
+  /** The drill swap's slide brings this card in (CARD-GROW.md §14.6): the level a held request
+   *  opens at the mount goes in place, so the card's own slide does not run inside it. */
+  drilled?: boolean;
   /** A card with an X (Rulez, RULES.md §20.6): the X calls this, and the layout puts back the
    *  card this one replaced. */
   onClose?: () => void;

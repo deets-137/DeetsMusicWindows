@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.9.0
 desk_test: passed 2026-09-19
-sources: [src/card-grow.ts, src/add-square.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css]
-updated: 2026-10-20
+sources: [src/card-grow.ts, src/add-square.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css, src/layout-bus.ts, src/search-card.ts, src/cards.ts, docs/ops/checks/drill-review.mjs]
+updated: 2026-10-21
 ---
 # DeetsMusic — growing a card
 
@@ -1184,3 +1184,116 @@ recorder: opens median 71 → 38 ms, collapses 46 → 25 ms. Without the recorde
 - A collapse waves its rows in at 0.4 of its length, like the open (§21.7; it showed them at
   once for one round, per the second review).
 - The shell is a compositor layer by `will-change: opacity`.
+
+## 22. The drill motion review (his ask, 2026-10-21)
+
+> **Part:** built · 2026-10-21 (faults fixed, §22.2; his four calls built, §22.6)
+
+His ask: a full motion review of the drilldowns (Go to Album, Go to Artist, Back) with the five
+checks of DESK-TESTS.md §6.6, and an independent Fable reviewer (frames only, no code) to an
+overall 8. His rule for this pass: Claude fixes a fault only when it is truly a fault and not a
+change from live; anything that changes the designed motion is his fork.
+
+**Terms.** *The swap* is §14–§15: a drill from a card that is not Search or the Library puts the
+target card in the slot you read, with a still copy of the old body sliding out. *The pane slide*
+is a card's own level slide (`collection-card.ts`, the skin's `--nav-at-*`). *His row* is
+Settings › Window › *Grow on album or artist* (`drillGrow`), Full on his PC: an album or artist
+that opens grows its card to Fill in Max (wide in Midi).
+
+### 22.1 How it ran
+- `docs/ops/checks/drill-review.mjs` writes `drill-review.json`: 20 shots on the dev app, his Max
+  layout (History, Settings, Home, Playlists) and his Midi layout. Each shot starts and ends with
+  his layout, no grow, no copy and no motion class (a probe with `expect`). The motion monitor
+  watches each one.
+- The break-it pass: three Sonnet agents, 45 scenarios; the motion cases from it are in the list
+  (Back mid-slide, Go to again, cold, reduced motion, his rule).
+- Baseline: the live code (the fixes stashed), `shots/drill-review/0.31.0-before`.
+- Fable round 1: before 3.5 / 10, after 5.5 / 10 (elegance 6, smoothness 5, pixel 5).
+
+### 22.2 The faults fixed (all on live too)
+1. **His row: two motions at once, and an empty card ~400 ms.** A Go to from another card ran the
+   swap's slide under the rule's Fill: the grow blanks the body (`is-grow-rebuild`) while the
+   slide moved it, then a jump when the slide ended (82 % of frames dropped). `slideBodies` now
+   plays no slide when `ruleGrowComing(target)`: the grow is the one motion, as in a card's own
+   drill (RULES.md §18, his call 2026-09-26).
+2. **His row: Back left the card filled.** `back()` read `cardId()` after the swap put History
+   back, so `levelLeft` asked about "history", not "search". It reads the id first, and the grow
+   ends after the slide back (`drillSlid()` in layout-bus.ts), as a card's own Back does.
+3. **A double slide in every skin.** The Search card a swap mounts opened its held level with its
+   own pane slide, inside the swap's slide: the results page ("Recent") slid in and sank away,
+   and the album stayed empty until that inner slide ended (the engine holds a redraw while it
+   slides). `MountOpts.drilled` (layout.ts) makes Search place that first level with no slide
+   (`engine.drill(ctx, still)`); the results step aside with no slide too.
+4. **A Back during the slide moved the wrong body.** A copy is a `.panel__body` too, and the old
+   one sits first in the slot. The body lookup skips copies (`BODY`), a new swap ends the slide
+   still running (`slides`), and its copy leaves from where the body was, at speed (ease-out),
+   over the distance left, with the new body beside it. (Live ignored that Back: the inner slide
+   of fault 3 was running.)
+5. **The copy replayed its animations.** A clone starts its CSS animations again: a cover's
+   fade-in (`img.art-in`) dimmed it as it left. `.drill-swap__ghost *` has no animation.
+
+Numbers (dev app, Max, his Ocean look, 244 Hz): the swap's dropped frames 15–85 % → 2–14 %; no
+`slide push` inside a swap; every probe passes in 20 shots. The press of Go to holds one task of
+50–90 ms (the Search card and the level are built); about 45 ms of it is the dev-only frame
+telemetry (`frames.ts` reads `getAnimations` on each animation start), absent from a release.
+
+### 22.3 What the review saw that is NOT a fault (checked at pixel level)
+- "A time column left alone": the end of History's copy under Press's strong ease-in-out.
+- "A grey box before the now-playing row" on Back: History slides in at the filled width, so its
+  right edge (the times, the box's right part) enters first.
+- "Settings rows wider than the card" in a collapse: the grow shell's edge passing over Settings
+  (§21).
+- "The album arrives without its cover": the reveal's wave (UX-COVERUPS.md §7), his design.
+
+### 22.4 His calls (2026-10-21)
+1. **1A:** the swap uses each skin's own page motion (`--nav-at-*`, `--nav-off-opacity`), as
+   §14.6 says ("as a pane slide does"): Vanilla, Press and Metal slide, Ocean sinks, Glass
+   scales and fades, Cyber skews.
+2. **2:** "I kinda like the wave unless the data is already there": a page whose data is in
+   arrives drawn, with no wave; a late one waves in.
+3. **3A** ("B with the wave if it can be smooth / elegant"): a drill waits for its page, at most
+   300 ms; past that it moves, and the page waves in when its data lands.
+4. **4A:** his row's Back is one motion, the shrink (and a card's own Back, to match the open).
+
+### 22.6 As built for his calls (2026-10-21)
+- **The wait** is `readyIn(box, ms)` in reveal.ts: every hold (`reveal`) inside the box gets a
+  `quick` deadline; ready by then, it shows with no wave. `--drill-wait: 0.3s` (skin.css).
+  - The swap (`slideBodies`): the old card's copy and its title cover the slot; the new body and
+    head wait under them, unseen; then both move.
+  - A card's own level slide (`gatedSlide` in collection-card.ts): the new pane is built off to
+    the side, unseen, and is already `curPane` (renders draw into it); `gating` keeps a second
+    drill out; a Back takes its level off the stack at once.
+  - His row's grow (`growByRule`): it waits too, so the grow opens on a drawn page (no ♪
+    square). The swap's copy stays over the grow's blank (`.panel.is-grow-rebuild >
+    .drill-swap__ghost`); in a card's own drill the old pane stays and the new one is built
+    unseen. Both change places on the grow's first frame (`onRuleGrowStart`).
+  - A no-slide swap (the grow or the shrink is the motion) marks its holds quick too, so a card
+    that comes back does not wave in a second time after the shrink.
+- **The title** changes when the page is seen to move: `--drill-title-at: 0.12` of the way,
+  solved on the skin's own ease (`timeAt` in layout.ts): Cyber 45 ms, Vanilla 50, Press 58,
+  Glass 65, Ocean 95. A card's own slide sets its header as the slide starts.
+- **The fading skins** (`--nav-off-opacity` 0) cross in order on a swap: the old page is gone by
+  `--drill-out-by: 0.55` and the new one shows from `--drill-in-from: 0.3` (the review: two
+  readable pages at once read as a muddle). A card's own level slide keeps its CSS: whether it
+  should match is his to say.
+- **4A:** `ruleGrowEndsAt(card, depth)` (card-grow.ts) tells Back that the shrink is coming;
+  the swap then plays no slide (`holdNextSlide`), and a card's own Back places the level with no
+  slide. The rule grow is marked as it starts, so a Back during the open turns it back.
+- The arriving body is stacked over the leaving copy (`position: relative; z-index: 1` during
+  the swap), as a card's center pane is.
+
+Review: round 1 (before 3.5, after 5.5), round 2 after his calls (before 5, after 7): the
+swap families 8/8/8. Round 3: see §22.7.
+
+### 22.5 Desk test
+1. Max, his row Full: History › a song › Go to Album. History stays until the grow starts; the
+   card fills on the album, drawn (no ♪ square); one motion.
+2. Back: the card shrinks to its cell as one motion, History back in it. Your four cards as before.
+3. Row Off, each skin: Go to Album moves Search in once in the skin's own way (Ocean sinks,
+   Glass fades, Cyber skews, the others slide), the album drawn; the title changes as it moves.
+4. Back as fast as you can after Go to Album: the motion turns back from where it is.
+5. Midi: Library › a song › Go to Album (wide), Back.
+6. Inside the album, the artist's name: the album stays until the artist page is ready (at most
+   0.3 s), then the page moves in; a first visit may wave in after.
+Scripted: `node docs/ops/checks/drill-review.mjs && node scripts/shots.mjs --list
+docs/ops/checks/drill-review.json` (20 shots, every probe with `expect`).
