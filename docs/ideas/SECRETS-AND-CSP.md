@@ -24,6 +24,9 @@ updated: 2026-09-29
 
 ## Part A. A Content Security Policy for the webview
 
+> **Superseded 2026-10-21 by `architecture/CSP.md`**, which re-read the code and closed most of
+> the forks below. Part A is kept as the record of the first design. Part B is still current.
+
 ### A1. Where we are
 
 `src-tauri/tauri.conf.json` has `"security": { "csp": null }` and `"withGlobalTauri": true`.

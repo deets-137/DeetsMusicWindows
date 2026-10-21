@@ -61,6 +61,10 @@ for word, with RELEASE.md's section numbers.
   settings (`effective` / `ownSetting`), the rows that make rules. Built 2026-09-26 on
   `rules-rulez`; §18 is the as-built record. Rules sit under features, never replace one.
   §19 is how a feature uses it. The Rulez card is `features/RULEZ.md`.
+- `CSP.md` — DESIGNED 2026-10-21, being built; C1 his (§9: block counts go home): a Content Security Policy for
+  the webview before the official release. The policy (§3, strict `style-src`), a report-only
+  release through Tauri's `on_web_resource_request` hook and then enforce (§6), a signed
+  relaxation through the remote config as the way back (§7), the desk test (§10).
 
 **`docs/cards/`** — card behavior
 - `CARD-GROW.md` — grow a card over its neighbor, Fill in Max, the drill swap.
