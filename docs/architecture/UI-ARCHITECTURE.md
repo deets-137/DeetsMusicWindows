@@ -390,8 +390,9 @@ card's edge breaks into grains of sand over the swell.
   is on) → `--ocean-sand` → `--sand-reach` between `--sand-reach-min` 4px and `--sand-reach-max`
   40px (skin.css). A wide band reaches past the 12px card padding, so text can sit on sand.
 - **Kept opaque:** `--panel` itself, because `album-color.ts` resolves it for the contrast guard.
-- **Dropped under Sand:** `--shadow-card` (an outer shadow traces the hard box edge) and the
-  pane fill (`--spane-bg: transparent`; Ocean panes fade on nav, so no mask is needed).
+- **Dropped under Sand:** `--shadow-card` (an outer shadow traces the hard box edge). The
+  Search page fill (`--spane-bg`) was dropped here too; since 2026-10-21 no skin has one (the
+  token is gone, styles.css `.spane`).
 - **Cost:** static masks over the moving swell; the compositor blends, nothing repaints.
 - **History (same day, at the desk):** a rolling wave line on the top edge ("I don't like
   waves"), then a smooth transparent fade; both dropped. Saved `waves` / `fade` migrate to `soft`.

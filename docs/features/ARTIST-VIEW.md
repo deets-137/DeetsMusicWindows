@@ -371,7 +371,9 @@ engine's layer would not show. So steps 2–5 are one change, each page desk-tes
 - In Search, a Featured playlist opens in place (`playlistsHere`); in the Library it still opens
   the Search card after the chip flight (§5).
 - The engine levels inside Search paint `--spane-bg`, as the Search panes did; the dead
-  `.spane .lib-shelves` rule is gone.
+  `.spane .lib-shelves` rule is gone. (2026-10-21: the fill and its token are gone in every
+  skin; the results slide off as a level slides in, so no page hides another. WORKLOG
+  2026-10-21, evening.)
 
 ### 10.5 Desk test, steps 2–5 (Search; the Library rechecked)
 

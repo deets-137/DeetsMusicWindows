@@ -21,6 +21,7 @@ import { log } from "./diag";
 import { mountVinyl } from "./vinyl";
 import { applyVinylAttrs, isVinylKey } from "./skin-settings";
 import { paintSkin, type SkinName } from "./skin";
+import { initMetalMaterial } from "./metal-material";
 import { onSettingsChange } from "./settings-store";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { initHints } from "./hint";
@@ -133,6 +134,9 @@ window.addEventListener("DOMContentLoaded", () => {
   onSettingsChange((k) => {
     if (isVinylKey(k)) applyVinylAttrs();
   });
+  // Metal's texture: the panel showed Metal's flat colors only (metal.md §6.7); drawn here as in
+  // the main window, again on a skin, Material or Grain change.
+  initMetalMaterial();
   const vinyl = mountVinyl(art, '<span class="np__art-glyph" aria-hidden="true">♪</span>');
   vinyl.suspend(true); // the panel starts hidden
 

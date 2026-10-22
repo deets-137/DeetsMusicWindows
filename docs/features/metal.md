@@ -1,8 +1,8 @@
 ---
 status: built
 desk_test: passed 2026-10-20
-sources: [src/styles/skin.css, src/styles/themes.css, src/styles.css, src/look-ids.ts, src/metal.ts, src/skin-settings.ts, src/vinyl.ts, src/settings-card.ts]
-updated: 2026-10-20
+sources: [src/styles/skin.css, src/styles/themes.css, src/styles.css, src/look-ids.ts, src/metal.ts, src/skin-settings.ts, src/vinyl.ts, src/settings-card.ts, src/full-player.ts, src/full-player-layout.ts, src/drum.ts]
+updated: 2026-10-21
 ---
 # Metal — a brushed-metal skin, and the token cleanup it needs
 
@@ -647,7 +647,7 @@ refilled side slot shows a 6–8 px bare edge for one frame on a Next.
 **Efficiency (2026-10-20, his ask).** A scripted scroll in the Settings card dropped ~23 % of its
 frames at 244 Hz under Metal, 0 % under Vanilla, and 0 % with Metal's paint off; no one layer
 alone was the cause. The textures are now baked once into PNG bitmaps at the screen's density
-(`bake` in metal.ts; the SVG stays the paint until the bitmap is ready or if the canvas refuses
+(`bake` in metal-material.ts since 2026-10-21, metal.ts before; the SVG stays the paint until the bitmap is ready or if the canvas refuses
 it; a move to a screen of another density bakes again): ~6–10 % dropped, pixel-identical to the
 SVG (a still compared at 0 difference). What is left is the blend modes (~5 points: with them
 off for a test, ~2–3 %). Taking that out means baking each theme's colors into the bitmaps and
@@ -662,11 +662,36 @@ above.
 - Core app (not Metal): the ~75 ms from a press to the first motion is the song change itself;
   the toggle rows' dot switch; the thumbwheel's 2 px from the mute button; the window buttons.
 - The texture under software drawing stays on (only the 3D turn is in the fallback); measure
-  on WARP before adding a texture-off value (a new choice is his call).
+  on WARP before adding a texture-off value (a new choice is his call). **BUILT 2026-10-21 (his
+  ask), no new choice:** in software drawing, with *If graphics fail* on its default (Save,
+  the rule that turns heavy effects off), the material is not drawn and Metal's flat colors
+  stay. `gateMaterial` (metal-material.ts), wired in main.ts from gpu.ts's new
+  `softwareDrawing` / `onGraphicsChange` (not from metal.ts: that pulled gpu.ts into the web
+  rooms port, `tests/web-commands.test.ts`). Not measured on WARP.
+- **The blends, BUILT 2026-10-21 (his ask: "cache textures … since it's quite static"):** each
+  surface's texture is baked against its own color into a tint (white or black at the alpha the
+  overlay would lighten or darken by), laid on with no blend mode: the plate (`--metal`), the
+  floor (`--metal-floor`), the controls (`--surface`), as `--metal-tex-panel` / `-floor` /
+  `-control` under `[data-metal-baked]` (skin.css, after Acrylic). Baked again on a theme,
+  material, grain or screen change, cached per color; the overlay stays until the bake is
+  ready or if it fails. The Play button's gold keeps its overlay (the album's ink can change
+  it per song). Read on his dev app: baked, every card's and control's blend `normal`. His look
+  passed 2026-10-21 ("Tested and verified"). Not measured: the scroll's dropped frames.
 - The tray panel shows Metal without the texture (only the main window draws it); the extension
   copy is untouched (`extension/scripts/pack.cjs --styles-only` would rewrite its hand-made
-  Metal block).
-- Show cover = Playlist or a station: both side slots stay empty on the 5:4 stage.
+  Metal block). **The tray, BUILT 2026-10-21:** the material moved to its own module,
+  `src/metal-material.ts` (`initMetalMaterial`: the textures, the bake, the redraw on a skin,
+  Material or Grain change and a screen move); metal.ts starts it in the main window and tray.ts
+  in the panel's window, without the side covers' queue code. His look passed. **The
+  extension, closed 2026-10-21:** its copy had no hand-made Metal block any more (re-synced in
+  `fd1016e`); it differed only by this evening's edits, and `pack.cjs --styles-only` brought
+  all four sheets level with the app's.
+- Show cover = Playlist or a station: both side slots stay empty on the 5:4 stage. **His call
+  2026-10-21: blank plates. BUILT:** a slot with no neighbor to show (a playlist's own cover, a
+  station's next song, the end of the queue) is a blank sleeve, the brushed control plate with
+  no picture, dimmed and turned as a side cover (`data-blank`, metal.ts `paint`; styles.css). A
+  picture still loading or failed stays hidden (`data-empty`), so no blank flashes before it.
+  His look passed ("Tested and verified").
 - **Sepia as brushed brass: his call, BUILT 2026-10-20.** Light parchment read as wood or kraft
   paper under the brush. One block, `[data-skin="metal"][data-theme="sepia"]` in themes.css (the
   pattern of Black & Yellow's gold): `color-scheme: dark` (every light-dark() value Metal reads
@@ -689,6 +714,214 @@ above.
   The last runs: 0 failure groups in all six looks (`shots/readability/0.30.0-metal-brass-6`
   and `-7`); toasts measured mid-fade (12–21 % opacity) in earlier runs were capture timing.
 - Type: the reviewer's proposals are in F7 (§7).
+
+### 6.8 The full player with the peek (2026-10-21, his call A)
+
+> **Part:** built · 2026-10-21 · his look test on the dev app FAILED the same day (§6.8.1); to be fixed in an evening session
+
+**The fault (0.31.0, on live).** In the full player the cover was a tall strip under the title
+band and the transport, in all six themes. The stage's peek rule (`height: 80cqw; aspect-ratio:
+5 / 4`) comes after the full player's square rule at the same weight and won; `80cqw` read the
+wide middle card, not the square (the box was ~750 × 950 at 1800 × 900). Found while redoing the
+site's screenshots (DeetsSolutions `docs/deetsmusic-page-pass.md`).
+
+**His call (2026-10-21):** keep the peek in the full player; size the box from the square; the
+title band and the controls match the cover's width. (C, no peek in the full player, was the
+other option; B, the box inside the square, was dropped: a smaller cover and the band wider
+than it on both sides.)
+
+**As built.**
+- The full player's grid square is the cover, as in every skin, so the band, the scrubber, the
+  times and both control rows keep its width with no rule of their own. The 5:4 box is drawn
+  around it: `width: 100% / --metal-peek-cover-w`, `height: 100% / --metal-peek-cover-h`,
+  centered, so the inset lands the cover on the square (styles.css, after the peek rules).
+- `--metal-peek-cover-w` (0.72) and `-h` (0.9) are the one source: `--metal-peek-cover-inset` is
+  now derived from them (skin.css; both in the public layer's reset list).
+- A new base token, `--fp-cover-share` (1): the most of the card's width the cover may take.
+  Metal's peek in Max sets it to the cover share, so the side covers fit in the card. The full
+  player's `--fp-side` reads it, and full-player.ts reads it for the stacked height
+  (`stackNow`), the rows' place (`rowsPlace`, a new pure `coverSide`) and the History room check.
+  Each read falls back to 1, so a look with Metal's material but not its tokens (a mod) lays out
+  as every other skin.
+- A look change at the same size (Peek on or off, Cover change, the skin) lays out again: a
+  watch on `<html>` compares the share with the one the layout was measured with
+  (`measuredShare`); during the open's motion or its cover preload it waits for the landing
+  check (`resizedInMotion`).
+- The large cover file is asked at the cover's width, not the box's (it was 1.39 × too large).
+
+**Measured (demo, 2026-10-21).** Cover square and the band at its width at 1800 × 900 (673 px),
+1100 × 950 (503), 900 × 1400 stacked (612; the player 775 px tall, Glass 1013), 2400 × 900 (673)
+and 1000 × 720 (431, nothing overflows, the scrubber's top edge takes the click). Glass
+unchanged at the same sizes. Lists: `docs/ops/checks/metal-full-player.json` and
+`metal-full-player-motion.json` (open and close with a frame sampler, rapid open/close,
+Next/Back inside the player, Metal → Glass → Metal and Peek off/on while open, a resize through
+the stacked layout, Peek off mid-flight, the small window, the material-only look, reduced
+motion): every `expect` holds.
+
+**The break-it pass:** three Sonnet agents, 45 scenarios. Fixed from it: the share changed during
+the open's wait or flight (all three lenses), a surface change racing the close (the size watch
+already takes it), the cover file size, the material-only look. Not real: a minimum-size clash
+(the full player's rule sets `min-width: 0`), a History flicker at the threshold (its room is
+measured without the column).
+
+**Timing and the motion monitor** (DESK-TESTS.md §6.6 steps 3–5, the demo in headless Edge, so
+the counts compare runs and are not the real rate). The open's frames and gaps match Glass and
+Metal 0.31.0 (the largest gap 105–129 ms at the open's measure in all three). The monitor's hits
+in Metal are the same parts as Glass's (the flight, the 4 px row rise; the designed hits are
+part 2a of `docs/ops/checks/README.md`).
+
+**Noted, older than this change (his to decide):**
+- After Next then Back to the first song, the previous side cover stays empty (the Max stage
+  too, with the player closed; at the start it was filled). **Closed 2026-10-21: demo only.**
+  It came from the demo's rapid case (`mfpm-next-back`, presses 250 ms apart, the demo's fake
+  MusicKit). On his dev app he pressed Next, Back, Next, Back fast in Max: both side covers
+  filled (his word), and a read of the slots agreed (both painted, none waiting). The queue's
+  history (`previous()` pops what `advance()` pushed) and the slot code were read and hold.
+- Metal's close has a long task of about 120 ms (Metal 0.31.0 too; Glass 58 ms). **Closed
+  2026-10-21: demo only.** On his dev app (WebView2, Max, 1080 × 950) three closes gave one
+  long task of 50 ms (the threshold) and then none; the profile is style and layout
+  ("(program)" 38 %) with no Metal function in the top list. The 120 ms was headless Edge.
+- **The Queue list's box at the close, read on his dev app (2026-10-21):** in both closes the
+  list keeps its full height (717 px) while it rides down with the card's top edge (208 → 718),
+  then takes its resting height (207 px) in the last frame (~272 ms). The top never jumps; the
+  cut is at the bottom, past the card's clip. Visible only if the Queue's scrollbar thumb
+  changes size in that frame: his eye decides. **His idea, BUILT the same evening:** "It could
+  animate extending and shrinking?" `queueRise` (full-player.ts) animates the list's
+  `max-height` from the visible card height at one end to the other, with the slide's timing,
+  so the thumb grows on the open and shrinks on the close (every skin; the Queue motion is
+  shared). Read on his dev app: 717 → 399 → 248 → 217 → 207 px down the close, the largest step
+  71 px in the first frames (the ease), no jump at the end (510 px in one frame before). His
+  look passed the same evening ("Looks good").
+- The side covers are not in the open's flight (the flight copies the cover only), so they
+  appear as it lands; the same before. **Built 2026-10-21:** `makeFlight`
+  (full-player.ts) copies the side slots into the flying box with the cover, open and close,
+  and `sizeDrum` (metal.ts, now exported) sets the copy's drum depth for the full size, since the
+  real box's resize watch has not run yet. No break-it pass (his call: he verifies it himself).
+  His check passed the same evening ("Works").
+- The monitor's one Metal-only hit, the Queue list's box 42 → 17 px in one frame at the end of
+  the close (landscape), is on the branch head without this change: the Queue slide and clip
+  commits after 0.31.0 (`78fa67c`, `f472d85`, `2c1ef97`), not the peek.
+
+**Open:** the same run on the dev app (WebView2 on the card) at his window sizes
+(`smooth.mjs --dev`, then the motion list with `"source": "dev"`): the dev app was in another
+driver's hands during this sitting. The fix ships with the next release; until then the site's
+demo (0.31.0) still shows the strip, while its six Metal pictures show the fix.
+
+#### 6.8.1 His report (2026-10-21, the dev app): "a little weird", "we regressed"
+
+> **Part:** closed · 2026-10-21 · fixed the same evening by §6.8.2 and §6.8.3, his hand test passed
+
+He looked at the fix on his dev app, Black & Yellow, Max full player, and compared it with the
+live app (0.31.0) side by side. His words: "That looks a little weird and now I feel like we
+regressed." What his screenshots show:
+
+1. **Wedges above and below the cover (his red boxes).** Grey and blue triangles stick out past
+   the cover's top and bottom edges, near the middle of the cover. They are the side covers'
+   inner edges: turned toward the viewer on the drum, they come out taller than the cover. This
+   is the same fault as the crop note in §6.7 ("a side cover's inner edge, turned toward you,
+   grew past them … clearest in the full player"). That fix set the side covers deeper on the
+   drum (`--metal-drum-back`) and took the crop away.
+   **The likely cause (read, not measured):** the drum's perspective is a fixed
+   `--zoetrope-perspective: 900px` (skin.css; `--metal-perspective` uses it). The depth was tuned
+   on the stage's cover (about 400 px). The full player's cover is now 600–750 px, so the same
+   900 px gives a much stronger perspective, and the inner edge comes out taller than the
+   cover. The demo checks did not catch it: they measured the cover and the band, never the
+   side covers' painted edges against the cover's top and bottom.
+2. **Live looked better to him (the top of screenshot 2).** On live, at his window, the 0.31.0
+   rule happened to give a near-5:4 box. The cover is smaller, the side covers show more, and
+   the title band and controls run wider than the cover. With the fix, the cover is larger,
+   the band and controls are at the cover's width, and the side covers are thinner slivers.
+   His call A (§6.8) chose the band at the cover's width. Whether the bigger cover with thin
+   side covers is the regression he means, or only the wedges, is **his to say**: ask him first
+   in the evening session, with live and the fix side by side at his window size.
+3. The Plays badge (`3.6K Plays · 1.2K Listeners`) sits over the band's lower right corner on
+   both. It is not new; check it in the same pass.
+
+**His answer (2026-10-21, later the same day), what the regression is:** "the previous / next
+albums not being as visible + the UI being smaller within the bigger card leaving more empty
+space perceptually." So it is not only the wedges. Two things: the side covers show too little,
+and the band and controls at the cover's width leave the card looking empty around them. Both
+come from his call A (the cover from the square, the band at its width), so the fix reopens
+part of call A: bring him the fork with live and the fix side by side. The wedges (item 1) stay
+a fault to fix in any option.
+
+#### 6.8.2 The drum's perspective grows with the cover (2026-10-21)
+
+> **Part:** built · 2026-10-21 · his hand test passed the same evening ("Perfect")
+
+**The cause, measured.** On his dev app's stage (a 226 px cover), the side covers show 14–15 px
+past the cover, and the transform's math gives 15. The same math with the fixed 900 px
+perspective on the full player's 673 px cover gives 9 px past it (1.4 % of the cover, 6 % on
+the stage), and the side covers' inner edges come out 2.4 % taller than the cover: the wedges.
+A strong perspective on a large cover pushes the outer edges back (thin slivers) and brings
+the inner edges forward (wedges). This was the first half of his "not as visible".
+
+**The fix (one option, no fork):** the perspective is at least 2.25 × the cover's width
+(900 / 400, the stage cover the drum was tuned on), so every cover larger than 400 px keeps the
+400 px shape: no wedge, and the side covers past the cover by the same share. A cover of 400 px
+or less is unchanged (his stage today: 900 px, the same boxes, read on the dev app). The crop
+was dropped: it hides more of the side covers, the opposite of what he asked.
+- `src/drum.ts` (pure): `drumPerspective(base, perCover, coverW)`, `drumBack(P, scale)`;
+  `tests/drum.test.ts` holds the projection (no wedge at 400, 673 and 1000 px; the same peek;
+  his stage's 15 px).
+- `--zoetrope-perspective-per-cover: 2.25` (skin.css base; 0 = the fixed perspective).
+- metal.ts sets `--metal-perspective` and `--metal-drum-back` on each cover box from the
+  side slot's width (a ResizeObserver, after layout and before paint); vinyl.ts's turn and
+  metal.ts's push-off use the same rule, so a cover still lands exactly on its slot.
+- `metal-full-player.json` gained a `drum` probe on each size (`noWedge`, `peekAsStage`). Not
+  run (his call: he hand tests).
+
+**What Claude decided inside the fix:** the 400 px reference (the doc's "about 400 px", not
+measured on his screen); the push-off depth (140 px at the tuned size) scales with the drum.
+
+#### 6.8.3 The title block under the cover (2026-10-21, his ask)
+
+> **Part:** built · 2026-10-21 · his hand test passed the same evening ("Perfect")
+
+**The band width (his call, 2026-10-21, after the test):** "band width is good as tested". His
+call A stands: the band and the controls keep the cover's width. The regression of §6.8.1 is
+closed by §6.8.2 and §6.8.3.
+
+**His words:** "move the album title and artist off the cover in metal and move below";
+"specifically in metal".
+
+**As built.** In Metal's full player (Midi and Max), the title, artist and album leave the band
+on the cover for their own row under it; the scrubber, the times, the transport and the volume
+follow under them. There is no band any more in Metal's full player.
+- A base token, `--fp-meta-below` (0; Metal 1, skin.css). full-player.ts reads it
+  (`metaBelow`), measures the title block with the controls (one row more in
+  `--fp-controls-h`, so the cover gives up its height in the CSS's `--fp-side`), and keeps the
+  rows below in every size: the pure `rowsPlace` takes `metaBelow` (a test). The card wears
+  `data-np-meta-below` while the layout says so; the close takes it off.
+- styles.css: the title block in grid row 2, no band (`::before` none), no band padding, and the
+  card's own inks again (`inherit`, so album-color.ts's values on `.np` hold).
+- The Plays badge sits in the title block's own column, so it is off the cover too (the §6.8.1
+  item 3 overlap is gone in Metal).
+- A look change while the player is open (Metal to another skin) lays out again, as the cover
+  share does (the watch compares both); the move snaps, with no slide.
+
+**His report and ask (later the same evening):** the title sometimes sat on the cover again
+until a hard refresh, and "Can we have zoetrope on = album title artist below like we discussed
+earlier?" Both BUILT:
+- The cause: when the large cover was not in memory, the open turned the layout off while it
+  loaded (`apply(false)`), which took `data-np-meta-below` off, and `apply(true)` did not put it
+  back. `apply(true)` now sets it from the measure. It showed only when the picture was not
+  cached, so it came and went.
+- The rule follows Cover change: `--fp-meta-below: 1` sits on
+  `[data-skin="metal"][data-metal-cover="zoetrope"]`, not on all of Metal. With Cover change on
+  another value the title block is on the band, as in every skin. The open player's look watch
+  now takes `data-metal-cover` too, so the row change applies at once.
+
+**What Claude decided inside his ask:** Midi too (he said Metal, not Max); always below, even
+where the controls fit on the band before (his "off the cover"); no band behind the text
+under the cover (it was there only to read over a picture); the change snaps on a look change.
+
+**For the evening session:** reproduce on the dev app at his window (Black & Yellow, Max, the
+full player open). Measure the side covers' painted top and bottom against the cover's (a rAF
+probe on `.metal-peek` boxes, or crops of the frames). The fix options to bring him: a
+perspective that scales with the cover (from the box's size) in place of the fixed 900 px, or
+the crop back (clip the box to the cover's top and bottom). Add a probe with an `expect` for
+the wedges to `docs/ops/checks/metal-full-player.json`, so it cannot pass again unseen.
 
 ## 7. Forks (all his)
 

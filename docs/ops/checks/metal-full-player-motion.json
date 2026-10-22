@@ -1,0 +1,123 @@
+{
+  "about": "Metal's full player with the peek (his call A, 2026-10-21; metal.md §6.8): the motion cases of DESK-TESTS.md §6.6 step 2 on the web demo at 1800 × 900 (the dev app was in use by another driver). Open and close, rapid open/close, Next/Back inside the player, a skin change and the Peek row while open, a resize through the stacked layout, reduced motion. A rAF sampler counts frames where the cover is not square or its box is not 5:4 (expect 0); each case ends with the geometry probe.",
+  "desk_test": "docs/features/metal.md §6.8",
+  "made": "2026-10-21",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/metal-full-player-motion.json --look lilac-metal",
+  "pass": "Every expect holds; read the open and close strips by time for a jump of the cover box or a doubled cover.",
+  "shots": [
+    { "id": "mfpm-warm", "about": "A warm-up: the first shot of a run in the app repo can time out on its page load while the demo server compiles (2026-10-21). Its result does not count.",
+      "kind": "picture", "source": "demo", "size": "max", "steps": [{ "wait": 500 }] },
+    { "id": "mfpm-open-close", "about": "Open by the Compass, close by the close square; the sampler runs through both flights.",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 7,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "eval": "window.__mfp = { bad: 0, n: 0, layers: 0, on: true }; (function tick() { const a = document.querySelector('[data-slot=\"np\"] .np__art'); const v = a && a.querySelector(':scope > .vinyl:not(.vinyl--out)'); if (a && v) { const r = a.getBoundingClientRect(), q = v.getBoundingClientRect(); __mfp.n++; const peek = document.documentElement.dataset.metalPeek !== undefined; if (Math.abs(q.width - q.height) > 3 || (peek && Math.abs(r.width / r.height - 1.25) > 0.03)) __mfp.bad++; if (a.querySelectorAll(':scope > .vinyl').length > 2) __mfp.layers++; } if (__mfp.on) requestAnimationFrame(tick); })();" },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter", "frames": 60, "region": "[data-slot=\"np\"]" }, { "wait": 2000 },
+        { "click": "[data-slot=\"np\"] .np__close", "frames": 60, "region": "[data-slot=\"np\"]" }, { "wait": 1500 },
+        { "probe": "(() => { __mfp.on = false; return { bad: __mfp.bad, layers: __mfp.layers, sampled: __mfp.n > 30, closed: !document.querySelector('.bento[data-player=\"full\"]') }; })()",
+          "expect": { "bad": 0, "layers": 0, "sampled": true, "closed": true } }
+      ] },
+    { "id": "mfpm-rapid", "about": "Open, close 250 ms later, open again 250 ms later: the last state wins and lands square.",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 6,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter", "frames": 90, "region": "[data-slot=\"np\"]" }, { "wait": 250 },
+        { "click": "[data-slot=\"np\"] .np__close" }, { "wait": 250 },
+        { "key": "Ctrl+Space" }, { "wait": 300 }, { "type": "full player", "delay": 20 }, { "wait": 200 },
+        { "key": "Enter" }, { "wait": 2500 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); if (!p) return { open: false }; const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), a = q('.np__art'), m = q('.np__meta') || q('.np__center'), c = p.getBoundingClientRect(); return { open: true, coverSquare: !!v && Math.abs(v.width - v.height) < 2, bandMatchesCover: !!(v && m) && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2, boxInCard: !!a && a.left >= c.left - 1 && a.right <= c.right + 1, box54: !!a && Math.abs(a.width / a.height - 1.25) < 0.02 }; })()",
+          "expect": { "open": true, "coverSquare": true, "bandMatchesCover": true, "boxInCard": true, "box54": true } }
+      ] },
+    { "id": "mfpm-next-back", "about": "Inside the open player: Next, Back, Next, Back 250 ms apart (the zoetrope turn), ending on the starting song.",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 7,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter" }, { "wait": 2000 },
+        { "probe": "({ title: document.querySelector('[data-slot=\"np\"] .np__title')?.textContent, sides: [...document.querySelectorAll('[data-slot=\"np\"] .np__art .metal-peek')].map((p) => p.dataset.side + (p.hasAttribute('data-empty') ? ':empty' : ':filled')) })", "name": "start" },
+        { "eval": "window.__mfp = { bad: 0, n: 0, on: true }; (function tick() { const a = document.querySelector('[data-slot=\"np\"] .np__art'); if (a) { const r = a.getBoundingClientRect(); __mfp.n++; if (Math.abs(r.width / r.height - 1.25) > 0.03) __mfp.bad++; } if (__mfp.on) requestAnimationFrame(tick); })();" },
+        { "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type", "frames": 120, "region": "[data-slot=\"np\"] .np__art" }, { "wait": 250 },
+        { "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play)" }, { "wait": 250 },
+        { "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play):last-of-type" }, { "wait": 250 },
+        { "click": "[data-slot=\"np\"] .np__btn:not(.np__btn--play)" }, { "wait": 2500 },
+        { "probe": "(() => { __mfp.on = false; const a = document.querySelector('[data-slot=\"np\"] .np__art'); return { bad: __mfp.bad, layers: a.querySelectorAll(':scope > .vinyl').length, sides: [...a.querySelectorAll('.metal-peek')].map((p) => p.dataset.side + (p.hasAttribute('data-empty') ? ':empty' : ':filled')), title: document.querySelector('[data-slot=\"np\"] .np__title')?.textContent }; })()",
+          "expect": { "bad": 0, "layers": 1 } }
+      ] },
+    { "id": "mfpm-skin-peek", "about": "While open: Metal → Glass → Metal (pickLook, as the look menu), then Peek off and on (the Settings row's key). The layout follows each change at the same window size.",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 9,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter" }, { "wait": 2000 },
+        { "eval": "window.__geo = () => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), a = q('.np__art'), m = q('.np__meta') || q('.np__center'); return { skin: document.documentElement.dataset.skin, peek: document.documentElement.dataset.metalPeek !== undefined, cover: Math.round(v.width), box: [Math.round(a.width), Math.round(a.height)], coverSquare: Math.abs(v.width - v.height) < 2, bandMatchesCover: !!m && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2, stackH: getComputedStyle(document.querySelector('.bento')).getPropertyValue('--fp-stack-h').trim(), rows: p.dataset.npRows }; };" },
+        { "probe": "__geo()", "name": "metal", "expect": { "skin": "metal", "peek": true, "coverSquare": true, "bandMatchesCover": true } },
+        { "eval": "import('/src/look.ts').then((m) => m.pickLook({ skin: 'glass' }))", "frames": 60, "region": "[data-slot=\"np\"]" }, { "wait": 1800 },
+        { "probe": "__geo()", "name": "glass", "expect": { "skin": "glass", "coverSquare": true, "bandMatchesCover": true } },
+        { "eval": "import('/src/look.ts').then((m) => m.pickLook({ skin: 'metal' }))" }, { "wait": 1800 },
+        { "probe": "__geo()", "name": "metal again", "expect": { "skin": "metal", "peek": true, "coverSquare": true, "bandMatchesCover": true } },
+        { "eval": "import('/src/settings-store.ts').then((m) => m.setSetting('metalPeek', false))" }, { "wait": 1200 },
+        { "probe": "__geo()", "name": "peek off", "expect": { "skin": "metal", "peek": false, "coverSquare": true, "bandMatchesCover": true } },
+        { "eval": "import('/src/settings-store.ts').then((m) => m.setSetting('metalPeek', true))" }, { "wait": 1200 },
+        { "probe": "__geo()", "name": "peek on", "expect": { "skin": "metal", "peek": true, "coverSquare": true, "bandMatchesCover": true } }
+      ] },
+    { "id": "mfpm-resize", "about": "While open: 1800 × 900 → 1100 × 950 → 900 × 1400 (stacked) → 1800 × 900, each over 400 ms; the cover stays square and the band its width at each stop.",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 10,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter" }, { "wait": 2000 },
+        { "eval": "window.__geo = () => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), a = q('.np__art'), m = q('.np__meta') || q('.np__center'), c = p.getBoundingClientRect(); return { cover: Math.round(v.width), coverSquare: Math.abs(v.width - v.height) < 2, bandMatchesCover: !!m && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2, boxInCard: a.left >= c.left - 1 && a.right <= c.right + 1, stack: !!document.querySelector('[data-fp-stack]'), rows: p.dataset.npRows }; };" },
+        { "resize": [1100, 950], "over": 400, "steps": 8 }, { "wait": 1500 },
+        { "probe": "__geo()", "name": "1100x950", "expect": { "coverSquare": true, "bandMatchesCover": true, "boxInCard": true } },
+        { "resize": [900, 1400], "over": 400, "steps": 8 }, { "wait": 1500 },
+        { "probe": "__geo()", "name": "900x1400", "expect": { "coverSquare": true, "bandMatchesCover": true, "boxInCard": true, "stack": true } },
+        { "resize": [1800, 900], "over": 400, "steps": 8 }, { "wait": 1500 },
+        { "probe": "__geo()", "name": "1800x900", "expect": { "coverSquare": true, "bandMatchesCover": true, "boxInCard": true, "stack": false } }
+      ] },
+    { "id": "mfpm-share-midflight", "about": "Break-it (all three lenses): Peek turned off 150 ms into the open's flight. The layout must follow it after the landing (the landing check), not stay measured with the peek.",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 6,
+      "steps": [
+        { "resize": [1100, 950], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter", "frames": 90, "region": "[data-slot=\"np\"]" }, { "wait": 150 },
+        { "eval": "import('/src/settings-store.ts').then((m) => m.setSetting('metalPeek', false))" }, { "wait": 2500 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), m = q('.np__meta') || q('.np__center'), np = q('.np'); const side = Math.min(np.width, np.height); return { peek: document.documentElement.dataset.metalPeek !== undefined, coverSquare: Math.abs(v.width - v.height) < 2, bandMatchesCover: !!m && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2, coverNotCapped: v.width > np.width * 0.8, rows: p.dataset.npRows }; })()",
+          "expect": { "peek": false, "coverSquare": true, "bandMatchesCover": true, "coverNotCapped": true } },
+        { "eval": "import('/src/settings-store.ts').then((m) => m.setSetting('metalPeek', true))" }, { "wait": 1200 }
+      ] },
+    { "id": "mfpm-small", "about": "Break-it (neighbors): a small Max window, 1000 × 720 (760 × 640 is Midi). The controls fit the narrower cover, and the scrubber's top edge takes the click, not the taller cover box.",
+      "kind": "picture", "source": "demo", "size": "max", "window": true,
+      "steps": [
+        { "resize": [1000, 720], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter" }, { "wait": 2500 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); if (!p) return { open: false }; const q = (s) => p.querySelector(s); const v = q('.np__art > .vinyl').getBoundingClientRect(), s = q('.np__scrub').getBoundingClientRect(); const over = [...p.querySelectorAll('.np__bottom, .np__vol, .np__times, .np__scrub')].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className); const hit = document.elementFromPoint(s.left + s.width / 2, s.top + 2); return { open: true, surface: document.documentElement.dataset.surface, cover: Math.round(v.width), rows: p.dataset.npRows, overflow: over, scrubTakesTopEdge: !!hit && !!hit.closest('.np__scrub'), npFits: q('.np').scrollHeight <= q('.np').clientHeight + 1 }; })()",
+          "expect": { "open": true, "surface": "max", "overflow": [], "scrubTakesTopEdge": true, "npFits": true } }
+      ] },
+    { "id": "mfpm-hook-only", "about": "Break-it (neighbors, mods.md §10): a look with Metal's material and the peek attribute but not Metal's tokens (Glass with the hook set by hand). The full player keeps its square grid (the fallbacks), CSS and full-player.ts agree on share 1.",
+      "kind": "picture", "source": "demo", "size": "max", "window": true,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "eval": "import('/src/look.ts').then((m) => m.pickLook({ skin: 'glass' }))" }, { "wait": 1500 },
+        { "eval": "document.documentElement.dataset.hookMaterial = 'metal'; document.documentElement.dataset.metalPeek = '';" }, { "wait": 300 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter" }, { "wait": 2500 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const np = p.querySelector('.np'); const v = p.querySelector('.np__art > .vinyl').getBoundingClientRect(); return { share: getComputedStyle(document.documentElement).getPropertyValue('--fp-cover-share').trim(), cols: getComputedStyle(np).gridTemplateColumns !== 'none', coverSquare: Math.abs(v.width - v.height) < 2, cover: Math.round(v.width) }; })()",
+          "expect": { "share": "1", "cols": true, "coverSquare": true } },
+        { "eval": "delete document.documentElement.dataset.hookMaterial; delete document.documentElement.dataset.metalPeek;" }
+      ] },
+    { "id": "mfpm-reduced", "about": "Reduced motion: open and close land at once and square.",
+      "kind": "clip", "source": "demo", "size": "max", "window": true, "seconds": 5,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "reducedMotion": true }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 30 }, { "wait": 300 },
+        { "key": "Enter", "frames": 30, "region": "[data-slot=\"np\"]" }, { "wait": 1200 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), m = q('.np__meta') || q('.np__center'); return { coverSquare: Math.abs(v.width - v.height) < 2, bandMatchesCover: !!m && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2 }; })()",
+          "expect": { "coverSquare": true, "bandMatchesCover": true } },
+        { "click": "[data-slot=\"np\"] .np__close" }, { "wait": 1000 },
+        { "reducedMotion": false }
+      ] }
+  ]
+}

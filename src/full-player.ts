@@ -33,11 +33,12 @@ import { TELEMETRY } from "./telemetry-on";
 import { registerAction, registerFact } from "./rules";
 import { refreshPlayerState } from "./player";
 import { setFullArtPx, stageArtPx } from "./queue-rows";
-import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight, type Box, type RowsPlace } from "./full-player-layout";
+import { rowsPlace, coverSide, fullArtPx, fullClipFrom, flightFrom, stillCutRight, type Box, type RowsPlace } from "./full-player-layout";
 import {
   clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, stageGapShared, type Slot,
 } from "./card-grow";
 import { motionReduced } from "./motion";
+import { sizeDrum } from "./metal";
 
 interface Opts {
   hosts: Record<Slot, HTMLElement | null>;
@@ -55,6 +56,9 @@ let busy = false; // a motion is on screen, or the open waits for the large cove
 let gen = 0; // bumps on every open and close: a wait that comes back late knows it is stale
 let artPx = 0; // the cover file size asked for while full (a 200 px bucket)
 let watch: ResizeObserver | null = null;
+let shareWatch: MutationObserver | null = null; // the look's cover share (Metal's peek) changes the layout at the same size
+let measuredShare = 1; // the cover share the last layout was measured with (layoutNow)
+let measuredMeta = false; // the title block's place the last layout was measured with (layoutNow)
 let slideGen = 0; // bumps on every rows slide: only the newest one ends is-rows-sliding
 let wantHistory = false; // the open's measure: the side column shows (Max)
 let resizedInMotion = false; // a resize during the open changed the layout: check it after the landing
@@ -101,6 +105,10 @@ function motion(): Motion | null {
   return { dur, ease, rowsAt, collapseDur: tokenMs("--player-collapse-dur") || dur };
 }
 const pxToken = (name: string): number => parseFloat(getComputedStyle(root).getPropertyValue(name)) || 0;
+/** The cover's most share of the card's width (--fp-cover-share; Metal's peek, 0.72). */
+const coverShare = (): number => pxToken("--fp-cover-share") || 1;
+/** The title, artist and album under the cover, never on it (--fp-meta-below; Metal). */
+const metaBelow = (): boolean => pxToken("--fp-meta-below") > 0;
 
 // ── the parts ───────────────────────────────────────────────────────────────────
 const npHost = (): HTMLElement | null => opts?.hosts.np ?? null;
@@ -140,7 +148,7 @@ function stackNow(panel: HTMLElement, controlsH: number, gap: number): { on: boo
   const px = (v: string) => parseFloat(v) || 0;
   const boxW = px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth);
   const boxH = px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
-  const h = Math.ceil(b.width - boxW + gap + controlsH + boxH);
+  const h = Math.ceil(coverSide(b.width - boxW, Infinity, measuredShare) + gap + controlsH + boxH);
   const band = pxToken("--full-stack-band");
   const tall = stack ? window.innerHeight > window.innerWidth - band : window.innerHeight > window.innerWidth + band;
   return { on: tall && b.height - h - pxToken("--panel-gap") >= pxToken("--full-stack-room"), h };
@@ -169,24 +177,34 @@ const midiCards = (): HTMLElement[] =>
 function layoutNow(panel: HTMLElement): Layout {
   const np = npOf(panel);
   if (!np) return { place: "over", history: false, stack: false, stackH: 0 };
+  measuredShare = coverShare();
+  measuredMeta = metaBelow();
+  // The CSS reads the place from the card (styles.css, the full player's rows below); it applies
+  // only with the rows below, so the measure on the band below is not touched by it.
+  panel.toggleAttribute("data-np-meta-below", measuredMeta);
   const r = rect(np);
   const w = r.width + historyRoom();
+  const gap = parseFloat(getComputedStyle(np).rowGap) || 0;
   const was = panel.dataset.npRows;
   panel.dataset.npRows = "over";
   const scrub = panel.querySelector<HTMLElement>(".np__scrub");
   const vol = panel.querySelector<HTMLElement>(".np__vol");
-  const h = scrub && vol ? rect(vol).bottom - rect(scrub).top : Infinity;
+  const meta = panel.querySelector<HTMLElement>(".np__meta");
+  // With the title block under the cover, it is one more row of the controls' height.
+  const metaH = measuredMeta && meta ? rect(meta).height + gap : 0;
+  const h = scrub && vol ? rect(vol).bottom - rect(scrub).top + metaH : Infinity;
   if (was) panel.dataset.npRows = was;
   else delete panel.dataset.npRows;
   if (Number.isFinite(h)) panel.style.setProperty("--fp-controls-h", `${h}px`);
-  const gap = parseFloat(getComputedStyle(np).rowGap) || 0;
   // Stacked: the controls are under the cover by construction, and Max shows its side column
   // in the band beside the Queue whatever the width.
   const st = stackNow(panel, h, gap);
   if (st.on) return { place: "below", history: surfaceNow() === "max" && !!opts?.mountSide, stack: true, stackH: st.h };
-  const place = rowsPlace(w, r.height, pxToken("--full-wide-w"), h, gap);
-  const side = place === "below" ? Math.min(w, r.height - h - gap) : Math.min(w, r.height);
-  const history = surfaceNow() === "max" && !!opts?.mountSide && w - pxToken("--full-history-w") - pxToken("--panel-gap") >= side;
+  const share = measuredShare;
+  const place = rowsPlace(w, r.height, pxToken("--full-wide-w"), h, gap, share, measuredMeta);
+  const side = coverSide(w, place === "below" ? r.height - h - gap : r.height, share);
+  // The column shows when the card beside it still gives the cover the same side.
+  const history = surfaceNow() === "max" && !!opts?.mountSide && coverSide(w - pxToken("--full-history-w") - pxToken("--panel-gap"), Infinity, share) >= side;
   return { place, history, stack: false, stackH: st.h };
 }
 
@@ -407,10 +425,17 @@ function apply(on: boolean, place?: RowsPlace, row1?: number): void {
     fp().dataset.player = "full";
     fp().toggleAttribute("data-fp-stack", stack);
     if (panel && place) panel.dataset.npRows = place;
+    // The title block's place comes back with the layout: the open turns the layout off while
+    // the large cover loads, and the title fell back on the cover when it came on again (his
+    // report, 2026-10-21: "still seeing this sometimes").
+    if (panel) panel.toggleAttribute("data-np-meta-below", measuredMeta);
   } else {
     delete fp().dataset.player;
     fp().removeAttribute("data-fp-stack");
-    if (panel) delete panel.dataset.npRows;
+    if (panel) {
+      delete panel.dataset.npRows;
+      panel.removeAttribute("data-np-meta-below");
+    }
     opts?.bento.style.removeProperty("--player-row1");
   }
 }
@@ -471,6 +496,10 @@ function makeFlight(art: HTMLElement, at: DOMRect, src: string | null): HTMLElem
   }
   const img = disc.querySelector<HTMLImageElement>("img");
   if (img && src) img.src = src;
+  // Metal's side covers fly with the cover: the real box is hidden for the motion, so they
+  // appeared only as it landed (metal.md §6.8, 2026-10-21). Each slot is an empty box painted by its own
+  // attributes (--peek-art, data-side, data-empty), so a shallow copy is the whole slot.
+  art.querySelectorAll<HTMLElement>(":scope > .metal-peek").forEach((p) => fly.appendChild(p.cloneNode(false)));
   fly.appendChild(disc);
   // The place's record setting rides along: outside the card no rule gives the copy one.
   fly.style.setProperty("--vinyl", getComputedStyle(art).getPropertyValue("--vinyl").trim() || "0");
@@ -479,6 +508,9 @@ function makeFlight(art: HTMLElement, at: DOMRect, src: string | null): HTMLElem
   fly.style.width = `${at.width}px`;
   fly.style.height = `${at.height}px`;
   document.body.appendChild(fly);
+  // The copy is laid out at the full size now, before the real box's resize watch has run: its
+  // side covers take the drum depth for that size (metal.ts), not the copied resting one.
+  sizeDrum(fly);
   return fly;
 }
 const flyAnim = (fly: HTMLElement, from: Box, to: Box, dur: number, ease: string, reverse: boolean): Animation => {
@@ -733,10 +765,25 @@ function queueRise(queue: HTMLElement, rest: DOMRect, full: DOMRect, pad: number
   queue.style.transform = `translateY(var(${QUEUE_DY}))`;
   const a = queue.animate(back ? [up, low] : [low, up], { duration: dur, easing: ease, fill: "both" });
   a.id = "queue-rise";
+  // The list's own box follows the visible card (his ask, 2026-10-21): the card is laid out at
+  // the column's full height for the whole motion, so its scrollbar thumb was sized for that box
+  // and snapped to the resting size in the last frame. A max-height on the list, from the
+  // visible height at one end to the other, grows and shrinks the thumb with the edge. The list
+  // draws ~20 rows, so the layout per frame is small; it runs on the main thread with the slide.
+  const list = queue.querySelector<HTMLElement>(".qcard__list");
+  const anims = [a];
+  if (list) {
+    const at = (cardH: number) => `${Math.max(0, list.offsetHeight - (queue.offsetHeight - cardH))}px`;
+    const short = { maxHeight: at(rest.height) }, tall = { maxHeight: at(full.height) };
+    const b = list.animate(back ? [tall, short] : [short, tall], { duration: dur, easing: ease, fill: "both" });
+    b.id = "queue-rise";
+    anims.push(b);
+  }
   a.addEventListener("cancel", () => {
+    anims.forEach((x) => x !== a && x.cancel());
     if (!queue.getAnimations().some((x) => x.id === "queue-rise" && x !== a)) queue.style.removeProperty("transform");
   });
-  return [a];
+  return anims;
 }
 const QUEUE_DY = "--fp-queue-dy";
 let queueDyRegistered = false;
@@ -819,7 +866,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
     if (first.stackH > 0) opts?.bento.style.setProperty("--fp-stack-h", `${first.stackH}px`);
     const place = first.place;
     panel.dataset.npRows = place;
-    const box = rect(art).width;
+    const box = rect(art).width * coverShare(); // the cover's width: Metal's peek box is wider than its cover
     // Stacked in Max, the side card is part of the open (§14 N3): it mounts now, hidden, so the
     // motion carries no mount and nothing moves again after it lands.
     wantHistory = first.history;
@@ -1005,6 +1052,8 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
     covered.forEach(uncover);
     watch?.disconnect();
     watch = null;
+    shareWatch?.disconnect();
+    shareWatch = null;
     artPx = 0;
     setFullArtPx(0);
     // The cover goes back to the rest file (already in the cache), one frame after the layout
@@ -1146,6 +1195,20 @@ function watchSize(panel: HTMLElement): void {
     refit(panel);
   });
   watch.observe(np);
+  // A look change can change the cover's share (--fp-cover-share: Metal's peek on or off) or the
+  // title block's place (--fp-meta-below: Metal or not) with no change of size: lay out again
+  // when either differs from what the layout was measured with. During the open's motion the layout waits for the landing check (resizedInMotion);
+  // that covers a change during the cover's preload too, before this watch existed. A surface
+  // change resizes the card, so the size watch above takes it.
+  shareWatch?.disconnect();
+  const check = (): void => {
+    if (coverShare() === measuredShare && metaBelow() === measuredMeta) return;
+    if (busy) resizedInMotion = true;
+    else refit(panel);
+  };
+  shareWatch = new MutationObserver(check);
+  shareWatch.observe(root, { attributes: true, attributeFilter: ["data-skin", "data-hook-material", "data-metal-peek", "data-metal-cover"] });
+  check();
 }
 
 /** While full: put the rows and the History column where the card's size says. The open and
@@ -1165,7 +1228,7 @@ function refit(panel: HTMLElement): void {
   } else {
     setStack(stack, next.stackH); // the same layout: only the player's height follows the window
   }
-  if (art) askArt(rect(art).width);
+  if (art) askArt(rect(art).width * coverShare());
 }
 
 // ── the edge strips on Now Playing (§10) ────────────────────────────────────────

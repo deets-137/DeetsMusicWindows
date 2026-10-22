@@ -12,9 +12,9 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 
 | Tier | File | Count |
 |---|---|---|
-| Palette (raw paints) | palette.css | 74 |
-| Theme (color roles) | themes.css | 63 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 697 tokens · overrides: vanilla 4, press 69, ocean 45, glass 72, cyber 68, metal 65 |
+| Palette (raw paints) | palette.css | 83 |
+| Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 783 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 46 |
 
 ## Theme roles
 
@@ -69,6 +69,15 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--metal-cast` | `rgba(0, 0, 0, 0.16)` | — | its short cast shadow |
 | `--metal-sheen-hi` | `rgba(255, 255, 255, 0.38)` | — | the polished face on an accent fill |
 | `--metal-sheen-lo` | `rgba(0, 0, 0, 0.24)` | — |  |
+| `--sky-day` | `var(--paint-sky-day)` | — | The sky over a scene skin (Happy; scene.ts picks the part of the day and blends to the next). Top, then the horizon. A theme may tint its own; none does yet. |
+| `--sky-day-low` | `var(--paint-sky-day-low)` | — |  |
+| `--sky-dawn` | `var(--paint-sky-dawn)` | — |  |
+| `--sky-dawn-low` | `var(--paint-sky-dawn-low)` | — |  |
+| `--sky-dusk` | `var(--paint-sky-dusk)` | — |  |
+| `--sky-dusk-low` | `var(--paint-sky-dusk-low)` | — |  |
+| `--sky-night` | `var(--paint-sky-night)` | — |  |
+| `--sky-night-low` | `var(--paint-sky-night-low)` | — |  |
+| `--bubble-ink` | `var(--paint-bubble-ink)` | — | A sprite's speech bubble is drawn paper with an ink outline (the skin's art), the same in every theme, so its words take that ink, not the theme's text. |
 | `--metal` | — | every theme |  |
 | `--metal-floor` | — | every theme |  |
 | `--canvas` | — | every theme |  |
@@ -94,14 +103,14 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--font-title` | `"Liberation Serif", Georgia, "Times New Roman", serif` | press, ocean, glass, cyber, metal |  |
-| `--font-body` | `"Liberation Sans", Arial, Helvetica, sans-serif` | press, ocean, cyber, metal |  |
+| `--font-title` | `"Liberation Serif", Georgia, "Times New Roman", serif` | press, ocean, glass, cyber, metal, happy |  |
+| `--font-body` | `"Liberation Sans", Arial, Helvetica, sans-serif` | press, ocean, cyber, metal, happy |  |
 | `--fs-title` | `20px` | press, ocean, glass, cyber |  |
 | `--fs-text` | `14px` | press, cyber |  |
 | `--fs-subtext` | `12px` | press, cyber |  |
-| `--fw-title` | `700` | press, ocean, glass, cyber, metal |  |
-| `--fw-text` | `400` | cyber |  |
-| `--fw-subtext` | `400` | cyber |  |
+| `--fw-title` | `700` | press, ocean, glass, cyber, metal, happy |  |
+| `--fw-text` | `400` | cyber, happy |  |
+| `--fw-subtext` | `400` | cyber, happy |  |
 | `--lh-text` | `1.45` | press |  |
 | `--title-underline` | `none` | vanilla | Editorial title rule — an underline under the app title + card titles (.app-title / .panel__title). Ink is currentColor (--title), so the theme owns the color; these knobs are pure geometry. Base is a NO-OP so a new skin never inherits it by accident — a skin opts in. FUTURE-SETTINGS §11: behavior (always/hover/off) may become a toggle. |
 | `--title-underline-w` | `auto` | vanilla |  |
@@ -413,7 +422,6 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--walk-card-gap` | `var(--space-2)` | — | between the sprites and the speech card |
 | `--walk-point` | `14px` | — | the arm/arrow that names the target |
 | `--walk-pair-gap` | `4px` | — | between Deets and Happy |
-| `--spane-bg` | `var(--panel)` | ocean, glass, cyber, metal | Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the base paints the panel material — an opaque slide masks the pane beneath. Translucent skins (Glass, Cyber) drop this to transparent: they FADE off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting --panel over the card's own frost stacks into a visible rectangle. |
 
 ### bento panels
 
@@ -423,7 +431,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--panel-radius` | `12px` | press, ocean, glass, cyber, metal |  |
 | `--panel-pad` | `var(--space-3)` | — |  |
 | `--panel-border-width` | `0` | press, ocean, glass, cyber, metal | borderless: spacing/typography carry the |
-| `--panel` | `var(--canvas)` | press, ocean, glass, cyber, metal | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
+| `--panel` | `var(--canvas)` | press, ocean, glass, cyber, metal, happy | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
 | `--shadow-card` | `none` | press, ocean, cyber | skins add a real card shadow |
 | `--panel-backdrop` | `none` | press, glass | frosted-glass blur behind the panel; a skin opts in |
 | `--scroller-layer` | `auto` | vanilla, press, ocean, glass, cyber | will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell). Press and Vanilla opted in too on 2026-10-11, so every skin has the layer: without it a list scrolls on the main thread and drops frames |
@@ -531,8 +539,11 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--accent-sheen` | `none` | metal |  |
 | `--accent-sheen-blend` | `normal` | metal | how the sheen's layers lay over the accent (Metal: the grain on overlay) |
 | `--accent-sheen-size` | `auto` | metal |  |
-| `--metal-texture` | `none` | — | Metal's textures (src/metal.ts draws them on <html> under Metal). Defined here so a frame before it runs still has a valid paint: an undefined var() voids the whole background. |
+| `--metal-texture` | `none` | — | Metal's textures (src/metal-material.ts draws them on <html> under Metal). Defined here so a frame before it runs still has a valid paint: an undefined var() voids the whole background. |
 | `--metal-texture-fine` | `none` | — |  |
+| `--metal-tex-panel` | `none` | — | the tints: each surface's texture baked against its color |
+| `--metal-tex-floor` | `none` | — |  |
+| `--metal-tex-control` | `none` | — |  |
 | `--metal-size` | `480px` | — |  |
 | `--metal-size-fine` | `240px` | — |  |
 | `--sand-display` | `none` | — |  |
@@ -585,7 +596,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--vinyl-swap-ease` | `ease-in-out` | press, metal |  |
 | `--vinyl-swap-travel` | `110%` | — | of the disc: far enough to leave the cover box |
 | `--vinyl-swap-fade` | `0` | — | opacity at the far end of the slide |
-| `--cover-swap` | `none` | — | a plain cover's move on a song change (vinyl.ts): none, or zoetrope (the Metal draft, docs/features/metal.md §6.1); the record's slide wins where it shows |
+| `--cover-swap` | `none` | happy | a plain cover's move on a song change (vinyl.ts): none, or zoetrope (the Metal draft, docs/features/metal.md §6.1); the record's slide wins where it shows |
 | `--zoetrope-run` | `0.5` | — | the zoetrope's ends (vinyl.ts): how far off to the side, × the cover's width |
 | `--zoetrope-turn` | `58` | — | … turned this many degrees on the drum |
 | `--zoetrope-scale` | `0.6` | — | … at this size |
@@ -597,6 +608,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--zoetrope-lead` | `0` | — | the share of its move the arriving cover grows under the old one before it comes in front |
 | `--zoetrope-rise` | `0.35` | — | the share of its move the arriving cover fades in over, on top (never a depth flip mid-turn) |
 | `--zoetrope-perspective` | `900px` | — | the drum's perspective; a side cover set back shows at --zoetrope-scale |
+| `--zoetrope-perspective-per-cover` | `2.25` | — | at least this × the cover's width (src/drum.ts): 900 / 400, the stage cover the drum was tuned on, so a larger cover keeps its shape (the full player's wedges, metal.md §6.8.2); 0 = fixed |
 | `--ap-panel-w` | `220px` | — | AirPlay "Play on" panel (AIRPLAY.md) |
 | `--ap-row-h` | `var(--icon-lg)` | — |  |
 | `--ap-dot` | `0.9em` | — | the ✓ gutter on a row |
@@ -757,7 +769,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--notes-lh` | `var(--lh-text)` | — | the note's line height |
 | `--lib-stuck-h` | `0px` | — | the height of a list's stuck header (.lib-view-bar / .lib-cols), its scroll-padding-top; the engine sets the measured value on each view, this is a list with none |
 | `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
-| `--sticky-bar-backdrop` | `var(--panel-backdrop)` | ocean, glass, cyber | the card's own frost (Glass); a see-through skin without one adds a blur |
+| `--sticky-bar-backdrop` | `var(--panel-backdrop)` | ocean, glass, cyber, happy | the card's own frost (Glass); a see-through skin without one adds a blur |
 | `--lib-row-art-radius` | `4px` | press, glass, cyber, metal | its corner — a skin shape lever (round still wins) |
 
 ### scrollbar (our own; color is a theme role)
@@ -777,6 +789,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--nav-at-left` | `translateX(-100%)` | press, ocean, glass, cyber |  |
 | `--nav-at-right` | `translateX(100%)` | press, ocean, glass, cyber |  |
 | `--nav-off-opacity` | `1` | press, ocean, glass, cyber | off-screen panes stay opaque |
+| `--drill-wait` | `0.3s` | — | A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and the page waves in when its data lands. |
+| `--drill-out-by` | `0.55` | — | A card swap in a skin whose pages fade (--nav-off-opacity 0: Ocean, Glass, Cyber): the old page is gone by this share of the motion, and the new one shows from this share, so the two never cross at full (the review, 2026-10-21). A card's own page slide keeps its CSS. |
+| `--drill-in-from` | `0.3` | — |  |
+| `--drill-title-at` | `0.12` | — | The card's title changes when its page has moved this share of its way, by the skin's ease (the review, 2026-10-21: a slow-starting ease looked still under the new title). |
 | `--memory-wait` | `0.4s` | — | Card memory (CARD-MEMORY.md §4): how long a card's body may stay hidden while a restore waits for its data, so the root never flashes before the open level. |
 | `--reveal-cap` | `1.5s` | — | A card's first screen (UX-COVERUPS.md §7): the body holds until its first-screen covers are ready, at most --reveal-cap, then the tiles enter as one diagonal wave (row + column) over --reveal-span, whatever the count. Search's sections wait for their own covers at most --search-reveal-cap (his S2 A: the words show at once) and run a shorter wave. A cover that lands after the reveal fades in over --art-in. |
 | `--reveal-span` | `0.5s` | — |  |
@@ -786,10 +802,6 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--art-in-from` | `0.3` | — | a late cover's first frame: its square was the ground, so it |
 | `--swap-dur` | `var(--nav-dur)` | — | starts near that weight, not at nothing (desk test 2026-10-17) -- card swap (Settings › Animate card swaps; card-swap.ts, CARD-SWAP.md) -- Out step (optional): --swap-out-dur > 0 plays the leaving cards to --swap-out-to / --swap-out-fade before the remount. In step: each new card plays from the slot it left. --swap-travel 1 = it starts there and moves (a slide); 0 = it plays in place. --swap-from / --swap-mid shape it at the start and the midpoint (use the same transform functions in both); --swap-fade is its starting opacity; --swap-stagger delays the second card. The base = a straight slide, no out step (Glass uses it). A replace rises in (the pop tokens). |
 | `--swap-ease` | `var(--nav-ease)` | — |  |
-| `--drill-wait` | `0.3s` | — | A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and the page waves in when its data lands. |
-| `--drill-out-by` | `0.55` | — | A card swap in a skin whose pages fade (--nav-off-opacity 0: Ocean, Glass, Cyber): the old page is gone by this share of the motion, and the new one shows from this share, so the two never cross at full (the review, 2026-10-21). A card's own page slide keeps its CSS. |
-| `--drill-in-from` | `0.3` | — |  |
-| `--drill-title-at` | `0.12` | — | The card's title changes when its page has moved this share of its way, by the skin's ease (the review, 2026-10-21: a slow-starting ease looked still under the new title). |
 | `--swap-out-dur` | `0s` | cyber |  |
 | `--swap-out-to` | `scale(1)` | cyber |  |
 | `--swap-out-fade` | `1` | cyber |  |
@@ -829,6 +841,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--full-history-w` | `var(--max-stage-w)` | — | The History column right of the cover (Max, his call 2026-10-11): it shows when this width (plus the panel gap) fits beside the cover without making it smaller, and slides in from the right edge in --player-dur. The Queue column's width (his ask, the same day: two columns of different widths made the centered cover feel off center; it was 300px). |
 | `--full-stack-room` | `220px` | — | Stacked (his calls, 2026-10-11): a window taller than wide puts the player across the top and the cards under it, when the band under a full-width cover holds --full-stack-room (about a card title and three rows). --full-stack-band: once stacked, the window must be this much wider than tall before it goes back, so a drag near square does not flicker. |
 | `--full-stack-band` | `24px` | — |  |
+| `--fp-cover-share` | `1` | — | The cover's side as a share of the card's width, at most (the square is also held to the card's height). 1: the cover may fill the width. Metal's peek sets its cover share, so the side covers fit in the card (styles.css "Metal"); full-player.ts reads it for the stacked height and the rows' place. |
+| `--fp-meta-below` | `0` | — | 1: the title, artist and album sit in their own row under the cover, never on it, and the controls under them (Metal with Cover change on Zoetrope, his ask 2026-10-21); the cover gives up their height. 0: they sit on the band over the cover. full-player.ts reads it (data-np-meta-below). |
 | `--player-stack-move` | `fade` | press, cyber | How the Queue gets between its column and the band under the stacked player (his calls, 2026-10-18, §14.4): `fade` (the player grows over it; the band rises in once the cover lands) or `slide` (it slides down into the band while the side card slides in). Fade here, so Vanilla and any new skin fade; Press and Cyber slide. |
 | `--np-band-pad` | `var(--space-4)` | — |  |
 | `--np-band-strength` | `78%` | — |  |
@@ -985,6 +999,83 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--space-3` | `12px` | — |  |
 | `--space-4` | `16px` | — |  |
 | `--space-5` | `24px` | — |  |
+| `--hook-scrub` | `none` | press, ocean, glass, cyber, metal, happy | -- hooks (mods.md §10.1, happy.md §1.9) ------------------- A rule that belongs to one look asks for its hook, never for a skin by name: skin.ts copies each --hook-* onto <html> as data-hook-* (`--hook-scrub: float` → data-hook-scrub="float"), and the rule selects on that attribute. Any skin, or a mod, gets the look by setting the hook. `none` leaves the attribute off. docs:check 33 fails a [data-skin="…"] rule outside this file. — the Fancy scrubber's playhead: nib (Press) · float (Ocean) · lens (Glass) · bolt (Cyber) · wheel (Metal) |
+| `--hook-material` | `none` | metal | a material's own rules: metal (the brushed plates, the stage, the title bar seam, the theme corrections in themes.css; metal.ts) |
+| `--hook-sea` | `none` | ocean | on: the sea under the cards (ocean.ts) |
+| `--hook-record` | `none` | press | on: the cover can be a turning record (vinyl.ts; Settings › Record) |
+| `--hook-wallpaper` | `none` | glass | on: the canvas can show the covers or a picture (wallpaper.ts; Settings › Canvas) |
+| `--hook-scene` | `none` | happy | on: a scene around the cards — a sky, a sun or moon, clouds, the ground, and sprites that live there (scene.ts, pet.ts; Happy) |
+| `--scene-floor` | `0px` | happy | -- the scene (happy.md §2; mods.md §11) -------------------- What a scene skin gives: pictures (url()) and a few sizes in the art's own pixels. The app draws them at --scene-px (scene.ts sets it: whole device pixels, 2× in Max, 1.5× elsewhere, his call H8). The sky's colors are theme roles (themes.css --sky-*). — room under the cards for the ground, so only its top reaches over their edges |
+| `--scene-grass` | `none` | happy | a tile that repeats along the window's bottom |
+| `--scene-grass-h` | `0` | happy | its height, in art pixels |
+| `--scene-grass-feet` | `0` | happy | the row (from its top) where feet stand |
+| `--scene-sun` | `none` | happy |  |
+| `--scene-sun-rays` | `none` | happy | turns slowly behind the sun (radiate) |
+| `--scene-moon` | `none` | happy | at night, in the sun's place |
+| `--scene-cloud-1` | `none` | happy | small · medium · large |
+| `--scene-cloud-2` | `none` | happy |  |
+| `--scene-cloud-3` | `none` | happy |  |
+| `--scene-sun-inset` | `2` | — | the sun's gap from the window's top and right edges, in art px: it sits in the sky behind the title bar and over the top-right card's corner |
+| `--scene-sun-away-dur` | `calc(var(--dur-med) * 2)` | — | the sun slides out of the pointer's way (scene.ts) |
+| `--scene-sun-back-dur` | `calc(var(--dur-med) * 5)` | — | and back home once the pointer has left |
+| `--scene-titlebar-halo` | `none` | — | an edge around each word and icon on the sky in the title bar, so they read on any sky (a filter) |
+| `--scene-cloud-over` | `0.12` | — | the share of an edge cloud over its card's outer edge |
+| `--scene-ray-turn` | `150s` | — | one turn of the rays |
+| `--scene-ray-pulse-dur` | `5s` | — | the rays' glow, one way |
+| `--scene-ray-dim` | `0.65` | — | the rays at the low end of the glow |
+| `--scene-cloud-trip` | `240s` | — | a far cloud's trip across the window (each cloud 0.7–1.5× this; the small ones, farther away, slower) |
+| `--scene-far-clouds` | `9` | — | far clouds drifting behind the cards, at scattered heights in the top 60 % |
+| `--scene-edge-clouds` | `4` | — | clouds resting on the outer edges of the cards (left and right columns) |
+| `--scene-bob` | `2px` | — | how far an edge cloud rises and falls |
+| `--scene-bob-dur` | `7s` | — | one rise or fall |
+| `--scene-sky-fade-dur` | `60s` | — | the sky's blend steps once a minute (scene.ts); each step eases in over this |
+| `--bubble-pad` | `var(--space-1)` | — | the words' room inside the bubble, past its drawn border |
+| `--bubble-gap` | `var(--space-1)` | — | the bubble's tail above the speaker's head |
+| `--bubble-hold-dur` | `1.6s` | — | how long a bubble shows (happy.md §2.1a) |
+| `--card-opacity` | `100` | — | how solid a see-through skin's cards are, 0–100 (a skin's own row sets it) |
+| `--font-skin` | `var(--font-body)` | happy | the skin's own words: a sprite's speech bubble |
+| `--pet-sit` | `none` | happy | The pet and its friend (pet.ts): one strip per pose, frames side by side, square unless a -w gives the frame's width in art pixels. Side poses face left. A blank strip falls back. — resting, facing you |
+| `--pet-idle` | `none` | happy | standing, side-on |
+| `--pet-walk` | `none` | happy |  |
+| `--pet-run` | `none` | happy |  |
+| `--pet-push-head` | `none` | happy |  |
+| `--pet-stand-up` | `none;  --pet-stand-up-w:    0` | happy |  |
+| `--pet-stand-push` | `none;  --pet-stand-push-w:  0` | happy |  |
+| `--pet-run-ball` | `none` | happy |  |
+| `--pet-drop-ball` | `none` | happy |  |
+| `--pet-keep-ball` | `none` | happy | keeping the ball, facing you |
+| `--friend-idle` | `none;  --friend-idle-w:     0` | happy | standing, facing you |
+| `--friend-throw` | `none;  --friend-throw-w:    0` | happy |  |
+| `--friend-watch` | `none;  --friend-watch-w:    0` | happy | a strip's -w is one frame's width in art px; 0 = square frames |
+| `--pet-ball` | `none` | happy | the fetch ball |
+| `--bubble` | `none` | happy | the speech bubble, a 9-slice |
+| `--bubble-slice` | `0` | happy | its corner, in art pixels |
+| `--bubble-tail` | `none` | — |  |
+| `--bubble-tail-w` | `0` | — | its size, in art pixels |
+| `--bubble-tail-h` | `0` | — |  |
+| `--scrub-ball` | `none` | happy | the ball playhead (--hook-scrub: ball): one roll, frames side by side |
+| `--scrub-ball-px` | `0` | happy | one frame's size, in art pixels |
+| `--scrub-ball-frames` | `1` | happy |  |
+| `--scrub-ball-roll` | `0` | happy | frames it turns over the whole track |
+| `--vinyl-swap-delay` | `0s` | — | A cover change a sprite takes part in (--cover-swap: pet; pet.ts sets these on the cover for each change): the slide waits for the sprite, and the new cover may fill in where it is. |
+| `--vinyl-swap-in-travel` | `1` | — | × the slide: 0 = the new cover fades in in place |
+| `--title-tracking` | `initial;  --font-caps: initial;   --fw-caps: initial` | metal | -- declared, unset (mods.md §10.1) ------------------------ The names a skin sets beyond the tokens above. `initial` is the same as never set: a var() that reads one falls back exactly as before. Declared here so the base holds every name a skin may set (docs:check 33). A theme role (themes.css) is never declared here: this sheet loads after themes.css and would wipe it. |
+| `--caps-tracking` | `initial;   --caps-grow: initial;   --caps-figures: initial` | metal |  |
+| `--action-text-ink` | `initial` | metal |  |
+| `--sand-reach-min` | `initial;  --sand-reach-max: initial` | — | Ocean's sand edges |
+| `--canvas-go` | `initial;       --canvas-stop: initial;  --canvas-pause: initial` | glass | Glass's aurora inks |
+| `--glass-glow` | `initial;      --glass-dim: initial;    --glass-light: initial` | glass |  |
+| `--glass-frost-sat` | `initial; --glass-frost-layer: initial; --glass-frost-paint: initial` | glass |  |
+| `--glass-frost-ground` | `initial; --glass-frost-glow: initial` | glass |  |
+| `--glass-frost-go` | `initial;  --glass-frost-stop: initial; --glass-frost-pause: initial` | glass |  |
+| `--glass-backlight-paint` | `initial` | — |  |
+| `--metal-peek-cover-inset` | `initial; --metal-peek-dim: initial; --metal-drum-back: initial` | metal |  |
+| `--metal-peek-cover-w` | `initial; --metal-peek-cover-h: initial` | metal |  |
+| `--metal-cover-shadow` | `initial; --metal-cover-rim: initial; --metal-perspective: initial` | metal |  |
+| `--metal-slot-h` | `initial;    --metal-slot-radius: initial; --metal-slot-shadow: initial` | metal |  |
+| `--metal-wheel-w` | `initial;   --metal-wheel-h: initial;  --metal-wheel-radius: initial` | metal |  |
+| `--metal-wheel-pitch` | `initial; --metal-wheel-roll: initial; --metal-wheel-lift: initial` | metal |  |
+| `--metal-wheel-shadow` | `initial; --metal-badge-in: initial` | metal |  |
 
 ## Motion
 
@@ -1004,12 +1095,12 @@ reader is a token nothing uses.
 | `--room-part-slide` | `260ms` | — | styles.css |
 | `--room-bob-glide` | `120ms` | — | styles.css |
 | `--room-fill` | `0.28s var(--ease-ui)` | — | styles.css |
-| `--compass-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/compass.css, styles/skin.css |
+| `--compass-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | extension/styles/skin.css, styles/compass.css, styles/skin.css |
 | `--cog-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles.css |
 | `--updates-fly` | `0.5s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/updates.css |
 | `--updates-bar-in` | `0.36s var(--ease-ui)` | — | styles/updates.css |
 | `--updates-bar-fill` | `0.2s linear` | — | styles/updates.css |
-| `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/skin.css, updates-btn.ts |
+| `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | extension/styles/skin.css, styles/skin.css, updates-btn.ts |
 | `--rewind-top-flip` | `var(--compass-spin)` | — | styles/rewind-top.css |
 | `--net-drive` | `var(--updates-roll)` | — | net.ts |
 | `--sound-grow` | `0.22s` | — | styles.css |
@@ -1033,12 +1124,12 @@ reader is a token nothing uses.
 | `--ocean-ripple-ease` | `cubic-bezier(0.2, 0.6, 0.35, 1)` | — | styles.css |
 | `--np-title-scroll-delay` | `350ms` | — | styles.css |
 | `--np-title-scroll-back` | `var(--dur-med)` | — | styles.css |
-| `--vinyl-swap-dur` | `0.4s` | press, metal | metal.ts, vinyl.ts |
-| `--vinyl-swap-ease` | `ease-in-out` | press, metal | styles/skin.css, vinyl.ts |
+| `--vinyl-swap-dur` | `0.4s` | press, metal | metal.ts, pet.ts, vinyl.ts |
+| `--vinyl-swap-ease` | `ease-in-out` | press, metal | extension/styles/skin.css, styles/skin.css, vinyl.ts |
 | `--ap-pulse` | `1.2s` | — | styles.css |
 | `--ap-caret-dur` | `0.32s` | — | styles.css |
 | `--pop-in` | `var(--dur-med)` | — | extension/styles/skin.css, card-grow.ts, pop.ts, reveal.ts, rewind-btn.ts, styles.css, styles/skin.css |
-| `--pop-out` | `var(--dur-fast)` | — | appearance.ts, hero-slide.ts, styles.css, styles/skin.css, styles/walk.css, walk.ts |
+| `--pop-out` | `var(--dur-fast)` | — | extension/styles/skin.css, appearance.ts, hero-slide.ts, styles.css, styles/skin.css, styles/walk.css, walk.ts |
 | `--pop-grow` | `var(--dur-med)` | — | airplay.ts, net.ts, quick-panel.ts, rewind-btn.ts, sound-panel.ts, updates-btn.ts, web.ts |
 | `--pop-stagger` | `0.03s` | — | extension/styles/skin.css, card-grow.ts, pop.ts, styles.css, styles/skin.css |
 | `--pop-ease` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | — | extension/styles/skin.css, airplay.ts, net.ts, pop.ts, quick-panel.ts, rewind-btn.ts, sound-panel.ts, styles.css, styles/skin.css, updates-btn.ts, web.ts |
@@ -1064,23 +1155,24 @@ reader is a token nothing uses.
 | `--present-in-delay` | `calc(var(--grow-dur) * 0.4)` | — | styles.css |
 | `--nav-dur` | `0.26s` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, handoff.ts, layout.ts, styles.css, styles/skin.css |
 | `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, layout.ts, styles.css, styles/skin.css |
+| `--drill-wait` | `0.3s` | — | card-grow.ts, collection-card.ts, layout.ts |
 | `--memory-wait` | `0.4s` | — | collection-card.ts |
-| `--reveal-cap` | `1.5s` | — | home-card.ts, reveal.ts, styles/skin.css |
-| `--reveal-span` | `0.5s` | — | reveal.ts, styles/skin.css |
-| `--search-reveal-cap` | `0.8s` | — | reveal.ts, search-card.ts, styles/skin.css |
+| `--reveal-cap` | `1.5s` | — | extension/styles/skin.css, home-card.ts, reveal.ts, styles/skin.css |
+| `--reveal-span` | `0.5s` | — | extension/styles/skin.css, reveal.ts, styles/skin.css |
+| `--search-reveal-cap` | `0.8s` | — | extension/styles/skin.css, reveal.ts, search-card.ts, styles/skin.css |
 | `--search-reveal-span` | `0.15s` | — | reveal.ts |
-| `--art-in` | `var(--pop-in)` | — | artwork-heal.ts, styles.css, styles/skin.css |
+| `--art-in` | `var(--pop-in)` | — | extension/styles/skin.css, artwork-heal.ts, styles.css, styles/skin.css |
 | `--swap-dur` | `var(--nav-dur)` | — | card-swap.ts, styles.css |
 | `--swap-ease` | `var(--nav-ease)` | — | styles.css |
 | `--grow-dur` | `0.34s` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
 | `--grow-ease` | `var(--pop-ease)` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
-| `--grow-body-fade` | `0.09s` | — | extension/styles/skin.css, full-player.ts, styles.css |
-| `--grow-collapse-dur` | `0.24s` | — | card-grow.ts, present.ts, styles.css, styles/skin.css |
-| `--grow-rows-stagger` | `0.012s` | — | card-grow.ts, styles.css, styles/skin.css |
-| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | full-player.ts, styles/skin.css |
+| `--grow-body-fade` | `0.09s` | — | full-player.ts, styles.css |
+| `--grow-collapse-dur` | `0.24s` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
+| `--grow-rows-stagger` | `0.012s` | — | extension/styles/skin.css, card-grow.ts, styles.css, styles/skin.css |
+| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | extension/styles/skin.css, full-player.ts, styles/skin.css |
 | `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber | full-player.ts |
 | `--player-collapse-dur` | `var(--grow-collapse-dur)` | press, ocean, glass, cyber | full-player.ts |
-| `--player-art-wait` | `0.25s` | — | full-player.ts, styles/skin.css |
+| `--player-art-wait` | `0.25s` | — | extension/styles/skin.css, full-player.ts, styles/skin.css |
 | `--fly-dur` | `0.42s` | press, ocean | extension/styles/skin.css, handoff.ts, styles.css, styles/skin.css |
 | `--fly-ease` | `var(--nav-ease)` | press, ocean, cyber | extension/styles/skin.css, styles.css, styles/skin.css |
 | `--boot-dur` | `0.8s` | press, ocean, glass, cyber | extension/styles/skin.css, appearance.ts, boot-cover.ts, styles.css, styles/skin.css |
@@ -1093,7 +1185,7 @@ reader is a token nothing uses.
 | `--theme-morph-dur` | `500ms` | metal | appearance.ts, styles.css |
 | `--theme-morph-ease` | `ease-in-out` | — | styles.css |
 | `--theme-morph-hand-ease` | `ease-out` | — | appearance.ts, styles.css |
-| `--search-pulse-dur` | `0.9s` | — | extension/popup/popup.css, styles.css, styles/skin.css |
+| `--search-pulse-dur` | `0.9s` | — | extension/popup/popup.css, extension/styles/skin.css, styles.css, styles/skin.css |
 | `--dur-fast` | `0.12s` | press, glass, cyber | extension/styles/skin.css, copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
 | `--dur-med` | `0.18s` | press | extension/popup/popup.css, extension/popup/popup.js, extension/styles/skin.css, styles.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/walk.css |
 | `--dur-spin` | `0.7s` | — | extension/popup/popup.css, styles.css |
@@ -1107,52 +1199,51 @@ reader is a token nothing uses.
 | `--diary-morph-ease` | `var(--nav-ease)` | — | diary-card.ts |
 | `--split-pill-busy-dur` | `var(--search-pulse-dur)` | — | styles.css |
 | `--view-leave-dur` | `var(--dur-fast)` | — | collection-card.ts, styles.css |
+| `--scene-sun-away-dur` | `calc(var(--dur-med) * 2)` | — | styles.css |
+| `--scene-sun-back-dur` | `calc(var(--dur-med) * 5)` | — | styles.css |
+| `--scene-ray-turn` | `150s` | — | styles.css |
+| `--scene-ray-pulse-dur` | `5s` | — | styles.css |
+| `--scene-cloud-trip` | `240s` | — | scene.ts, styles.css |
+| `--scene-bob-dur` | `7s` | — | scene.ts, styles.css |
+| `--scene-sky-fade-dur` | `60s` | — | styles.css |
+| `--bubble-hold-dur` | `1.6s` | — | pet.ts |
 
 ## Overrides with no base token
 
 A skin sets these, but the base block never declares them — a token that only one skin reads, or a typo.
 
 - `--np-listen-fill (ocean)`
-- `--glass-glow (glass)`
 - `--glass-dim (glass)`
-- `--glass-frost-sat (glass)`
-- `--canvas-go (glass)`
 - `--canvas-stop (glass)`
 - `--canvas-pause (glass)`
-- `--glass-frost-ground (glass)`
-- `--glass-frost-go (glass)`
 - `--glass-frost-stop (glass)`
 - `--glass-frost-pause (glass)`
 - `--glass-light (glass)`
-- `--title-tracking (metal)`
 - `--font-caps (metal)`
 - `--fw-caps (metal)`
-- `--caps-tracking (metal)`
 - `--caps-grow (metal)`
 - `--caps-figures (metal)`
 - `--panel-border (metal)`
 - `--border (metal)`
 - `--surface (metal)`
 - `--surface-hover (metal)`
-- `--action-text-ink (metal)`
 - `--canvas (metal)`
-- `--metal-peek-cover-inset (metal)`
+- `--metal-peek-cover-h (metal)`
 - `--metal-peek-dim (metal)`
-- `--metal-cover-shadow (metal)`
 - `--metal-cover-rim (metal)`
 - `--metal-perspective (metal)`
-- `--metal-slot-h (metal)`
 - `--metal-slot-radius (metal)`
-- `--metal-wheel-w (metal)`
 - `--metal-wheel-h (metal)`
 - `--metal-wheel-radius (metal)`
-- `--metal-wheel-pitch (metal)`
 - `--metal-wheel-roll (metal)`
 - `--metal-wheel-lift (metal)`
 - `--metal-slot-shadow (metal)`
-- `--metal-wheel-shadow (metal)`
-| `--drill-wait` | `0.3s` | — | card-grow.ts, collection-card.ts, layout.ts |
 - `--metal-badge-in (metal)`
+- `--pet-stand-up-w (happy)`
+- `--pet-stand-push-w (happy)`
+- `--friend-idle-w (happy)`
+- `--friend-throw-w (happy)`
+- `--friend-watch-w (happy)`
 
 ## Palette
 
@@ -1232,3 +1323,12 @@ A skin sets these, but the base block never declares them — a token that only 
 | `--paint-lilac-metal-subtext` | `#484260` |
 | `--paint-green-metal-text` | `#32412A` |
 | `--paint-green-metal-subtext` | `#3E4B34` |
+| `--paint-sky-day` | `#5FA8E0` |
+| `--paint-sky-day-low` | `#CDE9F8` |
+| `--paint-sky-dawn` | `#8AA9D6` |
+| `--paint-sky-dawn-low` | `#FFC79A` |
+| `--paint-sky-dusk` | `#4D4C99` |
+| `--paint-sky-dusk-low` | `#FF8C5A` |
+| `--paint-sky-night` | `#0C1430` |
+| `--paint-sky-night-low` | `#2A3768` |
+| `--paint-bubble-ink` | `#2B2620` |

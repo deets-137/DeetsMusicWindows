@@ -6,11 +6,79 @@ updated: 2026-10-21
 ---
 # DeetsMusic — Work log
 
+## 2026-10-21, evening — Metal polish: the Search page's gray, the open issues sorted
+
+- **His report (a screenshot):** under Metal, the Search card's page drew a darker flat gray
+  box inside the brushed card. The cause: Metal kept the base drill-pane fill
+  (`--spane-bg: var(--metal)`), a flat fill with no grain over the brushed plate. Glass, Ocean,
+  Cyber and Happy already set it to `transparent`. **Fixed:** Metal's `--spane-bg` is
+  `transparent` (skin.css). Metal's drill is the side slide, so two pages never overlap; the
+  Library's pages have no fill and already slide clean under Metal. Not looked at on screen.
+- **His question:** does any skin need the fill? Read: no. Vanilla, Press and Metal slide side
+  by side; the other four fade with no fill. **His call: remove it everywhere. Done:** the
+  `--spane-bg` token, its five per-skin overrides and both fill rules (`.spane`, the Search
+  levels) are gone. The two in-place cases were read in search-card.ts: a drill swap's mount
+  and a rule grow move the results aside with no slide (`instantNext`, `ruleGrowComing`), so
+  the results never sit under an arriving page. The demo clip in Vanilla, Press and Metal
+  could not run (headless Edge never loaded the page, the machine at 50–75 % CPU from another
+  session). **His hand test passed (2026-10-21, his word).** The extension's copy of skin.css
+  is untouched.
+- **His answer on the full player's regression:** metal.md §6.8.1 (the side covers too thin, the
+  band and controls too small in the card).
+- **His ask:** open issues and fixes are sorted into two buckets, simple and straightforward,
+  and the rest.
+- **Next piece, the full player's side covers:** measured on his stage and worked through the
+  transform's math; the fixed 900 px perspective gave the wedges and the thin side covers.
+  Built: the perspective grows with the cover past 400 px (metal.md §6.8.2, `src/drum.ts`, a
+  test). His hand test is open. He stopped the demo runs ("stop using the demo please, ill hand
+  test"): the new `drum` probe in `metal-full-player.json` was not run.
+- **His ask while testing:** "move the album title and artist off the cover in metal and move
+  below", "specifically in metal". Built: `--fp-meta-below` (Metal 1), the title block in its
+  own row under the cover, the rows always below (metal.md §6.8.3, a test). **His hand test of
+  both passed ("Perfect"); the band width stays at the cover's ("good as tested").**
+- **The empty previous side cover after Next, Back:** traced by reading (the queue and the slot
+  code hold), then his repro on the dev app: both side covers filled, and a read of the slots
+  agreed. A demo-only fault (its fake MusicKit); closed, nothing built (metal.md §6.8).
+- **The side covers in the full player's open and close:** the flying copy now carries the side
+  slots, at the full size's drum depth (metal.md §6.8). His call: no break-it pass, he verifies;
+  keep token costs low for a while. His check passed ("Works").
+- **Two more of §6.8's older faults, read on his dev app:** the ~120 ms close long task is demo
+  only (three closes: 50 ms once, then none); the Queue list's box keeps its full height down
+  the close and is cut at the bottom in the last frame, past the card's clip (metal.md §6.8).
+  His idea: animate it. Built: the list's height follows the card's edge on the open and the
+  close (`queueRise`), read smooth on his dev app; his look passed.
+- **The tray panel's texture:** the material moved to `src/metal-material.ts`, started in both
+  windows (metal.md §6.7). **The extension's copies:** re-synced with `pack.cjs --styles-only`
+  (no hand-made block was left).
+- **His report: the title back on the cover "sometimes":** the open's wait for the large cover
+  took the title's place mark off and never put it back; fixed in `apply`. **His ask:** the
+  title below follows Cover change = Zoetrope, not all of Metal (metal.md §6.8.3).
+- **His ask: fix the last three.** Built: the textures baked per surface color, no blend modes
+  (his idea: cache the static look); no texture in software drawing under the fallback rule.
+  The empty side slots for a playlist cover or a station: his call "Blank plates", built
+  (metal.md §6.7).
+
 > **What this is.** The record of each sitting: what was built, what was decided, the desk-test
 > scripts, what was left. **Newest first. One `##` per sitting, dated.** Append; never correct
 > an old entry — a later entry says what changed. A fact that is still true belongs in
 > [HANDOFF.md](HANDOFF.md), not here (DOCS-ORG.md §7). HANDOFF's **Open now** list points into
 > this file for the detail.
+
+## 2026-10-21, later — the site's screenshots in every look, and Metal's full player
+
+- **Asked:** does the web demo work with Metal on the DeetsMusic page, and do the screenshots
+  need redoing. The demo build (0.31.0) has Metal; the page's screenshot row had no Metal
+  pictures (a broken image for a Metal visitor) and its 48 were from 2026-10-11.
+- **Done:** 60 site pictures (2 shots × 6 themes × 5 skins) into DeetsSolutions
+  `assets/deetsmusic/shots/`, not committed or deployed. The recipe (DeetsSolutions
+  `docs/deetsmusic-page-pass.md`) gained the songs-feed junction, the blank-picture retake and
+  the contact-sheet check.
+- **Found and fixed:** Metal's full player drew the cover as a tall strip (0.31.0 on live). His
+  call A: keep the peek, the box from the square. metal.md §6.8 is the record: the
+  `--fp-cover-share` token, the break-it pass (45 scenarios, 4 fixes), the demo motion lists,
+  four older faults for him. The dev-app run is open (another driver had it).
+- **Misrouted notes:** his three notes for the App demo GIF session (the clean screen before a
+  run, a song-driven look rule, the mosaic cover for the web) went there; nothing of them stays here.
 
 ## 2026-10-21, later — Happy: the first look on the web demo
 
@@ -44,22 +112,6 @@ middle dropdown (1A), rolling spans (2A), each box remembers its choice. Built
 Claude (10 probes). Found: least-first lists started with "Unknown" rows; his call: drop
 them from Top Listens (§10.4; no rerun, his word). Committed.
 
-## 2026-10-20, late — four desk tests closed, Metal's last forks, the merge, 0.31.0
-
-- `npm run storage -- --prune`: 51 incremental folders, 12.44 GB freed (the build folders were
-  at 42.89 GB). It refused once while the dev runner's `cargo run` was open.
-- His word: "I'm pretty sure I hand tested everything including metal", then "yes, mark all four
-  passed". Passed 2026-10-20: Metal (DESK-TESTS.md A11), the full player §14.5, the card grow
-  shell (CARD-GROW.md §21), the graphics card back by itself (GRAPHICS-FALLBACK.md §10). The log
-  had no `ui:act` lines to read (it rotated at 18:18); DESK-TESTS.md §5 has the row.
-- Metal's last forks closed (metal.md §7): F6 both materials as the Material row, Steel the
-  default, with Zoetrope and Peek on (already the store's defaults); F4 every skin keeps 1 px
-  solid. Metal was already in the release picker, the look schedule and the extension's options:
-  the dev draft went when the skin was built, so nothing gated it.
-- His call: commit, push, fast-forward `v-thirtyone` into `main`, and mint 0.31.0.
-
-## 2026-10-20, night — the card grow stress test, the Fable review, and the shell
-
 ## 2026-10-21 — the drill motion review
 
 - His ask: a full motion review of the drilldowns (Go to Album / Artist, Back) with the five checks
@@ -89,6 +141,22 @@ them from Top Listens (§10.4; no rerun, his word). Committed.
   localStorage: his layout and look looked lost. With his OK I restarted it on 1420. His
   *Layout for Max* "4 cards" and Ocean skin were lost at 13:22 by another session's interrupted
   take (its message); the shots set them per shot and put back what they found (Glass, 1 card).
+
+## 2026-10-20, late — four desk tests closed, Metal's last forks, the merge, 0.31.0
+
+- `npm run storage -- --prune`: 51 incremental folders, 12.44 GB freed (the build folders were
+  at 42.89 GB). It refused once while the dev runner's `cargo run` was open.
+- His word: "I'm pretty sure I hand tested everything including metal", then "yes, mark all four
+  passed". Passed 2026-10-20: Metal (DESK-TESTS.md A11), the full player §14.5, the card grow
+  shell (CARD-GROW.md §21), the graphics card back by itself (GRAPHICS-FALLBACK.md §10). The log
+  had no `ui:act` lines to read (it rotated at 18:18); DESK-TESTS.md §5 has the row.
+- Metal's last forks closed (metal.md §7): F6 both materials as the Material row, Steel the
+  default, with Zoetrope and Peek on (already the store's defaults); F4 every skin keeps 1 px
+  solid. Metal was already in the release picker, the look schedule and the extension's options:
+  the dev draft went when the skin was built, so nothing gated it.
+- His call: commit, push, fast-forward `v-thirtyone` into `main`, and mint 0.31.0.
+
+## 2026-10-20, night — the card grow stress test, the Fable review, and the shell
 
 - His ask: a review of the card grow visuals — a Sonnet agent for workflows that break it, a Fable
   agent for a score. His corrections on the way: the live dev app, never the demo ("real

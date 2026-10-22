@@ -123,6 +123,16 @@ which carries `ideas-nineteen` and `net-worked`. Everything up to the 0.30.0 rel
 
 Every hand and desk test listed here before closed on 2026-10-13 (his report, WORKLOG
 2026-10-13 *desk tests closed*; the rows are DESK-TESTS.md §5). What is left:
+- **Metal's full player drew the cover as a tall strip (0.31.0 on live): fixed and committed
+  2026-10-21, ships with the next release.** The box from the square (his call A; the band at the
+  cover's width stays, his call after the test), the drum's perspective grows with the cover
+  (§6.8.2), the title block under the cover with Cover change = Zoetrope (§6.8.3). The same
+  evening's Metal polish, all hand-tested by him: the side covers in the open's flight, the
+  Queue list's height following the card, the tray's texture, the textures baked per surface
+  color with no blend modes, no texture in software drawing, blank sleeves in empty side slots
+  (metal.md §6.7, §6.8). Closed as demo only: the empty previous side cover, the 120 ms close.
+  Not measured: the scroll's dropped frames since the bake. The site's demo shows the fix after
+  the next release and demo build.
 - **Playback, watch the live ring:** the music stopped at a song change and the catalog heal
   (`player:retryCurrent`, `keyRetry`, `recoverSilent`; QUEUE.md); a healed library id's old
   play counts may stay on the old key (read 2026-10-17: the 5 healed songs on live have no
@@ -215,17 +225,6 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
-- **Card grow: the shell (2026-10-20, on `v-thirtyone`; his calls 1A, 2A, 3A).** The stress test and
-  the Fable review ran (CARD-GROW.md §20: Max 5/10, Midi 6/10, 23 faults), and §21 is the fix:
-  the card's surface moves as its own shell (a clip over a still fill, plus an edge), the
-  content rides the moving edge, the collapse rebuilds first, a hand-off between two cards,
-  Escape reverses an open, the edge bar's double click is held, one layout per click. Then
-  (§21.5–§21.7) his Glass report fixed (the covers no longer jump: the shell's layer hint),
-  Midi's short measure, the Midi stale fill, the title ahead of the edge, and his "flash" report:
-  the rows wave in at 0.4 of the open and of the collapse at the full stagger, as live. Fable on the final build: Max 8/10 (live code 5), Midi 7; Claude's check against
-  live: no regression (48 clips, every probe; grow-settle.py clean; worst gaps ≤ 29 ms without
-  the recorder). Desk test passed 2026-10-20 (his word, §21.4 steps 1–10). Not moved yet: the full player and
-  Presentation mode (still the clip and pad); the curve and each skin's own grow motion (his
 - **Drill motion review (2026-10-21, on `happy-thirtytwo`; paused by him for the evening).** Go
   to Album / Artist and Back: five faults fixed (CARD-GROW.md §22.2), his four calls built (§22.4,
   §22.6: the skin's own swap motion, a 300 ms wait for the page, no wave when warm, his row's
@@ -237,6 +236,17 @@ each step that touches those calls.
   own page slide in Ocean / Glass should cross in order like the swap. His dev app lost
   *Layout for Max* "4 cards" and the Ocean skin at 13:22 (another session's take), not reset.
 
+- **Card grow: the shell (2026-10-20, on `v-thirtyone`; his calls 1A, 2A, 3A).** The stress test and
+  the Fable review ran (CARD-GROW.md §20: Max 5/10, Midi 6/10, 23 faults), and §21 is the fix:
+  the card's surface moves as its own shell (a clip over a still fill, plus an edge), the
+  content rides the moving edge, the collapse rebuilds first, a hand-off between two cards,
+  Escape reverses an open, the edge bar's double click is held, one layout per click. Then
+  (§21.5–§21.7) his Glass report fixed (the covers no longer jump: the shell's layer hint),
+  Midi's short measure, the Midi stale fill, the title ahead of the edge, and his "flash" report:
+  the rows wave in at 0.4 of the open and of the collapse at the full stagger, as live. Fable on the final build: Max 8/10 (live code 5), Midi 7; Claude's check against
+  live: no regression (48 clips, every probe; grow-settle.py clean; worst gaps ≤ 29 ms without
+  the recorder). Desk test passed 2026-10-20 (his word, §21.4 steps 1–10). Not moved yet: the full player and
+  Presentation mode (still the clip and pad); the curve and each skin's own grow motion (his
   calls); a covered card's hairline coming back late (same as live); the Queue title a few px
   above the edge for ~3 frames (§21.6).
 

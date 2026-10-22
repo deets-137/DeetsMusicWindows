@@ -568,6 +568,10 @@ for the rows, *below*, beside *beside* and *over*:
   band. The open's hide and fade go on the parts. `album-color.ts` guards the album-colored
   text twice in *below*: the controls against the card, the title block against the band
   (`--np-band-title` / `-subtext` / `-accent`).
+- **A skin can put the title block under the cover (2026-10-21, his ask for Metal):**
+  `--fp-meta-below: 1` moves the title, artist and album to their own row under the cover with
+  no band, counts them in `--fp-controls-h`, and keeps the rows *below* at every size
+  (`rowsPlace`'s `metaBelow`). Metal only today; metal.md §6.8.3.
 - **Shots:** `shots/scratch/below.json` (Max 1100 × 950 and × 1200, Midi 495 × 1000). The
   first run found the title block hidden under the cover (the cover is its own layer); fixed.
 

@@ -81,7 +81,8 @@ import { initRulesApp, emitAppOpen } from "./rules-app";
 import { initRulesFiles } from "./rules-files";
 import { initRulesFacts } from "./rules-facts";
 import { initRulesWindow } from "./rules-window";
-import { initGpu } from "./gpu";
+import { initGpu, softwareDrawing, onGraphicsChange } from "./gpu";
+import { gateMaterial } from "./metal-material";
 import { initReduceMotion } from "./reduce-motion";
 import { initUsage } from "./usage";
 import { appleBackingOff } from "./apple-health";
@@ -202,6 +203,15 @@ window.addEventListener("DOMContentLoaded", () => {
   releaseRules = holdRegistry();
   boot("initLook", () => initLook()); // the theme and skin from the store, with the schedule's look on top (RULES.md §7a)
   boot("initSkinSettings", () => initSkinSettings()); // before the first paint, so a card never flashes the default look
+  // In software drawing, with *If graphics fail* on its default (the rule turns heavy effects
+  // off), Metal's material is not drawn: its flat colors stay (metal.md §6.7, 2026-10-21).
+  gateMaterial(
+    () => softwareDrawing() && setting("graphicsFallback") === "save",
+    (cb) => {
+      onGraphicsChange(cb);
+      onSettingsChange((k) => k === "graphicsFallback" && cb());
+    },
+  );
   boot("initMetal", () => initMetal()); // the Metal skin's textures, side covers and word fade (docs/features/metal.md)
   boot("initSurface", () => initSurface());
   // The rules engine's `surface` fact (RULES.md §5), registered here and not in surface.ts:

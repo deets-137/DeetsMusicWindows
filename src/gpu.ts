@@ -90,6 +90,14 @@ function quietLog(): number[] {
 }
 const capped = (): boolean => quietLog().length >= DAILY_CAP;
 
+/** The window is drawn in software now (WARP). Metal's material reads it (metal.ts). */
+export const softwareDrawing = (): boolean => graphics === "software";
+/** Call back when the renderer changes. */
+export function onGraphicsChange(cb: () => void): () => void {
+  subs.add(cb);
+  return () => subs.delete(cb);
+}
+
 function setGraphics(now: Graphics, name: string, why: "start" | "event" | "timer"): void {
   if (now === graphics) return;
   graphics = now;

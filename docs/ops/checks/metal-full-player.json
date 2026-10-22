@@ -1,0 +1,43 @@
+{
+  "about": "Metal's full player with the peek (his call A, 2026-10-21; metal.md): the grid's square is the cover, the 5:4 box drawn around it, the square at most 72 % of the card's width (--fp-cover-share). Four window sizes; each probe measures the cover against the band, the scrubber and the card. Run in lilac-metal and lilac-glass (Glass must be unchanged: share 1).",
+  "shots": [
+    { "id": "mfp-1800x900", "kind": "picture", "source": "demo", "size": "max", "window": true,
+      "steps": [
+        { "resize": [1800, 900], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 40 }, { "wait": 500 },
+        { "key": "Enter" }, { "wait": 2500 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), a = q('.np__art'), s = q('.np__scrub'), m = q('.np__meta') || q('.np__center'), c = p.getBoundingClientRect(); const r = (b) => b && [Math.round(b.left), Math.round(b.width), Math.round(b.height)]; return { rows: p.dataset.npRows, stack: document.querySelector('[data-fp-stack]') ? 1 : 0, card: r(c), box: r(a), cover: r(v), band: r(m), scrub: r(s), coverSquare: !!v && Math.abs(v.width - v.height) < 2, bandMatchesCover: !!(v && m) && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2, boxInCard: !!a && a.left >= c.left - 1 && a.right <= c.right + 1 }; })()",
+          "expect": { "coverSquare": true, "bandMatchesCover": true, "boxInCard": true } },
+        { "name": "drum", "probe": "(() => { const a = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"] .np__art'); const v = a?.querySelector(':scope > .vinyl')?.getBoundingClientRect(); const ps = [...(a?.querySelectorAll('.metal-peek:not([data-empty])') ?? [])].map((p) => p.getBoundingClientRect()); if (!v || !ps.length) return { sides: 0 }; const past = ps.map((b) => Math.round(Math.max(v.left - b.left, b.right - v.right))); return { sides: ps.length, cover: Math.round(v.width), P: a.style.getPropertyValue('--metal-perspective'), past, pastShare: past.map((x) => Math.round((1000 * x) / v.width) / 1000), noWedge: ps.every((b) => b.top >= v.top - 1 && b.bottom <= v.bottom + 1), peekAsStage: past.every((x) => x / v.width > 0.035) }; })()",
+          "expect": { "noWedge": true, "peekAsStage": true } }
+      ] },
+    { "id": "mfp-1100x950", "kind": "picture", "source": "demo", "size": "max", "window": true,
+      "steps": [
+        { "resize": [1100, 950], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 40 }, { "wait": 500 },
+        { "key": "Enter" }, { "wait": 2500 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), a = q('.np__art'), s = q('.np__scrub'), m = q('.np__meta') || q('.np__center'), c = p.getBoundingClientRect(); const r = (b) => b && [Math.round(b.left), Math.round(b.width), Math.round(b.height)]; return { rows: p.dataset.npRows, stack: document.querySelector('[data-fp-stack]') ? 1 : 0, card: r(c), box: r(a), cover: r(v), band: r(m), scrub: r(s), coverSquare: !!v && Math.abs(v.width - v.height) < 2, bandMatchesCover: !!(v && m) && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2, boxInCard: !!a && a.left >= c.left - 1 && a.right <= c.right + 1 }; })()",
+          "expect": { "coverSquare": true, "bandMatchesCover": true, "boxInCard": true } },
+        { "name": "drum", "probe": "(() => { const a = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"] .np__art'); const v = a?.querySelector(':scope > .vinyl')?.getBoundingClientRect(); const ps = [...(a?.querySelectorAll('.metal-peek:not([data-empty])') ?? [])].map((p) => p.getBoundingClientRect()); if (!v || !ps.length) return { sides: 0 }; const past = ps.map((b) => Math.round(Math.max(v.left - b.left, b.right - v.right))); return { sides: ps.length, cover: Math.round(v.width), P: a.style.getPropertyValue('--metal-perspective'), past, pastShare: past.map((x) => Math.round((1000 * x) / v.width) / 1000), noWedge: ps.every((b) => b.top >= v.top - 1 && b.bottom <= v.bottom + 1), peekAsStage: past.every((x) => x / v.width > 0.035) }; })()",
+          "expect": { "noWedge": true, "peekAsStage": true } }
+      ] },
+    { "id": "mfp-900x1400", "kind": "picture", "source": "demo", "size": "max", "window": true,
+      "steps": [
+        { "resize": [900, 1400], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 40 }, { "wait": 500 },
+        { "key": "Enter" }, { "wait": 2500 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), a = q('.np__art'), s = q('.np__scrub'), m = q('.np__meta') || q('.np__center'), c = p.getBoundingClientRect(); const r = (b) => b && [Math.round(b.left), Math.round(b.width), Math.round(b.height)]; return { rows: p.dataset.npRows, stack: document.querySelector('[data-fp-stack]') ? 1 : 0, card: r(c), box: r(a), cover: r(v), band: r(m), scrub: r(s), coverSquare: !!v && Math.abs(v.width - v.height) < 2, bandMatchesCover: !!(v && m) && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2, boxInCard: !!a && a.left >= c.left - 1 && a.right <= c.right + 1 }; })()",
+          "expect": { "coverSquare": true, "bandMatchesCover": true, "boxInCard": true } },
+        { "name": "drum", "probe": "(() => { const a = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"] .np__art'); const v = a?.querySelector(':scope > .vinyl')?.getBoundingClientRect(); const ps = [...(a?.querySelectorAll('.metal-peek:not([data-empty])') ?? [])].map((p) => p.getBoundingClientRect()); if (!v || !ps.length) return { sides: 0 }; const past = ps.map((b) => Math.round(Math.max(v.left - b.left, b.right - v.right))); return { sides: ps.length, cover: Math.round(v.width), P: a.style.getPropertyValue('--metal-perspective'), past, pastShare: past.map((x) => Math.round((1000 * x) / v.width) / 1000), noWedge: ps.every((b) => b.top >= v.top - 1 && b.bottom <= v.bottom + 1), peekAsStage: past.every((x) => x / v.width > 0.035) }; })()",
+          "expect": { "noWedge": true, "peekAsStage": true } }
+      ] },
+    { "id": "mfp-2400x900", "kind": "picture", "source": "demo", "size": "max", "window": true,
+      "steps": [
+        { "resize": [2400, 900], "over": 100, "steps": 1 }, { "wait": 3000 },
+        { "key": "Ctrl+Space" }, { "wait": 400 }, { "type": "full player", "delay": 40 }, { "wait": 500 },
+        { "key": "Enter" }, { "wait": 2500 },
+        { "probe": "(() => { const p = document.querySelector('.bento[data-player=\"full\"] .panel[data-slot=\"np\"]'); const q = (s) => p.querySelector(s)?.getBoundingClientRect(); const v = q('.np__art > .vinyl'), a = q('.np__art'), s = q('.np__scrub'), m = q('.np__meta') || q('.np__center'), c = p.getBoundingClientRect(); const r = (b) => b && [Math.round(b.left), Math.round(b.width), Math.round(b.height)]; return { rows: p.dataset.npRows, stack: document.querySelector('[data-fp-stack]') ? 1 : 0, card: r(c), box: r(a), cover: r(v), band: r(m), scrub: r(s), coverSquare: !!v && Math.abs(v.width - v.height) < 2, bandMatchesCover: !!(v && m) && Math.abs(v.left - m.left) < 2 && Math.abs(v.width - m.width) < 2, boxInCard: !!a && a.left >= c.left - 1 && a.right <= c.right + 1 }; })()",
+          "expect": { "coverSquare": true, "bandMatchesCover": true, "boxInCard": true } }
+      ] }
+  ]
+}

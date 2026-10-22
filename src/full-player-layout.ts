@@ -18,10 +18,19 @@ export type RowsPlace = "over" | "below";
  *  - below when the card is at least `wideW` wider than it is tall (a wide or ultrawide
  *    window): the cover gives up the controls' height. There is no column beside the cover;
  *    this test is where that column used to start;
- *  - else over: the largest square, the controls on the band. */
-export function rowsPlace(cardW: number, cardH: number, wideW: number, controlsH = Infinity, gap = 0): RowsPlace {
-  if (cardW - cardH >= wideW) return "below";
-  return cardH - Math.min(cardW, cardH) >= controlsH + gap ? "below" : "over";
+ *  - else over: the largest square, the controls on the band.
+ *  `share` is the most of the card's width the cover may take (--fp-cover-share: 1, or Metal's
+ *  0.72, whose side covers need the rest; 2026-10-21). `metaBelow` (--fp-meta-below, Metal):
+ *  the title block sits under the cover too, never on it, so the rows are always below
+ *  (his ask, 2026-10-21). */
+export function rowsPlace(cardW: number, cardH: number, wideW: number, controlsH = Infinity, gap = 0, share = 1, metaBelow = false): RowsPlace {
+  if (metaBelow || cardW - cardH >= wideW) return "below";
+  return cardH - coverSide(cardW, cardH, share) >= controlsH + gap ? "below" : "over";
+}
+
+/** The cover's side in a card's box: the largest square that fits, at most `share` of the width. */
+export function coverSide(w: number, h: number, share = 1): number {
+  return Math.max(0, Math.min(w * share, h));
 }
 
 /** The largest file the cover box needs (§12.5): the box in device pixels, rounded UP to a

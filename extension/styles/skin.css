@@ -377,13 +377,6 @@
   --walk-point:     14px;     /* the arm/arrow that names the target */
   --walk-pair-gap:  4px;      /* between Deets and Happy */
 
-  /* Drill-pane fill (.spane, .search__panes stack). Panes slide/stack, so the
-     base paints the panel material — an opaque slide masks the pane beneath.
-     Translucent skins (Glass, Cyber) drop this to transparent: they FADE
-     off-panes (--nav-off-opacity: 0) so no mask is needed, and re-painting
-     --panel over the card's own frost stacks into a visible rectangle. */
-  --spane-bg:      var(--panel);
-
   /* -- bento panels ------------------------------------------ */
   --panel-gap:          var(--space-3);
   --panel-radius:       12px;
@@ -517,10 +510,13 @@
   --accent-sheen:        none;
   --accent-sheen-blend:  normal;   /* how the sheen's layers lay over the accent (Metal: the grain on overlay) */
   --accent-sheen-size:   auto;
-  /* Metal's textures (src/metal.ts draws them on <html> under Metal). Defined here so a frame
-     before it runs still has a valid paint: an undefined var() voids the whole background. */
+  /* Metal's textures (src/metal-material.ts draws them on <html> under Metal). Defined here so a
+     frame before it runs still has a valid paint: an undefined var() voids the whole background. */
   --metal-texture:       none;
   --metal-texture-fine:  none;
+  --metal-tex-panel:     none;   /* the tints: each surface's texture baked against its color */
+  --metal-tex-floor:     none;
+  --metal-tex-control:   none;
   --metal-size:          480px;
   --metal-size-fine:     240px;
   --sand-display: none;
@@ -585,6 +581,7 @@
   --zoetrope-lead:      0;            /* the share of its move the arriving cover grows under the old one before it comes in front */
   --zoetrope-rise:      0.35;         /* the share of its move the arriving cover fades in over, on top (never a depth flip mid-turn) */
   --zoetrope-perspective: 900px;      /* the drum's perspective; a side cover set back shows at --zoetrope-scale */
+  --zoetrope-perspective-per-cover: 2.25;   /* at least this × the cover's width (src/drum.ts): 900 / 400, the stage cover the drum was tuned on, so a larger cover keeps its shape (the full player's wedges, metal.md §6.8.2); 0 = fixed */
   /* AirPlay "Play on" panel (AIRPLAY.md) */
   --ap-panel-w:     220px;
   --ap-row-h:       var(--icon-lg);
@@ -782,6 +779,18 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
+  /* A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his
+     call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and
+     the page waves in when its data lands. */
+  --drill-wait: 0.3s;
+  /* A card swap in a skin whose pages fade (--nav-off-opacity 0: Ocean, Glass, Cyber): the old
+     page is gone by this share of the motion, and the new one shows from this share, so the
+     two never cross at full (the review, 2026-10-21). A card's own page slide keeps its CSS. */
+  --drill-out-by:  0.55;
+  --drill-in-from: 0.3;
+  /* The card's title changes when its page has moved this share of its way, by the skin's ease
+     (the review, 2026-10-21: a slow-starting ease looked still under the new title). */
+  --drill-title-at: 0.12;
   /* Card memory (CARD-MEMORY.md §4): how long a card's body may stay hidden while a
      restore waits for its data, so the root never flashes before the open level. */
   --memory-wait: 0.4s;
@@ -886,6 +895,16 @@
      this much wider than tall before it goes back, so a drag near square does not flicker. */
   --full-stack-room:     220px;
   --full-stack-band:     24px;
+  /* The cover's side as a share of the card's width, at most (the square is also held to the
+     card's height). 1: the cover may fill the width. Metal's peek sets its cover share, so the
+     side covers fit in the card (styles.css "Metal"); full-player.ts reads it for the stacked
+     height and the rows' place. */
+  --fp-cover-share:      1;
+  /* 1: the title, artist and album sit in their own row under the cover, never on it, and the
+     controls under them (Metal with Cover change on Zoetrope, his ask 2026-10-21); the cover
+     gives up their height.
+     0: they sit on the band over the cover. full-player.ts reads it (data-np-meta-below). */
+  --fp-meta-below:       0;
   /* How the Queue gets between its column and the band under the stacked player (his calls,
      2026-10-18, §14.4): `fade` (the player grows over it; the band rises in once the cover
      lands) or `slide` (it slides down into the band while the side card slides in). Fade here,
@@ -1146,6 +1165,7 @@
   --glass-frost-go: initial;  --glass-frost-stop: initial; --glass-frost-pause: initial;
   --glass-backlight-paint: initial;
   --metal-peek-cover-inset: initial; --metal-peek-dim: initial; --metal-drum-back: initial;
+  --metal-peek-cover-w: initial; --metal-peek-cover-h: initial;
   --metal-cover-shadow: initial; --metal-cover-rim: initial; --metal-perspective: initial;
   --metal-slot-h: initial;    --metal-slot-radius: initial; --metal-slot-shadow: initial;
   --metal-wheel-w: initial;   --metal-wheel-h: initial;  --metal-wheel-radius: initial;
@@ -1316,9 +1336,8 @@
   /* The Last.fm badge keeps the card color at full strength: with see-through cards the chip
      read as bare ink on the band (seen 2026-10-12, LISTENERS.md §4). */
   --np-listen-fill:     color-mix(in srgb, var(--surface), black 18%);
-  /* the card is see-through, so a pane or a stuck bar must not paint a second fill over it
-     (Cyber's rule); the bar blurs the rows under it instead */
-  --spane-bg:            transparent;
+  /* the card is see-through, so a stuck bar must not paint a second fill over it; it blurs the
+     rows under it instead */
   --sticky-bar-backdrop: blur(10px);
   --panel-border-width: 0;
   /* soft border = a diffuse ring in the theme hairline color + depth */
@@ -1395,9 +1414,7 @@
    data-ocean-edges) — a dark beach: the card's edge breaks into grains over
    --sand-reach, and light specks (--border ink) scatter through that band. The box
    paints nothing; the fill moves to .panel::before. No glow ring or drop shadow: an
-   outer shadow would trace the hard box edge the grains remove. Ocean panes fade on
-   nav (--nav-off-opacity: 0), so they need no fill (a filled pane would print a hard
-   rectangle inside the grainy rim). */
+   outer shadow would trace the hard box edge the grains remove. */
 :root[data-skin="ocean"][data-ocean-edges="sand"] {
   --panel-paint:  transparent;
   --sand-display: block;
@@ -1408,7 +1425,6 @@
   --sand-reach:   calc(var(--sand-reach-min) + (var(--sand-reach-max) - var(--sand-reach-min)) * var(--ocean-sand, 15) / 100);
   --sand-ink:     color-mix(in srgb, var(--border) 70%, transparent);
   --shadow-card:  none;
-  --spane-bg:     transparent;
 }
 
 /* Ocean's sea — motion for the layer. Roll carries a depth band sideways by exactly
@@ -1592,10 +1608,6 @@
   --boot-stagger: 60ms;
   --cover-in-dur: 0.26s;
 
-  /* single frost = the card itself; panes fade (no mask needed), so don't
-     re-paint --panel and double the tint into a rectangle below the bar. */
-  --spane-bg:      transparent;
-
   /* motion — gentle, with a soft hover rise on rows/tiles; a dragged queue
      row floats off the glass a touch higher than base */
   --dur-fast:   0.2s;
@@ -1720,9 +1732,6 @@
   --sticky-bar-backdrop: blur(10px);
   --panel-border-width: 1px;
   --shadow-card:        none;
-  /* panel is translucent (bolts glow through) — same as Glass, don't re-paint
-     it on the pane or the content area double-darkens and dims the storm. */
-  --spane-bg:           transparent;
 
   /* storm — the flagship expression (see the base block + storm-strike
      below). Two --title bolts, ~5s and ~7s draws, glow in a soft halo
@@ -1829,7 +1838,6 @@
 
   /* the material: the theme's metal, a floor under it, and controls a step lighter */
   --panel:         var(--metal);
-  --spane-bg:      var(--metal);
   --border:        var(--metal-edge);
   /* dark controls a small step up: the grain lifts them as it lifts the plate, and at 7 % the
      light text on them fell under 4.5:1 (the readability check, 2026-10-20) */
@@ -1883,11 +1891,15 @@
   /* the stage with the peek (styles.css "Metal"): the box 5:4, the cover a square of 72 % of
      its width, the side covers on the drum (--zoetrope-run, -turn, -scale and
      --metal-drum-back on the stage, below); the turn runs between them */
-  --metal-peek-cover-inset: 5% 14%;   /* a square of 72 % of the width: 5 % of the height above and below */
+  /* the cover's share of the box: 72 % of its width and 90 % of its height, a square in a 5:4
+     box. The full player sizes the box from them around its own square (styles.css "Metal"). */
+  --metal-peek-cover-w: 0.72;
+  --metal-peek-cover-h: 0.9;
+  --metal-peek-cover-inset: calc((1 - var(--metal-peek-cover-h)) * 50%) calc((1 - var(--metal-peek-cover-w)) * 50%);   /* 5 % above and below, 14 % at the sides */
   --metal-peek-dim:         brightness(0.7) saturate(0.9);
   --metal-cover-shadow:     0 2px 4px var(--metal-contact), 0 8px 18px var(--metal-cast);
   --metal-cover-rim:        inset 0 0 0 1px color-mix(in srgb, white 16%, transparent), inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
-  --metal-perspective:      var(--zoetrope-perspective);
+  --metal-perspective:      var(--zoetrope-perspective);   /* metal.ts sets this and --metal-drum-back on each cover box from the cover's width (src/drum.ts) */
 
   /* the scrubber: the thumbwheel (metal.md §1b2, idea 5, his pick) */
   --metal-slot-h:        6px;
@@ -1923,7 +1935,9 @@
    stem (the font review) */
 [data-skin="metal"]:is([data-theme="lilac"], [data-theme="green"]) { --fw-caps: 650; }
 /* Cover change: Zoetrope (Settings › Skin settings) */
-[data-skin="metal"][data-metal-cover="zoetrope"] { --cover-swap: zoetrope; --album-fade-delay: 0.3s; }   /* the colors step as the new cover comes forward */
+/* the colors step as the new cover comes forward; the full player's title, artist and album sit
+   under the cover, off it (his ask, 2026-10-21: "zoetrope on = album title artist below") */
+[data-skin="metal"][data-metal-cover="zoetrope"] { --cover-swap: zoetrope; --album-fade-delay: 0.3s; --fp-meta-below: 1; }
 /* Material: Acrylic — thick paint laid with a flat brush: the relief lights the strokes, a
    softer edge, a slightly rounder card */
 [data-skin="metal"][data-metal-material="acrylic"] {
@@ -1932,6 +1946,19 @@
   --panel-blend:    overlay, normal;   /* the relief reads as paint (soft-light hid it: the review) */
   --control-blend:  overlay;
   --metal-edge-hi:  light-dark(color-mix(in srgb, white 55%, transparent), color-mix(in srgb, white 6%, transparent));
+}
+/* The tints (src/metal-material.ts, 2026-10-21): once each surface's texture is baked against
+   its own color, it lays on with no blend mode, so nothing blends on a raster (the scroll's
+   dropped frames, metal.md §6.7). Until then, and if a bake fails, the overlay above stays. */
+[data-skin="metal"][data-metal-baked] {
+  --panel-paint:
+    var(--metal-tex-panel),
+    linear-gradient(180deg, color-mix(in srgb, var(--metal), white 5%), var(--metal) 45%, color-mix(in srgb, var(--metal), black 5%));
+  --panel-blend:      normal;
+  --canvas-bg:        var(--metal-tex-floor);
+  --app-canvas-blend: normal;
+  --control-paint:    var(--metal-tex-control);
+  --control-blend:    normal;
 }
 
 /* ============================================================
@@ -1959,7 +1986,6 @@
      Card opacity sets --card-opacity (skin-settings.ts). The sticky bars blur what scrolls
      under them, as Ocean's do. */
   --panel:               color-mix(in srgb, var(--surface) calc(var(--card-opacity) * 1%), transparent);
-  --spane-bg:            transparent;
   --sticky-bar-backdrop: blur(10px);
 
   /* the scene (art-template/happy/; npm run happy:art copies it here) */

@@ -21,6 +21,7 @@ import { spinEasing } from "./spin-steps";
 import { displayHz, onDisplayHz } from "./display-hz";
 import { motionReduced } from "./motion";
 import { hook } from "./skin";
+import { drumPerspective, drumBack } from "./drum";
 
 // Dev-only telemetry (VINYL.md §Telemetry), gated on Vite's DEV flag like frames.ts: a
 // `[perf] vinyl snap …` line for every jump and one `[perf] vinyl song …` summary per song,
@@ -393,12 +394,11 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
         const away = num("--zoetrope-fade", 0);
         const dim = `brightness(${num("--zoetrope-dim", 1)})`;
         // A cover set back on the drum shows at `s` at depth P − P / s: the same transform as
-        // Metal's side covers (styles.css "Metal"), so a cover lands exactly on its slot.
-        // A cover set back on the drum shows at `s` at depth P − P / s: the same transform as
-        // Metal's side covers (styles.css "Metal"), so a cover lands exactly on its slot.
-        const P = num("--zoetrope-perspective", 900);
+        // Metal's side covers (styles.css "Metal"), so a cover lands exactly on its slot. P grows
+        // with the cover past the size it was tuned on (drum.ts), as metal.ts sets it for the slots.
+        const P = drumPerspective(num("--zoetrope-perspective", 900), num("--zoetrope-perspective-per-cover", 0), old.offsetWidth);
         const drum = (dx: number, deg: number, s: number) =>
-          `perspective(${P}px) translateX(${dx}px) translateZ(${s >= 1 ? 0 : P - P / s}px) rotateY(${deg}deg)`;
+          `perspective(${P}px) translateX(${dx}px) translateZ(${drumBack(P, s)}px) rotateY(${deg}deg)`;
         // --zoetrope-stagger (0–1): how long the next cover waits in its slot while the old one
         // retreats first (his call, 2026-10-20: the next cover must not land on top of the old
         // one). 0 (the base): both move together.

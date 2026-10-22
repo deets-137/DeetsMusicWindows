@@ -3453,9 +3453,11 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 
 /* panes — the drill stack, riding the same --nav-* tokens as the engine */
 .search__panes { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+/* No fill (2026-10-21): the page shows the card's own plate in every skin. A slide sets the
+   pages side by side and a fade leaves one, so no page needs to hide the one beneath; a fill
+   read as a flat box inside a textured or see-through card (Metal, Glass, Cyber). */
 .spane {
   position: absolute; inset: 0; display: flex; flex-direction: column;
-  background: var(--spane-bg);
   transition: transform var(--nav-dur) var(--nav-ease), opacity var(--nav-dur) var(--nav-ease);
 }
 .spane[data-pos="center"] { transform: var(--nav-at-center); opacity: 1; z-index: 1; }
@@ -3466,11 +3468,10 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
    the real Back button, as the Library and Playlists cards do (SEARCH.md). */
 .spane__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 /* The levels (ARTIST-VIEW.md §10.1): the engine's panes over the results. At the root the
-   engine's pane is bare and the layer lets every press through to the results. A level
-   paints the pane fill, as the Search panes did, so a slide masks the results under it. */
+   engine's pane is bare and the layer lets every press through to the results. A level has
+   no fill: the results pane slides off as it slides in (see .spane above). */
 .search__levels { position: absolute; inset: 0; z-index: 2; }
 .search__levels[data-at-root] { pointer-events: none; }
-.search__levels .coll-pane:not(.coll-pane--bare) { background: var(--spane-bg); }
 
 /* sections */
 .search__sec { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
@@ -4730,7 +4731,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
    100cqw × 100cqh, and --fp-side is the cover's side (the largest square that fits). */
 .bento[data-player="full"] .panel[data-slot="np"] { container-type: size; }
 .bento[data-player="full"] .panel[data-slot="np"] .np {
-  --fp-side: min(100cqw, 100cqh);
+  --fp-side: min(calc(100cqw * var(--fp-cover-share)), 100cqh);
   flex: 1 1 auto;
   min-height: 0;
   container-type: normal;
@@ -4818,7 +4819,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
    cover and the controls are one block, centered in the card. full-player.ts decides it
    (rowsPlace) and slides the parts when a resize moves them. */
 .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np {
-  --fp-side: min(100cqw, 100cqh - var(--fp-controls-h, 0px) - var(--space-3));
+  --fp-side: min(calc(100cqw * var(--fp-cover-share)), 100cqh - var(--fp-controls-h, 0px) - var(--space-3));
   grid-template-rows: var(--fp-side) repeat(4, auto);
 }
 .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np__center { display: contents; }
@@ -4853,6 +4854,25 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 }
 /* The rows' box is not a box here, so the open's hide and fade go on its parts. */
 .panel.is-player-rebuild[data-np-rows="below"] .np__center > * { opacity: 0; }
+/* The title block under the cover (--fp-meta-below, Metal; his ask, 2026-10-21): the title,
+   artist and album leave the cover for their own row under it, the controls under them. No
+   band: the text takes the card's own inks again (and album-color.ts's on .np). full-player.ts
+   counts the row in --fp-controls-h, so the cover gives up its height, and keeps the rows below. */
+.bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"][data-np-meta-below] .np {
+  grid-template-rows: var(--fp-side) repeat(5, auto);
+}
+.bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"][data-np-meta-below] .np__meta {
+  --np-title: inherit;
+  --np-subtext: inherit;
+  --np-accent: inherit;
+  --title: inherit;
+  --text: inherit;
+  --subtext: inherit;
+  grid-area: 2 / 1;
+  align-self: start;
+  padding: 0;
+}
+.bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"][data-np-meta-below] .np__meta::before { content: none; }
 
 
 /* The motion (full-player.ts): the rows and the band are gone at once while the clip opens or
@@ -5252,9 +5272,31 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   transform: perspective(var(--metal-perspective)) translateX(calc(100% * var(--zoetrope-run))) translateZ(var(--metal-drum-back)) rotateY(calc(1deg * var(--zoetrope-turn)));
 }
 [data-hook-material="metal"][data-metal-peek] .np__art .metal-peek[data-empty] { visibility: hidden; }
+/* A blank sleeve (metal.ts paint, his call 2026-10-21): no neighbor to show, so the slot is the
+   brushed control plate with no picture, dimmed and turned as a side cover is. */
+[data-hook-material="metal"][data-metal-peek] .np__art .metal-peek[data-blank] {
+  background:
+    var(--metal-tex-control) 0 0 / var(--metal-size-fine) var(--metal-size-fine),
+    var(--surface);
+}
 /* One layer per slot (his report, 2026-10-20): the slot receiving the old cover stays empty
    while that cover is still on its way there; it shows in the frame the old cover is removed. */
 [data-hook-material="metal"][data-metal-peek] .np__art:has(> .vinyl--out) > .metal-peek[data-receiving] { opacity: 0; }
+/* The full player (his call A, 2026-10-21): the grid's square is the COVER, as in every skin, so
+   the band, the scrubber and the controls keep the cover's width. The 5:4 box is drawn around
+   it, 1 / 0.72 as wide and 1 / 0.9 as tall, so its inset lands the cover on the square. The
+   square leaves the box room in the card: at most the cover's share of its width
+   (--fp-cover-share, which full-player.ts reads too). The stage rule above set the box from
+   80cqw, which read the wide card, not the square: a tall strip (0.31.0). */
+/* (A look with Metal's material but not its peek tokens, a mod: the fallbacks are every skin's.) */
+[data-hook-material="metal"][data-metal-peek][data-surface="max"] { --fp-cover-share: var(--metal-peek-cover-w, 1); }
+[data-hook-material="metal"][data-metal-peek][data-surface="max"] .bento[data-player="full"] .panel[data-slot="np"] .np__art {
+  width: calc(100% / var(--metal-peek-cover-w, 1));
+  height: calc(100% / var(--metal-peek-cover-h, 1));
+  aspect-ratio: auto;
+  align-self: center;
+  justify-self: center;
+}
 
 /* The thumbwheel (metal.md §1b2, idea 5, his pick), with Fancy scrubber on as the other
    skins' playheads are, on every .scrub: a slot milled into the plate, a polished accent fill,

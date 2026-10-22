@@ -1,7 +1,6 @@
 // The Metal skin's moving parts (docs/features/metal.md; skin.css "METAL"; styles.css "Metal").
-// - The material: the card, page and control textures, drawn as SVG noise from Settings ›
-//   Skin settings (Material: finely brushed stainless steel or thick acrylic paint; Grain) and
-//   published on <html> as --metal-texture / --metal-texture-fine. Drawn only under Metal.
+// - The material: the card, page and control textures (metal-material.ts, its own module so
+//   the tray panel's window draws it too); started here for the main window.
 // - The peek: in Max and the player view, the previous and next songs' covers wait behind the
 //   cover (.metal-peek), and the zoetrope (vinyl.ts, --cover-swap) turns between them. One layer
 //   per slot: the slot receiving the old cover shows only as it lands, the slot the new cover
@@ -14,51 +13,13 @@
 // turn's duration × --motion-scale, and nothing under reduced motion or a hidden window.
 // Built from the dev draft and its reviews (metal.md §6.1); DESK-TESTS.md §6.6 is its test.
 import { hook, onSkinChange } from "./skin";
-import { setting, onSettingsChange } from "./settings-store";
+import { onSettingsChange } from "./settings-store";
+import { initMetalMaterial } from "./metal-material";
 import { getCurrent, getHistory, getUpcoming, onQueueChange } from "./queue";
 import { artURL, coverArtPx, resolveEntry } from "./queue-rows";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
 import { motionReduced } from "./motion";
-
-const GRAIN = { faint: 0.15, fine: 0.3, medium: 0.5, strong: 0.75 } as const;
-const TILE = 480; // px of one texture tile: the draft's Medium grain size (his pick: Grain size stays fixed)
-
-const svg = (s: string) => `data:image/svg+xml,${encodeURIComponent(s)}`; // the SVG's address; `url()` at the use
-
-// Brushed stainless: noise stretched along x into fine hairlines, grey, its contrast set by
-// `grain` around mid-grey so the overlay blend leaves the metal's own tone.
-// Two layers: long hairlines the width of the tile, and shorter streaks (about an eighth of it)
-// of their own brightness laid over them, so the lines end and vary as a brushed sheet does;
-// one layer alone read as even scan lines (the design review, 2026-10-20). The short layer is the
-// quieter one: at equal weight the two pitches beat into a faint hatch (round 2).
-function steel(grain: number, px: number): string {
-  const slope = 0.16 + grain * 1.2, b = (0.5 - slope / 2).toFixed(3);
-  const f = (c: string) => `<feFunc${c} type="linear" slope="${slope.toFixed(3)}" intercept="${b}"/>`;
-  return svg(`<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}"><filter id="f" x="0" y="0" width="100%" height="100%">` +
-    `<feTurbulence type="fractalNoise" baseFrequency="${(0.6 / px).toFixed(5)} 0.9" numOctaves="2" seed="11" stitchTiles="stitch" result="a"/>` +
-    `<feTurbulence type="fractalNoise" baseFrequency="${(8 / px).toFixed(5)} 0.42" numOctaves="2" seed="3" stitchTiles="stitch" result="s"/>` +
-    `<feComposite in="a" in2="s" operator="arithmetic" k1="0" k2="0.62" k3="0.42" k4="-0.02"/>` +
-    `<feColorMatrix type="saturate" values="0"/><feComponentTransfer>${f("R")}${f("G")}${f("B")}<feFuncA type="linear" slope="0" intercept="1"/></feComponentTransfer>` +
-    `</filter><rect width="${px}" height="${px}" filter="url(#f)"/></svg>`);
-}
-
-// Acrylic: short, overlapping dabs with the bristle lines inside them, lit from the top left
-// into a relief, its contrast cut to 0.55 around mid-grey (a flat patch lit at 34° is sin 34° ≈
-// 0.56) for the overlay blend: the low light draws the stroke edges, not brighter streaks under
-// small text (the design review, round 4).
-// The relief is strong enough to read as paint next to Steel (at Fine it barely differed), and
-// the bristle lines live inside the dabs (the product term), so strokes start and end instead of
-// running the tile's width as corduroy (the design review, rounds 1 and 2, 2026-10-20).
-function acrylic(grain: number, px: number): string {
-  const lift = (1.8 + grain * 3).toFixed(2); // a low light (34°) draws each stroke's edge, so the paint reads at this gentle relief
-  return svg(`<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}"><filter id="f" x="0" y="0" width="100%" height="100%">` +
-    `<feTurbulence type="fractalNoise" baseFrequency="${(3 / px).toFixed(5)} ${(7 / px).toFixed(5)}" numOctaves="3" seed="5" stitchTiles="stitch" result="s"/>` +
-    `<feTurbulence type="fractalNoise" baseFrequency="${(1.5 / px).toFixed(5)} 0.3" numOctaves="2" seed="9" stitchTiles="stitch" result="b"/>` +
-    `<feComposite in="s" in2="b" operator="arithmetic" k1="0.9" k2="0.42" k3="0.08" k4="0" result="h"/>` +
-    `<feDiffuseLighting in="h" surfaceScale="${lift}" diffuseConstant="1" lighting-color="#fff" result="l"><feDistantLight azimuth="235" elevation="34"/></feDiffuseLighting>` +
-    `<feComponentTransfer in="l"><feFuncR type="linear" slope="0.55" intercept="0.192"/><feFuncG type="linear" slope="0.55" intercept="0.192"/><feFuncB type="linear" slope="0.55" intercept="0.192"/><feFuncA type="linear" slope="0" intercept="1"/></feComponentTransfer>` +
-    `</filter><rect width="${px}" height="${px}" filter="url(#f)"/></svg>`);
-}
+import { drumPerspective, drumBack } from "./drum";
 
 // The drum holds pictures, not songs: a side shows the nearest neighbor whose cover differs from
 // the one on show, so an album played in order keeps the album before and the album after at
@@ -192,9 +153,16 @@ function warm(src: string | null): void {
 }
 const isReady = (src: string | null): src is string => !!src && ready.get(src) === true;
 /** Put a decoded picture in a side slot, or empty it. True when it shows a picture. */
+// No neighbor to show (a playlist's own cover, a station's next song, the end of the queue): the
+// slot is a blank sleeve, the brushed plate with no picture (his call, 2026-10-21: "Blank
+// plates"), so the drum keeps its shape. A picture still on its way, or one that failed, stays
+// hidden (data-empty): a blank there would flash before the picture.
 function paint(peek: HTMLElement, src: string | null): boolean {
-  if (isReady(src)) { peek.style.setProperty("--peek-art", `url("${src}")`); delete peek.dataset.empty; return true; }
   peek.style.removeProperty("--peek-art");
+  delete peek.dataset.blank;
+  delete peek.dataset.empty;
+  if (src === null) { peek.dataset.blank = ""; return true; }
+  if (isReady(src)) { peek.style.setProperty("--peek-art", `url("${src}")`); return true; }
   peek.dataset.empty = "";
   return false;
 }
@@ -214,6 +182,35 @@ let waitTimer = 0;
 let endTimer = 0;
 let seenSong: string | null = null;
 let seenAt = 0; // when the queue first named this song
+
+// The drum's depth follows the cover's size (drum.ts): a fixed perspective tuned on the stage's
+// cover drew the full player's larger cover with wedges above and below it and thin side covers
+// (metal.md §6.8.2). The slots' rest pose reads --metal-perspective and --metal-drum-back, set
+// here on the box from the cover's width; vinyl.ts's turn and the push-off below use the same rule.
+// A ResizeObserver runs after layout and before paint, so a resized cover never paints the old depth.
+const drumSized = new WeakSet<HTMLElement>();
+const drumWatch = new ResizeObserver((entries) => entries.forEach((e) => sizeDrum(e.target as HTMLElement)));
+/** Set a cover box's drum depth from its side slots' width. Exported for the full player's
+ *  flight copy (full-player.ts makeFlight), which is laid out at the full size at once. */
+export function sizeDrum(box: HTMLElement): void {
+  const w = box.querySelector<HTMLElement>(":scope > .metal-peek")?.offsetWidth ?? 0;
+  if (!w) return;
+  const cs = getComputedStyle(box);
+  const tok = (n: string, d: number) => { const v = parseFloat(cs.getPropertyValue(n)); return Number.isFinite(v) ? v : d; };
+  const P = drumPerspective(tok("--zoetrope-perspective", 900), tok("--zoetrope-perspective-per-cover", 0), w);
+  box.style.setProperty("--metal-perspective", `${P}px`);
+  box.style.setProperty("--metal-drum-back", `${drumBack(P, tok("--zoetrope-scale", 0.86))}px`);
+}
+function watchDrum(box: HTMLElement, on: boolean): void {
+  if (on && !drumSized.has(box)) { drumSized.add(box); drumWatch.observe(box); }
+  else if (!on && drumSized.has(box)) {
+    drumSized.delete(box);
+    drumWatch.unobserve(box);
+    box.style.removeProperty("--metal-perspective");
+    box.style.removeProperty("--metal-drum-back");
+  }
+}
+
 function peekSync(): void {
   wireTextFade();
   const on = document.documentElement.dataset.metalPeek !== undefined && hook("material") === "metal" && onStage();
@@ -221,6 +218,7 @@ function peekSync(): void {
   const songNow = cur ? cur.catalogId ?? cur.libraryId ?? null : null;
   if (songNow !== seenSong) { seenSong = songNow; seenAt = performance.now(); }
   document.querySelectorAll<HTMLElement>(".np__art").forEach((box) => {
+    watchDrum(box, on);
     const dur = turnMs(box);
     const known = songNow !== null && box.dataset.turnSong === `song:${songNow}`;
     // waits one turn at most: a cover that never takes this id (a station) must not hold the sides
@@ -246,6 +244,7 @@ function peekSync(): void {
         el.dataset.side = side;
         el.setAttribute("aria-hidden", "true");
         box.prepend(el); // first: the cover layers come after it and sit above
+        if (side === "next") sizeDrum(box); // the watch's first look may have come before the slots
       }
       const peek = el;
       const src = peekArt(side);
@@ -308,13 +307,16 @@ function peekSync(): void {
         // it out from behind that cover (the review and the stress test's frames, 2026-10-20).
         const cs = getComputedStyle(box);
         const tok = (n: string, d: number) => { const v = parseFloat(cs.getPropertyValue(n)); return Number.isFinite(v) ? v : d; };
-        const P = tok("--zoetrope-perspective", 900), w = peek.offsetWidth, k = side === "next" ? 1 : -1;
-        const back = P - P / tok("--zoetrope-scale", 0.86);
+        const w = peek.offsetWidth, k = side === "next" ? 1 : -1;
+        const base = tok("--zoetrope-perspective", 900);
+        const P = drumPerspective(base, tok("--zoetrope-perspective-per-cover", 0), w);
+        const back = drumBack(P, tok("--zoetrope-scale", 0.86));
         const run = tok("--zoetrope-run", 0.26), turn = tok("--zoetrope-turn", 30);
         const pose = (r: number, z: number, deg: number) => `perspective(${P}px) translateX(${k * r * w}px) translateZ(${z}px) rotateY(${k * deg}deg)`;
         peek.getAnimations().forEach((a) => a.cancel());
         peek.animate(
-          [{ transform: pose(run, back, turn), opacity: 1 }, { opacity: 1, offset: 0.6 }, { transform: pose(run + 0.32, back - 140, turn + 45), opacity: 0 }],
+          // pushed 140 px deeper at the tuned size; deeper in step with a larger cover's drum
+          [{ transform: pose(run, back, turn), opacity: 1 }, { opacity: 1, offset: 0.6 }, { transform: pose(run + 0.32, back - (140 * P) / base, turn + 45), opacity: 0 }],
           { duration: dur * 0.35, easing: "cubic-bezier(0.4, 0, 0.9, 0.6)", fill: "forwards" },
         );
         peek.dataset.timer = String(window.setTimeout(take, Math.max(0, turnAt + dur * 0.35 - performance.now())));
@@ -338,75 +340,11 @@ function peekSync(): void {
   });
 }
 
-/** Draw the material on <html> (under Metal only; the base skin tokens are inert elsewhere). */
-function paintMaterial(): void {
-  const root = document.documentElement;
-  const props = ["--metal-texture", "--metal-texture-fine", "--metal-size", "--metal-size-fine"];
-  const run = ++painted;
-  if (hook("material") !== "metal") { props.forEach((p) => root.style.removeProperty(p)); return; }
-  const grain = GRAIN[setting("metalGrain")] ?? GRAIN.fine;
-  const draw = setting("metalMaterial") === "acrylic" ? acrylic : steel;
-  const fine = Math.round(TILE / 2);
-  const coarse = draw(grain, TILE), small = draw(grain * 0.8, fine);
-  // The SVG paints at once; the baked bitmaps take its place when ready (bake, below).
-  if (!baked.has(`${coarse}|${dpr()}`)) root.style.setProperty("--metal-texture", `url("${coarse}")`);
-  if (!baked.has(`${small}|${dpr()}`)) root.style.setProperty("--metal-texture-fine", `url("${small}")`);
-  root.style.setProperty("--metal-size", `${TILE}px`);
-  root.style.setProperty("--metal-size-fine", `${fine}px`);
-  void Promise.all([bake(coarse, TILE), bake(small, fine)]).then(([a, b]) => {
-    if (run !== painted) return; // a newer material, grain, skin or screen took over
-    if (a) root.style.setProperty("--metal-texture", `url("${a}")`);
-    if (b) root.style.setProperty("--metal-texture-fine", `url("${b}")`);
-  });
-}
-
-// Each texture is baked once into a bitmap at the screen's pixel density (the efficiency pass,
-// 2026-10-20): as SVG noise filters, every textured card re-rastered them as content moved,
-// and a scroll in Settings dropped ~23 % of its frames at 244 Hz against 0 % with the paint
-// off. A bitmap blends like any picture. The SVG is kept as the paint until the bitmap is
-// ready, and if the canvas refuses it. Baked bitmaps are kept per texture and density (a
-// handful at most: two materials × four grains × two sizes), so going back is instant.
-let painted = 0;
-const baked = new Map<string, string>(); // `${svg}|${dpr}` → blob: URL
-const dpr = () => Math.max(1, Math.round((window.devicePixelRatio || 1) * 100) / 100);
-async function bake(src: string, css: number): Promise<string | null> {
-  const key = `${src}|${dpr()}`;
-  const have = baked.get(key);
-  if (have) return have;
-  try {
-    const px = Math.round(css * dpr());
-    const im = new Image(px, px);
-    im.src = src;
-    await im.decode();
-    const cv = document.createElement("canvas");
-    cv.width = cv.height = px;
-    cv.getContext("2d")!.drawImage(im, 0, 0, px, px);
-    const blob = await new Promise<Blob | null>((ok) => cv.toBlob(ok, "image/png"));
-    if (!blob) return null;
-    const url = URL.createObjectURL(blob);
-    baked.set(key, url);
-    if (baked.size > 16) { const [k, v] = baked.entries().next().value as [string, string]; baked.delete(k); URL.revokeObjectURL(v); }
-    return url;
-  } catch {
-    return null; // the SVG stays the paint
-  }
-}
-
 export function initMetal(): void {
-  paintMaterial();
-  // a move to a screen of another density bakes the textures again at its scale
-  const watchDpr = () => matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener("change", () => { paintMaterial(); watchDpr(); }, { once: true });
-  watchDpr();
+  initMetalMaterial(); // main.ts hands it the software-drawing gate first (gateMaterial)
   peekSync();
-  onSkinChange(() => { paintMaterial(); peekSync(); });
-  // A run of Material or Grain changes (arrow keys held on the row, the Compass cycling a choice)
-  // draws the texture once a frame at most, not once a step (the break-it pass, 2026-10-20).
-  let painting = 0;
+  onSkinChange(() => peekSync()); // after the material's listener: the same order as before
   onSettingsChange((k) => {
-    if (k === "metalMaterial" || k === "metalGrain") {
-      cancelAnimationFrame(painting);
-      painting = requestAnimationFrame(paintMaterial);
-    }
     if (k === "metalPeek" || k === "metalCoverChange") queueMicrotask(peekSync); // after skin-settings.ts sets the attribute
   });
   // The side covers follow the queue, and come back when a surface change rebuilds the card.

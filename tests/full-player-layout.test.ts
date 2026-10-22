@@ -1,7 +1,7 @@
 // full-player-layout.ts: the full player's pure rules (features/fullscreen-player.md §12.2).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rowsPlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight } from "../src/full-player-layout.ts";
+import { rowsPlace, coverSide, fullArtPx, fullClipFrom, flightFrom, stillCutRight } from "../src/full-player-layout.ts";
 
 test("2026-10-11 a wide card has the controls under the cover, never beside it", () => {
   assert.equal(rowsPlace(1100, 700, 356, 150, 12), "below");
@@ -19,6 +19,26 @@ test("2026-10-11 the controls go under the cover only when the space under it ho
   assert.equal(rowsPlace(698, 859, 356, 150, 12), "over"); // one pixel short: on the band
   assert.equal(rowsPlace(698, 698, 356, 150, 12), "over"); // screenshot 1: no space under it
   assert.equal(rowsPlace(447, 600, 356), "over"); // no height given: never below
+});
+
+test("2026-10-21 Metal's peek: the cover takes at most 72 % of the card's width", () => {
+  // The demo's 1800 × 900 full player: the card 1072 × 836. Every other skin: the height wins.
+  assert.equal(coverSide(1072, 836), 836);
+  assert.equal(Math.round(coverSide(1072, 836, 0.72)), 772); // the side covers need the rest
+  assert.equal(coverSide(500, 900, 0.72), 360); // a narrow card: the width wins
+  assert.equal(coverSide(500, -5), 0);
+  // A 698 × 698 card: no room under a full-width cover, room under Metal's 503 px one.
+  assert.equal(rowsPlace(698, 698, 356, 150, 12), "over");
+  assert.equal(rowsPlace(698, 698, 356, 150, 12, 0.72), "below"); // 195 free, 162 needed
+  assert.equal(rowsPlace(698, 698, 356, 200, 12, 0.72), "over"); // 212 needed: on the band
+});
+
+test("2026-10-21 Metal's title block under the cover: the rows are always below, never on it", () => {
+  // His ask: the title, artist and album off the cover. With no room under the cover, the cover
+  // gives up the height (the CSS's --fp-side), the rows never go back on the band.
+  assert.equal(rowsPlace(698, 698, 356, 200, 12, 0.72, true), "below");
+  assert.equal(rowsPlace(698, 698, 356, 200, 12, 1, true), "below");
+  assert.equal(rowsPlace(698, 698, 356, 200, 12, 1, false), "over"); // every other skin as before
 });
 
 test("the cover file is the box in device pixels, rounded up to 200 (§12.5 examples)", () => {
