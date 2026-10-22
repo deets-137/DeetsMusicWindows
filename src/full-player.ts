@@ -115,9 +115,13 @@ const npHost = (): HTMLElement | null => opts?.hosts.np ?? null;
 const queueHost = (): HTMLElement | null => (currentSurface() === "max" ? opts?.hosts.queue ?? null : null);
 const artOf = (panel: HTMLElement) => panel.querySelector<HTMLElement>(".np__art");
 const npOf = (panel: HTMLElement) => panel.querySelector<HTMLElement>(".np");
+/** The surface the player opened on. A surface change closes it after the surface has changed,
+ *  so the close reads this, not surfaceNow(): stacked in Max, a switch to Midi read "stacked +
+ *  Midi" and uncovered no card, and all four stayed hidden (2026-10-21). */
+let openedOn: "midi" | "max" | null = null;
 /** The cards the player covers: every content slot of the composition. */
 const coveredHosts = (): HTMLElement[] =>
-  stack && surfaceNow() === "midi" ? [] : (opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h);
+  stack && (full ? openedOn : surfaceNow()) === "midi" ? [] :(opts?.slots() ?? []).map((s) => opts!.hosts[s]).filter((h): h is HTMLElement => !!h);
 
 /** The room the History column takes from Now Playing now: its width and the panel gap. */
 const historyRoom = (): number => (fp().dataset.fpHistory === "on" && !stack ? pxToken("--full-history-w") + pxToken("--panel-gap") : 0);
@@ -893,6 +897,7 @@ export async function openFullPlayer(cause: string): Promise<void> {
     askArt(box);
 
     full = true;
+    openedOn = surface;
     apply(true, place, row1);
     const covered = coveredHosts();
     covered.forEach((h) => (m ? h.classList.add("is-covering") : cover(h)));
