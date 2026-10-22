@@ -1918,6 +1918,15 @@ answer it, in this order, and none of them needs a restart.
 that look identical in the file can behave differently because of the queue's state at
 the moment of the click. Read what happened.
 
+## Recipe — why a web came out small (2026-10-21)
+1. `grep -a "web: trace\|web: built" deetsmusic.log | tail -6`: the artists at each degree,
+   why each was taken, how many were cut, and each artist's songs read → kept.
+2. The `web:pick` line (the `diag` tool, or the log after its flush): the song funnel. The
+   seed's and each degree's songs before and after the genre, what was taken, the genres the
+   filter left out, and at a list's end the songs just heard. PLAYLIST-WEB.md §14.
+3. Older than the trace: the saved reads in `web_artists` (one row per artist, `top` and
+   `credited` songs with their genres) give the same picture by hand.
+
 ## Why did it pause — `player:pause` (2026-09-21)
 
 > **Part:** built · 2026-09-21

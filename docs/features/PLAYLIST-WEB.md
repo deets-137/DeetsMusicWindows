@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-16
 sources: [src/web.ts, src-tauri/src/web.rs, src/playlists-card.ts, src/playlist-expiry.ts, src/player.ts]
-updated: 2026-10-19
+updated: 2026-10-21
 ---
 # DeetsMusic — the playlist web
 
@@ -848,3 +848,41 @@ Make playlist, so a second press made the same web again.
    picked, and no chips, status, name or Make playlist show.
 3. Pick another song. The chips, the name and Make playlist come back for it.
 4. Pick a song, then close the panel WITHOUT making. Open it again: the song is still picked.
+
+## 14. The trace: how a web went (2026-10-21)
+> **Part:** built · 2026-10-21
+
+His ask: an audit trail of how a web was made, after the 000 CHANNEL BLACK Jazz Web came out
+with 15 songs, nearly all by the seed artist. The trace only logs. It changes no behavior.
+
+Before, a web left one `web: built` line (artists, songs, calls) and the `web:make` diag line.
+Why a web came out small could only be found by reading `web_artists` in the database.
+
+**In the log file (Rust, `log_trace` in web.rs).** One line per degree, just before `web: built`:
+
+```
+web: trace d0 took 1 (anchor 11 songs): _BY.ALEXANDER [17→17]
+web: trace d1 took 10: Hawa [on the seed; 25→19, 3 with the seed] · 070 Shake [from 1, shared 1; 29→27] · …
+web: trace d2 took 15, cut 37: RAYE [from 2, shared 2; 10→10] · …
+```
+
+- *on the seed*: an artist on the seed song or album, put into degree 1 first (§9.4).
+- *from N, shared M*: linked from N artists of the degree before, with M songs shared (the
+  rank, §4).
+- *cut N*: artists the fan-out (`SEED_FANOUT`, `DEGREE_FANOUT`) left out.
+- *read→kept*: the artist's songs read, and those kept (a variant or a song already in the web
+  is not). *with the seed*: kept songs that credit the seed artist, so they count as the seed's.
+- A last line names artists taken but with no saved read (left out of the web).
+
+**In the diag ring (front end, `web:pick`).** Beside each `web:make`, from the panel, the
+Compass, a right-click and a list's end. `pickSongs` fills a `PickTrace` when given one:
+
+- `built`, `size`, `genres`: the songs in the web, the size cap, the picked genres.
+- `seed`: `{ all, fit, took }`: the seed's songs, those the genre kept (with Keep 5), those taken.
+- `degrees`: per degree, `{ artists, all, fit, took }` for the web's own songs.
+- `outGenres`: the genres of the web songs the genre left out, most first ("Hip-Hop/Rap 140").
+- `tookBy`: web songs taken, by artist.
+- `heard` (a list's end only): songs left out because they were just heard (§12).
+
+**Reading it.** `grep -a "web: trace" deetsmusic.log | tail` for the artists, then the
+`web:pick` line in `deetsmusic diag` (or the log after its 5-minute flush) for the songs.

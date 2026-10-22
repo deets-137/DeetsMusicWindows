@@ -189,10 +189,11 @@ async function buildWebList(seed: WebSeed, r: { reach?: 1 | 2 | 3; genres?: stri
   let picked = new Set([...have].filter((g) => want.some((w) => g.toLowerCase().startsWith(w) || g.toLowerCase().includes(w))));
   // A song or album seed picks its own genres, as the panel does (§9.1).
   if (!picked.size && seed.kind !== "artist") picked = new Set(res.genres.filter((g) => !NOT_A_GENRE.has(g) && have.has(g)));
-  const list = pickSongs(res, picked, setting("webSize"), setting("webPrefer"), setting("webSeedFilter"));
+  const trace: PickTrace = {};
+  const list = pickSongs(res, picked, setting("webSize"), setting("webPrefer"), setting("webSeedFilter"), trace);
   const genres = picked.size <= NAME_GENRES ? [...picked].join(" & ") : "";
   const name = `${seedName(seed)}${genres ? ` ${genres}` : ""} Web`;
-  return { res, picked, list, name, reach };
+  return { res, picked, list, name, reach, trace };
 }
 
 /** Build, pick and make the playlist from a known seed: the Compass's path after its seed
@@ -205,7 +206,8 @@ async function webFrom(
   from: string,
 ): Promise<void> {
   status(`Reading the web of ${seedName(seed)}…`);
-  const { res, picked, list, name, reach } = await buildWebList(seed, r);
+  const { res, picked, list, name, reach, trace } = await buildWebList(seed, r);
+  diag.log("web:pick", { seed: seedName(seed), from, ...trace });
   if (!list.length) throw new Error("The web had no songs to pick");
   const expireDays = setting("webTempDays"); // every new web starts on Temp, as the panel does
   status("Making the playlist…");
@@ -285,11 +287,12 @@ async function webAtListEnd(e: ListEnd): Promise<boolean> {
     return false;
   }
   diag.log("web:listEnd", { fire: seed.kind, seed: seedName(seed), ctx: e.last.context ?? null });
-  const { res, picked, list: all, name, reach } = await buildWebList(seed, {});
+  const { res, picked, list: all, name, reach, trace } = await buildWebList(seed, {});
   // The web leads with its seed (§9.1): the album or the song you just heard. Leave out every
   // song of the finished list, so the web goes on instead of starting over.
   const heard = new Set(e.list.flatMap((h) => [h.catalogId, h.libraryId]).filter((id): id is string => !!id));
   const list = all.filter((t) => !(t.catalogId && heard.has(t.catalogId)) && !(t.libraryId && heard.has(t.libraryId)));
+  diag.log("web:pick", { seed: seedName(seed), from: "listEnd", ...trace, heard: all.length - list.length });
   if (!list.length || !e.stillIdle()) {
     diag.log("web:listEnd", { skip: list.length ? "user acted" : "no songs", built: all.length });
     return false;
@@ -502,7 +505,7 @@ const SEARCH_GLYPH =
 /** Pick and order the songs (PLAYLIST-WEB.md §4). The seed's songs fill at most half; the web
  *  fills the rest nearest degree first, one artist at a time. Picked genres filter the web, and
  *  the seed's songs as `seedFilter` says. */
-export function pickSongs(r: WebResult, genres: Set<string>, size: number, prefer: WebPrefer, seedFilter: WebSeedFilter): Track[] {
+export function pickSongs(r: WebResult, genres: Set<string>, size: number, prefer: WebPrefer, seedFilter: WebSeedFilter, trace?: PickTrace): Track[] {
   // A song seed is track 1 whatever the chips say (you picked it); the rest fills after it.
   const pinned = r.kind === "song" ? r.songs.filter((s) => s.anchor) : [];
   const full = size;
@@ -543,6 +546,7 @@ export function pickSongs(r: WebResult, genres: Set<string>, size: number, prefe
   }
   // A thin web leaves room: the seed's songs fill it.
   const seedTake = seedSongs.slice(0, size - webTake.length);
+  if (trace) fillTrace(trace, r, genres, size + pinned.length, allSeed, seedSongs, seedTake, web, webTake, fits);
   // Alternate the seed and the web, spread evenly when one side is longer.
   const out: Track[] = pinned.map((s) => s.track);
   const total = seedTake.length + webTake.length;
@@ -553,6 +557,67 @@ export function pickSongs(r: WebResult, genres: Set<string>, size: number, prefe
     out.push(seedDue ? seedTake[i++].track : webTake[j++].track);
   }
   return out.slice(0, full);
+}
+
+/** How pickSongs went from the built web to the playlist (§14): the `web:pick` diag line. */
+export interface PickTrace {
+  built?: number;
+  size?: number;
+  genres?: string[];
+  /** The seed's songs: all, after the genre (and Keep 5), taken. */
+  seed?: { all: number; fit: number; took: number };
+  /** The web's songs by degree: all, after the genre, taken. */
+  degrees?: Record<string, { artists: number; all: number; fit: number; took: number }>;
+  /** The genres of the web songs the genre left out, most first. */
+  outGenres?: string[];
+  /** Web songs taken, by artist. */
+  tookBy?: Record<string, number>;
+  /** A web at a list's end: the songs left out because they were just heard. */
+  heard?: number;
+}
+
+function fillTrace(
+  t: PickTrace,
+  r: WebResult,
+  genres: Set<string>,
+  size: number,
+  allSeed: WebSong[],
+  seedSongs: WebSong[],
+  seedTake: WebSong[],
+  web: WebSong[],
+  webTake: WebSong[],
+  fits: (s: WebSong) => boolean,
+): void {
+  t.built = r.songs.length;
+  t.size = size;
+  t.genres = [...genres];
+  t.seed = { all: allSeed.length, fit: seedSongs.length, took: seedTake.length };
+  const took = new Set(webTake);
+  const fitSet = new Set(web);
+  const degrees: NonNullable<PickTrace["degrees"]> = {};
+  const nonSeed = r.songs.filter((s) => !s.seed);
+  for (const a of r.artists) {
+    if (a.degree === 0) continue;
+    const d = (degrees[`d${a.degree}`] ??= { artists: 0, all: 0, fit: 0, took: 0 });
+    d.artists++;
+  }
+  for (const s of nonSeed) {
+    const d = (degrees[`d${s.degree}`] ??= { artists: 0, all: 0, fit: 0, took: 0 });
+    d.all++;
+    if (fitSet.has(s)) d.fit++;
+    if (took.has(s)) d.took++;
+  }
+  t.degrees = degrees;
+  const out = new Map<string, number>();
+  for (const s of nonSeed) if (!fits(s)) for (const g of s.track.genres) if (!NOT_A_GENRE.has(g)) out.set(g, (out.get(g) ?? 0) + 1);
+  t.outGenres = [...out].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g, n]) => `${g} ${n}`);
+  const names = new Map(r.artists.map((a) => [a.id, a.name]));
+  const by: Record<string, number> = {};
+  for (const s of webTake) {
+    const n = names.get(s.artistId) ?? s.artistId;
+    by[n] = (by[n] ?? 0) + 1;
+  }
+  t.tookBy = by;
 }
 
 let mounts = 0; // each panel's own element ids: the Playlists card's and the title bar's are both on <body>
@@ -1183,7 +1248,9 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
 
   const make = async () => {
     if (!result || !seed || making) return;
-    const tracks = pickSongs(result, picked, setting("webSize"), setting("webPrefer"), setting("webSeedFilter"));
+    const trace: PickTrace = {};
+    const tracks = pickSongs(result, picked, setting("webSize"), setting("webPrefer"), setting("webSeedFilter"), trace);
+    diag.log("web:pick", { seed: seedName(seed), from: "panel", ...trace });
     const name = nameInput.value.trim() || defaultName();
     const expireDays = temp ? setting("webTempDays") : undefined;
     if (!tracks.length) return;

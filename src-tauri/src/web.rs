@@ -948,6 +948,10 @@ async fn build_web(
     let mut degree_of: HashMap<String, u8> = parts.leads.iter().map(|id| (id.clone(), 0)).collect();
     let mut order: Vec<(String, u8)> = parts.leads.iter().map(|id| (id.clone(), 0)).collect();
     let mut frontier = parts.leads.clone();
+    // For the trace (§14): why each artist was taken (linked from, songs shared, on the seed)
+    // and how many each degree cut.
+    let mut why: HashMap<String, (usize, u32, bool)> = HashMap::new();
+    let mut cut: Vec<usize> = Vec::new();
 
     for d in 0..=reach {
         let _ = app.emit("web-progress", Progress { degree: d, artists: frontier.len() });
@@ -993,8 +997,12 @@ async fn build_web(
         for id in ranked {
             push_id(&mut next, id, &[]);
         }
+        let found = next.len();
         next.truncate(if d == 0 { SEED_FANOUT } else { DEGREE_FANOUT });
+        cut.push(found - next.len());
         for id in &next {
+            let (from, shared) = score.get(id).map(|e| (e.0.len(), e.1)).unwrap_or((0, 0));
+            why.insert(id.clone(), (from, shared, d == 0 && parts.forced.contains(id)));
             degree_of.insert(id.clone(), d + 1);
             order.push((id.clone(), d + 1));
         }
@@ -1032,15 +1040,21 @@ async fn build_web(
             songs.push(WebSong { track: t.clone(), degree: 0, artist_id: first_lead.clone(), seed: true, anchor: true, mine: level(t) });
         }
     }
+    // Per artist, for the trace: songs read, kept, and kept that credit the seed.
+    let mut tally: HashMap<String, [u32; 3]> = HashMap::new();
     for (id, d) in &order {
         let Some(r) = b.row(id) else { continue };
         oldest = oldest.min(r.fetched_at);
         artists.push(WebArtist { id: id.clone(), name: r.s.artist.name.clone(), degree: *d });
+        let n = tally.entry(id.clone()).or_default();
         for t in r.s.top.iter().chain(r.s.credited.iter()) {
+            n[0] += 1;
             if is_variant(&t.title) || !once(t) {
                 continue;
             }
             let seed_song = credited_names(t).iter().any(|x| seed_keys.contains(&norm(x)));
+            n[1] += 1;
+            n[2] += seed_song as u32;
             songs.push(WebSong {
                 track: t.clone(),
                 degree: if seed_song { 0 } else { *d },
@@ -1052,8 +1066,53 @@ async fn build_web(
         }
     }
     let failed = b.failed.len() as u32;
+    log_trace(&artists, &why, &cut, &tally, parts.anchor.len(), order.len() - artists.len());
     save_seed(db, &parts.saved);
     Ok(WebResult { kind: seed.kind(), seed: seed_artist, genres: parts.genres, artists, songs, calls: apple.calls, failed, oldest })
+}
+
+/// The build's trace in the log (PLAYLIST-WEB.md §14), one line a degree: the artists it took
+/// and why (on the seed, or linked from N artists of the degree before with M songs shared),
+/// how many it cut at the fan-out, and each artist's songs read → kept (a variant or a song
+/// already in the web is not kept), with how many of the kept credit the seed.
+/// "d1 took 11: Hawa [on the seed; 25→19, 3 with the seed] · …"
+fn log_trace(
+    artists: &[WebArtist],
+    why: &HashMap<String, (usize, u32, bool)>,
+    cut: &[usize],
+    tally: &HashMap<String, [u32; 3]>,
+    anchor: usize,
+    unread: usize,
+) {
+    let top = artists.iter().map(|a| a.degree).max().unwrap_or(0);
+    for d in 0..=top {
+        let list: Vec<String> = artists
+            .iter()
+            .filter(|a| a.degree == d)
+            .map(|a| {
+                let [read, kept, seed] = tally.get(&a.id).copied().unwrap_or_default();
+                let how = match why.get(&a.id) {
+                    Some((_, _, true)) => "on the seed; ".to_string(),
+                    Some((from, shared, false)) => format!("from {from}, shared {shared}; "),
+                    None => String::new(),
+                };
+                let with = if seed > 0 && d > 0 { format!(", {seed} with the seed") } else { String::new() };
+                format!("{} [{how}{read}→{kept}{with}]", a.name)
+            })
+            .collect();
+        let mut head = format!("web: trace d{d} took {}", list.len());
+        if d == 0 && anchor > 0 {
+            head += &format!(" (anchor {anchor} songs)");
+        }
+        let c = if d == 0 { 0 } else { cut.get(d as usize - 1).copied().unwrap_or(0) };
+        if c > 0 {
+            head += &format!(", cut {c}");
+        }
+        crate::log::info(&format!("{head}: {}", list.join(" · ")));
+    }
+    if unread > 0 {
+        crate::log::info(&format!("web: trace {unread} artist(s) taken but not read (left out)"));
+    }
 }
 
 /// Put a built seed at the top of "Web before".
