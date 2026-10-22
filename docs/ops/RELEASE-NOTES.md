@@ -41,6 +41,29 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.32.0 — 2026-10-22
+
+**Happy, a seventh skin.** A pixel-art sky behind the cards, with clouds, the sun and the
+moon. Deets and his dog Happy live on the grass, and Happy pushes the cover on to the next
+song. Settings › Skin settings › *Sky* follows the time where you are or holds one, and *Card
+opacity* lets the sky show through.
+
+**Top Listens by time span.** In the Rewind panel, three boxes pick Songs, Albums or Artists;
+Played or Listened; and a span from Today to All time. Each box remembers its choice.
+
+**Metal in the full player.** The cover keeps its square shape, the drum has no wedges on a
+large cover, and with *Cover change* set to Zoetrope the song's name sits in its own row
+under the cover. The tray panel is brushed metal too, and an empty side slot shows a blank
+sleeve.
+
+**Smoother Go to Album and Back.** Each skin opens an album or artist with its own page
+motion, the page arrives drawn, and Back is one motion.
+
+**Fixes.** In Max the full player's Queue stays inside the window. A switch to Midi or Mini
+from the full player shows the cards again. The Network panel's bars have even cells. The
+app now carries a Content Security Policy in report mode: it blocks nothing yet, and the
+weekly health counts include how many times it would have.
+
 ## 0.31.0 — 2026-10-20
 
 **Metal, a sixth skin.** Finely brushed steel over every theme, with sharp corners, a
