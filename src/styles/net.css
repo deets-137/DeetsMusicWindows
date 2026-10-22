@@ -54,7 +54,7 @@
 }
 .net__word[data-tone="bad"] { color: var(--net-bad); }
 
-.net__row { display: flex; flex-direction: column; gap: var(--net-head-gap); padding: 0 var(--space-2); }
+.net__row { display: flex; flex-direction: column; gap: var(--net-head-gap); padding: 0 var(--net-row-pad, var(--space-2)); }
 .net__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); min-width: 0; }
 .net__name { color: var(--title); white-space: nowrap; }
 /* A row's status (his ask, 2026-10-19): one word, Good · OK · Bad, the title's words in the
@@ -64,14 +64,20 @@
 .net__status[data-tone="none"] { color: var(--subtext); }
 .net__status[data-tone="bad"] { color: var(--net-bad); }
 
-/* One cell per minute, oldest on the left: a status page's bar. */
-.net__bar { display: grid; grid-template-columns: repeat(60, 1fr); gap: var(--net-cell-gap); }
+/* One cell per minute, oldest on the left: a status page's bar. net.ts › snapCells sets the
+   cell, the gap and the row padding in whole device pixels, so every cell is the same width;
+   `1fr` and the token are the fallback before it runs. */
+.net__bar {
+  display: grid;
+  grid-template-columns: repeat(60, var(--net-cell-w, 1fr));
+  gap: var(--net-cell-gap-px, var(--net-cell-gap));
+}
 .net__cell { display: block; height: var(--net-cell-h); border-radius: var(--net-cell-radius); background: var(--net-none); }
 .net__cell[data-v="good"] { background: var(--net-good); }
 .net__cell[data-v="ok"] { background: var(--net-ok); }
 .net__cell[data-v="bad"] { background: var(--net-bad); }
 
-.net__axis { display: flex; justify-content: space-between; padding: 0 var(--space-2); color: var(--subtext); }
+.net__axis { display: flex; justify-content: space-between; padding: 0 var(--net-row-pad, var(--space-2)); color: var(--subtext); }
 
 /* The Test row: "Speed" and its status as a link row reads, then the button on the right. */
 .net__test { gap: var(--space-2); }

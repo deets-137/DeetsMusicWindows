@@ -350,6 +350,32 @@ function build(rows: Row[]): void {
     `<div class="set quick__rows"><div class="set__row net__test"><span class="net__name">Speed</span><span class="net__status net__result"></span>` +
     `<div class="set__split"><button class="set__half" type="button" data-net-test title="Pings support.deets.solutions, then downloads 2 MB from it. Nothing is kept">Test</button></div></div></div>`;
   shape = rows.map((r) => r.key).join();
+  snapDpr = 0;
+}
+
+// ── whole-pixel cells ──
+// 60 `1fr` columns gave each cell a fractional width, and the screen rounded some cells up and
+// some down, so the bars read uneven (his report, 2026-10-22). Each cell and gap is now a whole
+// number of device pixels; the bars, their heads and the axis narrow to that track, and the
+// rest goes to the side padding, split evenly.
+let snapDpr = 0; // the pixel ratio the cells were sized for; 0 after a build
+function snapCells(): void {
+  if (!panel) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (dpr === snapDpr) return;
+  const cs = getComputedStyle(panel);
+  const pad = parseFloat(cs.getPropertyValue("--space-2")) || 0;
+  const inner = panel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 2 * pad;
+  if (inner <= 0) return;
+  const avail = Math.floor(inner * dpr);
+  const gap = Math.max(1, Math.round((parseFloat(cs.getPropertyValue("--net-cell-gap")) || 0) * dpr));
+  const cell = Math.floor((avail - (HOUR - 1) * gap) / HOUR);
+  if (cell < 1) return;
+  const spare = Math.floor((avail - HOUR * cell - (HOUR - 1) * gap) / 2);
+  panel.style.setProperty("--net-cell-w", `${cell / dpr}px`);
+  panel.style.setProperty("--net-cell-gap-px", `${gap / dpr}px`);
+  panel.style.setProperty("--net-row-pad", `${pad + spare / dpr}px`);
+  snapDpr = dpr;
 }
 
 /** A status word, its tone and its hover hint, each written only when it changed. */
@@ -385,6 +411,7 @@ function paint(): void {
     }
     build(rows);
   }
+  snapCells();
   const word = panel.querySelector<HTMLElement>(".net__word")!;
   word.textContent = VERDICT_WORDS[v];
   word.dataset.tone = v;
