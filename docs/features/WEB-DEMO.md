@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-09-24
 sources: [demo/boot.ts, demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
-updated: 2026-10-17
+updated: 2026-10-21
 ---
 # DeetsMusic — Web demo
 
@@ -139,7 +139,10 @@ alias. Events (`listen` / `emit`) run on a local table in the shim. §2's alias 
   that size. A page narrower than the app scales the iframe down, so a phone sees the whole
   window. **The app's theme and skin reach its box only** (his call, 2026-09-21): the box gets
   `data-theme` / `data-skin`, and because the site's tokens hang on any element with those
-  attributes, only the box changes. *Start over* clears the `deets.` keys and reloads, so the
+  attributes, only the box changes. **Only a look the site draws** (his call, 2026-10-21): a
+  theme or skin id that is not in the site's own lists (`DeetsAppearance.axes` in
+  `js/controls.js`) is not copied, and the box takes the page's own look. Happy is the first
+  (the site gets it when it is ported); a user's own mod skin is the reason. *Start over* clears the `deets.` keys and reloads, so the
   walk starts again.
 - `strings.js`: every string, approved by him 2026-09-21 (no `[ph]` left).
 - `styles/main.css`: one `.dmd-*` block, tokens only.

@@ -6,6 +6,16 @@ updated: 2026-10-21
 ---
 # DeetsMusic — Work log
 
+## 2026-10-21, late night — the site's demo box keeps its own look for a skin it lacks
+
+- **His ask:** with custom skins coming, the site cannot follow every app skin. The demo page
+  (DeetsSolutions `deetsmusic/demo/demo.js`) copied the app's theme and skin onto its box; it
+  now copies only an id in the site's own lists (`DeetsAppearance.axes`) and otherwise drops the
+  attribute, so the box wears the visitor's site look. Happy is the first such skin, until he
+  ports it. WEB-DEMO.md §9.
+- Desk test: not run (no demo runs). His check: the demo page, the app's skin set to Happy, the
+  box around the frame stays in the page's look.
+
 ## 2026-10-21, night — Happy: two pushes, the stand walks the cover out, Deets off the title bar
 
 - **His report (a screenshot):** Deets stood in the title bar's top-left corner. Read on his dev
