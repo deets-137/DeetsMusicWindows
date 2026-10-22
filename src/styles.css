@@ -5429,7 +5429,6 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 @keyframes scene-frames-once { to { background-position-x: calc(-1 * var(--fw, 0px) * (var(--frames, 1) - 1)); } }
 .scene__ball { position: absolute; left: 0; top: 0; width: var(--fw, 0); height: var(--fw, 0); background: var(--pet-ball) center / 100% 100% no-repeat; }
 /* the rope from Happy's mouth to the cover he drags: one line in the bubble's ink */
-.scene__rope { position: absolute; left: 0; top: 0; height: calc(var(--scene-px, 2) * 1px); background: var(--bubble-ink); transform-origin: 0 50%; }
 
 /* the speech bubble: the skin's 9-slice art, the words in the skin's own face */
 .scene__bubble {

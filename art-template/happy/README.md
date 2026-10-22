@@ -28,11 +28,10 @@ file beside it. Redraw the strip as you like, then delete the `.draft` file: fro
 |---|---|---|---|---|
 | `happy/sit_down` | 32×32 | 1 | DeetsLife, as is | resting next to Deets, facing you |
 | `happy/idle_side` | 32×32 | 1 | DeetsLife, as is | standing, side-on |
-| `happy/run_side` | 32×32 | 6 | blank (v1 uses the walk, faster) | the rope: running out from behind the cover |
-| `happy/run_rope_side` | 32×32 | 6 | blank (or the app draws the rope from his mouth on `run_side`) | the rope: running with the rope in his mouth |
+| `happy/run_side` | 32×32 | 6 | blank (v1 uses the walk, faster) | running: to the cover and back to the grass |
 | `happy/push_head_side` | 32×32 | 4 | draft | the head push |
-| `happy/stand_up_side` | 40×48 | 3 | blank, yours | the stand: getting up on his hind legs |
-| `happy/stand_push_side` | 40×48 | 4 | blank, yours | the stand: pushing with his front legs |
+| `happy/stand_up_side` | 40×48 | 3 | draft, yours to redraw | the stand: getting up on his hind legs |
+| `happy/stand_push_side` | 40×48 | 4 | draft, yours to redraw | the stand: pushing with his front paws, a step at a time |
 | `happy/run_ball_side` | 32×32 | 4 | draft (the walk with the ball) | fetch: running back with the ball |
 | `happy/drop_ball_side` | 32×32 | 3 | draft | fetch: dropping the ball at Deets' feet |
 | `happy/keep_ball_down` | 32×32 | 2 | draft | fetch: keeping the ball, sitting, facing you ("Gundu...") |

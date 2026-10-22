@@ -58,16 +58,36 @@ export function pictureSize(url: string): Promise<{ w: number; h: number }> {
   if (!url) return Promise.resolve({ w: 0, h: 0 });
   let p = sizes.get(url);
   if (!p) {
+    // A read that fails or never settles gives 0 × 0 and leaves the cache, so the next place
+    // reads it again. Once a read from a launch hidden off-screen never settled: every place
+    // after it waited on it, and Deets stood in the title bar's corner all session (2026-10-21).
     p = new Promise((done) => {
       const img = new Image();
-      img.onload = () => done({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => done({ w: 0, h: 0 });
+      const end = (w: number, h: number, why?: string) => {
+        window.clearTimeout(limit);
+        img.onload = img.onerror = null;
+        if (!w || !h) {
+          // place again a little later (pet.ts reads its strips from there too), a few times
+          sizes.delete(url);
+          const n = (fails.get(url) ?? 0) + 1;
+          fails.set(url, n);
+          diag.warn("scene:picture", { url, why, n });
+          if (n <= 5) window.setTimeout(schedulePlace, RETRY_PLACE_MS);
+        }
+        done({ w, h });
+      };
+      const limit = window.setTimeout(() => end(0, 0, "stalled"), PICTURE_WAIT_MS);
+      img.onload = () => end(img.naturalWidth, img.naturalHeight, "empty");
+      img.onerror = () => end(0, 0, "error");
       img.src = url;
     });
     sizes.set(url, p);
   }
   return p;
 }
+const PICTURE_WAIT_MS = 3000;
+const RETRY_PLACE_MS = 2000;
+const fails = new Map<string, number>();
 
 function paintSky(): void {
   if (!back) return;

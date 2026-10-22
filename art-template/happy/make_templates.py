@@ -26,8 +26,7 @@ deets_ref = Image.open(SPR / "deets/walk_side.png").crop((0, 0, 32, 64))
 # name, frame w, frame h, frames, reference sprite (or None), facing note, what it is for
 PIECES = [
     # Happy, the cover pushes (§1.1)
-    ("happy/run_side", 32, 32, 6, happy_ref, "faces left", "the rope: running out from behind the cover"),
-    ("happy/run_rope_side", 32, 32, 6, happy_ref, "faces left", "the rope: running with the rope in his mouth"),
+    ("happy/run_side", 32, 32, 6, happy_ref, "faces left", "running: to the cover and back to the grass"),
     ("happy/push_head_side", 32, 32, 4, happy_ref, "faces left", "the head push"),
     ("happy/stand_up_side", 40, 48, 3, happy_ref, "faces left", "the stand: getting up on his hind legs"),
     ("happy/stand_push_side", 40, 48, 4, happy_ref, "faces left", "the stand: pushing with his front legs"),

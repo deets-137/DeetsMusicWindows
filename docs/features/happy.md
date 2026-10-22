@@ -43,6 +43,10 @@ picked at random:
 3. **The stand.** Happy gets up on his hind legs and pushes the album out with his front legs,
    and the new one appears.
 
+**2026-10-21, later (his ask):** the rope is out; two ways are left. The stand moves with the
+cover: "have him stand on his front paws and push it" (read as this narration's stand: up on
+his hind legs, pushing with his front paws). §6 › *Two pushes* is the record.
+
 ### 1.2 The canvas: grass, a sun or a moon, clouds, the sky (2026-10-21)
 
 - Grass along the bottom of the window.
@@ -118,9 +122,8 @@ For each piece in §1: the role, primitive, hook or slot it uses, and whether it
 
 | Piece | Public token or slot | Exists today? |
 |---|---|---|
-| The three cover pushes | `--cover-swap` picks a named cover change (vinyl.ts runs it). New values: `happy-head`, `happy-rope`, `happy-stand`, and `random`, which picks one of a list | The token yes (Metal's `zoetrope`); the values no |
+| The cover pushes (two since the rope went, §1.1) | `--cover-swap` picks a named cover change (vinyl.ts runs it). New values: `happy-head`, `happy-stand`, and `random`, which picks one of a list | The token yes (Metal's `zoetrope`); the values no |
 | Happy's frames for the pushes | A **sprite slot**: a strip per pose, its frame count and speed. A mod gives its own strips, so any mod can have a mascot | No |
-| The rope | Drawn by the app from Happy's mouth to the cover's edge, in a theme ink | No |
 | The sky | New theme roles for the sky stops (day, sunrise, sunset, night), so a theme mod recolors the sky | No |
 | The sky follows the time | The sunrise equation in `look-schedule.ts` (used by the look schedule and the sleep timer's Sunset) | Yes |
 | The sun, the moon | **Ornament anchors** (mods.md §11) with an image; the rays are a motion preset (`radiate`) | No |
@@ -255,7 +258,7 @@ His ask: "I can hand draw if you make a template first." In `art-template/happy/
 - For each piece, `<name>.png` is a blank, transparent strip at true size to draw on, and
   `<name>.guide.png` is the same at 10×: a pixel grid, the frame borders and numbers, the floor
   line, and today's Happy or Deets drawn faintly for scale.
-- Happy: `run_side`, `run_rope_side`, `push_head_side` (32×32); `stand_up_side`,
+- Happy: `run_side`, `push_head_side` (32×32; `run_rope_side` went with the rope); `stand_up_side`,
   `stand_push_side` (40×48, for the height when he stands); `run_ball_side`, `drop_ball_side`,
   `keep_ball_side` (32×32).
 - Deets: `throw_side`, `watch_side` (32×64).
@@ -282,7 +285,9 @@ and deletes that file, the script never touches the strip again.
   four places in the sweater's arm color), `deets/watch_side` (a one-pixel breath),
   `scene/ball_small` (4×4) and `scene/tennis_ball` (12×12, 8 frames, drawn from a 3D seam).
 - **His to draw:** `stand_up_side`, `stand_push_side` (a new pose, not a change to one),
-  `run_side` (v1 can use the walk, faster), the sun, moon, clouds and the bubble.
+  `run_side` (v1 can use the walk, faster), the sun, moon, clouds and the bubble. The two stand
+  strips have a draft since 2026-10-21 (`make_drafts.py . ../DeetsLife stand` makes only them):
+  the side pose stood up on its hind legs, the front paws out, a step per push frame.
 - The DeetsMusic copies of `walk_side`, `sit_side` and `idle_down` match DeetsLife's byte for
   byte.
 - **Placeholders (2026-10-21):** `make_drafts.py` also draws a sun, rays, a moon, three clouds
@@ -319,9 +324,9 @@ not load while a game held the CPU, and the dev app was not started.
   `--vinyl-swap-in-travel`), then the Happy block. palette.css / themes.css: the sky roles
   (`--sky-day … --sky-night-low`, one natural sky in every theme) and `--bubble-ink`.
 - styles.css "Scene": the two layers, the sky, the sun and rays, the clouds, the grass, the
-  sprites, the bubble, the rope, the ball playhead; `.app-body` gains `--scene-floor` below.
+  sprites, the bubble, the ball playhead; `.app-body` gains `--scene-floor` below.
 - `src/sky-phase.ts` (pure, `tests/sky-phase.test.ts`), `src/scene.ts` (placing, the sky),
-  `src/pet.ts` (rest, fetch, the three pushes, the handover). `npm run happy:art` copies the
+  `src/pet.ts` (rest, fetch, the two pushes, the handover). `npm run happy:art` copies the
   drawings into `src/assets/skins/happy/`.
 - Settings › Skin settings: *Sky* (`happySky`) and *Card opacity* (`happyCardOpacity`, 80):
   store, agent specs, AGENT.md, SETTINGS.md, New marks; `happySky` is NOT_REPORTED for now, as
@@ -413,3 +418,21 @@ tinted per theme) are open.
   made for. The volume pill and the window buttons keep their own fill. Checked by eye in the
   demo on each theme's hardest sky (Lilac night, Sepia dusk, Moonlight day, Black & Red day):
   all read.
+
+**Two pushes, and Deets in the title bar (2026-10-21, his report on the dev app):**
+- **The rope is out** (his ask). `PUSHES` is head and stand; the never-twice rule now alternates
+  them. The rope's element, its `.scene__rope` style, `ropeEnd` and `run_rope_side` are gone.
+- **The stand pushes** (his ask: "he boops and stays in place"). Its two strips were blank, so
+  he fell back to the idle pose and stood still while the cover left. Now: drafts of both strips
+  (§5), and in the push he moves with the cover frame by frame, as the head push does. The paws'
+  tip sits 16 art px ahead of his middle, so at his spot by the cover they touch its edge.
+- **Deets drew in the title bar's top-left corner.** Read on his dev app: Deets and Happy sat at
+  the layer's (0, 0), never placed all session, and a body resize no longer moved the clouds, so
+  `place()` waited forever. The launch started hidden off-screen (`surface:onScreen` from
+  −32000), and a picture-size read from then never settled; it was cached, so every later
+  place waited on it. Deets showed only because the leave for a cover change gave him the watch
+  pose where he stood. Fixes: `pictureSize` (scene.ts) settles a read in 3 s, keeps no failed or
+  stalled read, logs `scene:picture` and places again in 2 s (five tries per picture); pet.ts
+  keeps no failed strip read and its blank check settles in 3 s; Deets stays hidden while there
+  is no floor; the leave shows his watch pose and Happy's dash only once they were placed.
+  Which picture stalled is not known (the page's resource list was full).

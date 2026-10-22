@@ -6,6 +6,19 @@ updated: 2026-10-21
 ---
 # DeetsMusic — Work log
 
+## 2026-10-21, night — Happy: two pushes, the stand walks the cover out, Deets off the title bar
+
+- **His report (a screenshot):** Deets stood in the title bar's top-left corner. Read on his dev
+  app: Deets and Happy sat at the layer's (0, 0) all session, and the scene no longer placed
+  itself (a body resize left the clouds where they were). A picture-size read from the launch
+  (started hidden off-screen) never settled, and every later place waited on it. **Fixed** in
+  scene.ts `pictureSize` (a 3 s limit, no cached failure, a re-place in 2 s) and pet.ts (no
+  cached failed strip, Deets hidden with no floor, the leave guards). happy.md §6.
+- **His asks:** the rope push is removed; the stand push has drafts of its two strips and moves
+  with the cover (it stood still on the idle pose). happy.md §1.1, §5, §6.
+- Desk test: his hand test on the dev app (a cover change on Happy, several times; a launch from
+  the tray). Not run by Claude.
+
 ## 2026-10-21, evening — Metal polish: the Search page's gray, the open issues sorted
 
 - **His report (a screenshot):** under Metal, the Search card's page drew a darker flat gray

@@ -5,7 +5,8 @@ This reads ../DeetsLife/game/assets/sprites/ and writes into art-template/happy/
 Each draft is a starting point for his hand; a strip he has drawn is never overwritten
 (a file that is not fully transparent and not in DRAFTS_OK is skipped).
 
-Run: python art-template/happy/make_drafts.py <repo> <DeetsLife repo>
+Run: python art-template/happy/make_drafts.py <repo> <DeetsLife repo> [only]
+`only` (a part of a strip's name, e.g. "stand") writes just the strips it matches.
 """
 import math
 import sys
@@ -13,6 +14,7 @@ from pathlib import Path
 from PIL import Image
 
 REPO, LIFE = Path(sys.argv[1]), Path(sys.argv[2])
+ONLY = sys.argv[3] if len(sys.argv) > 3 else ""
 SRC = LIFE / "game/assets/sprites"
 OUT = REPO / "art-template/happy"
 
@@ -62,6 +64,8 @@ def blank(p):
 
 
 def save(name, im):
+    if ONLY not in name:
+        return
     p = OUT / f"{name}.png"
     if blank(p) or (OUT / f"{name}.draft").exists():
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -149,6 +153,53 @@ p2 = shift_region(p2, (15, 0, 32, 24), -1, 0)  # the body leans after the head
 fill_gaps(p1, range(14, 20), range(1, 30), FUR)
 fill_gaps(p2, range(14, 24), range(1, 30), FUR)
 save("happy/push_head_side", strip([p1, p2, p2.copy(), p1.copy()]))
+
+# The stand (40x48): he rises onto his hind legs and pushes the cover with his front paws, a step
+# at a time. Faces left; the paws' tip reaches column 4, 16 px ahead of the frame's middle.
+SHADE = (143, 102, 75, 255)
+STAND_W, STAND_H = 40, 48
+
+
+def rect(im, x0, y0, x1, y1, color):
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            if 0 <= x < im.width and 0 <= y < im.height:
+                im.putpixel((x, y), color)
+
+
+def upright(reach, step=0, bob=0):
+    """Standing on his hind legs. `reach`: how far the front legs come out ahead of the chest;
+    `step`: which hind leg is up (0 none, 1 the near one, 2 the far one); `bob`: the upper body
+    down by this many px."""
+    f = Image.new("RGBA", (STAND_W, STAND_H), CLEAR)
+    # the far hind leg (behind, in shade), then the haunch, then the near leg
+    up = (1, 0) if step == 2 else (0, 1) if step == 1 else (0, 0)
+    rect(f, 21, 40 - 2 * up[0], 24, 45 - 2 * up[0], SHADE)
+    rect(f, 19 + up[0], 46 - 2 * up[0], 24, 47 - 2 * up[0], SHADE)
+    rect(f, 16, 33, 25, 41, FUR)
+    rect(f, 16, 38, 16, 41, SHADE)
+    rect(f, 16, 41 - 2 * up[1], 19, 45 - 2 * up[1], FUR)
+    rect(f, 13 + up[1], 46 - 2 * up[1], 19, 47 - 2 * up[1], SHADE)
+    # the tail, out behind
+    rect(f, 26, 30, 28, 32, SHADE)
+    b = bob
+    # the far front leg (in shade, a row lower), the chest, the near front leg
+    rect(f, 16 - reach, 26 + b, 17, 27 + b, SHADE)
+    rect(f, 16, 18 + b, 25, 36, FUR)
+    f.putpixel((25, 18 + b), CLEAR)
+    rect(f, 16, 27 + b, 16, 34, SHADE)
+    rect(f, 16 - reach, 23 + b, 17, 25 + b, FUR)
+    rect(f, 16 - reach, 23 + b, 17 - reach, 25 + b, SHADE)  # the paw
+    # the head, from the side pose, over the chest's top
+    f.alpha_composite(idle.crop((3, 5, 17, 17)), (10, 8 + b))
+    return f
+
+
+stand_crouch = Image.new("RGBA", (STAND_W, STAND_H), CLEAR)
+stand_crouch.alpha_composite(idle, (4, 16))
+rise = stand_crouch.rotate(-35, resample=Image.NEAREST, center=(29, 47))  # about his hind feet
+save("happy/stand_up_side", strip([stand_crouch, rise, upright(4)]))
+save("happy/stand_push_side", strip([upright(12, 1), upright(12, 0, 1), upright(12, 2), upright(12, 0, 1)]))
 
 # Fetch: the walk with the ball in his mouth; the drop; keeping it (sitting, facing you).
 save("happy/run_ball_side", strip([with_ball_side(f) for f in walk]))

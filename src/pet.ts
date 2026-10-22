@@ -8,7 +8,7 @@
 //     2026-10-21). The friend throws, the pet fetches; it ends one of three ways (the odds are a
 //     draft): "Good boy!", or "Gundu..." when he comes back without the ball or keeps it.
 //   - A cover change (--cover-swap: pet; vinyl.ts announces it with `vinyl:turn`): the pet leaves
-//     the grass, moves the cover one of three ways (never the same twice in a row), sits by it,
+//     the grass, moves the cover one of two ways (never the same twice in a row), sits by it,
 //     and comes back. Only one pet ever shows (his call H7 a). Fast presses keep him at the cover.
 // Reduced motion, a hidden window and "Animate backgrounds" off hold everything at rest.
 
@@ -60,20 +60,22 @@ async function loadStrip(token: string): Promise<Strip | null> {
   const key = `${token}|${url}`;
   if (strips.has(key)) return strips.get(key)!;
   const { w, h } = await pictureSize(url);
-  let s: Strip | null = null;
-  if (w && h) {
-    const fwArt = parseFloat(cs.getPropertyValue(`${token}-w`)) || h;
-    const blank = await isBlank(url, w, h);
-    s = blank ? null : { url, fw: fwArt, fh: h, frames: Math.max(1, Math.round(w / fwArt)) };
-  }
+  // a failed read is not kept: the next ask reads it again (scene.ts places again after one)
+  if (!w || !h) return null;
+  const fwArt = parseFloat(cs.getPropertyValue(`${token}-w`)) || h;
+  const blank = await isBlank(url, w, h);
+  const s = blank ? null : { url, fw: fwArt, fh: h, frames: Math.max(1, Math.round(w / fwArt)) };
   strips.set(key, s);
   return s;
 }
 
-/** A strip with nothing drawn on it (a blank template copied in by happy:art). */
+/** A strip with nothing drawn on it (a blank template copied in by happy:art). A read that never
+    settles counts as drawn, so nothing waits on it (scene.ts pictureSize, 2026-10-21). */
 function isBlank(url: string, w: number, h: number): Promise<boolean> {
-  return new Promise((done) => {
+  return new Promise((resolve) => {
     const img = new Image();
+    const limit = window.setTimeout(() => done(false), 3000);
+    const done = (b: boolean) => { window.clearTimeout(limit); img.onload = img.onerror = null; resolve(b); };
     img.onload = () => {
       try {
         const c = document.createElement("canvas");
@@ -194,7 +196,7 @@ let ballKept = false; // the pet kept it: dropped before the next round
 let carrying = false; // the ball is in his mouth on the way back
 let lastPush = "";
 /** Happy by the cover: his layer in that card, and whether he is in sight there (`onstage`). */
-let atCover: { panel: HTMLElement; layer: HTMLElement; actor: Actor; rope: HTMLElement; until: number; timer: number; onstage: boolean } | null = null;
+let atCover: { panel: HTMLElement; layer: HTMLElement; actor: Actor; until: number; timer: number; onstage: boolean } | null = null;
 const padded = new Map<HTMLElement, string>();
 
 function restSpots(): { fx: number; px: number; y: number } | null {
@@ -230,7 +232,8 @@ async function rest(): Promise<void> {
   friend.show(await friendStrip("idle"));
   friend.face(false);
   const spots = restSpots();
-  if (!spots) return;
+  // no floor yet: he stays out of sight, never at the layer's corner (the title bar, 2026-10-21)
+  if (!spots) { friend.el.hidden = true; return; }
   friend.place(spots.fx, spots.y);
   if (where === "grass") {
     pet.show(await petStrip(ballKept ? "keep-ball" : "sit"));
@@ -379,7 +382,8 @@ function scheduleRound(ms: number): void {
 }
 
 // ---- the cover change ---------------------------------------------------------------------
-const PUSHES = ["head", "rope", "stand"] as const;
+// The rope went out at his word (2026-10-21); with two left, the never-twice rule alternates them.
+const PUSHES = ["head", "stand"] as const;
 type Push = (typeof PUSHES)[number];
 const pickPush = (): Push => {
   const options = PUSHES.filter((p) => p !== lastPush);
@@ -402,9 +406,10 @@ async function leaveGrass(): Promise<void> {
     carrying = false;
     if (ball) { ball.hidden = false; placeBall(ballAt, f.y); }
   }
-  friend?.show(await friendStrip("watch"), 2);
+  if (friend && !friend.el.hidden) friend.show(await friendStrip("watch"), 2); // only once he is placed
   // Mid-run he keeps going the way he was running: a turn on the spot read as a jerk. From rest
   // he sets off toward the nearer edge. His stride keeps pace with the dash, so his feet never slide.
+  if (!pet.strip || pet.el.hidden) return; // never placed on the grass: nothing to dash from
   const toLeft = pet.moving ? !pet.right : !f || pet.x < f.w / 2;
   const dist = DASH_PX * pet.px;
   pet.face(!toLeft);
@@ -463,8 +468,7 @@ async function onTurn(e: Event): Promise<void> {
   const fromGrass = where === "grass";
   // His run-in before the cover moves: longer for the stand (he rises first), and longer again
   // when he comes from the grass, where he must be gone before he shows here (his call H7 a).
-  // The rope needs none: he waits behind the cover and comes out with it.
-  const lead = !kind ? 0 : (kind === "stand" ? STAND_LEAD_MS : kind === "head" ? PUSH_LEAD_MS : 0) + (fromGrass ? DASH_MS : 0);
+  const lead = !kind ? 0 : (kind === "stand" ? STAND_LEAD_MS : PUSH_LEAD_MS) + (fromGrass ? DASH_MS : 0);
   // The slide's shape for this change. Set before any await: vinyl.ts reads it as soon as the
   // new cover decodes, and the first wait for a strip (a first load) once came after that.
   // --vinyl-x stays -1: vinyl.ts flips the slide for Back itself, so the old cover leaves to the
@@ -497,15 +501,10 @@ async function onTurn(e: Event): Promise<void> {
     const layer = document.createElement("div");
     layer.className = "pet-push";
     panel.append(layer);
-    const rope = document.createElement("div");
-    rope.className = "scene__rope";
-    rope.hidden = true;
-    layer.append(rope);
-    at = atCover = { panel, layer, actor: new Actor(layer, "pet-push__dog"), rope, until: 0, timer: 0, onstage: false };
+    at = atCover = { panel, layer, actor: new Actor(layer, "pet-push__dog"), until: 0, timer: 0, onstage: false };
     at.actor.el.style.opacity = "0";
   }
   window.clearTimeout(at.timer);
-  at.rope.hidden = true; // a press mid-pull: the last rope goes with it
   const dog = at.actor;
   dog.px = s;
   const mineGen = ++gen;
@@ -519,9 +518,8 @@ async function onTurn(e: Event): Promise<void> {
       ? `path(evenodd, "M${-p.width} ${-p.height}H${2 * p.width}V${2 * p.height}H${-p.width}Z M${C.left} ${C.top}H${C.right}V${C.bottom}H${C.left}Z")`
       : "";
   };
-  // Mirror for Back: everything runs the other way. `lead` is the side the cover leaves by.
+  // Mirror for Back: everything runs the other way. He pushes from the cover's trailing side.
   const dir = back ? 1 : -1; // the cover's travel along x
-  const leadEdge = back ? C.right : C.left;
   const trailEdge = back ? C.left : C.right;
   const travelK = (parseFloat(cs.getPropertyValue("--vinyl-swap-travel")) || 110) / 100;
   const travel = C.w * travelK * dir;
@@ -540,58 +538,39 @@ async function onTurn(e: Event): Promise<void> {
     await dog.to(x, y, ms);
   };
 
-  /** Each frame, `frame(dx, k)` with the leaving cover's offset now and its share of the trip
-      (0 to 1), until it has gone. */
-  const withCover = (frame: (dx: number, k: number) => void) =>
+  /** Each frame, `frame(dx)` with the leaving cover's offset now, until it has gone. */
+  const withCover = (frame: (dx: number) => void) =>
     new Promise<void>((done) => {
       const t0 = performance.now();
       const step = () => {
         if (!live()) return done();
         const gone = !old || !old.isConnected || performance.now() - t0 > lead + PUSH_MS + 1500; // a guard: it never started
-        if (gone) { frame(travel, 1); return done(); }
+        if (gone) { frame(travel); return done(); }
         const t = getComputedStyle(old).transform;
-        const dx = t && t !== "none" ? new DOMMatrixReadOnly(t).m41 : 0;
-        frame(dx, travel ? Math.max(0, Math.min(1, dx / travel)) : 1);
+        frame(t && t !== "none" ? new DOMMatrixReadOnly(t).m41 : 0);
         requestAnimationFrame(step);
       };
       step();
     });
 
-  // The spots, along the cover's travel. Just clear of the cover's edge on each side, and for
-  // the rope, as far out as he can go with part of him still on the card.
+  // The spots, along the cover's travel: just clear of the cover's edge on each side.
   const hidden = (edge: number, side: 1 | -1) => edge - side * fw * 0.55; // fully behind the cover
   const clearOf = (edge: number, side: 1 | -1) => edge + side * fw * 0.5; // touching it, outside
-  const cardEdge = dir < 0 ? 0 : p.width; // the card's edge on the cover's leading side
-  const ropeEnd = leadEdge + dir * Math.max(fw * 0.5, Math.abs(cardEdge - leadEdge) + fw * 0.35);
 
   // 1. Out from behind the cover, always on the move. A fast press: from where he is.
-  if (kind !== "rope") {
-    const side = -dir as 1 | -1; // the trailing side
-    const spot = clearOf(trailEdge, side);
-    const runIn = Math.max(120, lead - (kind === "stand" ? (1000 / STAND_UP_FPS) * 3 : 100) - (fromGrass ? DASH_MS : 0) - 20);
-    if (at.onstage) {
-      behindCover(false);
-      await runTo(null, spot, runIn);
-    } else {
-      if (fromGrass) await wait(DASH_MS); // the grass Happy has gone by now: never two at once
-      if (!live()) return;
-      behindCover(true);
-      at.onstage = true;
-      await runTo(hidden(trailEdge, side), spot, runIn);
-      behindCover(false); // he is clear of the cover now
-    }
-  } else if (at.onstage) {
-    // a fast press: he trots to the cover's leading edge, and comes out from there with it
+  const side = -dir as 1 | -1; // the trailing side
+  const spot = clearOf(trailEdge, side);
+  const runIn = Math.max(120, lead - (kind === "stand" ? (1000 / STAND_UP_FPS) * 3 : 100) - (fromGrass ? DASH_MS : 0) - 20);
+  if (at.onstage) {
     behindCover(false);
-    await runTo(null, clearOf(leadEdge, dir), 220);
+    await runTo(null, spot, runIn);
   } else {
-    if (fromGrass) await wait(DASH_MS);
+    if (fromGrass) await wait(DASH_MS); // the grass Happy has gone by now: never two at once
     if (!live()) return;
     behindCover(true);
     at.onstage = true;
-    dog.show(await petStrip("idle"));
-    dog.place(hidden(leadEdge, dir), y);
-    dog.el.style.opacity = "1";
+    await runTo(hidden(trailEdge, side), spot, runIn);
+    behindCover(false); // he is clear of the cover now
   }
   if (!live()) return;
   dog.face(back); // the art faces left: a Back push runs right
@@ -605,33 +584,16 @@ async function onTurn(e: Event): Promise<void> {
     await dog.to(start, y, 100);
     if (!live()) return;
     await withCover((dx) => dog.place(start + dx, y));
-  } else if (kind === "rope") {
-    // he runs out from behind the cover as it goes, the rope taut from its edge to him, and
-    // stops where part of him is still on the card
-    const rope = at.rope;
-    const mouthY = y - artH * s * 0.55;
-    const from = dog.x;
-    const run = await petStrip("run");
-    let running = false;
-    rope.hidden = false;
-    await withCover((_dx, k) => {
-      if (!running && k > 0) { running = true; dog.show(run, strideFps(Math.abs(ropeEnd - from), PUSH_MS, s)); }
-      dog.place(from + (ropeEnd - from) * k, y);
-      if (!running) return;
-      // the rope shows only once his back is out past the cover's edge
-      const x2 = dog.x - dir * fw * 0.4;
-      const len = (x2 - leadEdge) * dir;
-      rope.style.width = `${Math.max(0, len)}px`;
-      rope.style.transform = `translate(${Math.min(leadEdge, x2)}px, ${mouthY}px)`;
-    });
-    rope.hidden = true;
-    behindCover(false); // he is clear of the cover now
   } else {
+    // up on his hind legs, then he walks the cover out with his front paws on its edge (his ask,
+    // 2026-10-21: before, he stood still while it went). The strips put the paws' tip 16 art px
+    // ahead of his middle, so at `spot` they touch the edge.
     dog.show(await petStrip("stand-up"), STAND_UP_FPS, false);
     await wait((1000 / STAND_UP_FPS) * 3);
     if (!live()) return;
+    const start = dog.x;
     dog.show(await petStrip("stand-push"), PUSH_FPS);
-    await withCover(() => {});
+    await withCover((dx) => dog.place(start + dx, y));
   }
   if (!live()) return;
 
