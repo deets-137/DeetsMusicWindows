@@ -756,6 +756,7 @@ function queueRise(queue: HTMLElement, rest: DOMRect, full: DOMRect, pad: number
   // the path animates.
   const r = Math.min(parseFloat(getComputedStyle(queue).borderBottomLeftRadius) || 0, full.width / 2);
   const w = full.width;
+  const s = still?.getBoundingClientRect(); // read before the writes below
   const shape = (cut: number): string =>
     `path("M ${-pad} ${-pad} H ${w + pad} V ${cut - r} H ${w} A ${r} ${r} 0 0 1 ${w - r} ${cut} H ${r} A ${r} ${r} 0 0 1 0 ${cut - r} H ${-pad} Z")`;
   // The slide is a registered custom property, not `transform`: a transform animation runs on the
@@ -782,6 +783,20 @@ function queueRise(queue: HTMLElement, rest: DOMRect, full: DOMRect, pad: number
     const b = list.animate(back ? [tall, short] : [short, tall], { duration: dur, easing: ease, fill: "both" });
     b.id = "queue-rise";
     anims.push(b);
+  }
+  // The resting place's copy shows only above the Queue's top edge (his report, 2026-10-23): on
+  // a see-through skin the two cards' fills stacked where the Queue slid over it, so Happy drew a
+  // near-black box that grew with the Queue and went in one frame when the copy was dropped. The
+  // edge is linear in the slide, so the same ease keeps the cut on it in every frame.
+  if (still && s) {
+    const cut = (top: number): string => {
+      const y = top - s.top;
+      return `polygon(${-pad}px ${-pad}px, ${s.width + pad}px ${-pad}px, ${s.width + pad}px ${y}px, ${-pad}px ${y}px)`;
+    };
+    const lowS = { clipPath: cut(rest.top) }, upS = { clipPath: cut(full.top) };
+    const c = still.animate(back ? [upS, lowS] : [lowS, upS], { duration: dur, easing: ease, fill: "both" });
+    c.id = "queue-rise";
+    anims.push(c);
   }
   a.addEventListener("cancel", () => {
     anims.forEach((x) => x !== a && x.cancel());

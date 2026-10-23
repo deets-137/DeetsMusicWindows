@@ -113,7 +113,7 @@ function paintSky(): void {
 function cards(): DOMRect[] {
   if (!body) return [];
   const b = body.getBoundingClientRect();
-  return [...body.querySelectorAll<HTMLElement>(".bento .panel")]
+  return [...body.querySelectorAll<HTMLElement>(`.bento .panel:not(${PLAYER_COPIES})`)]
     .filter((p) => p.offsetParent !== null && p.getClientRects().length > 0)
     .map((p) => {
       const r = p.getBoundingClientRect();
@@ -125,6 +125,8 @@ function cards(): DOMRect[] {
 async function place(): Promise<void> {
   if (!body || !front || !back || !active()) return;
   const mine = ++placing;
+  // A place over the resting cards is the one the full player keeps (holdForPlayer).
+  restSize = body.querySelector(".bento[data-player]") ? "" : sizeKey();
   const cs = getComputedStyle(root);
   const px = scenePx();
   root.style.setProperty("--scene-px", String(px));
@@ -323,6 +325,25 @@ const schedulePlace = () => {
 };
 let placeFrame = 0;
 
+// ---- the full player keeps the clouds ------------------------------------------------------
+// The full player's open and close put copies of its cards in the bento (full-player.ts: the
+// resting copy, the moving card box, the Queue's still, the side column) and flip data-player.
+// Each change placed the edge clouds again, over the moving boxes mid-motion and then over the
+// full layout's fewer cards, so they jumped two or three times per open (his report,
+// 2026-10-23). The outer edges they rest on do not move with the player, so they keep the
+// resting place: a player change places nothing while the window has the size of the last
+// resting place. A resize while it is open still places them.
+const PLAYER_COPIES = ".np-still, .fp-still, .fp-ghost, .fp-history";
+let restSize = "";
+const sizeKey = (): string => (body ? `${body.clientWidth}x${body.clientHeight}` : "");
+const playerOwn = (r: MutationRecord): boolean =>
+  r.type === "attributes"
+    ? r.attributeName === "data-player"
+    : [...r.addedNodes, ...r.removedNodes].every((n) => n instanceof HTMLElement && n.matches(PLAYER_COPIES));
+function holdForPlayer(recs: MutationRecord[]): boolean {
+  return !!restSize && restSize === sizeKey() && recs.every(playerOwn);
+}
+
 function enter(): void {
   if (!body) return;
   paintSky();
@@ -362,8 +383,8 @@ export function initScene(): void {
   window.addEventListener("pointermove", sunDodge, { passive: true });
   root.addEventListener("pointerleave", () => { if (sunAway) sunMove(null); });
   new ResizeObserver(() => schedulePlace()).observe(body);
-  // a card swap, a grow or the full player moves the cards: place again once they settle
+  // a card swap or a grow moves the cards: place again once they settle (the full player keeps them)
   const bento = body.querySelector(".bento");
-  if (bento) new MutationObserver(() => schedulePlace()).observe(bento, { attributes: true, childList: true, subtree: false, attributeFilter: ["data-player", "data-screen", "class"] });
+  if (bento) new MutationObserver((recs) => { if (!holdForPlayer(recs)) schedulePlace(); }).observe(bento, { attributes: true, childList: true, subtree: false, attributeFilter: ["data-player", "data-screen", "class"] });
   matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener("change", () => schedulePlace());
 }
