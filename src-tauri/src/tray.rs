@@ -56,6 +56,10 @@ fn state(app: &AppHandle) -> std::sync::MutexGuard<'_, Inner> {
 /// after a restart, which an in-memory field alone cannot do.
 fn remember_pos(app: &AppHandle, s: &mut Inner) {
     let Some(w) = app.get_webview_window(MAIN) else { return };
+    // A minimized window reports -32000, Windows' parking place, not where it sits.
+    if w.is_minimized().unwrap_or(false) {
+        return;
+    }
     let Ok(p) = w.outer_position() else { return };
     s.restore_pos = Some(p);
     // Only touch the disk when it actually moved — this runs on every tray pop.
@@ -120,6 +124,9 @@ pub fn show_panel(app: &AppHandle, at: Option<PhysicalPosition<f64>>) {
 pub fn show_main(app: &AppHandle) {
     let Some(w) = app.get_webview_window(MAIN) else { return };
     let visible = w.is_visible().unwrap_or(false);
+    if !visible {
+        restore_hidden(&w);
+    }
     let mut s = state(app);
     if visible && !s.popped {
         drop(s);
@@ -141,6 +148,29 @@ pub fn show_main(app: &AppHandle) {
         w.hide().ok();
     }
     let _ = tauri::Emitter::emit_to(app, MAIN, "tray-open", ());
+}
+
+/// The page sizes the window before it shows. A minimized window takes no size or place:
+/// Windows keeps them for its restore, so the window came back at the old ones and the
+/// surface flipped to match (2026-10-23: a popped flyout was minimized, then "Open DeetsMusic"
+/// showed Mini). Restore it first, then hide it again before the page resizes it.
+fn restore_hidden(w: &tauri::WebviewWindow) {
+    if w.is_minimized().unwrap_or(false) {
+        w.unminimize().ok();
+        w.hide().ok();
+    }
+}
+
+/// The title bar's − (the page's `tl-min`). A tray-popped window has no taskbar button, so a
+/// minimize would leave it nowhere: it goes back to the tray, as a click away does.
+#[tauri::command]
+pub fn main_minimize(app: AppHandle) {
+    let Some(w) = app.get_webview_window(MAIN) else { return };
+    if state(&app).popped {
+        hide_main(&app);
+    } else {
+        w.minimize().ok();
+    }
 }
 
 /// A `--tray` launch: the window never shows; the tray icon opens it.
@@ -262,6 +292,16 @@ fn toggle_main(app: &AppHandle, at: PhysicalPosition<f64>) {
     let just_hid = s.main_hidden_at.map(|t| t.elapsed() < REPOP_GUARD).unwrap_or(false);
     if just_hid {
         return;
+    }
+    if let Some(w) = app.get_webview_window(MAIN) {
+        if w.is_minimized().unwrap_or(false) {
+            // A minimized window takes no size or place (`restore_hidden`). The real window
+            // minimized to the taskbar: restore it hidden; `remember_pos` below then reads
+            // where it really sits.
+            drop(s);
+            restore_hidden(&w);
+            s = state(app);
+        }
     }
     if visible && !s.popped {
         // The real window is about to be moved to the tray — remember where it was.

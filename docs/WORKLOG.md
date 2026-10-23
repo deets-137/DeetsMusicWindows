@@ -6,6 +6,30 @@ updated: 2026-10-23
 ---
 # DeetsMusic — Work log
 
+## 2026-10-23 — the tray pop in the Max layout; Open after a minimize (branch `grand-opening`)
+
+**His report (live 0.32.0).** A tray click showed the Max layout in a Mini-sized window. Then
+*Open DeetsMusic* (the tray menu) opened Mini, not Max where he left it.
+
+**What the log showed.** The 00:09 pop: `tray.show`, a pause press on the Now Playing card,
+then `tray.hide` 1.1 s later. The full title in the screenshot proves `data-surface` was not
+mini. No line named the surface change: `surface.change` is a quiet rule event. The 02:42 open:
+`surface:onScreen from [-32000,-32000]`, so the window was minimized while hidden. A minimized
+window takes no size or place, so it came back at the flyout's old ones, and the resize band
+flipped Max to Mini.
+
+**Built (his ask: the log and the guard).** TRAY.md §8.
+- `surface:set` (from, to, view, why, size, shown) on every surface change; `surface:flipHeld`
+  when a resize would flip a hidden window.
+- The resize band never flips the surface while the window is hidden or minimized
+  (`windowShown`, `watchShown` in surface.ts).
+- `keepOnScreen` skips a minimized window. `remember_pos` skips one too.
+- `restore_hidden` (tray.rs): a pop or an open un-minimizes a hidden window first.
+- The title bar's − is `main_minimize`: a popped flyout goes back to the tray (it has no
+  taskbar button); the real window minimizes as before.
+
+**Desk test (his, live after a release, or the dev app):** TRAY.md §8.
+
 ## 2026-10-23 — grand opening fixes, the tour, page 4 (branch `grand-opening`)
 
 - **Why the grand opening did not open on `dev:fresh`:** the tray page loaded the settings store

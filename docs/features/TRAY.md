@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-09
-sources: [src-tauri/src/tray.rs, src-tauri/src/lib.rs, src-tauri/src/media.rs, src/tray.ts, src/np-bus.ts, src-tauri/src/settings.rs]
-updated: 2026-10-15
+sources: [src-tauri/src/tray.rs, src-tauri/src/lib.rs, src-tauri/src/media.rs, src/tray.ts, src/np-bus.ts, src-tauri/src/settings.rs, src/surface.ts]
+updated: 2026-10-23
 ---
 # Tray panel + minimize-to-tray
 
@@ -295,3 +295,28 @@ restart.
 3. Drag another song to the top of the Queue card's up next: the third line names it.
 4. Play a station: line 3 reads `Station: …`; on a live station, no time left.
 5. Stop (nothing in the queue) or launch with nothing loaded: `DeetsMusic`.
+
+## 8. Surface after a pop, a minimize and an open (built 2026-10-23, `grand-opening`)
+> **Part:** built · 2026-10-23
+
+His report (live 0.32.0): a tray click showed the Max layout in a Mini-sized window; then
+*Open DeetsMusic* opened Mini. The record is WORKLOG.md 2026-10-23.
+
+- Every surface change logs `surface:set` (from, to, view, why: pick · tray-pop · tray-open ·
+  launch · resize; the window size; shown). A resize that would flip a hidden window logs
+  `surface:flipHeld` and changes nothing.
+- The resize band never flips the surface while the window is hidden or minimized (surface.ts
+  `windowShown`). A hidden window has no hand on it.
+- A minimized window takes no size or place. A pop or an open of a hidden, minimized window
+  un-minimizes it first (`restore_hidden`), so the page sizes the real window. `keepOnScreen`
+  and `remember_pos` skip a minimized window (it reports -32000).
+- The title bar − on a popped flyout hides it to the tray (`main_minimize`): the flyout has no
+  taskbar button. On the real window it minimizes, as before.
+
+**Desk test.**
+1. Click the tray icon. Mini shows. Press − on it: it goes away. Right-click the tray icon ›
+   *Open DeetsMusic*: the app opens on Max (or Midi), at its own place and size.
+2. In Max, press − (to the taskbar). Click the tray icon: Mini shows at the tray, at its size.
+   Right-click › *Open DeetsMusic*: Max comes back where it was.
+3. Hide to the tray for an hour, then click the tray icon: Mini, never the Max layout.
+4. After each step, `grep "surface:" deetsmusic.log | tail` names every change and its why.

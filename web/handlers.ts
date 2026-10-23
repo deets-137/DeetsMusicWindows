@@ -225,7 +225,7 @@ export const NULL_ON_PURPOSE = new Set([
   "settings_set_agent_control", "settings_set_agent_diary", "settings_set_agent_history", "settings_set_airplay_capture",
   "settings_set_lastfm_now_playing", "settings_set_lastfm_scrobble", "settings_set_minimize_to_tray", "settings_set_sotd",
   "settings_set_sotd_day_start", "settings_set_sotd_picks_per_day", "settings_set_sotd_post_at", "settings_set_sotd_post_mode",
-  "autostart_get", "autostart_set", "tray_pin_main", "agent_open_guide", "agent_setup_text", "agent_reply",
+  "autostart_get", "autostart_set", "tray_pin_main", "main_minimize", "agent_open_guide", "agent_setup_text", "agent_reply",
   "bridge_info", "bridge_log", "bridge_open_install_page", "log_open_folder", "mcp_connect", "mcp_detect", "mcp_disconnect",
   "outlet_connect", "outlet_disconnect", "outlet_set_on",
   "report_clear", "report_close", "report_log", "report_open", "report_refresh", "report_send",

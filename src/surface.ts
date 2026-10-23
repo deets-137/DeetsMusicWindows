@@ -12,6 +12,7 @@
 
 import { setting, onSettingsChange, DEFAULTS } from "./settings-store";
 import { availableMonitors, currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 
 // diag.ts loads lazily: it starts a flush timer when it loads, and the pure modules that import
 // this one (row-pick.ts) run in the unit tests, where the timer would keep the test from ending.
@@ -122,6 +123,11 @@ let miniView: MiniView = (() => {
 const slotOf = (s: SurfaceName): SizeSlot => (s === "mini" && miniView === "player" ? "player" : s);
 let minKey = "";
 let applyingSize = false; // suppress auto-flip while we programmatically resize
+// The window can be seen: shown and not minimized (2026-10-23). A hidden window is not resized
+// by hand, so a resize then never changes the surface. WebView2 keeps the page drawing while
+// the window is hidden (ambient.ts), so the observer still runs; a tray pop once showed the Max
+// layout in a Mini-sized window. Kept by `watchShown`, read by the observer.
+let windowShown = true;
 // The size each view had while it was on screen, this session only (never stored). The
 // Settings card's Set current reads it, so the NP row can be set from another view: the
 // card cannot be open while NP shows (a card request switches mini back to its cards view).
@@ -234,6 +240,9 @@ async function applyMinSize(): Promise<void> {
  *  the screen; a window grows from its top-left corner, so a Max opened from a Midi low on the
  *  screen ran past the taskbar. The first launch opens wherever Windows puts a new window. */
 async function keepOnScreen(): Promise<void> {
+  // A minimized window sits at -32000 (Windows' parking place), not on a monitor: a clamp
+  // would move it to the screen's corner (2026-10-23, an Open from a minimized pop).
+  if (await appWindow.isMinimized()) return;
   const mon = await currentMonitor();
   if (!mon) return;
   const [pos, size] = await Promise.all([appWindow.outerPosition(), appWindow.outerSize()]);
@@ -289,9 +298,15 @@ export function onSurfaceChange(cb: SurfaceListener): () => void {
   return () => listeners.delete(cb);
 }
 
-function activate(s: SurfaceName, view: MiniView = miniView): void {
+/** Why a surface changed, for the log line: a deliberate pick (a surface button, an agent,
+ *  the card picker), a tray pop or open, the launch, or a resize crossing the band. */
+export type SurfaceWhy = "pick" | "tray-pop" | "tray-open" | "launch" | "resize";
+
+function activate(s: SurfaceName, view: MiniView = miniView, why: SurfaceWhy = "pick"): void {
   const prev = active;
   const prevView = miniView;
+  if (prev !== s || prevView !== view)
+    diagLog("surface:set", { from: prev, to: s, view: s === "mini" ? view : undefined, why, w: Math.round(window.innerWidth), h: Math.round(window.innerHeight), shown: windowShown });
   active = s;
   miniView = view;
   setAttribute(s);
@@ -333,9 +348,9 @@ function firstSurface(): SurfaceName {
  *  (§8a, 1A). Resolves once the OS window has that size (the tray anchors after it).
  *  `view` picks what mini shows; omitted, mini keeps the last one. The switch itself is
  *  synchronous — only the resize is awaited. */
-export async function applySurface(s: SurfaceName, view?: MiniView): Promise<void> {
+export async function applySurface(s: SurfaceName, view?: MiniView, why: SurfaceWhy = "pick"): Promise<void> {
   const nextView = s === "mini" && view ? view : miniView;
-  if (s !== active || nextView !== miniView) activate(s, nextView);
+  if (s !== active || nextView !== miniView) activate(s, nextView, why);
   await applySize(s);
 }
 
@@ -392,26 +407,54 @@ if (import.meta.env?.DEV && typeof window !== "undefined")
 let sized: Promise<void> = Promise.resolve();
 export const surfaceSized = (): Promise<void> => sized;
 
+/** Keep `windowShown` true while the window can be seen. The page gets no event for a hide,
+ *  so the window is asked on each event that can change the answer, as ambient.ts does: a
+ *  resize (minimize, restore), a focus change (every show focuses), and `main-visibility`
+ *  from tray.rs's hide and show paths. */
+function watchShown(): void {
+  let seq = 0; // only the newest check may write: the events come in bursts
+  const check = async () => {
+    const mine = ++seq;
+    let shown = true; // on a failure, the old behavior: flips allowed
+    try {
+      const [visible, minimized] = await Promise.all([appWindow.isVisible(), appWindow.isMinimized()]);
+      shown = visible && !minimized;
+    } catch (e) {
+      console.error("[surface] shown", e);
+    }
+    if (mine === seq) windowShown = shown;
+  };
+  void appWindow.onResized(() => void check());
+  void appWindow.onFocusChanged(() => void check());
+  void listen("main-visibility", () => void check());
+  void check();
+}
+
 export function initSurface(): void {
   const saved = (localStorage.getItem(STORAGE_KEY) as SurfaceName | null) ?? firstSurface();
-  activate(saved);
+  activate(saved, miniView, "launch");
   readNarrow(); // before the first paint: a thin window never shows the full volume bar
   // The window opens at tauri.conf's size, so set the chosen view's open size.
   sized = applySize(saved);
+  watchShown();
 
   // The resize allowance: free within the band, flip past threshold + hysteresis.
   const observer = new ResizeObserver(() => {
     readNarrow(); // the thin edge reads every resize, our own size calls included
     if (applyingSize) return;
-    seen[slotOf(active)] = currentSizeText(); // a hand resize: this session only
     // "Resize changes surface" off (SETTINGS.md / FUTURE-SETTINGS §8): the window resizes
     // freely and the surface only changes by a deliberate pick. The player never flips (§8a).
-    if (setting("surfaceAutoFlip") && !isPlayerView()) {
-      const next = flipFor(window.innerWidth, window.innerHeight, active);
-      if (next !== active) {
-        activate(next);
-        void applyMinSize(); // player → midi raises the minimum height again
-      }
+    const next = setting("surfaceAutoFlip") && !isPlayerView() ? flipFor(window.innerWidth, window.innerHeight, active) : active;
+    if (!windowShown) {
+      // Hidden or minimized: no hand made this size. Hold the surface; the log says what a
+      // flip would have done, so a strange size while hidden can be traced.
+      if (next !== active) diagLog("surface:flipHeld", { from: active, to: next, w: Math.round(window.innerWidth), h: Math.round(window.innerHeight) });
+      return;
+    }
+    seen[slotOf(active)] = currentSizeText(); // a hand resize: this session only
+    if (next !== active) {
+      activate(next, miniView, "resize");
+      void applyMinSize(); // player → midi raises the minimum height again
     }
   });
   observer.observe(document.documentElement);

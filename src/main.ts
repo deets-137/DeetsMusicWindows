@@ -250,7 +250,9 @@ window.addEventListener("DOMContentLoaded", () => {
   boot("setDropdownMode", () => setDropdownMode(setting("menuMode"))); // seed the primitive's global mode before any dropdown is made
 
   // ── Window controls ──────────────────────────────────────────
-  document.getElementById("tl-min")?.addEventListener("click", () => appWindow.minimize());
+  // Rust decides: a tray-popped window has no taskbar button, so its − hides it to the tray;
+  // a minimized flyout was later opened at its old place and size (2026-10-23, tray.rs).
+  document.getElementById("tl-min")?.addEventListener("click", () => void invoke("main_minimize").catch(() => appWindow.minimize()));
   document.getElementById("tl-max")?.addEventListener("click", () => appWindow.toggleMaximize());
   document.getElementById("tl-close")?.addEventListener("click", () => appWindow.close());
 
@@ -355,7 +357,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // so we resize first.
   void listen("tray-pop", () => {
     syncWindowBackground(true); // a pop under the launch cover: the window's own color first (theme.ts)
-    applySurface("mini", setting("trayView"))
+    applySurface("mini", setting("trayView"), "tray-pop")
       .catch((e) => console.error("[tray] mini", e))
       .then(() => invoke("tray_place_main"))
       .catch((e) => console.error("[tray] place", e));
@@ -390,7 +392,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // its own remembered size; Rust then restores the pre-pop position and pins it.
   void listen("tray-open", () => {
     syncWindowBackground(true);
-    applySurface(fullSurface())
+    applySurface(fullSurface(), undefined, "tray-open")
       .catch((e) => console.error("[tray] full", e))
       .then(() => invoke("tray_place_main"))
       .catch((e) => console.error("[tray] place", e));
