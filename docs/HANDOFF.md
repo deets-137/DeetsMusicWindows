@@ -225,7 +225,15 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
-- **The grand opening (2026-10-22/23, branch `grand-opening`, pushed `9ce02ff`, not merged).**
+- **0.99.0, a test build (2026-10-23, `be1fe6f`, merged into `main`, not published).** The
+  grand opening, the tray fixes (TRAY.md §8) and the CSP **enforced** (CSP.md §6, step 3). Built
+  and signed to `installers/DeetsMusic_0.99.0_x64-setup.exe`; he installs it and uses it a day.
+  **Next:** read the `csp-<directive>:` lines in his installed app's log and the `diag` ring's
+  `csp:blocked`; then the public release as **1.0.0 or higher** (an install of 0.99.0 takes no
+  lower version). Before building it, put `installers/velopack/DeetsMusic-deetsmusic` back from
+  `installers/velopack/_DeetsMusic-deetsmusic.before-0.99.0`, so 1.0.0's delta is against 0.32.0.
+  Never `release:publish` 0.99.0.
+- **The grand opening (2026-10-22/23, branch `grand-opening`, merged into `main` with 0.99.0).**
   The startup screen: GRAND-OPENING.md §1–§11 (five pages: Hi, Layout-Maxxing Time, Fashion,
   Nitpicks, You're Ready), each part with its desk test; the tour after it (ONBOARDING.md §4.0:
   four steps, Next on each, Deets points); usage counts told by page 4 (USAGE-COUNTS.md §1). Open:
