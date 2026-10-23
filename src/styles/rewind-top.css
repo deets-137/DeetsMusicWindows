@@ -48,6 +48,19 @@
 .rewind-top__panel[hidden], .rewind-top__panel [hidden] { display: none; }
 .rewind-top__panel.is-growing { overflow: hidden; } /* rewind-btn.ts animates the height */
 
+/* The title row and its i, and the fold under it: the web panel's (.web__head, .web__info,
+   .web__fold), his ask 2026-10-23. */
+.rewind-top__headrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.rewind-top__info[aria-expanded="true"] { border-color: var(--title); background: var(--picked); }
+.rewind-top__info:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.rewind-top__fold {
+  flex: 0 0 auto;
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--rewind-top-fold-bg);
+  color: var(--subtext); line-height: var(--rewind-top-fold-lh);
+}
+.rewind-top__fold p { margin: 0; }
 /* The title: the Room and Sound panels' title (.room__title, .sound__title). */
 .rewind-top__head {
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);

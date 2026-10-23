@@ -237,6 +237,8 @@ const playsSort = (plays: () => Map<string, PlayCount> | undefined): SortSpec<Tr
   key: "plays",
   label: "Plays",
   type: "num",
+  // His ask (2026-10-23): the tally is this app's own; plays in Apple's app never reach it.
+  hint: "Plays counts only listens on DeetsMusic, not on Apple Music",
   get: (t) => {
     const c = plays()?.get(playsKey(t));
     return c ? -(c.full * 1e6 + c.partial) : undefined;

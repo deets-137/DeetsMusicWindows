@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-10-19
 sources: [src/rewind-btn.ts, src/styles/rewind-top.css, src/rewind.ts, src/rewind-window.ts, src/rewind-card.ts, src/stats.ts, src/updates-btn.ts, index.html, tests/rewind-window.test.ts]
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 # Listening time — the Rewind button in the title bar
 
@@ -350,3 +350,32 @@ again, and check that each box kept its choice.
   the same rows. **His call (2026-10-21): drop them.** `topRows` in rewind-btn.ts keeps only
   rows with a song the app can find (`r.track`). The Rewind card keeps them. The shots list's
   ↑ probe now expects no "Unknown" row; he waived a rerun of the desk test for this change.
+
+## 11. The i: where the numbers come from (2026-10-23)
+
+> **Part:** built · 2026-10-23
+
+- His ask and his words: an i in the panel's title row (the web panel's idiom: the Sound
+  panel's glyph, a `panel__action` square, a fold under the head) that says: "Data in Rewind is
+  only from listens on DeetsMusic and not from Apple Music. Listens in DM go to Apple, not vice
+  versa." The fold rides the panel's own height motion (`animateHeight`) and comes in through
+  `enterRows`; `rewindTop:about` logs each open and close. Hint: "Where Rewind's numbers come
+  from. Click to open or close" (ONBOARDING.md §1).
+- Why it matters: a fresh install, a new PC, or plays made in Apple's own app are not in
+  `play_events`, so the panel starts empty there (BACKUP.md §2).
+
+- **The Rewind card too** (his ask, the same day): an i in its header, left of SOTD, opens the
+  same sentence at the top of the card's body (`rewind-card.ts`, `rewind:about`). The sentence
+  and the glyph live once, in `rewind.ts` (`REWIND_ABOUT`, `INFO_GLYPH`).
+- **The Library's Plays sort** (his ask, the same day): its option in the Sort pop has the hint
+  "Plays counts only listens on DeetsMusic, not on Apple Music", and the Sort button adds the
+  same sentence to its own hint. A sort spec's new `hint` (collection-card.ts `SortSpec`) does
+  both. The artist view's Most Played sort reads the same tally and carries the same note
+  (his ask, the same day): "Most Played counts only listens on DeetsMusic, not on Apple Music"
+  (media-levels.ts).
+
+**Desk test:** open the Rewind panel; the i sits right of the title; a click opens the fold
+with the sentence and the panel grows; a second click closes it; the i reads pressed while
+open. The Rewind card: the same from its header's i. The Library: hover Sort, then open it and
+hover Plays; both hints carry the sentence. Another card's Sort (Playlists) keeps its plain
+hint.

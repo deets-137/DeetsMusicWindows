@@ -225,12 +225,16 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
-- **The grand opening (2026-10-22/23, branch `grand-opening`, committed, not merged).** The
-  startup screen: GRAND-OPENING.md §1–§9, each part with its desk test. Open: his hand test of
-  the whole page on a fresh install (`npm run dev:fresh`); the real player after the shared
-  changes — Metal's stress cases (metal.md §6.7, §6.9) and Ocean's desk test (OCEAN.md §5, §8);
-  the full-player preview idea (§8b's column) is built as the small player; the demo shows the
-  page to a fresh visitor too (not checked). Page design continues with him (page 3 and beyond).
+- **The grand opening (2026-10-22/23, branch `grand-opening`, pushed `9ce02ff`, not merged).**
+  The startup screen: GRAND-OPENING.md §1–§11 (five pages: Hi, Layout-Maxxing Time, Fashion,
+  Nitpicks, You're Ready), each part with its desk test; the tour after it (ONBOARDING.md §4.0:
+  four steps, Next on each, Deets points); usage counts told by page 4 (USAGE-COUNTS.md §1). Open:
+  his hand test of the whole page on a fresh install (`npm run dev:fresh`); the real player after
+  the shared changes — Metal's stress cases (metal.md §6.7, §6.9) and Ocean's desk test
+  (OCEAN.md §5, §8); the signed-out covers on the mint's token, which only an installed release
+  build takes (a dev build signs with the local key); the demo shows the page to a fresh visitor
+  too (not checked); the nav bar's page icons (numbers until he draws them); his review of
+  Claude's `point_up.png`.
 
 - **Drill motion review (2026-10-21, on `happy-thirtytwo`; paused by him for the evening).** Go
   to Album / Artist and Back: five faults fixed (CARD-GROW.md §22.2), his four calls built (§22.4,

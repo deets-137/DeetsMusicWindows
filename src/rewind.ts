@@ -20,6 +20,13 @@ import type { Playlist } from "./search";
 import { allPicks, dayLabel } from "./sotd";
 import { windowStart, dayInWindow, todayStart, type RewindWindow } from "./rewind-window";
 
+/** What the i on the Rewind panel and the Rewind card says (his words, 2026-10-23): the log is
+ *  this app's own, so plays in Apple's app, and plays before a fresh install, are not in it. */
+export const REWIND_ABOUT =
+  "Data in Rewind is only from listens on DeetsMusic and not from Apple Music. Listens in DM go to Apple, not vice versa.";
+/** The i: the Sound and web panels' info glyph (sound-panel.ts `infoBtn`, web.ts `INFO_GLYPH`). */
+export const INFO_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>';
+
 /** Mirrors Rust's `PlayEvent` (library.rs). `msListened: null` = never finalized. */
 export interface PlayEvent {
   trackId: string;

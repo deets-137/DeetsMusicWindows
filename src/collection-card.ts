@@ -69,6 +69,9 @@ export interface SortSpec<T = any> {
    *  popover shows it only while it is the sort in force). The Library's Artist, Album,
    *  Genre: those are Views, the user's call 2026-09-17. */
   hidden?: boolean;
+  /** One sentence the sort's option shows as its hover hint, and the Sort button adds to its own
+   *  (the Library's Plays: only listens on DeetsMusic count, his ask 2026-10-23). */
+  hint?: string;
 }
 
 /** The frame state a `list()` accessor may shape itself around (e.g. Radio's shelf
@@ -661,9 +664,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       .filter((s) => !s.hidden || s.key === f.sortKey)
       .map(
         (s) =>
-          `<button class="lib-pop__opt${s.key === f.sortKey ? " is-active" : ""}" type="button" data-sort-key="${s.key}">${esc(
-            s.label,
-          )}</button>`,
+          `<button class="lib-pop__opt${s.key === f.sortKey ? " is-active" : ""}" type="button" data-sort-key="${s.key}"${
+            s.hint ? ` title="${esc(s.hint)}"` : ""
+          }>${esc(s.label)}</button>`,
       )
       .join("");
     const dirs = (["asc", "desc"] as SortDir[])
@@ -716,13 +719,17 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     // Auto-hide, same doctrine as View: a context whose every grouping has a single
     // fixed order (e.g. Radio's featured shelves) gets no one-option Sort pill.
     const showSort = f.ctx.groupings.some((g) => g.sorts.length > 1);
+    // A sort's own hint (the Library's Plays) rides the button's too, so the hover says it
+    // before the pop opens.
+    const sortHints = [...new Set(groupingOf(f).sorts.filter((s) => s.hint && !s.hidden).map((s) => s.hint!))];
+    const sortTitle = ["Changes the order of this list", ...sortHints].join(". ");
     return `
       <div class="lib-toolbar">
         <div class="lib-pills">
           ${
             showSort
               ? `<div class="lib-ctrl" data-ctrl="sort">
-            <button class="lib-pill" data-pop="sort" type="button" aria-haspopup="true" aria-expanded="false" title="Changes the order of this list">
+            <button class="lib-pill" data-pop="sort" type="button" aria-haspopup="true" aria-expanded="false" title="${esc(sortTitle)}">
               <span class="lib-pill__label">Sort</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>

@@ -183,6 +183,8 @@
   --rewind-top-panel-pad:    var(--quick-panel-pad);
   --rewind-top-chip-radius:  var(--sound-chip-radius); /* the panel chip family (UI-ARCHITECTURE.md §2a) */
   --rewind-top-title-tracking: var(--room-title-tracking); /* the panel title's family (.room__title) */
+  --rewind-top-fold-bg: var(--web-fold-bg); /* the i's fold: the web panel's (.web__fold) */
+  --rewind-top-fold-lh: var(--web-fold-lh);
   --rewind-top-chip-w:       88px;                   /* Top Listens and SOTD at one width; the view chip fits "Artists" and its caret */
   --rewind-top-today-fs:     var(--fs-title);        /* the Today number: the panel's one large line */
   --rewind-top-list-max-h:   320px;                  /* a list scrolls past this; the panel stays under the window */

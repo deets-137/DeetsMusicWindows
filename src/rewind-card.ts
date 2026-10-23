@@ -22,7 +22,7 @@ import { artURL } from "./queue-rows";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { onPlaylistsChange, playlistsCached, playlistTracks } from "./playlists";
 import {
-  topBy, fmtListen, fmtPlays, albumKey, pid, STAT_LABELS, WINDOW_LABELS,
+  topBy, fmtListen, fmtPlays, albumKey, pid, STAT_LABELS, WINDOW_LABELS, REWIND_ABOUT, INFO_GLYPH,
   type RewindRow, type RewindStat, type RewindWindow,
 } from "./rewind";
 import type { CardDef, CardInstance } from "./cards";
@@ -32,6 +32,8 @@ import { rowDrag } from "./row-drag";
 import { ROW_PX } from "./art-size";
 import { reveal, type Reveal } from "./reveal";
 import { patchHTML } from "./keyed";
+import { enterRows } from "./pop";
+import * as diag from "./diag";
 
 const LIST_CAP = 20; // hero + 19 runners-up; a leaderboard's tail is noise
 const STORE_KEY = "deets.rewind";
@@ -72,10 +74,13 @@ function mountRewind(host: HTMLElement): CardInstance {
   // back to the stat you were on. Hidden entirely while Song of the Day is off.
   host.innerHTML = `
     <header class="panel__head"><h2 class="panel__title">Rewind</h2>
+      <button class="panel__action rewind__info" type="button" data-rewind-info aria-expanded="false"
+        aria-label="Where Rewind's numbers come from" title="Where Rewind's numbers come from. Click to open or close">${INFO_GLYPH}</button>
       <button class="panel__action panel__action--text" id="rewind-sotd" type="button" aria-pressed="false"
         aria-label="Your Songs of the Day" title="The songs you marked, newest first">SOTD</button>
     </header>
     <div class="panel__body qcard rewind">
+      <div class="rewind__about" data-rewind-about hidden><p>${esc(REWIND_ABOUT)}</p></div>
       <div class="lib-pills rewind__pills">
         ${pillHTML("stat", STAT_LABELS[pick.stat])}${pillHTML("window", WINDOW_LABELS[pick.window])}
         <button class="lib-pill rewind__make" type="button" title="Your top 25 songs of this time span, filed under Replay">Make playlist</button>
@@ -253,6 +258,18 @@ function mountRewind(host: HTMLElement): CardInstance {
     }
   });
   paintSotd();
+
+  // ── the i: where the numbers come from (his ask, 2026-10-23; the Rewind panel's own) ──
+  const infoBtn = host.querySelector<HTMLButtonElement>("[data-rewind-info]");
+  const about = host.querySelector<HTMLElement>("[data-rewind-about]");
+  infoBtn?.addEventListener("click", () => {
+    if (!about) return;
+    const open = about.hidden;
+    about.hidden = !open;
+    infoBtn.setAttribute("aria-expanded", String(open));
+    diag.log("rewind:about", { open });
+    if (open) enterRows([about]);
+  });
 
   // Make playlist (NEXT-VERSION §4): a dated local playlist under the Replay folder. Zero
   // Apple calls. Picked rows win (his call K1, 2026-10-18, DEETS-REWIND.md §8.1): with rows

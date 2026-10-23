@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 796 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 798 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -251,6 +251,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--rewind-top-panel-pad` | `var(--quick-panel-pad)` | — |  |
 | `--rewind-top-chip-radius` | `var(--sound-chip-radius)` | — | the panel chip family (UI-ARCHITECTURE.md §2a) |
 | `--rewind-top-title-tracking` | `var(--room-title-tracking)` | — | the panel title's family (.room__title) |
+| `--rewind-top-fold-bg` | `var(--web-fold-bg)` | — | the i's fold: the web panel's (.web__fold) |
+| `--rewind-top-fold-lh` | `var(--web-fold-lh)` | — |  |
 | `--rewind-top-chip-w` | `88px` | — | Top Listens and SOTD at one width; the view chip fits "Artists" and its caret |
 | `--rewind-top-today-fs` | `var(--fs-title)` | — | the Today number: the panel's one large line |
 | `--rewind-top-list-max-h` | `320px` | — | a list scrolls past this; the panel stays under the window |

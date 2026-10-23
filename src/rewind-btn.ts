@@ -21,7 +21,7 @@ import { currentSurface } from "./surface";
 import { tokenMs } from "./boot-cover";
 import { setting, onSettingsChange } from "./settings-store";
 import { onPlayEvent } from "./stats";
-import { listenedToday, topSince, albumKey, fmtPlays, fmtListen, type RewindRow } from "./rewind";
+import { listenedToday, topSince, albumKey, fmtPlays, fmtListen, REWIND_ABOUT, INFO_GLYPH, type RewindRow } from "./rewind";
 import { fmtToday, spanBounds, rankTop, type TopSpan, type TopRank } from "./rewind-window";
 import { sotdOn, allPicks, dayLabel, pickMenu, onSotdChange } from "./sotd";
 import { tracks as libraryTracks } from "./track-store";
@@ -130,7 +130,10 @@ export function initRewindButton(): void {
   let seq = 0; // only the latest read may draw
 
   panel.innerHTML = `
-    <div class="rewind-top__head">Rewind</div>
+    <div class="rewind-top__headrow"><span class="rewind-top__head">Rewind</span>
+      <button class="panel__action rewind-top__info" type="button" data-rt-info aria-expanded="false" aria-controls="rewind-top-about"
+        aria-label="Where Rewind's numbers come from" title="Where Rewind's numbers come from. Click to open or close">${INFO_GLYPH}</button></div>
+    <div class="rewind-top__fold" id="rewind-top-about" data-rt-about hidden><p>${esc(REWIND_ABOUT)}</p></div>
     <div class="rewind-top__today" data-rt-today>Today: …</div>
     <div class="rewind-top__chips">
       <button class="sound__pill rewind-top__chip" type="button" data-rt-part="top" aria-pressed="false" title="Your most played songs, albums or artists">Top Listens</button>
@@ -401,9 +404,23 @@ export function initRewindButton(): void {
     void drawList(true, swap);
   };
   panel.addEventListener("click", (e) => {
+    if ((e.target as HTMLElement).closest("[data-rt-info]")) return toggleAbout();
     const p = (e.target as HTMLElement).closest<HTMLElement>("[data-rt-part]")?.dataset.rtPart as Part | undefined;
     if (p) togglePart(p);
   });
+
+  // ── the i: where the numbers come from (his words, 2026-10-23), the web panel's idiom ──
+  const infoBtn = panel.querySelector<HTMLElement>("[data-rt-info]")!;
+  const about = panel.querySelector<HTMLElement>("[data-rt-about]")!;
+  const toggleAbout = () => {
+    const from = panel.offsetHeight;
+    const open = about.hidden;
+    about.hidden = !open;
+    infoBtn.setAttribute("aria-expanded", String(open));
+    diag.log("rewindTop:about", { open });
+    animateHeight(from);
+    if (open) enterRows([about]);
+  };
 
   // ── the three boxes (each the Library's Sort pop: choices; the middle one adds a divider and ↑ ↓) ──
   const optsHTML = <K extends string>(box: Box, labels: Record<K, string>, now: K) =>

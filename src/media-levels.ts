@@ -441,6 +441,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         key: "plays",
         label: "Most Played",
         type: "num",
+        // His ask (2026-10-23), as the Library's Plays: the tally is this app's own.
+        hint: "Most Played counts only listens on DeetsMusic, not on Apple Music",
         // Full listens lead, starts break a tie; a song never played goes last.
         get: (t) => {
           const c = playsOf(t);

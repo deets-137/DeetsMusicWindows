@@ -2,6 +2,19 @@
    minutes·plays meta line, and round art for the artist stat. Colors are theme
    roles, spacing/type are skin tokens (no hardcoded values). */
 
+/* The i in the header and its note at the top of the body: the Rewind panel's (rewind-top.css
+   .rewind-top__info, .rewind-top__fold), his ask 2026-10-23. */
+.rewind__info[aria-expanded="true"] { border-color: var(--title); background: var(--picked); }
+.rewind__info:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.rewind__about {
+  flex: 0 0 auto;
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--rewind-top-fold-bg);
+  color: var(--subtext); font-size: var(--fs-subtext); line-height: var(--rewind-top-fold-lh);
+}
+.rewind__about[hidden] { display: none; }
+.rewind__about p { margin: 0; }
 /* Two equal pills; .lib-pills (styles.css) supplies flex + gap, .lib-ctrl the cell. */
 .rewind__pills { flex: 0 0 auto; }
 .rewind__pills .lib-ctrl { flex: 1 1 0; }
