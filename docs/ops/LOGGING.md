@@ -102,6 +102,11 @@ in the tree.
 - **A panic hook.** `std::panic::set_hook` writes the payload and
   location. Today a panic on a worker thread vanishes silently. This is
   the highest-value line in the whole change.
+  **One known panic is a WARN (2026-10-23, his call):** tao's `cannot move state from
+  Destroyed` (`event_loop/runner.rs`) comes only after the loop has quit, in a Windows shutdown
+  or sleep. It writes `exit: tao panic in a Windows shutdown, known (…)`, so it does not count in
+  the weekly `log.error.other` (USAGE-COUNTS.md). Every other panic stays `ERROR` / `panic:`
+  (`known_exit_panic` in `log.rs`, with its test).
 
 ### Redaction happens at the write boundary
 

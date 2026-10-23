@@ -259,11 +259,17 @@ each step that touches those calls.
 - **Bugs read from his installed log (2026-10-23).** (1) After the PC woke at 13:34 on
   2026-10-22, the app started at 13:35 with no network: the syncs failed and the "offline" check
   ran once; then the log went silent at 13:36 (no 5-minute `diag` flush, no 5-minute Apple
-  recheck) until a new start at 13:56 with no quit line. Not known: whether he closed it by
-  force or it hung. (2) The tao panic on quit (`cannot move state from Destroyed`) came on 3 of
-  the last 7 quits, also with no Windows shutdown (03:05 on 2026-10-23): it is not only the
-  session-end path (DEBUGGING.md § What the 2026-09-17 health check found). It comes after the
-  `calls quit` line, so the exit's own work is done. (3) A WebView2 utility process (kind 4)
+  recheck) until a new start at 13:56 with no quit line. Closed: he ended that session himself
+  (his word, 2026-10-23). (2) The tao panic on quit (`cannot move state from Destroyed`) came on
+  3 of the last 7 quits. The 03:05 one on 2026-10-23 was his PC shutdown (his word; Windows
+  logged no clean shutdown, only "unexpected" at the next boot), so every known case is the
+  session-end or sleep path (DEBUGGING.md § What the 2026-09-17 health check found). It comes
+  after the `calls quit` line, so the exit's own work is done; Windows has no crash report for
+  it. tao 0.37.1 has the same `panic!` (runner.rs:371), so an update does not fix it. Its one
+  cost was that each panic was an ERROR line, counted in the weekly `log.error.other`
+  (USAGE-COUNTS.md). **Fixed for the count (his call, 2026-10-23):** `log.rs` writes this one
+  panic as a WARN `exit: tao panic in a Windows shutdown, known (…)` (LOGGING.md); the panic
+  itself stays. Ships with the next release. (3) A WebView2 utility process (kind 4)
   exits with 0xC0000142 one second after every launch; harmless, noise in the log. (4) One 403
   on a library page in a full sync (03:04:53): the Apple check said signed in, and the pass
   finished 4,083 of 4,083.

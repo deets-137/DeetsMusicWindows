@@ -6,6 +6,17 @@ updated: 2026-10-23
 ---
 # DeetsMusic — Work log
 
+## 2026-10-23 — the known tao panic is a WARN (branch `grand-opening`)
+
+**His call**, after the log read below: name the known panic, so it stops counting as an error.
+His words closed the other two leads: he ended the silent 13:35 session himself, and the 03:05
+panic was his PC shutdown (Windows logged no clean shutdown, only "unexpected" at the next boot).
+`log.rs`'s panic hook writes tao's `cannot move state from Destroyed` (`windows/event_loop/
+runner.rs`) as a WARN `exit: tao panic in a Windows shutdown, known (…)`; every other panic stays
+ERROR. The rule matches the panic and tao's file, not a quit flag: the 2026-10-21 02:43 panic
+came with no `calls quit` line before it, and tao's loop is `Destroyed` only after it quit. Test
+`known_exit_panic_2026_10_23`. **Checks:** `cargo test log::tests`, `npm run check`.
+
 ## 2026-10-23 — the sign-in page shows the city icon; desk tests closed; bugs read from the log (branch `grand-opening`)
 
 **His word:** every open desk test of the grand opening, the extension's removal and the first

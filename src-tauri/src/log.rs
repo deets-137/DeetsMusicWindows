@@ -123,7 +123,11 @@ pub fn init(dir: &Path) {
             .or_else(|| info.payload().downcast_ref::<String>().cloned())
             .unwrap_or_else(|| "<non-string payload>".into());
         let at = info.location().map(|l| format!("{}:{}", l.file(), l.line())).unwrap_or_default();
-        error(&format!("panic: {payload} at {at}"));
+        if known_exit_panic(&payload, &at) {
+            warn(&format!("exit: tao panic in a Windows shutdown, known ({payload} at {at})"));
+        } else {
+            error(&format!("panic: {payload} at {at}"));
+        }
         default(info);
     }));
 
@@ -141,6 +145,19 @@ pub fn init(dir: &Path) {
         windows_build(),
         chrono::Local::now().format("%:z")
     ));
+}
+
+/// tao's Windows event loop panics when a window message reaches it after the loop is
+/// destroyed: Windows' session end or sleep, after the app's own exit work is done (the
+/// `calls quit` line). The loop is `Destroyed` only after it quit, so this panic is always on
+/// the way out; tao 0.37 has the same `panic!`. Logged as WARN, not ERROR, so it does not
+/// count in the weekly `log.error.other` (USAGE-COUNTS.md); every other panic stays ERROR.
+/// HANDOFF › *Bugs read from his installed log*, 2026-10-23.
+fn known_exit_panic(payload: &str, at: &str) -> bool {
+    let at = at.replace('\\', "/");
+    payload == "cannot move state from Destroyed"
+        && at.contains("/tao-")
+        && at.contains("/windows/event_loop/runner.rs")
 }
 
 pub fn info(msg: &str) {
@@ -363,5 +380,16 @@ mod tests {
         assert_eq!(scrub("mut=AgNotAJwtShapedMusicUserToken0123456789 ok"), "mut=[redacted] ok");
         super::register_secret("short"); // ignored: would redact ordinary words
         assert_eq!(scrub("a short word"), "a short word");
+    }
+
+    #[test]
+    fn known_exit_panic_2026_10_23() {
+        use super::known_exit_panic;
+        let tao = r"C:\Users\u\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tao-0.35.3\src\platform_impl\windows\event_loop\runner.rs:371";
+        assert!(known_exit_panic("cannot move state from Destroyed", tao));
+        // Any other panic, or the same words from somewhere else, stays an ERROR.
+        assert!(!known_exit_panic("index out of bounds", tao));
+        assert!(!known_exit_panic("cannot move state from Destroyed", r"src\player.rs:12"));
+        assert!(!known_exit_panic("cannot move state from Destroyed", ""));
     }
 }
