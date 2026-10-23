@@ -23,7 +23,7 @@
 
 import { recheckRecent } from "./suggest";
 import { invoke } from "@tauri-apps/api/core";
-import type { Artwork, Track } from "./library";
+import { artistPassPending, onArtistPass, type Artwork, type Track } from "./library";
 import { tracks as allTracks, trackById, addTransientTracks } from "./track-store";
 import { playlistsCached, playlistTracks } from "./playlists";
 import { collectionTracks, catalogRelated, materializeTrack, type Album, type Playlist } from "./search";
@@ -328,6 +328,11 @@ export async function fillArtistPhotos(items: HomeItem[]): Promise<boolean> {
     .filter((i) => i.kind === "artist" && !photos.has(i.title) && !askedFor.has(i.title))
     .slice(0, ARTIST_FETCH_MAX);
   if (!missing.length) return false;
+  // The artist pass brings these photos in bulk; one call per artist now would be wasted.
+  if (artistPassPending()) {
+    heldForArtists = true;
+    return false;
+  }
   let got = false;
   await Promise.all(
     missing.map(async (i) => {
@@ -414,6 +419,23 @@ window.addEventListener("deets:signed-in", () => {
   appleAt = 0;
   newAt = 0;
 });
+
+// The artist pass runs after the songs reach the cards (2026-10-23). A build that held its
+// artist calls for it (the photos, the New shelf) builds again once it ends, and only then:
+// an ordinary launch, which held nothing, does not ask Apple a second time.
+let heldForArtists = false;
+const artistsReady = new Set<() => void>();
+onArtistPass(() => {
+  if (!heldForArtists) return;
+  heldForArtists = false;
+  newAt = 0;
+  artistsReady.forEach((cb) => cb());
+});
+/** Hear the end of an artist pass that a build waited for: the card builds again. */
+export function onHomeArtistsReady(cb: () => void): () => void {
+  artistsReady.add(cb);
+  return () => artistsReady.delete(cb);
+}
 
 /** Read both lists, at most once per floor. A failure keeps the lists we already have
  *  and retries sooner — offline, the shelves simply fall back to what is on disk. */
@@ -866,6 +888,12 @@ async function fetchNew(counts: Map<string, { full: number; partial: number }>):
   if (!setting("homeApple")) return;
   if (trouble() === "signin") return;
   if (!(await isConnected())) return;
+  // The releases are looked up by the artist pass's catalog ids. Asked before it ends, a
+  // first sync finds none, and the empty answer would hold the floor for a day.
+  if (artistPassPending()) {
+    heldForArtists = true;
+    return;
+  }
   const names = newArtists(counts);
   if (!names.length) return;
   const got = await invoke<Album[]>("artist_new_releases", { names }).catch((e) => {

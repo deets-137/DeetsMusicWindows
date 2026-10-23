@@ -2,7 +2,7 @@
 status: foundation
 desk_test: none
 sources: [src/stats.ts, src-tauri/src/heal.rs, src-tauri/src/library.rs, src/track-store.ts]
-updated: 2026-10-14
+updated: 2026-10-23
 ---
 # DeetsMusic — Data Architecture
 
@@ -483,6 +483,57 @@ The sign-in pass (`library_sync { signin: true }`) reads the full pass's own fir
    `another Apple account signed in`; the Library empties and fills with the new account's songs;
    Rewind still names the old songs you played; your local playlists and Diary are unchanged.
 
+### 5d. A first sign-in: what fills, and in what order (built 2026-10-23)
+> **Part:** built · 2026-10-23
+
+His report (2026-10-23): on a fresh install the cards stayed blank for a long time after the
+sign-in, and the Playlists card did not update until he pressed its ⟳. His dev log: the token at
+12:43:20, the cards filled 24 s later, the playlists only at his ⟳ (12:44:46). Two causes: the
+pass sent `done` only after the artist pass, and the Playlists card's one sync per session had run
+at launch, signed out, and failed. Radio had the same fault ("Connect to Apple Music to browse
+radio." stayed). His pick: the songs before the artist pass, a progress line in the empty cards,
+and the toast after the songs.
+
+The flow is the same from the grand opening's page 1 and from the title menu › Account:
+
+1. The browser sign-in returns the token; MusicKit takes it; main.ts fires `deets:signed-in`.
+   It listens for the next sync end (`nextSyncEnd` in library.ts) BEFORE it fires, so the end
+   cannot slip by.
+2. Every listener answers that one event:
+   - **The library** (track-store.ts `signInSync`): the sign-in pass (§5b), then the full pass.
+     Each page sends `progress`; the empty Library and Home show the ⟳'s own words from it
+     (*Reading your library… 1,200 of 4,083 songs*, sync-hint.ts).
+   - **The Apple playlists** (playlists-card.ts): a mounted card runs its sync again (it also
+     counts the playlists and seeds the ♥ marks from Favorite Songs) and tells the other cards;
+     with no card mounted, the mirror syncs on its own and the next mount syncs once more.
+   - **Radio** (radio.ts, radio-card.ts): the session caches drop (My Station and Discovery are
+     the user's own), and a mounted card loads again.
+   - **Home** (home.ts): its Apple floors reset, so its next build asks for the recents.
+3. The songs are written; `done` goes out with `artists: true`. The cards fill now. The
+   "Sign-in complete! Enjoy!" toast shows now too (or after 30 s at most).
+4. The artist pass runs (`artist_catalog_pass`) and ends with `{phase:"artists"}`, failed or not.
+   While it runs, Home holds its artist calls: the per-artist photo calls (the pass brings them
+   in bulk) and the New shelf (it looks releases up by the pass's catalog ids, and an empty
+   answer would hold its floor for a day). On `artists`, a Home that held anything builds again.
+   An ordinary launch held nothing, so it asks Apple nothing more.
+5. The catalog heal, the song guests pass, then `idle` (the lock's release; the ⟳ stops).
+
+The incremental pass does the same: its `done` says `artists: true` and the caller's artist pass
+sends `artists`. The grand opening's own warm-up now only logs `onboarding:warm`.
+
+**Desk test** (dev app, restart the runner: new Rust): `npm run dev:fresh`, then sign in from the
+title menu › Account.
+1. While the pass reads, the empty Library and Home show *Reading your library… N of M songs*,
+   and the count moves.
+2. The cards fill about half as long after the token as before (the log: `full sync done` comes
+   before `artist catalog filled`). The toast shows as they fill.
+3. The Playlists card fills without a press on ⟳ (`playlists: mirror synced` within a few seconds
+   of the token), and the ♥ marks appear (`favorites: seeded …`).
+4. Radio shows its stations, not "Connect to Apple Music to browse radio."
+5. Home's artist tiles have their photos and the New shelf fills after `artist catalog filled`;
+   the log has no `library_artist_info` call per artist during the pass.
+6. Again from the grand opening's page 1: the same, and `onboarding:warm` is logged.
+
 ---
 
 ## 6. The themed loopback page
@@ -517,7 +568,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 
 | Event | Payload |
 |---|---|
-| `library-sync` | `{ phase: "start" \| "progress" \| "done" \| "error", fetched?, count?, total?, changed? (done), message?, busy?, background? (error) }` (2026-09-29: §5a, APPLE-CALLS.md §6a) |
+| `library-sync` | `{ phase: "start" \| "progress" \| "done" \| "artists" \| "error" \| "idle", fetched?, count?, total?, changed?, artists? (done), written? (artists), message?, busy?, background? (error) }` (2026-09-29: §5a, APPLE-CALLS.md §6a; `artists` 2026-10-23: §5d) |
 | `catalog-heal` | `{ healed, none }` — a heal stored results; the track store re-reads the map |
 
 ---

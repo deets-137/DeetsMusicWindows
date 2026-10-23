@@ -6,6 +6,28 @@ updated: 2026-10-23
 ---
 # DeetsMusic — Work log
 
+## 2026-10-23 — the first sign-in fills the cards sooner; Playlists and Radio sync on it (branch `grand-opening`)
+
+**His report.** A sign-in on a fresh install: the cards stayed blank a long time, and the
+Playlists card did not update. His dev log: the token at 12:43:20, the cards filled at 12:43:47,
+the playlists only at his ⟳ (12:44:46). **His pick (option C):** the songs before the artist
+pass, a progress line in the empty cards, the toast after the songs; and Playlists and Radio
+sync on a sign-in too.
+
+**Built.** `done` goes out before the artist pass (library.rs; `artists: true`, then
+`{phase:"artists"}`). Home holds its per-artist photo calls and the New shelf while the pass
+runs and builds again after it (home.ts `onHomeArtistsReady`). The empty Library and Home show
+the ⟳'s words (*Reading your library… N of M songs*). The sign-in toast waits for `done`, 30 s
+at most (`nextSyncEnd`). Playlists (playlists-card.ts) and Radio (radio.ts, radio-card.ts)
+answer `deets:signed-in`; the grand opening's warm-up only logs. DATA-ARCHITECTURE.md §5d is
+the record and the desk test.
+
+**Claude decided inside his pick:** the toast's 30 s cap; the progress line in Library and
+Home only (Playlists and Radio fill in about a second); Home builds again only when it held a
+call, so an ordinary launch costs no second Apple call; the ♥ seeding runs again on a sign-in.
+
+**Checks:** tsc, cargo check, `npm run check`, vite build. Not run on the dev app.
+
 ## 2026-10-23 — the browser extension leaves v1 (branch `grand-opening`)
 
 **His call.** The extension is not on the Chrome Web Store, so v1 does not ship it. Keep

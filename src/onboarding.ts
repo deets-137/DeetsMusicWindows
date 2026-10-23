@@ -29,7 +29,6 @@ import { mountNitpicks } from "./onboarding-nitpicks";
 import { mountLetter } from "./onboarding-letter";
 import type { CardInstance } from "./cards";
 import { tokenMs, revealApp } from "./boot-cover";
-import { applePlaylistsSync, notifyPlaylistsChanged } from "./playlists";
 import { motionReduced } from "./motion";
 import "./styles/onboarding.css";
 
@@ -179,16 +178,11 @@ function forward(): void {
 }
 
 /** A sign-in made on page 1 readies the cards behind the page while the user reads on (his ask,
- *  2026-10-22). The library sync already starts on every sign-in (track-store.ts `signInSync`),
- *  and the mounted cards rebuild as it lands (Home asks Apple for its shelves on that rebuild).
- *  Apple's playlists are read only when the Playlists card mounts, which was before the sign-in,
- *  so their mirror is synced here. The work is Rust's, on its async pool, off the UI thread; a
- *  Web Worker would add nothing (no heavy work runs in the page). */
+ *  2026-10-22). Since 2026-10-23 every sign-in does this, from here or from the title menu, so
+ *  this only logs it: the library sync (track-store.ts `signInSync`), the playlists mirror
+ *  (playlists-card.ts) and Radio (radio-card.ts) each answer `deets:signed-in` themselves. */
 function warmUp(): void {
   diag.log("onboarding:warm");
-  applePlaylistsSync(false)
-    .then(() => notifyPlaylistsChanged())
-    .catch((e) => diag.warn("onboarding:warm", { e: String(e) }));
 }
 
 /** *Let's Boogie*: the card leaves under the launch's own cover and the app rises as it does at

@@ -482,7 +482,9 @@ Then Metal's own stress cases (metal.md §6.7) on the real player.
   and Escape still close it plainly.
 - **The warm-up** (his ask: ready the app while the user reads on). A sign-in that completes
   while the card is open (page 1's Apple Music button) runs `warmUp` (onboarding.ts): the
-  playlists mirror sync (`applePlaylistsSync` → `notifyPlaylistsChanged`). The rest starts by
+  playlists mirror sync (`applePlaylistsSync` → `notifyPlaylistsChanged`). **Since 2026-10-23
+  every sign-in does this, from here or the title menu** (DATA-ARCHITECTURE.md §5d: the
+  playlists and Radio answer `deets:signed-in` themselves), so `warmUp` only logs. The rest starts by
   itself on every sign-in: the library sync (track-store.ts `signInSync`), and the cards mounted
   behind the page rebuild as it lands (Home asks Apple for its shelves then). On threads (his
   question): every one of these is Rust work on its async pool, off the UI thread; the page only

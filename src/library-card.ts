@@ -695,6 +695,12 @@ export const libraryCard: CardDef = {
       title: "Library",
       density: true,
       loading: () => !tracksIn,
+      // A first sync (a sign-in on a fresh install) says how far it is in the empty card, in
+      // the ⟳'s own words, instead of "Nothing here yet." (2026-10-23, his pick).
+      get emptyText() {
+        const s = syncStatus();
+        return s && !tracks().length ? syncHint(s) : undefined;
+      },
       shelves: () => pinnedShelfHTML(["album", "artist", "song"]),
       shelfDrag: pinDragRow, // the grip moves a pinned tile along the shelf (MOVABLE-ROWS.md §5.2)
       shelvesFirst: true,
@@ -836,9 +842,16 @@ export const libraryCard: CardDef = {
     const unsubBusy = onSyncBusy((b) => refreshBtn?.classList.toggle("is-busy", b));
     // Its hover hint says what runs and how far (sync-hint.ts); hint.ts takes the new words
     // while the box is up, so the count moves under a resting pointer.
+    // The empty card shows the same words (rootContext's emptyText), so it redraws with them.
+    let emptyWords = "";
     const unsubStatus = onSyncStatus((s) => {
       const words = syncHint(s);
       if (refreshBtn && refreshBtn.dataset.hint !== words) refreshBtn.title = words;
+      const shown = !tracks().length && s ? words : "";
+      if (shown !== emptyWords) {
+        emptyWords = shown;
+        card.reload();
+      }
     });
     const syncUnlisten = onSyncEvent((e) => {
       if (e.phase === "done") console.log(`[sync] cached ${e.count}/${e.total} songs`);

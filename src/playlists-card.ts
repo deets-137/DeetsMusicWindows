@@ -11,7 +11,7 @@
 import * as frames from "./frames";
 import { setting } from "./settings-store";
 import {
-  playlistsCached, applePlaylistsSync, applePlaylistCounts, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
+  playlistsCached, applePlaylistsSync, applePlaylistCounts, notifyPlaylistsChanged, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
   playlistRemoveTrack, playlistRemovePositions, playlistRename, playlistReorder, playlistSetCover, playlistImport, onPlaylistsChange,
   playlistInsertTracks, playlistCoverData,
   foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, isRulez, ownCover, type PlaylistFolder,
@@ -74,6 +74,21 @@ function undoToast(text: string, what: string, undo: () => Promise<void>): void 
 
 // Auto-sync the mirror once per session — a slot remount must not re-hit Apple.
 let sessionSynced = false;
+// A sign-in syncs it again (2026-10-23): on a fresh install the session's sync ran signed
+// out at launch, failed, and nothing ran it again until the ⟳. A mounted card runs its own
+// sync (it also counts the playlists and seeds the ♥ marks); with none mounted, the mirror
+// syncs here and the other cards (Home, the pins) hear the change.
+const signedInSyncs = new Set<() => void>();
+window.addEventListener("deets:signed-in", () => {
+  sessionSynced = false;
+  favoritesSeeded = false;
+  const mounted = [...signedInSyncs][0];
+  if (mounted) return mounted();
+  sessionSynced = true;
+  applePlaylistsSync(false)
+    .then(() => notifyPlaylistsChanged())
+    .catch((e) => console.error("[playlists] sign-in sync", e));
+});
 // Apple's generated Favorite Songs list seeds the ♥ mirror (favorites.rs) when its
 // tracks are fetched — once per session, right after the mirror sync.
 let favoritesSeeded = false;
@@ -1136,11 +1151,13 @@ export const playlistsCard: CardDef = {
         .catch((e) => console.error("[playlists] counts", e));
     };
 
-    const doSync = (fresh: boolean) => {
+    /** `tell`: the other cards hear the new list too (a sign-in's sync: Home's shelves, the pins). */
+    const doSync = (fresh: boolean, tell = false) => {
       refreshBtn?.classList.add("is-busy");
       applePlaylistsSync(fresh)
         .then((n) => {
           console.log(`[playlists] mirror synced — ${n} playlist(s)${fresh ? " (fresh)" : ""}`);
+          if (tell) notifyPlaylistsChanged();
           if (fresh) {
             // Drop every playlist's contents so each refetches on next open — EXCEPT one
             // whose detail pane is open: keep its stale entry visible and revalidate it in
@@ -1173,10 +1190,14 @@ export const playlistsCard: CardDef = {
         if (mountOpts?.memory && !tookRequest && card.depth() === 1) card.restore(mountOpts.memory);
       })
       .then(backfillCounts); // cached list renders instantly; counts fill in
-    if (!sessionSynced) {
+    const syncOnce = (tell = false) => {
+      if (sessionSynced) return;
       sessionSynced = true;
-      doSync(false);
-    }
+      doSync(false, tell);
+    };
+    syncOnce();
+    const onSignIn = () => syncOnce(true);
+    signedInSyncs.add(onSignIn);
     refreshBtn?.addEventListener("click", () => doSync(true));
 
     // A Your Playlists tile on an artist view opens its playlist here (ARTIST-VIEW.md §5). A
@@ -1271,6 +1292,7 @@ export const playlistsCard: CardDef = {
     return {
       snapshot: () => card.snapshot(),
       destroy() {
+        signedInSyncs.delete(onSignIn);
         unsubChanges();
         unsubOpen();
         unsubGrow();

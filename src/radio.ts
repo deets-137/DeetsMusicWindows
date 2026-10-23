@@ -89,6 +89,11 @@ export async function seedStation(kind: SeedKind, id: string): Promise<Station |
 }
 
 /** The ⟳ action: forget everything so the next fetches hit Apple again. */
+// A sign-in drops them (2026-10-23): a Radio card that mounted signed out cached a failure,
+// and My Station and Discovery belong to whoever signed in. A mounted card loads again
+// (radio-card.ts); one mounted later asks fresh.
+window.addEventListener("deets:signed-in", () => radioDropCaches());
+
 export function radioDropCaches(): void {
   liveCache = null;
   myStationCache = undefined;

@@ -409,10 +409,19 @@ export const radioCard: CardDef = {
       radioDropCaches();
       load();
     });
+    // A sign-in: the first load ran signed out and showed "Connect to Apple Music to browse
+    // radio." (2026-10-23). radio.ts drops the caches on the same event; drop here too, so the
+    // order of the two listeners does not matter.
+    const onSignedIn = () => {
+      radioDropCaches();
+      load();
+    };
+    window.addEventListener("deets:signed-in", onSignedIn);
 
     return {
       snapshot: () => card.snapshot(),
       destroy() {
+        window.removeEventListener("deets:signed-in", onSignedIn);
         unsubPins();
         unsubOrder();
         card.destroy();

@@ -54,7 +54,7 @@ export interface Page<T> {
 export interface SyncEvent {
   /** `idle`: the sync lock is released. It comes after `done` / `error`, once the artist
    *  pass and the heal have ended too; a ⟳ click is refused until then. */
-  phase: "start" | "progress" | "done" | "error" | "idle";
+  phase: "start" | "progress" | "done" | "error" | "idle" | "artists";
   /** Set on `progress`: which pass sends the pages. `full` counts every song read in
    *  `fetched`; `incremental` counts only the new songs (the ⟳'s hint, sync-hint.ts). */
   kind?: "full" | "incremental";
@@ -69,6 +69,10 @@ export interface SyncEvent {
   background?: boolean;
   /** Set on `done`: how many cached rows really changed. 0 = nothing to reload. */
   changed?: number;
+  /** Set on `done`: the artist pass runs next, and ends with `{phase:"artists"}` (2026-10-23). */
+  artists?: boolean;
+  /** Set on `artists`: how many artist rows the pass wrote. */
+  written?: number;
 }
 
 /** Read cached tracks (ordered by title/artist). */
@@ -130,6 +134,50 @@ function wireBusy(): void {
   invoke<boolean>("library_sync_busy")
     .then((b) => !heard && setStatus(b ? { stage: "start" } : null))
     .catch(() => {});
+}
+
+// ── The artist pass (2026-10-23): it runs after `done`, so the songs show first ──
+// From a `done` that says `artists: true` to the `artists` event, the artist catalog (photos,
+// catalog ids) is still being read. Home holds its artist calls until it ends (home.ts).
+let artistsPending = false;
+const artistCbs = new Set<() => void>();
+void onSyncEvent((e) => {
+  if (e.phase === "done") artistsPending = !!e.artists;
+  else if (e.phase === "artists") {
+    artistsPending = false;
+    for (const cb of artistCbs) cb();
+  } else if (e.phase === "idle" || e.phase === "error") artistsPending = false;
+}).catch(() => {});
+
+/** Resolves at the next sync's `done` or `error`, or after `capMs`, whichever is first. The
+ *  sign-in toast waits for it, so "Enjoy!" comes when the songs are on screen (2026-10-23). */
+export function nextSyncEnd(capMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    let off: UnlistenFn | null = null;
+    let ended = false;
+    const end = () => {
+      if (ended) return;
+      ended = true;
+      window.clearTimeout(cap);
+      off?.();
+      resolve();
+    };
+    const cap = window.setTimeout(end, capMs);
+    void onSyncEvent((e) => {
+      if (e.phase === "done" || e.phase === "error") end();
+    })
+      .then((u) => (ended ? u() : (off = u)))
+      .catch(() => {});
+  });
+}
+
+/** The artist pass is still reading: an artist's photo or catalog id may be on its way. */
+export const artistPassPending = (): boolean => artistsPending;
+
+/** Hear the artist pass end. Returns an unsubscribe fn. */
+export function onArtistPass(cb: () => void): () => void {
+  artistCbs.add(cb);
+  return () => artistCbs.delete(cb);
 }
 
 /** A sync holds the lock now: a ⟳ click would be refused. */

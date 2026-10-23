@@ -1351,7 +1351,7 @@ async fn library_sync_run(
         match sync_incremental(&app, provider.clone(), &db, age.unwrap_or(0), changed, explain).await? {
             Incremental::Done(n) => {
                 // S3: an artist count that moved is filled from the new songs first.
-                artist_catalog_pass(&dev, &user, &db, false, true).await;
+                artist_catalog_pass(&app, &dev, &user, &db, false, true).await;
                 crate::heal::pass(&app, &dev, &user, &db).await; // songs Apple sent with no play id
                 crate::enrich::guests_pass(&app, &dev, &user, &db).await; // the new songs' guests (§5.6)
                 return Ok(n);
@@ -1458,16 +1458,18 @@ async fn library_sync_run(
             crate::log::warn(&format!("library: song count not written: {e}"));
         }
     }
+    crate::log::info(&format!("library: full sync done, {} of {total} song(s), {changed} row(s) changed", all.len()));
+    // `done` before the artist pass (2026-10-23): on a first sign-in the cards waited 24 s
+    // for it, about half of that the artist pages. `artists: true` says the pass follows.
+    app.emit(
+        "library-sync",
+        serde_json::json!({ "phase": "done", "count": all.len(), "total": total, "changed": changed, "artists": true }),
+    )
+    .ok();
     // The artist pass rides the sync (HOME.md §10.3). Only the weekly pass re-pages every
     // artist without asking (so an artist swapped for another one heals within a week);
     // the other passes ask Apple's artist count first, one `limit=1` call.
-    artist_catalog_pass(&dev, &user, &db, weekly, false).await;
-    crate::log::info(&format!("library: full sync done, {} of {total} song(s), {changed} row(s) changed", all.len()));
-    app.emit(
-        "library-sync",
-        serde_json::json!({ "phase": "done", "count": all.len(), "total": total, "changed": changed }),
-    )
-    .ok();
+    artist_catalog_pass(&app, &dev, &user, &db, weekly, false).await;
     // Songs Apple sent with no play id get their catalog copy (heal.rs), after `done`:
     // the Library is already on screen, and the heal's own event updates the map.
     crate::heal::pass(&app, &dev, &user, &db).await;
@@ -1486,11 +1488,20 @@ async fn library_sync_run(
 /// promises, and a failed artist pass leaves the old rows in place and warns.
 /// `from_new_songs` (S3, after an incremental pass): a moved count is first filled from the
 /// new songs' library artists, and re-pages only when that cannot find them all.
-async fn artist_catalog_pass(dev: &str, user: &str, db: &State<'_, Db>, force: bool, from_new_songs: bool) {
+///
+/// It runs AFTER `done` (2026-10-23): the songs are on screen while it pages. `done` carries
+/// `artists: true`, and this pass ends with `{phase:"artists"}`, failed or not, so Home holds
+/// its artist calls (the photos, the New shelf) until the catalog ids are here.
+async fn artist_catalog_pass(app: &AppHandle, dev: &str, user: &str, db: &State<'_, Db>, force: bool, from_new_songs: bool) {
     let client = apple::http_client();
-    if let Err(e) = apple::sync_artist_catalog(&client, dev, user, db, force, from_new_songs).await {
-        crate::log::warn(&format!("library: artist catalog pass failed: {e}"));
-    }
+    let written = match apple::sync_artist_catalog(&client, dev, user, db, force, from_new_songs).await {
+        Ok(n) => n,
+        Err(e) => {
+            crate::log::warn(&format!("library: artist catalog pass failed: {e}"));
+            0
+        }
+    };
+    app.emit("library-sync", serde_json::json!({ "phase": "artists", "written": written })).ok();
 }
 
 /// The incremental pass: newest-added first, one page at a time, stop at the first
@@ -1592,7 +1603,8 @@ async fn sync_incremental(
         "library: incremental sync done, {new_total} new in {pages} page(s), {changed} row(s) changed; apple total {total}, cached {count} (last full pass {}h ago)",
         age_secs / 3600
     ));
-    app.emit("library-sync", serde_json::json!({ "phase": "done", "count": count, "total": total, "changed": changed })).ok();
+    // The caller's artist pass follows (`artists: true`, see `artist_catalog_pass`).
+    app.emit("library-sync", serde_json::json!({ "phase": "done", "count": count, "total": total, "changed": changed, "artists": true })).ok();
     Ok(Incremental::Done(new_total))
 }
 

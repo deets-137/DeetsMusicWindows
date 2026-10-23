@@ -18,12 +18,14 @@
 // the header's refresh square — all from SQLite and the caches already in memory.
 
 import { wireListKeys } from "./list-keys";
-import { homeShelves, hideItem, fillArtistPhotos, refreshApple, onHomeApple, type HomeItem, type HomeShelf } from "./home";
+import { homeShelves, hideItem, fillArtistPhotos, refreshApple, onHomeApple, onHomeArtistsReady, type HomeItem, type HomeShelf } from "./home";
 import { reveal, isInstant } from "./reveal";
 import { playTracks, playStation, onPlayerState } from "./player";
 import { stationMenu, tileMenu } from "./media-menu";
 import { onPlaylistsChange } from "./playlists";
-import { onTracksChange } from "./track-store";
+import { onTracksChange, tracks } from "./track-store";
+import { onSyncStatus, syncStatus } from "./library";
+import { syncHint } from "./sync-hint";
 import { toast } from "./toast";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { rowDrag, type DragPayload } from "./row-drag";
@@ -117,13 +119,17 @@ export const homeCard: CardDef = {
     const render = () => {
       const list = ordered();
       shownIds = list.map((sh) => sh.id);
+      // A first sync (a sign-in on a fresh install): how far it is, in the Library ⟳'s words.
+      const sync = syncStatus();
+      const syncing = sync && !tracks().length ? syncHint(sync) : "";
       // While the first build is on its way the reveal holds an empty body; "Looking through
       // what you play…" shows only once the cap passes with no shelves yet (§7.9 part 2).
       patchHTML(shelfBox, shelves.length
         ? list.map(shelfHTML).join("")
         : loading && !revealed ? ""
         : `<p class="lib-empty__msg">${
-            loading ? "Looking through what you play…"
+            syncing ? esc(syncing)
+            : loading ? "Looking through what you play…"
             // A failed read is not an empty Home: "Play something" blamed the user (2026-09-29).
             : failed ? "Home didn't load. Press Refresh to try again."
             : "Play something. Home fills itself."
@@ -335,6 +341,16 @@ export const homeCard: CardDef = {
     const offPlaylists = onPlaylistsChange(() => build());
     const offPins = onPinsChange(() => build());
     const offSotd = onSotdChange(() => build());
+    const offArtists = onHomeArtistsReady(() => build()); // the photos and New, after a first sync
+    // The empty card's sync line follows the sync (render's `syncing`). The first call is the
+    // state at mount, which the first render already reads.
+    let syncWords: string | null = null;
+    const offSync = onSyncStatus((s) => {
+      const words = s && !tracks().length ? syncHint(s) : "";
+      const was = syncWords;
+      syncWords = words;
+      if (was !== null && was !== words && alive && !shelves.length) render();
+    });
     // A move — this card's own, or a Reset — redraws the shelves. The shelves themselves
     // are unchanged, so this is a render, not a build.
     const offOrder = onRowOrderChange(() => { if (alive) render(); });
@@ -379,6 +395,8 @@ export const homeCard: CardDef = {
         window.clearTimeout(timer);
         offState();
         offSotd();
+        offArtists();
+        offSync();
         offTracks();
         offPlaylists();
         offPins();

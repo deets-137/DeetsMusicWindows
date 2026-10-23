@@ -22,6 +22,7 @@ import { initHints } from "./hint";
 import { setting, onSettingsChange, adaptiveUnhidden } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
+import { nextSyncEnd } from "./library";
 import * as health from "./apple-health";
 import { initLastfm } from "./lastfm";
 import * as diag from "./diag";
@@ -478,6 +479,8 @@ window.addEventListener("DOMContentLoaded", () => {
   // paints, resets health, or toasts; the older one returns quietly.
   let signInSeq = 0;
   let signInPending = false;
+  /** The longest the sign-in toast waits for the songs: a big library still gets it. */
+  const SIGNIN_TOAST_CAP_MS = 30_000;
   const signIn = async (local = false) => {
     const mine = ++signInSeq;
     signInPending = true;
@@ -489,13 +492,18 @@ window.addEventListener("DOMContentLoaded", () => {
       signInPending = false;
       noteSignedIn(); // the first playback failure after this gets the subscription hint
       health.reset();
+      // Heard before the event below starts the sign-in sync, so its `done` cannot slip by.
+      const songsIn = nextSyncEnd(SIGNIN_TOAST_CAP_MS);
       // Step 1 of the first-run walk waits for this (walk.ts): the sign-in finishes in the
       // browser, minutes after the click, so the walk cannot watch the button.
       window.dispatchEvent(new Event("deets:signed-in"));
       await paintAccount();
-      // The user is usually still in the browser; this says the app took the token
-      // (`all` tier, TOASTS.md §5).
-      toast({ kind: "success", text: "Sign-in complete! Enjoy!" });
+      // This says the app took the token (`all` tier, TOASTS.md §5). It waits for the songs
+      // (2026-10-23, his pick): "Enjoy!" over empty cards promised what was not there yet.
+      // Meanwhile the empty Library and Home say how far the sync is.
+      void songsIn.then(() => {
+        if (mine === signInSeq) toast({ kind: "success", text: "Sign-in complete! Enjoy!" });
+      });
     } catch (e) {
       if (mine !== signInSeq) return;
       signInPending = false;
