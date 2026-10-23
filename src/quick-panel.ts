@@ -26,19 +26,27 @@ import { motionReduced } from "./motion";
 
 export type Part = "apple" | "discord" | "window" | "look" | "help" | "agents" | "fun" | "bugs" | "reset";
 
-/** What each icon shows (QUICK-SETTINGS.md §3). Apple Music: its section and AirPlay, under
- *  the sign-in row. Discord: its own section, then the one Discord row of Sharing. Window:
- *  the Window section, then Cards. The brush: the look schedule, the skin's own rows (a part with no
- *  row under this skin is left out) and Motion. */
+/** What each icon shows (QUICK-SETTINGS.md §3). Apple Music: its section, AirPlay and Last.fm,
+ *  under the sign-in row. Discord: its own section, then Sharing's Discord row and the pause.
+ *  Window: the Window section, Cards, then Home. The brush: the look schedule, the skin's own
+ *  rows (a part with no row under this skin is left out) and Motion. The net: Sharing's
+ *  DeetsMusic row and the pause sit under Friends, the friends they share with. Sound stays in
+ *  Settings only (§13, his call 2026-10-23); Sleep's rows are the Sleep panel's own. */
 const PARTS: Record<Part, SettingsPart[]> = {
-  apple: [{ title: "Apple Music" }, { title: "AirPlay" }],
-  discord: [{ title: "Discord" }, { title: "Sharing", rows: ["shareDiscord"] }],
-  window: [{ title: "Window" }, { title: "Cards" }], // Cards: HIDE-CARDS.md §5
+  apple: [{ title: "Apple Music" }, { title: "AirPlay" }, { title: "Last.fm" }],
+  discord: [{ title: "Discord" }, { title: "Sharing", rows: ["shareDiscord", "sharepause"] }],
+  window: [{ title: "Window" }, { title: "Cards" }, { title: "Home" }], // Cards: HIDE-CARDS.md §5
   look: [{ title: "Look schedule" }, { title: "Skin settings" }, { title: "Motion" }],
-  help: [{ title: "Menus, hints and notices" }, { title: "Playback" }],
+  help: [{ title: "Menus, hints and notices" }, { title: "Playback" }, { title: "Playlists" }],
   agents: [{ title: "Connections" }],
-  fun: [{ title: "Song of the Day" }, { title: "Friends" }],
-  bugs: [{ title: "Updates" }, { title: "Bugs" }],
+  fun: [
+    { title: "Song of the Day" },
+    { title: "Friends" },
+    { title: "Sharing", rows: ["shareApp", "sharepause"] },
+    { title: "Rewind" },
+    { title: "Album Reviews" },
+  ],
+  bugs: [{ title: "Updates" }, { title: "Bugs" }, { title: "About", rows: ["usage", "usagesent"] }],
   reset: [{ title: "Reset" }],
 };
 

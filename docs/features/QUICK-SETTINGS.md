@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.13.0
 desk_test: passed 2026-09-24
 sources: [src/quick-panel.ts]
-updated: 2026-10-14
+updated: 2026-10-23
 ---
 # Quick settings — the cog's panel
 
@@ -52,14 +52,14 @@ takes a row request (`requestSetting`): the card takes it. Ctrl+F is not registe
 
 | Logo | Parts |
 |---|---|
-| Apple Music | the Account row (§4), then `Apple Music` (all 3 rows), then `AirPlay` |
-| Discord | `Discord` (the SOTD webhook, Post as, Listen Along invite, the post log), then `Sharing` › `shareDiscord` only |
-| Window | `Window` (all of it; its own first sub-heading "Window" is dropped, it would repeat), then `Cards` (one toggle per card, HIDE-CARDS.md, 2026-10-10) |
+| Apple Music | the Account row (§4), then `Apple Music` (all 3 rows), then `AirPlay`, then `Last.fm` (§13) |
+| Discord | `Discord` (the SOTD webhook, Post as, Listen Along invite, the post log), then `Sharing` › `shareDiscord` and `sharepause` |
+| Window | `Window` (all of it; its own first sub-heading "Window" is dropped, it would repeat), then `Cards` (one toggle per card, HIDE-CARDS.md, 2026-10-10), then `Home` (§13) |
 | Look (the brush) | `Look schedule`, `Skin settings` (left out when this skin has no rows), `Motion` |
-| Updates and bugs (the beetle) | `Updates`, then `Bugs` (the report form, My reports, the app log) |
-| Help (the helipad) | `Menus, hints and notices`, then `Playback` |
+| Updates and bugs (the beetle) | `Updates`, then `Bugs` (the report form, My reports, the app log), then `About` › `usage` and `usagesent` (§13) |
+| Help (the helipad) | `Menus, hints and notices`, then `Playback`, then `Playlists` (§13) |
 | Connections (the robot) | `Connections` (agent control, its settings, the extension) |
-| Fun things (the net) | `Song of the Day`, then `Friends` |
+| Fun things (the net) | `Song of the Day`, then `Friends`, then `Sharing` › `shareApp` and `sharepause`, then `Rewind`, then `Album Reviews` (§13) |
 | Reset (the ring) | `Reset` (all of it) |
 
 The rows mount again on each logo press and each panel open. A mount reads a few cheap
@@ -199,10 +199,12 @@ The middle group is sorted once, by the rows each icon shows, counted from the c
 | Icon | Rows | Why it ranges |
 |---|---|---|
 | Connections (robot) | 4 | — |
-| Fun things (net) | 4–10 | Song of the Day's rows show only while it is on |
 | Look (brush) | 5–14 | the schedule's rows follow its mode; Skin settings follow the skin |
-| Help (helipad) | 14–16 | two Menus rows are gated |
-| Window | 28 | — (19 Window rows + 9 Cards toggles since 2026-10-10; the place in the order did not change) |
+| Fun things (net) | 12–18 | Song of the Day's rows show only while it is on (+ 2 Sharing, 4 Rewind, 2 Album Reviews since 2026-10-23) |
+| Help (helipad) | 27–29 | two Menus rows are gated (+ 13 Playlists since 2026-10-23) |
+| Window | 40 | — (19 Window rows + 9 Cards toggles since 2026-10-10, + 9 cover load rows, + 3 Home rows since 2026-10-23) |
+
+On 2026-10-23 the net passed the brush (§13), so the two swapped places. The rest kept theirs.
 
 ## 10. The N beside a new setting (Review 5)
 
@@ -397,4 +399,41 @@ narrower panel (`--quick-panel-w`) against the panel's rows.
 6. With a new row unseen inside a folded group, its header shows the N.
 7. Keyboard: Tab to a header, press Enter: it opens.
 8. Reduced motion: an open shows the rows at once.
+
+## 13. Every Settings section has a place (2026-10-23)
+> **Part:** built · 2026-10-23
+
+An audit on 2026-10-23 found 9 Settings sections and 2 Sharing rows in no square. His calls:
+
+| Fork | Decision |
+|---|---|
+| Last.fm and Rewind | **No new square.** Last.fm goes under the Apple Music square (another music account). Rewind goes in the net. The eleventh square, the last that fits Mini's 385 px, stays free. |
+| Playlists and Sound | **Playlists goes under the helipad**, after Playback. **Sound stays in Settings only**: its rows left the Sound panel on 2026-10-19 as not useful there (SOUND.md). |
+| Sleep every day, Sleep at | **In the Sleep panel.** The panel already had them (*Every day* and the time row, 2026-09-18), so nothing changed. |
+
+Placements that follow (no fork): Sharing's *Share activity on DeetsMusic* and *Pause sharing
+for an hour* go in the net, under Friends. The pause also goes in the Discord square, because
+it pauses both. Album Reviews goes in the net. Home goes in the Window square, after Cards.
+About's *Send usage counts* and *What is sent* go in the beetle, after Bugs (both are about
+what the app sends to DeetsSupport; the panel is portaled as a `.set__menu`, so the cog's
+panel takes its clicks as its own). Tips stay out (Review 4).
+
+What Claude decided inside his calls: the order inside each square (the new parts go last; in
+the net: Friends, Sharing, Rewind, Album Reviews), About's two rows only (not its version and
+trademark lines), and the new hover hints of six squares (ONBOARDING.md §1). The net now has
+more rows than the brush, so the two swapped places (§9).
+
+### 13.1 Desk test
+
+1. The Apple Music square: Apple Music, AirPlay, then Last.fm with its two toggles and its
+   status line.
+2. The Discord square: Discord, then Sharing with *Share activity on Discord* and *Pause
+   sharing for an hour*. Press Pause: the net's Sharing shows the same pause.
+3. The net: Song of the Day, Friends, Sharing (*Share activity on DeetsMusic*, the pause),
+   Rewind, Album Reviews. The net now sits right of the brush.
+4. The helipad: Playlists after Playback. The Window square: Home after Cards; *Hidden tiles ›
+   Clear* works.
+5. The beetle: About with *Send usage counts* and *What is sent*. *Show* opens the report
+   panel over the cog's panel, and a press in it does not shut the cog's panel.
+6. Mini: the panel is as wide as before (10 squares) and fits the window.
 
