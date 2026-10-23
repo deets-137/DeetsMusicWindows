@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src-tauri/tauri.conf.json, src-tauri/src/csp.rs, src-tauri/src/lib.rs, src-tauri/src/velo.rs, src-tauri/src/usage.rs, index.html, src/csp-watch.ts, src/main.ts, src/tray.ts, src/dom.ts, src/settings-card.ts, src/updates-btn.ts, scripts/csp-dev-plugin.mjs, scripts/csp-relax.mjs, scripts/release-check.mjs, vite.config.ts]
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 # A Content Security Policy for the webview
 
@@ -168,6 +168,12 @@ So:
 | 1. His dev app | `report` on `dev:built` (or `dev:app`, after the §3 probe) | a week of his use; read the ring |
 | 2. One release | `report` for everyone | the ring on his installed app, bug reports, and the counts (§9) |
 | 3. The next release | `enforce` | the desk test (§10) |
+
+> **Part:** step 3 started · 2026-10-23. His call: `RELEASE_MODE` is `Enforce` from 0.99.0, a test
+> build he installs and uses for a day on his own PC (not published). The review before the
+> public 1.0.0: the `csp-<directive>:` lines in his installed app's log and `diag` ring
+> (`csp:blocked`), and what stopped working. §10's scripted desk test was not run first; his
+> day of use is the test, and the signed relaxation (§7) is the way back for everyone else.
 | 4. Tighten | `*.apple.com` narrowed to the hosts steps 1–2 saw | — |
 
 ## 7. The way back: a signed relaxation
@@ -262,7 +268,7 @@ Where this section and the design above disagree, this section is the code.
 |---|---|
 | The policy, `freezePrototype: true`, `withGlobalTauri: false`, `create: false` on both windows | `src-tauri/tauri.conf.json` |
 | The windows made in setup with the hook, right after the log starts (where Tauri made the config windows, so the order of the rest is the same) | `lib.rs` setup |
-| The mode (`RELEASE_MODE`, `Report` for this release), the hook, the relaxation's check and fetch, the `csp_blocked` command | `src-tauri/src/csp.rs` |
+| The mode (`RELEASE_MODE`: `Enforce` since 0.99.0, 2026-10-23; `Report` in 0.32.0), the hook, the relaxation's check and fetch, the `csp_blocked` command | `src-tauri/src/csp.rs` |
 | `verify_with`, so a test can sign with a throwaway key | `src-tauri/src/velo.rs` |
 | The per-directive health counts | `usage.rs` `note_log` |
 | The signing script | `scripts/csp-relax.mjs`, `npm run csp:relax` |

@@ -41,6 +41,32 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 0.99.0 — 2026-10-23
+
+**The grand opening.** A welcome screen on a first launch, in five pages: sign in to Apple Music
+and Last.FM, pick a window size and your cards, pick a skin and a theme with a live preview, the
+smaller settings and rules, and a letter from Deets. Ctrl+Space › Onboarding opens it again.
+
+**A shorter tour, with Next on every step.** The tour starts after the welcome screen, in four
+steps, and Deets points at each control.
+
+**Where Rewind's numbers come from.** An i on the Rewind panel and the Rewind card, and the hints
+on the Plays and Most Played sorts, say that only listens on DeetsMusic count.
+
+**A stricter page policy.** The app's page now blocks scripts, pictures and connections from any
+place it does not list (its Content Security Policy).
+
+**Fixes.** Turning on the look schedule keeps your current look for day and night until you pick
+others. The welcome screen's preview covers load before you sign in.
+
+### Not published
+
+A test build for the owner's own PC (2026-10-23), to run the enforced policy for a day. It never
+reached the update channel. The public release after it must be 1.0.0 or higher: an install of
+0.99.0 takes no lower version. Before that release, put back `installers/velopack/` from
+`_DeetsMusic-deetsmusic.before-0.99.0`, so its delta is built against 0.32.0, the version
+strangers have.
+
 ## 0.32.0 — 2026-10-22
 
 **Happy, a seventh skin.** A pixel-art sky behind the cards, with clouds, the sun and the

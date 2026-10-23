@@ -18,8 +18,9 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-/// This release's mode (§6, step 2: one release in report, then enforce).
-const RELEASE_MODE: Mode = Mode::Report;
+/// This release's mode (§6: one release in report, 0.32.0, then enforce). Enforce from 0.99.0,
+/// his test build of 2026-10-23, used a day on his own PC before the public release.
+const RELEASE_MODE: Mode = Mode::Enforce;
 const CONFIG_URL: &str = "https://support.deets.solutions/config?app=deetsmusic";
 const FILE: &str = "csp-relax.json";
 const FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
