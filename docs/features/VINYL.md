@@ -284,7 +284,9 @@ a late start; a step that is not ~10° is a snap; the slot count going 2 → 1 �
     `<img>` is Apple's own URL, and turning the row Off shows the cover as sent. This is the same
     reading the app already relies on for the round artist hero, the Rewind rounds and the
     memory-only mosaic (PLAYLISTS.md §11.3). The word "modify" is broad and Apple does not define
-    it, so the risk is not zero. Keep the default **Off**, so a record is only ever the user's pick.
+    it, so the risk is not zero. This note first kept the default **Off**; his call of 2026-10-11
+    made it **Spin** (`pressVinyl: "spin"`, settings-store.ts), and that is the default now (the
+    stale line found 2026-10-22, GRAND-OPENING.md §8b).
 - **Frame cost (the optimization session).** A full-rate spin keeps the window drawing at the display
   rate (238 Hz on the desk PC) while music plays. Measure with `frames.ts` and the heaviness sampler,
   on the stage and in the strip.

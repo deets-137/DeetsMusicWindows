@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 783 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 46 |
+| Skin (everything else) | skin.css base block | 795 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -789,6 +789,17 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--nav-at-left` | `translateX(-100%)` | press, ocean, glass, cyber |  |
 | `--nav-at-right` | `translateX(100%)` | press, ocean, glass, cyber |  |
 | `--nav-off-opacity` | `1` | press, ocean, glass, cyber | off-screen panes stay opaque |
+| `--ob-page-above` | `translateY(-100%)` | — | The grand opening's pages (GRAND-OPENING.md §4): its nav bar stands on the left, so a page comes in from below or above, on the same --nav-dur / --nav-ease / --nav-off-opacity. |
+| `--ob-page-below` | `translateY(100%)` | — |  |
+| `--ob-hi-size` | `calc(var(--fs-title) * 2.4)` | — | page 1's "Hi": the card title's face, large |
+| `--ob-cards-behind` | `hidden` | — | the cards under the open card: hidden in every skin (his call, 2026-10-22), so only the canvas shows; a skin or mod may set `visible` |
+| `--ob-thumb-h` | `88px` | — | page 2's drawings of a window and its cards (§7): their height, the gap between the boxes, and the boxes' corners — a share of the skin's own card corner, so Press stays square |
+| `--ob-thumb-gap` | `var(--space-half)` | — |  |
+| `--ob-thumb-radius` | `calc(var(--panel-radius) * 0.3)` | — |  |
+| `--ob-switch-w` | `4em` | — | page 2's On / Off switches, all one width |
+| `--ob-look-w` | `112px` | — | page 3's skin and theme tiles |
+| `--ob-preview-w` | `260px` | — | page 3's preview player: the card's width at most |
+| `--ob-look-h` | `72px` | — |  |
 | `--drill-wait` | `0.3s` | — | A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and the page waves in when its data lands. |
 | `--drill-out-by` | `0.55` | — | A card swap in a skin whose pages fade (--nav-off-opacity 0: Ocean, Glass, Cyber): the old page is gone by this share of the motion, and the new one shows from this share, so the two never cross at full (the review, 2026-10-21). A card's own page slide keeps its CSS. |
 | `--drill-in-from` | `0.3` | — |  |
@@ -1047,6 +1058,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--friend-idle` | `none;  --friend-idle-w:     0` | happy | standing, facing you |
 | `--friend-throw` | `none;  --friend-throw-w:    0` | happy |  |
 | `--friend-watch` | `none;  --friend-watch-w:    0` | happy | a strip's -w is one frame's width in art px; 0 = square frames |
+| `--friend-walk` | `none;  --friend-walk-w:     0` | happy | side-on; he crosses the grass in it (GRAND-OPENING.md §6) |
 | `--pet-ball` | `none` | happy | the fetch ball |
 | `--bubble` | `none` | happy | the speech bubble, a 9-slice |
 | `--bubble-slice` | `0` | happy | its corner, in art pixels |
@@ -1119,7 +1131,7 @@ reader is a token nothing uses.
 | `--ocean-breath-dur` | `1.1s` | — | ocean.ts, styles.css |
 | `--ocean-breath-ease` | `cubic-bezier(0.37, 0, 0.63, 1)` | — | ocean.ts, styles.css |
 | `--ocean-glow-fade` | `2.4s` | — | styles.css |
-| `--ocean-ripple-dur` | `3.4s` | — | styles.css |
+| `--ocean-ripple-dur` | `3.4s` | — | styles.css, styles/onboarding.css |
 | `--ocean-ripple-gap` | `0.35s` | — | ocean.ts |
 | `--ocean-ripple-ease` | `cubic-bezier(0.2, 0.6, 0.35, 1)` | — | styles.css |
 | `--np-title-scroll-delay` | `350ms` | — | styles.css |
@@ -1153,8 +1165,8 @@ reader is a token nothing uses.
 | `--present-roll-dur` | `1.2s` | — | present.ts |
 | `--present-roll-ease` | `cubic-bezier(0.33, 1, 0.68, 1)` | — | present.ts |
 | `--present-in-delay` | `calc(var(--grow-dur) * 0.4)` | — | styles.css |
-| `--nav-dur` | `0.26s` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, handoff.ts, layout.ts, styles.css, styles/skin.css |
-| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, layout.ts, styles.css, styles/skin.css |
+| `--nav-dur` | `0.26s` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, handoff.ts, layout.ts, onboarding-looks.ts, onboarding.ts, styles.css, styles/onboarding.css, styles/skin.css |
+| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, layout.ts, onboarding-looks.ts, onboarding.ts, styles.css, styles/onboarding.css, styles/skin.css |
 | `--drill-wait` | `0.3s` | — | card-grow.ts, collection-card.ts, layout.ts |
 | `--memory-wait` | `0.4s` | — | collection-card.ts |
 | `--reveal-cap` | `1.5s` | — | extension/styles/skin.css, home-card.ts, reveal.ts, styles/skin.css |
@@ -1244,6 +1256,7 @@ A skin sets these, but the base block never declares them — a token that only 
 - `--friend-idle-w (happy)`
 - `--friend-throw-w (happy)`
 - `--friend-watch-w (happy)`
+- `--friend-walk-w (happy)`
 
 ## Palette
 

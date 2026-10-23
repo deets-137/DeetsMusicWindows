@@ -375,6 +375,7 @@ const H: Record<string, Handler> = {
   // Catalog
   catalog_search: (a) => search(String(a?.term ?? ""), a?.types ?? null),
   catalog_collection_tracks: (a) => tracksOfCollection(String(a?.kind ?? ""), String(a?.id ?? "")),
+  catalog_songs: () => [], // the grand opening's preview player (GRAND-OPENING.md §8b): no catalog here, so its ♪ covers
   catalog_artist: (a) => artistDetail(String(a?.id ?? "")),
   catalog_related: (a) => {
     const kind = String(a?.kind), id = String(a?.id), rel = String(a?.rel);

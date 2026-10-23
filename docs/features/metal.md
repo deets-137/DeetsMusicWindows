@@ -923,6 +923,27 @@ perspective that scales with the cover (from the box's size) in place of the fix
 the crop back (clip the box to the cover's top and bottom). Add a probe with an `expect` for
 the wedges to `docs/ops/checks/metal-full-player.json`, so it cannot pass again unseen.
 
+### 6.9 A second drum: the grand opening's preview (2026-10-22)
+
+> **Part:** built · 2026-10-22 · desk test open (Metal's stress cases, §6.7, run again)
+
+The Fashion page's preview player (GRAND-OPENING.md §8b) is the Now Playing card with its own
+three songs, so its cover box needs side covers from its own list, not the queue. His call: the
+same code path, and only two ways into it — the Now Playing card (the queue) and the preview.
+
+- `metal.ts`: the per-box part of `peekSync` now reads a **source** — its song, its two sides,
+  and its own song clock and timers (`seen`, `seenAt`, `wait`, `end`; before, module globals).
+  Every box with no source of its own uses the queue's, as before. `ownPeek(box, song, side)`
+  registers the preview's box; its comment says nothing else may call it. A registered box
+  counts as on stage in any window size (the preview is drawn as the stage).
+- `vinyl:covered` takes only the swaps of the source whose box fired it: the queue's boxes all
+  together, as before; the preview's only its own. Before, any box's word took every waiting swap.
+- `vinyl.ts`: `mountVinyl(box, glyph, { ownTurns: true })` keeps the turn guess's recent-song list
+  per mount; the preview uses it, so its songs never enter the window's list (a later real play
+  of Time Bomb would have read the preview's direction).
+- The real path is meant to be unchanged; the §6.7 stress cases (rapid Next / Back, a cold start,
+  the full player with the peek) are the check.
+
 ## 7. Forks (all his)
 
 Closed 2026-10-19 (§1): Metal over every theme; the cleanup first; no new pieces (F1 and F5:

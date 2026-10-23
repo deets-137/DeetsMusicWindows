@@ -35,18 +35,20 @@ import { rowDrag, registerDropTarget } from "./row-drag";
 import { dropToPlay } from "./drop-actions";
 import { WEB_ROOMS } from "./platform";
 
-const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
+export const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
 // The cover placeholder: the ♪ glyph in a one-line box (styles.css .np__art-glyph).
-const GLYPH_NOTE = '<span class="np__art-glyph" aria-hidden="true">♪</span>';
+export const GLYPH_NOTE = '<span class="np__art-glyph" aria-hidden="true">♪</span>';
 // The Last.fm counts badge (LISTENERS.md §4; his calls 2026-10-12): "N Plays | M Listeners" at
 // the right of the title block in the full player, "N Plays" on the cover's bottom-right
 // corner in Max. Two elements, one paint; CSS shows the one for the place. Both hints are in
 // ONBOARDING.md §1.
 const LISTEN_HINT_COVER = "Plays of this song on Last.fm. Opens its Last.fm page";
 const LISTEN_HINT_META = "Plays and listeners of this song on Last.fm. Opens its Last.fm page";
-const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>';
+export const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>';
 
-const TEMPLATE = `
+/** Exported for the grand opening's preview player (onboarding-preview.ts), which draws this same
+ *  card with its own song: one markup, so the preview is the card. */
+export const TEMPLATE = `
   <div class="np np--idle">
     <div class="np__aurora" aria-hidden="true"></div>
     <div class="np__art" id="np-art" aria-hidden="true">${GLYPH_NOTE}</div>

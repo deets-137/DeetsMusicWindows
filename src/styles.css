@@ -2309,6 +2309,10 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
   view-transition-name: match-element;
   view-transition-class: theme-live;
 }
+/* Not while the grand opening's card is open (GRAND-OPENING.md §8a): a named element is drawn
+   above the whole page, so fast theme picks there brought the cover up over the card (his
+   test, Ocean and Cyber, 2026-10-22). The cards are hidden under the card anyway. */
+:root[data-onboarding="open"][data-theme-fade] :is(.vinyl__spin, .np__art, .np__meta) { view-transition-name: none; }
 :root[data-theme-fade]::view-transition-old(*.theme-live) { display: none; }
 :root[data-theme-fade]::view-transition-group(*.theme-live),
 :root[data-theme-fade]::view-transition-new(*.theme-live) { animation: none; }
@@ -4206,8 +4210,9 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 /* Cover on top (flexes to fill the row), then meta / scrubber / transport pinned to
    the bottom. The queue lives in its own anchored panel below, so the summon button
    has nothing to summon and hides. mini's player view uses the same stage; there the
-   summon button stays and switches mini back to its card view (layout.ts). */
-:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .panel:is([data-slot="np"], .np-still) .np {
+   summon button stays and switches mini back to its card view (layout.ts). The grand opening's
+   preview player (.onboarding__np, GRAND-OPENING.md §8b) is drawn as the stage too. */
+:is([data-surface="max"], [data-surface="mini"][data-mini="player"]) .panel:is([data-slot="np"], .np-still, .onboarding__np) .np {
   flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: stretch;
   /* An INLINE-size container: the cover reads the card's content width as 100cqw. Only the
      width is contained, so the card's height still follows its content — which is what makes
@@ -5365,6 +5370,10 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 [data-hook-scene="on"] .titlebar :is(.app-title, button:not(.vol__pill *, .light)) { filter: var(--scene-titlebar-halo); }
 .scene--back { z-index: 0; }
 .scene--front { z-index: 2; }   /* over .bento (z 1) */
+/* Deets and Happy over the grass (z 2, after the front layer); over the grand opening's card
+   while it is open (it is z 2, last), under the title bar's menus (GRAND-OPENING.md §6) */
+.scene--actors { z-index: 2; }
+:root[data-onboarding="open"] .scene--actors { z-index: 3; }
 .scene :is(.scene__sun i, .scene__cloud, .scene__grass, .scene__actor, .scene__ball) { image-rendering: pixelated; }
 
 /* the sky: two layers, the part of the day under and the next one fading in over it */

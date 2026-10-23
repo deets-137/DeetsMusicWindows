@@ -188,6 +188,8 @@ const H: Record<string, Handler> = {
 export const NULL_ON_PURPOSE = new Set([
   // The Network panel (speedtest.md): Max only, a desktop title bar; the web port never builds it
   "apple_calls_minutes", "net_ping", "net_test",
+  // The grand opening's preview player (GRAND-OPENING.md §8b): a desktop first-run page; null = its ♪ covers
+  "catalog_songs",
   // AirPlay, the sound output, the album palette from Rust
   "airplay_connect", "airplay_disconnect", "airplay_firewall_prompt", "airplay_tap", "airplay_volume", "audio_output", "album_palette",
   // The desktop sign-in and the library writes

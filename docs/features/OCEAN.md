@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.14.0
 desk_test: passed 2026-09-23
 sources: [src/ocean.ts, src/ocean-texture.ts, src/ocean-worker.ts, src/styles.css, src/styles/skin.css, index.html, src/skin-settings.ts, src/settings-card.ts]
-updated: 2026-10-11
+updated: 2026-10-22
 ---
 # DeetsMusic — The Ocean sea
 
@@ -238,3 +238,20 @@ the maximum "it feels like neon lines and glows", and at the minimum it is the s
 8. Resize the window much taller. After the bands repaint, the neon lies on the new crests.
 9. Stop playback so no album shows: the neon fades out.
 10. The tray panel still opens quickly (it does not load the sea).
+
+## 8. A second sea: the grand opening's preview (2026-10-22)
+
+> **Part:** built · 2026-10-22 · desk test open
+
+The Fashion page's preview player (GRAND-OPENING.md §8b) shows the real sea in its small box. His
+call: the same code path, and only two seas — the page's and the preview's.
+
+- `ocean.ts`: what one sea shows is a **sea state** (its box, its paint and neon counters, the
+  height painted, the album color of its glow; before, module globals). The page's sea is `main`;
+  it alone heaves, ripples, steps its ease and follows the playing song, as before. `ownSea(el)`
+  registers the preview's box (the page sea's markup, built in onboarding-preview.ts) and returns
+  `cover(url, id)` and `destroy()`; its comment says nothing else may call it.
+- One worker paints both. A theme change, a scale change and Album light repaint every sea; a
+  skin change paints the preview's when the sea hook comes on. A preview's box that resizes
+  repaints once it settles, as the page's does.
+- The real path is meant to be unchanged; this doc's §5 desk test is the check.

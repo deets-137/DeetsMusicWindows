@@ -31,6 +31,7 @@ import { runBootCover } from "./boot-cover";
 import { bootReadiness } from "./reveal";
 import { warmMosaics } from "./mosaic";
 import { initWalk } from "./walk";
+import { initOnboarding } from "./onboarding";
 import { initLayout } from "./layout";
 import { initSkinSettings } from "./skin-settings";
 import { initMetal } from "./metal";
@@ -637,7 +638,12 @@ window.addEventListener("DOMContentLoaded", () => {
   // a sprite standing under a control the cover still hides points at nothing. It returns
   // at once unless `onboardingStep` says there is a step left, so this costs a stranger's
   // first launch and nothing else.
-  window.addEventListener("deets:boot-done", () => boot("initWalk", () => initWalk()), { once: true });
+  // The grand opening (onboarding.ts) comes first on a brand-new install; the walk waits
+  // for its card to close, because the card covers every control the walk points at.
+  window.addEventListener("deets:boot-done", () => {
+    const opening = boot("initOnboarding", () => initOnboarding()) ?? Promise.resolve();
+    void opening.then(() => boot("initWalk", () => initWalk()));
+  }, { once: true });
   // Rulez's words (RULES.md §20): playback, window, the value-writing actions. "The app opens"
   // fires once the launch cover is done, so a rule acts on cards you can see.
   later.push(["initRulesPlayback", () => initRulesPlayback()]);

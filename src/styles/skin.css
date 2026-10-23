@@ -779,6 +779,21 @@
   --nav-at-left:     translateX(-100%);
   --nav-at-right:    translateX(100%);
   --nav-off-opacity: 1;             /* off-screen panes stay opaque */
+  /* The grand opening's pages (GRAND-OPENING.md §4): its nav bar stands on the left, so a
+     page comes in from below or above, on the same --nav-dur / --nav-ease / --nav-off-opacity. */
+  --ob-page-above:   translateY(-100%);
+  --ob-page-below:   translateY(100%);
+  --ob-hi-size:      calc(var(--fs-title) * 2.4);   /* page 1's "Hi": the card title's face, large */
+  --ob-cards-behind: hidden;        /* the cards under the open card: hidden in every skin (his call, 2026-10-22), so only the canvas shows; a skin or mod may set `visible` */
+  /* page 2's drawings of a window and its cards (§7): their height, the gap between the boxes,
+     and the boxes' corners — a share of the skin's own card corner, so Press stays square */
+  --ob-thumb-h:      88px;
+  --ob-thumb-gap:    var(--space-half);
+  --ob-thumb-radius: calc(var(--panel-radius) * 0.3);
+  --ob-switch-w:     4em;           /* page 2's On / Off switches, all one width */
+  --ob-look-w:       112px;         /* page 3's skin and theme tiles */
+  --ob-preview-w:    260px;         /* page 3's preview player: the card's width at most */
+  --ob-look-h:       72px;
   /* A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his
      call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and
      the page waves in when its data lands. */
@@ -1133,6 +1148,7 @@
   --friend-idle:      none;  --friend-idle-w:     0;  /* standing, facing you */
   --friend-throw:     none;  --friend-throw-w:    0;
   --friend-watch:     none;  --friend-watch-w:    0;  /* a strip's -w is one frame's width in art px; 0 = square frames */
+  --friend-walk:      none;  --friend-walk-w:     0;  /* side-on; he crosses the grass in it (GRAND-OPENING.md §6) */
   --pet-ball:         none;  /* the fetch ball */
   --bubble:           none;  /* the speech bubble, a 9-slice */
   --bubble-slice:     0;     /* its corner, in art pixels */
@@ -2025,6 +2041,8 @@
   --friend-throw-w:   32;
   --friend-watch:     url("../assets/skins/happy/deets/watch_side.png");
   --friend-watch-w:   32;
+  --friend-walk:      url("../assets/skins/happy/deets/walk_side.png");
+  --friend-walk-w:    32;
   --pet-ball:         url("../assets/skins/happy/scene/ball_small.png");
   --bubble:           url("../assets/skins/happy/scene/bubble.png");
   --bubble-slice:     5;

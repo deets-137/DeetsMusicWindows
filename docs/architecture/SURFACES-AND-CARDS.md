@@ -131,6 +131,24 @@ card's **queue button**.
   slot you touched); if it ever stings, "prefer the slot at root" is a small retrofit —
   layout already receives per-card `atRoot` via `onHeaderChange`.
 
+### A card in a chosen place: the start-set API (2026-10-22)
+
+A summon cannot name the place: it lands in the least-recently-touched slot. The grand
+opening's **Start with** column ([GRAND-OPENING.md](../features/GRAND-OPENING.md) §7) needs
+"Library in place 2 of Max's 4-card layout", also for a layout that is not on screen. So
+`layout.ts` exports three functions over the same maps the pickers use:
+
+| Function | What it does |
+|---|---|
+| `startSet(surface, maxCards)` → `{slots, cards, allowed}` | One layout's places in order (place 1 = `slots[0]`), the card in each, and the cards it may hold (`allowedFor`: anchored cards out, Max-only cards in Max only). Mini is Midi's map, first place only. The live map when that layout is on screen; else the stored one, repaired by `loadLayout`. |
+| `setStartCards(surface, maxCards, cards)` | Sets the layout's places in order: `cards[0]` in place 1, and so on (repeats and cards the layout may not hold are skipped; a place with no card left keeps its own). One move in the Start with list shifts several cards a place, so the whole set goes at once. On screen: the layout's `setAll` (inside `initLayout`) collapses a grown card first, remounts only the slots that change, plays the swap motion's rise-in on them, saves, and sends Rulez's `card.open` for each new card (a Max-only card opens at Fill). Off screen: it writes the stored map (`deets.layout.midi` / `.max` / `.max2` / `.max1`), which that layout mounts from when it next shows. Logs `layout:start`. Replaced `setStartCard` (one place, swap), 2026-10-22. |
+| `onStartChange(cb)` → unsubscribe | Called after any layout's cards change: a pick, a summon, a drill swap, a hide that refills a slot, a surface or Max layout change (`recompose`). |
+
+`initLayout` hands the module its live composition, map and `setAll` (the `live` hook), so a
+place set from outside remounts through the same `unmountSlot` / `mountSlot` / `saveLayout` as
+every picker and summon. There is no CLI or agent route for it yet: `deetsmusic go` summons (no
+place), and `settings set` has no key for a place. A route would call `setStartCards`.
+
 ---
 
 ## 3. The picker = the card's title (a header menu)

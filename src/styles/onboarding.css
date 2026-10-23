@@ -1,0 +1,451 @@
+/* ── The grand opening (src/onboarding.ts; docs/features/GRAND-OPENING.md) ──────────
+   One `.panel` over the whole bento: it takes the card material from `.panel`
+   (each skin's fill, edge, corners and shadow) and sits on the bento's own edges
+   inside `.app-body` — the same --panel-gap inset, and the scene floor under it
+   (Happy's grass). z 2, last in `.app-body`: above the cards (the bento is z 1) and a
+   scene's front layer (z 2, earlier), below the title bar — a scene skin makes the title
+   bar a z 3 layer, and at z 3 the card covered its menus (Happy, 2026-10-22). Toasts (90),
+   the walk (95) and every menu (100) stay above. */
+.onboarding {
+  position: absolute;
+  top: var(--panel-gap);
+  left: var(--panel-gap);
+  right: var(--panel-gap);
+  bottom: calc(var(--panel-gap) + var(--scene-floor));
+  z-index: 2;
+  flex-direction: row;              /* the nav bar, then the pane (`.panel` is a column) */
+  gap: var(--panel-pad);
+}
+
+/* What shows behind the card (§6): only the canvas, in every skin since round 5 (`--ob-cards-behind`, a skin
+   token; `visible` shows them again), so the card sits on the canvas alone (Happy's sky and grass). A cloud that sits on
+   a card's edge goes with the cards. */
+:root[data-onboarding="open"] :is(.bento, .scene__cloud--edge) { visibility: var(--ob-cards-behind); }
+
+/* The nav bar (GRAND-OPENING.md §2, §3): a twentieth of the card on the left, a line on its
+   right edge. Its buttons are icon squares as wide as the bar: the pages from the top, the
+   Settings cog at the foot. */
+.onboarding__nav {
+  flex: 0 0 5%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding-right: var(--panel-pad);
+  border-right: 1px solid var(--border);
+  position: relative;               /* the mark's offset parent */
+}
+/* The buttons carry no fill of their own here, so the mark shows through them all the way
+   as it glides; the border stays, so each square still reads as a button. */
+.onboarding__navbtn {
+  position: relative;
+  z-index: 1;                       /* over the mark */
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  margin-right: 0;
+  background: transparent;
+}
+.onboarding__navbtn--foot { margin-top: auto; }
+.onboarding__navbtn svg { width: 50%; height: 50%; }
+/* The numbers stand in for the pages' icons until they are drawn: the card title's face. */
+.onboarding__navnum { font-family: var(--font-title); font-size: var(--fs-title); line-height: 1; }
+.onboarding__navbtn[aria-pressed="true"] { border-color: transparent; color: var(--title); }
+.onboarding__navbtn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+
+/* The picked mark (§4): the pressed look (the quick panel's picked fill and title edge) as one
+   box under the buttons. onboarding.ts writes its place and size from the pressed button;
+   the move is the in-card nav motion. */
+.onboarding__mark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--ob-mark-w, 0);
+  height: var(--ob-mark-h, 0);
+  box-sizing: border-box;
+  background: var(--picked);
+  border: 1px solid var(--title);
+  border-radius: var(--radius-control);
+  transform: translateY(var(--ob-mark-y, 0));
+  transition: transform var(--nav-dur) var(--nav-ease);
+  pointer-events: none;
+}
+.onboarding__mark.is-still,
+:root[data-motion="reduced"] .onboarding__mark { transition: none; }
+
+/* The pane: the page the nav picked. Each page is a box over the whole pane, so the old and
+   the new page can slide past each other; the pane clips them. A page hosts a whole card
+   (Settings), which expects a column host with a header and a scrolling body. The pane's
+   right edge clears the ×. */
+.onboarding__pane {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 0;
+  margin-right: calc(var(--icon-lg) + var(--space-2));
+}
+/* The pages slide inside this box, which clips them; the foot stays put under it. */
+.onboarding__pages {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+/* The foot (§9): Next on pages 1 and 2, Let's Boogie on page 3, at the bottom left. It wears the
+   picked look of the page's chosen controls (the nav mark, a pressed pick). */
+.onboarding__foot { flex: none; display: flex; justify-content: flex-start; }
+.onboarding__forward {
+  padding: var(--space-2) var(--space-3);
+  background: var(--picked);
+  border: 1px solid var(--title);
+  border-radius: var(--radius-control);
+  color: var(--title);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  font-weight: var(--fw-title);
+  cursor: pointer;
+}
+.onboarding__forward[hidden] { display: none; }
+.onboarding__forward:hover { filter: brightness(0.97); }
+.onboarding__forward:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.onboarding__page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The × — the card header's icon square (`.panel__back`, the Rulez close), top right. */
+.onboarding__close {
+  position: absolute;
+  top: var(--panel-pad);
+  right: var(--panel-pad);
+  margin-right: 0;
+}
+.onboarding__close svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; }
+
+/* ── A page with a title and three columns: page 1, the welcome (onboarding-welcome.ts, §5), and page 2, the layout (onboarding-looks.ts, §7) ──
+   "Hi" and the welcome line on top, then three columns split by vertical lines. The page
+   scrolls as one when the window is short; each column keeps its own height. */
+.onboarding__sheet {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.onboarding__hello { display: flex; flex-direction: column; gap: var(--space-1); }
+.onboarding__hi {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--ob-hi-size);
+  line-height: 1;
+  color: var(--title);
+}
+.onboarding__sub {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-title);
+  line-height: var(--lh-text);
+  color: var(--subtext);
+}
+.onboarding__cols {
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.onboarding__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 0 var(--panel-pad);
+}
+.onboarding__col:first-child { padding-left: 0; }
+.onboarding__col + .onboarding__col { border-left: 1px solid var(--border); }
+.onboarding__col .panel__title { margin-right: 0; }
+/* Midi and Mini (§6): the window is tall and narrow, so the columns stack — Apple Music on
+   top, then Last.FM, then the rest — split by horizontal lines. */
+:is([data-surface="midi"], [data-surface="mini"]) .onboarding__cols { grid-template-columns: minmax(0, 1fr); }
+:is([data-surface="midi"], [data-surface="mini"]) .onboarding__col { padding: var(--panel-pad) 0; }
+:is([data-surface="midi"], [data-surface="mini"]) .onboarding__col:first-child { padding-top: 0; }
+:is([data-surface="midi"], [data-surface="mini"]) .onboarding__col + .onboarding__col { border-left: 0; border-top: 1px solid var(--border); }
+/* The copied account block keeps the title menu's look; the menu's gap between two blocks
+   does not apply here. */
+.onboarding__account + .onboarding__body { margin-top: 0; }
+.onboarding__body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  line-height: var(--lh-text);
+  color: var(--subtext);
+}
+/* ── Page 2, the layout (src/onboarding-looks.ts; GRAND-OPENING.md §7) ── */
+/* A pick: a drawing and its name under it. Pressed = the nav mark's picked look. */
+.onboarding__picks { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
+.onboarding__pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--subtext);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  cursor: pointer;
+}
+.onboarding__pick:hover { background: var(--surface-hover); color: var(--title); }
+.onboarding__pick[aria-pressed="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
+.onboarding__pick:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+
+/* The drawing: a window at its open size's shape (--ob-ar, from Settings › Window), a box for
+   each card in the places the app puts them. Corners: a share of the skin's card corner. */
+.onboarding__thumb {
+  display: grid;
+  height: var(--ob-thumb-h);
+  aspect-ratio: var(--ob-ar, 1);
+  gap: var(--ob-thumb-gap);
+  padding: var(--ob-thumb-gap);
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--ob-thumb-radius);
+  background: var(--canvas);
+}
+.onboarding__cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--ob-thumb-radius);
+}
+/* Now Playing as each surface draws it: the cover (a square), then its text as two short lines.
+   Midi: one row across the window, the cover on the left as tall as the card. Mini: the cover
+   stays at its small token size in the top-left corner (styles.css, the Mini rule on .np__art),
+   the text beside it. Max: the stage's cover fills the card's width, the text under it. */
+.onboarding__cell--np {
+  display: flex;
+  gap: var(--ob-thumb-gap);
+  padding: var(--ob-thumb-gap);
+  box-sizing: border-box;
+}
+.onboarding__cover {
+  flex: none;
+  aspect-ratio: 1;
+  height: 100%;
+  background: var(--border);
+  border-radius: var(--ob-thumb-radius);
+}
+.onboarding__lines {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: center;
+  height: calc(var(--ob-thumb-gap) * 3);
+  /* two lines, the second shorter: the title and the artist */
+  background:
+    linear-gradient(var(--border), var(--border)) 0 0 / 70% var(--ob-thumb-gap) no-repeat,
+    linear-gradient(var(--border), var(--border)) 0 100% / 45% var(--ob-thumb-gap) no-repeat;
+}
+.onboarding__thumb[data-shape="mini"] .onboarding__cover { height: 55%; }
+.onboarding__thumb[data-shape="mini"] .onboarding__lines { align-self: flex-start; margin-top: var(--ob-thumb-gap); }
+.onboarding__stage .onboarding__cell--np { flex-direction: column; }
+.onboarding__stage .onboarding__cover { width: 100%; height: auto; }
+.onboarding__stage .onboarding__lines { flex: none; align-self: stretch; }
+
+/* Max's stage: its own column, Now Playing as tall as its square cover and text, the Queue in
+   every other pixel (STAGE-COLUMN.md). */
+.onboarding__stage {
+  grid-area: stage;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--ob-thumb-gap);
+  min-height: 0;
+}
+.onboarding__pick[aria-pressed="true"] .onboarding__cell { border-color: var(--title); }
+.onboarding__cell[data-cell="a"]  { grid-area: a; }
+.onboarding__cell[data-cell="b"]  { grid-area: b; }
+.onboarding__cell[data-cell="c"]  { grid-area: c; }
+.onboarding__cell[data-cell="d"]  { grid-area: d; }
+.onboarding__thumb:not([data-shape^="max"]) .onboarding__cell[data-cell="np"] { grid-area: np; }
+/* Each surface's places, at the real shares of the window (styles.css .bento per surface;
+   layout-rules.ts MAX_CELLS for Max): Midi's Now Playing row is about a quarter of the
+   window, Mini's a little under half (its buttons stack), and Max's stage and cards share the
+   width in thirds. */
+.onboarding__thumb[data-shape="mini"]       { grid-template: "np" 4fr "a" 5fr / 1fr; }
+.onboarding__thumb[data-shape="midi"]       { grid-template: "np np" 2fr "a b" 5fr / 1fr 1fr; }
+.onboarding__thumb[data-shape="max-4"]      { grid-template: "stage a b" 1fr "stage c d" 1fr / 1fr 1fr 1fr; }
+.onboarding__thumb[data-shape="max-2cols"]  { grid-template: "stage a b" 1fr / 1fr 1fr 1fr; }
+.onboarding__thumb[data-shape="max-2rows"]  { grid-template: "stage a" 1fr "stage b" 1fr / 1fr 2fr; }
+.onboarding__thumb[data-shape="max-1"]      { grid-template: "stage a" 1fr / 1fr 2fr; }
+
+/* The cards: the name and its line, then the switch. The switches stand in a column of their
+   own, on a band of the hover fill that runs the list's height. */
+.onboarding__cardlist { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }
+/* The headings over the two control columns: the Settings section heading's caps. */
+.onboarding__colhead {
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  letter-spacing: var(--caps-tracking, 0.08em);
+  text-transform: uppercase;
+  color: var(--subtext);
+  justify-content: center;
+}
+/* Start with: the place each card opens in (§7). A pill like a Settings menu half. */
+.onboarding__start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-1) 0 var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: 0;
+}
+.onboarding__start .set__half { border: 1px solid var(--border); border-radius: var(--set-pill-radius); min-width: var(--ob-switch-w); }
+.onboarding__start .set__half[aria-pressed="true"] { background: var(--picked); border-color: var(--title); }
+.onboarding__start .set__half:disabled { cursor: default; opacity: 0.6; } /* the panel action's disabled look */
+/* A place's number in the Layout column's drawings: the number Start with picks. */
+.onboarding__cellnum {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  font-weight: var(--fw-title);
+  font-style: normal;
+  color: var(--title);
+}
+/* Each row is a real box on the list's three columns (subgrid), so a drag can lift it and a
+   reorder can slide it (§7). */
+.onboarding__cardrow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
+.onboarding__cardrow[data-card] .onboarding__cardname { cursor: grab; }
+/* The line under the opening set: the rows above it are the cards the app opens with. */
+.onboarding__cardrow.is-last-placed { border-bottom: 1px dashed var(--border); }
+.onboarding__cardname {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+}
+.onboarding__cardlabel { font-family: var(--font-body); font-size: var(--fs-text); color: var(--title); }
+.onboarding__cardhint { font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--subtext); }
+.onboarding__switch {
+  align-self: stretch;
+  align-items: center;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: 0;
+  background: var(--surface-hover);
+}
+.onboarding__switch .set__half { border: 1px solid var(--border); border-radius: var(--set-pill-radius); min-width: var(--ob-switch-w); }
+.onboarding__cardrow:first-child .onboarding__switch { border-top-left-radius: var(--radius-control); border-top-right-radius: var(--radius-control); }
+.onboarding__cardrow:last-child .onboarding__switch { border-bottom-left-radius: var(--radius-control); border-bottom-right-radius: var(--radius-control); }
+.onboarding__switch .set__half[aria-checked="true"] { background: var(--picked); border-color: var(--title); }
+.onboarding__switch .set__half[aria-disabled="true"] { cursor: default; }
+
+/* ── Page 3, Fashion (src/onboarding-fashion.ts; GRAND-OPENING.md §8) ──
+   A tile is drawn in its own look: `.onboarding__look` carries data-skin and data-theme, so every
+   token below is that skin's and that theme's (skin.css, themes.css), resolved on the tile. The
+   canvas behind a small card, the card in the skin's material, a cover, "Aa" in its title face. */
+.onboarding__look {
+  display: grid;
+  width: var(--ob-look-w);
+  height: var(--ob-look-h);
+  padding: var(--space-2);
+  box-sizing: border-box;
+  background-color: var(--canvas);
+  background-image: var(--app-canvas-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  overflow: hidden;
+}
+.onboarding__look-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1);
+  background: var(--panel-paint);
+  -webkit-backdrop-filter: var(--panel-backdrop);
+  backdrop-filter: var(--panel-backdrop);
+  border: var(--panel-border-width) solid var(--panel-border);
+  border-radius: var(--ob-thumb-radius);
+  box-shadow: var(--shadow-card);
+}
+.onboarding__look-cover {
+  flex: none;
+  height: 100%;
+  aspect-ratio: 1;
+  background: var(--picked);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.onboarding__look-text { display: flex; flex-direction: column; gap: var(--space-half); min-width: 0; }
+.onboarding__look-aa {
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-title);
+  font-style: normal;
+  line-height: 1;
+  color: var(--title);
+}
+.onboarding__look-line { display: block; width: 100%; height: var(--space-half); background: var(--subtext); border-radius: var(--space-half); opacity: 0.6; }
+
+/* ── Page 3's preview player (src/onboarding-preview.ts; GRAND-OPENING.md §8b) ──
+   A small window: the skin's canvas (or its stand-in for a page layer) with the real Now Playing
+   card on it, drawn as the stage (the box is `data-surface="max"`; styles.css takes
+   .onboarding__np into the stage rule). The box copies the root's look attributes, so every
+   [data-skin=…] and hook rule matches it. */
+.onboarding__stagebox {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: var(--panel-gap);
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background-color: var(--canvas);
+  background-image: var(--app-canvas-bg);
+}
+.onboarding__np {
+  position: relative;
+  z-index: 1;
+  width: min(100%, var(--ob-preview-w));
+}
+/* No volume row and no left cluster (shuffle, repeat, search) in a preview (his ask, 2026-10-22):
+   only Previous, Play and Next, still centered (the row's middle column). The stage rule shows
+   the volume row at a higher weight, so these rules carry the box's class too. */
+.onboarding__stagebox .onboarding__np :is(.np__vol, .np__left) { display: none; }
+.onboarding__scene { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+
+/* The stand-ins for the page layers each skin is known by, from this preview's own cover and
+   palette (the real layers follow the real song, behind the page). Ocean needs none: its sea is
+   the real one (onboarding-preview.ts paints the page sea's markup through ocean.ts `ownSea`). */
+/* The canvas cover (Glass, --hook-wallpaper): the cover on the canvas, frosted. */
+.onboarding__stagebox[data-hook-wallpaper="on"] .onboarding__scene {
+  inset: calc(-1 * var(--wallpaper-blur));
+  background: var(--ob-cover) center / cover no-repeat;
+  filter: blur(var(--wallpaper-blur)) saturate(1.3);
+}
+/* The scene (Happy, --hook-scene): the sky and the grass. */
+.onboarding__stagebox[data-hook-scene="on"] .onboarding__scene {
+  background:
+    var(--scene-grass) left bottom / auto calc(var(--scene-grass-h) * var(--scene-px, 2) * 1px) repeat-x,
+    linear-gradient(180deg, var(--sky-day), var(--sky-day-low));
+}
+
+.onboarding__speakers { display: flex; flex-direction: column; gap: var(--space-1); }
+.onboarding__speakers .set__head { padding-left: 0; }
+.onboarding__scan { justify-content: center; }

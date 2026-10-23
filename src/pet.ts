@@ -10,6 +10,9 @@
 //   - A cover change (--cover-swap: pet; vinyl.ts announces it with `vinyl:turn`): the pet leaves
 //     the grass, moves the cover one of two ways (never the same twice in a row), sits by it,
 //     and comes back. Only one pet ever shows (his call H7 a). Fast presses keep him at the cover.
+//   - The grand opening's card (GRAND-OPENING.md §6, his ask 2026-10-22): while it is open the
+//     pair rest in the bottom-RIGHT corner, in front of the card, and run across the grass when
+//     it opens and when it closes. No fetch while they are over there (the throw goes right).
 // Reduced motion, a hidden window and "Animate backgrounds" off hold everything at rest.
 
 import * as diag from "./diag";
@@ -18,7 +21,7 @@ import { motionReduced } from "./motion";
 import { sceneFloor, scenePx, onScenePlace, urlOf, pictureSize } from "./scene";
 
 type PetPose = "sit" | "idle" | "walk" | "run" | "push-head" | "stand-up" | "stand-push" | "run-ball" | "drop-ball" | "keep-ball";
-type FriendPose = "idle" | "throw" | "watch";
+type FriendPose = "idle" | "throw" | "watch" | "walk";
 interface Strip { url: string; fw: number; fh: number; frames: number }
 
 const root = document.documentElement;
@@ -195,6 +198,8 @@ let ballAt: number | null = null; // a ball left on the grass (x), fetched first
 let ballKept = false; // the pet kept it: dropped before the next round
 let carrying = false; // the ball is in his mouth on the way back
 let lastPush = "";
+/** The corner the pair rest in: the right one while the grand opening's card is open. */
+let side: "left" | "right" = "left";
 /** Happy by the cover: his layer in that card, and whether he is in sight there (`onstage`). */
 let atCover: { panel: HTMLElement; layer: HTMLElement; actor: Actor; until: number; timer: number; onstage: boolean } | null = null;
 const padded = new Map<HTMLElement, string>();
@@ -203,9 +208,14 @@ function restSpots(): { fx: number; px: number; y: number } | null {
   const f = sceneFloor();
   if (!f || !friend?.strip) return null;
   const fw = friend.strip.fw * friend.px;
-  const fx = 6 * friend.px + fw / 2; // a little in from the corner
   const pw = (pet?.strip?.fw ?? 32) * friend.px;
-  return { fx, px: fx + fw / 2 + pw / 2, y: f.y };
+  const inset = 6 * friend.px + fw / 2; // a little in from the corner
+  // On the right, the mirror: Deets in the corner, Happy on his inner side.
+  if (side === "right") {
+    const fx = f.w - inset;
+    return { fx, px: fx - fw / 2 - pw / 2, y: f.y };
+  }
+  return { fx: inset, px: inset + fw / 2 + pw / 2, y: f.y };
 }
 
 /** The card under the pair gets end padding the height of the pair (happy.md §2.1a). */
@@ -216,7 +226,7 @@ function padUnderPair(): void {
   const f = friend.el.getBoundingClientRect();
   const p = pet && !pet.el.hidden ? pet.el.getBoundingClientRect() : f;
   const box = { left: Math.min(f.left, p.left), right: Math.max(f.right, p.right), top: Math.min(f.top, p.top) };
-  document.querySelectorAll<HTMLElement>(".bento .app-scroll").forEach((el) => {
+  document.querySelectorAll<HTMLElement>(".bento .app-scroll, .onboarding .app-scroll").forEach((el) => {
     const r = el.getBoundingClientRect();
     if (!r.width || r.right <= box.left || r.left >= box.right || r.bottom <= box.top) return;
     const own = parseFloat(getComputedStyle(el).paddingBottom) || 0;
@@ -237,7 +247,7 @@ async function rest(): Promise<void> {
   friend.place(spots.fx, spots.y);
   if (where === "grass") {
     pet.show(await petStrip(ballKept ? "keep-ball" : "sit"));
-    pet.face(false);
+    pet.face(side === "right");
     pet.place(spots.px, spots.y);
     pet.el.style.opacity = "1";
   }
@@ -279,7 +289,7 @@ function say(words: string): Promise<void> {
 
 /** One round of fetch. Returns early (quietly) when something newer interrupts it. */
 async function round(): Promise<void> {
-  if (!floor || !pet || !friend || !ball || where !== "grass" || calm() || !seen()) return;
+  if (!floor || !pet || !friend || !ball || where !== "grass" || side !== "left" || calm() || !seen()) return;
   const mine = ++gen;
   const live = () => mine === gen && where === "grass" && active();
   const spots = restSpots();
@@ -376,7 +386,7 @@ function scheduleRound(ms: number): void {
   if (!active()) return;
   roundTimer = window.setTimeout(async () => {
     // a hidden window or a held background skips its turn, as the site's strolls do
-    if (seen() && !calm() && where === "grass") await round().catch((e) => diag.warn("pet:round", String(e)));
+    if (seen() && !calm() && where === "grass" && side === "left") await round().catch((e) => diag.warn("pet:round", String(e)));
     scheduleRound(rand(...NEXT_ROUND_MS));
   }, ms);
 }
@@ -426,24 +436,60 @@ function strideFps(dist: number, ms: number, px: number): number {
   return Math.max(6, Math.min(24, (RUN_FPS * speed) / ((RUN_SPEED * px) / 2)));
 }
 
-/** Back from the cover: in from the left edge to his place beside Deets. */
+/** Back from the cover: in from the near edge (the pair's side) to his place beside Deets. */
 async function backToGrass(): Promise<void> {
   if (!pet || !active()) return;
   const spots = restSpots();
   where = "grass";
   if (!spots) return;
   const px = scenePx();
+  const fromX = side === "right" ? (sceneFloor()?.w ?? 0) + 20 * px : -20 * px;
   pet.px = px;
-  pet.face(true);
+  pet.face(side === "left");
   pet.show(await petStrip("run"), RUN_FPS);
   pet.el.style.opacity = "1";
-  pet.place(-20 * px, spots.y);
-  await pet.to(spots.px, spots.y, ((spots.px + 20 * px) / ((RUN_SPEED * px) / 2)) * 1000);
+  pet.place(fromX, spots.y);
+  await pet.to(spots.px, spots.y, (Math.abs(spots.px - fromX) / ((RUN_SPEED * px) / 2)) * 1000);
   if (where !== "grass") return;
-  pet.face(false);
+  pet.face(side === "right");
   pet.show(await petStrip("sit"));
   friend?.show(await friendStrip("idle"));
   padUnderPair();
+}
+
+/** The grand opening's card opened or closed (GRAND-OPENING.md §6): the pair run to the other
+ *  corner, Deets in his walk at a run's pace, Happy in his run. A round in flight stops; a ball
+ *  in Happy's mouth stays there (he keeps it, and drops it at the next round). Happy away at
+ *  the cover comes back to the new side by himself. Calm: they are placed there at once. */
+async function crossTo(to: "left" | "right"): Promise<void> {
+  if (side === to) return;
+  side = to;
+  if (!floor || !pet || !friend || !active()) return;
+  const mine = ++gen;
+  bubble?.remove();
+  if (carrying) { carrying = false; ballKept = true; }
+  const spots = restSpots();
+  if (!spots || calm() || friend.el.hidden) return void rest();
+  diag.log("pet:cross", { to });
+  const px = scenePx();
+  const speed = (RUN_SPEED * px) / 2;
+  const right = to === "right";
+  const legs: Promise<void>[] = [];
+  const fDist = Math.abs(spots.fx - friend.x);
+  const fMs = (fDist / speed) * 1000;
+  friend.show(await friendStrip("walk"), strideFps(fDist, fMs, px));
+  friend.face(right);
+  legs.push(friend.to(spots.fx, spots.y, fMs));
+  if (where === "grass" && pet.strip && !pet.el.hidden) {
+    const pDist = Math.abs(spots.px - pet.x);
+    const pMs = (pDist / speed) * 1000;
+    pet.show(await petStrip(ballKept ? "run-ball" : "run"), strideFps(pDist, pMs, px));
+    pet.face(right);
+    legs.push(pet.to(spots.px, spots.y, pMs));
+  }
+  await Promise.all(legs);
+  if (mine !== gen) return;
+  await rest();
 }
 
 function endAtCover(): void {
@@ -628,6 +674,7 @@ function enter(): void {
   where = "grass";
   ballAt = null;
   ballKept = false;
+  side = root.dataset.onboarding === "open" ? "right" : "left"; // a skin change while the card is open
   void rest();
   scheduleRound(FIRST_ROUND_MS);
   diag.log("pet:on", { firstRoundMs: FIRST_ROUND_MS });
@@ -665,4 +712,8 @@ export function initPet(): void {
     if (where === "grass") { gen++; void rest(); } else void rest();
   });
   document.addEventListener("vinyl:turn", (e) => void onTurn(e).catch((err) => diag.warn("pet:push", String(err))));
+  window.addEventListener("deets:onboarding", (e) => {
+    const open = (e as CustomEvent<{ open: boolean }>).detail?.open;
+    void crossTo(open ? "right" : "left").catch((err) => diag.warn("pet:cross", String(err)));
+  });
 }

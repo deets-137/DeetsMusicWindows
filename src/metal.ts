@@ -43,8 +43,44 @@ const peekArt = (side: "prev" | "next"): string | null => {
   return null;
 };
 
+// Where a cover box's song and side covers come from. Two sources, and only two (his call,
+// 2026-10-22): the QUEUE, for the Now Playing card — every box that has no source of its own,
+// as before — and the grand opening's preview player (onboarding-fashion.ts, GRAND-OPENING.md
+// §8b), which registers its one box with `ownPeek`. Nothing else may call `ownPeek`. Each source
+// keeps its own song clock and timers, so the preview's turns never hold or move the real sides.
+interface PeekSource {
+  /** The id of the song on the cover now (`song:<id>` is what vinyl.ts names it), or null. */
+  song: () => string | null;
+  /** The nearest picture on that side; null = a blank sleeve. */
+  side: (side: "prev" | "next") => string | null;
+  seen: string | null; // the song this source last named
+  seenAt: number; // when it first named it
+  wait: number; // the timer that looks again once the cover takes the song
+  end: number; // the timer that clears a receiving slot after its turn
+}
+const sourceOf = (song: PeekSource["song"], side: PeekSource["side"]): PeekSource => ({ song, side, seen: null, seenAt: 0, wait: 0, end: 0 });
+const queueSource = sourceOf(() => {
+  const cur = getCurrent();
+  return cur ? cur.catalogId ?? cur.libraryId ?? null : null;
+}, peekArt);
+const owned = new WeakMap<HTMLElement, PeekSource>();
+
+/** The grand opening's preview player only: its cover box takes its song and side covers from
+ *  the preview, not the queue. Returns the release (the preview's destroy). */
+export function ownPeek(box: HTMLElement, song: PeekSource["song"], side: PeekSource["side"]): () => void {
+  const src = sourceOf(song, side);
+  owned.set(box, src);
+  peekSync();
+  return () => {
+    window.clearTimeout(src.wait);
+    window.clearTimeout(src.end);
+    owned.delete(box);
+  };
+}
+
 // The stage: the side covers exist only where they show (Max, the player view). In Midi they
-// were made and their pictures fetched for nothing (the break-it pass).
+// were made and their pictures fetched for nothing (the break-it pass). The preview player is
+// drawn as the stage wherever the window is, so its box counts as on stage.
 const onStage = (): boolean => {
   const r = document.documentElement;
   return r.dataset.surface === "max" || (r.dataset.surface === "mini" && r.dataset.mini === "player");
@@ -178,10 +214,6 @@ function paint(peek: HTMLElement, src: string | null): boolean {
 // cover stood still (a song with no picture). A sync that runs before the cover has taken the
 // new song waits for its event.
 const giving = new Map<HTMLElement, () => void>(); // a giving slot's swap, waiting for its cover to be opaque
-let waitTimer = 0;
-let endTimer = 0;
-let seenSong: string | null = null;
-let seenAt = 0; // when the queue first named this song
 
 // The drum's depth follows the cover's size (drum.ts): a fixed perspective tuned on the stage's
 // cover drew the full player's larger cover with wedges above and below it and thin side covers
@@ -213,19 +245,30 @@ function watchDrum(box: HTMLElement, on: boolean): void {
 
 function peekSync(): void {
   wireTextFade();
-  const on = document.documentElement.dataset.metalPeek !== undefined && hook("material") === "metal" && onStage();
-  const cur = getCurrent();
-  const songNow = cur ? cur.catalogId ?? cur.libraryId ?? null : null;
-  if (songNow !== seenSong) { seenSong = songNow; seenAt = performance.now(); }
+  const metalOn = document.documentElement.dataset.metalPeek !== undefined && hook("material") === "metal";
+  const stage = onStage();
+  // Each source names its song once a pass (several boxes may share the queue's).
+  const noted = new Map<PeekSource, string | null>();
+  const songOf = (src: PeekSource): string | null => {
+    if (noted.has(src)) return noted.get(src)!;
+    const now = src.song();
+    if (now !== src.seen) { src.seen = now; src.seenAt = performance.now(); }
+    noted.set(src, now);
+    return now;
+  };
   document.querySelectorAll<HTMLElement>(".np__art").forEach((box) => {
+    const own = owned.get(box);
+    const source = own ?? queueSource;
+    const on = metalOn && (stage || !!own);
+    const songNow = songOf(source);
     watchDrum(box, on);
     const dur = turnMs(box);
     const known = songNow !== null && box.dataset.turnSong === `song:${songNow}`;
     // waits one turn at most: a cover that never takes this id (a station) must not hold the sides
-    if (on && dur && songNow !== null && !known && performance.now() - seenAt < dur) {
+    if (on && dur && songNow !== null && !known && performance.now() - source.seenAt < dur) {
       // the cover has not taken this song yet; its turn syncs again (a guard in case it never does)
-      window.clearTimeout(waitTimer);
-      waitTimer = window.setTimeout(peekSync, dur + 50);
+      window.clearTimeout(source.wait);
+      source.wait = window.setTimeout(peekSync, dur + 50);
       return;
     }
     const kind = known ? box.dataset.turn : "none";
@@ -247,14 +290,14 @@ function peekSync(): void {
         if (side === "next") sizeDrum(box); // the watch's first look may have come before the slots
       }
       const peek = el;
-      const src = peekArt(side);
+      const src = source.side(side);
       warm(src);
       const receives = turning && side === landing;
       if (receives) {
         peek.dataset.receiving = "";
         // one more look once the turn is over, so the mark does not outlive it
-        window.clearTimeout(endTimer);
-        endTimer = window.setTimeout(peekSync, Math.max(0, turnAt + dur + 160 - performance.now()));
+        window.clearTimeout(source.end);
+        source.end = window.setTimeout(peekSync, Math.max(0, turnAt + dur + 160 - performance.now()));
       } else delete peek.dataset.receiving;
       if ((peek.dataset.src ?? "") === (src ?? "")) {
         // already right: a change still pending from an earlier press is now wrong, cancel it
@@ -351,7 +394,16 @@ export function initMetal(): void {
   onQueueChange(() => peekSync());
   onPlaylistCoverChange(() => peekSync()); // Show cover: Album ⇄ Playlist hides or shows the sides at once
   document.addEventListener("vinyl:turn", () => peekSync()); // the cover took a new song (vinyl.ts)
-  document.addEventListener("vinyl:covered", () => [...giving.values()].forEach((take) => take())); // the arriving cover is opaque over its slot
+  // the arriving cover is opaque over its slot. Each source takes only its own boxes' swaps: the
+  // queue's boxes as before (all of them), the preview's only its own, so neither moves the other.
+  document.addEventListener("vinyl:covered", (e) => {
+    const from = e.target instanceof HTMLElement ? e.target : null;
+    const src = (from && owned.get(from)) ?? queueSource;
+    [...giving].forEach(([peek, take]) => {
+      const box = peek.parentElement;
+      if (((box && owned.get(box)) ?? queueSource) === src) take();
+    });
+  });
   const later = () => { peekSync(); window.setTimeout(peekSync, 120); window.setTimeout(peekSync, 600); };
   new MutationObserver(later).observe(document.documentElement, { attributes: true, attributeFilter: ["data-surface", "data-mini", "data-metal-peek"] });
   // …and any time a cover box appears without its side covers (a card mounted, swapped,

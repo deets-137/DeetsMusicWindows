@@ -98,9 +98,11 @@ export interface Vinyl {
 // Which way a song change turns, for every mount in this window: a return to the song before is
 // Previous. Module-wide, so a card rebuilt by a surface change still knows (the break-it pass,
 // 2026-10-20: per mount, the first Previous after a rebuild turned forward), and a second mount
-// on the same change gets the same answer.
-const turns = { recent: [] as string[], last: null as { song: string; back: boolean } | null };
-function turnBack(next: string, known?: boolean): boolean {
+// on the same change gets the same answer. The grand opening's preview player keeps a list of its
+// own (`ownTurns`), so its songs never enter the window's (GRAND-OPENING.md §8b).
+type Turns = { recent: string[]; last: { song: string; back: boolean } | null };
+const windowTurns: Turns = { recent: [], last: null };
+function turnBack(next: string, known?: boolean, turns: Turns = windowTurns): boolean {
   if (turns.last?.song === next) return turns.last.back;
   const r = turns.recent;
   // The caller's answer (the queue) wins; the list is the fallback for a station or a jump.
@@ -112,7 +114,8 @@ function turnBack(next: string, known?: boolean): boolean {
   return back;
 }
 
-export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
+export function mountVinyl(box: HTMLElement, glyph: string, opts: { ownTurns?: boolean } = {}): Vinyl {
+  const myTurns: Turns | undefined = opts.ownTurns ? { recent: [], last: null } : undefined;
   let slot: HTMLElement | null = null;
   let song: string | null = null;
   let src: string | undefined;
@@ -543,7 +546,7 @@ export function mountVinyl(box: HTMLElement, glyph: string): Vinyl {
         }
         return;
       }
-      const back = turnBack(next, dir);
+      const back = turnBack(next, dir, myTurns);
 
       songSummary();
       tel = freshTel();

@@ -238,6 +238,9 @@ for word, with RELEASE.md's section numbers.
   named for the puppy on deets.solutions. The most complete skin and the reference for every mod:
   built on the public layer only (mods.md §10, §11). §1 his narration; §2 the tokens and slots it
   needs.
+- `GRAND-OPENING.md` — a project (2026-10-22, branch `grand-opening`), designed with him piece
+  by piece: the startup screen, one large card over every card on first launch
+  (`src/onboarding.ts`). Built: the frame (§1), the nav bar with Settings in it and the Compass row (§2), pages 2–3 and the glide (§4), page 1's welcome with the sign-ins (§5, `src/onboarding-welcome.ts`), the Happy skin's pair in front (§6), page 2's layout picks (§7, `src/onboarding-looks.ts`; the place API `setStartCards` in layout.ts), page 3 Fashion: skin and theme tiles in their own look, and the preview player with his three songs on the real record, drum and sea (§8, §8b, `src/onboarding-preview.ts`); Next / Let's Boogie (the launch's reveal, `revealApp`) and the warm-up after sign-in (§9); the walk waits for it to close.
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.

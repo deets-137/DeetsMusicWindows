@@ -83,6 +83,7 @@ a key or an agent.
 | `search` (apple.rs) | `catalog/{sf}/search` | each typing pause in a search field (SEARCH-FIELDS.md) | 1 |
 | `lookup` (web.rs) | `catalog/{sf}/search` | the playlist web's name lookups | 1 per name |
 | `catalog_collection_tracks` (apple.rs) | `catalog/{sf}/{kind}/{id}?include=tracks` | an album or playlist opened from Search | 1 |
+| `catalog_songs` (apple.rs, 2026-10-22) | `catalog/{sf}/songs?ids=` | the grand opening's preview player, its three songs (GRAND-OPENING.md §8b); once, then kept a month in the page's store | 1 |
 | `catalog_artist` (apple.rs) | `catalog/{sf}/artists/{id}?views=top-songs,full-albums` | an artist's Full level, the Search artist pane (session cache) | 1 |
 | `library_artist_info` (apple.rs) | `catalog/{sf}/songs/{song}?include=artists`, then `artists/{id}?views=featured-playlists,top-songs` | a Library artist view (cached in `artist_catalog`) | 0–2 |
 | `catalog_song_artist` (apple.rs) | `catalog/{sf}/songs/{id}?include=artists` | Go to Artist from a catalog song | 1 |

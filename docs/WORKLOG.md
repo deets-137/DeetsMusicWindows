@@ -2,9 +2,33 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 # DeetsMusic — Work log
+
+## 2026-10-22 to 10-23 — the grand opening (branch `grand-opening`)
+
+- **His ask:** a startup screen, narrated and designed piece by piece. Built: one card over every
+  card (`src/onboarding.ts`) on a fresh install, before the first-run walk, and from Ctrl+Space ›
+  Onboarding; a nav bar (1 · 2 · 3, the cog at the foot) whose picked mark glides while the pages
+  slide; page 1 "Hi" (the Apple Music and Last.fm buttons as live copies of the title menu's, the
+  Discord switch, the MCP setup, AirPlay speakers); page 2 "Layout-Maxxing Time" (the size, the
+  layout, the cards with Show and Start with in place order, drag to reorder); page 3 "Fashion"
+  (skin and theme tiles drawn in their own look, and a preview player with Coffee · Time Bomb ·
+  serena joy on the real record, Metal drum and Ocean sea); Next and Let's Boogie (the launch's
+  reveal); the playlists sync warm-up after a sign-in. GRAND-OPENING.md §1–§9 is the record.
+- **Shared code changed on the way (each "one path, two callers", his call):** `layout.ts`
+  (`startSet` / `setStartCards` / `onStartChange`, SURFACES-AND-CARDS.md § A card in a chosen
+  place; no keep-Settings rule while the page is open), `metal.ts` (per-box peek sources, metal.md
+  §6.9), `ocean.ts` (per-sea state, `ownSea`, OCEAN.md §8), `vinyl.ts` (`ownTurns`),
+  `album-color.ts` (a cover source), `pet.ts` (the pair cross to the right while the card is open),
+  `boot-cover.ts` (`revealApp`), a theme fade names nothing while the card is open, the new Rust
+  command `catalog_songs` (one Apple call, cached).
+- **Fixed on the way:** VINYL.md §10 said the record's default was Off (stale since 2026-10-11).
+- **Checks:** tsc, vite build, cargo check, 385 unit tests, docs:check pass. **Not run:** any
+  desk test on the dev app (he hand tests): the page itself (GRAND-OPENING.md's desk tests), and
+  the real-player checks for the shared changes — Metal's stress cases (metal.md §6.7) and Ocean's
+  desk test (OCEAN.md §5).
 
 ## 2026-10-21, late night — the site's demo box keeps its own look for a skin it lacks
 

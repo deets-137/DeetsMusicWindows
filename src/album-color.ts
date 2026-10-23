@@ -164,9 +164,19 @@ function disarmPrefetch(): void {
   diag.log("albumColor:prefetch", { on: false });
 }
 
+/** Where a watched card's cover comes from: the player (the Now Playing card, the default), or
+ *  the grand opening's preview player (GRAND-OPENING.md §8b), which names its own song and says
+ *  when it changes. Only the player's watch loads the next song early. */
+export interface CoverSource {
+  now: () => { cover: string | null; catalogId: string | null };
+  onChange: (cb: () => void) => () => void;
+}
+const playerCovers: CoverSource = { now: currentCover, onChange: onPlayerState };
+
 /** Watch playback and tint `card` (the .np element) with the current album's palette. */
-export function watchAlbumColor(card: HTMLElement): () => void {
-  armPrefetch();
+export function watchAlbumColor(card: HTMLElement, source: CoverSource = playerCovers): () => void {
+  const live = source === playerCovers;
+  if (live) armPrefetch();
   let liveKey: string | null = null; // the cover the card currently reflects
   let livePalette: AlbumPalette | null = null;
 
@@ -246,8 +256,8 @@ export function watchAlbumColor(card: HTMLElement): () => void {
     applyText();
   };
 
-  const unsub = onPlayerState(() => {
-    const { cover, catalogId } = currentCover();
+  const update = () => {
+    const { cover, catalogId } = source.now();
 
     if (cover === liveKey) return; // same album (or still nothing) — no work
     liveKey = cover;
@@ -265,7 +275,9 @@ export function watchAlbumColor(card: HTMLElement): () => void {
         if (p) apply(p);
       })
       .catch((e) => console.warn("[album-color] palette lookup failed:", e));
-  });
+  };
+  const unsub = source.onChange(update);
+  if (!live) update(); // the player's state fires often; a preview's song is named once
 
   // A theme or skin switch changes the backdrop (and whether the skin opts in at all):
   // re-guard the same palette. Deferred a frame so the new tokens have resolved.
@@ -277,7 +289,7 @@ export function watchAlbumColor(card: HTMLElement): () => void {
   applyText();
 
   return () => {
-    disarmPrefetch();
+    if (live) disarmPrefetch();
     unsub();
     mo.disconnect();
     clear();

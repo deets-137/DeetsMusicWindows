@@ -12,6 +12,7 @@
 
 import { isAlbumMarked, isArtistMarked, isSongMarked, setAlbumMark, setArtistMark, setSongMark } from "./suggest";
 import "./styles/compass.css";
+import { openOnboarding } from "./onboarding";
 import { registry, type CardId } from "./cards";
 import { requestCard, requestSetting, requestLibraryDrill, requestSearchTerm, requestDiaryAlbum, requestDiaryEntry, cardHost } from "./layout-bus";
 import { diaryCachedList, diaryGet, copyDiaryExport, fmtScore } from "./diary";
@@ -520,6 +521,14 @@ function actions(all: boolean): Row[] {
       aliases: ["full screen", "fullscreen", "big cover", "large cover"],
       run: () => toggleFullPlayer("compass"),
     });
+  // The grand opening's card (GRAND-OPENING.md §2), on demand.
+  rows.push({
+    group: "Actions",
+    title: "Onboarding",
+    sub: "Opens the welcome page over the cards",
+    aliases: ["welcome", "grand opening", "start screen", "startup"],
+    run: () => void openOnboarding(),
+  });
   // The first-run walk again (ONBOARDING.md §4, COMPASS.md §9). Settings › Tips has the same
   // row; a stranger who wants it back is more likely to ask the bar than to read Settings.
   // Playlist refresh (PLAYLIST-REFRESH.md §8 item 9): the day-change check, on demand. It

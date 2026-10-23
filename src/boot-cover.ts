@@ -63,6 +63,35 @@ export function liftSteps(): number {
   return n;
 }
 
+/**
+ * The launch's reveal, once more, on demand: the grand opening's last button, *Let's Boogie*
+ * (GRAND-OPENING.md §9). The cover fades in over the page as it is (`veil`), `swap` runs under it
+ * (the opening's card leaves, the cards behind it come back), the panels go to their rise start
+ * (`wait`), and the cover lifts as at launch, the cards rising in their stagger. The same states
+ * and tokens as the launch, so each skin's own entrance plays. Under *Animate look changes* off,
+ * reduced motion or a launch still on screen, `swap` runs at once and nothing moves.
+ */
+export async function revealApp(swap: () => void): Promise<void> {
+  const root = document.documentElement;
+  if (!effective("appearanceMotion") || reducedMotion() || root.dataset.boot !== undefined) {
+    swap();
+    return;
+  }
+  const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+  root.dataset.boot = "veil";
+  await wait(tokenMs("--cover-in-dur") + 30);
+  swap();
+  root.dataset.boot = "wait";
+  await nextFrame();
+  await nextFrame();
+  const end = frames.begin("boot", "reveal");
+  root.dataset.boot = "lift";
+  diag.log("boot:reveal");
+  await wait(tokenMs("--boot-dur") + tokenMs("--boot-stagger") * liftSteps() + 50);
+  end();
+  if (root.dataset.boot === "lift") delete root.dataset.boot;
+}
+
 /** Boot (main.ts), after the cards mount. `restored` ends the click block. */
 export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>[]): void {
   const root = document.documentElement;

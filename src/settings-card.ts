@@ -340,7 +340,7 @@ const loadFolds = (): Record<string, boolean> => {
 
 /** Settings › Cards (HIDE-CARDS.md §5): the label and the hint of each card's toggle. The
  *  names repeat the cards' titles (cards.ts imports this module, so it cannot import them). */
-const CARD_ROWS: Record<(typeof HIDEABLE_CARDS)[number], { label: string; hint: () => string }> = {
+export const CARD_ROWS: Record<(typeof HIDEABLE_CARDS)[number], { label: string; hint: () => string }> = {
   home: { label: "Home", hint: () => "Your shelves of recent and new music" },
   library: { label: "Library", hint: () => "Your songs, albums and artists" },
   playlists: { label: "Playlists", hint: () => "Your playlists and Apple's" },

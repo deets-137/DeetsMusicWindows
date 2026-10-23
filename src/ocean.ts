@@ -47,6 +47,26 @@ const BREATH_EVERY = 3;
 const REPAINT_PX = 24;
 
 let sea: HTMLElement | null = null;
+/** One painted sea: its box and what it shows now. Two kinds, and only two (his call,
+ *  2026-10-22): the page's own sea (`main`, under the cards; it alone heaves and ripples and
+ *  follows the playing song), and the grand opening's preview player's small one (`ownSea`,
+ *  GRAND-OPENING.md §8b), whose glow follows the preview's cover. Nothing else may call `ownSea`. */
+interface SeaState {
+  el: HTMLElement;
+  probe: HTMLElement | null;
+  paintSeq: number;
+  paintedHeight: number;
+  /** What the lit neon layers show (color, height, scale); "" = nothing current. */
+  neonPainted: string;
+  neonSeq: number;
+  /** The album color the glow and the neon come from; null = no album. */
+  glow: RGB | null;
+  /** Its own Album light (0–100); undefined = Settings › Album light. */
+  light?: number;
+}
+const seaState = (el: HTMLElement): SeaState => ({ el, probe: null, paintSeq: 0, paintedHeight: 0, neonPainted: "", neonSeq: 0, glow: null });
+let main: SeaState | null = null;
+const owned = new Set<SeaState>();
 let worker: Worker | null = null;
 let jobSeq = 0;
 const pending = new Map<number, (b: Blob | null) => void>();
@@ -72,18 +92,16 @@ function toRGB(css: string): RGB | null {
   const [r, g, b, a] = swatch.getImageData(0, 0, 1, 1).data;
   return a ? [r / 255, g / 255, b / 255] : null;
 }
-let probe: HTMLElement | null = null;
-/** A token resolved inside the sea (so skin and theme both apply) to sRGB. */
-function resolve(expr: string): RGB | null {
-  if (!sea) return null;
-  if (!probe) {
-    probe = document.createElement("span");
-    probe.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
-    sea.appendChild(probe);
+/** A token resolved inside a sea (so skin and theme both apply) to sRGB. */
+function resolve(s: SeaState, expr: string): RGB | null {
+  if (!s.probe) {
+    s.probe = document.createElement("span");
+    s.probe.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
+    s.el.appendChild(s.probe);
   }
-  probe.style.color = "";
-  probe.style.color = expr;
-  return toRGB(getComputedStyle(probe).color);
+  s.probe.style.color = "";
+  s.probe.style.color = expr;
+  return toRGB(getComputedStyle(s.probe).color);
 }
 const to255 = (c: RGB): [number, number, number] => c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255)) as [number, number, number];
 const hex = (c: RGB) => "#" + to255(c).map((v) => v.toString(16).padStart(2, "0")).join("");
@@ -139,20 +157,21 @@ async function setImage(el: HTMLElement, blob: Blob, size: string): Promise<void
   if (old) URL.revokeObjectURL(old);
 }
 
-let paintSeq = 0;
-let paintedHeight = 0;
+/** The sea is drawn here now: the skin's hook on the page (the main sea), or on the preview's
+ *  box, which copies the page's look attributes. */
+const shows = (s: SeaState): boolean => (s === main ? active() : !!s.el.closest('[data-hook-sea="on"]') && s.el.isConnected);
 
-async function paintSwell(): Promise<void> {
-  if (!active()) return;
-  const height = sea!.clientHeight;
+async function paintSwell(s: SeaState): Promise<void> {
+  if (!shows(s)) return;
+  const height = s.el.clientHeight;
   if (height < 40) return; // not laid out yet
-  const mine = ++paintSeq;
-  paintedHeight = height;
+  const mine = ++s.paintSeq;
+  s.paintedHeight = height;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const top = resolve("var(--ocean-water-top)") ?? [0, 0, 0];
-  const bottom = resolve("var(--ocean-water-bottom)") ?? top;
-  const ink = resolve("var(--ocean-swell-ink)") ?? [0.5, 0.5, 0.5];
-  const css = getComputedStyle(sea!);
+  const top = resolve(s, "var(--ocean-water-top)") ?? [0, 0, 0];
+  const bottom = resolve(s, "var(--ocean-water-bottom)") ?? top;
+  const ink = resolve(s, "var(--ocean-swell-ink)") ?? [0.5, 0.5, 0.5];
+  const css = getComputedStyle(s.el);
   const shade = parseFloat(css.getPropertyValue(isDark(bottom) ? "--ocean-trough" : "--ocean-trough-light")) || 0.2;
   const rows = seaRows(height);
   const t0 = performance.now();
@@ -169,53 +188,53 @@ async function paintSwell(): Promise<void> {
         shade,
         seed: 3 + i * 8,
       });
-      const el = sea?.querySelector<HTMLElement>(`.ocean__train--${band.name}`);
-      if (!blob || !el || mine !== paintSeq) return;
+      const el = s.el.querySelector<HTMLElement>(`.ocean__train--${band.name}`);
+      if (!blob || !el || mine !== s.paintSeq) return;
       el.style.setProperty("--tw", `${band.tile}px`);
       await setImage(el, blob, `${band.tile}px 100%`);
       el.toggleAttribute("data-on", true);
     }),
   );
-  if (mine !== paintSeq) return;
-  diag.log("ocean:paint", { ms: Math.round(performance.now() - t0), height, dpr });
+  if (mine !== s.paintSeq) return;
+  diag.log("ocean:paint", { ms: Math.round(performance.now() - t0), height, dpr, preview: s !== main });
   // new rows (a height, a scale or a theme): the neon must lie on them
-  neonPainted = "";
-  void paintNeon();
+  s.neonPainted = "";
+  void paintNeon(s);
 }
+
+/** Every sea now: the main one and the preview's. */
+const allSeas = (): SeaState[] => [...(main ? [main] : []), ...owned];
 
 // ── the album light ─────────────────────────────────────────────────────────────
 /** Settings › Album light, 0–100 (the stored key, and each step of a slider drag). */
 let lightLevel = 0;
-/** What the lit neon layers show (color, height, scale); "" = nothing current. */
-let neonPainted = "";
-let neonSeq = 0;
 
 export function setAlbumLight(v: number): void {
   const was = lightLevel;
   lightLevel = v;
-  if (v > 0 && was === 0) void paintNeon();
+  if (v > 0 && was === 0) allSeas().forEach((s) => void paintNeon(s));
   if ((v > 0) !== (was > 0)) diag.log("ocean:light", { on: v > 0 });
 }
 
-const neonLayers = (band: string) => [...(sea?.querySelectorAll<HTMLElement>(`.ocean__train--${band} .ocean__neon`) ?? [])];
+const neonLayers = (s: SeaState, band: string) => [...s.el.querySelectorAll<HTMLElement>(`.ocean__train--${band} .ocean__neon`)];
 
 /** Paint the crest lines in the album's color and crossfade to them: the new lines go on the
  *  unlit layer of each band, then all three bands swap at once. No album: the neon fades out. */
-async function paintNeon(): Promise<void> {
-  if (!active() || lightLevel <= 0 || !paintedHeight) return;
-  if (!glowSource) {
-    sea!.querySelectorAll(".ocean__neon[data-on]").forEach((n) => n.removeAttribute("data-on"));
-    neonPainted = "";
+async function paintNeon(s: SeaState): Promise<void> {
+  if (!shows(s) || (s.light ?? lightLevel) <= 0 || !s.paintedHeight) return;
+  if (!s.glow) {
+    s.el.querySelectorAll(".ocean__neon[data-on]").forEach((n) => n.removeAttribute("data-on"));
+    s.neonPainted = "";
     return;
   }
-  const water = resolve("var(--ocean-water-bottom)") ?? [0, 0, 0];
-  const { core, bloom } = asNeon(glowSource, isDark(water));
-  const height = paintedHeight;
+  const water = resolve(s, "var(--ocean-water-bottom)") ?? [0, 0, 0];
+  const { core, bloom } = asNeon(s.glow, isDark(water));
+  const height = s.paintedHeight;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const key = `${hex(core)}${hex(bloom)}|${height}|${dpr}`;
-  if (key === neonPainted) return;
-  neonPainted = key;
-  const mine = ++neonSeq;
+  if (key === s.neonPainted) return;
+  s.neonPainted = key;
+  const mine = ++s.neonSeq;
   const rows = seaRows(height);
   const t0 = performance.now();
   const next: HTMLElement[] = [];
@@ -233,54 +252,98 @@ async function paintNeon(): Promise<void> {
         seed: 3 + i * 8, // the band's seed: the same crests
         neon: { core: to255(core), bloom: to255(bloom) },
       });
-      const layers = neonLayers(band.name);
+      const layers = neonLayers(s, band.name);
       const off = layers.find((n) => !n.hasAttribute("data-on")) ?? layers[0];
-      if (!blob || !off || mine !== neonSeq) return;
+      if (!blob || !off || mine !== s.neonSeq) return;
       await setImage(off, blob, `${band.tile}px 100%`);
       next.push(off);
     }),
   );
-  if (mine !== neonSeq) return;
-  for (const band of BANDS) neonLayers(band.name).forEach((n) => n.toggleAttribute("data-on", next.includes(n)));
-  diag.log("ocean:neon", { ms: Math.round(performance.now() - t0), height, dpr });
+  if (mine !== s.neonSeq) return;
+  for (const band of BANDS) neonLayers(s, band.name).forEach((n) => n.toggleAttribute("data-on", next.includes(n)));
+  diag.log("ocean:neon", { ms: Math.round(performance.now() - t0), height, dpr, preview: s !== main });
 }
 
 // ── the glow from the deep ──────────────────────────────────────────────────────
 let liveCover: string | null | undefined;
-let glowSource: RGB | null = null;
 
-function applyGlow(): void {
-  if (!sea) return;
-  if (!glowSource) {
-    sea.style.setProperty("--ocean-glow-color", "transparent");
+function applyGlow(s: SeaState): void {
+  if (!s.glow) {
+    s.el.style.setProperty("--ocean-glow-color", "transparent");
     return;
   }
-  const water = resolve("var(--ocean-water-bottom)") ?? [0, 0, 0];
-  sea.style.setProperty("--ocean-glow-color", hex(asGlow(glowSource, isDark(water))));
+  const water = resolve(s, "var(--ocean-water-bottom)") ?? [0, 0, 0];
+  s.el.style.setProperty("--ocean-glow-color", hex(asGlow(s.glow, isDark(water))));
 }
 
-function followAlbum(): void {
-  if (!active()) return;
-  const { cover, catalogId } = currentCover();
-  if (cover === liveCover) return;
-  liveCover = cover;
+/** A sea takes the album color of `cover` (null = no album): its glow and its neon. `still`
+ *  says whether the answer is still wanted when it arrives. */
+function takeAlbum(s: SeaState, cover: string | null, catalogId: string | null, still: () => boolean): void {
   if (!cover) {
-    glowSource = null;
-    applyGlow();
-    void paintNeon();
+    s.glow = null;
+    applyGlow(s);
+    void paintNeon(s);
     return;
   }
   lookupPalette(cover, catalogId)
     .then((p) => {
-      if (liveCover !== cover) return; // the song changed meanwhile
+      if (!still()) return; // the song changed meanwhile
       // the most colorful of the three, as the NP aurora's rim (Apple's names say nothing
       // about which is vivid: its text colors are near grey on half the library)
       const c = albumColor(p);
-      glowSource = (c && toRGB(c)) || null;
-      applyGlow();
-      void paintNeon();
+      s.glow = (c && toRGB(c)) || null;
+      applyGlow(s);
+      void paintNeon(s);
     })
     .catch((e) => diag.warn("ocean:palette", { err: String(e) }));
+}
+
+function followAlbum(): void {
+  if (!active() || !main) return;
+  const { cover, catalogId } = currentCover();
+  if (cover === liveCover) return;
+  liveCover = cover;
+  takeAlbum(main, cover, catalogId, () => liveCover === cover);
+}
+
+/** The grand opening's preview player only (GRAND-OPENING.md §8b): `el` is its own `.ocean` (the
+ *  page sea's markup), painted by the same worker in the same theme, its glow and neon from the
+ *  preview's cover. It does not heave or ripple: those answer the real music and the real
+ *  gestures. Its Album light is at the top (his call, 2026-10-22: the glow to the max), whatever
+ *  the setting. Returns the setter for the cover and the release. */
+export function ownSea(el: HTMLElement): { cover: (cover: string | null, catalogId: string | null) => void; destroy: () => void } {
+  const s = seaState(el);
+  s.light = 100;
+  el.style.setProperty("--ocean-light", "100"); // the neon and the glow from the deep, at full
+  owned.add(s);
+  let want: string | null = null;
+  let painted = false;
+  const paintNow = () => {
+    painted = true;
+    void paintSwell(s);
+  };
+  // after layout, so the sea has its size; a box that grows or shrinks repaints once it settles
+  requestAnimationFrame(paintNow);
+  let resizeTimer: number | undefined;
+  const sizeWatch = new ResizeObserver(() => {
+    if (!painted || Math.abs(el.clientHeight - s.paintedHeight) < REPAINT_PX) return;
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(paintNow, 300);
+  });
+  sizeWatch.observe(el);
+  return {
+    cover: (cover, catalogId) => {
+      want = cover;
+      takeAlbum(s, cover, catalogId, () => want === cover && owned.has(s));
+    },
+    destroy: () => {
+      owned.delete(s);
+      sizeWatch.disconnect();
+      window.clearTimeout(resizeTimer);
+      s.paintSeq++;
+      s.neonSeq++; // a paint still on its way lands nowhere
+    },
+  };
 }
 
 // ── the heave ───────────────────────────────────────────────────────────────────
@@ -362,7 +425,7 @@ function enter(): void {
   // after the skin's tokens apply, so the sea has its size and colors
   requestAnimationFrame(() => {
     stepEase();
-    void paintSwell();
+    if (main) void paintSwell(main);
     followAlbum();
   });
 }
@@ -370,6 +433,7 @@ function enter(): void {
 export function initOcean(): void {
   sea = document.querySelector<HTMLElement>(".ocean");
   if (!sea) return;
+  main = seaState(sea);
   // the stored album light; a slider drag also calls setAlbumLight (settings-card.ts)
   setAlbumLight(setting("oceanLight"));
   onSettingsChange((k) => {
@@ -380,13 +444,17 @@ export function initOcean(): void {
   onSkinChange(() => {
     if (hook("sea") === "on") enter();
     else calm();
+    // the preview's sea (its box copies the look): painted when the skin brings the sea
+    requestAnimationFrame(() => owned.forEach((s) => { void paintSwell(s); applyGlow(s); }));
   });
-  // A theme (or the look schedule) changes the water and the ink: repaint and re-tint.
+  // A theme (or the look schedule) changes the water and the ink: repaint and re-tint, every sea.
   new MutationObserver(() =>
     requestAnimationFrame(() => {
-      if (!active()) return;
-      void paintSwell();
-      applyGlow();
+      for (const s of allSeas()) {
+        if (!shows(s)) continue;
+        void paintSwell(s);
+        applyGlow(s);
+      }
     }),
   ).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
   // Animate backgrounds › Reduced lowers --ambient-fps: re-step the heave's curve.
@@ -398,16 +466,16 @@ export function initOcean(): void {
   // once it settles (the bands stretch to fit meanwhile).
   let resizeTimer: number | undefined;
   new ResizeObserver(() => {
-    if (!active() || Math.abs(sea!.clientHeight - paintedHeight) < REPAINT_PX) return;
+    if (!active() || !main || Math.abs(sea!.clientHeight - main.paintedHeight) < REPAINT_PX) return;
     window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(() => void paintSwell(), 300);
+    resizeTimer = window.setTimeout(() => main && void paintSwell(main), 300);
   }).observe(sea);
   // A move to a display with another scale: repaint at its pixel density.
   const watchDpr = () => {
     window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener(
       "change",
       () => {
-        if (active()) void paintSwell();
+        allSeas().forEach((s) => void paintSwell(s)); // each checks it is shown
         watchDpr();
       },
       { once: true },

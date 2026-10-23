@@ -2016,6 +2016,47 @@ pub async fn catalog_collection_tracks(
     Ok(tracks)
 }
 
+/// Catalog songs by id, in the order asked (GRAND-OPENING.md §8b: the Fashion page's preview
+/// player reads its three songs here). One `GET …/songs?ids=` for up to 25 ids; ids Apple
+/// does not return are left out. The songs go into the enrichment cache like search results,
+/// so their palettes (`album_palette`) answer from it with no further call.
+#[tauri::command]
+pub async fn catalog_songs(
+    ids: Vec<String>,
+    state: tauri::State<'_, AppleState>,
+    db: tauri::State<'_, crate::library::Db>,
+) -> Result<Vec<Track>, String> {
+    let ids: Vec<String> = ids.into_iter().filter(|i| !i.is_empty() && i.chars().all(|c| c.is_ascii_digit())).take(25).collect();
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let dev = developer_token()?;
+    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
+    let client = http_client();
+    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let url = format!("https://api.music.apple.com/v1/catalog/{sf}/songs?ids={}", ids.join(","));
+    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    if status != 200 {
+        return Err(format!("catalog/songs HTTP {status}"));
+    }
+    let got: Vec<Track> = body["data"]
+        .as_array()
+        .map(|a| a.iter().filter(|v| v["type"].as_str() == Some("songs")).map(track_from_catalog_song).collect())
+        .unwrap_or_default();
+    let mut out: Vec<Track> = Vec::with_capacity(got.len());
+    for id in &ids {
+        if let Some(t) = got.iter().find(|t| t.catalog_id.as_deref() == Some(id.as_str())) {
+            out.push(t.clone());
+        }
+    }
+    {
+        let cached: Vec<Track> = out.iter().filter(|t| !t.unreleased).cloned().collect();
+        let conn = db.lock();
+        crate::enrich::cache_tracks(&conn, &cached)?;
+    }
+    Ok(out)
+}
+
 /// Add catalog resources to the user's iCloud Music Library (FAVORITES.md), then
 /// graduate the provided tracks to `source='library'` locally so the Library card
 /// reflects them immediately — no full re-sync. `kind` ∈ {"songs","albums"}; `ids` are

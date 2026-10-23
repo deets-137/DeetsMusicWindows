@@ -152,6 +152,52 @@ function saveLayout(comp: Composition, l: Assignment): void {
   }
 }
 
+// ── The grand opening's "Start with" column (GRAND-OPENING.md §7) ──
+// The cards in a layout's places, read and set from outside the slots. A layout on screen goes
+// through `setSlot` (its motion, its swap, its save); one off screen is swapped in its stored
+// map, which it mounts from next time. Mini shows Midi's first place, so it is that map's `left`.
+
+/** One layout's places, in order (place 1 first), the card in each, and the cards it may hold. */
+export interface StartSet {
+  slots: Slot[];
+  cards: Partial<Record<Slot, CardId>>;
+  allowed: CardId[];
+}
+/** Set by initLayout: the composition on screen, its live map, and its `setAll`. */
+let live: { comp: () => Composition; layout: () => Assignment; setAll: (map: Assignment) => void } | null = null;
+const startListeners = new Set<() => void>();
+const startChanged = () => startListeners.forEach((cb) => cb());
+
+const startComp = (s: SurfaceName, n: MaxCards): Composition => (s === "max" ? maxComposition(n) : MIDI);
+const startSlots = (s: SurfaceName, comp: Composition): Slot[] => (s === "mini" ? comp.slots.slice(0, 1) : comp.slots);
+
+export function startSet(s: SurfaceName, n: MaxCards): StartSet {
+  const comp = startComp(s, n);
+  const cards = live && live.comp() === comp ? live.layout() : loadLayout(comp);
+  return { slots: startSlots(s, comp), cards: { ...cards }, allowed: allowedFor(comp).map((c) => c.id) };
+}
+
+/** Set that layout's places in order: `cards[0]` in place 1, and so on. Cards the layout may not
+ *  hold, and repeats, are skipped; a place with no card left keeps the one it has. */
+export function setStartCards(s: SurfaceName, n: MaxCards, cards: CardId[]): void {
+  const comp = startComp(s, n);
+  const slots = startSlots(s, comp);
+  const ok = new Set<CardId>(allowedFor(comp).map((c) => c.id));
+  const picked = [...new Set(cards)].filter((c) => ok.has(c)).slice(0, slots.length);
+  const map: Assignment = {};
+  slots.forEach((slot, i) => { if (picked[i]) map[slot] = picked[i]; });
+  diag.log("layout:start", { surface: s, maxCards: n, cards: picked.join(",") });
+  if (live && live.comp() === comp) return live.setAll(map); // its save tells the listeners
+  saveLayout(comp, { ...loadLayout(comp), ...map });
+  startChanged();
+}
+
+/** Called after any layout's cards change (a pick, a swap, a hide, a surface or Max layout change). */
+export function onStartChange(cb: () => void): () => void {
+  startListeners.add(cb);
+  return () => startListeners.delete(cb);
+}
+
 interface SlotPicker {
   destroy(): void;
 }
@@ -550,6 +596,7 @@ export function initLayout(): void {
         playSwap(onScreen(a) ? [{ el: a }] : [], detail);
       }
       saveLayout(comp, layout);
+      startChanged(); // the grand opening's Start with column
       touch(slot); // acting on a slot (picker or summon) makes it the freshest
       refreshGrowZones(); // the zones' hints name the cards
       emit("card.open", { card: id }); // Rulez: "You open a card" (RULES.md §20.3)
@@ -566,6 +613,35 @@ export function initLayout(): void {
    *  one place per card id, and a chain can hold the same card at two places). */
   const chains: Partial<Record<Slot, { card: CardId; snap: unknown }[]>> = {};
   const wipeChain = (slot: Slot) => { delete chains[slot]; };
+
+  /** The grand opening's Start with (GRAND-OPENING.md §7): every place of the layout on screen
+   *  at once. A move in its list shifts several cards down a place in one step, so a run of
+   *  `setSlot` swaps would remount the same slot twice. The slots that change remount where
+   *  they are and rise in (the swap motion's replace); a grown card collapses first. */
+  const setAll = (map: Assignment): void => {
+    flushSwapOut();
+    if (grownState()) {
+      void collapseGrow("pick").then(() => setAll(map));
+      return;
+    }
+    const changed = comp.slots.filter((s) => map[s] && map[s] !== layout[s]);
+    if (!changed.length) return;
+    for (const s of changed) {
+      wipeChain(s);
+      unmountSlot(s);
+    }
+    layout = { ...layout, ...map };
+    for (const s of changed) mountSlot(s);
+    playSwap(changed.filter(shown).map((s) => ({ el: hosts[s]! })), `start ${changed.join(",")}`);
+    saveLayout(comp, layout);
+    startChanged();
+    refreshGrowZones();
+    for (const s of changed) {
+      emit("card.open", { card: layout[s]! }); // Rulez: "You open a card" (RULES.md §20.3)
+      if (registry[layout[s]!]?.maxOnly) void fillCard(layout[s]!, "open"); // Rulez opens at Fill
+    }
+  };
+  live = { comp: () => comp, layout: () => layout, setAll };
 
   /** The slot a drill for `id` should open in: the one the user is reading. Null = summon it. */
   const drillSlot = (id: CardId): Slot | null => {
@@ -822,6 +898,7 @@ export function initLayout(): void {
     mountSlot(slot, opts);
     if (other) mountSlot(other);
     saveLayout(comp, layout);
+    startChanged(); // the grand opening's Start with column
     touch(slot);
     refreshGrowZones();
     slideBodies(host, ghost, way, id);
@@ -908,6 +985,7 @@ export function initLayout(): void {
     layout = loadLayout(comp);
     if (keep) layout = keepCard(comp.slots, layout, keep);
     compose();
+    startChanged();
     // Back in Max, a Max-only card comes back where it was, at Fill as it opens (RULES.md §20.6).
     for (const s of comp.slots) if (layout[s] && registry[layout[s]!]?.maxOnly) void fillCard(layout[s]!, cause);
   };
@@ -927,7 +1005,10 @@ export function initLayout(): void {
     // The Settings card you made the pick in stays on screen (his call, 2026-10-11,
     // MAX-CARDS.md §9.3). Read before the attribute moves the grid: a slot the new layout
     // hides is off screen after it.
-    const keepSettings = comp.slots.some((s) => layout[s] === "settings" && onScreen(hosts[s]));
+    // Not while the grand opening's card covers the cards (GRAND-OPENING.md §7): the pick came
+    // from that page, Settings is under it, and keeping it put Settings in Max's one place.
+    const keepSettings =
+      document.documentElement.dataset.onboarding !== "open" && comp.slots.some((s) => layout[s] === "settings" && onScreen(hosts[s]));
     diag.log("layout:max-cards", { from: lastMax, to: now, surface: currentSurface(), keepSettings });
     lastMax = now;
     markMax();

@@ -423,6 +423,7 @@ pub fn run() {
             apple::apple_dump_library,
             apple::catalog_search,
             apple::catalog_collection_tracks,
+            apple::catalog_songs,
             apple::catalog_artist,
             apple::apple_add_to_library,
             apple::radio_live,

@@ -225,6 +225,13 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **The grand opening (2026-10-22/23, branch `grand-opening`, committed, not merged).** The
+  startup screen: GRAND-OPENING.md §1–§9, each part with its desk test. Open: his hand test of
+  the whole page on a fresh install (`npm run dev:fresh`); the real player after the shared
+  changes — Metal's stress cases (metal.md §6.7, §6.9) and Ocean's desk test (OCEAN.md §5, §8);
+  the full-player preview idea (§8b's column) is built as the small player; the demo shows the
+  page to a fresh visitor too (not checked). Page design continues with him (page 3 and beyond).
+
 - **Drill motion review (2026-10-21, on `happy-thirtytwo`; paused by him for the evening).** Go
   to Album / Artist and Back: five faults fixed (CARD-GROW.md §22.2), his four calls built (§22.4,
   §22.6: the skin's own swap motion, a 300 ms wait for the page, no wave when warm, his row's

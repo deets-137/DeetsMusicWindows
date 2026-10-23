@@ -2,8 +2,8 @@
 //
 // The drawing workspace is art-template/happy/ (blank strips, guides, drafts). The app bundles
 // src/assets/skins/happy/. This copies every strip (not the `.guide.png` and `.preview.png`
-// helpers) from the workspace, plus the two poses that already ship for the first-run walk
-// (Happy's walk and Deets standing), so the skin's folder holds all of its own art, as a mod's
+// helpers) from the workspace, plus the three poses that already ship for the first-run walk
+// (Happy's walk, Deets standing and Deets' walk), so the skin's folder holds all of its own art, as a mod's
 // would. Run it after a strip is redrawn. It prints what changed.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -15,6 +15,8 @@ const TO = join(ROOT, "src/assets/skins/happy");
 const EXTRA = [
   ["src/assets/sprites/happy/walk_side.png", "happy/walk_side.png"],
   ["src/assets/sprites/deets/idle_down.png", "deets/idle_down.png"],
+  // Deets crosses the grass when the grand opening's card opens (GRAND-OPENING.md §6)
+  ["src/assets/sprites/deets/walk_side.png", "deets/walk_side.png"],
 ];
 
 let changed = 0;
