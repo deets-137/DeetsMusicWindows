@@ -643,7 +643,6 @@ pub fn run() {
             heal::catalog_heals,
             heal::catalog_heal_one,
             log::log_open_folder,
-            bridge::bridge_open_install_page,
             bridge::bridge_resolve,
             bridge::agent_reply,
             bridge::bridge_add,

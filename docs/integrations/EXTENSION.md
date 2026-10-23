@@ -1,11 +1,32 @@
 ---
-status: shipped
-shipped_in: 0.4.3
+status: parked
 desk_test: passed 2026-09-08
-sources: [src-tauri/src/bridge.rs, src/np-bus.ts, extension/src/readers.js, extension/install.html]
-updated: 2026-09-17
+sources: [extension/src/readers.js, extension/install.html, src-tauri/src/bridge.rs]
+updated: 2026-10-23
 ---
 # Browser extension + the local bridge
+
+> **Status (2026-10-23): PARKED — cut from v1, the source kept.** The extension is not on the
+> Chrome Web Store, so v1 does not ship it (his call, 2026-10-23: keep `extension/` in the repo,
+> cut it from the build, the app and the bridge). What went:
+> - **The installer:** the `extension/` lines in `tauri.conf.json` › `bundle.resources`. An
+>   update removes `current\extension\`, so a Chrome that loaded it unpacked shows it broken.
+> - **The app:** Settings › Connections lost the bridge status line and *Extension install guide
+>   (experimental)*; `bridge_open_install_page` and `extension_dir` are gone. A reset bridge
+>   token no longer asks to pair again (`settings-repair.ts`): nothing that reads it must pair.
+> - **The bridge:** the routes only the extension called (`POST /resolve`, `POST /add`, the
+>   popup form of `POST /search` with no `types`) and the CORS replies. A request that carries
+>   an `Origin` header (any browser page or extension) now gets a 403 before the token is read,
+>   so every route but `/health` needs the token. The fuzzy `resolve` and `add` stay: the tray's
+>   Windows-media add uses them (`bridge_resolve`, `bridge_add`).
+> - **The checks:** release-check and docs:check 5 no longer hold `extension/manifest.json` to
+>   the app's version; `npm run tokens` no longer reads `extension/`. Its token copy goes stale.
+>
+> **To bring it back** (a Chrome Web Store listing): put the resources back, the routes it calls
+> (`git show 802536d:src-tauri/src/bridge.rs` is the last version with them), and a trust model
+> for a store build. The old one let any local program that sent an extension `Origin` reach
+> `/search`, `/resolve` and `/add` with no token (§3); a store build has a fixed extension ID to
+> check instead. Everything below is the record as it shipped from 0.4.3 to 0.99.0.
 
 > Design agreed 2026-09-08. Status: **built and user-tested** (the first test is what
 > produced the `host_permissions` fix in §3). Code: `extension/` (MV3, Chrome-first),

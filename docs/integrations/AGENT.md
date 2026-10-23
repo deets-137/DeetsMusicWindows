@@ -11,7 +11,7 @@ updated: 2026-10-23
 > (§5: library, playlists, folders, queue edits, updates) built 2026-09-14, desk-tested and shipped.**
 > User-facing setup: [AGENT-SETUP.md](AGENT-SETUP.md). **Settings › Connections › Agent control**
 > (default on, `agentControl` in `settings.json`) gates every agent route with a `403` and a
-> plain sentence; the extension's routes are never gated. **Set up the DeetsMusic MCP** connects
+> plain sentence. **Set up the DeetsMusic MCP** connects
 > Claude Desktop, Claude Code and Codex / ChatGPT from the card ([MCP-INSTALL.md](MCP-INSTALL.md));
 > **Copy setup info** copies a ready config for any other client (`agent_setup_text`).
 > Code: `src-tauri/src/bridge.rs` (routes + the `ask()` request/reply), `src/np-bus.ts`
@@ -22,10 +22,10 @@ updated: 2026-10-23
 
 A way for anything local — a shell, a script, Claude Code, a small local model — to
 drive DeetsMusic: play, control the transport, search, browse radio, queue, and read
-the queue and history. It rides the **same loopback bridge the browser extension uses**
-(EXTENSION.md §3): `127.0.0.1:47825–47828`, JSON, and the `bridgeToken` from
-`<app_data>/settings.json` as `Authorization: Bearer …`. No new server, port, or trust
-surface. Plain `deets` is reserved for other things; this is `deetsmusic`.
+the queue and history. It rides the **loopback bridge** (`bridge.rs`):
+`127.0.0.1:47825–47828`, JSON, and the `bridgeToken` from `<app_data>/settings.json` as
+`Authorization: Bearer …`. A request with an `Origin` header (a browser page or extension) gets a
+`403` before the token is read (2026-10-23, when the browser extension left v1; EXTENSION.md). Plain `deets` is reserved for other things; this is `deetsmusic`.
 
 **Two MCP profiles (2026-09-14).** `deetsmusic mcp` serves all 21 tools (2026-10-14), for Claude-class
 clients. `deetsmusic mcp --small` serves 10, for small tool-calling models (LFM2.5, Gemma
@@ -67,11 +67,11 @@ an unseen song id costs one album fetch.
 
 ## 3. Routes (`bridge.rs`)
 
-All need the token (or an extension `Origin`). Errors: `400` bad body / bad id / no hit ·
+All need the token. Errors: `400` bad body / bad id / no hit ·
 `401` unpaired · `403` a setting blocks it (Agent control, Add to Library, Export playlists) ·
 `409` not connected to Apple Music · `502` Apple / player failure · `504` the window didn't
-answer (15 s; 90 s for `export`, `new_copy`, `get_songs`, `import`). `POST /add` is the
-extension's only: a token caller gets `403` and uses `/library`, which obeys the consent rules.
+answer (15 s; 90 s for `export`, `new_copy`, `get_songs`, `import`). An add goes through
+`/library`, which obeys the consent rules (the extension's `POST /add` left v1, 2026-10-23).
 
 | Route | Body → Reply |
 |---|---|
@@ -91,7 +91,7 @@ extension's only: a token caller gets `403` and uses `/library`, which obeys the
 | `GET /picks[?window=]` · `POST /picks` | `{ok, day, picks:[{row, day, title, artist, id, note?, posted:[…]}]}` · `{action: mark \| unmark, id?, index?, value?}` → `{ok, message}` / `pending` — Song of the Day ([DeetsOTD.md](DeetsOTD.md) §8.8). `window` is Rewind's (day · week · month · ytd · year); without it, every pick. `mark` takes `song:…` or `current` and `value` as the note; `unmark` takes the row from the list (1 = the newest) and deletes the post it made. There is
 deliberately **no `withdraw`**: pulling a message back out of a channel is the user's own call
 (DeetsOTD.md §10.6). **403 while Song of the Day is off**, and the first mark asks the user in the window (G2). CLI: `deetsmusic pick list` · `pick mark song:123 --note "…"` · `pick unmark 2`. MCP tool: `picks` (full pack only) |
-| `GET /diary[?id=]` · `POST /diary` | `{entries:[{id, title, artist, score?, done, folder?, reviewDate?, songsWritten, songCount}]}` · with `id`: `{entry:{…, songs:[{n, title, score?, note?, noteDate?, unreleased}]}, text}` (`text` = the Export) · `{action: add \| note \| score \| date \| done, id?, album?, song?, value?}` → `{ok, message}` — the Diary ([DIARY.md](../features/DIARY.md) §10). **403 unless Settings › Connections › Agents use the Diary is on** (off by default; agents may only turn it off). `song` is the track number; without it the album itself. An empty `value` clears; a score must be 0 to the entry's scale. Agents only: an extension is refused. Every write tells the window (`diary-changed`). CLI: `deetsmusic diary` · `diary show 3` · `diary add album:123` · `diary note 3 --song 2 "…"` · `diary score 3 7.5` · `diary date 3 today` · `diary done 3 off`. MCP tool: `diary` (full pack only) |
+| `GET /diary[?id=]` · `POST /diary` | `{entries:[{id, title, artist, score?, done, folder?, reviewDate?, songsWritten, songCount}]}` · with `id`: `{entry:{…, songs:[{n, title, score?, note?, noteDate?, unreleased}]}, text}` (`text` = the Export) · `{action: add \| note \| score \| date \| done, id?, album?, song?, value?}` → `{ok, message}` — the Diary ([DIARY.md](../features/DIARY.md) §10). **403 unless Settings › Connections › Agents use the Diary is on** (off by default; agents may only turn it off). `song` is the track number; without it the album itself. An empty `value` clears; a score must be 0 to the entry's scale. Every write tells the window (`diary-changed`). CLI: `deetsmusic diary` · `diary show 3` · `diary add album:123` · `diary note 3 --song 2 "…"` · `diary score 3 7.5` · `diary date 3 today` · `diary done 3 off`. MCP tool: `diary` (full pack only) |
 | `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…]}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
 | `GET /rules[?words=1]` · `POST /rules` | `{rules:[{id, name, kind, on, locked, source, idle?, text, rule?}]}` · with `words=1`: `{words:{events, facts, dos, cards, conditions}}` · `{action: list \| words \| show \| add \| remove \| on \| off, id?, rule?}` → `{rule}` / `{ok, message}` / `pending` (§8) — the rules engine's rules ([RULEZ.md](../features/RULEZ.md) §7). Every rule is read; only the user's own are written. A write rides Agent changes settings (§6). CLI: `deetsmusic rules` · `rules words` · `rules show ID` · `rules add '<json>'` · `rules remove ID` · `rules on ID` · `rules off ID`. MCP tool: `rules` (full pack only) |
 | `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first. 403 while Settings › Connections › Agents read play history is off |
@@ -101,7 +101,7 @@ deliberately **no `withdraw`**: pulling a message back out of a channel is the u
 | `POST /beta/pull` | `{}` → `{ok, restarting}` — **DeetsMusic Beta only**: take a fresh copy of the full app's data, then restart ([BETA.md](../ops/BETA.md) §2.2). Token callers only; not an agent route and not an MCP tool. A full build answers 404. CLI: `deetsmusic-beta pull` (the beta's own CLI, which reaches only the beta, §6) |
 | `GET /stations?group=` | `featured` (My Station · Discovery · live) · `genres` · `genre:<id>` → `{stations, genres}` |
 | `GET /playlists` | `{playlists:[Playlist…]}` — Apple mirror + local, zero Apple calls |
-| `POST /search` | `{term, types:["songs","albums","artists","playlists"]}` → `SearchResults`. Without `types` it's the extension's popup shape |
+| `POST /search` | `{term, types:["songs","albums","artists","playlists"]}` → `SearchResults`. `types` is required (`400` without it; the extension's popup shape left v1, 2026-10-23) |
 
 **Notices (2026-09-13).** A successful `/command`, `/play` or `/queue` reply can carry
 `notices: [{kind, text}]`. These are the app's `warn` and `error` toasts
@@ -260,7 +260,7 @@ Export and Get New Songs keep their own result toasts, and those texts are the r
 
 **What an agent can't do.** Rename, reorder, remove from, or delete an Apple Music playlist
 (Apple's API has no path; `import` first). Edit a Replay by hand (§10.8). Add to a linked Apple
-copy (the reply names its local playlist). Reach `/add` (extension only).
+copy (the reply names its local playlist).
 
 **Rows.** Every row is the 1-based number the listing printed. `queue_edit` replies with the
 fresh queue, so a second edit uses current numbers.

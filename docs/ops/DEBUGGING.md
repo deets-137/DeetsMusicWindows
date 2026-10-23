@@ -1842,7 +1842,7 @@ name shows in a debugger and in a crash dump.
 | Site | Name | Lives | What it does |
 |---|---|---|---|
 | `db_thread.rs:start` | `db` | the whole run | Every database command, in arrival order (DB-HEALTH.md §2a) |
-| `bridge.rs:start` | `deets-bridge` | the whole run | The loopback HTTP bridge: the extension, the CLI, the MCP (AGENT.md) |
+| `bridge.rs:start` | `deets-bridge` | the whole run | The loopback HTTP bridge: the CLI, the MCP, DeetsAirplay (AGENT.md) |
 | `watchdog.rs:start` | `watchdog` | the whole run | Asks the UI thread to answer; logs `ui: the window stopped answering` (LOGGING.md) |
 | `audio_out.rs:setup` | `audio-out` | the whole run | Holds the Windows audio COM objects; reads the default output and its volume on a change (SOUND.md §2.2) |
 | `dbhealth.rs:start` | `db-canary` | the whole run | The database canary, every 10 minutes (DB-HEALTH.md) |

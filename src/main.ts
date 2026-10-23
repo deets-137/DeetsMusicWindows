@@ -242,7 +242,7 @@ window.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("drop", (e) => e.preventDefault());
   boot("initBrowserDefaults", () => initBrowserDefaults()); // no native drag or right-click menu; text fields get our own (DRAG-DROP.md §6)
   boot("initHints", () => initHints()); // every `title` becomes the themed hover box (ONBOARDING.md §1)
-  boot("initNpBus", () => initNpBus()); // tray panel + extension hub + Windows media session (TRAY.md / EXTENSION.md / smtc.rs)
+  boot("initNpBus", () => initNpBus()); // tray panel + the bridge's hub + Windows media session (TRAY.md / AGENT.md / smtc.rs)
 
   // ── Menu mode (click vs hover) — one setting drives every dropdown. The dropdown
   //    primitive owns the cross-instance fan-out (setDropdownMode); here we own the

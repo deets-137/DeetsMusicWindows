@@ -25,8 +25,7 @@ separate SwiftUI iOS app. This is the Windows port, and it shares no code with i
 - **6 themes × 4 skins**, frameless custom chrome, all driven from CSS tokens
 - **Tray-first window behavior** — a tray-click flyout, minimize-to-tray, and a single
   running instance however you launch it
-- **Agent control** — a `deetsmusic` CLI and MCP server over a loopback bridge, plus an
-  MV3 browser extension that sends what you're watching to your library
+- **Agent control** — a `deetsmusic` CLI and MCP server over a loopback bridge
 
 ## How the Apple Music integration works
 
@@ -79,7 +78,7 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 - `index.html`, `src/` — front end (TypeScript + the token CSS system in `src/styles/`)
 - `src-tauri/` — Rust (auth, provider/model, SQLite cache, tray, loopback bridge)
 - `cli/` — the `deetsmusic` CLI + MCP server
-- `extension/` — the MV3 browser extension
+- `extension/` — the MV3 browser extension (parked: not built or shipped)
 - `swatch.html` — standalone theme/color reference
 
 ## Notes

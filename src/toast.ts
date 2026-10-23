@@ -34,7 +34,7 @@
 // live toast is sticky, the arrival WAITS (the queue, TOASTS.md §4a). That is what makes
 // "a question always shows" and "an Undo always shows" true — before the queue, the
 // oldest sticky was removed with its buttons and their closures unrun.
-// Main window only: the tray panel and the extension popup keep the console.
+// Main window only: the tray panel keeps the console.
 
 import { effective } from "./settings-store";
 import * as diag from "./diag";

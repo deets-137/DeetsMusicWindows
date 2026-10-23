@@ -3,8 +3,8 @@
 // `[data-skin]` base block of skin.css (every skin token, its base value, its comment, and
 // which skins override it). The release check (release-check.mjs §6) fails when the file on
 // disk is not what this script would write. UI-ARCHITECTURE.md §1–§3 stays the map; this is
-// the list. Its Motion view also names the files that read each motion token (src/ and
-// extension/), so a change to who reads one is a `npm run tokens` too.
+// the list. Its Motion view also names the files that read each motion token (src/), so a
+// change to who reads one is a `npm run tokens` too.
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -100,7 +100,6 @@ function readersOf(names) {
     }
   };
   walk("src");
-  walk("extension");
   const want = new Set(names);
   const out = new Map();
   for (const f of files.sort()) {
@@ -189,7 +188,7 @@ export function render() {
   out.push("## Motion");
   out.push("");
   out.push("Every skin token that is a duration, a delay or a curve, or an alias of one. The same rows are in");
-  out.push("*Skin tokens* above, with their notes. *Read by* is every file under `src/` and `extension/`");
+  out.push("*Skin tokens* above, with their notes. *Read by* is every file under `src/`");
   out.push("that names the token (CSS `var()`, or a `tokenMs` / `getPropertyValue` read in TS). A row with no");
   out.push("reader is a token nothing uses.");
   out.push("");

@@ -42,7 +42,7 @@ npx vite build           # bundle-check
 (and the window titles). That gives the dev build its own `%APPDATA%\com.deetsmusic.dev`
 (SQLite cache, settings.json, MUT) and its own WebView2 profile — two builds sharing one
 profile is what produced the blank window with `ERR_CACHE_READ_FAILURE` on every module.
-The bridge just takes the next free port (the extension and the CLI probe the list).
+The bridge just takes the next free port (the CLI probes the list).
 Seed the dev dir once by copying `deetsmusic.db` + `user-token.txt` from the release dir
 (zero Apple calls); localStorage (theme/skin/layout) starts fresh.
 
@@ -87,11 +87,11 @@ Things that bite:
 
 - **Use `npm run release`, not `tauri build`.** Only `release` runs `cli:build` first, which
   stages `cli/dist/deetsmusic.exe`. `tauri build` alone ships the **previous** CLI, silently.
-- **The version lives in SEVEN files** — the list is [RELEASE.md §1](ops/RELEASE.md).
-  `release-check` compares five (`package.json`, `src-tauri/tauri.conf.json`,
-  `src-tauri/Cargo.toml`, `cli/Cargo.toml`, `extension/manifest.json`) and fails *after* the
-  bundle is built and signed; `docs:check` check 5 covers both `Cargo.lock` files. Bump the
-  manifest by hand and run `cargo check` in `cli/` before the version commit.
+- **The version lives in SIX files** — the list is [RELEASE.md §1](ops/RELEASE.md).
+  `release-check` compares four (`package.json`, `src-tauri/tauri.conf.json`,
+  `src-tauri/Cargo.toml`, `cli/Cargo.toml`) and fails *after* the bundle is built and signed;
+  `docs:check` check 5 covers both `Cargo.lock` files. Run `cargo check` in `cli/` before the
+  version commit. The parked extension's manifest is no longer bumped (2026-10-23).
 - **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
   file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
   Velopack hooks stop our CLIs by path before an update and an uninstall (RELEASE.md §3; the
@@ -233,6 +233,13 @@ each step that touches those calls.
   lower version). Before building it, put `installers/velopack/DeetsMusic-deetsmusic` back from
   `installers/velopack/_DeetsMusic-deetsmusic.before-0.99.0`, so 1.0.0's delta is against 0.32.0.
   Never `release:publish` 0.99.0.
+- **The browser extension left v1 (2026-10-23, his call; not in 0.99.0).** `extension/` stays
+  in the repo, parked; the installer, Settings › Connections and the bridge no longer carry it
+  (EXTENSION.md, the status box). The bridge now refuses any request with an `Origin` header.
+  No release-notes line: there are no live users before v1 (his word, 2026-10-23).
+  **Desk test:** the tray's *Add to Library* for a song from another player (the shared
+  `resolve` / `add`), `deetsmusic status` / `search` / `play` from a shell, and Settings ›
+  Connections (the agent status line shows the port; no extension rows).
 - **The grand opening (2026-10-22/23, branch `grand-opening`, merged into `main` with 0.99.0).**
   The startup screen: GRAND-OPENING.md §1–§11 (five pages: Hi, Layout-Maxxing Time, Fashion,
   Nitpicks, You're Ready), each part with its desk test; the tour after it (ONBOARDING.md §4.0:
@@ -846,11 +853,11 @@ src-tauri/src/safe_file.rs  write_atomic (beside, flush, rename) + parse_lenient
 src/rust-settings.ts        RustSettings: the one front-end shape of SettingsData
                             (tests/rust-settings.test.ts reads settings.rs for drift)
 src/settings-repair.ts      the launch toast's words when settings.json reset a field
-src-tauri/src/bridge.rs     loopback bridge: Hub state relay + extension/agent routes
+src-tauri/src/bridge.rs     loopback bridge: Hub state relay + agent routes (token only)
 src-tauri/src/media.rs      Windows media session (GSMTC) + master volume
 src-tauri/nsis/hooks.nsh    NSIS hooks: stop the CLI pre-(un)install, offer the extension
 cli/                        the `deetsmusic` binary: CLI + MCP server (AGENT.md)
-extension/                  MV3 browser extension source (EXTENSION.md)
+extension/                  MV3 browser extension source, PARKED: not built or shipped (EXTENSION.md)
 scripts/dev-app.mjs         generates the dev identifier config for `npm run dev:app`
 scripts/cli-dist.mjs        stages cli/dist/deetsmusic.exe for bundle.resources
 scripts/release.mjs         `npm run release`: reads secrets, builds, signs, checks, archives (RELEASE.md §1)

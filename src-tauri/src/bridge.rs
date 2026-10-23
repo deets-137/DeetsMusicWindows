@@ -1,24 +1,13 @@
-//! The local bridge (EXTENSION.md): a loopback HTTP server the browser extension
-//! talks to, plus the now-playing hub the tray panel reads.
+//! The local bridge (AGENT.md): a loopback HTTP server the CLI, the MCP and DeetsAirplay
+//! talk to, plus the now-playing hub the tray panel reads.
 //!
-//! Why here and not in the extension: every Apple call needs the developer token
-//! (signed from your private key) and the Music User Token. Neither should ever
-//! ship inside an extension, so the extension only ever says "I'm looking at this
-//! song" and DeetsMusic does the search + the add with the plumbing it already has.
-//!
-//! Trust model (2026-09-09: no pairing code): loopback only (`127.0.0.1`), and a
-//! request counts as the extension when its `Origin` is `chrome-extension://` /
-//! `moz-extension://` — a header the browser sets and a web page can't forge. CORS
-//! only ever echoes that origin. The settings.json token is kept purely so `curl`
-//! (no Origin) can hit the debug routes; anything else on the machine gets a 401.
+//! Trust model: loopback only (`127.0.0.1`, a loopback `Host`), and every route but
+//! `/health` needs the settings.json bearer token. A request that carries an `Origin`
+//! comes from a browser, and nothing in a browser calls us since the extension was cut
+//! from v1 (2026-10-23, EXTENSION.md, parked): it gets a 403 and no CORS header.
 //!
 //! Routes (JSON unless noted):
-//!   OPTIONS *            CORS preflight
 //!   GET  /health         unauthenticated liveness + `paired` (is *your* token right)
-//!   POST /resolve        {title, artist?, album?, source?, url?} → top candidates
-//!   POST /add            {track} | {album} → add to library, refresh the app's Library card
-//!   POST /search         {term} → {songs:[candidate], albums:[{album, artworkUrl}]}
-//!                        (the popup's mini search card — songs + albums only)
 //!   GET  /now-playing    the hub snapshot (what the tray panel sees)
 //!   GET  /airplay        which speaker this app is streaming to, or nulls
 //!   POST /airplay        {action:"disconnect"} — let the speaker go, so the other
@@ -38,7 +27,7 @@
 //!   GET  /history?limit= the session play log, newest first, as Tracks
 //!   GET  /stations?group=featured|genres|genre:<id>  → {stations:[…], genres:[…]}
 //!   GET  /playlists      the user's playlists (Apple mirror + local), zero Apple calls
-//!   POST /search         {term, types?:[…]} — with `types`, the raw catalog results
+//!   POST /search         {term, types:[…]} — the raw catalog results
 //!                        (song hits are materialized so a later play-by-id is local)
 //!   POST /queue/edit     {action: remove|move|jump, index, to?} → the fresh queue
 //!   POST /library        {action: add|favorite|unfavorite, id} — the app's consent rules
@@ -54,7 +43,7 @@
 //! served at `/log` plus the rolling `<app_data>/deetsmusic.log`.
 
 use crate::lock::LockExt;
-use crate::model::{Album, Station, Track};
+use crate::model::{Station, Track};
 use futures::channel::oneshot;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -63,7 +52,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 use tiny_http::{Header, Method, Request, Response, Server};
 
-/// Fixed candidates, tried in order; the extension probes the same list.
+/// Fixed candidates, tried in order; the CLI probes the same list.
 pub const PORTS: [u16; 4] = [47825, 47826, 47827, 47828];
 
 // ── ring log ──────────────────────────────────────────────────────────────────
@@ -294,29 +283,6 @@ pub fn bridge_log() -> String {
     log_text()
 }
 
-/// Where the unpacked extension lives: the bundled resource dir in an installed
-/// build, the repo checkout in dev (resources aren't staged for `tauri dev`). The repo
-/// fallback is compiled out of release builds (RELEASE.md §1a: a release exe carries no
-/// path into the source tree).
-pub fn extension_dir(app: &AppHandle) -> std::path::PathBuf {
-    let bundled = app.path().resource_dir().map(|res| res.join("extension")).unwrap_or_default();
-    #[cfg(debug_assertions)]
-    if !bundled.join("manifest.json").is_file() {
-        return std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("extension");
-    }
-    bundled
-}
-
-/// Open the load-unpacked walkthrough (extension/install.html) in the default browser.
-#[tauri::command]
-pub fn bridge_open_install_page(app: AppHandle) -> Result<(), String> {
-    use tauri_plugin_opener::OpenerExt;
-    let page = extension_dir(&app).join("install.html");
-    let page = page.canonicalize().unwrap_or(page);
-    log(&format!("open install page {}", page.display()));
-    app.opener().open_path(page.to_string_lossy().to_string(), None::<&str>).map_err(|e| e.to_string())
-}
-
 // ── the server ────────────────────────────────────────────────────────────────
 
 pub fn start(app: AppHandle) {
@@ -331,7 +297,7 @@ pub fn start(app: AppHandle) {
         }
     }
     let Some((server, port)) = bound else {
-        crate::log::error("bridge: no port free — extension bridge OFF");
+        crate::log::error("bridge: no port free — bridge OFF");
         return;
     };
     *app.state::<Hub>().port.lock_or_recover() = Some(port);
@@ -358,50 +324,26 @@ fn find_header(req: &Request, name: &str) -> Option<String> {
         .map(|h| h.value.as_str().to_string())
 }
 
-/// Only an extension origin is ever echoed; a web page gets no CORS header at all.
-fn cors_origin(origin: Option<&str>) -> Option<String> {
-    origin.filter(|o| o.starts_with("chrome-extension://") || o.starts_with("moz-extension://")).map(String::from)
-}
-
-fn respond(req: Request, status: u16, body: String, mime: &str, origin: Option<String>) {
-    let mut r = Response::from_string(body).with_status_code(status).with_header(header("Content-Type", mime));
-    if let Some(o) = origin {
-        r = r
-            .with_header(header("Access-Control-Allow-Origin", &o))
-            .with_header(header("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
-            .with_header(header("Access-Control-Allow-Headers", "Authorization, Content-Type"))
-            .with_header(header("Access-Control-Allow-Private-Network", "true"))
-            .with_header(header("Access-Control-Max-Age", "600"))
-            .with_header(header("Vary", "Origin"));
-    }
+fn respond(req: Request, status: u16, body: String, mime: &str) {
+    let r = Response::from_string(body).with_status_code(status).with_header(header("Content-Type", mime));
     let _ = req.respond(r);
 }
 
-fn json(req: Request, status: u16, v: serde_json::Value, origin: Option<String>) {
-    respond(req, status, v.to_string(), "application/json", origin)
+fn json(req: Request, status: u16, v: serde_json::Value) {
+    respond(req, status, v.to_string(), "application/json")
 }
 
-#[derive(Deserialize, Default)]
-#[serde(rename_all = "camelCase", default)]
+/// What the tray's Windows-media source asks to find (`bridge_resolve`).
 pub struct ResolveReq {
     title: String,
     artist: Option<String>,
     album: Option<String>,
-    source: Option<String>,
-    url: Option<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AddReq {
-    track: Option<Track>,
-    album: Option<Album>,
 }
 
 #[derive(Deserialize)]
 struct SearchReq {
     term: String,
-    /// Agent form: any of songs | albums | artists | playlists → the raw catalog results.
+    /// Any of songs | albums | artists | playlists | stations → the raw catalog results.
     #[serde(default)]
     types: Option<Vec<String>>,
 }
@@ -651,27 +593,10 @@ fn query_param(url: &str, key: &str) -> Option<String> {
         .find_map(|kv| kv.split_once('=').filter(|(k, _)| *k == key).map(|(_, v)| v.to_string()))
 }
 
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AlbumHit {
-    pub album: Album,
-    pub artwork_url: Option<String>,
-}
-
-fn art_url(a: &Option<crate::model::Artwork>, px: u32) -> Option<String> {
-    a.as_ref().map(|a| {
-        a.url_template
-            .replace("{w}", &px.to_string())
-            .replace("{h}", &px.to_string())
-            .replace("{f}", "jpg")
-    })
-}
-
 async fn handle(app: AppHandle, mut req: Request) {
     let method = req.method().clone();
     let url = req.url().to_string();
     let path = url.split('?').next().unwrap_or("/").to_string();
-    let origin = cors_origin(find_header(&req, "Origin").as_deref());
     let auth = find_header(&req, "Authorization").unwrap_or_default();
     let settings = app.state::<crate::settings::Settings>().get();
     let token = settings.bridge_token;
@@ -684,8 +609,14 @@ async fn handle(app: AppHandle, mut req: Request) {
             None => host.split(':').next().unwrap_or(""),
         };
         if !matches!(name.to_ascii_lowercase().as_str(), "127.0.0.1" | "localhost" | "::1") {
-            return respond(req, 403, "host".into(), "text/plain", None);
+            return respond(req, 403, "host".into(), "text/plain");
         }
+    }
+    // The CLI, the MCP and DeetsAirplay send no Origin; a browser always does. Nothing in a
+    // browser may call the bridge since the extension left v1 (2026-10-23), so a web page or
+    // any extension is refused before the token is read, and no route sends a CORS header.
+    if find_header(&req, "Origin").is_some() {
+        return respond(req, 403, "origin".into(), "text/plain");
     }
     let token_ok = auth.strip_prefix("Bearer ").map(|t| t.trim() == token).unwrap_or(false);
     // The MCP CLI names the AI app that drives it; Settings shows when each last did (MCP-INSTALL.md fork 8B).
@@ -694,14 +625,8 @@ async fn handle(app: AppHandle, mut req: Request) {
             crate::mcp_install::note_agent(&agent);
         }
     }
-    // An extension Origin pairs only the routes the extension calls (every version, checked
-    // 2026-09-29). Any local process or other extension can send that Origin, so it must not
-    // open the agent routes: playback, settings, history, rollback (security review).
-    const EXTENSION_ROUTES: &[&str] = &["/health", "/search", "/resolve", "/add", "/log"];
-    let paired = token_ok || (origin.is_some() && EXTENSION_ROUTES.contains(&path.as_str()));
-    // The agent routes (AGENT.md §3) obey the Settings › Connections › Agent control switch, whatever
-    // the Origin. The browser extension calls none of them (/add, /search, /resolve, /log, /health), and
-    // any local process can send an extension Origin, so the switch holds for it too (2026-09-29).
+    let paired = token_ok;
+    // The agent routes (AGENT.md §3) obey the Settings › Connections › Agent control switch.
     const AGENT_ROUTES: &[&str] = &[
         "/command", "/play", "/queue", "/queue/edit", "/history", "/stations", "/playlists",
         "/playlist", "/library", "/folder", "/update", "/settings", "/tracks", "/query", "/songs", "/grow", "/go",
@@ -711,10 +636,6 @@ async fn handle(app: AppHandle, mut req: Request) {
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
     let agent_route = AGENT_ROUTES.contains(&path.as_str()) || (method == Method::Post && path == "/airplay");
     let agent_off = !settings.agent_control && agent_route;
-
-    if method == Method::Options {
-        return respond(req, 204, String::new(), "text/plain", origin);
-    }
 
     let mut body = String::new();
     if method == Method::Post {
@@ -760,24 +681,23 @@ async fn handle(app: AppHandle, mut req: Request) {
             if let Some(page) = app.state::<Hub>().page.lock_or_recover().clone() {
                 body["page"] = page;
             }
-            json(req, 200, body, origin)
+            json(req, 200, body)
         }
-        (_, "/health") => json(req, 405, serde_json::json!({ "error": "method" }), origin),
-        _ if !paired => json(req, 401, serde_json::json!({ "error": "unpaired" }), origin),
-        _ if agent_off => json(req, 403, serde_json::json!({ "error": "Agent control is off. Turn it on in DeetsMusic › Settings › Connections." }), origin),
+        (_, "/health") => json(req, 405, serde_json::json!({ "error": "method" })),
+        _ if !paired => json(req, 401, serde_json::json!({ "error": "unpaired" })),
+        _ if agent_off => json(req, 403, serde_json::json!({ "error": "Agent control is off. Turn it on in DeetsMusic › Settings › Connections." })),
 
         // ── DeetsMusic Beta: take a fresh copy of the full app's data (beta.rs, BETA.md §2) ──
-        // The CLI's token only: never a browser Origin, and never an agent route — it replaces
-        // this app's library and settings, so the MCP has no tool for it. A full build has no
-        // such route.
-        (Method::Post, "/beta/pull") if crate::beta::is_beta() && origin.is_none() => match crate::beta::request_pull(&app) {
-            Ok(()) => json(req, 200, serde_json::json!({ "ok": true, "restarting": true }), origin),
-            Err(e) => json(req, 409, serde_json::json!({ "error": e }), origin),
+        // The CLI's token only, and never an agent route — it replaces this app's library and
+        // settings, so the MCP has no tool for it. A full build has no such route.
+        (Method::Post, "/beta/pull") if crate::beta::is_beta() => match crate::beta::request_pull(&app) {
+            Ok(()) => json(req, 200, serde_json::json!({ "ok": true, "restarting": true })),
+            Err(e) => json(req, 409, serde_json::json!({ "error": e })),
         },
 
         (Method::Get, "/now-playing") => {
             let np = app.state::<Hub>().np.lock_or_recover().clone();
-            json(req, 200, serde_json::to_value(np).unwrap_or_default(), origin)
+            json(req, 200, serde_json::to_value(np).unwrap_or_default())
         }
         // AIRPLAY.md §11. Read: which speaker we are holding, so the other
         // sender on this PC can say "DeetsMusic is playing on Living Room"
@@ -795,7 +715,6 @@ async fn handle(app: AppHandle, mut req: Request) {
                     "port": held.as_ref().map(|s| s.port),
                     "sends": "what DeetsMusic plays",
                 }),
-                origin,
             )
         }
         (Method::Post, "/airplay") => {
@@ -804,99 +723,51 @@ async fn handle(app: AppHandle, mut req: Request) {
                 .and_then(|v| v.get("action").and_then(|a| a.as_str().map(String::from)))
                 .unwrap_or_default();
             if action != "disconnect" {
-                return json(req, 400, serde_json::json!({ "error": "action must be \"disconnect\"" }), origin);
+                return json(req, 400, serde_json::json!({ "error": "action must be \"disconnect\"" }));
             }
             // A TEARDOWN plus a thread join; never on the runtime's thread.
             let handle = app.clone();
             tauri::async_runtime::spawn_blocking(move || crate::airplay::release(&handle)).await.ok();
-            json(req, 200, serde_json::json!({ "ok": true }), origin)
+            json(req, 200, serde_json::json!({ "ok": true }))
         }
-        (Method::Get, "/log") => respond(req, 200, log_text(), "text/plain; charset=utf-8", origin),
+        (Method::Get, "/log") => respond(req, 200, log_text(), "text/plain; charset=utf-8"),
 
-        (Method::Post, "/resolve") => {
-            let r: ResolveReq = match serde_json::from_str(&body) {
-                Ok(r) => r,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
-            };
-            match resolve(&app, &r).await {
-                Ok(c) => json(req, 200, serde_json::json!({ "candidates": c }), origin),
-                Err(e) => {
-                    log(&format!("resolve failed: {e}"));
-                    let status = if e.contains("not connected") { 409 } else { 502 };
-                    json(req, status, serde_json::json!({ "error": e }), origin)
-                }
-            }
-        }
-        // /add is the extension's. A token caller uses /library, which obeys Agent control and the
-        // app's Add to Library consent (AGENT.md §5).
-        (Method::Post, "/add") if origin.is_none() => json(
-            req,
-            403,
-            serde_json::json!({ "error": "Use POST /library {action: \"add\", id} (AGENT.md §5)." }),
-            origin,
-        ),
-        (Method::Post, "/add") => {
-            let r: AddReq = match serde_json::from_str(&body) {
-                Ok(r) => r,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
-            };
-            let res = match (r.track, r.album) {
-                (Some(t), _) => add(&app, t).await,
-                (None, Some(a)) => add_album(&app, a).await,
-                (None, None) => Err("nothing to add".into()),
-            };
-            match res {
-                Ok(()) => json(req, 200, serde_json::json!({ "ok": true }), origin),
-                Err(e) => {
-                    log(&format!("add failed: {e}"));
-                    let status = if e.contains("not connected") { 409 } else { 502 };
-                    json(req, status, serde_json::json!({ "error": e }), origin)
-                }
-            }
-        }
         (Method::Post, "/search") => {
             let r: SearchReq = match serde_json::from_str(&body) {
                 Ok(r) => r,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
-            if let Some(types) = r.types.filter(|t| !t.is_empty()) {
-                // Agent form: the app's own normalized catalog results, untouched.
-                let res = crate::apple::catalog_search(
-                    r.term.clone(),
-                    Some(types),
-                    app.state::<crate::apple::AppleState>(),
-                    app.state::<crate::library::Db>(),
-                )
-                .await;
-                return match res {
-                    Ok(results) => {
-                        // Park the song hits locally so `play song:<id>` right after resolves
-                        // with no Apple call (a local upsert; never touches library rows).
-                        if !results.songs.is_empty() {
-                            let db = app.state::<crate::library::Db>();
-                            let conn = db.lock();
-                            if let Err(e) = crate::library::materialize_many(&conn, &results.songs) {
-                                log(&format!("materialize after search failed: {e}"));
-                            }
+            let Some(types) = r.types.filter(|t| !t.is_empty()) else {
+                return json(req, 400, serde_json::json!({ "error": "types: name one or more of songs, albums, artists, playlists, stations" }));
+            };
+            // The app's own normalized catalog results, untouched.
+            let res = crate::apple::catalog_search(
+                r.term.clone(),
+                Some(types),
+                app.state::<crate::apple::AppleState>(),
+                app.state::<crate::library::Db>(),
+            )
+            .await;
+            match res {
+                Ok(results) => {
+                    // Park the song hits locally so `play song:<id>` right after resolves
+                    // with no Apple call (a local upsert; never touches library rows).
+                    if !results.songs.is_empty() {
+                        let db = app.state::<crate::library::Db>();
+                        let conn = db.lock();
+                        if let Err(e) = crate::library::materialize_many(&conn, &results.songs) {
+                            log(&format!("materialize after search failed: {e}"));
                         }
-                        // Station hits go into the same by-id table the /stations
-                        // listing feeds, so `play station:<id>` resolves after a search.
-                        remember_stations(&results.stations);
-                        json(req, 200, serde_json::to_value(results).unwrap_or_default(), origin)
                     }
-                    Err(e) => {
-                        log(&format!("search failed: {e}"));
-                        let status = if e.contains("not connected") { 409 } else { 502 };
-                        json(req, status, serde_json::json!({ "error": e }), origin)
-                    }
-                };
-            }
-            match search(&app, &r.term).await {
-                Ok((songs, albums)) => json(req, 200, serde_json::json!({ "songs": songs, "albums": albums }), origin),
+                    // Station hits go into the same by-id table the /stations
+                    // listing feeds, so `play station:<id>` resolves after a search.
+                    remember_stations(&results.stations);
+                    json(req, 200, serde_json::to_value(results).unwrap_or_default())
+                }
                 Err(e) => {
                     log(&format!("search failed: {e}"));
                     let status = if e.contains("not connected") { 409 } else { 502 };
-                    json(req, status, serde_json::json!({ "error": e }), origin)
+                    json(req, status, serde_json::json!({ "error": e }))
                 }
             }
         }
@@ -904,15 +775,15 @@ async fn handle(app: AppHandle, mut req: Request) {
         (Method::Post, "/command") => {
             let r: CommandReq = match serde_json::from_str(&body) {
                 Ok(r) => r,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
             let res = ask(&app, "command", serde_json::json!({ "kind": r.kind, "value": r.value })).await;
-            agent_json(req, res, origin)
+            agent_json(req, res)
         }
         (Method::Post, "/play") | (Method::Post, "/queue") => {
             let r: TracksReq = match serde_json::from_str(&body) {
                 Ok(r) => r,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
             let mode = r.mode.clone().unwrap_or_else(|| "next".into());
             let (at, keep_queue) = (r.at, r.keep_queue.unwrap_or(false));
@@ -926,7 +797,7 @@ async fn handle(app: AppHandle, mut req: Request) {
                 Ok(Target::Station(_)) => Err("unknown: a station can't be queued, only played".into()),
                 Err(e) => Err(e),
             };
-            agent_json(req, res, origin)
+            agent_json(req, res)
         }
         // Read the songs inside a collection without touching playback (AGENT.md §3). Until
         // this existed an agent could only see into an album by pouring it into a playlist,
@@ -935,37 +806,32 @@ async fn handle(app: AppHandle, mut req: Request) {
         (Method::Post, "/tracks") => {
             let r: TracksReq = match serde_json::from_str(&body) {
                 Ok(r) => r,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
             let res = match resolve_target(&app, r).await {
                 Ok(Target::Tracks(tracks)) => Ok(serde_json::json!({ "tracks": tracks })),
                 Ok(Target::Station(_)) => Err("unknown: a station has no fixed list of songs".to_string()),
                 Err(e) => Err(e),
             };
-            agent_json(req, res, origin)
+            agent_json(req, res)
         }
-        (Method::Get, "/queue") => agent_json(req, ask(&app, "queue-get", serde_json::Value::Null).await, origin),
+        (Method::Get, "/queue") => agent_json(req, ask(&app, "queue-get", serde_json::Value::Null).await),
         (Method::Get, "/stations") => {
             let group = query_param(&url, "group").unwrap_or_else(|| "featured".into());
             match stations(&app, &group).await {
-                Ok(v) => json(req, 200, v, origin),
+                Ok(v) => json(req, 200, v),
                 Err(e) => {
                     log(&format!("stations failed: {e}"));
                     let status = if e.contains("not connected") { 409 } else { 502 };
-                    json(req, status, serde_json::json!({ "error": e }), origin)
+                    json(req, status, serde_json::json!({ "error": e }))
                 }
             }
         }
         (Method::Get, "/playlists") => match crate::playlists::playlists_cached(app.clone()).await {
-            Ok(list) => json(req, 200, serde_json::json!({ "playlists": list }), origin),
-            Err(e) => json(req, 502, serde_json::json!({ "error": e }), origin),
+            Ok(list) => json(req, 200, serde_json::json!({ "playlists": list })),
+            Err(e) => json(req, 502, serde_json::json!({ "error": e })),
         },
         // ── local data (LOCAL-DATA.md) — read-only, zero Apple calls ──
-        // The bearer token only: a browser extension (an Origin) has no business reading the
-        // library or the play history, so it is refused even though it counts as paired.
-        (Method::Post, "/query") | (Method::Post, "/songs") if origin.is_some() => {
-            json(req, 403, serde_json::json!({ "error": "This route is for agents with the bridge token, not extensions." }), origin)
-        }
         (Method::Post, "/query") => {
             let sql = serde_json::from_str::<serde_json::Value>(&body)
                 .ok()
@@ -977,71 +843,67 @@ async fn handle(app: AppHandle, mut req: Request) {
                 .await
                 .unwrap_or_else(|e| Err(e.to_string()));
             match res {
-                Ok(v) => json(req, 200, v, origin),
+                Ok(v) => json(req, 200, v),
                 // A setting blocks it (403, like the other gates); anything else is the request (400).
-                Err(e) => json(req, if e == crate::query::HISTORY_OFF { 403 } else { 400 }, serde_json::json!({ "error": e }), origin),
+                Err(e) => json(req, if e == crate::query::HISTORY_OFF { 403 } else { 400 }, serde_json::json!({ "error": e })),
             }
         }
         (Method::Post, "/songs") => {
             let r: crate::query::SongsReq = match serde_json::from_str(&body) {
                 Ok(r) => r,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
             let history = settings.agent_history;
             let res = tauri::async_runtime::spawn_blocking(move || crate::query::songs(r, history))
                 .await
                 .unwrap_or_else(|e| Err(e.to_string()));
             match res {
-                Ok(v) => json(req, 200, v, origin),
-                Err(e) => json(req, if e == crate::query::HISTORY_OFF { 403 } else { 400 }, serde_json::json!({ "error": e }), origin),
+                Ok(v) => json(req, 200, v),
+                Err(e) => json(req, if e == crate::query::HISTORY_OFF { 403 } else { 400 }, serde_json::json!({ "error": e })),
             }
         }
         // ── the Diary (DIARY.md §10) — read and write, behind its own switch, agents only ──
-        (Method::Get, "/diary") | (Method::Post, "/diary") if origin.is_some() => {
-            json(req, 403, serde_json::json!({ "error": "This route is for agents with the bridge token, not extensions." }), origin)
-        }
         (Method::Get, "/diary") | (Method::Post, "/diary") if !settings.agent_diary => {
-            json(req, 403, serde_json::json!({ "error": crate::diary::AGENT_OFF }), origin)
+            json(req, 403, serde_json::json!({ "error": crate::diary::AGENT_OFF }))
         }
         (Method::Get, "/diary") => {
             let id = query_param(&url, "id").and_then(|v| v.parse::<i64>().ok());
             let res = crate::diary::agent_read(&app.state::<crate::library::Db>().lock(), id);
             match res {
-                Ok(v) => json(req, 200, v, origin),
-                Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
+                Ok(v) => json(req, 200, v),
+                Err(e) => json(req, 400, serde_json::json!({ "error": e })),
             }
         }
         (Method::Post, "/diary") => {
             let b: serde_json::Value = match serde_json::from_str(&body) {
                 Ok(v) => v,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
             match crate::diary::agent_write(&app, &b).await {
-                Ok(v) => json(req, 200, v, origin),
-                Err(e) => json(req, 400, serde_json::json!({ "error": e }), origin),
+                Ok(v) => json(req, 200, v),
+                Err(e) => json(req, 400, serde_json::json!({ "error": e })),
             }
         }
         (Method::Get, "/history") if !settings.agent_history => json(
             req,
             403,
             serde_json::json!({ "error": "Play history is off. Turn on Agents read play history in DeetsMusic › Settings › Connections." }),
-            origin,
         ),
         (Method::Get, "/history") => {
             let limit = query_param(&url, "limit").and_then(|v| v.parse::<u32>().ok()).unwrap_or(50);
-            agent_json(req, ask(&app, "history-get", serde_json::json!({ "limit": limit })).await, origin)
+            agent_json(req, ask(&app, "history-get", serde_json::json!({ "limit": limit })).await)
         }
         // ── agent writes (AGENT.md §5) — the window runs them (agent-writes.ts) ──
         (Method::Post, "/library") | (Method::Post, "/playlist") | (Method::Post, "/folder")
         | (Method::Post, "/queue/edit") | (Method::Post, "/update") | (Method::Post, "/picks") => {
             let r: WriteReq = match serde_json::from_str(&body) {
                 Ok(r) => r,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
             let res = write(&app, path.as_str(), r).await;
-            agent_json(req, res, origin)
+            agent_json(req, res)
         }
-        (Method::Get, "/update") => agent_json(req, ask(&app, "update-get", serde_json::Value::Null).await, origin),
+        (Method::Get, "/update") => agent_json(req, ask(&app, "update-get", serde_json::Value::Null).await),
         // ── the live diag ring (LOGGING.md §Reading it from outside) ──
         // The log FILE only holds what a flush has written; this reads the window's own
         // buffer as it is, which is what a session being debugged needs. It carries song
@@ -1055,7 +917,6 @@ async fn handle(app: AppHandle, mut req: Request) {
             agent_json(
                 req,
                 ask(&app, "diag-get", serde_json::json!({ "limit": limit, "since": since, "tag": tag, "flush": flush })).await,
-                origin,
             )
         }
         // ── Song of the Day (docs/integrations/DeetsOTD.md §8.8; sotd.ts, agent-writes.ts) ──
@@ -1063,7 +924,7 @@ async fn handle(app: AppHandle, mut req: Request) {
         // is off. The window runs both, so the shelf, Rewind and the outbox all follow.
         (Method::Get, "/picks") => {
             let window = query_param(&url, "window").unwrap_or_default();
-            agent_json(req, ask(&app, "picks-get", serde_json::json!({ "window": window })).await, origin)
+            agent_json(req, ask(&app, "picks-get", serde_json::json!({ "window": window })).await)
         }
         // ── agent settings (AGENT.md §6) — the window lists and sets them (agent-settings.ts) ──
         (Method::Get, "/settings") => {
@@ -1071,50 +932,50 @@ async fn handle(app: AppHandle, mut req: Request) {
             let section = query_param(&url, "section")
                 .map(|s| s.replace('+', " ").replace("%20", " ").replace("%26", "&").replace("%25", "%"))
                 .unwrap_or_default();
-            agent_json(req, ask(&app, "settings-get", serde_json::json!({ "section": section })).await, origin)
+            agent_json(req, ask(&app, "settings-get", serde_json::json!({ "section": section })).await)
         }
         (Method::Post, "/settings") => {
             let v: serde_json::Value = match serde_json::from_str(&body) {
                 Ok(v) => v,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
-            agent_json(req, ask(&app, "settings", v).await, origin)
+            agent_json(req, ask(&app, "settings", v).await)
         }
         // ── rules (RULEZ.md §7; agent-rules.ts) — read every rule, write your own ──
         // `?words=1` is the vocabulary an agent reads before it writes. A write rides the
         // Agent changes settings permission (Ask / Allow / Off) in the window.
         (Method::Get, "/rules") => {
             let words = query_param(&url, "words").map(|w| w != "0").unwrap_or(false);
-            agent_json(req, ask(&app, "rules-get", serde_json::json!({ "words": words })).await, origin)
+            agent_json(req, ask(&app, "rules-get", serde_json::json!({ "words": words })).await)
         }
         (Method::Post, "/rules") => {
             let v: serde_json::Value = match serde_json::from_str(&body) {
                 Ok(v) => v,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
-            agent_json(req, ask(&app, "rules", v).await, origin)
+            agent_json(req, ask(&app, "rules", v).await)
         }
         // ── go (COMPASS.md §10; compass.ts `agentGo`) — the CLI's way to a place ──
         // Navigation only: the Compass's Places minus theme, skin and surface, which are
         // stored settings and keep their own consent on `/settings`.
-        (Method::Get, "/go") => agent_json(req, ask(&app, "go-get", serde_json::Value::Null).await, origin),
+        (Method::Get, "/go") => agent_json(req, ask(&app, "go-get", serde_json::Value::Null).await),
         (Method::Post, "/go") => {
             let v: serde_json::Value = match serde_json::from_str(&body) {
                 Ok(v) => v,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
-            agent_json(req, ask(&app, "go", v).await, origin)
+            agent_json(req, ask(&app, "go", v).await)
         }
         // ── card grow (CARD-GROW.md; card-grow.ts `agentGrow`) — a test handle more than a verb ──
-        (Method::Get, "/grow") => agent_json(req, ask(&app, "grow-get", serde_json::Value::Null).await, origin),
+        (Method::Get, "/grow") => agent_json(req, ask(&app, "grow-get", serde_json::Value::Null).await),
         (Method::Post, "/grow") => {
             let v: serde_json::Value = match serde_json::from_str(&body) {
                 Ok(v) => v,
-                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") }), origin),
+                Err(e) => return json(req, 400, serde_json::json!({ "error": format!("bad json: {e}") })),
             };
-            agent_json(req, ask(&app, "grow", v).await, origin)
+            agent_json(req, ask(&app, "grow", v).await)
         }
-        _ => json(req, 404, serde_json::json!({ "error": "no such route" }), origin),
+        _ => json(req, 404, serde_json::json!({ "error": "no such route" })),
     }
 }
 
@@ -1171,13 +1032,13 @@ async fn write(app: &AppHandle, path: &str, r: WriteReq) -> Result<serde_json::V
 /// Reply for an agent route: the window's result, or the error with a status that
 /// mirrors the other routes (403 a setting blocks it · 409 not connected · 504 no answer ·
 /// 400 bad input · 502 anything else).
-fn agent_json(req: Request, res: Result<serde_json::Value, String>, origin: Option<String>) {
+fn agent_json(req: Request, res: Result<serde_json::Value, String>) {
     match res {
-        Ok(v) => json(req, 200, if v.is_null() { serde_json::json!({ "ok": true }) } else { v }, origin),
+        Ok(v) => json(req, 200, if v.is_null() { serde_json::json!({ "ok": true }) } else { v }),
         Err(e) => {
             log(&format!("agent failed: {e}"));
             if let Some(why) = e.strip_prefix("blocked: ") {
-                return json(req, 403, serde_json::json!({ "error": why }), origin);
+                return json(req, 403, serde_json::json!({ "error": why }));
             }
             let status = if e.contains("not connected") {
                 409
@@ -1188,7 +1049,7 @@ fn agent_json(req: Request, res: Result<serde_json::Value, String>, origin: Opti
             } else {
                 502
             };
-            json(req, status, serde_json::json!({ "error": e }), origin)
+            json(req, status, serde_json::json!({ "error": e }))
         }
     }
 }
@@ -1240,10 +1101,9 @@ fn score(t: &Track, title: &str, artist: Option<&str>) -> f32 {
 }
 
 /// Drop every bracketed segment: "Speaking in Tongues (official visualiser w/ )"
-/// → "Speaking in Tongues". The extension cleans YouTube titles before it gets
-/// here, but that heuristic can never be airtight against arbitrary uploads —
-/// this is the resolver's own fallback so a bad parse degrades into a usable
-/// search term instead of zero hits.
+/// → "Speaking in Tongues". A Windows media source (a browser tab, another
+/// player) hands over upload titles as they are, so this is the resolver's own
+/// fallback: a noisy title degrades into a usable search term instead of zero hits.
 fn strip_brackets(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut depth = 0usize;
@@ -1267,10 +1127,7 @@ pub async fn resolve(app: &AppHandle, r: &ResolveReq) -> Result<Vec<Candidate>, 
         return Err("empty title".into());
     }
     let artist = r.artist.as_deref().map(str::trim).filter(|s| !s.is_empty());
-    log(&format!(
-        "resolve title={title:?} artist={artist:?} album={:?} source={:?} url={:?}",
-        r.album, r.source, r.url
-    ));
+    log(&format!("resolve title={title:?} artist={artist:?} album={:?}", r.album));
 
     // Each rung pairs the term to search with the title to score the hits against,
     // so a rung that dropped the brackets is also judged without them.
@@ -1342,67 +1199,6 @@ async fn search_songs(app: &AppHandle, term: &str) -> Result<Vec<Track>, String>
     Ok(results.songs)
 }
 
-/// The popup's search card: songs (as candidates, unscored, in-library flagged) +
-/// albums, one catalog search.
-pub async fn search(app: &AppHandle, term: &str) -> Result<(Vec<Candidate>, Vec<AlbumHit>), String> {
-    let term = term.trim();
-    if term.is_empty() {
-        return Ok((Vec::new(), Vec::new()));
-    }
-    log(&format!("search {term:?}"));
-    let results = crate::apple::catalog_search(
-        term.to_string(),
-        Some(vec!["songs".into(), "albums".into()]),
-        app.state::<crate::apple::AppleState>(),
-        app.state::<crate::library::Db>(),
-    )
-    .await?;
-    let songs = {
-        let db = app.state::<crate::library::Db>();
-        let conn = db.lock();
-        results
-            .songs
-            .into_iter()
-            .map(|t| Candidate {
-                in_library: t.catalog_id.as_deref().map(|id| crate::library::in_library(&conn, id)).unwrap_or(false),
-                artwork_url: art_url(&t.artwork, 240),
-                score: 0.0,
-                track: t,
-            })
-            .collect()
-    };
-    let albums = results
-        .albums
-        .into_iter()
-        .map(|a| AlbumHit { artwork_url: art_url(&a.artwork, 240), album: a })
-        .collect();
-    Ok((songs, albums))
-}
-
-/// Add a whole catalog album (fork A, same as the app's context menu): fetch its
-/// tracks so they graduate locally, then POST the album resource.
-pub async fn add_album(app: &AppHandle, album: Album) -> Result<(), String> {
-    let id = album.catalog_id.clone().filter(|s| !s.is_empty()).ok_or("album has no catalog id")?;
-    log(&format!("add album {id}")); // ids, never titles (LOGGING.md)
-    let tracks = crate::apple::catalog_collection_tracks(
-        "albums".into(),
-        id.clone(),
-        app.state::<crate::apple::AppleState>(),
-        app.state::<crate::library::Db>(),
-    )
-    .await?;
-    crate::apple::apple_add_to_library(
-        "albums".into(),
-        vec![id],
-        tracks,
-        app.state::<crate::apple::AppleState>(),
-        app.state::<crate::library::Db>(),
-    )
-    .await?;
-    let _ = app.emit("library-changed", ());
-    Ok(())
-}
-
 /// Add one catalog song and tell the main window so its Library card refreshes.
 pub async fn add(app: &AppHandle, track: Track) -> Result<(), String> {
     let id = track.catalog_id.clone().filter(|s| !s.is_empty()).ok_or("track has no catalog id")?;
@@ -1428,7 +1224,7 @@ pub async fn bridge_resolve(
     album: Option<String>,
     app: AppHandle,
 ) -> Result<Vec<Candidate>, String> {
-    resolve(&app, &ResolveReq { title, artist, album, source: Some("tray".into()), url: None }).await
+    resolve(&app, &ResolveReq { title, artist, album }).await
 }
 
 #[tauri::command]

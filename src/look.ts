@@ -39,7 +39,7 @@ function paint(): void {
   // it would read the attributes before they flip and report the OLD look.
   const after = () => {
     opts.after?.();
-    publishAppearance(); // tray panel + extension popup follow (they snap)
+    publishAppearance(); // the tray panel follows (it snaps)
   };
   // A theme-only change — a rule's (Live Theming: every song) or your own pick — changes the
   // colors in place. The cover stays for any skin change and for an agent, so a change you did

@@ -41,7 +41,7 @@ updated: 2026-10-21
 
 | Step | Command | What it does | Needs |
 |---|---|---|---|
-| 1 | set the version, write the notes | the same version in the seven files (§1), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. `vpk pack` puts that entry in the package; publish copies it to the update offer and the website, and refuses to run without it | — |
+| 1 | set the version, write the notes | the same version in the six files (§1), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. `vpk pack` puts that entry in the package; publish copies it to the update offer and the website, and refuses to run without it | — |
 | 1a | `node docs/ops/checks/smooth.mjs` | **The motion monitor, before every release (his call, 2026-10-18).** Claude runs it: the motion set and the full player, every skin, each clip watched for a flash, a snap, a jitter, a teleport and a row jump ([checks/README.md](checks/README.md) §2a). Then `node docs/ops/checks/smooth.mjs --dev` (since 2026-10-19): the full player on the dev app at his window sizes (portrait, landscape Max, Midi), with no other session driving it and no edits in progress. A hit not in that section's baseline stops the release until its frames are read and it is fixed or added to the baseline with the reason. About 40 minutes on the web demo, so it can run while the build does; the dev run about 12 minutes, after the build. The result goes in the release log's Notes (§0a) | the demo run: nothing (the runner serves the demo itself, its own Vite and headless Edge); `--dev`: `npm run dev:app` running and on screen |
 | 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build --no-bundle` → stage the exe and its resources → `vpk pack` (signs every exe through `sign.mjs`; writes the full package, the delta, Setup.exe and the feed) → delete the Portable.zip → sign the feed → `release-check` → copy Setup.exe to `installers/DeetsMusic_<version>_x64-setup.exe` (§1) | both secrets below, the signing tools (§6.9), `vpk` at the crate's version (`dotnet tool install -g vpk --version 1.2.161`) |
 | 3 | install + test | `installers/DeetsMusic_<version>_x64-setup.exe`, by hand. **From Claude's shell, start it through WMI** (§4) | — |
@@ -163,7 +163,9 @@ What the log taught:
 
 ## 1. Cut a build
 
-**Seven files hold the version**, and all seven are checked (since 2026-09-26).
+**Six files hold the version**, and all six are checked (since 2026-09-26). The browser
+extension's `extension/manifest.json` was a seventh until it left v1 (2026-10-23, EXTENSION.md,
+parked); leave it alone.
 
 | File | Checked by | If it is stale |
 |---|---|---|
@@ -171,7 +173,6 @@ What the log taught:
 | `src-tauri/tauri.conf.json` | `release-check` | the app's own version (Settings, the update check) reads it; caught |
 | `src-tauri/Cargo.toml` | `release-check` | caught. The `start:` log line reads it |
 | `cli/Cargo.toml` | `release-check` | caught. It is what `deetsmusic --version` and the MCP server info report |
-| `extension/manifest.json` | `release-check` (a beta build skips it), `docs:check` check 5 | the browser extension keeps reporting the old version |
 | `src-tauri/Cargo.lock` + `cli/Cargo.lock` | `docs:check` check 5 (so `npm run check` and the pre-push hook) | cargo rewrites them during the build, so the release is fine but the tree is left dirty and the version commit is incomplete |
 
 Bump the manifest by hand, and run `cargo check` in `cli/` and in `src-tauri/` before the
@@ -193,7 +194,7 @@ npm run release     # secrets → cli:build → sign cli → tauri build --no-bu
 3. **`tauri build --no-bundle`** (`bundle.active` is false): the front end into the exe, no
    installer. tauri-build still copies `bundle.resources` next to the exe.
 4. **Stage** — `src-tauri/target/velopack-stage/` gets the exe and every resource
-   (`cli\`, `extension\`, `mcpb\`; the beta's map drops the full CLI). Then
+   (`cli\`, `mcpb\`; the beta's map drops the full CLI). Then
    **`scripts/identity-pack.mjs`** adds the signed identity package `DeetsMusic.identity.msix`,
    its logos (`Assets\`) and `resources.pri` (IDENTITY.md §3.1; `makepri` and `makeappx` from
    the Windows SDK, signed by `sign.mjs`).
@@ -243,7 +244,7 @@ installed build showed it. Three layers now guard this:
 
 1. **Structural.** Anything that reads the source tree is compiled out of release builds with
    `#[cfg(debug_assertions)]` — not a runtime `cfg!` check — so the path string is not in
-   the exe at all (`apple.rs` `repo_secrets_dir`, the bridge's dev extension path).
+   the exe at all (`apple.rs` `repo_secrets_dir`).
 2. **Automated gate.** `npm run release` runs `scripts/release-check.mjs` after the pack
    and the feed signature, and before the versioned copy (§1 step 7). It fails when the exe
    contains an absolute path into the repo (build output under `src-tauri\target\` is
@@ -323,7 +324,6 @@ path for every version (VELOPACK.md §3).
 |---|---|---|
 | `current\DeetsMusic.exe` | `src-tauri` release build | The app. `mainBinaryName` in `tauri.conf.json` — without it the exe takes the Cargo package name. |
 | `current\cli\deetsmusic.exe` | `cli/dist/` via `bundle.resources` | The agent CLI + MCP server ([AGENT.md](../integrations/AGENT.md)). |
-| `current\extension\` | `extension/` via `bundle.resources` | Unpacked MV3 source + `install.html` ([EXTENSION.md](../integrations/EXTENSION.md) §6). Experimental since 2026-10-15. |
 | `current\mcpb\deetsmusic.mcpb` | `mcpb/dist/` via `bundle.resources` | The Claude Desktop extension that *Set up the DeetsMusic MCP* installs ([MCP-INSTALL.md](../integrations/MCP-INSTALL.md), 0.26.0). |
 | `Update.exe` | Velopack | Applies updates, and is the uninstaller Installed apps runs (`Update.exe --uninstall`). |
 | `DeetsMusic.exe` (root) | Velopack | A stub that starts `current\DeetsMusic.exe`. |
@@ -356,8 +356,8 @@ or 15 s (the two update hooks).
 - **Before an uninstall:** `mcp uninstall --all --quiet` through the bundled CLI (our MCP entry
   leaves every AI app), `stop_clis`, and the start-with-Windows value is removed when it points
   into this install.
-- **After an install, after an update:** nothing. No extension question: the extension is
-  experimental and reachable from Settings only (his call, VELOPACK.md §1 F2 C). The song
+- **After an install, after an update:** nothing. The browser extension is not shipped since
+  2026-10-23 (EXTENSION.md, parked); an update removes the old `current\extension\`. The song
   comes back after an update because the app writes it before it exits (`flushForRestart`,
   queue-persist, §6.3), not through a hook.
 
@@ -435,8 +435,7 @@ Velopack version (§0b), so it stays on 0.27.0. To move:
 The library, settings and pins stay: they are in `%APPDATA%\com.deetsmusic.app`, not in the
 install folder. The exe moves from the install root to `current\`, so a few things that hold
 the old path need one hand step (VELOPACK.md §3): run *Set up the DeetsMusic MCP* again (the
-CLI path changed), pin the taskbar button again, point Chrome's unpacked extension at
-`current\extension`, and fix a hand-added `…\DeetsMusic\cli` on the user PATH.
+CLI path changed), pin the taskbar button again, and fix a hand-added `…\DeetsMusic\cli` on the user PATH.
 
 ## 5. Uninstall
 
@@ -455,8 +454,8 @@ deliberately:
 rm -rf "$APPDATA/com.deetsmusic.app"
 ```
 
-That costs the sign-in, the library cache (Apple calls to rebuild) and the extension pairing
-token (re-pair needed). Keep the folder for an ordinary reinstall; delete it to test the
+That costs the sign-in and the library cache (Apple calls to rebuild). The bridge token is
+new too; the CLI and the MCP read it from the file, so nothing needs to pair. Keep the folder for an ordinary reinstall; delete it to test the
 first-run path (or use `npm run dev:fresh`, ONBOARDING.md).
 
 ## 6. The updater

@@ -6,6 +6,28 @@ updated: 2026-10-23
 ---
 # DeetsMusic — Work log
 
+## 2026-10-23 — the browser extension leaves v1 (branch `grand-opening`)
+
+**His call.** The extension is not on the Chrome Web Store, so v1 does not ship it. Keep
+`extension/` in the repo, parked; cut it from the build, the app and the bridge.
+
+**What changed.** `tauri.conf.json` › `bundle.resources` lost the eight `extension/` lines.
+`bridge.rs` lost `POST /resolve`, `POST /add`, the popup form of `POST /search` (now `types`
+is required), the extension-`Origin` pairing, the CORS replies, the OPTIONS preflight,
+`extension_dir` and `bridge_open_install_page`. A request with any `Origin` header gets a 403
+before the token is read. The fuzzy `resolve` and `add` stay for the tray's Windows-media add.
+Settings › Connections lost the extension's status line and install row. `settings-repair.ts`
+no longer asks to pair again when the bridge token resets (a token-only reset now shows
+nothing). release-check, docs:check 5 and `npm run tokens` stop reading `extension/`; TOKENS.md
+regenerated. The quick panel's Connections hint now reads "Connections: AI agents and the MCP".
+
+**What Claude decided inside his call.** The Origin refusal (the strictest option: nothing in a
+browser calls the bridge now). The token-only repair toast goes silent, since the CLI, the MCP
+and DeetsAirplay read the token from settings.json. The hint words. No release-notes line: he says there are
+no live users before v1, the grand opening.
+
+**Desk test (open).** HANDOFF › Open now › *The browser extension left v1*.
+
 ## 2026-10-23 — the tray pop in the Max layout; Open after a minimize (branch `grand-opening`)
 
 **His report (live 0.32.0).** A tray click showed the Max layout in a Mini-sized window. Then

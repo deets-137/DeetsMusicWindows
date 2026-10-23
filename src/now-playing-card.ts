@@ -355,7 +355,7 @@ export const nowPlayingCard: CardDef = {
 
     // Add to Library square (option B, 2026-09-10), the tray panel's four states: hidden
     // (toggle off / no catalog id), "+" to add, a spinner while adding, and a check once
-    // the song is in the library (mirrors the extension). Re-evaluated on every song
+    // the song is in the library. Re-evaluated on every song
     // change, library reload, and toggle flip.
     const addBtn = host.querySelector<HTMLButtonElement>("#np-add");
     const currentTrack = () => {

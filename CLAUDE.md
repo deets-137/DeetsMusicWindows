@@ -246,7 +246,9 @@ for word, with RELEASE.md's section numbers.
 - `AGENT.md` — the agent / CLI routes on the bridge.
 - `AGENT-SETUP.md` — the user's guide to control the app from an AI app or a terminal.
 - `MCP-INSTALL.md` — `deetsmusic mcp install` and its Settings panel.
-- `EXTENSION.md` — the MV3 extension (`extension/`) and the loopback bridge.
+- `EXTENSION.md` — PARKED 2026-10-23 (not on the Chrome Web Store, so not in v1): the MV3
+  extension (`extension/`, kept in the repo, out of the build, the app and the bridge). The
+  status box says what went and how to bring it back.
 - `LASTFM.md` — Last.fm scrobbling.
 - `AIRPLAY.md` — play on a HomePod; the shared sender crate.
 - `ROOMS.md` — listening rooms; the worker is `../DeetsMusicRooms`.

@@ -11,10 +11,10 @@ test("names the rows that reset, in the words of their Settings rows (2026-10-11
   );
 });
 
-test("a new pairing code asks to pair the extension again", () => {
-  assert.equal(repairText({ unreadable: false, fields: ["bridgeToken"] }), "The browser extension's pairing code could not be read, so it is a new one. Pair the browser extension again.");
-  assert.match(repairText({ unreadable: false, fields: ["agentControl", "bridgeToken"] })!, /Agent control\. Pair the browser extension again\.$/);
-  assert.match(repairText({ unreadable: true, fields: [] })!, /^The settings file could not be read.*Pair the browser extension again\.$/);
+test("a new bridge token asks nothing, since the extension left v1 (2026-10-23)", () => {
+  assert.equal(repairText({ unreadable: false, fields: ["bridgeToken"] }), null);
+  assert.match(repairText({ unreadable: false, fields: ["agentControl", "bridgeToken"] })!, /: Agent control\.$/);
+  assert.match(repairText({ unreadable: true, fields: [] })!, /^The settings file could not be read.*back to their defaults\.$/);
 });
 
 test("nothing to say when only bookkeeping reset, or nothing did", () => {

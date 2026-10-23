@@ -468,7 +468,7 @@ Mark one song a day ([DeetsOTD.md](../integrations/DeetsOTD.md)).
 | Agents use Album Reviews | Lets a connected agent read your album reviews and write notes, scores and dates in them. Only you can turn it on | on / **off** |
 | Set up the DeetsMusic MCP (2026-10-11) | One line per AI app found on this PC with its state and *last used*; its button connects, disconnects, repairs, replaces a hand-made entry, or (Claude Desktop) opens the extension. **Refresh** looks again. No setting: the state is in each app's own file (MCP-INSTALL.md) | Connect / Disconnect / Repair / Replace / Install |
 | Copy setup info | Copies the exact setup text for an AI app the list above does not connect | Claude Desktop / **Claude Code** / Cursor / Other (Full) / Other (Small) |
-| The extension block | Whether the browser bridge and the agent are running | — |
+| The agent status line | Whether the bridge and the agent are running, and the port (the browser extension's line left v1, 2026-10-23) | — |
 
 ### Updates
 

@@ -30,7 +30,6 @@ const ROW: Record<string, string> = {
   airplaySpeakerLatencyMs: "the AirPlay speaker delays",
   windowPos: "the window's place",
 };
-const PAIR = "Pair the browser extension again.";
 
 const list = (names: string[]): string =>
   names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
@@ -39,13 +38,11 @@ const list = (names: string[]): string =>
 export function repairText(p: LoadProblems | null | undefined): string | null {
   if (!p) return null;
   if (p.unreadable) {
-    return `The settings file could not be read, so Close to tray, Agent control, Last.fm, Song of the Day and AirPlay are back to their defaults. ${PAIR}`;
+    return `The settings file could not be read, so Close to tray, Agent control, Last.fm, Song of the Day and AirPlay are back to their defaults.`;
   }
+  // A new bridge token needs nothing from the user: the CLI, the MCP and DeetsAirplay read
+  // it from settings.json on every call. The extension that had to pair left v1 (2026-10-23).
   const named = p.fields.map((f) => ROW[f]).filter((n): n is string => !!n);
-  const token = p.fields.includes("bridgeToken");
-  if (!named.length && !token) return null;
-  const head = named.length
-    ? `${named.length === 1 ? "A setting" : "Some settings"} could not be read, so ${named.length === 1 ? "it is" : "they are"} back to ${named.length === 1 ? "its default" : "their defaults"}: ${list(named)}.`
-    : "The browser extension's pairing code could not be read, so it is a new one.";
-  return token ? `${head} ${PAIR}` : head;
+  if (!named.length) return null;
+  return `${named.length === 1 ? "A setting" : "Some settings"} could not be read, so ${named.length === 1 ? "it is" : "they are"} back to ${named.length === 1 ? "its default" : "their defaults"}: ${list(named)}.`;
 }

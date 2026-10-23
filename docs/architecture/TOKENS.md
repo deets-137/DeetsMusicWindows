@@ -1095,7 +1095,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 ## Motion
 
 Every skin token that is a duration, a delay or a curve, or an alias of one. The same rows are in
-*Skin tokens* above, with their notes. *Read by* is every file under `src/` and `extension/`
+*Skin tokens* above, with their notes. *Read by* is every file under `src/`
 that names the token (CSS `var()`, or a `tokenMs` / `getPropertyValue` read in TS). A row with no
 reader is a token nothing uses.
 
@@ -1110,12 +1110,12 @@ reader is a token nothing uses.
 | `--room-part-slide` | `260ms` | — | styles.css |
 | `--room-bob-glide` | `120ms` | — | styles.css |
 | `--room-fill` | `0.28s var(--ease-ui)` | — | styles.css |
-| `--compass-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | extension/styles/skin.css, styles/compass.css, styles/skin.css |
+| `--compass-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/compass.css, styles/skin.css |
 | `--cog-spin` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles.css |
 | `--updates-fly` | `0.5s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/updates.css |
 | `--updates-bar-in` | `0.36s var(--ease-ui)` | — | styles/updates.css |
 | `--updates-bar-fill` | `0.2s linear` | — | styles/updates.css |
-| `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | extension/styles/skin.css, styles/skin.css, updates-btn.ts |
+| `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/skin.css, updates-btn.ts |
 | `--rewind-top-flip` | `var(--compass-spin)` | — | styles/rewind-top.css |
 | `--net-drive` | `var(--updates-roll)` | — | net.ts |
 | `--sound-grow` | `0.22s` | — | styles.css |
@@ -1140,14 +1140,14 @@ reader is a token nothing uses.
 | `--np-title-scroll-delay` | `350ms` | — | styles.css |
 | `--np-title-scroll-back` | `var(--dur-med)` | — | styles.css |
 | `--vinyl-swap-dur` | `0.4s` | press, metal | metal.ts, pet.ts, vinyl.ts |
-| `--vinyl-swap-ease` | `ease-in-out` | press, metal | extension/styles/skin.css, styles/skin.css, vinyl.ts |
+| `--vinyl-swap-ease` | `ease-in-out` | press, metal | styles/skin.css, vinyl.ts |
 | `--ap-pulse` | `1.2s` | — | styles.css |
 | `--ap-caret-dur` | `0.32s` | — | styles.css |
-| `--pop-in` | `var(--dur-med)` | — | extension/styles/skin.css, card-grow.ts, pop.ts, reveal.ts, rewind-btn.ts, styles.css, styles/skin.css |
-| `--pop-out` | `var(--dur-fast)` | — | extension/styles/skin.css, appearance.ts, hero-slide.ts, styles.css, styles/skin.css, styles/walk.css, walk.ts |
+| `--pop-in` | `var(--dur-med)` | — | card-grow.ts, pop.ts, reveal.ts, rewind-btn.ts, styles.css, styles/skin.css |
+| `--pop-out` | `var(--dur-fast)` | — | appearance.ts, hero-slide.ts, styles.css, styles/skin.css, styles/walk.css, walk.ts |
 | `--pop-grow` | `var(--dur-med)` | — | airplay.ts, net.ts, quick-panel.ts, rewind-btn.ts, sound-panel.ts, updates-btn.ts, web.ts |
-| `--pop-stagger` | `0.03s` | — | extension/styles/skin.css, card-grow.ts, pop.ts, styles.css, styles/skin.css |
-| `--pop-ease` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | — | extension/styles/skin.css, airplay.ts, net.ts, pop.ts, quick-panel.ts, rewind-btn.ts, sound-panel.ts, styles.css, styles/skin.css, updates-btn.ts, web.ts |
+| `--pop-stagger` | `0.03s` | — | card-grow.ts, pop.ts, styles.css, styles/skin.css |
+| `--pop-ease` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | — | airplay.ts, net.ts, pop.ts, quick-panel.ts, rewind-btn.ts, sound-panel.ts, styles.css, styles/skin.css, updates-btn.ts, web.ts |
 | `--nudge-dur` | `var(--pop-in)` | — | styles.css |
 | `--nudge-ease` | `var(--pop-ease)` | — | styles.css |
 | `--set-flash-dur` | `1600ms` | — | styles/settings.css |
@@ -1168,44 +1168,44 @@ reader is a token nothing uses.
 | `--present-roll-dur` | `1.2s` | — | present.ts |
 | `--present-roll-ease` | `cubic-bezier(0.33, 1, 0.68, 1)` | — | present.ts |
 | `--present-in-delay` | `calc(var(--grow-dur) * 0.4)` | — | styles.css |
-| `--nav-dur` | `0.26s` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, handoff.ts, layout.ts, onboarding-looks.ts, onboarding.ts, styles.css, styles/onboarding.css, styles/skin.css |
-| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber | extension/popup/popup.css, extension/styles/skin.css, collection-card.ts, layout.ts, onboarding-looks.ts, onboarding.ts, styles.css, styles/onboarding.css, styles/skin.css |
+| `--nav-dur` | `0.26s` | press, ocean, glass, cyber | collection-card.ts, handoff.ts, layout.ts, onboarding-looks.ts, onboarding.ts, styles.css, styles/onboarding.css, styles/skin.css |
+| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber | collection-card.ts, layout.ts, onboarding-looks.ts, onboarding.ts, styles.css, styles/onboarding.css, styles/skin.css |
 | `--drill-wait` | `0.3s` | — | card-grow.ts, collection-card.ts, layout.ts |
 | `--memory-wait` | `0.4s` | — | collection-card.ts |
-| `--reveal-cap` | `1.5s` | — | extension/styles/skin.css, home-card.ts, reveal.ts, styles/skin.css |
-| `--reveal-span` | `0.5s` | — | extension/styles/skin.css, reveal.ts, styles/skin.css |
-| `--search-reveal-cap` | `0.8s` | — | extension/styles/skin.css, reveal.ts, search-card.ts, styles/skin.css |
+| `--reveal-cap` | `1.5s` | — | home-card.ts, reveal.ts, styles/skin.css |
+| `--reveal-span` | `0.5s` | — | reveal.ts, styles/skin.css |
+| `--search-reveal-cap` | `0.8s` | — | reveal.ts, search-card.ts, styles/skin.css |
 | `--search-reveal-span` | `0.15s` | — | reveal.ts |
-| `--art-in` | `var(--pop-in)` | — | extension/styles/skin.css, artwork-heal.ts, styles.css, styles/skin.css |
+| `--art-in` | `var(--pop-in)` | — | artwork-heal.ts, styles.css, styles/skin.css |
 | `--swap-dur` | `var(--nav-dur)` | — | card-swap.ts, styles.css |
 | `--swap-ease` | `var(--nav-ease)` | — | styles.css |
-| `--grow-dur` | `0.34s` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
-| `--grow-ease` | `var(--pop-ease)` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
+| `--grow-dur` | `0.34s` | — | card-grow.ts, present.ts, styles.css, styles/skin.css |
+| `--grow-ease` | `var(--pop-ease)` | — | card-grow.ts, present.ts, styles.css, styles/skin.css |
 | `--grow-body-fade` | `0.09s` | — | full-player.ts, styles.css |
-| `--grow-collapse-dur` | `0.24s` | — | extension/styles/skin.css, card-grow.ts, present.ts, styles.css, styles/skin.css |
-| `--grow-rows-stagger` | `0.012s` | — | extension/styles/skin.css, card-grow.ts, styles.css, styles/skin.css |
-| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | extension/styles/skin.css, full-player.ts, styles/skin.css |
+| `--grow-collapse-dur` | `0.24s` | — | card-grow.ts, present.ts, styles.css, styles/skin.css |
+| `--grow-rows-stagger` | `0.012s` | — | card-grow.ts, styles.css, styles/skin.css |
+| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | full-player.ts, styles/skin.css |
 | `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber | full-player.ts |
 | `--player-collapse-dur` | `var(--grow-collapse-dur)` | press, ocean, glass, cyber | full-player.ts |
-| `--player-art-wait` | `0.25s` | — | extension/styles/skin.css, full-player.ts, styles/skin.css |
-| `--fly-dur` | `0.42s` | press, ocean | extension/styles/skin.css, handoff.ts, styles.css, styles/skin.css |
-| `--fly-ease` | `var(--nav-ease)` | press, ocean, cyber | extension/styles/skin.css, styles.css, styles/skin.css |
-| `--boot-dur` | `0.8s` | press, ocean, glass, cyber | extension/styles/skin.css, appearance.ts, boot-cover.ts, styles.css, styles/skin.css |
+| `--player-art-wait` | `0.25s` | — | full-player.ts, styles/skin.css |
+| `--fly-dur` | `0.42s` | press, ocean | handoff.ts, styles.css, styles/skin.css |
+| `--fly-ease` | `var(--nav-ease)` | press, ocean, cyber | styles.css, styles/skin.css |
+| `--boot-dur` | `0.8s` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css, styles/skin.css |
 | `--boot-cover-out` | `var(--boot-dur)` | cyber | styles.css |
 | `--boot-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | press, ocean, glass, cyber | styles.css |
 | `--boot-stagger` | `70ms` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css |
-| `--boot-safety` | `4s` | — | extension/styles/skin.css, boot-cover.ts, styles.css, styles/skin.css |
+| `--boot-safety` | `4s` | — | boot-cover.ts, styles.css, styles/skin.css |
 | `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css |
 | `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | styles.css |
 | `--theme-morph-dur` | `500ms` | metal | appearance.ts, styles.css |
 | `--theme-morph-ease` | `ease-in-out` | — | styles.css |
 | `--theme-morph-hand-ease` | `ease-out` | — | appearance.ts, styles.css |
-| `--search-pulse-dur` | `0.9s` | — | extension/popup/popup.css, extension/styles/skin.css, styles.css, styles/skin.css |
-| `--dur-fast` | `0.12s` | press, glass, cyber | extension/styles/skin.css, copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
-| `--dur-med` | `0.18s` | press | extension/popup/popup.css, extension/popup/popup.js, extension/styles/skin.css, styles.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/walk.css |
-| `--dur-spin` | `0.7s` | — | extension/popup/popup.css, styles.css |
-| `--ease-ui` | `ease` | — | extension/popup/popup.css, extension/styles/skin.css, copy-edit.ts, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
-| `--pulse-ease` | `ease-in-out` | — | extension/popup/popup.css, styles.css |
+| `--search-pulse-dur` | `0.9s` | — | styles.css, styles/skin.css |
+| `--dur-fast` | `0.12s` | press, glass, cyber | copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
+| `--dur-med` | `0.18s` | press | styles.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/walk.css |
+| `--dur-spin` | `0.7s` | — | styles.css |
+| `--ease-ui` | `ease` | — | copy-edit.ts, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
+| `--pulse-ease` | `ease-in-out` | — | styles.css |
 | `--sh-cross-dur` | `0.42s` | — | styles.css |
 | `--rp-loop-dur` | `0.5s` | — | styles.css |
 | `--drag-scroll-speed` | `540` | — | row-drag.ts |

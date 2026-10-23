@@ -226,10 +226,10 @@ export const NULL_ON_PURPOSE = new Set([
   "settings_set_lastfm_now_playing", "settings_set_lastfm_scrobble", "settings_set_minimize_to_tray", "settings_set_sotd",
   "settings_set_sotd_day_start", "settings_set_sotd_picks_per_day", "settings_set_sotd_post_at", "settings_set_sotd_post_mode",
   "autostart_get", "autostart_set", "tray_pin_main", "main_minimize", "agent_open_guide", "agent_setup_text", "agent_reply",
-  "bridge_info", "bridge_log", "bridge_open_install_page", "log_open_folder", "mcp_connect", "mcp_detect", "mcp_disconnect",
+  "bridge_info", "bridge_log", "log_open_folder", "mcp_connect", "mcp_detect", "mcp_disconnect",
   "outlet_connect", "outlet_disconnect", "outlet_set_on",
   "report_clear", "report_close", "report_log", "report_open", "report_refresh", "report_send",
-  // The tray panel and the extension hub, Discord presence, Last.fm sign-in
+  // The tray panel and the bridge's hub, Discord presence, Last.fm sign-in
   "np_publish", "appearance_publish", "page_sample_publish", "presence_clear", "presence_close", "presence_set",
   "lastfm_begin_auth", "lastfm_cancel_auth", "lastfm_disconnect", "lastfm_open_profile",
   // Updates (the site is the update), loudness memory, usage counts (USAGE-COUNTS.md: the app's)

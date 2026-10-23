@@ -2,7 +2,7 @@
 // fast switches (Theme / Skin / Surface / Account) and one "Settings…" row that
 // summons this card into a slot. Everything else lives here, in one scroll with
 // section headers: the rehomed toggles (Always on Top, Minimize to Tray, hover menus,
-// Library Add, the Extension block) and the v1 cut of FUTURE-SETTINGS (§1 §4 §5a §5b
+// Library Add) and the v1 cut of FUTURE-SETTINGS (§1 §4 §5a §5b
 // §7 §8 §14 §16) plus the Rewind gate. A control lives in exactly one place.
 //
 // Row kinds: TOGGLE (label + dot), CHOICE (label + one split pill of up to three
@@ -2153,13 +2153,11 @@ function mountSettings(
       ],
     },
     {
-      // Outside programs that drive DeetsMusic: agents (AGENT-SETUP.md), then the browser
-      // extension's bridge status and install page (EXTENSION.md).
+      // Outside programs that drive DeetsMusic: agents (AGENT-SETUP.md). The browser
+      // extension's rows left v1 (2026-10-23, EXTENSION.md, parked).
       title: "Connections",
       count: 6,
-      tail: `<div class="set__status" id="set-agent-status">…</div>
-        <div class="set__status" id="set-ext-status">Extension bridge off</div>
-        <button class="set__row set__action" type="button" data-action="ext-install" title="Opens the install page in your browser. The extension is experimental"><span class="set__label">Extension install guide (experimental)</span></button>`,
+      tail: `<div class="set__status" id="set-agent-status">…</div>`,
       rows: [
         {
           kind: "split", id: "agent", label: "Agent control",
@@ -2836,7 +2834,7 @@ function mountSettings(
     paintReport();
     wireMenus();
     wireRanges();
-    refreshExtension();
+    refreshAgentStatus();
     paintUpdate();
     paintLook();
     mountChips();
@@ -2874,16 +2872,14 @@ function mountSettings(
   const scrollObserver = new ResizeObserver(markScrollable); // a window resize or surface switch
   scrollObserver.observe(body);
 
-  // ── extension block (EXTENSION.md): bridge status + the agent status line ──
+  // ── the agent status line: the bridge's port (AGENT-SETUP.md) ──
   interface BridgeInfo { port: number | null }
-  const refreshExtension = () => {
-    const el = body.querySelector<HTMLElement>("#set-ext-status");
+  const refreshAgentStatus = () => {
     const ag = body.querySelector<HTMLElement>("#set-agent-status");
-    if (!el && !ag) return;
+    if (!ag) return;
     invoke<BridgeInfo>("bridge_info")
       .then((b) => {
-        if (el) el.textContent = b.port ? `Extension bridge on 127.0.0.1:${b.port}` : "Extension bridge off (no free port)";
-        if (ag) ag.textContent = !agentControl ? "Off" : b.port ? `Ready at 127.0.0.1:${b.port}` : "Off (no free port)";
+        ag.textContent = !agentControl ? "Off" : b.port ? `Ready at 127.0.0.1:${b.port}` : "Off (no free port)";
       })
       .catch((e) => console.warn("[bridge] info", e));
   };
@@ -2907,11 +2903,6 @@ function mountSettings(
       // The click that trails a section drag is not a fold (MOVABLE-ROWS.md §4.2).
       if (sections_drag.consumeClick()) return;
       toggleSection(fold);
-      return;
-    }
-    const action = t.closest<HTMLElement>("[data-action]")?.dataset.action;
-    if (action === "ext-install") {
-      invoke("bridge_open_install_page").catch((err) => console.error("[bridge] install page", err));
       return;
     }
     // My reports: Open (the browser, report.rs checks the code is one it saved) / Copy link.

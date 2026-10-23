@@ -3,8 +3,8 @@
 // Publishes the player's state + progress + volume to Rust (`np_publish`), which
 // mirrors it to the tray panel and the `/now-playing` debug route; executes the
 // transport commands the panel sends back (`np-command`); reloads the shared track
-// store when the extension/tray adds a song (`library-changed`); and reports the
-// active theme/skin so the panel and the extension popup can match the app.
+// store when the tray adds a song (`library-changed`); and reports the active
+// theme/skin so the panel can match the app.
 //
 // A pure consumer of the player's broadcasts: it never
 // touches MusicKit directly.
@@ -133,7 +133,7 @@ export function publish(force = false): void {
 }
 
 /**
- * Tell Rust (→ tray panel, → extension /health) which theme × skin is live, and with it
+ * Tell Rust (→ tray panel, → /health) which theme × skin is live, and with it
  * the rest of the context `/health` reports: surface, Sound on, record player. The
  * heaviness sampler reads that line, so a heavy sample says what the app was doing
  * (DEBUGGING.md §2026-09-17 review, item 1). Cheap: one IPC call, only on a change.
@@ -374,7 +374,7 @@ export function initNpBus(): void {
     lastProgress = p;
     publish();
   });
-  // Library membership changes (sync, an add from the tray/extension) flip the "+".
+  // Library membership changes (sync, an add from the tray) flip the "+".
   onTracksChange(() => publish(true), "np-bus.publish");
   onFavoritesChange(() => publish(true)); // the tray's ♥ label follows a ♥ set anywhere
   onPinsChange(() => publish(true)); // and its Pin / Unpin label a pin set anywhere
