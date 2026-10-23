@@ -225,6 +225,9 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **1.0.0 is LIVE (2026-10-23, `4e6fa3e`, published; RELEASE.md §0a).** The first public
+  release: the grand opening, update group 2, his three-line notes. Next on live: watch the
+  first installs and the `csp-` lines in the weekly health counts.
 - **0.99.0, a test build (2026-10-23, `be1fe6f`, merged into `main`, not published).** The
   grand opening, the tray fixes (TRAY.md §8) and the CSP **enforced** (CSP.md §6, step 3). Built
   and signed to `installers/DeetsMusic_0.99.0_x64-setup.exe`; he installs it and uses it a day.
