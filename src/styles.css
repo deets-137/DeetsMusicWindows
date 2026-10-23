@@ -384,7 +384,10 @@ body {
 .flyout__half:hover { background: var(--surface-hover); box-shadow: inset 0 0 0 var(--flyout-ring-w) var(--text); }
 
 /* ── Account flyout ─────────────────────────────────────────── */
-.flyout--account { min-width: var(--flyout-account-w); }
+/* A fixed width, not a floor: a long note (the sign-in's "Continue in your browser…", its
+   local sign-in link, Last.fm's "Click Allow…") wraps under the button instead of widening
+   the flyout and both buttons on the click (his ask, 2026-10-23). */
+.flyout--account { width: var(--flyout-account-w); }
 .account { display: flex; flex-direction: column; gap: var(--space-2); }
 /* Apple Music, then Last.fm (LASTFM.md §4): one gap between the two accounts. */
 .account + .account { margin-top: var(--space-3); }

@@ -972,7 +972,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
 | `--flyout-ring-w` | `var(--focus-ring-w)` | — | the hover ring on a flyout row, and the inset ring on a half |
-| `--flyout-account-w` | `200px` | — | the Account flyout's floor: the sign-in line must not wrap |
+| `--flyout-account-w` | `200px` | — | the Account flyout's width, fixed: a long note wraps, the buttons keep their width |
 | `--spinner-w` | `2px` | — | the account spinner's stroke |
 | `--caret-size` | `8px` | — | the small chevron: a pill's caret, a shelf's fold, a column's sort arrow |
 | `--radius-round` | `999px` | — | a capsule or a circle: the fully-rounded radius the pill tokens also use |
