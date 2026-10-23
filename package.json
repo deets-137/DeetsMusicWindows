@@ -4,7 +4,7 @@
   "version": "0.99.0",
   "type": "module",
   "deetsmusic": {
-    "updateGroup": 1
+    "updateGroup": 2
   },
   "scripts": {
     "dev": "vite",

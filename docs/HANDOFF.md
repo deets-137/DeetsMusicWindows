@@ -230,9 +230,14 @@ each step that touches those calls.
   and signed to `installers/DeetsMusic_0.99.0_x64-setup.exe`; he installs it and uses it a day.
   **Next:** read the `csp-<directive>:` lines in his installed app's log and the `diag` ring's
   `csp:blocked`; then the public release as **1.0.0 or higher** (an install of 0.99.0 takes no
-  lower version). Before building it, put `installers/velopack/DeetsMusic-deetsmusic` back from
-  `installers/velopack/_DeetsMusic-deetsmusic.before-0.99.0`, so 1.0.0's delta is against 0.32.0.
-  Never `release:publish` 0.99.0.
+  lower version). **Correction (2026-10-23):** 0.32.0 was never published; the live channel's
+  latest is 0.31.0 (`/update/deetsmusic/releases`). So before building 1.0.0, put
+  `installers/velopack/DeetsMusic-deetsmusic` back from
+  `_DeetsMusic-deetsmusic.before-0.99.0` AND take 0.32.0 out of it (its two packages and its
+  rows in `releases.deetsmusic.json`), so 1.0.0's delta is against 0.31.0 and the live feed
+  names no package that is not on R2 (`liveAssets` in publish-update.mjs copies the local
+  feed). Never `release:publish` 0.99.0. 1.0.0 starts update group 2 (`package.json`, his call
+  2026-10-23): no 1.0.0 install can roll back to a 0.x version (RELEASE.md §6.5).
 - **The browser extension left v1 (2026-10-23, his call; not in 0.99.0).** `extension/` stays
   in the repo, parked; the installer, Settings › Connections and the bridge no longer carry it
   (EXTENSION.md, the status box). The bridge now refuses any request with an `Origin` header.

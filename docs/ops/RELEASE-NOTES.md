@@ -64,8 +64,8 @@ others. The welcome screen's preview covers load before you sign in.
 A test build for the owner's own PC (2026-10-23), to run the enforced policy for a day. It never
 reached the update channel. The public release after it must be 1.0.0 or higher: an install of
 0.99.0 takes no lower version. Before that release, put back `installers/velopack/` from
-`_DeetsMusic-deetsmusic.before-0.99.0`, so its delta is built against 0.32.0, the version
-strangers have.
+`_DeetsMusic-deetsmusic.before-0.99.0` and take 0.32.0 out of it: 0.32.0 was never published,
+so 0.31.0 is the version strangers have, and the delta is built against it (HANDOFF.md).
 
 ## 0.32.0 — 2026-10-22
 

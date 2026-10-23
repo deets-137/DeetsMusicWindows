@@ -558,6 +558,10 @@ Settings row, verb-first per the label style: **Updates — Automatic / Ask / Of
   columns leaves the db readable by an older build; one that re-keys rows does not. **Release
   rule:** a destructive migration starts a new channel group (`package.json`
   `deetsmusic.updateGroup`), and the index carries the group per version.
+- **Group 2 starts at 1.0.0 (his call, 2026-10-23):** no install of 1.0.0 or later can roll back
+  to a 0.x version. 0.28.0 … 0.31.0 stay group 1 in the index; a 0.x install still updates
+  forward to 1.0.0 (an update ignores the group). Roll back shows *No earlier version to roll
+  back to yet* until 1.0.1 is published.
 - Versions compare with `compareVersions` (update-rules.ts and the Worker): a pre-release sorts
   before its release, and `beta.10` after `beta.9`.
 
