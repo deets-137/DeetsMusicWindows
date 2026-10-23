@@ -231,12 +231,13 @@ each step that touches those calls.
   **Next:** read the `csp-<directive>:` lines in his installed app's log and the `diag` ring's
   `csp:blocked`; then the public release as **1.0.0 or higher** (an install of 0.99.0 takes no
   lower version). **Correction (2026-10-23):** 0.32.0 was never published; the live channel's
-  latest is 0.31.0 (`/update/deetsmusic/releases`). So before building 1.0.0, put
-  `installers/velopack/DeetsMusic-deetsmusic` back from
-  `_DeetsMusic-deetsmusic.before-0.99.0` AND take 0.32.0 out of it (its two packages and its
-  rows in `releases.deetsmusic.json`), so 1.0.0's delta is against 0.31.0 and the live feed
+  latest is 0.31.0 (`/update/deetsmusic/releases`). **Done 2026-10-23:**
+  `installers/velopack/DeetsMusic-deetsmusic` is the `before-0.99.0` copy with 0.32.0 taken out
+  (its two packages, its feed rows, its `RELEASES` line); its feed now equals the live one,
+  0.28.0 … 0.31.0, SHA-256 for SHA-256. So 1.0.0's delta is against 0.31.0 and the live feed
   names no package that is not on R2 (`liveAssets` in publish-update.mjs copies the local
-  feed). Never `release:publish` 0.99.0. 1.0.0 starts update group 2 (`package.json`, his call
+  feed). The 0.99.0 folder is kept as `_DeetsMusic-deetsmusic.with-0.99.0`. The version is
+  1.0.0 in the six files; next: `npm run release`. Never `release:publish` 0.99.0. 1.0.0 starts update group 2 (`package.json`, his call
   2026-10-23): no 1.0.0 install can roll back to a 0.x version (RELEASE.md §6.5).
 - **The browser extension left v1 (2026-10-23, his call; not in 0.99.0).** `extension/` stays
   in the repo, parked; the installer, Settings › Connections and the bridge no longer carry it
