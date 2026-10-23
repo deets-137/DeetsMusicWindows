@@ -21,7 +21,9 @@ folder. In DeetsSupport `signin.js`: a `srcset` in place of the pixel-fit script
 the six Happy faces in `FONTS` (the copy also brought the sheets up to the app). Checked:
 `wrangler deploy --dry-run`; a local `wrangler dev` served every mark, the favicon, the 1024
 icon and the new faces (200), `mark-50` 404; headless Edge at 150 % drew the city sharp in
-Metal / Black-Red. Not deployed, not committed in DeetsSupport (his call).
+Metal / Black-Red. Committed (DeetsMusic `b898b80`, DeetsSupport `86b188d` on `net-worked`) and
+deployed on his go (version `8e7679b2`); the live marks, favicon and icon match the commit byte
+for byte, the new faces answer 200.
 
 What Claude decided inside his ask, to review: the mark grows from 40 to 48 CSS px (48 puts the
 face at a whole scale at 100 %, 150 % and 200 %); the tab icon stays the head.

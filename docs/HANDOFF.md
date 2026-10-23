@@ -248,13 +248,14 @@ each step that touches those calls.
   player, the extension's removal): merge them into `main` before 1.0.0. The nav bar's page
   numbers stay for now (his call: they show how far along a user is). Kept by him 2026-10-23:
   Claude's `point_up.png` and page 4's labels.
-- **The sign-in page shows the city icon (2026-10-23, his ask; not deployed).** The page's mark
+- **The sign-in page shows the city icon (2026-10-23, his ask; LIVE, DeetsSupport `86b188d`).** The page's mark
   is the city at 48 CSS px, one file per screen density (`npm run icons` →
   `src-tauri/icons/signin/`, a `srcset`), so the face stays pixel-true; Apple's Access Request
   takes the 1024 city (`app-icon.png`); the browser tab keeps the head (a city is unreadable at
   16 px). `npm run signin:assets` also brought the stylesheets up to the app (the Happy and
-  Metal changes) and the Happy faces, now served by `signin.js`. DeetsSupport is changed, not
-  committed; the deploy is his call (then curl `/signin/mark-48.png`, RELEASE.md §1).
+  Metal changes) and the Happy faces, now served by `signin.js`. Deployed 2026-10-23 (version
+  `8e7679b2`, his go); every mark, the favicon, the icon and the new faces curl 200 and match
+  the commit. Open: his look at a real sign-in.
 - **Bugs read from his installed log (2026-10-23).** (1) After the PC woke at 13:34 on
   2026-10-22, the app started at 13:35 with no network: the syncs failed and the "offline" check
   ran once; then the log went silent at 13:36 (no 5-minute `diag` flush, no 5-minute Apple
