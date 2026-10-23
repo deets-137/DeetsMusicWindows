@@ -17,8 +17,11 @@ Writes:
   exact size, so the taskbar draws each 1:1.
 - src-tauri/icons/{32x32, 64x64, 128x128, 128x128@2x, icon}.png, app-icon.png (1024),
   mcpb/icon.png (256): the city. extension/icons/: the head alone (the browser toolbar).
+- src-tauri/icons/signin/: the sign-in page's mark, the city at 48 CSS px per screen density,
+  and its tab icon (the head).
 Not here: icons-beta/ (its look is open), icon.icns (macOS). After it: `npm run signin:assets`
-copies app-icon.png to the sign-in page; a build picks up both .ico files (build.rs watches).
+copies app-icon.png and the sign-in marks to the sign-in page; a build picks up both .ico files
+(build.rs watches).
 """
 import sys
 from pathlib import Path
@@ -118,6 +121,18 @@ files = {
 for rel, im in files.items():
     im.save(ROOT / rel)
 
+# The hosted sign-in page's mark (DeetsSupport; `npm run signin:assets` copies them): the city
+# at 48 CSS px (the head x2 at 100 %), one file per screen density for the page's srcset, so no
+# browser rescales it. The tab's icon is his 16 x2: a city is unreadable at tab size, as in
+# icon.ico. Apple's Access Request keeps app-icon.png.
+SIGNIN_MARK = 48
+SIGNIN_DENSITIES = (1, 1.25, 1.5, 1.75, 2, 2.5, 3)
+signin = ROOT / "src-tauri/icons/signin"
+signin.mkdir(exist_ok=True)
+for density in SIGNIN_DENSITIES:
+    city(round(SIGNIN_MARK * density)).save(signin / f"mark-{round(SIGNIN_MARK * density)}.png")
+grow(d16, 2).save(signin / "favicon.png")
+
 
 def write_ico(frames, rel):
     order = sorted(frames)
@@ -134,6 +149,7 @@ def write_ico(frames, rel):
 print(f"[icons] icon.ico ({write_ico(ico, 'src-tauri/icons/icon.ico')}), every frame read back")
 print(f"[icons] tray.ico ({write_ico(tray, 'src-tauri/icons/tray.ico')}), every frame read back")
 print(f"[icons] {len(files)} PNGs; {len(logos)} identity logos in src-tauri/identity/Assets")
+print(f"[icons] sign-in: {len(SIGNIN_DENSITIES)} marks and the tab icon in src-tauri/icons/signin")
 
 # `--site <DeetsSolutions>`: the site's two icons at the exact size they are shown, one file
 # per screen density (srcset 1x / 1.5x / 2x), so no browser rescales pixel art. The head at a

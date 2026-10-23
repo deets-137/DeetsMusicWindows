@@ -237,20 +237,35 @@ each step that touches those calls.
   in the repo, parked; the installer, Settings › Connections and the bridge no longer carry it
   (EXTENSION.md, the status box). The bridge now refuses any request with an `Origin` header.
   No release-notes line: there are no live users before v1 (his word, 2026-10-23).
-  **Desk test:** the tray's *Add to Library* for a song from another player (the shared
-  `resolve` / `add`), `deetsmusic status` / `search` / `play` from a shell, and Settings ›
-  Connections (the agent status line shows the port; no extension rows).
+  Desk test passed 2026-10-23 (his word).
 - **The grand opening (2026-10-22/23, branch `grand-opening`, merged into `main` with 0.99.0).**
   The startup screen: GRAND-OPENING.md §1–§11 (five pages: Hi, Layout-Maxxing Time, Fashion,
-  Nitpicks, You're Ready), each part with its desk test; the tour after it (ONBOARDING.md §4.0:
-  four steps, Next on each, Deets points); usage counts told by page 4 (USAGE-COUNTS.md §1). Open:
-  his hand test of the whole page on a fresh install (`npm run dev:fresh`); the real player after
-  the shared changes — Metal's stress cases (metal.md §6.7, §6.9) and Ocean's desk test
-  (OCEAN.md §5, §8); the signed-out covers on the mint's token, which only an installed release
-  build takes (a dev build signs with the local key); the demo shows the page to a fresh visitor
-  too (not checked; since 2026-10-23 the demo skips the opening and keeps the tour). The nav
-  bar's page numbers stay for now (his call: they show how far along a user is). Kept by him
-  2026-10-23: Claude's `point_up.png` and page 4's labels.
+  Nitpicks, You're Ready); the tour after it (ONBOARDING.md §4.0: four steps, Next on each,
+  Deets points); usage counts told by page 4 (USAGE-COUNTS.md §1). Every desk test passed
+  2026-10-23 (his word), with the first sign-in (DATA-ARCHITECTURE.md §5d), Metal's and
+  Ocean's cases and the demo. Six commits after 0.99.0 are on `grand-opening` only (the first
+  sign-in, the account flyout, the quick panel squares, the walk's pointing, Happy's full
+  player, the extension's removal): merge them into `main` before 1.0.0. The nav bar's page
+  numbers stay for now (his call: they show how far along a user is). Kept by him 2026-10-23:
+  Claude's `point_up.png` and page 4's labels.
+- **The sign-in page shows the city icon (2026-10-23, his ask; not deployed).** The page's mark
+  is the city at 48 CSS px, one file per screen density (`npm run icons` →
+  `src-tauri/icons/signin/`, a `srcset`), so the face stays pixel-true; Apple's Access Request
+  takes the 1024 city (`app-icon.png`); the browser tab keeps the head (a city is unreadable at
+  16 px). `npm run signin:assets` also brought the stylesheets up to the app (the Happy and
+  Metal changes) and the Happy faces, now served by `signin.js`. DeetsSupport is changed, not
+  committed; the deploy is his call (then curl `/signin/mark-48.png`, RELEASE.md §1).
+- **Bugs read from his installed log (2026-10-23).** (1) After the PC woke at 13:34 on
+  2026-10-22, the app started at 13:35 with no network: the syncs failed and the "offline" check
+  ran once; then the log went silent at 13:36 (no 5-minute `diag` flush, no 5-minute Apple
+  recheck) until a new start at 13:56 with no quit line. Not known: whether he closed it by
+  force or it hung. (2) The tao panic on quit (`cannot move state from Destroyed`) came on 3 of
+  the last 7 quits, also with no Windows shutdown (03:05 on 2026-10-23): it is not only the
+  session-end path (DEBUGGING.md § What the 2026-09-17 health check found). It comes after the
+  `calls quit` line, so the exit's own work is done. (3) A WebView2 utility process (kind 4)
+  exits with 0xC0000142 one second after every launch; harmless, noise in the log. (4) One 403
+  on a library page in a full sync (03:04:53): the Apple check said signed in, and the pass
+  finished 4,083 of 4,083.
 
 - **Drill motion review (2026-10-21, on `happy-thirtytwo`; paused by him for the evening).** Go
   to Album / Artist and Back: five faults fixed (CARD-GROW.md §22.2), his four calls built (§22.4,
@@ -382,7 +397,8 @@ each step that touches those calls.
 
 - **Redesign the sign-in flow before a public release** (2026-10-17, his words: "I wanted to
   redesign the login flow eventually before public (non-friends) release anyway"). The mark's
-  size snap (DeetsSupport `16f8f45`) is "for now". The flow: DATA-ARCHITECTURE.md §2a, HOP-IN.md.
+  size snap (DeetsSupport `16f8f45`) is "for now"; since 2026-10-23 the mark is the city icon
+  (above, *Built, waiting*). The flow: DATA-ARCHITECTURE.md §2a, HOP-IN.md.
 
 - **Open an item inside Home** (2026-10-17): today an album, playlist or artist opened from Home
   hops to the card that holds it. On the collection engine it would open inside Home, with
@@ -431,8 +447,9 @@ each step that touches those calls.
   (GRAPHICS-FALLBACK.md §9 item 3).
 - **Friends see your picks and your Diary** (FRIENDS.md §20; never tell a user it exists).
 - **The user guide as a wiki** (DOCS-ORG.md §13.10, guide/marketing.md §1): next, the outline
-  block for each page. Before a public announcement (RELEASE.md §7): screenshots, a GitHub
-  Release, the guide.
+  block for each page. Before a public announcement (RELEASE.md §7): a GitHub Release, the
+  guide. His own announcements and images are done (2026-10-23, his word; ideas/launch.md is a
+  record only).
 - **Full player:** Mini's player view; a turning copy of the Press record in the flight
   (fullscreen-player.md §8).
 - **Motion review forks:** the surface-pick motion, the Now Playing song change (SHOTS.md §5e).

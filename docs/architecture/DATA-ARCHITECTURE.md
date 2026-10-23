@@ -90,8 +90,11 @@ as a legacy fallback), so sign-in survives restarts.
 > token, so Apple needs no redirect URL. The design problem is only the return path.
 
 **As built (2026-09-13).** The page is `../DeetsSupport/src/signin.js`; its look is
-`src/signin/` there, a COPY of `src/styles/{palette,themes,skin,fonts}.css`, every font and
-`app-icon.png`, made by **`npm run signin:assets`** here (RELEASE.md §1 lists it). The app
+`src/signin/` there, a COPY of `src/styles/{palette,themes,skin,fonts}.css`, every font,
+`app-icon.png` (Apple's Access Request icon) and `src-tauri/icons/signin/` (the page's mark,
+the city at 48 CSS px in one file per screen density for its `srcset`, and the tab icon, the
+head; `npm run icons` makes them, 2026-10-23), made by **`npm run signin:assets`** here
+(RELEASE.md §1 lists it). A new font here is also a line in `signin.js`'s `FONTS`. The app
 side is `apple.rs` (`begin_hosted`, `handle_link`, `accept_token`, `link_scheme`) and
 `lib.rs` (the single-instance callback hands a `<scheme>://…` argv to `handle_link`; a debug
 build registers `deetsmusic-dev://` on every launch; the release scheme comes from
@@ -521,8 +524,8 @@ The flow is the same from the grand opening's page 1 and from the title menu ›
 The incremental pass does the same: its `done` says `artists: true` and the caller's artist pass
 sends `artists`. The grand opening's own warm-up now only logs `onboarding:warm`.
 
-**Desk test** (dev app, restart the runner: new Rust): `npm run dev:fresh`, then sign in from the
-title menu › Account.
+**Desk test** (dev app, restart the runner: new Rust): passed 2026-10-23 (his word).
+`npm run dev:fresh`, then sign in from the title menu › Account.
 1. While the pass reads, the empty Library and Home show *Reading your library… N of M songs*,
    and the count moves.
 2. The cards fill about half as long after the token as before (the log: `full sync done` comes

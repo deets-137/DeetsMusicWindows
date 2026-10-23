@@ -8,6 +8,8 @@
 //   src/styles/{palette,themes,skin,fonts}.css   →  <same names>
 //   src/styles/fonts/*                            →  fonts/*   (the faces + NOTICE.txt)
 //   app-icon.png                                  →  icon.png  (Apple's Access Request icon)
+//   src-tauri/icons/signin/*                      →  <same names> (the page's mark per screen
+//                                                    density and the tab icon; `npm run icons`)
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +35,8 @@ const copy = (from, to) => {
 for (const name of ["palette.css", "themes.css", "skin.css", "fonts.css"]) copy(join(root, "src", "styles", name), join(dest, name));
 for (const name of readdirSync(join(root, "src", "styles", "fonts"))) copy(join(root, "src", "styles", "fonts", name), join(dest, "fonts", name));
 copy(join(root, "app-icon.png"), join(dest, "icon.png"));
+const marks = join(root, "src-tauri", "icons", "signin");
+for (const name of readdirSync(marks)) copy(join(marks, name), join(dest, name));
 writeFileSync(
   join(dest, "GENERATED.txt"),
   "Copied from DeetsMusic by scripts/signin-assets.mjs (npm run signin:assets). Do not edit here.\n",

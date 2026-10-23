@@ -6,6 +6,9 @@ updated: 2026-10-18
 ---
 # Launch posts — Product Hunt and Reddit
 
+> **Superseded (2026-10-23, his word):** he wrote his own launch announcements and took his own
+> images. This draft is a record only.
+>
 > A first draft (2026-10-18), not posted. He rewrites the words himself; this is the outline
 > and the facts (his note, 2026-10-18; marketing.md §1: he writes every word a stranger reads).
 > §1 is the facts every post uses. §2 is Product Hunt. §3 is one Reddit post per community.

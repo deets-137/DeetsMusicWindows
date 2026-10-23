@@ -267,6 +267,8 @@ the worktree (uncommitted) for the build.
     `StoreLogo`.
   - The PNG set (`32x32` … `icon.png`, `app-icon.png` 1024, `mcpb/icon.png`) is the city; the
     extension's toolbar icons stay the head.
+  - `src-tauri/icons/signin/` (2026-10-23): the hosted sign-in page's mark, the city at 48 CSS
+    px per screen density (48 … 144 px), and its tab icon, the head (DATA-ARCHITECTURE.md §2a).
 - **`app_icon.rs`**: the tray and a window's SMALL icon (Alt+Tab) read `tray.ico`
   (`CreateIconFromResourceEx` on the frame's own bytes); the BIG icon (the taskbar button of a
   window without identity: the dev app, or a failed registration) stays the exe's `icon.ico`,

@@ -1,6 +1,6 @@
 ---
 status: project
-desk_test: open
+desk_test: passed 2026-10-23
 sources: [src/onboarding.ts, src/boot-cover.ts, src/onboarding-welcome.ts, src/onboarding-looks.ts, src/onboarding-fashion.ts, src/onboarding-preview.ts, src/onboarding-nitpicks.ts, src/onboarding-letter.ts, src/ocean.ts, src/metal.ts, src/vinyl.ts, src/album-color.ts, src/styles/onboarding.css, src/main.ts, src/compass.ts, src/styles/skin.css, src/pet.ts, index.html]
 updated: 2026-10-23
 ---

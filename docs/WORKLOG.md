@@ -6,6 +6,30 @@ updated: 2026-10-23
 ---
 # DeetsMusic — Work log
 
+## 2026-10-23 — the sign-in page shows the city icon; desk tests closed; bugs read from the log (branch `grand-opening`)
+
+**His word:** every open desk test of the grand opening, the extension's removal and the first
+sign-in passed. He wrote his own launch announcements and took his own images (ideas/launch.md
+is now a record).
+
+**The sign-in mark (his ask).** The hosted page showed the head from DeetsSupport `201bd06`,
+copied the day before the icon became the city. `scripts/icons.py` now also writes
+`src-tauri/icons/signin/`: the city at 48 CSS px for 1, 1.25, 1.5, 1.75, 2, 2.5 and 3× (48 …
+144 px; the head x2 at 100 %), and the tab icon (his 16 x2). `signin-assets.mjs` copies that
+folder. In DeetsSupport `signin.js`: a `srcset` in place of the pixel-fit script, the
+`/signin/mark-<px>.png` and `/signin/favicon.png` routes, the sheets' `?v=` to 2026-10-23, and
+the six Happy faces in `FONTS` (the copy also brought the sheets up to the app). Checked:
+`wrangler deploy --dry-run`; a local `wrangler dev` served every mark, the favicon, the 1024
+icon and the new faces (200), `mark-50` 404; headless Edge at 150 % drew the city sharp in
+Metal / Black-Red. Not deployed, not committed in DeetsSupport (his call).
+
+What Claude decided inside his ask, to review: the mark grows from 40 to 48 CSS px (48 puts the
+face at a whole scale at 100 %, 150 % and 200 %); the tab icon stays the head.
+
+**Bugs read from his installed log** (HANDOFF › *Bugs read from his installed log*): the silent
+session after a wake (2026-10-22 13:35–13:56), the tao panic on 3 of 7 quits with no shutdown,
+the kind-4 WebView2 exit at each launch, one 403 in a full sync. No code changed for them.
+
 ## 2026-10-23 — the first sign-in fills the cards sooner; Playlists and Radio sync on it (branch `grand-opening`)
 
 **His report.** A sign-in on a fresh install: the cards stayed blank a long time, and the
