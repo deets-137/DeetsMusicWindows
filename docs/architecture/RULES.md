@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.25.0
 desk_test: passed 2026-09-26
 sources: [src/rules-eval.ts, src/rules.ts, src/rule-chip.ts, src/look.ts, src/look-ids.ts, src/settings-store.ts, src/card-grow.ts, src/look-schedule.ts, src/sleep.ts, src/sound.ts, src/presence.ts, src/friends.ts, src/layout.ts, src/collection-card.ts, src/search-card.ts, src/diary-card.ts, src/quick-panel.ts, src/playlists-card.ts, src/rules-recipes.ts, src/agent-rules-shape.ts]
-updated: 2026-10-14
+updated: 2026-10-23
 ---
 # DeetsMusic — the rules engine
 
@@ -253,7 +253,7 @@ for that target. Its `onHand` says when it acts again:
 
 - Resume on the chip ends a hold at once.
 - After a restart, `next` and `session` holds are gone; the rule applies at its first check.
-- The look schedule's **Menu pick lasts** row maps to it: *Until next change* = `next`,
+- The look schedule's **Manual pick lasts** row maps to it: *Until next change* = `next`,
   *For good* = `off` (which turns the schedule row to Off, as today).
 
 ## 9. The chip

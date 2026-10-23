@@ -11,18 +11,21 @@
 // in-card nav tokens (--nav-dur, --nav-ease, --nav-off-opacity); the page's two positions
 // are --ob-page-above / --ob-page-below (skin.css).
 //
-// It opens on the launch that found a brand-new install (settings-store.ts
-// `isFreshInstall`), after the launch cover, and the first-run walk (walk.ts) waits for it
-// to close: the sprites point at controls this card would hide. `__onboarding.open()` and
+// It opens on a brand-new install (settings-store.ts `isFreshInstall`: the saved
+// `openingPending`, so a launch that quits during it opens it again), after the launch cover,
+// and the first-run walk (walk.ts) waits for it to close: the sprites point at controls this
+// card would hide. Closing it clears `openingPending`. `__onboarding.open()` and
 // the Compass's Onboarding row open it at any time.
 
-import { isFreshInstall } from "./settings-store";
+import { isFreshInstall, setting, setSetting } from "./settings-store";
 import * as diag from "./diag";
 import * as frames from "./frames";
 import { settingsCard } from "./settings-card";
 import { mountWelcome } from "./onboarding-welcome";
 import { mountLooks } from "./onboarding-looks";
 import { mountFashion } from "./onboarding-fashion";
+import { mountNitpicks } from "./onboarding-nitpicks";
+import { mountLetter } from "./onboarding-letter";
 import type { CardInstance } from "./cards";
 import { tokenMs, revealApp } from "./boot-cover";
 import { applePlaylistsSync, notifyPlaylistsChanged } from "./playlists";
@@ -40,10 +43,12 @@ const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M
 const ICON_COG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.41 2.96A9.4 9.4 0 0 1 14.59 2.96L14.75 6.11A6.5 6.5 0 0 1 15.73 6.68L18.53 5.24A9.4 9.4 0 0 1 21.12 9.73L18.48 11.43A6.5 6.5 0 0 1 18.48 12.57L21.12 14.27A9.4 9.4 0 0 1 18.53 18.76L15.73 17.32A6.5 6.5 0 0 1 14.75 17.89L14.59 21.04A9.4 9.4 0 0 1 9.41 21.04L9.25 17.89A6.5 6.5 0 0 1 8.27 17.32L5.47 18.76A9.4 9.4 0 0 1 2.88 14.27L5.52 12.57A6.5 6.5 0 0 1 5.52 11.43L2.88 9.73A9.4 9.4 0 0 1 5.47 5.24L8.27 6.68A6.5 6.5 0 0 1 9.25 6.11L9.41 2.96Z"/><circle cx="12" cy="12" r="3"/></svg>';
 
 /** The pages the nav bar opens, in the bar's order from the top (the order the slide reads).
- *  Each of pages 1–3 shows its number on its button until the owner draws its icon. */
-const PAGES = ["one", "two", "three", "settings"] as const;
+ *  Each of pages 1–5 shows its number on its button until the owner draws its icon. */
+const PAGES = ["one", "two", "three", "four", "five", "settings"] as const;
 type Page = (typeof PAGES)[number];
-const NUMBERED: [Page, number][] = [["one", 1], ["two", 2], ["three", 3]];
+const NUMBERED: [Page, number][] = [["one", 1], ["two", 2], ["three", 3], ["four", 4], ["five", 5]];
+/** The last numbered page: its button is *Let's Boogie*. */
+const LAST: Page = "five";
 
 /** One page in the pane: its box, the card mounted in it (Settings), and its slide in. */
 interface Shown {
@@ -70,7 +75,9 @@ function buildPage(page: Page): Shown {
     page === "settings" ? settingsCard.mount(el)
     : page === "one" ? mountWelcome(el)
     : page === "two" ? mountLooks(el)
-    : mountFashion(el);
+    : page === "three" ? mountFashion(el)
+    : page === "four" ? mountNitpicks(el)
+    : mountLetter(el);
   return { page, el, inst };
 }
 
@@ -143,12 +150,15 @@ function showPage(page: Page): void {
   anim.oncancel = end;
 }
 
-/** The button at the foot of a page (his call, 2026-10-22): *Next* on pages 1 and 2, *Let's Boogie*
- *  on page 3 (the end: the app comes in as at launch), none on Settings. */
+/** The button at the foot of a page (his call, 2026-10-22): *Next* on pages 1 to 4, *Let's Boogie*
+ *  on page 5 (the end: the app comes in as at launch; pages 4 and 5 added 2026-10-23), none on
+ *  Settings. */
 const FORWARD: Partial<Record<Page, { label: string; hint: string }>> = {
   one: { label: "Next", hint: "Shows the next page" },
   two: { label: "Next", hint: "Shows the next page" },
-  three: { label: "Let's Boogie", hint: "Closes this page and opens DeetsMusic" },
+  three: { label: "Next", hint: "Shows the next page" },
+  four: { label: "Next", hint: "Shows the next page" },
+  five: { label: "Let's Boogie", hint: "Closes this page and opens DeetsMusic" },
 };
 function paintForward(page: Page): void {
   const b = card?.querySelector<HTMLButtonElement>(".onboarding__forward");
@@ -158,11 +168,11 @@ function paintForward(page: Page): void {
   if (!f) return;
   b.textContent = f.label;
   b.title = f.hint;
-  b.dataset.end = String(page === "three");
+  b.dataset.end = String(page === LAST);
 }
 function forward(): void {
   if (!current) return;
-  if (current.page === "three") return void boogie();
+  if (current.page === LAST) return void boogie();
   const i = PAGES.indexOf(current.page);
   showPage(PAGES[i + 1]);
 }
@@ -251,6 +261,7 @@ export function closeOnboarding(): void {
   document.removeEventListener("keydown", onKey);
   window.removeEventListener("deets:signed-in", warmUp);
   diag.log("onboarding:close");
+  if (setting("openingPending")) setSetting("openingPending", false);
   const done = closed;
   closed = null;
   done?.();

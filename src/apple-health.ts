@@ -82,8 +82,8 @@ export function show(t: Trouble, force = false, source = "show", quiet = false):
     handle?.dismiss();
     handle = null;
     window.clearTimeout(heldTimer);
-    // The first-run walk owns "you are signed out" while it is on screen: its step 1 says
-    // the same thing with the same button, and one cause must raise one notice (TOASTS.md).
+    // The first-run walk owns "you are signed out" while it is on screen: the grand opening
+    // just before it asked for the sign-in, and one cause must raise one notice (TOASTS.md).
     // A user who has ever signed in never sees the walk, so they get this sticky as before.
     const owned = t === "signedOut" && walkActive();
     if (t !== "none" && !owned && !(quiet && (t === "signin" || t === "signedOut"))) {

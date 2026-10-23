@@ -2,7 +2,7 @@
 status: guide
 desk_test: none
 sources: []
-updated: 2026-10-14
+updated: 2026-10-23
 ---
 # Every control in DeetsMusic
 
@@ -230,8 +230,8 @@ Under the sub-heading *Cover load animations* (2026-10-17,
 | Change look at | What moves the look between day and night | Sunrise and sunset / Set times / Windows mode / **Off** |
 | Day look · Night look | The theme and skin for each half | **Lilac + Press** · **Black & Red + Ocean** |
 | Day runs | The set times, when *Set times* is chosen | **07:00 → 19:00** |
-| Shift sun times | Minutes added to sunrise and sunset | **None**, ± minutes |
-| Menu pick lasts | A theme or skin picked by hand | **Until next change** / For good |
+| Offset Sunset/Sunrise | Minutes added to sunrise and sunset | **None**, ± minutes |
+| Manual pick lasts | A theme or skin picked by hand | **Until next change** / For good |
 
 ### Motion
 

@@ -16,8 +16,9 @@
 // Metal's peek rules — compound on the root — apply to it in any window size.
 //
 // The covers: the three songs are read from Apple's catalog once (`catalog_songs`, one call;
-// his call: a look-up through the API, not saved links) and kept a month here; before sign-in
-// the words show with the ♪ cover, and the next open tries again.
+// his call: a look-up through the API, not saved links) and kept a month here. Since 2026-10-23
+// this works before the sign-in too: the catalog needs only the developer token (apple.rs
+// `catalog_songs`). Offline, the words show with the ♪ cover, and the next open tries again.
 
 import { invoke } from "@tauri-apps/api/core";
 import type { CardInstance } from "./cards";
@@ -69,7 +70,14 @@ function loadTracks(): Promise<Track[]> {
   } catch {
     /* unreadable: ask again */
   }
-  tracks ??= invoke<Track[]>("catalog_songs", { ids: SONGS.map((s) => s.id) })
+  // Signed out, Rust reads the catalog of this region (the locale's, e.g. "en-US" → "us").
+  let region: string | undefined;
+  try {
+    region = new Intl.Locale(navigator.language).maximize().region;
+  } catch {
+    /* no locale: Rust takes "us" */
+  }
+  tracks ??= invoke<Track[]>("catalog_songs", { ids: SONGS.map((s) => s.id), region })
     .then((t) => {
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), tracks: t }));

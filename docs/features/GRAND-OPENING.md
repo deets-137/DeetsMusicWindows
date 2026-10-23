@@ -1,7 +1,7 @@
 ---
 status: project
 desk_test: open
-sources: [src/onboarding.ts, src/boot-cover.ts, src/onboarding-welcome.ts, src/onboarding-looks.ts, src/onboarding-fashion.ts, src/onboarding-preview.ts, src/ocean.ts, src/metal.ts, src/vinyl.ts, src/album-color.ts, src/styles/onboarding.css, src/main.ts, src/compass.ts, src/styles/skin.css, src/pet.ts, index.html]
+sources: [src/onboarding.ts, src/boot-cover.ts, src/onboarding-welcome.ts, src/onboarding-looks.ts, src/onboarding-fashion.ts, src/onboarding-preview.ts, src/onboarding-nitpicks.ts, src/onboarding-letter.ts, src/ocean.ts, src/metal.ts, src/vinyl.ts, src/album-color.ts, src/styles/onboarding.css, src/main.ts, src/compass.ts, src/styles/skin.css, src/pet.ts, index.html]
 updated: 2026-10-23
 ---
 # Grand opening — the startup screen
@@ -21,16 +21,19 @@ first-run walk with Deets and Happy (walk.ts, ONBOARDING.md §4).
   skin's card material. The title bar stays above it and works.
 - An × in the top right corner (the card header's icon square, as on Rulez). A click or Escape
   closes the card.
-- It opens after the launch cover, on the launch that finds a brand-new install
-  (`isFreshInstall()` in settings-store.ts). The trigger the owner will describe later replaces
-  or joins this one.
+- It opens after the launch cover on a brand-new install (`isFreshInstall()` in
+  settings-store.ts), until it is closed once. The answer is saved as `openingPending`: the
+  first page to load the store at launch writes it, and the tray panel can be that page. Before
+  2026-10-23 the main window read only its own launch's answer, so when the tray page loaded
+  first the card stayed shut and the walk ran alone. The trigger the owner will describe later
+  replaces or joins this one.
 - The walk waits until the card closes.
 - `__onboarding.open()` in DevTools opens it at any time. `npm run dev:fresh` is a stranger.
 - Log lines: `onboarding:open`, `onboarding:close`.
 
 What Claude decided inside his ask, to review: no motion on open or close yet (his call); the
-card is not remembered as closed, so a stranger who quits with it open does not see it again
-(the fresh-install answer is decided once); the walk waits for it.
+walk waits for it. Since 2026-10-23 a stranger who quits with the card open sees it again on the
+next launch (the saved `openingPending`, the same rule as the walk's step); before, they did not.
 
 **Desk test:** `__onboarding.open()` in DevTools on each surface and skin. The card covers the
 cards and not the title bar; the × sits top right; the × and Escape close it.
@@ -429,7 +432,11 @@ What the real code gives the preview, and what it needs (read 2026-10-22):
   hidden (his ask, 2026-10-22), so Previous, Play and Next sit centered alone.
 - The covers: `catalog_songs` (new Rust command, apple.rs: one `GET …/songs?ids=`, the songs go
   into the enrichment cache, so their palettes cost nothing more), kept a month under
-  `deets.onboarding.preview`. Not signed in: the words with the ♪ cover; the next open tries again.
+  `deets.onboarding.preview`. **Signed out too (2026-10-23, his ask):** Apple's catalog needs only
+  the developer token (the app's own, from the mint at launch), so the call drops the user token
+  and its storefront look-up and reads the catalog of the page's locale region (`region`), then
+  `us` once if that country has no storefront. Offline or no developer token: the words with the
+  ♪ cover; the next open tries again.
   The demo answers `[]`; the rooms web port lists it as null on purpose.
 - The record: `mountVinyl(art, glyph, { ownTurns: true })`. Metal's drum: `ownPeek` (metal.md §6.9).
   The album light: `watchAlbumColor(box, source)` — the function now takes a cover source; the
@@ -463,8 +470,8 @@ Then Metal's own stress cases (metal.md §6.7) on the real player.
 > **Part:** built · 2026-10-22
 
 - **The foot of each page** (his ask): at the bottom left, under the page (the pages slide in
-  `.onboarding__pages`; the foot stays). *Next* on pages 1 and 2 shows the next page (the same
-  slide as the nav bar); *Let's Boogie* on page 3 is the end button. None on Settings. It wears
+  `.onboarding__pages`; the foot stays). *Next* on pages 1 to 3 shows the next page (the same
+  slide as the nav bar); *Let's Boogie* on page 4 is the end button (page 3 until 2026-10-23). None on Settings. It wears
   the picked look (the nav mark's fill and title edge). Hints: "Shows the next page" · "Closes
   this page and opens DeetsMusic".
 - **Let's Boogie** runs `revealApp` (boot-cover.ts): the launch's own cover fades in over the
@@ -491,3 +498,65 @@ warm-up (the library and Home already start on a sign-in).
 `onboarding:warm` and the library sync; Next to page 2, Next to page 3; Let's Boogie: the cover
 fades in, the cards rise as at launch, the walk starts. With reduced motion: it closes at once.
 Ocean on page 3: the preview's crests at full neon.
+
+## 10. Page 4: Nitpicks (2026-10-23)
+
+> **Part:** built · 2026-10-23
+
+- His title and subtitle: **Nitpicks** · "Smaller settings, rules, and such to fine-tune
+  DeetsMusic for ya". `src/onboarding-nitpicks.ts`, the same header as pages 2 and 3; a 4 on its
+  nav button, between 3 and the cog. Page 3's foot is *Next* now; *Let's Boogie* moved here, then to page 5 the same day (§11).
+- Three columns, as on page 1 (his ask). The rows are the Settings card's own
+  (`mountSettingsParts`; each part has its own fold prefix `ob4-N`, so two parts from one section
+  fold apart; every group open the first time):
+  1. **Rules and schedules** (rules and the rows next to them): the whole Look schedule section
+     (its day and night looks start as your own look, LOOK-SCHEDULE.md §1; *Offset
+     Sunset/Sunrise* and *Manual pick lasts*, his names 2026-10-23); Playlists › the four web
+     defaults (Web reach, Web size, Web prefers songs, Web genre chips filter) as *Playlist Web
+     Defaults* (his name); Motion › If graphics fail (a built-in rule) as *Graphics*.
+  2. **The app:** Updates › Get updates; About › Send usage counts as *Usage counts* (on by
+     default, his call; the hint is his promise: anonymous, nothing about you or your Apple ID);
+     Window › Start with Windows and Close to tray as *Startup*.
+  3. **Worth a look** (his picks 2, 3, 4, 5 and 6 from Claude's list, WORKLOG 2026-10-23): Motion
+     › Fancy scrubber; Sleep › Sleep every day; Playback › Skip on stations, Leave out of webs,
+     Skip in queues as *Suggest Less*; Song of the Day; Playback › Show play counts from Last.FM
+     and Notes from as *Song facts*.
+- **Page 4 is the usage counts' telling** (USAGE-COUNTS.md §2 rule 10): its mount runs
+  `markUsageTold`, and then the reports may be planned. A user who closes the opening before
+  page 4 sends nothing.
+
+What Claude decided inside his ask, to review: the column titles (*Rules and schedules*, *The
+app*, *Worth a look*) and the group labels (*Graphics*, *Usage counts*, *Startup*, *Suggest
+Less*, *Song facts*); If graphics
+fail as the third rule-adjacent row; the page counts as the telling once it is shown, not once a
+row is pressed.
+
+**Desk test:** Next from page 3 slides page 4 in; its button says *Next*. Each row on page 4
+changes the same value as its Settings row (open Settings from the nav bar's cog and compare).
+The log shows `usage:told {"why":"grand opening page 4"}` once; a second open does not log it
+again. Hover *Send usage counts*: the new hint.
+
+## 11. Page 5: You're Ready (2026-10-23)
+
+> **Part:** built · 2026-10-23
+
+- His title and subtitle: **You're Ready** · "A Final Message". The body is his letter, word for
+  word (`src/onboarding-letter.ts`), but for three changes he agreed to: the typo "connectiosn";
+  his employer's name out ("a massive software company in a highly complex field like
+  healthcare"); and the record-company line softened, to keep it light ("gave us a peek behind
+  the curtain at how their algorithms and lists get made"). Later the same day: paragraph 2 is
+  his rewrite, ending in a joke in `<s>` (struck through on purpose: "smth smth Marvel Rivals…");
+  and a new paragraph after the Bandcamp line names the walls he hit (no remove from library, no
+  playlist edits on Apple Music, no crossfade, no producer credits, no song matching for a
+  Spotify friend; FAVORITES.md, PLAYLISTS.md, DESIGN.md, CREDITS.md, ideas/SpotifyRooms.md).
+  Signed "Thanks, Deets".
+- One column at a reading measure (`--ob-letter-measure`, an alias of the album notes'
+  `--notes-measure`, 68ch), the body face at text size in the text color; the signature in the
+  title face and color. The page scrolls as one when the window is short.
+- A 5 on its nav button, between 4 and the cog. Page 4's foot is *Next*; *Let's Boogie* is here.
+
+What Claude decided inside his ask, to review: the letter's type (text size and color, not the
+smaller grey of page 1's paragraphs); the signature in the title face.
+
+**Desk test:** Next from page 4 slides page 5 in; the nav bar shows five numbers and the cog;
+the letter reads in one column and scrolls in Midi and Mini; *Let's Boogie* runs the reveal (§9).

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md]
-updated: 2026-10-13
+updated: 2026-10-23
 ---
 # DeetsMusic — Usage counts: how many people use the app, and how
 
@@ -26,6 +26,12 @@ through it all").
 
 1. **On by default, with a clear off switch.** A row in Settings › About, a line on the Hop in
    screen ([HOP-IN.md](HOP-IN.md)), and a new Privacy paragraph in the README.
+   **2026-10-23 (his calls):** off by default for an hour, then on again, with the switch on the
+   grand opening's page 4 ([GRAND-OPENING.md](GRAND-OPENING.md) §10) and the hint "Anonymous
+   counts, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no
+   place." Page 4 is the telling (`markUsageTold` in usage.ts writes the told key when it
+   shows); so is turning the switch on by hand. A user who closes the opening before page 4
+   sends nothing.
 2. **Scope:** active installs per day, week and month; the version mix; the on/off and choice
    settings once a week. **Added the same day:** error counts from the log and Apple call counts
    (the health report, §3.3).
@@ -281,7 +287,10 @@ all. His strings (approved 2026-10-14). `?mock` shows it with made-up counts.
   built, a new install gets the same notice as an update.
 - **An install that updates into this feature:** a sticky notice (TOASTS.md) with three
   buttons: *Show what is sent*, *Turn off*, *OK*. Nothing is sent until that notice has been
-  shown. Closing it counts as *OK*.
+  shown. Closing it counts as *OK*. **Retired 2026-10-23 (his call):** no install updates into
+  this feature before the grand opening. Its key (`deets-usage-notice`) is still the told gate,
+  so an install that answered it keeps sending. The grand opening's page 4 writes it now, and so
+  does turning the row on.
 - **The release notes** of that version name the feature in its own line, first.
 - **The README › Privacy** section loses "No analytics" and gains a *Usage counts* paragraph:
   what is sent, what is never sent, the off switch, and the 13-month expiry.

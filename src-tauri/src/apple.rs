@@ -499,10 +499,14 @@ fn read_cached() -> Option<DevToken> {
     Some(t)
 }
 
+/// Atomic (CLAUDE.md › Conventions, 2026-10-23): a half-written cache read as no token, and the
+/// next launch then waited on the mint with nothing to fall back on.
 fn persist(t: &DevToken) {
     if let Some(path) = dev_token_path() {
         if let Ok(raw) = serde_json::to_string(t) {
-            let _ = std::fs::write(path, raw);
+            if let Err(e) = crate::safe_file::write_atomic(&path, raw.as_bytes()) {
+                crate::log::warn(&format!("token: cache write failed: {e}"));
+            }
         }
     }
 }
@@ -1292,11 +1296,15 @@ async fn api_get_once(
     if crate::apple_calls::take_forced(crate::apple_calls::Kind::Read, url) {
         return Ok((429, serde_json::json!({})));
     }
-    let resp = client
+    let mut req = client
         .get(url)
         .header("Authorization", format!("Bearer {dev}"))
-        .header("Origin", APPLE_ORIGIN)
-        .header("Music-User-Token", mut_tok)
+        .header("Origin", APPLE_ORIGIN);
+    // An empty token is a signed-out catalog read (`catalog_songs`): no header at all.
+    if !mut_tok.is_empty() {
+        req = req.header("Music-User-Token", mut_tok);
+    }
+    let resp = req
         .send()
         .await
         .map_err(|e| {
@@ -2020,9 +2028,14 @@ pub async fn catalog_collection_tracks(
 /// player reads its three songs here). One `GET …/songs?ids=` for up to 25 ids; ids Apple
 /// does not return are left out. The songs go into the enrichment cache like search results,
 /// so their palettes (`album_palette`) answer from it with no further call.
+///
+/// Signed out (2026-10-23, his ask: the page shows before the sign-in), the catalog needs only
+/// the developer token: the storefront is `region` (the page's locale, two letters), else `us`,
+/// and the call carries no user token. Signed in, the user's own storefront, as before.
 #[tauri::command]
 pub async fn catalog_songs(
     ids: Vec<String>,
+    region: Option<String>,
     state: tauri::State<'_, AppleState>,
     db: tauri::State<'_, crate::library::Db>,
 ) -> Result<Vec<Track>, String> {
@@ -2031,11 +2044,23 @@ pub async fn catalog_songs(
         return Ok(vec![]);
     }
     let dev = developer_token()?;
-    let user = state.user_token.lock_or_recover().clone().ok_or("not connected to Apple Music")?;
+    let user = state.user_token.lock_or_recover().clone().unwrap_or_default();
     let client = http_client();
-    let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
+    let sf = if user.is_empty() {
+        region
+            .map(|r| r.to_ascii_lowercase())
+            .filter(|r| r.len() == 2 && r.chars().all(|c| c.is_ascii_lowercase()))
+            .unwrap_or_else(|| "us".into())
+    } else {
+        crate::enrich::storefront(&client, &dev, &user, &db).await?
+    };
     let url = format!("https://api.music.apple.com/v1/catalog/{sf}/songs?ids={}", ids.join(","));
-    let (status, body) = api_get(&client, &dev, &user, &url).await?;
+    let (mut status, mut body) = api_get(&client, &dev, &user, &url).await?;
+    // Signed out, the locale's country may have no Apple Music storefront: ask `us` once.
+    if status != 200 && user.is_empty() && sf != "us" {
+        let us = format!("https://api.music.apple.com/v1/catalog/us/songs?ids={}", ids.join(","));
+        (status, body) = api_get(&client, &dev, &user, &us).await?;
+    }
     if status != 200 {
         return Err(format!("catalog/songs HTTP {status}"));
     }

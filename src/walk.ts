@@ -1,14 +1,14 @@
 // The first-run walk (docs/features/ONBOARDING.md §4) — how the app explains itself to a stranger.
 //
 // Deets (32×64) and Happy (32×32), the sprites from deets.solutions, travel to the control
-// each step names, stand under it, and a speech card holds the sentence. Five steps, decided
-// with the owner on 2026-09-18:
+// each step names, Deets points up at it with his arm raised, and a speech card holds the
+// sentence. Four steps (decided with the owner on 2026-09-18; the sign-in step left
+// 2026-10-23, his call: the grand opening's page 1 asks for the sign-in now):
 //
-//   1  Sign in to Apple Music          (the Account row in the DeetsMusic menu)
-//   2  Click DeetsMusic                (the wordmark IS the menu button)
-//   3  Click a section title            (every card title is a picker)
-//   4  Ctrl + Space opens the DeetsBar  (go anywhere, search anything, reach settings)
-//   5  You're set! Explore!             (no target, no gesture — the send-off)
+//   1  Click DeetsMusic                (the wordmark IS the menu button)
+//   2  Click a section title            (every card title is a picker)
+//   3  Ctrl + Space opens the DeetsBar  (go anywhere, search anything, reach settings)
+//   4  You're set! Explore!             (no target, no gesture — the send-off)
 //      Hover, not right-click: hover hints are on by default and cover every control,
 //      so it is the gesture that pays off on the very next thing they point at.
 //
@@ -18,13 +18,11 @@
 //
 // Three rules the owner set, and why each one is here:
 //
-//   The GESTURE advances a step, not a button. A step you clicked past taught nothing, so
-//   the walk watches for the real thing happening — the menu opening, a picker opening, the
-//   bar opening — and moves on when it does.
+//   The GESTURE advances a step. The walk watches for the real thing happening — the menu
+//   opening, a picker opening, the bar opening — and moves on when it does.
 //
-//   NEXT arrives only once WE have failed. The button is not on the card; it appears after
-//   NUDGE_MS of a step waiting. Its presence is an admission that the pointing was not
-//   obvious enough, so it must not be the first thing offered.
+//   NEXT is on every step from the start (his call 2026-10-23; before, it appeared only
+//   after 9 s of waiting), for a user who already knows the control.
 //
 //   The SPRITES travel (option A). A flash on a control 600 px from the sprite pulls no
 //   harder than a hint box, and every step here points at the top of the window while the
@@ -37,25 +35,26 @@
 // hand it back to a user who skipped. settings-store.ts decides ONCE, at first load, whether
 // this install has ever been used, so an upgrade never sees the walk.
 //
-// While the walk owns step 1, apple-health.ts stays quiet about `signedOut` — one cause, one
-// notice (TOASTS.md). A user who has ever signed in gets the health sticky instead and no walk.
+// While the walk is on screen, apple-health.ts stays quiet about `signedOut`: the grand
+// opening has just asked for the sign-in, and a sticky over the tour would be a second ask.
 //
-// Testing: `npm run dev:fresh` (a stranger) or `npm run dev:fresh:in` (first-run UI, already
-// signed in, so the walk opens at step 2). ONBOARDING.md §5.
+// Testing: `npm run dev:fresh` (a stranger). ONBOARDING.md §5.
 
 import { setting, setSetting } from "./settings-store";
-import { isConnected } from "./apple";
 import * as diag from "./diag";
 import "./styles/walk.css";
 
 import deetsIdle from "./assets/sprites/deets/idle_down.png";
 import deetsWalk from "./assets/sprites/deets/walk_side.png";
+// His throw_side frame 2 (the Happy skin's art) with the ball taken out and the arm raised over
+// his head: Deets points up at the control (2026-10-23, drawn by Claude for his review).
+import deetsPoint from "./assets/sprites/deets/point_up.png";
 import happySit from "./assets/sprites/happy/sit_side.png";
 import happyWalk from "./assets/sprites/happy/walk_side.png";
 import { motionReduced } from "./motion";
 
-/** How long a step waits before it admits we were not obvious and offers Next. */
-const NUDGE_MS = 9000;
+/** Where Deets's raised hand is in his pointing frame, in sprite pixels from his left edge. */
+const HAND_X = 18;
 /** A target that has not appeared yet (a card still mounting) is retried this often. */
 const FIND_MS = 200;
 /** Give up looking for a target after this long and place the card anyway — never trap the user. */
@@ -113,17 +112,6 @@ const firstCardTitle = (): HTMLElement | null =>
 const STOPS: Stop[] = [
   {
     n: 1,
-    text: "Sign in to Apple Music. Click DeetsMusic, then Sign in. Your library fills up after that.",
-    target: () => document.querySelector<HTMLElement>("#settings-trigger"),
-    // Not the click: the sign-in happens in the browser and comes back minutes later.
-    // main.ts fires this once Apple has accepted the account.
-    gesture: (done) => {
-      window.addEventListener("deets:signed-in", done);
-      return () => window.removeEventListener("deets:signed-in", done);
-    },
-  },
-  {
-    n: 2,
     text: "Click DeetsMusic. Themes, skins, the window size, your account and Settings are all in here.",
     target: () => document.querySelector<HTMLElement>("#settings-trigger"),
     gesture: (done) => {
@@ -132,13 +120,13 @@ const STOPS: Stop[] = [
     },
   },
   {
-    n: 3,
+    n: 2,
     text: "Click a section title to see a dropdown of the cards you can put in that spot.",
     target: firstCardTitle,
     gesture: (done) => onAppear(".slot-picker__menu:not([hidden])", done),
   },
   {
-    n: 4,
+    n: 3,
     text: "Press Ctrl + Space. The DeetsBar opens everywhere: go anywhere, search anything, and reach settings and functions too.",
     openText: "Esc or Ctrl + Space to close again!",
     // The button shows in Max only (2026-10-11); in Mini and Midi the step names the keys alone.
@@ -150,7 +138,7 @@ const STOPS: Stop[] = [
     gesture: (done) => onAppear("#compass:not([hidden])", done),
   },
   {
-    n: 5,
+    n: 4,
     text: "You're set! Explore! Click around — and hover anything you are curious about.",
     finish: "Let's go",
   },
@@ -176,7 +164,7 @@ export async function initWalk(): Promise<void> {
   if (live) return;
   const at = setting("onboardingStep");
   if (!at || at < 1 || at > STOPS.length) return;
-  run(await past1(at));
+  run(at);
 }
 
 /** Show the walk again from the start (Settings › Tips). */
@@ -187,22 +175,7 @@ export async function restartWalk(): Promise<void> {
   // §8, §11), and each new setting's row, section and pill mark (§10, §10a). His call
   // 2026-09-25; before, the tour kept the "row:" / "sec:" marks seen.
   setSetting("quickSeen", []);
-  run(await past1(1));
-}
-
-/**
- * Step 1 asks for a sign-in. Skip it when there already is one: its gesture
- * (`deets:signed-in`) would never fire, and the user would sit through NUDGE_MS to reach a
- * Next button for something they have already done. This is also what makes
- * `npm run dev:fresh:in` open at step 2 (ONBOARDING.md §5).
- */
-async function past1(at: number): Promise<number> {
-  if (at !== 1) return at;
-  try {
-    return (await isConnected()) ? 2 : 1;
-  } catch {
-    return 1; // Rust did not answer — ask for the sign-in rather than skip it
-  }
+  run(1);
 }
 
 function run(from: number): void {
@@ -215,6 +188,7 @@ function run(from: number): void {
   stop.className = "walk__stop";
   stop.style.setProperty("--walk-deets-idle", `url("${deetsIdle}")`);
   stop.style.setProperty("--walk-deets-walk", `url("${deetsWalk}")`);
+  stop.style.setProperty("--walk-deets-point", `url("${deetsPoint}")`);
   stop.style.setProperty("--walk-happy-sit", `url("${happySit}")`);
   stop.style.setProperty("--walk-happy-walk", `url("${happyWalk}")`);
   stop.innerHTML =
@@ -328,8 +302,11 @@ function run(from: number): void {
     const below = r.bottom + gap + h <= vh;
     stop.dataset.point = below ? "up" : "down";
     const y = below ? r.bottom + gap : Math.max(0, r.top - gap - h);
-    // Line the pointer up with the middle of the target, then keep the whole group on screen.
-    const want = r.left + r.width / 2 - w / 2;
+    // Under the target, Deets points up at it: his raised hand goes under its middle. Above it,
+    // the card's own arrow points down at it, so the card's middle goes there. Then the whole
+    // group stays on screen.
+    const mid = r.left + r.width / 2;
+    const want = below ? mid - HAND_X * tokenPx("--walk-scale") : mid - w / 2;
     const x = Math.max(edge, Math.min(want, vw - w - edge));
     const point = Math.max(tokenPx("--space-3"), r.left + r.width / 2 - x);
     stop.style.setProperty("--walk-point-x", `${Math.round(point)}px`);
@@ -464,7 +441,14 @@ function run(from: number): void {
     textEl.textContent = s.text;
     actions.replaceChildren();
     if (s.finish) actions.appendChild(button(s.finish, "walk__btn", () => end("finished")));
+    // Next on every step from the start (his call 2026-10-23). It does what the gesture does.
+    const next = s.gesture ? button("Next", "walk__btn walk__btn--next", () => advance()) : null;
+    if (next) actions.appendChild(next);
     actions.appendChild(button("Skip the tour", "walk__btn walk__btn--skip", () => end("skipped")));
+    const advance = once(() => {
+      advancing = true;
+      whenClear(() => step(n + 1));
+    });
 
     findTarget(s, (el) => {
       if (!live) return;
@@ -476,18 +460,7 @@ function run(from: number): void {
       card.style.animation = "";
       reposition();
       if (!s.gesture) return;
-      const advance = once(() => {
-        advancing = true;
-        whenClear(() => step(n + 1));
-      });
       cleanup = s.gesture(advance);
-      // We pointed. If they have not moved by now, the pointing was not good enough —
-      // offer the way out rather than leave them stuck (owner's call 2026-09-18).
-      later(() => {
-        if (!live || at !== n) return;
-        diag.log("walk:nudge", { step: n });
-        actions.prepend(button("Next", "walk__btn walk__btn--next", advance));
-      }, NUDGE_MS);
     });
   }
 

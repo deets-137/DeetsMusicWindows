@@ -793,6 +793,7 @@
   --ob-switch-w:     4em;           /* page 2's On / Off switches, all one width */
   --ob-look-w:       112px;         /* page 3's skin and theme tiles */
   --ob-preview-w:    260px;         /* page 3's preview player: the card's width at most */
+  --ob-letter-measure: var(--notes-measure); /* page 5's letter: the longest line, as Apple's album notes read */
   --ob-look-h:       72px;
   /* A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his
      call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and

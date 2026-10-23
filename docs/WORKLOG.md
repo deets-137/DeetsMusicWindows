@@ -6,6 +6,41 @@ updated: 2026-10-23
 ---
 # DeetsMusic — Work log
 
+## 2026-10-23 — grand opening fixes, the tour, page 4 (branch `grand-opening`)
+
+- **Why the grand opening did not open on `dev:fresh`:** the tray page loaded the settings store
+  first and wrote `onboardingStep`, so the main window decided "not fresh" while the walk still
+  saw step 1. Fixed with the saved `openingPending` (settings-store.ts; GRAND-OPENING.md §1); a
+  test with the date (`tests/look-migrate.test.ts`).
+- **Usage counts:** the "New: DeetsMusic now sends usage counts" toast retired (his call: no one
+  updates into it before the grand opening). Off by default for an hour, then on again (his
+  call), with the switch on page 4 and his hint. Page 4 is the telling (`markUsageTold`).
+- **The tour (walk.ts):** the sign-in step out (page 1 asks for it); Next on every step from the
+  start; Deets points up at each control in a new frame, `point_up.png`, drawn by Claude from his
+  `throw_side` frame 2 (for his review). ONBOARDING.md §4.0.
+- **The preview covers signed out:** `catalog_songs` reads Apple's catalog with the developer
+  token alone (the locale's storefront, then `us`). The developer token cache is written
+  atomically now (`persist` in apple.rs).
+- **Page 4 "Nitpicks"** (his title and subtitle): columns 1 and 2 built from the Settings card's
+  own rows (GRAND-OPENING.md §10). *Let's Boogie* moved from page 3 to page 4.
+- **Column 3 — Claude's draft of settings worth showing, for his pick** (each a real row today):
+  1. *Keep on top* (Window: Always · Player · Off) — the mini player over other windows.
+  2. *Fancy scrubber* (Motion) — each skin's own playhead.
+  3. *Sleep every day* (Sleep: Off · Sunset · At a time) — the music pauses on its own.
+  4. *Suggest Less* — *Skip on stations*, *Leave out of webs*, *Skip in queues* (Playback).
+  5. *Song of the Day* (On · Off) — mark one song a day.
+  6. *Show play counts from Last.FM* and *Notes from* (Playback) — the song facts on Now Playing.
+  7. *Remember each output* (Sound) — headphones and speakers keep their own EQ preset.
+- **His picks for column 3:** 2, 3, 4, 5 and 6, built as *Worth a look*.
+- **The look schedule:** turning it on starts the day and night looks as your own look, until you
+  pick one (`lookPairsPicked`, LOOK-SCHEDULE.md §1; three tests). Renamed (his words): *Shift sun
+  times* → *Offset Sunset/Sunrise*, *Menu pick lasts* → *Manual pick lasts*; page 4's web group →
+  *Playlist Web Defaults*.
+- **Page 5 "You're Ready"** (his title, subtitle and letter, GRAND-OPENING.md §11). *Let's
+  Boogie* moved to page 5.
+- **Checks:** tsc, vite build, cargo check, 389 unit tests, docs:check pass. **Not run:** the
+  desk tests on the dev app (he hand tests).
+
 ## 2026-10-22 to 10-23 — the grand opening (branch `grand-opening`)
 
 - **His ask:** a startup screen, narrated and designed piece by piece. Built: one card over every

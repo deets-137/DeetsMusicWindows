@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: none
 sources: [src/hint.ts, src/walk.ts, src/context-menu.ts, src/styles/hint.css, src/styles/walk.css, scripts/dev-app.mjs]
-updated: 2026-10-17
+updated: 2026-10-23
 ---
 # Onboarding — how the app explains itself
 
@@ -177,7 +177,7 @@ nothing about authoring changed when the box did.
 | Settings › Playback (2026-10-13; the words 2026-10-17, album notes) | Show album info on the album's page | The album's page shows Last.fm's tags, plays and listeners, a few words about it from Apple Music or Last.fm, and a link. Off: neither is asked | settings-card.ts |
 | Settings › Playback (2026-10-17) | Show song info on the song's page | Song Credits shows Last.fm's tags, plays and listeners, a few words about the song or its album, and a link | settings-card.ts |
 | Settings › Playback (2026-10-17) | Notes from | Where the About words on a song's or an album's page come from. Both: Apple first, then Last.fm | settings-card.ts |
-| Settings › About (2026-10-13) | Send usage counts · What is sent | Sends counts once a day and once a week: no ID, no songs, no place · The last report of each kind and the next one, exactly as they leave | settings-card.ts |
+| Settings › About (2026-10-13) | Send usage counts · What is sent | Anonymous counts, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no place · The last report of each kind and the next one, exactly as they leave | settings-card.ts |
 | Now Playing | Previous · Play/Pause · Next | Plays the song before this one · Play / Pause (follows state) · Plays the next song | now-playing-card.ts |
 | Now Playing | ♥ · + | Favorite / Unfavorite · Add to Library / In your library (follow state) | now-playing-card.ts |
 | Now Playing | Mute · AirPlay (stage row) | as the title bar | now-playing-card.ts |
@@ -393,33 +393,40 @@ back to the rule (RULES.md §9).
 
 ### 4.0 As built
 
-`src/walk.ts` + `src/styles/walk.css` + the five sprites in `src/assets/sprites/`. No Rust,
+`src/walk.ts` + `src/styles/walk.css` + the six sprites in `src/assets/sprites/`. No Rust,
 no Apple calls, no new primitive: the speech card wears the toast material and the toast
 button idiom through `--walk-card-*` aliases (§2a control families), and `toast.ts` is
 untouched.
 
-**The five steps** (owner's, 2026-09-18). Each names one control and waits for the real
+**The four steps** (owner's, 2026-09-18; the sign-in step was step 1 until 2026-10-23, when
+his call took it out: the grand opening's page 1 asks for the sign-in now, and the walk starts
+after that card closes, GRAND-OPENING.md §1). Each names one control and waits for the real
 gesture on it:
 
 | # | The sentence points at | Advances when |
 |---|---|---|
-| 1 | the DeetsMusic wordmark — sign in to Apple Music | `deets:signed-in` (main.ts, after Apple accepts) |
-| 2 | the wordmark again — it is the menu | `#settings-trigger` goes `aria-expanded="true"` |
-| 3 | the left card's title — every title is a card picker | a `.slot-picker__menu` opens |
-| 4 | the Compass button — Ctrl + Space reaches everything (Mini and Midi hide the button since 2026-10-11: the step sits centred, no pointer, `optional` in walk.ts) | `#compass` loses `hidden` |
-| 5 | nothing. The send-off, centred, with **Let's go** | — |
+| 1 | the DeetsMusic wordmark — it is the menu | `#settings-trigger` goes `aria-expanded="true"` |
+| 2 | the left card's title — every title is a card picker | a `.slot-picker__menu` opens |
+| 3 | the Compass button — Ctrl + Space reaches everything (Mini and Midi hide the button since 2026-10-11: the step sits centred, no pointer, `optional` in walk.ts) | `#compass` loses `hidden` |
+| 4 | nothing. The send-off, centred, with **Let's go** | — |
 
-**Four decisions, and what each one cost:**
+**The decisions, and what each one cost:**
 
-- **The gesture advances a step, not a button.** A step you clicked past taught nothing.
-- **Next arrives only once we have failed.** It is not on the card; it is added after
-  `NUDGE_MS` (9 s) of a step waiting, and logs `walk:nudge`. Its presence is an admission
-  that the pointing was not good enough, so it must not be offered first.
+- **The gesture advances a step.** The walk watches for the real thing happening.
+- **Next is on every step from the start** (his call 2026-10-23). Until then it arrived only
+  after 9 s of a step waiting (`NUDGE_MS`, `walk:nudge`, both gone), as an admission that the
+  pointing was not obvious enough.
 - **The sprites travel to the target** (option A). Every step here names something at the
   top of the window, while the toast host sits at the bottom in midi — a flash 600 px from
   the sprite pulls no harder than a hint box. So the card leaves the toast host and rides
   with Deets. `reposition()` puts the group under the target (over it when there is no room
-  below), lines the pointer up with the target's middle, and clamps the group on screen.
+  below) and clamps the group on screen.
+- **Deets points at the target** (his ask, 2026-10-23). Under it, he stands in
+  `point_up.png`: his `throw_side` frame 2 from the Happy skin with the ball taken out and the
+  arm raised over his head (drawn by Claude, for his review). His raised hand (`HAND_X`, 18 px
+  of 32) goes under the target's middle, and the card's own arrow stands down, so there is one
+  pointer. Over the target (no room below), he stands idle and the card's arrow points down
+  at it, as before.
 - **A step can speak again once its panel is open.** `Stop.openText` replaces the sentence
   while the step's own panel is up. Step 4 uses it: *"Esc or Ctrl + Space to close again!"* —
   we asked them to open the bar, so we owe them the way out. The card then rides **beside**
@@ -448,9 +455,9 @@ store's `theme`, or `deets.theme`, which the store writes as a mirror on every l
 the walk they never finished, and an upgrade never sees it.
 
 **Who owns "you are signed out".** While the walk is live, `apple-health.ts` stays quiet
-about `signedOut`: step 1 says the same thing with the same button, and one cause raises one
-notice (TOASTS.md). A user who has ever signed in never sees the walk and gets the sticky as
-before. `initWalk()` also skips step 1 outright when a token already exists.
+about `signedOut`: the grand opening just before it asked for the sign-in, and one cause raises
+one notice (TOASTS.md). A user who has ever signed in never sees the walk and gets the sticky as
+before.
 
 **The way back in:** Settings › Tips › *Show the tour again*, and the Compass row **Show the
 tour** (aliases: tour, walkthrough, onboarding, getting started, help).
@@ -467,17 +474,17 @@ for a while, and Home is the card that fills first.
 
 **Desk test** — run `npm run dev:fresh` (§5):
 
-1. The window opens on Home | Library, signed out, and Deets + Happy stand under the
-   wordmark with step 1. The old "Sign in to Apple Music to play songs." sticky does NOT
-   also appear.
-2. Wait 9 s: a **Next** button appears. Do not press it.
-3. Sign in. Step 1 advances by itself when the browser comes back.
-4. Step 2: click **DeetsMusic**. The step advances, but the sprites do not move until the
+1. The grand opening opens first. Close it (Let's Boogie, the ×, or Escape). Then Deets +
+   Happy walk under the wordmark with step 1, Deets points up at it with his hand under its
+   middle, and the card shows **Next** and **Skip the tour** at once. Signed out, the old
+   "Sign in to Apple Music to play songs." sticky does NOT also appear.
+2. Step 1: click **DeetsMusic**. The step advances, but the sprites do not move until the
    menu closes.
-5. Step 3: click the left card's title. The picker opens, the step advances, the sprites
-   walk right and face the way they travelled.
-6. Step 4: press Ctrl + Space. Step 5 lands centred, with no pointer.
-7. Press **Let's go**. Restart the app: no walk.
+3. Step 2: press **Next** instead of the gesture. The sprites walk to the left card's title.
+4. Step 2 again on a second run: click the title. The picker opens, the step advances, the
+   sprites walk right and face the way they travelled.
+5. Step 3: press Ctrl + Space. Step 4 lands centred, with no pointer.
+6. Press **Let's go**. Restart the app: no walk.
 8. Settings › Tips › Show the tour again → it starts at step **2**, not 1 (you are signed in).
 9. Ctrl + Space, type "tour" → the same row is there.
 10. Press Escape mid-walk, then restart the app: no walk (Escape is a skip).

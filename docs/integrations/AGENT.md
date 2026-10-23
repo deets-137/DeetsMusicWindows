@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-14
 sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts, src/agent-rules.ts, src/agent-rules-shape.ts, cli/src/main.rs]
-updated: 2026-10-14
+updated: 2026-10-23
 ---
 # Agent / CLI control — `deetsmusic`
 
@@ -391,7 +391,7 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   queues", default On) steps over a marked song in a playlist, an album or Up Next. The marks
   themselves are made from the right-click menus and the Compass, not by the agent (§9).
 - **About › Send usage counts** (2026-10-13, USAGE-COUNTS.md): `usageReports` (On | Off,
-  default On). A consent gate: an agent may turn it off, never on. Off: no usage report is sent.
+  default On; nothing is sent before the grand opening's page 4 showed the row). A consent gate: an agent may turn it off, never on. Off: no usage report is sent.
 - **Diary › Rescale scores** (2026-09-24, DIARY.md §5): `diaryRescale` (Ask | Always | Never).
   What happens to the scores already on a Diary entry when its scale changes. **Grow on open**:
   `diaryGrow` (New entries | Every entry | Never). An agent has no
@@ -524,7 +524,7 @@ Max), **except**:
 | Home › Hiding lasts (`homeHideLasts`) and Hidden tiles (`homeHidden`) | A hide is the user's own gesture on a tile, so its rows stay out (`agent-settings.ts`, the Home comment). |
 | The Room panel's name (`roomName`) and the worker addresses | Text, which this route has no kind for (the Rooms comment in `agent-settings.ts`). A room's name is set in the panel. |
 | The three hover-hint rows (`hoverHints`, `hoverHintDelay`, `hoverSongNames`) — **specced 2026-09-27** | Found by the consistency survey with no spec and no reason; they gate nothing, so they are ordinary rows now, in *Menus, hints and notices*. (The survey also named the four open sizes; they were always there, as `kind: "size"`.) |
-| Written by the app, never by a row: `sharePauseUntil` (the Pause half writes it; a rule reads it), `homeHidden` (the hidden tiles), `onboardingStep` (the first-run walk's next stop; Settings › Tips writes 1), `shuffleMode` and `repeatMode` (the transport's live state; `control` owns them), `rules` (the `rules` verb, §8), `quickSeen` (the New badges), `friendsUrl` / `roomsUrl`, and the Sound internals (`soundEqCustom`, `soundEqUser`, `soundEqOutputs`, `soundOutputNames`, `soundEqPreampDb`, `soundFirstOn`, `soundReviewed`) | State, not preferences. Each has an owner that is not the Settings card, and a verb where an agent needs it. |
+| Written by the app, never by a row: `sharePauseUntil` (the Pause half writes it; a rule reads it), `homeHidden` (the hidden tiles), `onboardingStep` (the first-run walk's next stop; Settings › Tips writes 1), `openingPending` (the grand opening has not closed yet on a new install), `lookPairsPicked` (a day or night look was picked; an agent's pick of one sets it too), `shuffleMode` and `repeatMode` (the transport's live state; `control` owns them), `rules` (the `rules` verb, §8), `quickSeen` (the New badges), `friendsUrl` / `roomsUrl`, and the Sound internals (`soundEqCustom`, `soundEqUser`, `soundEqOutputs`, `soundOutputNames`, `soundEqPreampDb`, `soundFirstOn`, `soundReviewed`) | State, not preferences. Each has an owner that is not the Settings card, and a verb where an agent needs it. |
 
 Rust-owned rows take readable keys: `closeToTray` → `settings_set_minimize_to_tray`,
 `startWithWindows` → `autostart_set`, `agentControl` → `settings_set_agent_control`,

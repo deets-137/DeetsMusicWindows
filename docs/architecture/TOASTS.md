@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-20
 sources: [src/toast.ts, src/styles/toast.css]
-updated: 2026-10-14
+updated: 2026-10-23
 ---
 # DeetsMusic — Toasts
 
@@ -351,7 +351,6 @@ what a toast already declares.
 | `updater.ts` — an update or rollback is downloaded | sticky info **question** | DeetsMusic X is ready. Restart now, or it installs the next time DeetsMusic starts. / DeetsMusic X is ready. Restart to roll back. / This version of DeetsMusic is no longer supported. Restart to update to X. **[Restart now] [Later] [Skip this version]** | Automatic mode lands here directly. No Skip for a rollback or a required version (under `minVersion`). "Later" counts as the close, so no Dismiss (toast.ts). Since Velopack (VELOPACK.md §1, F1 A) a downloaded version installs at the next start; Skip deletes its package (`update_discard`). |
 | `gpu.ts` — the graphics card is back (2026-10-11; rewritten 2026-10-20, §10.6) | sticky warn **question** | The graphics card is back. Restart to use it. DeetsMusic also restarts by itself when its window is hidden. **[Restart now] [Later]** · a failed restart: Couldn't restart DeetsMusic. Close it and open it again. | Only while the window is on screen and Rust says a hardware adapter works again; hidden, the app restarts by itself and no toast shows. Once per session. "Later" counts as the close. No toast while the card is not ready: Reduce motion keeps the app smooth meanwhile. Off shows nothing. [GRAPHICS-FALLBACK.md §10.6](../features/GRAPHICS-FALLBACK.md) |
 | `gpu.ts` — no working graphics card on this PC (2026-10-20) | sticky info, **[OK]** | Save + tell: DeetsMusic draws in software on this PC, so it keeps motion low. · Tell only: DeetsMusic draws in software on this PC, so it may feel slow. Settings › Motion › Reduce motion helps. | Only when the app STARTED in software and no hardware adapter works; once per install (`deets.gpu.noCardTold`). Off shows nothing. [GRAPHICS-FALLBACK.md §10.9](../features/GRAPHICS-FALLBACK.md) |
-| `usage.ts` — usage counts, the first launch with the feature (2026-10-13) | sticky info **notice** (`onceKey`) | New: DeetsMusic now sends usage counts. They carry no ID, no songs and no place. **[Show what is sent] [Turn off] [Got it]** | Once. Nothing is sent until one of its buttons is pressed (USAGE-COUNTS.md §7). Show what is sent opens Settings › About at the row. |
 | `updater.ts` — download or install fails | warn | Couldn't download the update. DeetsMusic will try again later. / Couldn't download that version. Try again later. / Couldn't get DeetsMusic X. Try again later. / Couldn't install the update. Try again. / A dev build doesn't update. | A failed scheduled **check** has no toast: the log and the Settings › Updates status line carry it. |
 
 **Recovery bounds (2026-09-13).** Failures arrive without bound, so every layer caps itself:

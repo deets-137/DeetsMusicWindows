@@ -189,6 +189,10 @@ export interface Settings {
   daySkin: SkinName;
   nightTheme: ThemeName;
   nightSkin: SkinName;
+  /** The user picked a day or night theme or skin. Until then, each time the schedule turns on,
+   *  all four start as the user's own look, so turning it on changes nothing on screen (his call
+   *  2026-10-23). Written by `setSetting`, never by a row. */
+  lookPairsPicked: boolean;
   /** Set times ("HH:MM", local): the day look starts at dayStart, the night look at nightStart. */
   dayStart: string;
   nightStart: string;
@@ -483,6 +487,10 @@ export interface Settings {
    *  once-key (owner's call 2026-09-18): it survives a localStorage clear, the agent
    *  can read it, and Settings › Tips offers the walk again by writing 1 here. */
   onboardingStep: number;
+  /** The grand opening (onboarding.ts) has not closed yet on this brand-new install. Saved, so
+   *  every window agrees (the tray page can load the store first) and a user who quits during
+   *  it sees it again on the next launch. Closing it writes false; the walk waits for that. */
+  openingPending: boolean;
   /** The quick panel's icons already pressed (QUICK-SETTINGS.md §8), by `data-quick` id
    *  ("all" = the panel's cog). An icon not listed wears the New badge. A settings key for
    *  the same reasons as onboardingStep; Settings › Tips › Show the tour again clears it. */
@@ -581,6 +589,7 @@ export const DEFAULTS: Settings = {
   daySkin: "press",
   nightTheme: "black-red",
   nightSkin: "ocean", // his call 2026-10-11 (was cyber, the dark first-launch skin)
+  lookPairsPicked: false, // the four above are replaced by your own look when the schedule turns on (his call 2026-10-23)
   dayStart: "07:00",
   nightStart: "19:00",
   sunShift: 0,
@@ -626,7 +635,7 @@ export const DEFAULTS: Settings = {
   showAlbumInfo: true, // 2026-10-13: its own row (his call), on like the artist's; one or two Last.fm calls per album, cached a month
   showSongInfo: true, // 2026-10-17: its own row, on like the album's (his artist call); rides the song's one Last.fm call, cached a month
   notesSource: "both", // his call 2026-10-17: Apple first, then Last.fm; the row is for a user who wants one or none (LISTENERS.md §8.4)
-  usageReports: true, // his call 2026-09-29: on by default with a clear off switch; nothing leaves before the user was told (USAGE-COUNTS.md §1, §7)
+  usageReports: true, // his call 2026-09-29, again 2026-10-23: on, with a clear off switch on the grand opening's page 4; nothing leaves before that page was shown (USAGE-COUNTS.md §1, §7)
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
@@ -680,6 +689,7 @@ export const DEFAULTS: Settings = {
   diaryRescale: "ask", // user's call 2026-09-24 (7B): never change a number the user typed without telling them
   diaryGrow: "new", // user's call 2026-09-24: a new entry opens with room for its songs and the note panel
   onboardingStep: 1, // a fresh install starts at step 1; an upgrade is caught by migrate()
+  openingPending: false, // only seedOnboarding sets it, on a brand-new install: an upgrade never sees the grand opening
   quickSeen: [], // user's call 2026-09-20: every icon starts New, on an upgrade too — the panel is new to everyone
   rules: { v: 1, rules: [] },
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates
@@ -747,6 +757,25 @@ function migrate(into: Partial<Settings>): void {
   }
   // The Retro-Future skin became Cyber (2026-09-17); migrateLook maps the look keys the same way.
   for (const k of ["daySkin", "nightSkin"] as const) if ((into[k] as string | undefined) === "retro-future") into[k] = "cyber";
+  // `lookPairsPicked` (2026-10-23): a store from before it counts a day or night look that
+  // differs from the default as picked, so turning the schedule on keeps it. Every save writes
+  // all keys, so "stored" alone says nothing; "differs" does.
+  if (into.lookPairsPicked === undefined) into.lookPairsPicked = LOOK_PAIR_KEYS.some((k) => into[k] !== undefined && into[k] !== DEFAULTS[k]);
+}
+
+/** The day and night look keys. */
+const LOOK_PAIR_KEYS = ["dayTheme", "daySkin", "nightTheme", "nightSkin"] as const;
+/**
+ * What else changes with `key` (his call 2026-10-23). The schedule turning on, with no day or
+ * night look ever picked: all four start as your own look, so nothing changes on screen until
+ * you pick one. A pick of one of the four: from then on they are yours, and stay.
+ */
+function lookPairsWith(key: keyof Settings, value: unknown): Partial<Settings> {
+  if (state.lookPairsPicked) return {};
+  if (key === "lookSchedule" && state.lookSchedule === "off" && value !== "off")
+    return { dayTheme: state.theme, nightTheme: state.theme, daySkin: state.skin, nightSkin: state.skin };
+  if ((LOOK_PAIR_KEYS as readonly string[]).includes(key)) return { lookPairsPicked: true };
+  return {};
 }
 
 function load(): Settings {
@@ -794,25 +823,32 @@ function migrateLook(into: Partial<Settings>): void {
  * true first run both are still absent.
  *
  * The answer is persisted at once, alone. Without that, a user who quits during step 1
- * would come back with a saved theme and lose the walk they never finished. Only this key
- * is written: every other absent key must stay absent, so a later change to a DEFAULT still
+ * would come back with a saved theme and lose the walk they never finished. Only these keys
+ * are written: every other absent key must stay absent, so a later change to a DEFAULT still
  * reaches them.
+ *
+ * Two pages load this store at launch: the main window and the tray panel. The first to load
+ * writes the answer, and the second finds it already there. So the answer every page reads is
+ * the persisted `openingPending`, never this page's own `freshInstall` alone (2026-10-23: the
+ * tray page won the race and the main window skipped the grand opening).
  */
 let freshInstall = false;
-/** True only on the launch that found a brand-new install (the answer above, decided now).
- *  The New marks read it: a setting that already exists is not new to a new user. */
+/** True on a brand-new install until the grand opening closes (the answer above), in every
+ *  window. The New marks read it: a setting that already exists is not new to a new user. */
 export function isFreshInstall(): boolean {
-  return freshInstall;
+  return freshInstall || state.openingPending;
 }
 
 function seedOnboarding(stored: Partial<Settings>): void {
   if (stored.onboardingStep !== undefined) return;
   stored.onboardingStep = stored.theme === undefined && localStorage.getItem("deets.theme") === null ? 1 : 0;
   freshInstall = stored.onboardingStep === 1;
+  stored.openingPending = freshInstall;
   try {
     const raw = localStorage.getItem(KEY);
     const blob = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
     blob.onboardingStep = stored.onboardingStep;
+    blob.openingPending = stored.openingPending;
     localStorage.setItem(KEY, JSON.stringify(blob));
   } catch {
     /* storage disabled — the walk still runs this session, it just won't be remembered */
@@ -911,12 +947,16 @@ export function setSetting<K extends keyof Settings>(key: K, value: Settings[K])
     if (isRuleKey(key) && overlay.has(key) && effective(key) !== value) ownListeners.forEach((cb) => cb(key));
     return;
   }
-  state = { ...state, [key]: value };
+  const extra = lookPairsWith(key, value);
+  const before = state;
+  state = { ...state, ...extra, [key]: value };
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
     /* storage disabled — still applies for the session */
   }
+  // The day and night looks first: the schedule that turns on reads them.
+  for (const k of Object.keys(extra) as (keyof Settings)[]) if (before[k] !== state[k]) listeners.forEach((cb) => cb(k));
   if (key in MIRROR) mirror(key, value);
   if (isRuleKey(key) && overlay.has(key)) ownListeners.forEach((cb) => cb(key));
   else listeners.forEach((cb) => cb(key));

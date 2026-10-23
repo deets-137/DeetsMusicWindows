@@ -20,6 +20,19 @@ test("a brand-new install is fresh, and gets the first-launch pair", async () =>
   assert.equal(localStorage.getItem("deets.theme"), "lilac"); // the mirror
 });
 
+// 2026-10-23: the tray page loaded the store first and wrote the answer, so the main window
+// found `onboardingStep` already there and skipped the grand opening while the walk ran.
+test("2026-10-23 a second window on a brand-new install is still fresh, until the opening closes", async () => {
+  await loadStore({}); // the first page (the tray) seeds the answer
+  const raw = localStorage.getItem("deets.settings");
+  localStorage.clear();
+  localStorage.setItem("deets.settings", raw!);
+  const s = await import(`../src/settings-store.ts?case=${++n}`) as typeof import("../src/settings-store.ts");
+  assert.equal(s.isFreshInstall(), true);
+  s.setSetting("openingPending", false);
+  assert.equal(s.isFreshInstall(), false);
+});
+
 test("an upgrade from the old keys is not fresh and keeps its look (a retired id mapped)", async () => {
   const s = await loadStore({ "deets.theme": "viper", "deets.skin": "retro-future", "deets.settings": "{}" });
   assert.equal(s.isFreshInstall(), false);
@@ -66,4 +79,36 @@ test("picking your own value while a rule shows another is still a hand change",
   s._setOverlay("theme", "moonlight", "r");
   s.setSetting("theme", "green"); // the rule shows moonlight: you picked green again
   assert.deepEqual(heard, ["theme"]);
+});
+
+// His call 2026-10-23: turning the schedule on must not change the look in front of you.
+const pairs = (s: typeof import("../src/settings-store.ts")) =>
+  [s.ownSetting("dayTheme"), s.ownSetting("daySkin"), s.ownSetting("nightTheme"), s.ownSetting("nightSkin")];
+
+test("2026-10-23 the schedule turns on with your own look for day and night", async () => {
+  const s = await loadStore({ "deets.settings": JSON.stringify({ onboardingStep: 0, theme: "green", skin: "metal" }) });
+  s.setSetting("lookSchedule", "sun");
+  assert.deepEqual(pairs(s), ["green", "metal", "green", "metal"]);
+  // Off, a new look, on again: never picked, so the pairs follow the new look.
+  s.setSetting("lookSchedule", "off");
+  s.setSetting("theme", "sepia");
+  s.setSetting("lookSchedule", "clock");
+  assert.deepEqual(pairs(s), ["sepia", "metal", "sepia", "metal"]);
+});
+
+test("2026-10-23 a picked night look stays when the schedule turns on again", async () => {
+  const s = await loadStore({ "deets.settings": JSON.stringify({ onboardingStep: 0, theme: "green", skin: "metal" }) });
+  s.setSetting("lookSchedule", "sun");
+  s.setSetting("nightTheme", "black-red");
+  s.setSetting("lookSchedule", "off");
+  s.setSetting("theme", "sepia");
+  s.setSetting("lookSchedule", "sun");
+  assert.deepEqual(pairs(s), ["green", "metal", "black-red", "metal"]);
+});
+
+test("2026-10-23 an older store with a night look of its own counts as picked", async () => {
+  const s = await loadStore({ "deets.settings": JSON.stringify({ onboardingStep: 0, theme: "green", skin: "metal", nightTheme: "sepia" }) });
+  s.setSetting("lookSchedule", "sun");
+  assert.equal(s.ownSetting("nightTheme"), "sepia");
+  assert.equal(s.ownSetting("dayTheme"), "lilac"); // the default, kept: the pairs are yours
 });

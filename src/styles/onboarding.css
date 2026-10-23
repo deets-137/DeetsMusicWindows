@@ -185,6 +185,25 @@
   line-height: var(--lh-text);
   color: var(--subtext);
 }
+/* ── Page 5, the letter (src/onboarding-letter.ts; GRAND-OPENING.md §11) ──
+   One column at a reading measure, in the body face at text size and color: it is read, not
+   scanned. The sign-off in the title face. */
+.onboarding__letter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: var(--ob-letter-measure);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  line-height: var(--lh-text);
+  color: var(--text);
+}
+.onboarding__letter p { margin: 0; }
+.onboarding__sign {
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  color: var(--title);
+}
 /* ── Page 2, the layout (src/onboarding-looks.ts; GRAND-OPENING.md §7) ── */
 /* A pick: a drawing and its name under it. Pressed = the nav mark's picked look. */
 .onboarding__picks { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }

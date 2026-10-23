@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 795 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 796 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -799,6 +799,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--ob-switch-w` | `4em` | — | page 2's On / Off switches, all one width |
 | `--ob-look-w` | `112px` | — | page 3's skin and theme tiles |
 | `--ob-preview-w` | `260px` | — | page 3's preview player: the card's width at most |
+| `--ob-letter-measure` | `var(--notes-measure)` | — | page 5's letter: the longest line, as Apple's album notes read |
 | `--ob-look-h` | `72px` | — |  |
 | `--drill-wait` | `0.3s` | — | A drill's slide waits for the page it brings, at most this long (CARD-GROW.md §22.6, his call 2026-10-21): ready in time, it slides in drawn with no wave; later, it slides and the page waves in when its data lands. |
 | `--drill-out-by` | `0.55` | — | A card swap in a skin whose pages fade (--nav-off-opacity 0: Ocean, Glass, Cyber): the old page is gone by this share of the motion, and the new one shows from this share, so the two never cross at full (the review, 2026-10-21). A card's own page slide keeps its CSS. |
@@ -1131,7 +1132,7 @@ reader is a token nothing uses.
 | `--ocean-breath-dur` | `1.1s` | — | ocean.ts, styles.css |
 | `--ocean-breath-ease` | `cubic-bezier(0.37, 0, 0.63, 1)` | — | ocean.ts, styles.css |
 | `--ocean-glow-fade` | `2.4s` | — | styles.css |
-| `--ocean-ripple-dur` | `3.4s` | — | styles.css, styles/onboarding.css |
+| `--ocean-ripple-dur` | `3.4s` | — | styles.css |
 | `--ocean-ripple-gap` | `0.35s` | — | ocean.ts |
 | `--ocean-ripple-ease` | `cubic-bezier(0.2, 0.6, 0.35, 1)` | — | styles.css |
 | `--np-title-scroll-delay` | `350ms` | — | styles.css |
@@ -1192,7 +1193,7 @@ reader is a token nothing uses.
 | `--boot-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | press, ocean, glass, cyber | styles.css |
 | `--boot-stagger` | `70ms` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css |
 | `--boot-safety` | `4s` | — | extension/styles/skin.css, boot-cover.ts, styles.css, styles/skin.css |
-| `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber | appearance.ts, styles.css |
+| `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css |
 | `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | styles.css |
 | `--theme-morph-dur` | `500ms` | metal | appearance.ts, styles.css |
 | `--theme-morph-ease` | `ease-in-out` | — | styles.css |

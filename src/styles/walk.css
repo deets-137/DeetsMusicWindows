@@ -66,6 +66,9 @@
 .walk__deets { background-image: var(--walk-deets-idle); }
 .walk__happy { background-image: var(--walk-happy-sit); }
 .walk__stop[data-move="walk"] .walk__deets { background-image: var(--walk-deets-walk); }
+/* Standing under the control a step names: Deets points up at it, his hand under its middle
+   (walk.ts places the group by HAND_X). His call 2026-10-23. */
+.walk__stop[data-point="up"]:not([data-move="walk"]) .walk__deets { background-image: var(--walk-deets-point); }
 .walk__stop[data-move="walk"] .walk__happy { background-image: var(--walk-happy-walk); }
 
 @keyframes walk-cycle {
@@ -105,10 +108,8 @@
   border-left: calc(var(--walk-point) / 2) solid transparent;
   border-right: calc(var(--walk-point) / 2) solid transparent;
 }
-.walk__stop[data-point="up"] .walk__card::before {
-  bottom: 100%;
-  border-bottom: var(--walk-point) solid var(--border);
-}
+/* Under the target, Deets is the pointer: the card's arrow would point at him, not the control. */
+.walk__stop[data-point="up"] .walk__card::before { content: none; }
 .walk__stop[data-point="down"] .walk__card::before {
   top: 100%;
   border-top: var(--walk-point) solid var(--border);
@@ -165,8 +166,6 @@
 /* Skip is the quiet one: the user leaving is not the action we want to dress up. */
 .walk__btn--skip { border-color: transparent; color: var(--subtext); }
 .walk__btn--skip:hover { color: var(--text); }
-/* Next only exists once WE have failed to be obvious, so it arrives, it is not there. */
-.walk__btn--next { animation: walk-card-in var(--dur-med) var(--ease-ui) both; }
 
 /* The control a step names, while that step waits. */
 .walk-target {
@@ -192,5 +191,5 @@
    (ONBOARDING §4.2). The walk still works — it just stops moving. */
 :root[data-motion="reduced"] .walk__stop { transition: none; }
 :root[data-motion="reduced"] .walk__stop[data-move="walk"] .walk__sprite { animation: none; }
-:root[data-motion="reduced"] .walk__card, :root[data-motion="reduced"] .walk__card.is-leaving, :root[data-motion="reduced"] .walk__btn--next { animation: none; }
+:root[data-motion="reduced"] .walk__card, :root[data-motion="reduced"] .walk__card.is-leaving { animation: none; }
 :root[data-motion="reduced"] .walk-target { animation: none; outline: var(--focus-ring-w) solid var(--title); }

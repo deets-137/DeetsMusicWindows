@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-15
 sources: [scripts/gen-sun-zones.mjs, src/look-schedule.ts, src/sun-zones.ts, src/look.ts, src/rules-eval.ts, src/rules.ts]
-updated: 2026-09-29
+updated: 2026-10-23
 ---
 # DeetsMusic — Look schedule (day look / night look)
 
@@ -17,14 +17,22 @@ and one skin. Settings › Look schedule › **Change look at** picks what sets 
 
 | Value | Key value | The change comes at |
 |---|---|---|
-| Sunrise and sunset | `sun` | sunrise and sunset for the time zone's main city, plus **Shift sun times** (−60…+60 min) |
+| Sunrise and sunset | `sun` | sunrise and sunset for the time zone's main city, plus **Offset Sunset/Sunrise** (−60…+60 min) |
 | Set times | `clock` | **Day runs** from one time (04:00–12:00) to another (15:00–23:30), half-hour steps |
 | Windows mode | `windows` | the Windows light/dark app mode (live, `prefers-color-scheme`) |
 | Off (default) | `off` | never; the saved theme and skin stay |
 
 The **Day look** and **Night look** rows are split pills: a theme menu and a skin menu.
-Defaults are the two first-launch pairs (Lilac × Press, Black & Red × Cyber). A
-status line under the section says which look shows and until when.
+**Since 2026-10-23 (his call), both start as your own look:** when Change look at turns on
+from Off and you have never picked a day or night theme or skin, all four take your current
+theme and skin, so turning the schedule on changes nothing on screen. The rule is in the store
+(`lookPairsWith` in settings-store.ts), so it holds for every way the row turns on: Settings,
+the grand opening's page 4, the agent, the Compass. The first pick of one of the four sets the
+saved `lookPairsPicked`, and from then on the four are yours and stay. A store from before
+counts a day or night look that differs from the stored defaults as picked. The stored
+defaults (Lilac × Press, Black & Red × Ocean) now show only to a user who picked nothing and
+never turned the schedule on. A status line under the section says which look shows and until
+when.
 
 A scheduled change runs through `withAppearanceTransition` (the launch animation, the same
 as a pick from the title menu; UX-COVERUPS.md §6a) and then `publishAppearance`, so the tray panel
@@ -32,7 +40,7 @@ and the extension follow. A change to any schedule setting applies at once.
 
 ## 2. A pick from the title menu (user's call 2026-09-15: 3A, as a setting)
 
-**Menu pick lasts** (`lookHold`):
+**Manual pick lasts** (`lookHold`):
 
 - **Until next change** (default): `noteHandPick()` (main.ts, Theme and Skin clicks) writes
   `deets.look.hold` = `{ period, until }`. The schedule does not touch the look while the
@@ -52,7 +60,7 @@ accurate for the city). The app makes no request and asks for no permission.
 
 - **Error:** the user is not at the main city. Usually 10–30 minutes; wide zones more
   (Minneapolis vs Houston on `America/Chicago`: about 40 minutes at a summer sunset).
-  Shift sun times corrects it for one user.
+  Offset Sunset/Sunrise corrects it for one user.
 - **No main city** (`UTC`, `Etc/GMT+5`): longitude from the UTC offset, latitude 40° N; the
   status line says the time is rough.
 - **Polar day or night:** one look all day; the next check is at midnight.

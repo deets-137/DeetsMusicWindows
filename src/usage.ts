@@ -5,14 +5,16 @@
 //   settings  once per ISO week: the allow-listed settings (usage-keys.ts), as option values
 //   health    once per ISO week: the last finished week's counts, held by Rust (usage.rs)
 // Rust does every send (`usage_send`) and sets the channel. This module holds the off switch
-// (`usageReports`, §2 rule 9), the notice gate (nothing leaves before the user was told, §2
-// rule 10) and *Show what is sent* (§2 rule 8). Every send, skip and off is one diag line
-// with the kind, never the content.
+// (`usageReports`, §2 rule 9), the told gate (nothing leaves before the user was told, §2
+// rule 10) and *Show what is sent* (§2 rule 8). The update notice that told an upgrade was
+// retired 2026-10-23 (§7): no install updates into this feature any more. A new install is told
+// by the grand opening's page 4, which shows the switch (on by default, his call the same day);
+// a user who turns the switch on by hand is told by that act. Every send, skip and off is one
+// diag line with the kind, never the content.
 
 import { invoke } from "@tauri-apps/api/core";
-import { setting, setSetting, onSettingsChange } from "./settings-store";
-import { toast, noticeOff } from "./toast";
-import { requestSetting } from "./layout-bus";
+import { setting, onSettingsChange } from "./settings-store";
+import { noticeOff } from "./toast";
 import * as diag from "./diag";
 import { reportedSettings } from "./agent-settings";
 import { REPORTED } from "./usage-keys";
@@ -23,7 +25,8 @@ import {
 
 const STATE_KEY = "deets-usage";
 const LAST_KEY = "deets-usage-last";
-/** The notice's own key (toast.ts `onceKey`): "off" once the user pressed any of its buttons. */
+/** "off" once the user was told: the retired notice's own key (toast.ts `onceKey`), kept so an
+ *  install that answered it keeps sending. */
 export const NOTICE_KEY = "deets-usage-notice";
 
 const MIN = 60_000;
@@ -31,13 +34,10 @@ const MIN = 60_000;
 const DAY_WINDOW = 60 * MIN;
 /** The weekly reports leave at a random moment in this window of a launch where they are due. */
 const WEEK_WINDOW = 90 * MIN;
-/** Nothing leaves in the first minutes after launch, nor while the notice is fresh. */
+/** Nothing leaves in the first minutes after launch. */
 const FIRST = 3 * MIN;
 /** Once an hour, look again: a new UTC day or week can start while the app is open. */
 const RECHECK = 60 * MIN;
-/** The notice waits for the launch's own toasts to settle. */
-const NOTICE_AFTER = 20_000;
-const NOTICE_WATCH = 30_000;
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -67,6 +67,19 @@ const planned = new Map<UsageKind, number>();
 let recheck: number | undefined;
 
 const told = () => noticeOff(NOTICE_KEY);
+/** The user was told: the grand opening's page 4 showed the row and its hint, or they turned
+ *  the switch on by hand. Then the reports may be planned. */
+export function markUsageTold(why: string): void {
+  if (told()) return;
+  try {
+    localStorage.setItem(NOTICE_KEY, "off");
+  } catch {
+    // Storage blocked: the gate stays shut this session, so nothing is sent. The safe side.
+    return;
+  }
+  diag.log("usage:told", { why });
+  if (setting("usageReports")) void planDue();
+}
 
 function cancelAll(why: string): void {
   diag.log("usage:off", { dropped: [...timers.keys()], why });
@@ -133,26 +146,6 @@ async function send(kind: UsageKind): Promise<void> {
   }
 }
 
-function showNotice(): void {
-  const h = toast({
-    kind: "info",
-    text: "New: DeetsMusic now sends usage counts. They carry no ID, no songs and no place.",
-    onceKey: NOTICE_KEY,
-    actions: [
-      { label: "Show what is sent", run: () => requestSetting("usage") },
-      { label: "Turn off", run: () => setSetting("usageReports", false) },
-    ],
-  });
-  diag.log("usage:notice", { shown: h.shown, queued: h.queued });
-  // A press on any of its buttons (Got it included) writes the key after the button's own
-  // run, and no event says so in this window: look twice a minute until it is written.
-  const watch = window.setInterval(() => {
-    if (!told()) return;
-    window.clearInterval(watch);
-    void planDue();
-  }, NOTICE_WATCH);
-}
-
 /** The boot part (main.ts, a late part). */
 export function initUsage(): void {
   let wasOn = setting("usageReports");
@@ -161,13 +154,16 @@ export function initUsage(): void {
     const on = setting("usageReports");
     if (on === wasOn) return;
     wasOn = on;
-    if (on) void planDue();
+    if (on) {
+      markUsageTold("switched on");
+      void planDue();
+    }
     else cancelAll("switched off");
   });
   if (!setting("usageReports")) {
     diag.log("usage:off", { why: "switch off at launch" });
   } else if (!told()) {
-    window.setTimeout(showNotice, NOTICE_AFTER);
+    diag.log("usage:skip", { why: "not told" });
   }
   void planDue();
   recheck = window.setInterval(() => void planDue(), RECHECK);

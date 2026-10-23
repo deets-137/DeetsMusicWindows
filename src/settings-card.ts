@@ -456,7 +456,7 @@ const DOT_LEGEND =
 const RESET_GROUPS: ResetGroup[] = [
   { id: "look", label: "Theme and skin", hint: "The first-launch pair for your Windows light or dark mode", keys: [], look: true },
   {
-    id: "schedule", label: "Look schedule", hint: "Change look at, the day and night looks, the times, and Menu pick lasts",
+    id: "schedule", label: "Look schedule", hint: "Change look at, the day and night looks, the times, and Manual pick lasts",
     keys: ["lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "dayStart", "nightStart", "sunShift", "lookHold"],
   },
   { id: "motion", label: "Motion", hint: "Reduce motion, the three Animate rows, Fancy scrubber, and If graphics fail", keys: ["reduceMotion", "appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
@@ -1251,7 +1251,7 @@ function mountSettings(
           halves: [storeMenu("dayStart", timeOptions(4 * 60, 12 * 60)), storeMenu("nightStart", timeOptions(15 * 60, 23 * 60 + 30))],
         },
         {
-          kind: "choice", id: "sunshift", label: "Shift sun times", key: "sunShift", when: () => setting("lookSchedule") === "sun",
+          kind: "choice", id: "sunshift", label: "Offset Sunset/Sunrise", key: "sunShift", when: () => setting("lookSchedule") === "sun",
           hint: "Moves sunrise and sunset. Use it when the look changes too early or too late where you are",
           get: () => String(setting("sunShift")),
           set: (v) => setSetting("sunShift", Number(v)),
@@ -1261,7 +1261,7 @@ function mountSettings(
           })),
         },
         {
-          kind: "choice", id: "lookhold", label: "Menu pick lasts", key: "lookHold", when: scheduled,
+          kind: "choice", id: "lookhold", label: "Manual pick lasts", key: "lookHold", when: scheduled,
           hint: "A theme or skin you pick from the title menu while the schedule is on. For good: the schedule turns off",
           options: [{ value: "next", label: "Until next change" }, { value: "always", label: "For good" }],
         },
@@ -2431,7 +2431,8 @@ function mountSettings(
       title: "About",
       rows: [
         // Usage counts (USAGE-COUNTS.md): the switch, and the exact JSON of each report (§2 rule 8).
-        storeToggle("usage", "Send usage counts", "usageReports", () => "Sends counts once a day and once a week: no ID, no songs, no place."),
+        // The hint's promise is his (2026-10-23): anonymous, nothing about you or your Apple ID.
+        storeToggle("usage", "Send usage counts", "usageReports", () => "Anonymous counts, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no place."),
         {
           kind: "split", id: "usagesent", label: "What is sent",
           hint: () => "The last report of each kind and the next one, exactly as they leave",
