@@ -165,6 +165,27 @@ same in every run. A hit not in this list is new, and it needs a look at that sh
 | fullplayer-* (all, 2026-10-19) | TELEPORT on `compass.pop`, 42–220 px in its height, one per typed letter | the Compass list grows and shrinks with the matches as "full player" is typed: no motion is designed there |
 | rewind-sweep `visual-choices` (dev app, 2026-10-18) | FLASH on the list (`rewind__board`) and its rows at each view change; SNAP of the list and its off-screen rows one frame later; JITTER ≤ 4 px on each row; FLASH of a cover to 0.3 | the reveal: the list holds blank while it reloads, then lifts, and the first screen's rows enter on the wave (4 px rise) and covers fade in from `--art-in-from`. `motionReport` in `sweep-helpers.mjs` takes these out; a row that shows, fades and enters again (V1, fixed) still fails |
 
+**The 1.0.0 run (2026-10-23): judged by an A/B against the live code.** The first full run with
+TELEPORT and ROW JUMP, and with Metal and Happy: 139 shots, 50 clean, about 1,600 hit lines,
+most never classed. So the suspect shots (card-replace, card-swap, max-swap, drill, grow,
+title-menu, scroll, next-song, quick-panel, fullplayer-max / -midi, the four surface changes)
+ran again on 0.31.0 (`869c581` in a scratch worktree, today's runner and demo config copied in),
+and the reports were diffed by shot × skin × kind × part (`hitdiff.py` in that session's
+scratchpad: parse each report's shot blocks, key every part of every hit line). **Result: no
+new motion fault since 0.31.0.** 18 groups were new, each a one-skin variant of a hit 0.31.0
+has in other skins (16 groups went the other way); the rest: Vanilla's swap is a cut (TELEPORT
+and JITTER of the two slots, 242–581 px), a drilled title moves right for its back chevron
+(TELEPORT 28 px), the full player's close hands its rows and its × to the real card (SNAP, as
+`restCopy` above), Metal's title fade on Next (FLASH on `np__meta`, metal.md). Happy alone:
+one SNAP each on the quick panel's and the Compass's arrival, each a single dropped frame in
+headless software drawing (`[perf] frames … dropped 1`). Every other TELEPORT is the Compass
+list resizing as letters are typed (above) or a surface change resizing the window in one
+frame. **One real fault, on 0.31.0 too (not new):** the card picker draws one tall column for
+about two frames before its two columns (TELEPORT on `slot-picker__menu.pop` at ~75 ms,
+151×409 → 257×229; HANDOFF › Open now). Also fixed that day: the demo's first page load took
+over 90 s (Vite globbed `shots/`, 20 GB, and the Rust target folders); `vite.demo.config.ts`
+now scans `index.html` only and watches neither, and a cold load takes 3.4 s.
+
 **Found and fixed with it (2026-10-14):** the full player's rows flashed after the open; the Max close ended with a jump (an empty resting place, then a last sliver)
 (fullscreen-player.md §13); the close square popped in beside the rows' fade; the hover hint
 blinked off and on after a drill (ONBOARDING.md §1, `STILL_PX`).

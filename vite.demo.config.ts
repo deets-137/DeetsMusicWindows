@@ -134,9 +134,16 @@ export default defineConfig({
     rollupOptions: { input: { main: "index.html" } },
   },
   clearScreen: false,
+  // The dependency scan reads only the demo's page. With no entries Vite globs every .html in
+  // the repo, and shots/ (20 GB on 2026-10-23) and the Rust target folders made the first page
+  // load miss the shots runner's 90 s wait (the motion monitor failed on its first clip).
+  optimizeDeps: { entries: ["index.html"] },
   server: {
     port: Number(process.env.VITE_PORT) || 1430,
     strictPort: false, // several Deets* apps run on this PC at once: take the next free port
-    watch: { ignored: ["**/src-tauri/**", "**/cli/target/**", "**/dist-web/**"] },
+    // Never watch the generated trees: the watcher walks them at start.
+    watch: {
+      ignored: ["**/src-tauri/**", "**/cli/target/**", "**/target/**", "**/dist-web/**", "**/shots/**", "**/installers/**"],
+    },
   },
 });

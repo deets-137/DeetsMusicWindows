@@ -261,6 +261,12 @@ each step that touches those calls.
   Metal changes) and the Happy faces, now served by `signin.js`. Deployed 2026-10-23 (version
   `8e7679b2`, his go); every mark, the favicon, the icon and the new faces curl 200 and match
   the commit. Open: his look at a real sign-in.
+- **The motion monitor for 1.0.0 (2026-10-23):** the demo run passed by an A/B against 0.31.0,
+  no new motion fault ([the checks archive](ops/checks/README.md) §2a, *The 1.0.0 run*). The
+  `--dev` run is next, his go first. One old fault found (on 0.31.0 too): **the card picker
+  draws one tall column for about two frames, then two columns**, in Midi (`fit()` in
+  layout.ts runs at open, and a frame trace in headless Edge did not reproduce it: the cause is
+  open).
 - **Bugs read from his installed log (2026-10-23).** (1) After the PC woke at 13:34 on
   2026-10-22, the app started at 13:35 with no network: the syncs failed and the "offline" check
   ran once; then the log went silent at 13:36 (no 5-minute `diag` flush, no 5-minute Apple

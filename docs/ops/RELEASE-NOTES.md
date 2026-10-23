@@ -41,6 +41,14 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.0.0 — 2026-10-23
+
+**DeetsMusic 1.0.**
+
+**First-time onboarding screen.**
+
+**6 skins | 6 themes.**
+
 ## 0.99.0 — 2026-10-23
 
 **The grand opening.** A welcome screen on a first launch, in five pages: sign in to Apple Music
