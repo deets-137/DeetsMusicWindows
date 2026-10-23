@@ -104,6 +104,19 @@ function onAppear(sel: string, done: () => void): () => void {
   return () => o.disconnect();
 }
 
+/**
+ * Where the target's words are, not its box. A card title is a block as wide as its card, so
+ * in a wide card (Max's 2 rows, 1 card) the box's middle is far right of the word and Deets
+ * pointed at the shelf below (2026-10-23). A Range over the contents gives the words' extent.
+ */
+function inkRect(el: HTMLElement): DOMRect {
+  const box = el.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const ink = range.getBoundingClientRect();
+  return ink.width > 0 && ink.height > 0 ? ink : box;
+}
+
 /** The left card's title — every mounted card title is a picker (layout.ts makePicker). */
 const firstCardTitle = (): HTMLElement | null =>
   document.querySelector<HTMLElement>('[data-slot="left"] .panel__title.is-pickable') ??
@@ -294,7 +307,7 @@ function run(from: number): void {
       place(Math.round((vw - w) / 2), Math.round((vh - h) / 2));
       return;
     }
-    const r = marked.getBoundingClientRect();
+    const r = inkRect(marked);
     const gap = tokenPx("--walk-gap");
     const edge = tokenPx("--space-2");
     // Under the target if there is room, else above it. Everything the walk names sits at
