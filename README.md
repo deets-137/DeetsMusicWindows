@@ -128,8 +128,9 @@ DeetsMusic builds only ([docs/ops/RELEASE.md](docs/ops/RELEASE.md) §7a).
     as numbers only.
 
   No report carries an ID. The server stores no IP address, no songs and nothing about
-  where you are, and deletes everything after 13 months. The app tells you once before the
-  first report. *What is sent*, in the same place, shows each report exactly as it leaves.
+  where you are, and deletes everything after 13 months. The row is on by default, and the
+  welcome screen shows it on its Nitpicks page. *What is sent*, in Settings › About, shows each
+  report exactly as it leaves.
   Turn the row off and nothing is sent.
 - **Nothing else.** No listening history leaves your PC.
 

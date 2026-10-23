@@ -17,7 +17,7 @@ import { mountSettingsParts, quickFoldOpen, toggleQuickFold, type SettingsPart }
 import { markUsageTold } from "./usage";
 
 /** The words on the page (his title and subtitle, 2026-10-23; the column titles are Claude's,
- *  for his review). */
+ *  reviewed and kept by him the same day). */
 const COPY = {
   title: "Nitpicks",
   sub: "Smaller settings, rules, and such to fine-tune DeetsMusic for ya",

@@ -11,13 +11,14 @@
 // in-card nav tokens (--nav-dur, --nav-ease, --nav-off-opacity); the page's two positions
 // are --ob-page-above / --ob-page-below (skin.css).
 //
-// It opens on a brand-new install (settings-store.ts `isFreshInstall`: the saved
-// `openingPending`, so a launch that quits during it opens it again), after the launch cover,
+// It opens on a brand-new install (the saved `openingPending`, settings-store.ts, so a launch
+// that quits during it opens it again; the web demo starts it false), after the launch cover,
 // and the first-run walk (walk.ts) waits for it to close: the sprites point at controls this
 // card would hide. Closing it clears `openingPending`. `__onboarding.open()` and
 // the Compass's Onboarding row open it at any time.
 
-import { isFreshInstall, setting, setSetting } from "./settings-store";
+import { setting, setSetting } from "./settings-store";
+import { markUsageTold } from "./usage";
 import * as diag from "./diag";
 import * as frames from "./frames";
 import { settingsCard } from "./settings-card";
@@ -262,6 +263,9 @@ export function closeOnboarding(): void {
   window.removeEventListener("deets:signed-in", warmUp);
   diag.log("onboarding:close");
   if (setting("openingPending")) setSetting("openingPending", false);
+  // A new install's usage counts may start once the opening closes, page 4 seen or not (his call
+  // 2026-10-23: the switch is on, for a pulse on how many people use the app).
+  markUsageTold("grand opening closed");
   const done = closed;
   closed = null;
   done?.();
@@ -283,5 +287,5 @@ function onKey(e: KeyboardEvent): void {
  *  Resolves at once on every other launch. */
 export function initOnboarding(): Promise<void> {
   window.__onboarding = { open: openOnboarding, close: closeOnboarding };
-  return isFreshInstall() ? openOnboarding() : Promise.resolve();
+  return setting("openingPending") ? openOnboarding() : Promise.resolve();
 }

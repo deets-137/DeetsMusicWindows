@@ -30,8 +30,11 @@ through it all").
    grand opening's page 4 ([GRAND-OPENING.md](GRAND-OPENING.md) §10) and the hint "Anonymous
    counts, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no
    place." Page 4 is the telling (`markUsageTold` in usage.ts writes the told key when it
-   shows); so is turning the switch on by hand. A user who closes the opening before page 4
-   sends nothing.
+   shows); so is turning the switch on by hand. **Later the same day (his call, for a pulse on
+   how many people use the app):** closing the grand opening also opens the gate, page 4 seen
+   or not, so a user who skips ahead sends with the switch on. This changes rule 10 (§2) for a
+   new install: it is told by the switch on page 4 and in Settings › About, not before the first
+   report. The README's Privacy paragraph says so.
 2. **Scope:** active installs per day, week and month; the version mix; the on/off and choice
    settings once a week. **Added the same day:** error counts from the log and Apple call counts
    (the health report, §3.3).
@@ -60,9 +63,10 @@ the fork test, and he did not object):
 11. **Send the skin rows too (his call, 2026-10-21).** His words: "we should send metal as well,
     its not privacy invading or identifiable." Metal's four choice rows (`metalMaterial`,
     `metalGrain`, `metalCoverChange`, `metalPeek`) and Happy's Sky (`happySky`) move from
-    NOT_REPORTED to REPORTED in `src/usage-keys.ts`. **Not done yet:** it needs `npm run
-    usage:keys` (the worker's copy in DeetsSupport) and a DeetsSupport deploy, which is his call;
-    the app and the worker must change together, or the worker drops the new keys.
+    NOT_REPORTED to REPORTED in `src/usage-keys.ts`. **Done 2026-10-23 (his go):** the list moved,
+    `npm run usage:keys` copied it (DeetsSupport `6866b62`), and the worker was deployed first
+    (version `ef8980c0`), so it takes the five keys before any app sends them. The app sends
+    them from the next release.
 
 ## 2. The privacy rules
 
@@ -95,7 +99,9 @@ of them is a new fork for the owner, never a build detail.
    the bug-report form, which shows the exact text before it sends (LOGGING.md §The report form).
 9. **Off means off, at once.** With the row off, the app sends nothing: not the day count, not
    the settings, not the health. A report already waiting for its random moment is dropped.
-10. **Nothing is sent before the user was told** (§7). A new install is told on the Hop in
+10. **Nothing is sent before the user was told** (§7). **Changed 2026-10-23 (his call):** a
+    new install sends once the grand opening has closed, whether or not page 4 was seen (§1, call 1). The text
+    below is the rule as first written. A new install is told on the Hop in
     screen. An install that updates to the first version with this feature is told by a
     notice, and sends nothing until that notice has been shown.
 11. **Only the release bundles send to production.** The live app sends `channel: "live"`, the

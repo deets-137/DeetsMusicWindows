@@ -233,8 +233,9 @@ each step that touches those calls.
   the shared changes — Metal's stress cases (metal.md §6.7, §6.9) and Ocean's desk test
   (OCEAN.md §5, §8); the signed-out covers on the mint's token, which only an installed release
   build takes (a dev build signs with the local key); the demo shows the page to a fresh visitor
-  too (not checked); the nav bar's page icons (numbers until he draws them); his review of
-  Claude's `point_up.png`.
+  too (not checked; since 2026-10-23 the demo skips the opening and keeps the tour). The nav
+  bar's page numbers stay for now (his call: they show how far along a user is). Kept by him
+  2026-10-23: Claude's `point_up.png` and page 4's labels.
 
 - **Drill motion review (2026-10-21, on `happy-thirtytwo`; paused by him for the evening).** Go
   to Album / Artist and Back: five faults fixed (CARD-GROW.md §22.2), his four calls built (§22.4,
@@ -280,8 +281,8 @@ each step that touches those calls.
   test passed 2026-10-20 (his word, DESK-TESTS.md row A11). Defaults (his call, 2026-10-20):
   Steel, Cover change on Zoetrope, Peek on. The texture under software drawing stays on (only
   the 3D turn is in the graphics fallback). Lessons for the next stress test: DESK-TESTS.md §6.7.
-  **Open:** DeetsSolutions' skin list and the sign-in page's skin assets (`npm run signin:assets`
-  and a DeetsSupport deploy, RELEASE.md §0b): his call. Not released.
+  **Open:** DeetsSolutions' skin list (his call). The sign-in page's Metal assets are live: DeetsSupport
+  `60127e5`, deployed 2026-10-21 06:54 UTC (read from `wrangler deployments list`, 2026-10-23).
 - **The full player's frames** (2026-10-18 and 2026-10-19, on `main`; fullscreen-player.md
   §14, §14.9). The stacked open and close per skin, the frame recorder (`frame-why.mjs`), and
   the player's state moved from `<html>` to the bento (the close's last frame restyles 256–536

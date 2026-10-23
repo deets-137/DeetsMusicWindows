@@ -522,14 +522,19 @@ Ocean on page 3: the preview's crests at full neon.
      Skip in queues as *Suggest Less*; Song of the Day; Playback › Show play counts from Last.FM
      and Notes from as *Song facts*.
 - **Page 4 is the usage counts' telling** (USAGE-COUNTS.md §2 rule 10): its mount runs
-  `markUsageTold`, and then the reports may be planned. A user who closes the opening before
-  page 4 sends nothing.
+  `markUsageTold`, and then the reports may be planned. **Since later the same day (his call):**
+  closing the opening by any path runs it too (`closeOnboarding`), so a user who skips page 4
+  sends with the switch on (USAGE-COUNTS.md §1, call 1).
+- **Not in the web demo** (his call, 2026-10-23): the demo's shim writes `openingPending: false`
+  before the app loads, and the store keeps a value already there, so a visitor gets the tour
+  and not the opening (WEB-DEMO.md §16). `initOnboarding` reads the saved `openingPending`, not
+  `isFreshInstall`, for that reason. The Compass's Onboarding row still opens it there.
 
-What Claude decided inside his ask, to review: the column titles (*Rules and schedules*, *The
-app*, *Worth a look*) and the group labels (*Graphics*, *Usage counts*, *Startup*, *Suggest
-Less*, *Song facts*); If graphics
-fail as the third rule-adjacent row; the page counts as the telling once it is shown, not once a
-row is pressed.
+What Claude decided inside his ask, **reviewed by him and kept (2026-10-23)**: the column titles
+(*Rules and schedules*, *The app*, *Worth a look*) and the group labels (*Graphics*, *Usage
+counts*, *Startup*, *Suggest Less*, *Song facts*); If graphics fail as the third rule-adjacent
+row; the page counts as the telling once it is shown, not once a row is pressed. Deets's
+`point_up.png` (ONBOARDING.md §4.0) was kept the same day.
 
 **Desk test:** Next from page 3 slides page 4 in; its button says *Next*. Each row on page 4
 changes the same value as its Settings row (open Settings from the nav bar's cog and compare).

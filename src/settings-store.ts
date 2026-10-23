@@ -843,7 +843,9 @@ function seedOnboarding(stored: Partial<Settings>): void {
   if (stored.onboardingStep !== undefined) return;
   stored.onboardingStep = stored.theme === undefined && localStorage.getItem("deets.theme") === null ? 1 : 0;
   freshInstall = stored.onboardingStep === 1;
-  stored.openingPending = freshInstall;
+  // A value already there wins: the web demo writes `false` before the app loads, so a visitor
+  // gets the tour without the grand opening (WEB-DEMO.md; no file in src/ knows the demo).
+  if (stored.openingPending === undefined) stored.openingPending = freshInstall;
   try {
     const raw = localStorage.getItem(KEY);
     const blob = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};

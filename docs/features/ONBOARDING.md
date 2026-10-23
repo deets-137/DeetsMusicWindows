@@ -423,7 +423,7 @@ gesture on it:
   below) and clamps the group on screen.
 - **Deets points at the target** (his ask, 2026-10-23). Under it, he stands in
   `point_up.png`: his `throw_side` frame 2 from the Happy skin with the ball taken out and the
-  arm raised over his head (drawn by Claude, for his review). His raised hand (`HAND_X`, 18 px
+  arm raised over his head (drawn by Claude; he reviewed it and kept it, 2026-10-23). His raised hand (`HAND_X`, 18 px
   of 32) goes under the target's middle, and the card's own arrow stands down, so there is one
   pointer. Over the target (no room below), he stands idle and the card's arrow points down
   at it, as before.

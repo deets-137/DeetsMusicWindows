@@ -15,6 +15,9 @@ export const ROOM_GUEST_CONTROLS = ["playPause", "skip", "seek", "add", "changeQ
 export const REPORTED: readonly string[] = [
   // Theme and skin, and the look schedule
   "theme", "skin", "lookSchedule", "dayTheme", "daySkin", "nightTheme", "nightSkin", "lookHold",
+  // The skin rows (his call 2026-10-21: "we should send metal as well, its not privacy invading
+  // or identifiable"; built 2026-10-23 with the DeetsSupport copy and deploy, USAGE-COUNTS.md §1.11)
+  "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek", "happySky",
   // Window
   "surface", "closeToTray", "trayView", "startWithWindows", "surfaceAutoFlip", "volumeShrink",
   "maxShortWindow", "maxCards", "alwaysOnTop", "cardGrow", "moveSections", "cardGrowOutside",
@@ -62,13 +65,8 @@ export const REPORTED: readonly string[] = [
 export const NOT_REPORTED: Readonly<Record<string, string>> = {
   sunShift: "minutes, close to a time",
   usageReports: "the switch itself: a report leaves only while it is on",
-  // Metal's rows (2026-10-20): not sent until he decides (a new key on the allow-list is his call,
-  // USAGE-COUNTS.md §2); the skin itself is already counted through `skin`.
-  // Reduce motion (2026-10-20, GRAPHICS-FALLBACK.md §10.4): not sent until he decides, as above.
+  // Reduce motion (2026-10-20, GRAPHICS-FALLBACK.md §10.4): not sent until he decides (a new key
+  // on the allow-list is his call, USAGE-COUNTS.md §2). Metal's and Happy's rows moved to
+  // REPORTED on 2026-10-23 (his call of 2026-10-21).
   reduceMotion: "a new Motion row: his call before it is sent",
-  metalMaterial: "Metal's rows: his call before they are sent",
-  metalGrain: "Metal's rows: his call before they are sent",
-  metalCoverChange: "Metal's rows: his call before they are sent",
-  metalPeek: "Metal's rows: his call before they are sent",
-  happySky: "Happy's rows: his call before they are sent",
 };

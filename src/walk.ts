@@ -47,7 +47,7 @@ import "./styles/walk.css";
 import deetsIdle from "./assets/sprites/deets/idle_down.png";
 import deetsWalk from "./assets/sprites/deets/walk_side.png";
 // His throw_side frame 2 (the Happy skin's art) with the ball taken out and the arm raised over
-// his head: Deets points up at the control (2026-10-23, drawn by Claude for his review).
+// his head: Deets points up at the control (2026-10-23, drawn by Claude; reviewed by him and kept the same day).
 import deetsPoint from "./assets/sprites/deets/point_up.png";
 import happySit from "./assets/sprites/happy/sit_side.png";
 import happyWalk from "./assets/sprites/happy/walk_side.png";

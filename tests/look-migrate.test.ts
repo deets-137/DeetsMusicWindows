@@ -33,6 +33,13 @@ test("2026-10-23 a second window on a brand-new install is still fresh, until th
   assert.equal(s.isFreshInstall(), false);
 });
 
+test("2026-10-23 a preset openingPending false (the web demo) keeps the tour and skips the opening", async () => {
+  const s = await loadStore({ "deets.settings": JSON.stringify({ openingPending: false }) });
+  assert.equal(s.isFreshInstall(), true); // still a first run: the New marks seed, the walk starts
+  assert.equal(s.ownSetting("onboardingStep"), 1);
+  assert.equal(s.ownSetting("openingPending"), false);
+});
+
 test("an upgrade from the old keys is not fresh and keeps its look (a retired id mapped)", async () => {
   const s = await loadStore({ "deets.theme": "viper", "deets.skin": "retro-future", "deets.settings": "{}" });
   assert.equal(s.isFreshInstall(), false);

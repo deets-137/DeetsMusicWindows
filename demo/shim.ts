@@ -15,6 +15,15 @@ import { FakeMusicKit, onNowPlaying, type NowPlaying } from "./musickit";
 import { installTauri } from "../web/tauri-shim";
 import { replayed } from "./latency";
 
+// A first visit skips the grand opening and keeps the first-run tour (his call 2026-10-23): the
+// store keeps a value already there (settings-store.ts `seedOnboarding`), so `openingPending`
+// is written false before the app loads. The Compass's Onboarding row still opens it.
+try {
+  if (localStorage.getItem("deets.settings") === null) localStorage.setItem("deets.settings", JSON.stringify({ openingPending: false }));
+} catch {
+  /* storage off: the opening shows, as on a fresh install */
+}
+
 // `replayed`: the owner's waits, only when the shots runner asks (latency.ts; LOADING-SET.md §3.3).
 const tauri = installTauri((cmd, args) => replayed(cmd, () => handle(cmd, args, host)));
 

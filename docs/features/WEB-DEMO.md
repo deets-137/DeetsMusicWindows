@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-09-24
 sources: [demo/boot.ts, demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 # DeetsMusic — Web demo
 
@@ -398,3 +398,16 @@ ES2022 for the `await`.
    panel shows the song beside the frame; the badge opens it on Apple Music; a narrow page puts
    the panel below.
 9. Block `/sotd/songs.json` (DevTools › Network › block): the demo still loads, from the copy.
+
+## 16. No grand opening on a first visit (2026-10-23)
+
+> **Part:** built · 2026-10-23
+
+- His call: a visitor gets the first-run tour, not the grand opening. `demo/shim.ts` writes
+  `deets.settings` = `{ openingPending: false }` when the visitor has no settings yet, before
+  the app loads. The store keeps a value already there (`seedOnboarding`), so the visit is
+  still a first run (the tour, the New marks), and `initOnboarding` finds nothing pending.
+  No file in `src/` names the demo (§9). The Compass's Onboarding row still opens the page.
+
+**Desk test:** a private window on the demo: the cards rise, Deets and Happy walk to the
+wordmark; no grand opening. Ctrl+Space › Onboarding opens it.
