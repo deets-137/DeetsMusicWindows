@@ -65,7 +65,7 @@ Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequa
 
 **Open issues for this workflow**
 <!-- Links to the open issues and bugs for this workflow (DOCS-ORG §13.10). Where the links
-     come from is open. This block also carries the "50 cents" bit (marketing.md §1); the
+     come from is open. This block also carries the "50 cents" bit (DOCS-ORG §13.10); the
      owner writes its words. -->
 
 ## Sub-sections that were their own page

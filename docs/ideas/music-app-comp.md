@@ -277,8 +277,8 @@ doc's §8 by hand, with the date.
 - **F4 — Appearance switch.** Recommend: report, do not score (different scope). Alternative:
   score Light ↔ Dark against our *theme* switch only, never a skin switch.
 - **F5 — Where the numbers go.** Recommend: this doc only, until three passes agree; then one
-  honest table on the deets.solutions page with the asymmetries printed under it
-  (`docs/guide/marketing.md` is the home). Alternative: never publish; use it to steer our
+  honest table on the deets.solutions page with the asymmetries printed under it.
+  Alternative: never publish; use it to steer our
   own work (the rows where we lose become NEXT-VERSION items).
 - **F6 — Which skin is the default column.** Recommend: the shipped default, with Press as
   the second column. Alternative: the lightest skin only. **DECIDED 2026-10-11:** Press (the

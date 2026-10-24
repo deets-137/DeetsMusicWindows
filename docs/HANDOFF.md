@@ -407,15 +407,8 @@ each step that touches those calls.
 ### His to design or decide (asks and ideas, not built)
 
 
-- **The launch clip: to 9/10** (2026-10-21, his ask; paused, pick up here). An independent
-  motion review scored take 6 5 · 6 · 4 (enticing · smooth · sensible); the script fixes are in
-  (guide/SHOTS.md §5k.1). His calls since: **no Midi** (the clip is Max from the first frame) and
-  **captions as Deets's speech bubble in Pixelify Sans** (the runner's `say` step; the words are
-  `caption` in `launch-tour-songs.json`, skin names as placeholders). **Not done:** the cut in
-  `launch-tour.mjs` still expects a Midi part (make it optional, then record take 7 on `dev:perf`
-  with DevTools shut); his words for the captions and the end line; the Glass, second Metal and
-  web songs. App builds: a press reaction for Deets, the look change in the full player
-  (fullscreen-player.md §15), a layout change with motion (MAX-CARDS.md §12).
+- **Two motion ideas** (2026-10-21, found in a frame review): the look change in the full player
+  blinks to dark (fullscreen-player.md §15), and a layout change has no motion (MAX-CARDS.md §12).
 
 - **Redesign the sign-in flow before a public release** (2026-10-17, his words: "I wanted to
   redesign the login flow eventually before public (non-friends) release anyway"). The mark's
@@ -468,10 +461,8 @@ each step that touches those calls.
   (LAYOUT.md), his pick. The graphics fallback rule's place in the engine's order
   (GRAPHICS-FALLBACK.md §9 item 3).
 - **Friends see your picks and your Diary** (FRIENDS.md §20; never tell a user it exists).
-- **The user guide as a wiki** (DOCS-ORG.md §13.10, guide/marketing.md §1): next, the outline
-  block for each page. Before a public announcement (RELEASE.md §7): a GitHub Release, the
-  guide. His own announcements and images are done (2026-10-23, his word; ideas/launch.md is a
-  record only).
+- **The user guide as a wiki** (DOCS-ORG.md §13.10): next, the outline
+  block for each page. The launch and the marketing are his (2026-10-23, his word); the repo holds none of it.
 - **Full player:** Mini's player view; a turning copy of the Press record in the flight
   (fullscreen-player.md §8).
 - **Motion review forks:** the surface-pick motion, the Now Playing song change (SHOTS.md §5e).

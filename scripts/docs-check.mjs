@@ -49,7 +49,8 @@ const FIRST_PUBLIC = "0.4.3";
 const OTHER_REPO = /^(\.\.\/(?!src|docs|scripts|extension|cli|crates|README|CLAUDE|AGENTS)|Deets[A-Za-z]+\/|DeetsSolutions)/;
 // Another repo named in prose: any Deets* name but this app's own, or the website.
 const NAMES_REPO = /\bDeets(?!Music\b)[A-Z][A-Za-z]+|\bdeets\.solutions\b|\bdeets-137\//;
-const RETIRED = { "VALUES.md": "LESSONS.md" };
+// marketing.md: deleted 2026-10-23 (his word); its guide direction is DOCS-ORG.md §13.10.
+const RETIRED = { "VALUES.md": "LESSONS.md", "marketing.md": "DOCS-ORG.md" };
 // An archived doc (DOCS-ORG.md §5.3) is a record: like a plan, it may name files that are gone.
 const PLANS = ["project", "designed", "idea", "archived"];
 // Check 19: every docs path an installed build opens. Append only; never remove a line.

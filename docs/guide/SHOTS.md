@@ -7,7 +7,7 @@ updated: 2026-10-21
 # DeetsMusic — Shots: pictures and clips of each feature
 
 A script records every feature of the app as a picture or a short clip. The user guide
-(DOCS-ORG.md §13) and a marketing overview use the same shots. The script runs again before
+(DOCS-ORG.md §13) uses the shots. The script runs again before
 each release, so no picture shows an old app.
 
 > **State (2026-09-28, branch `visualz`, merged into `main`):** §10 steps 2 and 3 BUILT. The runner takes demo
@@ -31,11 +31,10 @@ each release, so no picture shows an old app.
 | What a shot is | **Pictures and short clips.** A clip is 3–8 s, for motion: card swap, the Press record, the Compass. |
 | Where shots come from | **The demo first.** The dev app only for what the demo cannot show (§4). |
 | Who makes them | **The runner, again before each release.** Not by hand. |
-| Who writes the words | **The guide rule (DOCS-ORG §13.2 U3) holds for marketing too.** Claude writes the outline: the feature, its hook, its shot. The owner writes every sentence a stranger reads. |
+| Who writes the words | **The guide rule (DOCS-ORG §13.2 U3).** Claude writes the outline: the feature, its hook, its shot. The owner writes every sentence a stranger reads. |
 | Clip format | **MP4 with a poster picture.** The page plays it with `<video muted autoplay loop playsinline>`. The poster shows while it loads and for reduced motion. |
 | Where the shot list lives | **`docs/guide/`** — this doc and `shots.json`. |
 | Where shots go (U10) | **Local only, for now.** The owner is checking the cost of each way to host them. U10 stays open. |
-| The marketing page | **Decide later**, after the owner sees the first shots. |
 | How ffmpeg gets on the PC | **`winget install Gyan.FFmpeg`** (the owner started it, 2026-09-25). Not the `ffmpeg-static` npm package (a ~70 MB dev dependency in the repo), and not WebM from the browser's own recorder (an uneven frame rate, poor in Safari). Installed: ffmpeg 9.0.2, on the PATH (checked 2026-09-26). |
 | F1 Which looks (2026-09-26) | **Every look for every shot.** His reason: it is scripted, and the files stay on his PC. The disk estimate in §8 grows by the same factor. |
 | F2 Real library in dev-app shots (2026-09-26) | **Allow it, local only.** No swap step. Revisit when U10 puts shots anywhere public. |
@@ -525,22 +524,25 @@ test that anyone can run.
 **One driver.** A dev run changes his app while it runs. Before it, ask the other sessions in the
 checkout; never `click` a text field (set it by `eval`; DESK-TESTS.md §6.2). Ask them to hold
 saves too: a save under `src-tauri/src` makes the dev runner rebuild and restart the app, and a
-CSS save hot-reloads it, both mid-take (the launch tour lost two takes this way, 2026-10-21).
+CSS save hot-reloads it, both mid-take (a dev clip lost two takes this way, 2026-10-21).
 
 **A clean screen (his rule, 2026-10-21).** Before a dev run that others will see, clear the
 first-run tour and every standing toast: the dev app keeps them, and a restart can bring the tour
 back. The shot sets `"onboardingStep": 0` in its `settings` (put back after) and dismisses a
-standing toast in `prepare` the way a user would (its Got it). `docs/guide/launch-tour.json` is
-the reference.
+standing toast in `prepare` the way a user would (its Got it).
 
 **The guide (2026-10-21, `"guide": true` or `{ "scale": 3 }` on a clip).** The runner shows no
 pointer, so for a clip others will watch, Deets and Happy (the first-run tour's sprites and
 `walk.css`, no speech card) walk to each control before a `click`, `rightclick` or `hover`
 touches it, then the input lands. `{ "walk": selector | "rest" }` moves them with no input (rest
-= the quietest spot on screen now, §5k.1; `"guide": { "restAfter": ms }` steps there after each
-press, `"travel": ms` sets the walk's pace, `"scale"` its size); `"side": "below" | "above" | "left" | "right"` picks where they stand;
-`"guide": false` on a step skips the walk. They sit over everything, menus and the full player
-included, and take no pointer. The launch tour (`docs/guide/launch-tour.json`) is the first user.
+= the quietest spot on screen now: `quiet()` in the guide scores the screen under the pair, the
+cover, title, controls, a menu or a notice 4, any picture, text or control 1, a bare card or a
+gap 0, and takes the quietest spot, low on the screen, with the shortest walk;
+`"guide": { "restAfter": ms }` steps there after each press, `"stay": true` on a step keeps
+them, `"travel": ms` sets the walk's pace, `"scale"` its size); `"side": "below" | "above" | "left" | "right"` picks where they stand;
+`"guide": false` on a step skips the walk. `{ "say": text, "ms": n }` shows a speech bubble in
+Pixelify Sans over Deets. They sit over everything, menus and the full player included, and
+take no pointer.
 
 ## 5j. Waits: the replay, pops and settled (2026-10-17)
 
@@ -569,109 +571,6 @@ set).
 - An `invoke` step (§5i) is for dev shots: on a demo page with `--latency` the two would share the
   `Fetch` domain.
 
-## 5k. The launch tour: a clip for a post, rerun in one command (2026-10-21)
-
-> **Part:** built · 2026-10-21 · his ask: a GIF of the app in use for the Reddit post
-
-**Rerun it:** `node docs/guide/launch-tour.mjs` (`--edit-only` cuts the last take again;
-`--keep-dark` keeps the look change's opaque hold). It writes
-`shots/launch-tour/<version>/launch-tour.mp4` and `.gif` (720 px, 15 fps), and keeps each raw
-take as `take-<time>.mp4`.
-
-**Before it:** the dev app is up and on screen (`npm run dev:app`); you are the only session
-driving it, and the others hold saves under `src/` and `src-tauri/` (§5i › One driver).
-
-**The files** (all in `docs/guide/`):
-- `launch-tour-songs.json` — **the one place to change a song.** His picks in play order, each
-  with its look, Apple id and Apple album name (the rules match the album, so it must be exact),
-  and Ocean's and Glass's layout. A song with an empty id is skipped with its beat.
-- `launch-tour-rules.cjs` — writes the shot's rules and steps from the song list: one STATE rule
-  per look (while the song's album is one of that look's albums: its skin and layout), an
-  overlay that never writes his settings; one moment rule that opens the full player when La
-  Source starts; a Next, a hold and a probe (the title changed) per song. The engine fires ONE
-  moment rule per event (`pickMoment`): two on one event lose one (take 5).
-- `launch-tour-queue.mjs` — loads the songs through the dev app's bridge (`/tracks`, then
-  `/play`), so the app's queue and MusicKit's agree. A script import of `player.ts` did not:
-  every Next was abandoned (2026-10-21).
-- `launch-tour.json` — the shot: Midi, the look and `maxCards` set for the run, the clean screen
-  (§5i), the guide at 3×, the rules in `settings.rules` (his own rules come back after).
-- `launch-tour.mjs` — runs the three above, then cuts the take: from 1 s before the first click,
-  the Midi part centered on the Max canvas, the opaque hold of each look change removed (found
-  by `blackdetect`; when it follows a press within 1.5 s, from just after the press, since
-  between the two the new cover shows in the old skin and the layout snaps: take 6), and the end
-  5 s after Start a Web.
-
-**The songs (his picks, 2026-10-21):** Press = Sisters With Me (Tom Misch, *Full Circle*),
-Ocean = Time Bomb (The Chainsmokers, *So Far So Good*), Glass = **open** (the stand-in is Till
-Forever Falls Apart, *Ashlyn*), Metal = La Source_Valentines Day (*La Source*) and **a second
-Metal song, open** (his call: two Metal songs, the zoetrope between them), Cyber = Flower In A
-Hurricane (Justice, the GTAVI single). The web's song is **open** (today the web starts from
-the Cyber song).
-
-**Why Metal has two songs:** the zoetrope needs Metal on BEFORE the press. A rule on the press
-(`skip.next`) fired after the song had changed (take 5: the cover swapped in Glass at 15.87 s,
-Metal's cover came at 16.2 s), and a skin change's launch cover would hide the turn anyway. With
-two Metal songs, one state rule holds Metal across the press between them.
-
-**Not a rule yet:** the surface. Midi → Max is a step (`__surface.set`), because the surface is
-not a rule key. Closing the full player for the web is Escape.
-
-**The transitions** (reviewed frame by frame, 2026-10-21): the look change in the full player
-blinks to dark (features/fullscreen-player.md §15, an idea); a layout change has no motion
-(features/MAX-CARDS.md §12, an idea). The clip cuts the look change's opaque hold.
-
-### 5k.1 Review 1 (2026-10-21): an independent motion-design read of take 6
-
-His ask: an independent Opus 5.5 agent, as a motion designer and video editor, rates the clip out
-of 10 and gives the notes to reach 9/10. It read the frames (6 fps sheets, labeled by time) and
-pulled its own 30 fps strips (`shots/launch-tour/0.31.0/review-take6/`).
-
-| Rubric | Score | Its reason, short |
-|---|---|---|
-| Enticingness | 5 | The second half sells (the zoetrope, Cyber's cover, the web's mosaic); the first 4.5 s is a small Midi box on black with nothing moving, and the end is a still hold with no name. |
-| Smoothness | 6 | The cuts work; Ocean's cards rise dim for ~1.3 s after its cut; Metal and Cyber hold ~2.5 s with nothing moving; the web playlist's empty cover shows ~300 ms. |
-| Sensibility | 4 | The walk-then-press reads; but the rest corner stood on the Queue's playing row, they stood on the cover during the zoetrope and on Cyber's title, and they waited 2–3 s at a control. |
-
-**Applied in the scripts (2026-10-21, not yet recorded):**
-- **Where they stand.** `rest` is no longer a corner: it scores the screen under the pair (the
-  cover, title, controls, a menu or a notice weigh 4; any picture, text or control 1; a bare
-  card or a gap 0) and takes the quietest spot, low on the screen, with the shortest walk
-  (`quiet()` in the guide). After each press they stand by the control 0.6 s, then step there
-  (`"guide": { "restAfter": 600 }`; `"stay": true` on a step keeps them).
-- **A faster walk:** 500 ms a stop (`"guide": { "travel": 500 }`), was the tour's 750.
-- **Less dead air:** the holds are the look change plus about a second (Midi 1.6 s; Ocean 2.2,
-  Glass 2.6, Metal 3.0, Cyber 2.2).
-- **Land on a settled look:** the cut skips 0.6 s more after each opaque hold (`--settle`).
-- **The menu, readable:** the cut zooms 2× on the right-click menu, from the right-click to just
-  after Start a Web (the step's `region` gives the box).
-
-**Script items still open:**
-- **The DevTools size readout** ("1080px × 950px", top right, when the window resizes) is
-  WebView2's, shown because DevTools is open. Record on a dev app with DevTools shut
-  (`npm run dev:perf`), or the Midi → Max beat carries it.
-- **The web playlist's empty cover** (~300 ms before the mosaic): cut from the playlist's open
-  to the app's `mosaic:drawn` mark.
-- **Glass reads as a flat olive theme** at feed size: try the Glass sliders for the shot (Fancy
-  Glass on, more Canvas glow, Dim canvas) before calling it an app change.
-
-**His to decide (the words a stranger reads are his, DOCS-ORG §13.2):** the opening (the first
-1–2 s decide a scroll), a caption per skin (without one the five looks read as a random
-slideshow, and the rules that cause them are invisible), and an end card (name, "Apple Music
-for Windows", the URL).
-**His calls (2026-10-21, later):** **no Midi**: the clip is Max from the first frame (the
-shot's `size` is `max`; the steps no longer pick it). **Captions are Deets talking**: a speech
-bubble in Pixelify Sans over him (the runner's `{ "say": text, "ms": n }` step), ~1.4 s after
-each press so it lands on the settled look; the words are `caption` per song, `web.caption` and
-`end.caption` in `launch-tour-songs.json` (the skin names are placeholders until he writes them).
-**Not done when paused:** `launch-tour.mjs` still expects a Midi part in the take; make it
-optional before take 7.
-
-**App builds it needs** (in HANDOFF › His to design or decide):
-- **A press reaction for Deets** (a hop, a raised arm, or a pulse on the control), so each
-  change reads as caused by the press, not by time.
-- **The look change in the full player** (features/fullscreen-player.md §15) and **a layout
-  change with motion** (features/MAX-CARDS.md §12), found in the frame review before this one.
-
 ## 6. Coverage — no shipped feature without a shot
 
 - `npm run docs:check` learns two warnings. They never fail the build:
@@ -683,11 +582,10 @@ optional before take 7.
 - A guide page links a shot by its `id` and look, never by a file path. So when U10 is
   decided, the build fills in the real path in one place.
 
-## 7. The marketing outline
+## 7. (Removed 2026-10-23)
 
-When the owner opens the marketing fork, Claude writes `docs/guide/marketing.md` in the
-guide's outline shape (DOCS-ORG §13.4): one line per feature — what it is, why a listener
-cares, which shot shows it. The owner writes the words. Where the page lives is decided then.
+The marketing outline was here. The marketing is his (2026-10-23, his word); the repo holds none
+of it.
 
 ## 8. Cost
 
@@ -723,7 +621,7 @@ F1–F4 closed 2026-09-26; the answers are in §1.
 4. The dev-app source, with F2.
 5. Claude drafts the full `shots.json` from the shipped docs. The owner edits it.
 6. The docs:check warnings (§6). The first full run.
-7. Later: U10, then the guide pages link shots; the marketing outline (§7).
+7. Later: U10, then the guide pages link shots.
 
 ## 11. Start of the next sitting (written 2026-09-25, for the evening)
 

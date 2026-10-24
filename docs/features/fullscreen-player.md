@@ -1077,8 +1077,8 @@ card view this reads as a relaunch. In the full player the one card IS the scree
 window goes dark, the cover art included, although the cover is the same picture before and
 after.
 
-**Measured** (the launch tour, take 4, 2026-10-21; dev app, Max 1080 × 950, Black & Yellow,
-frames read at 20 fps from `shots/launch-tour/0.31.0/take4.mp4`):
+**Measured** (a scripted dev clip, take 4, 2026-10-21; dev app, Max 1080 × 950, Black & Yellow,
+frames read at 20 fps):
 
 | Change | Veil (fade to dark) | Opaque hold (only the cover color) | Lift | Total |
 |---|---|---|---|---|
@@ -1090,9 +1090,6 @@ frames read at 20 fps from `shots/launch-tour/0.31.0/take4.mp4`):
 Every frame is smooth (no jump, no gap over ~50 ms in the frames read), so nothing is broken.
 What a viewer sees is a blink to black between two looks of the same song. Glass arrives in two
 steps (the card, then its canvas); Metal's Queue arrives after its cover.
-
-**The launch clip** (SHOTS.md §5k) cuts the opaque hold, so each change reads as a short dip to
-dark. A real change would replace that cut.
 
 **Ideas for a skin-to-skin change in the full player** (none decided; his to pick or redraw):
 - **The cover stays.** The cover box rides above the veil; only the frame, the type and the
@@ -1106,5 +1103,5 @@ dark. A real change would replace that cut.
   the fonts are warm). The least work; still a blink.
 
 Open questions: does it apply only in the full player, or to the card view too (where the
-relaunch reads well)? Does a rule's change (the launch tour's) use the same motion as a click?
+relaunch reads well)? Does a rule's change use the same motion as a click?
 

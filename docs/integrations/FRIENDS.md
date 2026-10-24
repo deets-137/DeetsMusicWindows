@@ -1689,7 +1689,7 @@ Put `friendsUrl` back to `""` after the test.
 > **Part:** idea · 2026-10-01
 
 **His call (2026-10-01):** put it on the docket before the user guide tells the story. The
-guide's positioning (docs/guide/marketing.md §1) is a local web among friends: Songs of the Day
+guide's positioning (DOCS-ORG.md §13.10) is a local web among friends: Songs of the Day
 and Diary entries that friends see and share, with no algorithm. The app does not do this yet,
 so the guide waits for it.
 

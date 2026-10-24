@@ -902,14 +902,32 @@ only at `state: written`.
 
 - **Folders, roughly one per card or workflow** (confirmed): Listen on purpose · Get started ·
   Play · Find · Library · Playlists · Your listening · The look · Sound · Make it yours ·
-  Together · Connect · Help · the Rulez appendix. The pages in each, and the positioning that
-  orders them, are in [guide/marketing.md](guide/marketing.md) §1.
+  Together · Connect · Help · the Rulez appendix. "Listen on purpose" comes first: no algorithm
+  here; what is Apple's; hold a playlist; build from people (the web and the credits); your
+  history stays on your PC. The Rulez appendix holds every event, fact and action, the 7
+  recipes, the 11 rule rows and a cookbook.
 - **A page has three parts:** a video that walks through the workflow (from the shots runner,
   SHOTS.md), the steps, and short FAQ-style instructions at the bottom. The FAQ links to the
   open issues and bugs for that workflow. That issue space also carries his "50 cents" bit
-  (marketing.md §1, kept unmodified); its words are his.
-- **The positioning** (marketing.md §1): no algorithm of our own; a conscious engagement with
-  Apple's; friends' recommendations; deep ways to customize and automate.
+  (below, kept unmodified); its words are his, and nothing is drafted.
+- **The positioning (his words, 2026-10-01):** DeetsMusic has no algorithm. It helps you choose
+  what you listen to on purpose, and it values recommendations from friends. Songs of the Day
+  and diaries form a local web for friends to see and share, not an algorithm. The app does not
+  hold you: there are deep ways to customize, to turn features on and off, to set up
+  automations, and to make it your own.
+- **Apple's algorithm (his call, 2026-10-01):** the guide does not hide or attack it. It shows a
+  conscious engagement with Apple's algorithm and with large communities of millions of users:
+  Apple Mixes, Apple's stations, Featured Playlists and the Popular sort are labeled as Apple's,
+  and Playlist refresh lets you hold a list longer. Home's hour shelf and New shelf are local
+  rules you can read.
+- **Music is not a data feed (his words, unmodified, 2026-10-01):**
+  > companies are collecting so much data to streamline activities into mindlessness. music is a
+  > type of solace, an activity meant to be uniquely individual without being alone and having a
+  > community.
+- **The 50 cents bit (his words, unmodified, 2026-10-01):**
+  > log a question and if we don't do it yet i'll build it for 50cents as a joke for marketing
+- **Waits on the docket:** friends do not see picks or diaries yet (FRIENDS.md §20). The guide
+  tells that part of the story after it is built.
 
 **Why the issue links (his words, 2026-10-01):** they give users a way to see all open tickets
 and community requests, and they are transparent about the direction of the app.

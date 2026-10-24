@@ -651,7 +651,7 @@ async function takeRecord(page) {
 /** A clip in progress: a `reload` step keeps what the old page recorded. */
 const recording = { on: false, kept: [] };
 
-// ── the guide (2026-10-21, his ask for the launch clip) ─────────────────────────
+// ── the guide (2026-10-21, his ask) ─────────────────────────────────────────────
 // `"guide": true` on a clip: Deets and Happy, the first-run walk's sprites, walk to each
 // control before a click, rightclick or hover touches it, so a viewer sees where the input
 // went (the runner shows no pointer). The tour's own sprites and walk.css, with no speech

@@ -6,6 +6,20 @@ updated: 2026-10-23
 ---
 # DeetsMusic — Work log
 
+## 2026-10-23 — the launch leaves the repo (branch `grand-opening`)
+
+**His word:** "Remove all launch related things from our repo, I'll take the lead on it."
+Deleted the launch posts draft in ideas/ (Product Hunt and Reddit) and the launch tour's five
+files in guide/ (the shot, its songs, its rules, its queue loader and its cut script), with
+SHOTS.md's launch tour section and HANDOFF's launch clip item. Kept: the runner's guide (Deets and Happy, `rest`,
+`say`; now in SHOTS.md §5i), the two motion ideas the clip found (fullscreen-player.md §15,
+MAX-CARDS.md §12). **Then, his word:** the marketing outline in guide/ is deleted too. Its
+§1 direction for the user guide (his positioning, Apple's algorithm, his "solace" quote, the
+50 cents bit, the pages per folder) moved word for word into DOCS-ORG.md §13.10; the video
+forks and the research facts went with the file. SHOTS.md §7 is now a removed marker, so the
+numbers after it hold. The local recordings in `shots/launch-tour/` are not in git; left on disk.
+**Checks:** `npm run docs:check`.
+
 ## 2026-10-23 — the known tao panic is a WARN (branch `grand-opening`)
 
 **His call**, after the log read below: name the known panic, so it stops counting as an error.
@@ -20,8 +34,8 @@ came with no `calls quit` line before it, and tao's loop is `Destroyed` only aft
 ## 2026-10-23 — the sign-in page shows the city icon; desk tests closed; bugs read from the log (branch `grand-opening`)
 
 **His word:** every open desk test of the grand opening, the extension's removal and the first
-sign-in passed. He wrote his own launch announcements and took his own images (ideas/launch.md
-is now a record).
+sign-in passed. He wrote his own launch announcements and took his own images (the launch
+draft was a record, then removed the same day, see the entry above).
 
 **The sign-in mark (his ask).** The hosted page showed the head from DeetsSupport `201bd06`,
 copied the day before the icon became the city. `scripts/icons.py` now also writes

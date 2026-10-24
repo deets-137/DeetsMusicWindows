@@ -341,9 +341,6 @@ desktop app (a `spotify:` link opens each song; the Windows media session reads 
 seeks, pauses); no Spotify key, no Web API, no librespot (§1 why). Odesli maps the Apple song.
 The probes (§6, `ops/checks/spotify-probe.ps1`) ran 2026-10-18 (§6.3): the control works with a
 `?autoplay=true` link plus Play; Odesli's keyless API is closed, so the mapping is open; §7 the forks.
-`launch.md` — a first draft (2026-10-18), not posted: the Product Hunt listing and one Reddit
-post per community (r/AppleMusic, r/Windows11, r/SideProject, r/rust); he rewrites the words
-(his note). §4 the answers to ready; §5 the open questions (the tip jar, the Apple terms).
 `mods.md` — an idea (2026-10-19): skins and themes a user downloads (a `.deetsmod` file, values
 only, no code or CSS, §6), built on metal.md's primitives; his marketplace page beside Hop in for
 a first load (§1); new theme slots later (§4, his note); the DeetsRGB widget talk as a record (§7).
@@ -353,15 +350,14 @@ is the reference (`features/happy.md`).
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
-feature, made by a script from the demo; for the guide, a marketing overview, and visual
+feature, made by a script from the demo; for the guide and visual
 debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins. `LOADING-SET.md` —
 BUILT 2026-10-17, a back-pocket tool (his words): a dev-only recorder of each command's
 round trip (`src/ipc-timing.ts`, the `ipc-timing` Vite plugin → `src/ipc-core.ts`), a profile
 from his log (`npm run latency:profile` → `latency.json`), the demo replaying it plus his cover
 load times (`shots.mjs --latency p90 --cold`, `demo/latency.ts`), and `loading.json`, one clip
 per wait with its pops and settled time. L1 p90, L2 in the repo (his calls, §5); §7 the as-built
-record; how to use it: DEBUGGING.md § The loading set. `marketing.md` — the
-shipped features as a tech spec, with the shot of each, for the intro video; he directs it (§1).
+record; how to use it: DEBUGGING.md § The loading set.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives

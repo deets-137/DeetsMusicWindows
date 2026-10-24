@@ -447,7 +447,7 @@ Where this section and §4 disagree, this section is the code.
 ## 12. A layout change has no motion (an idea, 2026-10-21)
 > **Part:** idea · 2026-10-21 · not designed; his to discuss before a build (his ask)
 
-Found while recording the launch tour (guide/SHOTS.md §5k), where a rule changes the layout
+Found while recording a scripted dev clip, where a rule changes the layout
 when a song starts (4 cards → 2 columns → 4 cards). The frames (take 5, 2026-10-21, read at
 15 fps): the change lands in one frame. The cards that stay jump to their new size and place,
 the new ones appear, and nothing moves between the two layouts. A hand pick in Settings does the
