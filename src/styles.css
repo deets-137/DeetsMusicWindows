@@ -2364,6 +2364,7 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 .lib-toolbar {
   flex: 0 0 auto;
   margin-bottom: var(--space-2);
+  container-type: inline-size;   /* the narrow rule below reads the row's own width */
 }
 /* Sort / View / Search share the row 40 / 40 / 20. */
 .lib-pills { display: flex; gap: var(--space-2); }
@@ -2376,6 +2377,22 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
    inner pill instead lets it render wider than the cell reserved → clipped off the row.) */
 .lib-ctrl[data-ctrl="search"],
 .lib-ctrl[data-ctrl="filter"] { flex: 0 0 auto; aspect-ratio: 1; }
+/* Narrow (his ask, 2026-10-23): the Library's Filter pill leaves a row too small for three
+   worded pills (a Midi card), so Sort and View keep their words. The width is where Sort,
+   View and Filter stop fitting with their labels beside ♥ and Search. While a filter is in
+   force the pill stays as a funnel icon square, the ♥ pill's family, so a filtered list
+   always says so (his call, 2026-10-23). A request from elsewhere (the Compass, a Rulez
+   Playlist's Edit the rule) still opens the panel, under the row when the pill is hidden
+   (collection-card.ts `placePop`). */
+.lib-pill__icon--funnel { display: none; }
+@container (max-width: 300px) { /* raw: a container query cannot read a custom property */
+  .lib-ctrl[data-ctrl="rule"] { display: none; }
+  .lib-ctrl[data-ctrl="rule"]:has(.lib-pill.is-active) { display: block; flex: 0 0 auto; aspect-ratio: 1; }
+  .lib-ctrl[data-ctrl="rule"] .lib-pill { justify-content: center; padding: 0; height: 100%; }
+  .lib-ctrl[data-ctrl="rule"] .lib-pill__label,
+  .lib-ctrl[data-ctrl="rule"] .lib-pill__caret { display: none; }
+  .lib-ctrl[data-ctrl="rule"] .lib-pill__icon--funnel { display: block; fill: currentColor; } /* filled, as ♥ is while on */
+}
 /* The ♥ filter pill: outline heart, filled while the filter is on. */
 .lib-pill__icon--heart { stroke-width: 1.8; }
 .lib-pill.is-active .lib-pill__icon--heart { fill: currentColor; }

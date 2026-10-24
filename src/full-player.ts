@@ -1215,6 +1215,11 @@ function watchSize(panel: HTMLElement): void {
     refit(panel);
   });
   watch.observe(np);
+  // Stacked, the card's row is a fixed height (--fp-stack-h), so a window that changes only its
+  // height (a drag on the bottom edge, or a shared edge in a snap group) does not resize the
+  // card: the grid it sits in follows the window, and is watched too (2026-10-23, his report:
+  // stuck stacked with the band under the window's edge).
+  if (opts?.bento) watch.observe(opts.bento);
   // A look change can change the cover's share (--fp-cover-share: Metal's peek on or off) or the
   // title block's place (--fp-meta-below: Metal or not) with no change of size: lay out again
   // when either differs from what the layout was measured with. During the open's motion the layout waits for the landing check (resizedInMotion);

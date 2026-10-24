@@ -513,7 +513,10 @@ Midi and Max only, and Mini's player view stays as it is until he says.
    Now Playing's right strip is live, §10.3). Reason: the player imports the grow's motion
    parts, so the grow must not import the player.
 2. **The ResizeObserver is in `full-player.ts`, not in the card.** It watches `.np` while the
-   player is full: the rows' place and the cover file follow the size.
+   player is full: the rows' place and the cover file follow the size. It watches the bento
+   too (2026-10-23, his report): stacked, the card's row is a fixed `--fp-stack-h`, so a
+   height-only drag of the window (a shared edge in a snap group) did not resize `.np`, and
+   the player stayed stacked with the band under the window's bottom edge.
 3. **The cover URL.** `queue-rows.ts` has `coverArtPx()` and `setFullArtPx()`. The card,
    `player.ts` and the next-song prefetch read `coverArtPx()`. A size change calls
    `refreshPlayerState()`; `vinyl.ts` swaps the picture of the same song once it is decoded,

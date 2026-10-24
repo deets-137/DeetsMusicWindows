@@ -749,7 +749,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
           ${
             f.ctx.rulePop
               ? `<div class="lib-ctrl" data-ctrl="rule">
-            <button class="lib-pill${f.ctx.rulePop.active() ? " is-active" : ""}" data-pop="rule" type="button" aria-haspopup="true" aria-expanded="false" title="${esc(f.ctx.rulePop.title)}">
+            <button class="lib-pill${f.ctx.rulePop.active() ? " is-active" : ""}" data-pop="rule" type="button" aria-haspopup="true" aria-expanded="false" aria-label="${esc(f.ctx.rulePop.label)}" title="${esc(f.ctx.rulePop.title)}">
+              <svg class="lib-pill__icon lib-pill__icon--funnel" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3h11l-4.25 5v4.5l-2.5 1.25V8z"/></svg>
               <span class="lib-pill__label">${esc(f.ctx.rulePop.label)}</span>
               <svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>
             </button>
@@ -1849,7 +1850,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
    *  the edge pad its `--panel-edge-gap`, as the Settings menus read theirs. Layout, not the
    *  rect, so the .pop arrival's scale does not skew it. */
   const placePop = (panel: HTMLElement, pill: HTMLElement) => {
-    const r = pill.getBoundingClientRect();
+    // A pill the narrow rule hides (the Library's Filter in a Midi card) has no box: the
+    // panel opens under its row instead.
+    const shown = pill.getClientRects().length > 0;
+    const r = (shown ? pill : (pill.closest<HTMLElement>(".lib-pills") ?? pill)).getBoundingClientRect();
     const cs = getComputedStyle(panel);
     const gap = parseFloat(cs.marginTop) || 0;
     const pad = parseFloat(cs.getPropertyValue("--panel-edge-gap")) || 0;
