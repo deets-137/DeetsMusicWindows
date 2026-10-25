@@ -48,6 +48,10 @@ export interface Settings {
   /** Layout for Max (MAX-CARDS.md): four content cards in a 2×2, two side by side ("2cols"),
    *  two stacked ("2rows"), or one, beside the stage column. Midi and Mini do not change. */
   maxCards: "4" | "2cols" | "2rows" | "1";
+  /** The full player, controls under the cover (fullscreen-player.md §16): the dark area behind
+   *  the title, artist and album. "text" = a soft shade the size of the text; "band" = the band
+   *  across the cover's width. Rows over the cover always keep the band. */
+  npShade: "text" | "band";
   cardGrowPick: "keep" | "collapse";
   /** A drill (Go to Album, a shelf tile, a playlist): the card it opens takes the place of the
    *  card you are reading and Back returns the chain (CARD-GROW.md §15), or it is summoned into
@@ -535,6 +539,7 @@ export const DEFAULTS: Settings = {
   maxShortWindow: "flip", // the width already behaves this way: a window that no longer fits a
                           // surface becomes the one that does, instead of refusing to move
   maxCards: "4", // today's layout, so an update changes nothing on screen (MAX-CARDS.md §3)
+  npShade: "text", // his call 2026-10-25: the band hid too much of the cover; the text keeps its shade
   cardGrowPick: "keep", // decided 6A
   cardDrill: "inplace", // user's call 2026-09-17: a drill belongs to the card you are reading
   cardDrillBring: false, // user's call 2026-09-17: a card already on screen is not worth moving two cards for

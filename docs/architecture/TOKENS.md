@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 798 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 801 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -862,6 +862,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--np-band-strength` | `78%` | — |  |
 | `--np-band-sub-strength` | `72%` | — | the subtext on the band: its ink, a little clear |
 | `--np-band-fade` | `48px` | — | the soft top edge of the band, over the cover |
+| `--np-shade-pad` | `var(--space-2)` | — | Shade behind the title, Text only (fullscreen-player.md §16): solid --np-shade-pad past the text, then a fade that is half gone --np-shade-soft out and gone at twice that. |
+| `--np-shade-soft` | `24px` | — |  |
+| `--np-shade-radius` | `var(--radius-control)` | — |  |
 | `--np-close-inset` | `var(--space-2)` | — | the close square, off the cover's top-right corner |
 | `--fly-dur` | `0.42s` | press, ocean | -- chip flight (handoff.ts, ARTIST-VIEW.md §5) -- A shelf tile's chip flies to the card that opens it, over --fly-dur / --fly-ease. --fly-mid shapes it at the midpoint; --fly-land / --fly-land-fade at the landing. Keep --fly-dur a plain time (JS reads it for the landing safety timer). The base = a straight glide that shrinks into the card (Glass uses it). |
 | `--fly-ease` | `var(--nav-ease)` | press, ocean, cyber |  |

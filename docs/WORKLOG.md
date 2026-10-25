@@ -2,9 +2,19 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 # DeetsMusic — Work log
+
+## 2026-10-25 — Shade behind the title (branch `main`, uncommitted)
+
+**His ask:** the full player's band off by default, only the area behind the text darkened.
+**His calls:** a soft shadow; the band stays when the rows sit over the cover; a Settings row
+with Text only as the default. Built: Settings › Window › *Shade behind the title* (`npShade`),
+the band's `::before` placed on the title lines' grid area in *below*, three `--np-shade-*`
+tokens. The album-color guard is unchanged (same role). fullscreen-player.md §16 has the
+as-built record and the desk test (his, open).
+**Checks:** `npm run tokens`, `npx tsc --noEmit`, `npm test`, `npm run docs:check`, `npx vite build`.
 
 ## 2026-10-23 — the launch leaves the repo (branch `grand-opening`)
 

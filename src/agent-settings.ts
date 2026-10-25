@@ -134,6 +134,7 @@ const SPECS: Spec[] = [
   storeSize("max", "Max opens at"),
   storeChoice("Window", "maxShortWindow", "Max window when short", [{ value: "flip", label: "Becomes Midi" }, { value: "floor", label: "Stops at floor" }]),
   storeChoice("Window", "maxCards", "Layout for Max", [{ value: "4", label: "4 cards" }, { value: "2cols", label: "2 columns" }, { value: "2rows", label: "2 rows" }, { value: "1", label: "1 card" }]),
+  storeChoice("Window", "npShade", "Shade behind the title", [{ value: "text", label: "Text only" }, { value: "band", label: "Band" }]),
   storeChoice("Window", "alwaysOnTop", "Keep on top", [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }]),
   storeToggle("Window", "cardGrow", "Grow cards from edges"),
   storeToggle("Window", "moveSections", "Move sections by holding"),

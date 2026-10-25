@@ -1370,7 +1370,11 @@ export function initFullPlayer(o: Opts): void {
   });
   if (o.hosts.np) makeZones(o.hosts.np);
   onGrowChange(() => paintZones());
+  // Shade behind the title (§16): the attribute the band's CSS reads.
+  const applyShade = () => { document.documentElement.dataset.npShade = setting("npShade"); };
+  applyShade();
   onSettingsChange((k) => {
+    if (k === "npShade") applyShade();
     if (k === "cardGrow") emit();
     // Layout for Max changed: close with no motion before the layout remounts (MAX-CARDS.md).
     if (k === "maxCards") {

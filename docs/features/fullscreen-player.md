@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.1
 desk_test: passed 2026-10-11
 sources: [src/full-player.ts, src/full-player-layout.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-21
+updated: 2026-10-25
 ---
 # Full player — grow the Now Playing card
 
@@ -1104,4 +1104,50 @@ steps (the card, then its canvas); Metal's Queue arrives after its cover.
 
 Open questions: does it apply only in the full player, or to the card view too (where the
 relaunch reads well)? Does a rule's change use the same motion as a click?
+
+## 16. Shade behind the title (built 2026-10-25)
+> **Part:** built · 2026-10-25 · desk test open (his)
+
+**His ask (2026-10-25, with a screenshot of the controls under the cover):** turn the band off
+by default, and darken only the area behind the text, for legibility.
+
+**His calls:**
+- **The shape: a soft shadow** (not a rounded box with a hard edge, and not a shadow on each
+  letter, which does not hold the 4.5 : 1 contrast on busy art).
+- **Over keeps the band.** When the rows sit over the cover (a near-square card), the scrubber
+  and the buttons are on the cover too; they need the band. The shade is for *below* only.
+- **A Settings row, Text only by default** ("off by default" = the band stays as a choice).
+
+**As built:**
+- Settings › Window › *Shade behind the title*: **Text only** / Band (`npShade`, default `text`;
+  agent spec in `agent-settings.ts`; a `NEW_MARKS` line; `NOT_REPORTED` in `usage-keys.ts`
+  until he puts it on the usage list). `full-player.ts` writes `data-np-shade` on `<html>`.
+- `styles.css`: in *below* (and not Metal's title-under-the-cover), the title block's grid
+  gets three columns: the lines' column at the widest line's width, a spacer, the Last.fm
+  badge. The band's `::before` moves onto the lines' grid area (an absolute child of a grid
+  takes its area as its box), so it is as wide as the longest of the three lines, plus
+  `--np-shade-pad`. Its fill is `--np-band`, solid under the text; a box shadow of the same
+  color fades it out over `2 × --np-shade-soft`. The block clips it at the cover's bottom
+  corners.
+- **The contrast guard is unchanged.** The text sits on the band's own role at the band's
+  strength, so `album-color.ts` guards it against the same color as before.
+- The motion is unchanged: the shade is the band's `::before`, so it hides during a rows slide
+  and fades in with the title block (`enterBand`).
+- Tokens (`skin.css` base): `--np-shade-pad` (`--space-2`), `--np-shade-soft` (24 px),
+  `--np-shade-radius` (`--radius-control`).
+
+**What Claude decided inside his calls:** the row's place (Settings › Window, under *Layout
+for Max*), its words, the three token values, and the fill (the band's role at 78 %, so the
+guard did not need a second backdrop).
+
+**Desk test (his):**
+1. Max, a wide window, open the full player: the controls are under the cover. A soft dark
+   patch sits behind the title, artist and album only; the rest of the cover is clear. The
+   Plays badge stays at the right.
+2. A long title and a short title: the patch follows the longest line.
+3. Album text on (album-colored title): the title still reads on the patch.
+4. Settings › Window › *Shade behind the title* › Band: the band comes back at once.
+5. Drag the window near square: the rows move over the cover, on the band.
+6. Metal with Zoetrope (title under the cover): no patch and no band, as before.
+7. A light theme: the patch is the band's color in that theme.
 

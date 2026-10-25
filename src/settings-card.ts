@@ -201,6 +201,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Cards" }, // Settings › Cards, which cards the pickers offer, built 2026-10-10 (HIDE-CARDS.md)
   { section: "Connections", row: "mcpsetup" }, // Set up the DeetsMusic MCP, built 2026-10-11 (MCP-INSTALL.md)
   { section: "Window", row: "maxcards" }, // Layout for Max, built 2026-10-11 (MAX-CARDS.md)
+  { section: "Window", row: "npshade" }, // Shade behind the title, built 2026-10-25 (fullscreen-player.md §16)
   { section: "Motion", row: "graphicsfallback" }, // If graphics fail, built 2026-10-11 (GRAPHICS-FALLBACK.md)
   { section: "Motion", row: "reducemotion" }, // Reduce motion, built 2026-10-20 (GRAPHICS-FALLBACK.md §10.4)
   { section: "Playback", row: "shuffleoff" }, // Shuffle off plays, unshuffle, built 2026-10-12 (QUEUE.md §Shuffle and unshuffle)
@@ -469,7 +470,7 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, Show notices, and the Compass outside-click rule",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "goToTarget", "compassCloseAway"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Layout for Max, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Layout for Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
@@ -1171,6 +1172,11 @@ function mountSettings(
           kind: "choice", id: "maxcards", label: "Layout for Max", key: "maxCards",
           hint: "How many cards Max shows beside Now Playing and the Queue. Each layout keeps its own cards",
           options: [{ value: "4", label: "4 cards" }, { value: "2cols", label: "2 columns" }, { value: "2rows", label: "2 rows" }, { value: "1", label: "1 card" }],
+        },
+        {
+          kind: "choice", id: "npshade", label: "Shade behind the title", key: "npShade",
+          hint: "In the full player, a soft shade behind the title, artist and album, or a band across the cover. A near-square card keeps the band",
+          options: [{ value: "text", label: "Text only" }, { value: "band", label: "Band" }],
         },
         // ── Card grow (CARD-GROW.md §8) + card memory (CARD-MEMORY.md §7) ──
         // `Compass closes on outside click` left this group on 2026-09-18: it is neither a

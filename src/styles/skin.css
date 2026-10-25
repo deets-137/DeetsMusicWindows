@@ -932,6 +932,11 @@
   --np-band-strength:    78%;
   --np-band-sub-strength: 72%;                /* the subtext on the band: its ink, a little clear */
   --np-band-fade:        48px;                /* the soft top edge of the band, over the cover */
+  /* Shade behind the title, Text only (fullscreen-player.md §16): solid --np-shade-pad past the
+     text, then a fade that is half gone --np-shade-soft out and gone at twice that. */
+  --np-shade-pad:        var(--space-2);
+  --np-shade-soft:       24px;
+  --np-shade-radius:     var(--radius-control);
   --np-close-inset:      var(--space-2);      /* the close square, off the cover's top-right corner */
 
   /* -- chip flight (handoff.ts, ARTIST-VIEW.md §5) --

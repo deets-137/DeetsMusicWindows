@@ -4898,6 +4898,28 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   padding: 0;
 }
 .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"][data-np-meta-below] .np__meta::before { content: none; }
+/* Shade behind the title, Text only (§16, his call 2026-10-25): in *below* the band leaves, and
+   a soft shade the size of the text takes its place. The lines' column hugs the widest line
+   (a spacer column keeps the Last.fm badge at the right); the shade is placed on that column's
+   grid area (an absolute child of a grid takes its area as its box), so it follows the text.
+   Its fill is the band's role, solid under the text, so album-color.ts's guard against the band
+   still holds; the edge fades out (a shadow spread as wide as its blur, so it starts at full
+   strength at the box's edge: no step).
+   The block clips it to the cover's bottom corners. *Over* keeps the band: the scrubber and the
+   buttons are on the cover there too. */
+:root[data-np-shade="text"] .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"]:not([data-np-meta-below]) .np__meta {
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto;
+  clip-path: inset(0 round 0 0 var(--radius-control) var(--radius-control));
+}
+:root[data-np-shade="text"] .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"]:not([data-np-meta-below]) .np__listen--meta { grid-column: 3; }
+:root[data-np-shade="text"] .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"]:not([data-np-meta-below]) .np__meta::before {
+  grid-column: 1 / 2;
+  grid-row: 1 / 4;
+  inset: calc(-1 * var(--np-shade-pad));
+  background: var(--np-band);
+  border-radius: var(--np-shade-radius);
+  box-shadow: 0 0 var(--np-shade-soft) var(--np-shade-soft) var(--np-band);
+}
 
 
 /* The motion (full-player.ts): the rows and the band are gone at once while the clip opens or
