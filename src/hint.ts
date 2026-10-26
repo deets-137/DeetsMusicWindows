@@ -212,6 +212,10 @@ function place(el: HTMLElement, px: number): void {
   const r = el.getBoundingClientRect();
   const gap = parseFloat(getComputedStyle(b).getPropertyValue("--hint-gap")) || 8;
   const edge = 6; // never touch the window edge
+  // Measure at the left edge. The box is fixed, so its width fits the room right of where it
+  // stands: measured at the last hint's place near the right edge, it wrapped to a sliver even
+  // where there was room (his report, the pin's 320 px Cover, 2026-10-26).
+  b.style.left = "0px";
   const bw = b.offsetWidth;
   const bh = b.offsetHeight;
   // Follow the pointer across the row, so a wide row's hint sits where you are looking.

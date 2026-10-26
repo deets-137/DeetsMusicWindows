@@ -21,6 +21,16 @@ after an unpin to Max: fixed at the cause in `applySurface` (PIN.md §8). His as
 narrower panel (two tiles wide) and the Cover's unpin icon on the left; both built. Open:
 PIN.md §5.1.
 
+**Later the same sitting — the 1.1.0 build and his test on it.** The first `npm run release`
+failed release-check (TOKENS.md stale after the `--pin-*` tokens; regenerated); the second
+stopped because `vpk` had already written 1.1.0 into `installers/velopack/` (the re-pack steps are
+now RELEASE.md §1b). He installed 1.1.0 and found two faults: a pinned Cover dragged off a
+snapped Max grew back to Max's size (Windows' snap keeps the old size; `main_unsnap` now restores
+the window before the pin's resize), and the hover box over the Cover wrapped to a sliver (hint.ts
+measured it at the last hint's place). PIN.md §8. His rule: the motion monitor only when it can
+add something (RELEASE.md step 1a); the run was stopped. The fixes ship as **1.1.1**, since 1.1.0
+is installed on his PC and was never published.
+
 ## 2026-10-26 — Title under the cover (branch `main`, committed)
 
 **His ask:** a setting, off by default, that keeps the title, artist info and buttons off the

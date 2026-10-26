@@ -1,12 +1,12 @@
 ---
 status: built
 desk_test: open
-sources: [src/pin.ts, src/styles/pin.css, src/surface.ts, src/main.ts, src/rules-eval.ts, src/rulez-card.ts, src/rulez-words.ts, src/settings-card.ts, src/settings-store.ts, src/agent-settings.ts, src/compass.ts, src/usage-keys.ts, src/styles/skin.css, index.html, tests/rules-eval.test.ts]
+sources: [src/pin.ts, src/styles/pin.css, src-tauri/src/tray.rs, src/hint.ts, src/surface.ts, src/main.ts, src/rules-eval.ts, src/rulez-card.ts, src/rulez-words.ts, src/settings-card.ts, src/settings-store.ts, src/agent-settings.ts, src/compass.ts, src/usage-keys.ts, src/styles/skin.css, index.html, tests/rules-eval.test.ts]
 updated: 2026-10-26
 ---
 # Pin on top — a title bar button that keeps the window above other windows
 
-> **Built 2026-10-26 on `main`, committed and pushed (9460b39); ships in 1.1.0. His hand test
+> **Built 2026-10-26 on `main`, committed and pushed (9460b39); ships in 1.1.1 (1.1.0 was a local build only, never published). His hand test
 > passed the four pins and unpins the same day; §5.1 lists the cases still open.** Every fork
 > is his (§2). §8 is the as-built record: where it disagrees with §3, §8 is the code.
 
@@ -160,6 +160,16 @@ and so on), and one button pins the window and starts it.
   unpin to Max left it there, so a later Mini pick would have opened a bare Cover.
   `applySurface` with Midi or Max now also sets the view Mini comes back to; `pin` never stores
   Cover as a way back; `initPin` puts a leftover Cover back to Player with no resize.
+- **The snapped window (his report on the 1.1.0 build, 2026-10-26).** He pinned the Cover from
+  a Max that Windows had snapped, then dragged the Cover: it grew back to about Max's size. The
+  ring showed no surface change; the window itself had grown. Cause: a snapped ("arranged")
+  window keeps its size from before the snap, and a drag puts that size back; `setSize` never
+  clears it. Fix: `main_unsnap` (tray.rs) restores an arranged window (`SW_RESTORE`) before the
+  pin, and before the unpin, sizes it, under the launch cover. A `pin:unsnap` log line says when
+  it acted. The unpin then puts the window back at the snapped place and size, but not snapped.
+- **The hover box over the Cover (same report).** It wrapped to a sliver with room to spare: the
+  box is fixed-position and was measured at the last hint's place near the right edge. `place()`
+  in hint.ts now measures it at the left edge first. This holds for every hint in a small window.
 - **What Claude decided inside his calls (for his review):**
   1. The `surface` fact reads "player" in Cover, so *Keep on top = Player* also holds a Cover.
   2. A pin of *This window* stores no way back: unpin leaves the window where it is, even if

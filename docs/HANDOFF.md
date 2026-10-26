@@ -205,7 +205,7 @@ each step that touches those calls.
 
 ### Decided, not built (his next sittings)
 
-- **Pin on top** (2026-10-26): BUILT the same day, pushed (9460b39), ships in 1.1.0; his hand test passed the four pins. The
+- **Pin on top** (2026-10-26): BUILT the same day, pushed (9460b39), ships in 1.1.1 (1.1.0 was a local build only); his hand test passed the four pins. The
   open cases are features/PIN.md §5.1; Claude's choices for his review §3.6 and §8.
 
 - **The loading set** (2026-10-16): BUILT 2026-10-17 on `seventheenth`, all five steps, kept as

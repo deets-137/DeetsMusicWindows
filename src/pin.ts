@@ -16,6 +16,7 @@
 // over it shows Previous, Play / Pause, Next and an unpin icon; a drag on it moves the window.
 
 import "./styles/pin.css";
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
@@ -118,6 +119,14 @@ const target = (v: PinView): { s: SurfaceName; view: MiniView } | null =>
 const covered = (fn: () => Promise<void>): Promise<void> =>
   new Promise((done) => withAppearanceTransition("surface", fn, { after: done }));
 
+/** Take the window out of a Windows snap before it is sized (tray.rs `main_unsnap`): a snapped
+ *  window keeps its size from before the snap, and a drag puts it back. A pinned Cover dragged
+ *  off a snapped Max grew to Max's size (his report on 1.1.0, 2026-10-26). */
+const unsnap = async (cause: string): Promise<void> => {
+  const was = await invoke<boolean>("main_unsnap").catch((e) => (console.error("[pin] unsnap", e), false));
+  if (was) diag.log("pin:unsnap", { cause });
+};
+
 /** Pin the window: keep it above other windows, in the view `v`. */
 export async function pin(v: PinView = setting("pinView"), cause = "button"): Promise<void> {
   if (state.on || busy) return;
@@ -138,6 +147,7 @@ export async function pin(v: PinView = setting("pinView"), cause = "button"): Pr
       const unmax = back?.max === true;
       await covered(async () => {
         if (unmax) await appWindow.unmaximize();
+        else await unsnap("pin");
         await applySurface(to.s, to.view);
       });
     }
@@ -158,6 +168,7 @@ export async function unpin(cause = "button"): Promise<void> {
     diag.log("pin:off", { cause, to: b ? `${b.surface}:${b.view}` : "same" });
     if (!b) return;
     await covered(async () => {
+      await unsnap("unpin"); // a pinned window snapped by hand (a drag to an edge)
       await applySurface(b.surface, b.view);
       // The exact size and place it had: applySurface set the view's open size.
       await appWindow.setSize(new LogicalSize(b.w, b.h));

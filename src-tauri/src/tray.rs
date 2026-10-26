@@ -173,6 +173,28 @@ pub fn main_minimize(app: AppHandle) {
     }
 }
 
+/// The pin's resize (docs/features/PIN.md §8): a window Windows has snapped ("arranged") keeps
+/// its size from before the snap, and a drag of the window puts that size back. A pinned Cover
+/// dragged off a snapped Max grew to Max's size (his report on 1.1.0, 2026-10-26). So before
+/// the pin or the unpin sizes the window, it is restored from the snap: `SW_RESTORE` takes an
+/// arranged window back to its own size (the page's launch cover hides the jump), and the
+/// resize after it is the size a drag keeps. True when the window was snapped.
+#[tauri::command]
+pub fn main_unsnap(app: AppHandle) -> bool {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{IsWindowArranged, ShowWindow, SW_RESTORE};
+    let Some(w) = app.get_webview_window(MAIN) else { return false };
+    let Ok(h) = w.hwnd() else { return false };
+    let hwnd = HWND(h.0 as _);
+    unsafe {
+        if !IsWindowArranged(hwnd).as_bool() {
+            return false;
+        }
+        let _ = ShowWindow(hwnd, SW_RESTORE);
+    }
+    true
+}
+
 /// A `--tray` launch: the window never shows; the tray icon opens it.
 pub fn start_hidden(app: &AppHandle) {
     if let Some(w) = app.get_webview_window(MAIN) {

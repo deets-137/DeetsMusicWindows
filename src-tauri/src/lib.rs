@@ -659,6 +659,7 @@ pub fn run() {
             tray::main_ready,
             tray::tray_pin_main,
             tray::main_minimize,
+            tray::main_unsnap,
             tray::tray_panel_resize,
             tray::app_quit,
             update::update_status,

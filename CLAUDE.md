@@ -241,7 +241,7 @@ for word, with RELEASE.md's section numbers.
   named for the puppy on deets.solutions. The most complete skin and the reference for every mod:
   built on the public layer only (mods.md §10, §11). §1 his narration; §2 the tokens and slots it
   needs.
-- `PIN.md` — BUILT 2026-10-26 (9460b39, in 1.1.0), his hand test passed, §5.1 cases open; §8 the as-built record: the pin button in the title bar on every surface
+- `PIN.md` — BUILT 2026-10-26 (9460b39, in 1.1.1), his hand test passed, §5.1 cases open; §8 the as-built record: the pin button in the title bar on every surface
   (beside the short monogram in Mini) and its panel (Cover · Player · Mini · This window, then
   Pin). The pin is its own hold on `window.onTop` (the `pinned` fact); the Keep on top row is
   unchanged and the two hints name each other. Cover is a new view, controls on hover. The pin
