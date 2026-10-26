@@ -226,6 +226,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Skin settings", row: "metalpeek", skin: "metal" }, // Metal's Peek
   { section: "Skin settings", row: "happysky", skin: "happy" }, // Happy's Sky, built 2026-10-21 (happy.md)
   { section: "Skin settings", row: "happycards", skin: "happy" }, // Happy's Card opacity
+  { section: "Window", row: "npoffcover" }, // Title under the cover, built 2026-10-26 (fullscreen-player.md §17)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -1177,7 +1178,9 @@ function mountSettings(
           kind: "choice", id: "npshade", label: "Shade behind the title", key: "npShade",
           hint: "In the full player, a soft shade behind the title, artist and album, or a band across the cover. A near-square card keeps the band",
           options: [{ value: "text", label: "Text only" }, { value: "band", label: "Band" }],
+          when: () => !setting("npOffCover"), // nothing is on the cover to shade (fullscreen-player.md §17)
         },
+        storeToggle("npoffcover", "Title under the cover", "npOffCover", () => "In the full player, the title, artist, album and buttons sit under the cover, not on it"),
         // ── Card grow (CARD-GROW.md §8) + card memory (CARD-MEMORY.md §7) ──
         // `Compass closes on outside click` left this group on 2026-09-18: it is neither a
         // window nor a card, only another outside-click rule. It is now under

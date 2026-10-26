@@ -28,6 +28,21 @@ export function rowsPlace(cardW: number, cardH: number, wideW: number, controlsH
   return cardH - coverSide(cardW, cardH, share) >= controlsH + gap ? "below" : "over";
 }
 
+export type ClosePlace = "above" | "side";
+
+/** The close square off the cover (Title under the cover, §17; his call 2026-10-26: above the
+ *  cover where there is room, else beside it). The cover and the rows under it are one block,
+ *  centered in the card's box (`cardW` × `cardH`); `side` is the cover's side and `blockH` the
+ *  block's height. `need` is the square's size plus its gap to the cover. Above when the space
+ *  over the block holds it; beside the cover's top-right corner when the space to its right
+ *  does; else above, and the cover gives up `room` of its height for it. `stacked`: the cover
+ *  takes the full width by design, so there is never room beside it. */
+export function closePlace(cardW: number, cardH: number, side: number, blockH: number, need: number, stacked = false): { place: ClosePlace; room: number } {
+  if (!stacked && (cardH - blockH) / 2 >= need) return { place: "above", room: 0 };
+  if (!stacked && (cardW - side) / 2 >= need) return { place: "side", room: 0 };
+  return { place: "above", room: need };
+}
+
 /** The cover's side in a card's box: the largest square that fits, at most `share` of the width. */
 export function coverSide(w: number, h: number, share = 1): number {
   return Math.max(0, Math.min(w * share, h));

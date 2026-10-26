@@ -1,7 +1,20 @@
 // full-player-layout.ts: the full player's pure rules (features/fullscreen-player.md §12.2).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rowsPlace, coverSide, fullArtPx, fullClipFrom, flightFrom, stillCutRight } from "../src/full-player-layout.ts";
+import { rowsPlace, coverSide, closePlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight } from "../src/full-player-layout.ts";
+
+test("2026-10-26 Title under the cover: the close square goes above the cover, else beside it", () => {
+  // A narrow card: the cover takes the width, room over the block.
+  assert.deepEqual(closePlace(600, 1000, 600, 800, 40), { place: "above", room: 0 });
+  // A wide card: the cover touches the top, room to its right.
+  assert.deepEqual(closePlace(1100, 700, 500, 700, 40), { place: "side", room: 0 });
+  // Exactly enough room above (2 × 40 over the block) wins over the side.
+  assert.deepEqual(closePlace(1100, 780, 500, 700, 40), { place: "above", room: 0 });
+  // Neither: the cover gives up the square's room above it.
+  assert.deepEqual(closePlace(620, 700, 600, 700, 40), { place: "above", room: 40 });
+  // Stacked: never beside, always the room.
+  assert.deepEqual(closePlace(1100, 2000, 500, 700, 40, true), { place: "above", room: 40 });
+});
 
 test("2026-10-11 a wide card has the controls under the cover, never beside it", () => {
   assert.equal(rowsPlace(1100, 700, 356, 150, 12), "below");

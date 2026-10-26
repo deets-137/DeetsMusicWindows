@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.1
 desk_test: passed 2026-10-11
 sources: [src/full-player.ts, src/full-player-layout.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 # Full player — grow the Now Playing card
 
@@ -1150,4 +1150,49 @@ guard did not need a second backdrop).
 5. Drag the window near square: the rows move over the cover, on the band.
 6. Metal with Zoetrope (title under the cover): no patch and no band, as before.
 7. A light theme: the patch is the band's color in that theme.
+
+## 17. Title under the cover (built 2026-10-26)
+> **Part:** built · 2026-10-26 · desk test passed 2026-10-26 (his word: "looks good")
+
+**His ask (2026-10-26, with a screenshot of the title block on the cover):** a setting, off by
+default, that keeps the album title, the artist info and the buttons off the cover.
+
+**His calls:**
+- **Off by default.** Off, the full player is as before (§16 and the rows' places, §7.3).
+- **The close button leaves the cover too:** above the cover where there is room, or beside it
+  when the cover touches the top.
+
+**As built:**
+- Settings › Window › *Title under the cover* (`npOffCover`, default off; agent spec; a
+  `NEW_MARKS` line; `NOT_REPORTED` in `usage-keys.ts` until he puts it on the usage list).
+  `full-player.ts` writes `data-np-off-cover` on `<html>`; the look watch lays out again on it.
+- On, the title block takes Metal's place under the cover (`metaBelow()` is true, so
+  `data-np-meta-below` and the rows below, as Zoetrope, §6.4 of metal.md): no band, no shade,
+  the card's own inks. The cover gives up the row's height. *Shade behind the title* hides
+  (`when`) while it is on: nothing is on the cover to shade.
+- The close square: `closePlace` (`full-player-layout.ts`, tested) reads the card's box, the
+  cover's side and the block's height. **Above** the cover's top-right corner when the space
+  over the block holds the square and its gap (`--np-close-inset`); else **beside** that corner
+  when the space to the right does; else above, and the cover gives up that height
+  (`--fp-close-room`, the `.np`'s top padding). Stacked: always the room above (the cover
+  takes the full width; the player's height counts it). The card wears `data-np-close`.
+
+**What Claude decided inside his calls:** the row's place (under *Shade behind the title*) and
+its words; the order (above first, as he named it); Metal's peek never takes the place beside
+(its side covers are there), so it takes the room above; the side column's width is taken out
+before the room beside is read; hiding the Shade row while on (the Settings card has a `when`,
+no dimmed state).
+
+**Desk test (his):**
+1. Settings › Window › *Title under the cover* on. Max, a wide window, open the full player:
+   the title, artist and album are in a row under the cover, the controls under them. The
+   close button is beside the cover's top-right corner. Nothing is on the cover.
+2. Drag the window narrower until the cover takes the width: the close button moves above the
+   cover's top-right corner.
+3. A near-square window: the cover gets smaller; the close button is above it.
+4. Max portrait (stacked): the close button is above the cover, the cover full width.
+5. Midi: the same, in the Midi full player.
+6. Metal with Zoetrope and Peek: the close button is above the cover, never on a side cover.
+7. Turn the row off with the player open: the title and the close button go back on the cover.
+   *Shade behind the title* shows again in Settings.
 

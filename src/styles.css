@@ -4802,6 +4802,14 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   position: relative;
   z-index: 2;
 }
+/* Title under the cover (§17, his call 2026-10-26): the close square leaves the cover. Above
+   its top-right corner where the card has room over the cover, else beside that corner;
+   full-player.ts decides (closePlace) and, when neither has room, writes --fp-close-room: the
+   cover gives up that height and the block moves down under it. */
+.bento[data-player="full"] .panel[data-slot="np"][data-np-close] .np__close { margin: 0; }
+.bento[data-player="full"] .panel[data-slot="np"][data-np-close="above"] .np__close { translate: 0 calc(-100% - var(--np-close-inset)); }
+.bento[data-player="full"] .panel[data-slot="np"][data-np-close="side"] .np__close { translate: calc(100% + var(--np-close-inset)) 0; }
+.bento[data-player="full"] .panel[data-slot="np"][data-np-close] .np { padding-top: var(--fp-close-room, 0px); }
 /* The stage's parts show: the album line, the times, the volume row, the larger title. */
 .bento[data-player="full"] .panel[data-slot="np"] .np__album { display: block; }
 .bento[data-player="full"] .panel[data-slot="np"] .np__times { display: flex; }
@@ -4859,7 +4867,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
    cover and the controls are one block, centered in the card. full-player.ts decides it
    (rowsPlace) and slides the parts when a resize moves them. */
 .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np {
-  --fp-side: min(calc(100cqw * var(--fp-cover-share)), 100cqh - var(--fp-controls-h, 0px) - var(--space-3));
+  --fp-side: min(calc(100cqw * var(--fp-cover-share)), 100cqh - var(--fp-controls-h, 0px) - var(--space-3) - var(--fp-close-room, 0px));
   grid-template-rows: var(--fp-side) repeat(4, auto);
 }
 .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np__center { display: contents; }
@@ -4890,7 +4898,7 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 }
 /* The halo centers on the cover, which sits above the controls (the block is centered). */
 .bento[data-player="full"] .panel[data-slot="np"][data-np-rows="below"] .np__aurora::before {
-  top: calc(var(--panel-pad) + 50cqh - (var(--fp-controls-h, 0px) + var(--space-3)) / 2);
+  top: calc(var(--panel-pad) + 50cqh - (var(--fp-controls-h, 0px) + var(--space-3) - var(--fp-close-room, 0px)) / 2);
 }
 /* The rows' box is not a box here, so the open's hide and fade go on its parts. */
 .panel.is-player-rebuild[data-np-rows="below"] .np__center > * { opacity: 0; }

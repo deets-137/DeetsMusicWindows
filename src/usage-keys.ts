@@ -70,4 +70,5 @@ export const NOT_REPORTED: Readonly<Record<string, string>> = {
   // REPORTED on 2026-10-23 (his call of 2026-10-21).
   reduceMotion: "a new Motion row: his call before it is sent",
   npShade: "a new Window row (2026-10-25): his call before it is sent",
+  npOffCover: "a new Window row (2026-10-26): his call before it is sent",
 };

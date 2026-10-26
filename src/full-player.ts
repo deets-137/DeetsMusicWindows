@@ -33,7 +33,7 @@ import { TELEMETRY } from "./telemetry-on";
 import { registerAction, registerFact } from "./rules";
 import { refreshPlayerState } from "./player";
 import { setFullArtPx, stageArtPx } from "./queue-rows";
-import { rowsPlace, coverSide, fullArtPx, fullClipFrom, flightFrom, stillCutRight, type Box, type RowsPlace } from "./full-player-layout";
+import { rowsPlace, coverSide, closePlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight, type Box, type ClosePlace, type RowsPlace } from "./full-player-layout";
 import {
   clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, stageGapShared, type Slot,
 } from "./card-grow";
@@ -59,6 +59,9 @@ let watch: ResizeObserver | null = null;
 let shareWatch: MutationObserver | null = null; // the look's cover share (Metal's peek) changes the layout at the same size
 let measuredShare = 1; // the cover share the last layout was measured with (layoutNow)
 let measuredMeta = false; // the title block's place the last layout was measured with (layoutNow)
+/** The close square off the cover (Title under the cover, §17): its place, and the height the
+ *  cover gives up for it. Null: on the cover's corner, as before. */
+let measuredClose: { place: ClosePlace; room: number } | null = null;
 let slideGen = 0; // bumps on every rows slide: only the newest one ends is-rows-sliding
 let wantHistory = false; // the open's measure: the side column shows (Max)
 let resizedInMotion = false; // a resize during the open changed the layout: check it after the landing
@@ -107,8 +110,19 @@ function motion(): Motion | null {
 const pxToken = (name: string): number => parseFloat(getComputedStyle(root).getPropertyValue(name)) || 0;
 /** The cover's most share of the card's width (--fp-cover-share; Metal's peek, 0.72). */
 const coverShare = (): number => pxToken("--fp-cover-share") || 1;
-/** The title, artist and album under the cover, never on it (--fp-meta-below; Metal). */
-const metaBelow = (): boolean => pxToken("--fp-meta-below") > 0;
+/** Settings › Window › *Title under the cover* (§17): nothing on the cover. */
+const offCover = (): boolean => root.dataset.npOffCover === "on";
+/** The title, artist and album under the cover, never on it (--fp-meta-below; Metal; or the
+ *  setting). */
+const metaBelow = (): boolean => offCover() || pxToken("--fp-meta-below") > 0;
+
+/** Write the close square's place on the card (null: back on the cover). */
+function markClose(panel: HTMLElement, c: { place: ClosePlace; room: number } | null): void {
+  if (c) panel.dataset.npClose = c.place;
+  else delete panel.dataset.npClose;
+  if (c?.room) panel.style.setProperty("--fp-close-room", `${c.room}px`);
+  else panel.style.removeProperty("--fp-close-room");
+}
 
 // ── the parts ───────────────────────────────────────────────────────────────────
 const npHost = (): HTMLElement | null => opts?.hosts.np ?? null;
@@ -200,15 +214,29 @@ function layoutNow(panel: HTMLElement): Layout {
   if (was) panel.dataset.npRows = was;
   else delete panel.dataset.npRows;
   if (Number.isFinite(h)) panel.style.setProperty("--fp-controls-h", `${h}px`);
+  // The close square off the cover (§17): its size plus its gap to the cover. Stacked, the cover
+  // takes the full width, so the player is that much taller for it.
+  const close = offCover() ? panel.querySelector<HTMLElement>(".np__close") : null;
+  const need = close ? (close.offsetHeight || pxToken("--icon-lg")) + pxToken("--np-close-inset") : 0;
   // Stacked: the controls are under the cover by construction, and Max shows its side column
   // in the band beside the Queue whatever the width.
-  const st = stackNow(panel, h, gap);
-  if (st.on) return { place: "below", history: surfaceNow() === "max" && !!opts?.mountSide, stack: true, stackH: st.h };
+  const st = stackNow(panel, h + need, gap);
+  if (st.on) {
+    measuredClose = close ? closePlace(0, 0, 0, 0, need, true) : null;
+    markClose(panel, measuredClose);
+    return { place: "below", history: surfaceNow() === "max" && !!opts?.mountSide, stack: true, stackH: st.h };
+  }
   const share = measuredShare;
   const place = rowsPlace(w, r.height, pxToken("--full-wide-w"), h, gap, share, measuredMeta);
   const side = coverSide(w, place === "below" ? r.height - h - gap : r.height, share);
   // The column shows when the card beside it still gives the cover the same side.
   const history = surfaceNow() === "max" && !!opts?.mountSide && coverSide(w - pxToken("--full-history-w") - pxToken("--panel-gap"), Infinity, share) >= side;
+  // The close square's room is read in the card as it will be: without the side column's width
+  // while that column shows. Metal's peek (a share under 1) fills the room beside the cover with
+  // the side covers, so the square never goes there: no room beside.
+  const cardW = share < 1 ? side : history ? w - pxToken("--full-history-w") - pxToken("--panel-gap") : w;
+  measuredClose = close ? closePlace(cardW, r.height, side, side + gap + h, need) : null;
+  markClose(panel, measuredClose);
   return { place, history, stack: false, stackH: st.h };
 }
 
@@ -433,12 +461,14 @@ function apply(on: boolean, place?: RowsPlace, row1?: number): void {
     // the large cover loads, and the title fell back on the cover when it came on again (his
     // report, 2026-10-21: "still seeing this sometimes").
     if (panel) panel.toggleAttribute("data-np-meta-below", measuredMeta);
+    if (panel) markClose(panel, measuredClose);
   } else {
     delete fp().dataset.player;
     fp().removeAttribute("data-fp-stack");
     if (panel) {
       delete panel.dataset.npRows;
       panel.removeAttribute("data-np-meta-below");
+      markClose(panel, null);
     }
     opts?.bento.style.removeProperty("--player-row1");
   }
@@ -1227,12 +1257,12 @@ function watchSize(panel: HTMLElement): void {
   // change resizes the card, so the size watch above takes it.
   shareWatch?.disconnect();
   const check = (): void => {
-    if (coverShare() === measuredShare && metaBelow() === measuredMeta) return;
+    if (coverShare() === measuredShare && metaBelow() === measuredMeta && offCover() === (measuredClose !== null)) return;
     if (busy) resizedInMotion = true;
     else refit(panel);
   };
   shareWatch = new MutationObserver(check);
-  shareWatch.observe(root, { attributes: true, attributeFilter: ["data-skin", "data-hook-material", "data-metal-peek", "data-metal-cover"] });
+  shareWatch.observe(root, { attributes: true, attributeFilter: ["data-skin", "data-hook-material", "data-metal-peek", "data-metal-cover", "data-np-off-cover"] });
   check();
 }
 
@@ -1373,8 +1403,12 @@ export function initFullPlayer(o: Opts): void {
   // Shade behind the title (§16): the attribute the band's CSS reads.
   const applyShade = () => { document.documentElement.dataset.npShade = setting("npShade"); };
   applyShade();
+  // Title under the cover (§17): the attribute the layout reads (the look watch lays out again).
+  const applyOffCover = () => { root.dataset.npOffCover = setting("npOffCover") ? "on" : "off"; };
+  applyOffCover();
   onSettingsChange((k) => {
     if (k === "npShade") applyShade();
+    if (k === "npOffCover") applyOffCover();
     if (k === "cardGrow") emit();
     // Layout for Max changed: close with no motion before the layout remounts (MAX-CARDS.md).
     if (k === "maxCards") {

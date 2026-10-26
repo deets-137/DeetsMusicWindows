@@ -6,6 +6,16 @@ updated: 2026-10-26
 ---
 # DeetsMusic — Work log
 
+## 2026-10-26 — Title under the cover (branch `main`, committed)
+
+**His ask:** a setting, off by default, that keeps the title, artist info and buttons off the
+full player's cover. **His calls:** the close button goes above the cover where there is room,
+else beside it. Built: Settings › Window › *Title under the cover* (`npOffCover`); the title
+block takes Metal's Zoetrope place under the cover; `closePlace` in `full-player-layout.ts`
+(tested) places the close square (`data-np-close`, `--fp-close-room`). fullscreen-player.md §17
+has the as-built record and the desk test (his, passed the same day: "looks good").
+**Checks:** `npx tsc --noEmit`, `node --test tests/full-player-layout.test.ts`, `npm run docs:check`, `npx vite build`.
+
 ## 2026-10-26 — Artist page: singles, EPs, live albums, Appears On; the Top Songs bar (branch `main`, committed)
 
 **His ask:** LISA's page showed only Alter Ego, none of her new EPs. **His calls:** singles, EPs

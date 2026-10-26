@@ -191,6 +191,7 @@ which restarts the first-run walk.
 | Max window when short | A Max window dragged shorter than the stage column can hold | **Becomes Midi** / Stops at floor |
 | Layout for Max | How many content cards Max shows beside Now Playing and the Queue. 4 cards is the 2×2; 2 columns puts two tall cards side by side; 2 rows stacks two wide cards; 1 card shows one. Each count keeps its own cards; 2 columns and 2 rows share theirs | **4 cards** / 2 columns / 2 rows / 1 card |
 | Shade behind the title | In the full player with the controls under the cover: Text only puts a soft dark shade behind the title, artist and album, and the rest of the cover stays clear; Band puts a dark band across the cover's width. When the controls sit over the cover (a near-square card), the band shows with both | **Text only** / Band |
+| Title under the cover | In the full player: On puts the title, artist and album in a row under the cover, the controls under them, and the close button above the cover's top-right corner (or beside it when the cover touches the top). The cover gets smaller by that row. The Shade row hides while it is on. Off: as before | On / **Off** |
 
 **Growing and drilling**
 
