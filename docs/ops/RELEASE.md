@@ -312,6 +312,16 @@ by version.
   `release:publish` copies this local feed into the live one, so a package deleted here leaves
   the live feed too.
 
+**Packing the same version again (2026-10-26, 1.1.0).** `vpk pack` writes into `velopack/`
+before `release-check` runs, so a build that fails the check leaves its version in the folder,
+and the next `npm run release` stops: *There is a release in channel deetsmusic which is equal
+or greater to the current version*. Only for a version **not yet published**: move that
+version's two `.nupkg` files, the Setup.exe, `assets.<channel>.json` and the feed's `.sig` out
+of the folder (keep them until the new build passes); take that version's rows out of
+`releases.<channel>.json` (the `Assets` list) and out of `RELEASES-<channel>`; run the release
+again. The folder then reads as it did after the last published version, and the new delta is
+built from it. Never do this to a published version: the live feed has it.
+
 The test builds (`dev/`, `beta/`, `velopack-spike/`) were deleted on 2026-10-16; none reached
 live. R2 holds every published version as well; the local folder is the copy that survives a
 lost bucket, and `src-tauri/target/` is not one (`cargo clean` takes it).
