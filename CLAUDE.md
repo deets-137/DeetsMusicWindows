@@ -356,6 +356,13 @@ a first load (§1); new theme slots later (§4, his note); the DeetsRGB widget t
 §9 the Halloween test (what tokens reach today), §10 the public layer that makes a mod
 future-proof, §11 the slots (images, ornaments, icons, cursors, motion presets); the Happy skin
 is the reference (`features/happy.md`).
+`UPDATE-CARD.md` — an idea (2026-10-26), designed, every fork his (§1): a copy of the
+grand-opening card on the first launch after an update that has a new setting or a changed
+default, one page per version oldest first: the notes (the bold leads expand when they do not fit),
+the new settings (`NEW_MARKS` gets `since`), previews; a changed default offered with *Use it*
+only while the user's value is the old one (§2: today a new default never reaches an existing
+user). × is done; *What's New* in the Compass holds the last 3 versions and an Older search
+page (§3.7). Not built.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
