@@ -71,4 +71,5 @@ export const NOT_REPORTED: Readonly<Record<string, string>> = {
   reduceMotion: "a new Motion row: his call before it is sent",
   npShade: "a new Window row (2026-10-25): his call before it is sent",
   npOffCover: "a new Window row (2026-10-26): his call before it is sent",
+  pinView: "the pin panel's last tile (2026-10-26, PIN.md): his call before it is sent",
 };

@@ -459,8 +459,12 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - A time takes `HH:MM` on the hour or the half hour, inside the card's menu range
   (`dayStart` 04:00–12:00, `nightStart` 15:00–23:30).
 - An **open size** takes `W×H` in px (`600x640`, `600 x 640`, `600×640`), at least the view's
-  minimum: `sizeMini` / `sizeMidi` / `sizeMax` 340×560, `sizePlayer` 420×460. A set for the view
+  minimum: `sizeMini` / `sizeMidi` / `sizeMax` 340×560, `sizePlayer` 420×460, `sizeCover` 200×200
+  (the pin's Cover view, 2026-10-26, [PIN.md](../features/PIN.md)). A set for the view
   on screen resizes the window at once (SETTINGS.md §3, FUTURE-SETTINGS §8a).
+- `pinView` "Pin keeps on top" (cover | player | mini | window, 2026-10-26, PIN.md §3.2): the
+  view the title bar's pin keeps on top, the panel's last tile. It does not pin: the pin itself
+  is the user's press (or the Compass row), and *Keep on top* (`alwaysOnTop`) is the lasting choice.
 - The **card grow** rows (2026-09-16, CARD-GROW.md §8): `cardGrow` "Grow cards from edges"
   (on | off), `cardGrowOutside` "Collapse on outside click" (on | off), `compassCloseAway` "Compass closes on outside click" (on | off), `maxShortWindow` "Max window when short" (flip | floor), `maxCards` "Layout for Max" (4 | 2cols | 2rows | 1; a rule key), `npShade` "Shade behind the title" (text | band, 2026-10-25, fullscreen-player.md §16), `npOffCover` "Title under the cover" (on | off, 2026-10-26, fullscreen-player.md §17), `cardGrowPick` "Grown
   card on card pick" (Keep | Collapse), `cardGrowView` "Keep view when grown" (Keep | Per size), `drillGrow` "Grow on album or artist" (Vertical | Full | Off, 2026-09-26, RULES.md §13),

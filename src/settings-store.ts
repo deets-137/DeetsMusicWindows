@@ -18,6 +18,9 @@ export interface Settings {
   /** Keep the window above others: always, only while it shows the player, or never.
    *  Was a boolean until 2026-09-14 (migrated: true → always). The row makes a rule on the window.onTop property (RULES.md §13). */
   alwaysOnTop: "always" | "player" | "off";
+  /** The view the title bar's pin keeps on top (docs/features/PIN.md §3.2): the panel's last
+   *  tile. "window" = the window as it is. The pin itself is its own hold (pin.ts), not this. */
+  pinView: "cover" | "player" | "mini" | "window";
   /** What a click on the tray icon pops: mini with its card, or the player. main.ts reads it. */
   trayView: "cards" | "player";
   /** Every dropdown opens on hover instead of click (FUTURE-SETTINGS §9 is the per-menu future). */
@@ -31,6 +34,7 @@ export interface Settings {
    *  px. surface.ts applies them on every open; a resize by hand is not remembered. */
   sizeMini: string;
   sizePlayer: string;
+  sizeCover: string;
   sizeMidi: string;
   sizeMax: string;
   /** Card grow (CARD-GROW.md §8): a card opens over its neighbor from the gap beside it, the
@@ -526,12 +530,14 @@ const KEY = "deets.settings";
 export const GLASS_LOCKED = { glassTint: 65, glassBacklight: 85, glassCanvasGlow: 40, glassCanvasDim: 10 } as const;
 export const DEFAULTS: Settings = {
   alwaysOnTop: "off",
+  pinView: "player", // PIN.md §3.6: the view that already exists and has the controls
   trayView: "cards",
   menuMode: "click",
   surfaceAutoFlip: true,
   volumeShrink: false, // user's call 2026-09-16: the full bar by default
   sizeMini: "385x550", // user's numbers, desk-tested 2026-09-15: each view opens at its own floor
   sizePlayer: "405x675", // NP: 404 px wide is where the Press record stopped jittering
+  sizeCover: "320x320", // the pin's Cover view (PIN.md §3.4): a square, small enough to sit in a corner
   sizeMidi: "495x670",
   sizeMax: "1100x950", // 2026-09-17: 948 is the tallest skin's (Press) need for a full-width
                        // square cover AND the Queue's 2.5 rows (docs/cards/STAGE-COLUMN.md §5);

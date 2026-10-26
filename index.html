@@ -292,6 +292,15 @@
         <div class="net__panel pop app-scroll" id="net-panel" role="group" aria-label="Network" data-frames="net" data-tauri-drag-region="false" hidden></div>
       </div>
 
+      <!-- The pin (docs/features/PIN.md): right of the Network button in Max, right of the app
+           title in Mini and Midi, where the buttons before it are hidden (his call, 2026-10-26).
+           A pin glyph: diagonal at rest, horizontal while pressed, vertical while pinned
+           (styles/pin.css). The panel: four tiles and the Pin button. src/pin.ts. -->
+      <div class="pin" id="pin">
+        <button class="pin__btn" id="pin-open" type="button" aria-haspopup="true" aria-expanded="false" aria-pressed="false" aria-label="Keep on top" title="Keep on top: pin the cover, the player, Mini or this window above other windows. For a lasting choice, use Settings › Window › Keep on top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h6M10.2 3.5v5L7.6 12.4h8.8l-2.6-3.9v-5M12 12.4v8"/></svg></button>
+        <div class="pin__panel pop" id="pin-panel" role="group" aria-label="Keep on top" data-frames="pin" data-tauri-drag-region="false" hidden></div>
+      </div>
+
       <div class="drag-region" data-tauri-drag-region></div>
 
       <!-- The Compass (COMPASS.md): the bar Ctrl+Space drops under the title bar, in every

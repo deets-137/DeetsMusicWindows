@@ -179,6 +179,8 @@ export const FACTS: FactWord[] = [
   { id: "graphics", section: "Window", label: "Graphics", kind: "choice", choices: [{ value: "accelerated", label: "Graphics card" }, { value: "software", label: "Software" }] },
   // GRAPHICS-FALLBACK.md §10.4: the Reduce motion row, Windows' reduced motion, or the graphics rule.
   { id: "motionReduced", section: "Window", label: "Reduce motion", kind: "bool", yes: "Motion is reduced", no: "Motion is not reduced" },
+  // The title bar's pin (PIN.md §3.5).
+  { id: "pinned", section: "Window", label: "Pinned", kind: "bool", yes: "The window is pinned", no: "The window is not pinned" },
   { id: "card", section: "Window", label: "Card", kind: "choice", choices: "cards" },
   { id: "grown", section: "Window", label: "Grown card", kind: "choice", choices: "cards" },
   // The full player (features/fullscreen-player.md §12.6).

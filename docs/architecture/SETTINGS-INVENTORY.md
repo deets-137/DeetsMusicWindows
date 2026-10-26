@@ -178,7 +178,7 @@ which restarts the first-run walk.
 | Start with Windows | Starts in the tray when you sign in | on / off |
 | Resize changes surface | A window made narrow or short becomes the surface that fits it. Off: it resizes inside the current surface | **on** / off |
 | Shrink volume bar | The title bar volume is a small pill that grows when you click it. Max only: Mini and Midi always use the pill (since 2026-10-11) | on / **off** |
-| Keep on top | The window stays above other windows | Always / Player / **Off** |
+| Keep on top | The window stays above other windows. The title bar's pin keeps it on top for now and leaves this row as it is | Always / Player / **Off** |
 
 **Window sizes**
 
@@ -186,6 +186,7 @@ which restarts the first-run walk.
 |---|---|---|
 | Mini opens at | The window size Mini opens at. **Set current** saves the size it has now | **385 × 550** |
 | Player opens at | The size for the player alone | **405 × 675** |
+| Cover opens at | The size for the pin's Cover view, the album cover alone | **320 × 320** |
 | Midi opens at | The size for Midi | **495 × 670** |
 | Max opens at | The size for Max | **1100 × 950** |
 | Max window when short | A Max window dragged shorter than the stage column can hold | **Becomes Midi** / Stops at floor |

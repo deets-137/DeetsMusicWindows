@@ -54,6 +54,7 @@ import { openSoundPanel } from "./sound-panel";
 import { openQuickPanel } from "./quick-panel";
 import { openUpdatesPanel } from "./updates-btn";
 import { openRewindPanel } from "./rewind-btn";
+import { windowPinned, openPinPanel, unpin } from "./pin";
 import { openNetworkPanel } from "./net";
 import { updateStatusText } from "./updater";
 import { openRoomPanel } from "./room-panel";
@@ -368,6 +369,11 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   // The Network panel (docs/features/speedtest.md): Max only, as its button.
   if (currentSurface() === "max")
     rows.push({ group: "Places", title: "Network", sub: "How steady the connection has been, and a speed test", aliases: ["speed test", "internet", "wifi", "ping", "connection", "packet loss"], run: () => openNetworkPanel() });
+  // The pin (docs/features/PIN.md): every surface, as its button. Pinned, the row unpins.
+  if (windowPinned())
+    rows.push({ group: "Places", title: "Unpin", sub: "The window goes back to how it was", aliases: ["keep on top", "always on top", "pin"], run: () => void unpin("compass") });
+  else
+    rows.push({ group: "Places", title: "Pin on top", sub: "Keep the cover, the player, Mini or this window above other windows", aliases: ["keep on top", "always on top", "pin", "float"], run: () => void openPinPanel() });
   rows.push({ group: "Places", title: "Updates and bugs", sub: updateStatusText() || "Check for updates, report a bug", aliases: ["update", "report a bug", "suggestion"], run: () => openUpdatesPanel() });
   rows.push({
     group: "Places",

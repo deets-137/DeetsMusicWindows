@@ -175,6 +175,10 @@ relays out in view.
 - **Batched.** An agent often sends theme, skin and surface one after another. They join the
   same cover through the existing veil/wait join (§6a "Several changes"): one slow cover, not
   three.
+- **The pin's switch uses it too (2026-10-26, his call, [PIN.md](../features/PIN.md) §8).** A
+  pin or unpin that changes the view (Cover, Player, Mini, and the way back) runs its resize
+  as a `"surface"` job at the user's speed (no `by: "agent"`). *This window* changes nothing,
+  so it has no cover.
 - **Callers.** `agent-settings.ts`: `pickLook` passes `{ by: "agent" }`; the `surface` spec
   wraps `applySurface` in `withAppearanceTransition("surface", …, { by: "agent" })`. Title menu
   and look schedule calls stay unchanged.

@@ -6,6 +6,21 @@ updated: 2026-10-26
 ---
 # DeetsMusic — Work log
 
+## 2026-10-26 — The pin: Keep on top in the title bar (branch `main`, uncommitted)
+
+**His ask:** make *Keep on top* easy to find: a title bar pin, a pick of what stays on top, and
+one button to pin. **His calls** (features/PIN.md §2): the pin on every surface (beside the short
+"DM" in Mini); Cover is the cover alone with controls on hover; the pin is its own hold, and the
+pin's and the Keep on top row's hints name each other; the glyph a pin, diagonal at rest,
+horizontal while pressed, vertical while pinned. **Built:** `src/pin.ts`, `styles/pin.css`, the
+`"cover"` mini view and `sizeCover` in `surface.ts`, the built-in rule `fixed:pin` on the
+`pinned` fact, the Compass rows, the Settings row *Cover opens at*. **Checked:** `npm run check`
+passed (a new dated test: the pin holds Keep on top and lets go); Claude pinned the Cover on the
+dev app (320 × 320, on top). **His hand test** ran at the same time and found a stale Cover view
+after an unpin to Max: fixed at the cause in `applySurface` (PIN.md §8). His asks after it: a
+narrower panel (two tiles wide) and the Cover's unpin icon on the left; both built. Open:
+PIN.md §5.1.
+
 ## 2026-10-26 — Title under the cover (branch `main`, committed)
 
 **His ask:** a setting, off by default, that keeps the title, artist info and buttons off the

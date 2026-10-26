@@ -1,0 +1,140 @@
+/* ── The pin and its panel (docs/features/PIN.md) ───────────────────────────────────────
+   The button is the updates button's family (styles/updates.css): the row's height, no fill,
+   no border, --subtext until hover. On every surface (his call 1A): in Mini and Midi the
+   buttons before it are hidden, so it sits right of the app title. The panel is the cog's
+   panel family, hung from the button's left edge; its tiles and its Pin button are the panel
+   chip family (.sound__pill, .sound__chip; UI-ARCHITECTURE.md §2a). */
+
+.pin { position: relative; display: flex; align-items: center; margin-left: var(--space-2); }
+
+.pin__btn {
+  width: var(--pin-btn-size); height: var(--pin-btn-size);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.pin__btn:hover, .pin__btn[aria-expanded="true"], .pin__btn[aria-pressed="true"] { color: var(--title); }
+.pin__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.pin__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+/* His motion (2026-10-26): diagonal at rest, horizontal while held and while the panel is open
+   (a close with no pin turns it back), vertical while pinned. */
+.pin__btn svg { transform: rotate(var(--pin-rest)); transition: transform var(--pin-turn); }
+.pin__btn[aria-expanded="true"] svg { transform: rotate(var(--pin-held)); }
+.pin__btn[aria-pressed="true"] svg { transform: rotate(var(--pin-set)); }
+.pin__btn[data-held] svg { transform: rotate(var(--pin-held)); }
+:root[data-motion="reduced"] .pin__btn svg { transition: none; }
+
+/* ── The panel ── */
+.pin__panel {
+  position: absolute; top: 100%; left: 0;
+  --pop-origin: top left;
+  margin-top: var(--space-1);
+  width: var(--pin-panel-w);
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--pin-panel-pad);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  z-index: 20;
+}
+.pin__panel[hidden] { display: none; }
+
+/* The title: the Rewind panel's (.rewind-top__head). */
+.pin__head {
+  font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
+  color: var(--title); letter-spacing: var(--rewind-top-title-tracking);
+}
+
+.pin__tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.pin__tile {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  min-width: 0; padding: var(--space-2);
+  border-radius: var(--pin-tile-radius);
+}
+.pin__tile[aria-checked="true"] { background: var(--picked); border-color: var(--title); color: var(--title); }
+.pin__tile:hover { background: var(--surface-hover); }
+.pin__tile[aria-checked="true"]:hover { background: var(--picked); }
+.pin__tile:focus-visible, .pin__go:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.pin__pic { width: var(--pin-pic-size); height: var(--pin-pic-size); fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.pin__pic .pin__fill { fill: currentColor; fill-opacity: 0.25; }
+
+.pin__go {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-1);
+  border-radius: var(--pin-tile-radius);
+  color: var(--title);
+}
+.pin__go:hover { background: var(--surface-hover); }
+.pin__go .pin__pic { width: var(--pin-btn-size); height: var(--pin-btn-size); }
+
+/* ── The Cover view (his call 2A): the cover alone, the controls on hover ──
+   surface.ts sets `data-cover` with `data-mini="player"`, so every player rule still holds;
+   these rules take the rest away. The `[data-mini]` raises them over the stage's rules. */
+:root[data-cover][data-mini] .titlebar { display: none; }
+:root[data-cover][data-mini] .app-body { padding: 0; }
+/* A scene skin's sky, ground and actors (Happy) would sit on the cover: Cover is the cover alone. */
+:root[data-cover][data-mini] .app-body > .scene { display: none; }
+:root[data-cover][data-mini] .panel[data-slot="np"] {
+  padding: 0; border: none; border-radius: 0; box-shadow: none;
+}
+:root[data-cover][data-mini] .panel[data-slot="np"] > :not(.np) { display: none; }
+:root[data-cover][data-mini] .panel[data-slot="np"] .np {
+  container-type: size;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+}
+:root[data-cover][data-mini] .np > :not(.np__art, .np__center, .np__aurora) { display: none; }
+/* The largest square the window holds, in the middle of it. */
+:root[data-cover][data-mini] .np__art {
+  flex: 0 0 auto; align-self: center; margin: 0;
+  width: min(100cqw, 100cqh); height: min(100cqw, 100cqh);
+  min-width: 0; min-height: 0; max-width: none;
+}
+/* The control bar: Previous, Play / Pause, Next, over the cover's foot. */
+:root[data-cover][data-mini] .np__center {
+  position: absolute; left: var(--pin-cover-inset); right: var(--pin-cover-inset); bottom: var(--pin-cover-inset);
+  z-index: 2;
+  padding: var(--space-1);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--pin-cover-fade) var(--ease-ui);
+}
+:root[data-cover][data-mini] .np__center > :not(.np__bottom) { display: none; }
+:root[data-cover][data-mini] .np__bottom { justify-content: center; }
+:root[data-cover][data-mini] .np__bottom > :not(.np__controls) { display: none; }
+
+/* The unpin icon, top left of the cover (his ask, 2026-10-26: the left, where the pin sits in
+   the title bar on the other views). pin.ts adds it to <body>. */
+.pin-cover { display: none; }
+:root[data-cover][data-mini] .pin-cover {
+  display: block;
+  position: fixed; top: var(--pin-cover-inset); left: var(--pin-cover-inset);
+  z-index: 30;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--pin-cover-fade) var(--ease-ui);
+}
+:root[data-cover][data-mini] body:hover :is(.np__center, .pin-cover) { opacity: 1; pointer-events: auto; }
+.pin-cover__unpin {
+  width: calc(var(--pin-btn-size) + 2 * var(--space-1)); height: calc(var(--pin-btn-size) + 2 * var(--space-1));
+  padding: var(--space-1);
+  display: grid; place-items: center;
+  color: var(--title); cursor: pointer;
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.pin-cover__unpin .pin__pic { width: var(--pin-btn-size); height: var(--pin-btn-size); }
+.pin-cover__unpin:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+:root[data-motion="reduced"] :is(.np__center, .pin-cover) { transition: none; }

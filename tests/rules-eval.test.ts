@@ -8,7 +8,7 @@ import {
 
 const known: Known = {
   events: new Set(["album.open", "artist.open", "diary.open", "cog", "playlist.create", "sleep.arm", "goto.artist", "goto.album", "shuffle.press"]),
-  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded", "graphics", "motionReduced", "soloCard"]),
+  facts: new Set(["surface", "cause", "from", "entry.new", "daylight", "lookMode", "output", "now", "loaded", "graphics", "motionReduced", "soloCard", "pinned"]),
   actions: new Set(["grow", "summon", "sleep", "openIn", "shuffleLibrary"]),
   targets: new Set([
     "key:theme", "key:skin", "key:soundEqPreset", "key:shareActivityApp", "key:shareActivityDiscord", "key:discordRoomInvite", "prop:window.onTop",
@@ -259,6 +259,16 @@ test("the software renderer names (2026-10-11): WARP, SwiftShader, llvmpipe; a c
 test("every built-in rule is valid", () => {
   const all = rows({ lookSchedule: "clock", alwaysOnTop: "player", soundEqOutputs: { hp: "warm" }, sharePauseUntil: 5, sleepSchedule: "sun", playlistCreateSummon: "on", diaryGrow: "every", drillGrow: "full", goToTarget: "library" });
   for (const r of all) assert.equal(validate(r, known), null, r.id);
+});
+
+test("the pin holds Keep on top whatever the row says, and lets go when unpinned (2026-10-26)", () => {
+  const all = rows({ alwaysOnTop: "off" });
+  const on = (f: Record<string, unknown>) => resolveState(all, f as never, []).set.get("prop:window.onTop")?.value;
+  assert.equal(on({ surface: "max", pinned: true }), true);
+  assert.equal(on({ surface: "max", pinned: false }), undefined);
+  // The row's own rule still holds the player when the pin is off (PIN.md §2.3).
+  const player = rows({ alwaysOnTop: "player" });
+  assert.equal(resolveState(player, { surface: "player", pinned: false } as never, []).set.get("prop:window.onTop")?.value, true);
 });
 
 // ── state: first wins, holds ──

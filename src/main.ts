@@ -74,6 +74,7 @@ import { initQueuePersist } from "./queue-persist";
 import { initUpdater } from "./updater";
 import { initUpdatesButton } from "./updates-btn";
 import { initRewindButton } from "./rewind-btn";
+import { initPin } from "./pin";
 import { initNetwork } from "./net";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { runWeeklyReplay } from "./replay";
@@ -269,6 +270,9 @@ window.addEventListener("DOMContentLoaded", () => {
       off: false,
     }),
   );
+  // The title bar's pin (docs/features/PIN.md): its own hold on the same property, through the
+  // `pinned` fact. Here, beside the property: a pinned launch is on top from the first check.
+  boot("initPin", () => initPin());
   onSettingsChange((k) => {
     if (k === "menuMode") setDropdownMode(setting("menuMode") as DropdownMode);
   });

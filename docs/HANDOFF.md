@@ -113,8 +113,8 @@ extension's icons are LANCZOS resizes of the same file.
 ## Open now
 
 - **Replies reach the filer + the admin Inbox (2026-10-26, committed, his desk test open).**
-  The app part ships with the next release; the site part (DeetsSolutions, committed, not
-  pushed) goes live when that repo is pushed. The Inbox strings await his OK. WORKLOG 2026-10-26.
+  The app part ships with the next release; the site part (DeetsSolutions) is LIVE since
+  2026-10-26 (d6a6528 pushed). The Inbox strings await his OK. WORKLOG 2026-10-26.
 
 The short list of what is not finished, as of 2026-10-19 (pruned for 0.30.0: everything that
 shipped or closed went out; the WORKLOG has each day). Each item names where the detail is.
@@ -204,6 +204,9 @@ run from a script, so the evidence is ready when S2 is built. S5 (`fields[…]`)
 each step that touches those calls.
 
 ### Decided, not built (his next sittings)
+
+- **Pin on top** (2026-10-26): BUILT the same day, uncommitted; his hand test under way. The
+  open cases are features/PIN.md §5.1; Claude's choices for his review §3.6 and §8.
 
 - **The loading set** (2026-10-16): BUILT 2026-10-17 on `seventheenth`, all five steps, kept as
   a back-pocket tool (his words). guide/LOADING-SET.md §7, §8; how to use it: DEBUGGING.md § The

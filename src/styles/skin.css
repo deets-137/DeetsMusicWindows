@@ -202,6 +202,21 @@
   --net-cell-radius:         1px;
   --net-good-strength:       60%;                    /* a Good cell is quieter than a Bad one, so */
   --net-ok-strength:         85%;                    /* the bar reads in a one-color theme too */
+  /* The pin (docs/features/PIN.md): the title bar button family, the cog's panel family. */
+  --pin-btn-size:            var(--traffic-size);
+  --pin-turn:                var(--compass-spin);    /* the pin's turns: the Compass needle's spring */
+  --pin-rest:                45deg;                  /* his design: diagonal at rest */
+  --pin-held:                90deg;                  /* horizontal while the pointer holds the button */
+  --pin-set:                 0deg;                   /* vertical while pinned */
+  --pin-panel-pad:           var(--quick-panel-pad);
+  --pin-tile-w:              96px;                   /* one tile: "This window", the longest word, and its picture */
+  /* Two tiles wide (his ask, 2026-10-26: single words and narrow pictures need no more):
+     the tiles, the gap, the padding and the border (1px a side). */
+  --pin-panel-w:             calc(2 * var(--pin-tile-w) + var(--space-2) + 2 * var(--pin-panel-pad) + 2px);
+  --pin-tile-radius:         var(--sound-chip-radius); /* the panel chip family (UI-ARCHITECTURE.md §2a) */
+  --pin-pic-size:            28px;                   /* a tile's picture of its view */
+  --pin-cover-inset:         var(--space-2);         /* the Cover view's control bar and unpin icon, off the edges */
+  --pin-cover-fade:          var(--dur-fast);        /* they come and go with the pointer */
   /* The Settings split pill's line between its halves (settings.css): readable on every theme.
      --border alone vanished on the light themes (his screenshot, 2026-10-16). */
   --split-rule-strength:     45%;

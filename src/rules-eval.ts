@@ -622,6 +622,14 @@ export function builtinRules(s: RowValues): Rule[] {
     });
   }
 
+  // The title bar's pin (PIN.md §2.3): its own hold on the same property, so the Keep on top
+  // row keeps its value. Always made: the fact is the pin's state, which no row value shows.
+  out.push({
+    id: "fixed:pin", kind: "state", source: { fixed: "pin" }, on: true,
+    while: { fact: "pinned", is: true },
+    set: [{ target: { prop: "window.onTop" }, value: true }], onHand: "next",
+  });
+
   // Sound › Remember each output: one rule per remembered output. A pick teaches the rule.
   if (s.soundEqPerOutput) {
     for (const [key, preset] of Object.entries(s.soundEqOutputs)) {

@@ -64,6 +64,12 @@ turns the checks off.
 beside the Queue and click the bar on its edge: the Queue moves to the other side of the cover,
 and stays there. When the side column shows, its edge has the same bar.
 
+**On top: Pin widget to keep your music on screen.** Click the pin in the title bar and pick
+what stays above your other windows: the album cover alone, the player, Mini, or the window as
+it is. Point at the cover to play, pause or skip, and drag it to move it. Click the pin again to
+put the window back the way it was. Settings › Window › *Keep on top* is still there for a
+lasting choice.
+
 **Fixes.** In a small Library card, Sort and View keep their names; the Filter button shows as a
 funnel only while a filter is on. The full player now resizes when you drag only the window's
 height.

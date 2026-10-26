@@ -127,6 +127,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Window | Resize changes surface (§8) | `surfaceAutoFlip` | on / off | `surface.ts` ResizeObserver |
 | Window | Mini opens at (The window size for Mini. Set current saves the size it has now or had last) × a `W × H` menu + *Set current* (2026-09-15, §8a) | `sizeMini` | **385x550** | `surface.ts` `openSize` / `applySize` |
 | Window | Player opens at (The window size for Player, the player alone. Set current saves the size it had last) | `sizePlayer` | **405x675** (404 px wide is where the Press record stopped jittering) | same |
+| Window | Cover opens at (The window size for Cover, the album cover alone, which the pin in the title bar opens. Set current saves the size it had last) (2026-10-26, [PIN.md](../features/PIN.md) §3.4) | `sizeCover` | **320x320** (a square, small enough to sit in a corner; the floor is 200 × 200) | same |
 | Window | Midi opens at (The window size for Midi. Set current saves the size it has now or had last) | `sizeMidi` | **495x670** | same |
 | Window | Max opens at (The window size for Max. Set current saves the size it has now or had last) | `sizeMax` | **1100x950** (2026-09-17: the tallest skin's need for a square cover AND the Queue's 2.5 rows, and it still fits a 1080p work area) | same |
 | Window | Shrink volume bar (On: a small pill in the title bar that grows when you click it, or hover, as the menus open. Max only: Mini and Midi always use the small pill) — toggle (NEXT-VERSION §20) | `volumeShrink` | on / **off** | `main.ts` / the title bar volume; Mini, Midi (since 2026-10-11, the room to drag) and the thin-window rule override it |
@@ -135,7 +136,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Window | Layout for Max (How many cards Max shows beside Now Playing and the Queue) — pills *4 cards* / *2 columns* / *2 rows* / *1 card* (2026-10-11, [MAX-CARDS.md](../features/MAX-CARDS.md)) | `maxCards` | **4** / 2cols / 2rows / 1 | `layout.ts`, `card-grow.ts`, `full-player.ts`, the pre-paint in `index.html`; a rule key |
 | Window | Shade behind the title (In the full player, a soft shade behind the title, artist and album, or a band across the cover. A near-square card keeps the band) — pills *Text only* / *Band* (2026-10-25, [fullscreen-player.md](../features/fullscreen-player.md) §16) | `npShade` | **text** / band | `full-player.ts` (`data-np-shade`), `styles.css` |
 | Window | Title under the cover (In the full player, the title, artist, album and buttons sit under the cover, not on it) — toggle; hides *Shade behind the title* while on (2026-10-26, [fullscreen-player.md](../features/fullscreen-player.md) §17) | `npOffCover` | **off** / on | `full-player.ts` (`data-np-off-cover`, `data-np-close`), `full-player-layout.ts` (`closePlace`), `styles.css` |
-| Window | Keep on top (The window stays above other windows. Player: only while it shows the player) — pills *Always* / *Player* / *Off* (was a toggle until 2026-09-14; a stored `true` migrates to always) | `alwaysOnTop` | **off** / always / player | the rules engine ([RULES.md](RULES.md) §13): a state rule on the `window.onTop` property (`registerProp` in `main.ts`), while `surface` = player or always |
+| Window | Keep on top (The window stays above other windows. Player: only while it shows the player. The pin in the title bar keeps it on top for now, and leaves this row as it is) — pills *Always* / *Player* / *Off* (was a toggle until 2026-09-14; a stored `true` migrates to always) | `alwaysOnTop` | **off** / always / player | the rules engine ([RULES.md](RULES.md) §13): a state rule on the `window.onTop` property (`registerProp` in `main.ts`), while `surface` = player or always |
 | Window | Grow cards from edges (Click the gap beside a card to open it over its neighbor. Hover a card's title for the button) (2026-09-16, [CARD-GROW.md](../cards/CARD-GROW.md) §8) | `cardGrow` | **on** / off | `card-grow.ts` `enabled()`: off = no zones, no button, no menu items; a grow on screen collapses at once |
 | Window | Collapse on outside click (A click outside a grown card collapses it. Pin holds it open) | `cardGrowOutside` | on / **off** (default off since 2026-10-01, his call; an install that stored `true` keeps it) | `card-grow.ts` (the document pointerdown listener; the Pin button shows only while this is on) |
 | Window | Grown card on a new pick (Pick another card in a grown card's title: it keeps the size, or collapses first) — pills *Keeps size* / *Collapses* | `cardGrowPick` | **keep** / collapse | `layout.ts` `setSlot` |
@@ -369,6 +370,16 @@ most audible part. From 2026-09-17 to 2026-09-18 it defaulted off inside the off
 songs measured meanwhile so a later switch-on had gains ready; the review of 2026-09-18 found
 that on the owner's install it had changed 3 of 106 song starts. Every effect still ships off,
 because `soundAdaptive` does.
+
+### The pin — the title-bar panel in `index.html`, driven by `pin.ts` ([PIN.md](../features/PIN.md))
+
+| Row | Key | Values | Read site |
+|---|---|---|---|
+| The four tiles: what the pin keeps on top (2026-10-26) | `pinView` | cover / **player** / mini / window | `pin.ts`: the panel's tiles and its Pin button's words; `pin()` |
+
+The pin itself (on or off, and the view to go back to) is not a setting: it is `deets.pin` in
+localStorage, what the window is doing now, kept across a restart. It holds `window.onTop` through
+the built-in rule `fixed:pin`, so *Keep on top* (`alwaysOnTop`) keeps its own value.
 
 ### Sleep timer — the title-bar panel in `index.html`, driven by `sleep.ts`
 

@@ -58,6 +58,7 @@ const ROWS: Record<string, { name: string; row: string | null }> = {
   cog: { name: "The cog", row: null },
   lookSchedule: { name: "Look schedule", row: "lookschedule" },
   alwaysOnTop: { name: "Keep on top", row: "aot" },
+  pin: { name: "The pin", row: null },
   soundEqOutputs: { name: "Remember each output", row: "eqperoutput" },
   sharePauseUntil: { name: "Pause sharing", row: "sharepause" },
   playlistCreateSummon: { name: "New playlist opens Search", row: "createsummon" },

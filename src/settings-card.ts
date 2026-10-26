@@ -227,6 +227,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Skin settings", row: "happysky", skin: "happy" }, // Happy's Sky, built 2026-10-21 (happy.md)
   { section: "Skin settings", row: "happycards", skin: "happy" }, // Happy's Card opacity
   { section: "Window", row: "npoffcover" }, // Title under the cover, built 2026-10-26 (fullscreen-player.md §17)
+  { section: "Window", row: "sizecover" }, // Cover opens at, the pin's Cover view, built 2026-10-26 (PIN.md)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -471,7 +472,7 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, Show notices, and the Compass outside-click rule",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "goToTarget", "compassCloseAway"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the four open sizes, Layout for Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
@@ -844,6 +845,7 @@ function mountSettings(
   const SIZE_PRESETS: Record<SizeSlot, string[]> = {
     mini: ["385x550", "420x620", "455x700"],
     player: ["405x675", "460x720", "540x800"],
+    cover: ["240x240", "320x320", "420x420"],
     midi: ["495x670", "540x780", "600x900"],
     // 2026-09-17 (STAGE-COLUMN.md §5): 1100 × 950 is the default — the first height at which
     // EVERY skin shows the full-width square cover AND the Queue's 2.5 rows (Press needs 948),
@@ -1156,12 +1158,13 @@ function mountSettings(
         storeToggle("volshrink", "Shrink volume bar", "volumeShrink", () => "On: a small pill in the title bar that grows when you click it, or hover, as the menus open. Max only: Mini and Midi always use the small pill"),
         {
           kind: "choice", id: "aot", label: "Keep on top", key: "alwaysOnTop",
-          hint: "The window stays above other windows. Player: only while it shows the player",
+          hint: "The window stays above other windows. Player: only while it shows the player. The pin in the title bar keeps it on top for now, and leaves this row as it is",
           options: [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }],
         },
         headRow("g-sizes", "Window sizes"),
         sizeRow("sizemini", "Mini opens at", "The window size for Mini. Set current saves the size it has now or had last", "mini"),
         sizeRow("sizeplayer", "Player opens at", "The window size for Player, the player alone. Set current saves the size it had last", "player"),
+        sizeRow("sizecover", "Cover opens at", "The window size for Cover, the album cover alone, which the pin in the title bar opens. Set current saves the size it had last", "cover"),
         sizeRow("sizemidi", "Midi opens at", "The window size for Midi. Set current saves the size it has now or had last", "midi"),
         sizeRow("sizemax", "Max opens at", "The window size for Max. Set current saves the size it has now or had last", "max"),
         {

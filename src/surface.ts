@@ -21,16 +21,16 @@ const diagLog = (tag: string, data: unknown): void => void import("./diag").then
 export type SurfaceName = "mini" | "midi" | "max";
 /** What mini shows (2026-09-14): Now Playing + one card, or the player — the Now Playing
  *  card alone, styled as max's stage. `data-mini` on <html>; the flyout's "Mini | Player" row. */
-export type MiniView = "cards" | "player";
+export type MiniView = "cards" | "player" | "cover";
 
 const STORAGE_KEY = "deets.surface";
 const FULL_KEY = "deets.surface.full"; // last non-mini surface — what "Open DeetsMusic" restores
 const MINI_VIEW_KEY = "deets.surface.mini";
-/** A size is set per surface, and the player (NP) has its own. */
-export type SizeSlot = SurfaceName | "player";
-export type SizeKey = "sizeMini" | "sizePlayer" | "sizeMidi" | "sizeMax";
+/** A size is set per surface, and the player (NP) and the pin's Cover view have their own. */
+export type SizeSlot = SurfaceName | "player" | "cover";
+export type SizeKey = "sizeMini" | "sizePlayer" | "sizeCover" | "sizeMidi" | "sizeMax";
 /** The setting that holds each view's open size (FUTURE-SETTINGS §8a). */
-export const SIZE_KEYS: Record<SizeSlot, SizeKey> = { mini: "sizeMini", player: "sizePlayer", midi: "sizeMidi", max: "sizeMax" };
+export const SIZE_KEYS: Record<SizeSlot, SizeKey> = { mini: "sizeMini", player: "sizePlayer", cover: "sizeCover", midi: "sizeMidi", max: "sizeMax" };
 // A new install starts in Max (FUTURE-SETTINGS.md §8b, his ask 2026-10-15), when the screen
 // has room for it (`firstSurface`); a user who picked a surface keeps it.
 const DEFAULT_SURFACE: SurfaceName = "max";
@@ -59,6 +59,8 @@ const MAX_FLOOR_H = 745;
 export const MIN_SIZES: Record<SizeSlot, { w: number; h: number }> = {
   mini: { w: 385, h: 550 },
   player: { w: 404, h: 550 },
+  // The pin's Cover view (docs/features/PIN.md §3.4): the cover alone, so a small square.
+  cover: { w: 200, h: 200 },
   midi: { w: 495, h: 670 },
   // max: 750 tall is the owner's floor (2026-09-17, docs/cards/STAGE-COLUMN.md §5). Below it the
   // stage column cannot hold a fair cover AND the Queue's rows at the same time: the cover
@@ -118,9 +120,12 @@ const appWindow = getCurrentWindow();
 
 let active: SurfaceName = DEFAULT_SURFACE;
 let miniView: MiniView = (() => {
-  try { return localStorage.getItem(MINI_VIEW_KEY) === "player" ? "player" : "cards"; } catch { return "cards"; }
+  try {
+    const v = localStorage.getItem(MINI_VIEW_KEY);
+    return v === "player" || v === "cover" ? v : "cards";
+  } catch { return "cards"; }
 })();
-const slotOf = (s: SurfaceName): SizeSlot => (s === "mini" && miniView === "player" ? "player" : s);
+const slotOf = (s: SurfaceName): SizeSlot => (s === "mini" && miniView !== "cards" ? miniView : s);
 let minKey = "";
 let applyingSize = false; // suppress auto-flip while we programmatically resize
 // The window can be seen: shown and not minimized (2026-10-23). A hidden window is not resized
@@ -168,7 +173,11 @@ function flipFor(width: number, height: number, cur: SurfaceName): SurfaceName {
 
 function setAttribute(s: SurfaceName): void {
   document.documentElement.dataset.surface = s;
-  document.documentElement.dataset.mini = miniView;
+  // Cover is the player with only its cover (PIN.md §3.4): it keeps every player rule
+  // (`data-mini="player"`), and `data-cover` hides the rest.
+  document.documentElement.dataset.mini = miniView === "cover" ? "player" : miniView;
+  if (s === "mini" && miniView === "cover") document.documentElement.dataset.cover = "";
+  else delete document.documentElement.dataset.cover;
   // /health carries the surface as context for the heaviness sampler (DEBUGGING.md
   // §2026-09-17 review, item 1). One IPC call per surface change.
   void import("./np-bus").then((m) => m.publishAppearance());
@@ -318,9 +327,29 @@ function activate(s: SurfaceName, view: MiniView = miniView, why: SurfaceWhy = "
   if (prev !== s || prevView !== view) listeners.forEach((cb) => cb(s, prev));
 }
 
-/** True while the window shows the player (mini, NP only). */
+/** True while the window shows the player (mini, NP only). The pin's Cover view is the
+ *  player too: it never flips on a resize, and the `surface` fact reads "player" there. */
 export function isPlayerView(): boolean {
-  return active === "mini" && miniView === "player";
+  return active === "mini" && miniView !== "cards";
+}
+
+/** What mini shows (or would show): its cards, the player, or the pin's Cover. */
+export function currentMiniView(): MiniView {
+  return miniView;
+}
+
+/** Set the view mini comes back to, while Midi or Max shows: no switch, no resize. In Mini it
+ *  does nothing (a view change there is `applySurface`). */
+export function setMiniView(view: MiniView): void {
+  if (active === "mini" || view === miniView) return;
+  miniView = view;
+  persistChoice(active);
+  markActive(active);
+}
+
+/** True while the window shows the pin's Cover view (PIN.md §3.4). */
+export function isCoverView(): boolean {
+  return active === "mini" && miniView === "cover";
 }
 
 /** The surface the real app window uses: the last non-mini one, Max when none is stored
@@ -346,10 +375,13 @@ function firstSurface(): SurfaceName {
 /** Deliberate selection (settings row / tray / agent). Always sets the view's open size —
  *  also when that view already shows, so its own button puts a hand-resized window back
  *  (§8a, 1A). Resolves once the OS window has that size (the tray anchors after it).
- *  `view` picks what mini shows; omitted, mini keeps the last one. The switch itself is
- *  synchronous — only the resize is awaited. */
+ *  `view` picks what mini shows; omitted, mini keeps the last one. With Midi or Max it sets
+ *  the view mini comes back to: the pin's unpin puts back the one it had before the pin, so
+ *  a Cover never outlives the pin (2026-10-26, his test: a Mini pick after an unpin to Max
+ *  would have opened the bare Cover). The switch itself is synchronous — only the resize is
+ *  awaited. */
 export async function applySurface(s: SurfaceName, view?: MiniView, why: SurfaceWhy = "pick"): Promise<void> {
-  const nextView = s === "mini" && view ? view : miniView;
+  const nextView = view ?? miniView;
   if (s !== active || nextView !== miniView) activate(s, nextView, why);
   await applySize(s);
 }

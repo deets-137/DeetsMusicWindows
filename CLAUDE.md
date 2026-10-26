@@ -241,6 +241,12 @@ for word, with RELEASE.md's section numbers.
   named for the puppy on deets.solutions. The most complete skin and the reference for every mod:
   built on the public layer only (mods.md §10, §11). §1 his narration; §2 the tokens and slots it
   needs.
+- `PIN.md` — BUILT 2026-10-26 (uncommitted), his hand test under way; §8 the as-built record: the pin button in the title bar on every surface
+  (beside the short monogram in Mini) and its panel (Cover · Player · Mini · This window, then
+  Pin). The pin is its own hold on `window.onTop` (the `pinned` fact); the Keep on top row is
+  unchanged and the two hints name each other. Cover is a new view, controls on hover. The pin
+  turns horizontal on press, diagonal at rest, vertical while pinned. §2 his calls; §3.6
+  Claude's choices for his review.
 - `GRAND-OPENING.md` — a project (2026-10-22, branch `grand-opening`), designed with him piece
   by piece: the startup screen, one large card over every card on first launch
   (`src/onboarding.ts`). Built: the frame (§1), the nav bar with Settings in it and the Compass row (§2), pages 2–3 and the glide (§4), page 1's welcome with the sign-ins (§5, `src/onboarding-welcome.ts`), the Happy skin's pair in front (§6), page 2's layout picks (§7, `src/onboarding-looks.ts`; the place API `setStartCards` in layout.ts), page 3 Fashion: skin and theme tiles in their own look, and the preview player with his three songs on the real record, drum and sea (§8, §8b, `src/onboarding-preview.ts`); Next / Let's Boogie (the launch's reveal, `revealApp`) and the warm-up after sign-in (§9); the walk waits for it to close.
