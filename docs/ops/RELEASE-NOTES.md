@@ -41,6 +41,29 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.1.0 — 2026-10-26
+
+**Singles, EPs, and Live Albums for Artists.** An artist's Apple Music page now shows their singles, EPs
+and live albums in the Albums shelf, the whole list, newest first. A new Appears On shelf at the
+bottom shows releases by other artists that they are on.
+
+**A cleaner artist page.** No dark band behind Top Songs, and a thin line between each section.
+
+**Setting to move the title under the cover.** Settings › Window › *Title under the cover* puts the song, artist and
+album in a row under the cover in the full player, so nothing sits on the art. Off by default.
+
+**Less intrusive album titles in fullscreen.** In the full player with the controls under the cover, a soft
+shade behind the title lines takes the place of the dark band. Settings › Window › *Shade behind
+the title* brings the band back.
+
+**Notification for Bug/Suggestion replies.** When Aditya replies to a bug report or a suggestion you sent from
+Settings › Bugs, the app tells you. It checks your open reports on its own; *Don't show again*
+turns the checks off.
+
+**Fixes.** In a small Library card, Sort and View keep their names; the Filter button shows as a
+funnel only while a filter is on. The full player now resizes when you drag only the window's
+height.
+
 ## 1.0.0 — 2026-10-23
 
 **DeetsMusic 1.0.**
