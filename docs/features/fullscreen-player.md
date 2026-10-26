@@ -1196,3 +1196,79 @@ no dimmed state).
 7. Turn the row off with the player open: the title and the close button go back on the cover.
    *Shade behind the title* shows again in Settings.
 
+## 18. The Queue's handle: move the Queue to the other side (built 2026-10-26)
+> **Part:** built · 2026-10-26 · desk test passed 2026-10-26 (his word: "tested and good to
+> go"). The side column's strip (§18.1): desk test passed 2026-10-26 (his word, the same).
+
+**His ask (2026-10-26, with a screenshot of Max, the Queue left, no side column):** a handle on
+the Queue's right border that moves the Queue to the right of the cover, and a left handle once
+it is there.
+
+**His calls:** it works in that view (a window too narrow for the side column); **a click only,
+never a drag** ("we don't have drags anywhere in our app for windows / cards").
+
+**As built:**
+- One state: the side column's flip (`side.flip`, `deets.fullplayer.side`), so the handle and
+  the picker's **Queue** row always agree. `flipSides("handle")` in `full-player.ts`.
+- With no side column, flipped: Now Playing starts at the left edge with the same width as
+  before (the cover keeps its size), and the Queue keeps `--max-stage-w` on the right. One grid
+  rule in styles.css (`[data-fp-flip]:not([data-fp-history="on"]):not([data-fp-stack])`).
+  Before, a window too narrow for the column put the Queue back on the left; now it stays where
+  it was put. When the column fits, it comes in on the left (the flip as before).
+- The handle is the app's handle: an edge strip (`.grow-zone`, the grow's and §10's), its bar
+  on the Queue's edge beside the cover, shown on hover. It takes the half of the gap next to the
+  Queue; Now Playing's close strip takes the other half (`reach: "half"`, the stage gap's rule).
+  It follows *Grow cards from edges*, as every strip does. Max, full, not stacked. `ensureSwap`
+  puts it in the Queue's host at each open (the Queue card writes its host's whole content when
+  it mounts); `paintZones` places it. (A first build used a grip pill button: his correction,
+  2026-10-26, "follow precedent for how we've designed all our handles".)
+- The swap's motion: the Queue and Now Playing slide past each other (`--player-dur` /
+  `--player-ease`, `side-swap`; the Queue over the card). A click during the slide starts from
+  where each one is on screen, so a click back reverses with no jump. Reduced motion snaps.
+- The open and the close with the Queue on the right: the Queue crosses the cover in the skin's
+  stacked way (`--player-stack-move`: a slide, or a fade in after the landing), with a still of
+  it fading in its resting column, as §14.4 does.
+- The close strips: the side next to the Queue is half the gap (the Queue's strip has the other
+  half). The far side is the gap beside the side column while it shows, else the window edge.
+- `player:side` logs `cause: "handle"` or `"picker"`.
+
+**What Claude decided inside his calls:** the gap split half and half with the close strip; the
+strip follows *Grow cards from edges*; its hint; the open and close
+motion with the Queue on the right (the stacked move, not a new one); the Queue stays on the
+right in a narrow window after a flip from the picker.
+
+**Desk test (his):**
+1. Max, a window too narrow for the side column, open the full player. Hover the gap just right
+   of the Queue: the bar shows on the Queue's right edge. Click: the Queue slides to the right
+   of the cover, the cover keeps its size. The strip is now on the Queue's left edge.
+2. Click it again: the Queue goes back left. Click twice fast: no jump.
+3. Queue on the right: close the player (Escape) and open it again. The Queue crosses back to
+   its column, then out to the right again.
+4. Queue on the right: widen the window until the side column shows. History comes in on the
+   left. Narrow it again: History goes, the Queue stays on the right.
+5. The half of the gap next to the cover still closes the player (its bar on the cover's card).
+6. A tall window (stacked): no Queue strip.
+
+### 18.1 The side column's strip (built 2026-10-26, desk test passed)
+**His ask (2026-10-26, with a screenshot of History | cover | Queue):** the same handle on the
+side column when it shows, "so it feels consistent".
+
+**As built:** the side column (History, or the card picked for it) gets the same edge strip on
+its edge that faces the cover; a click is the same swap (`flipSides("side-handle")`). Its hint:
+"Move this card to the other side" (the card in the column changes, so the hint does not name
+it). It shows only while the column shows (`data-fp-history="on"`), not while it slides out.
+With the column shown, the gap on each side of the cover is split: the column's strip takes the
+half next to the column, Now Playing's close strip the half next to the cover (before, the far
+gap was all close strip). `paintZones` puts each strip back into its host when a card mount
+took it out (a pick in the column's picker calls it).
+
+**What Claude decided inside his call:** the hint's words; the far gap's split.
+
+**Desk test (his):**
+1. Max, a window wide enough for the side column, open the full player. Hover the gap just
+   inside the side column's edge beside the cover: the bar shows on the column's edge. Click:
+   the column and the Queue swap sides.
+2. Click the Queue's strip: they swap back. Each half next to the cover still closes the player.
+3. Pick another card in the column's picker: its strip is still there.
+4. Narrow the window until the column goes: no strip for it while it slides out.
+

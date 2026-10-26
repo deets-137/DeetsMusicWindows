@@ -4735,6 +4735,20 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 :where(:root)[data-surface="max"] .bento[data-player="full"][data-fp-history="on"] .stage > .panel[data-slot="np"] {
   margin-right: calc(var(--full-history-w) + var(--panel-gap));
 }
+/* Flipped with no side column (his ask, 2026-10-26: the handle works in a window too narrow for
+   the column): the Queue keeps its width on the right, and Now Playing starts at the left edge
+   with the same width as before, so the cover keeps its size. Also while the column slides out
+   ("leaving"), so the Queue stays where it is. */
+:where(:root)[data-surface="max"] .bento[data-player="full"][data-fp-flip]:not([data-fp-history="on"]):not([data-fp-stack]) .stage > .panel[data-slot="np"] {
+  grid-area: 1 / 1 / -1 / -1;
+  margin-right: calc(var(--max-stage-w) + var(--panel-gap));
+}
+:where(:root)[data-surface="max"] .bento[data-player="full"][data-fp-flip]:not([data-fp-history="on"]):not([data-fp-stack]) .stage > .panel[data-slot="queue"] {
+  grid-area: 1 / 1 / -1 / -1;
+  justify-self: end;
+  width: var(--max-stage-w);
+  z-index: 2;
+}
 /* Stacked (his calls, 2026-10-11): a window taller than wide, with room under a full-width
    cover for the cards. The player takes the whole width at the top, as tall as its cover and
    controls need (--fp-stack-h, set by full-player.ts); the cards share the band under it. Max:

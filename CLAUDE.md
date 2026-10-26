@@ -153,6 +153,9 @@ for word, with RELEASE.md's section numbers.
   Mini's player view and a turning Press copy in the flight are open. §14 BUILT 2026-10-18,
   desk test passed 2026-10-20: the stacked open and close per skin (`--player-stack-move`: fade, or slide in
   Press and Cyber), held cards (`.fp-pin`), and the regular Max Queue's rows riding its edge.
+  §18 BUILT 2026-10-26, desk test passed: the Queue's edge strip (`.grow-zone`) beside the cover
+  moves it to the other side (a click, the side column's flip; also with no side column). §18.1
+  the same strip on the side column, desk test passed.
 - `BACKUP.md` — DESIGNED, not built (2026-10-11): one backup file (no secrets, no caches),
   *Back up now* plus a weekly copy to a folder, restore = replace all on a fresh install (his
   calls, §1); a `.deetsbackup` file; the rows in Settings › Updates. §8 the open forks. §9 a
@@ -507,6 +510,13 @@ record; how to use it: DEBUGGING.md § The loading set.
 - **Before you build a new panel, row, button or card, walk this list** (added 2026-09-16
   after the sleep panel shipped without its row motion). Read the primitive's own file, not
   only a call site: one call site never uses every part of a primitive.
+  00. **The app's pattern first (his ask, 2026-10-26).** Before you design any control or
+     gesture, find how the app already does that kind of thing, and build on that pattern.
+     Do this also when his word for it is general ("a handle", "a button", "a strip"). Name the
+     precedent in the design you show him. Ask only when no pattern exists, or two patterns
+     fit. Reason: he asked for "a handle on the Queue's border", and Claude designed a grip
+     pill button. The app's handles are the edge strips (`.grow-zone`: a bar on the card's edge,
+     in the gap, shown on hover). He had to stop the build and ask for it again.
   0. **A new card:** SURFACES-AND-CARDS.md §5 first. A card adopts eight systems (the
      registry, the collection engine, right-click, the keyboard, picks and drags, hint
      shapes, memory, popovers); a card that skips one still works, so nothing catches the

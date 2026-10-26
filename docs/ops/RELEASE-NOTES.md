@@ -60,6 +60,10 @@ the title* brings the band back.
 Settings › Bugs, the app tells you. It checks your open reports on its own; *Don't show again*
 turns the checks off.
 
+**On your left: Queue can move in fullscreen.** In the full player in Max, point at the gap
+beside the Queue and click the bar on its edge: the Queue moves to the other side of the cover,
+and stays there. When the side column shows, its edge has the same bar.
+
 **Fixes.** In a small Library card, Sort and View keep their names; the Filter button shows as a
 funnel only while a filter is on. The full player now resizes when you drag only the window's
 height.
