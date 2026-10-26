@@ -29,7 +29,9 @@ snapped Max grew back to Max's size (Windows' snap keeps the old size; `main_uns
 the window before the pin's resize), and the hover box over the Cover wrapped to a sliver (hint.ts
 measured it at the last hint's place). PIN.md §8. His rule: the motion monitor only when it can
 add something (RELEASE.md step 1a); the run was stopped. The fixes ship as **1.1.1**, since 1.1.0
-is installed on his PC and was never published.
+is installed on his PC and was never published. He tested 1.1.1 ("Perfect") and found the Cover's
+unpin glyph 1 px off centre (its padding left too little room; fixed). That ships as **1.1.2**, the
+release to publish; its notes are 1.1.0's, word for word.
 
 ## 2026-10-26 — Title under the cover (branch `main`, committed)
 

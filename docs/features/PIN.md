@@ -6,7 +6,7 @@ updated: 2026-10-26
 ---
 # Pin on top — a title bar button that keeps the window above other windows
 
-> **Built 2026-10-26 on `main`, committed and pushed (9460b39); ships in 1.1.1 (1.1.0 was a local build only, never published). His hand test
+> **Built 2026-10-26 on `main`, committed and pushed (9460b39); ships in 1.1.2 (1.1.0 and 1.1.1 were local builds only, never published). His hand test
 > passed the four pins and unpins the same day; §5.1 lists the cases still open.** Every fork
 > is his (§2). §8 is the as-built record: where it disagrees with §3, §8 is the code.
 
@@ -170,6 +170,9 @@ and so on), and one button pins the window and starts it.
 - **The hover box over the Cover (same report).** It wrapped to a sliver with room to spare: the
   box is fixed-position and was measured at the last hint's place near the right edge. `place()`
   in hint.ts now measures it at the left edge first. This holds for every hint in a small window.
+- **The Cover's unpin icon off centre (his report on 1.1.1).** Its border-box left 14 px inside
+  the border and the padding for a 16 px glyph, so the glyph overflowed 1 px right and down. The
+  button has no padding now; the grid centres the glyph (measured: both centres at 20, 20).
 - **What Claude decided inside his calls (for his review):**
   1. The `surface` fact reads "player" in Cover, so *Keep on top = Player* also holds a Cover.
   2. A pin of *This window* stores no way back: unpin leaves the window where it is, even if

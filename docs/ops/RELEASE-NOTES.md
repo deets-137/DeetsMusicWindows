@@ -41,7 +41,7 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
-## 1.1.1 — 2026-10-26
+## 1.1.2 — 2026-10-26
 
 **Singles, EPs, and Live Albums for Artists.** An artist's Apple Music page now shows their singles, EPs
 and live albums in the Albums shelf, the whole list, newest first. A new Appears On shelf at the

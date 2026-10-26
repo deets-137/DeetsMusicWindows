@@ -124,9 +124,12 @@
   transition: opacity var(--pin-cover-fade) var(--ease-ui);
 }
 :root[data-cover][data-mini] body:hover :is(.np__center, .pin-cover) { opacity: 1; pointer-events: auto; }
+/* No padding: the grid centres the glyph in the square inside the border. With a padding too,
+   the border-box left less room than the glyph, and it overflowed 1 px right and down (his
+   report on 1.1.1, 2026-10-26). */
 .pin-cover__unpin {
   width: calc(var(--pin-btn-size) + 2 * var(--space-1)); height: calc(var(--pin-btn-size) + 2 * var(--space-1));
-  padding: var(--space-1);
+  padding: 0;
   display: grid; place-items: center;
   color: var(--title); cursor: pointer;
   background: var(--menu-surface);
