@@ -259,8 +259,15 @@ The fields keep their text on any failure.
 **Tracking (2026-09-15).** My reports has a **Refresh** row and, per report, a
 state tag, a dot for an unseen owner reply, and Open | Copy link | Close.
 
-- **Refresh is the only request** (the user's call: nothing at launch or on
-  unfold). `report_refresh` sends one `GET /t/<code>` per saved report, in turn,
+- **The daily check (2026-10-26, his call; it replaced "Refresh is the only request").**
+  `src/report-replies.ts` calls `report_check` 30 s after launch and every 6 h. It reads
+  each open report the worker has not answered for in 20 h (`checked_at`); none open = no
+  request. A report with an owner reply no toast has told (`told_replies`) gets one notice:
+  "Aditya replied to your suggestion: “Title”" [Open] (TOASTS.md §5). Log lines:
+  `report:arm`, `report:reply` (diag) and `report: checked N open reports, M with a new
+  reply` (the file). The why and the web side: DeetsSolutions docs/support.md, "Replies
+  reach the filer".
+- **Refresh** reads every saved report at once. `report_refresh` sends one `GET /t/<code>` per saved report, in turn,
   and stores `state` and the owner-reply count in `reports.json`, so the tags
   survive a restart. A 404 stores `gone` ("Removed"). A failed request keeps the
   last known values.

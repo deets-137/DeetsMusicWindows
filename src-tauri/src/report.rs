@@ -143,6 +143,14 @@ struct Saved {
     owner_replies: u32,
     #[serde(default)]
     seen_replies: u32,
+    /// Owner replies a reply toast has already told the user about (`report_check`), so one
+    /// reply is told once.
+    #[serde(default)]
+    told_replies: u32,
+    /// When the worker last answered for this report (Unix seconds): `report_check` skips a
+    /// report read within CHECK_EVERY_S.
+    #[serde(default)]
+    checked_at: Option<i64>,
     /// When the post was first stored closed or removed (Unix seconds). `load` drops the
     /// report CLOSED_KEEP_S later, so the file cannot grow without bound.
     #[serde(default)]
@@ -349,16 +357,23 @@ fn open(app: &AppHandle, code: &str) -> Result<(), String> {
     let Some(s) = list.iter_mut().find(|s| valid_code(code) && s.code == code) else {
         return Err("unknown report".into());
     };
-    if s.seen_replies != s.owner_replies {
+    if s.seen_replies != s.owner_replies || s.told_replies < s.owner_replies {
         s.seen_replies = s.owner_replies;
+        s.told_replies = s.owner_replies;
         save(app, &list);
     }
     app.opener().open_url(format!("{TICKET_PAGE}{code}"), None::<&str>).map_err(|e| e.to_string())
 }
 
-// ── tracking: Refresh and Close (the user's calls: no request until Refresh is pressed) ──
+// ── tracking: Refresh, the daily check, and Close ──
+// Until 2026-10-26 the user's call was "no request until Refresh is pressed". His call that
+// day: the app checks its open reports on its own (at most once a day each), so a filer
+// learns about his reply without contact details (DeetsSolutions docs/support.md, "Replies
+// reach the filer").
 
 const TICKET_API: &str = "https://support.deets.solutions/t/";
+/// A report the worker answered for within this long is not read again by `report_check`.
+const CHECK_EVERY_S: i64 = 20 * 60 * 60;
 const NO_NETWORK: &str = "Couldn't reach the support server. Check the connection and try again.";
 
 fn client() -> Result<reqwest::Client, String> {
@@ -376,9 +391,85 @@ fn client() -> Result<reqwest::Client, String> {
 pub async fn report_refresh(app: AppHandle) -> Result<Vec<ReportView>, String> {
     let client = client()?;
     let codes: Vec<String> = load(&app).into_iter().map(|s| s.code).collect();
+    let (found, failed) = fetch_states(&client, &codes).await;
+    if found.is_empty() && failed > 0 {
+        return Err(NO_NETWORK.into());
+    }
+    // Reload after the requests: a report sent meanwhile must not be lost.
+    let mut list = load(&app);
+    apply(&mut list, found, chrono::Utc::now().timestamp());
+    save(&app, &list);
+    Ok(list.into_iter().map(Into::into).collect())
+}
+
+/// One owner reply the user has not been told about: what the reply toast names.
+#[derive(Serialize)]
+pub struct ReplyNews {
+    code: String,
+    kind: String,
+    title: String,
+}
+
+/// The daily check (2026-10-26): read the open reports not read within CHECK_EVERY_S, and
+/// return the ones with an owner reply no toast has told yet (each is then marked told). An
+/// install with no open report makes no request. A failure is logged and returns nothing;
+/// the next check tries again.
+#[tauri::command]
+pub async fn report_check(app: AppHandle) -> Result<Vec<ReplyNews>, String> {
+    let now = chrono::Utc::now().timestamp();
+    let codes: Vec<String> = load(&app)
+        .into_iter()
+        .filter(|s| !is_done(s) && s.checked_at.map_or(true, |t| now - t >= CHECK_EVERY_S))
+        .map(|s| s.code)
+        .collect();
+    if codes.is_empty() {
+        return Ok(Vec::new());
+    }
+    let client = client()?;
+    let (found, _failed) = fetch_states(&client, &codes).await;
+    if found.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut list = load(&app);
+    apply(&mut list, found, now);
+    let news = take_news(&mut list);
+    save(&app, &list);
+    crate::log::info(&format!("report: checked {} open reports, {} with a new reply", codes.len(), news.len()));
+    Ok(news)
+}
+
+/// The reports with an owner reply the user has neither opened nor been told about; marks
+/// each one told. Pure, for the tests.
+fn take_news(list: &mut [Saved]) -> Vec<ReplyNews> {
+    list.iter_mut()
+        .filter(|s| !is_done(s) && s.owner_replies > s.told_replies.max(s.seen_replies))
+        .map(|s| {
+            s.told_replies = s.owner_replies;
+            ReplyNews { code: s.code.clone(), kind: s.kind.clone(), title: s.title.clone() }
+        })
+        .collect()
+}
+
+/// Store what the worker answered: each report's state and owner-reply count, and when.
+fn apply(list: &mut [Saved], found: Vec<(String, String, u32)>, now: i64) {
+    for (code, state, owner) in found {
+        if let Some(s) = list.iter_mut().find(|s| s.code == code) {
+            if state != "gone" {
+                s.owner_replies = owner;
+            }
+            s.state = Some(state);
+            s.checked_at = Some(now);
+        }
+    }
+}
+
+/// One `GET /t/<code>` per code, in turn: (code, state, owner replies) for each answer, and
+/// how many failed. A 404 is the state `gone`. Errors are logged `without_url`: the URL holds
+/// the code.
+async fn fetch_states(client: &reqwest::Client, codes: &[String]) -> (Vec<(String, String, u32)>, usize) {
     let mut found: Vec<(String, String, u32)> = Vec::new(); // code, state, owner replies
     let mut failed = 0;
-    for code in &codes {
+    for code in codes {
         match client.get(format!("{TICKET_API}{code}")).send().await {
             Ok(resp) if resp.status().as_u16() == 404 => found.push((code.clone(), "gone".into(), 0)),
             Ok(resp) if resp.status().is_success() => {
@@ -404,23 +495,7 @@ pub async fn report_refresh(app: AppHandle) -> Result<Vec<ReportView>, String> {
             }
         }
     }
-    if found.is_empty() && failed > 0 {
-        return Err(NO_NETWORK.into());
-    }
-    // Reload after the requests: a report sent meanwhile must not be lost.
-    let mut list = load(&app);
-    for (code, state, owner) in found {
-        if let Some(s) = list.iter_mut().find(|s| s.code == code) {
-            if state == "gone" {
-                s.state = Some(state);
-            } else {
-                s.state = Some(state);
-                s.owner_replies = owner;
-            }
-        }
-    }
-    save(&app, &list);
-    Ok(list.into_iter().map(Into::into).collect())
+    (found, failed)
 }
 
 /// My reports › Close: the reporter closes their own post (the web page's Close). The worker
@@ -490,6 +565,30 @@ mod tests {
     fn stamps_closed_and_unstamps_reopened() {
         let s = stamped(&[saved(Some("gone"), None), saved(Some("closed"), Some(5)), saved(Some("open"), Some(5))], 100);
         assert_eq!((s[0].closed_at, s[1].closed_at, s[2].closed_at), (Some(100), Some(5), None));
+    }
+
+    // 2026-10-26: a reply is told once, an opened reply never, a closed report never.
+    #[test]
+    fn reply_news_tells_each_reply_once() {
+        let mut list = vec![saved(Some("open"), None), saved(Some("open"), None), saved(Some("closed"), Some(5))];
+        list[1].code = "seen0000".into();
+        list[2].code = "done0000".into();
+        apply(&mut list, vec![("c0de0000".into(), "planned".into(), 1), ("seen0000".into(), "open".into(), 1), ("done0000".into(), "closed".into(), 2)], 50);
+        list[1].seen_replies = 1; // opened on the support page already
+        let news = take_news(&mut list);
+        assert_eq!(news.iter().map(|n| n.code.as_str()).collect::<Vec<_>>(), vec!["c0de0000"]);
+        assert_eq!((list[0].state.as_deref(), list[0].checked_at), (Some("planned"), Some(50)));
+        assert!(take_news(&mut list).is_empty());
+        apply(&mut list, vec![("c0de0000".into(), "planned".into(), 2)], 60);
+        assert_eq!(take_news(&mut list).len(), 1);
+    }
+
+    #[test]
+    fn gone_keeps_the_last_reply_count() {
+        let mut list = vec![saved(Some("open"), None)];
+        list[0].owner_replies = 3;
+        apply(&mut list, vec![("c0de0000".into(), "gone".into(), 0)], 9);
+        assert_eq!((list[0].state.as_deref(), list[0].owner_replies), (Some("gone"), 3));
     }
 
     #[test]

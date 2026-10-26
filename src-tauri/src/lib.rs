@@ -672,6 +672,7 @@ pub fn run() {
             report::report_list,
             report::report_open,
             report::report_refresh,
+            report::report_check,
             report::report_close,
             report::report_clear,
             usage::usage_health,

@@ -112,6 +112,10 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
+- **Replies reach the filer + the admin Inbox (2026-10-26, committed, his desk test open).**
+  The app part ships with the next release; the site part (DeetsSolutions, committed, not
+  pushed) goes live when that repo is pushed. The Inbox strings await his OK. WORKLOG 2026-10-26.
+
 The short list of what is not finished, as of 2026-10-19 (pruned for 0.30.0: everything that
 shipped or closed went out; the WORKLOG has each day). Each item names where the detail is.
 When an item closes, delete it here and write the day in WORKLOG.md. `seventheenth` and

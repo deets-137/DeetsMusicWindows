@@ -40,6 +40,7 @@ import { initScene } from "./scene";
 import { initPet } from "./pet";
 import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
 import { toast } from "./toast";
+import { initReportReplies } from "./report-replies";
 import { repairText, type LoadProblems } from "./settings-repair";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
 import { initNpBus } from "./np-bus";
@@ -626,6 +627,8 @@ window.addEventListener("DOMContentLoaded", () => {
   // The weekly Replay (replay.ts): once per week on/after the chosen day, after the
   // store has had a moment to load so the ranking can resolve titles.
   window.setTimeout(() => void runWeeklyReplay().catch((e) => console.warn("[replay] weekly", e)), 8000);
+  // Aditya's replies to the user's reports, as a toast (report-replies.ts).
+  boot("initReportReplies", () => initReportReplies());
 
   // ── Cards + layout: mount Now Playing (anchored top) + the two swappable content slots
   //    from the persisted assignment, and wire each slot's title picker. ──

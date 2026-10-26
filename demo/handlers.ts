@@ -671,6 +671,7 @@ const H: Record<string, Handler> = {
   bridge_log: () => "",
   agent_setup_text: () => "",
   report_list: () => [],
+  report_check: () => [],
   report_log: () => "",
 
   // Updates: this is the newest

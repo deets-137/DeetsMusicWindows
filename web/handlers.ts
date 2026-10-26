@@ -175,6 +175,7 @@ const H: Record<string, Handler> = {
   airplay_scan: () => [],
   settings_get: () => ({ minimizeToTray: false, agentControl: false, agentHistory: false, lastfmScrobble: false, lastfmNowPlaying: false, airplayCapture: "app" }),
   report_list: () => [],
+  report_check: () => [],
   update_versions: () => ({ versions: [] }),
 };
 

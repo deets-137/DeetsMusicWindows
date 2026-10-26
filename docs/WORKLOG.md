@@ -2,9 +2,21 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 # DeetsMusic — Work log
+
+## 2026-10-26 — Replies reach the filer; the admin Inbox (branch `main`, committed, not pushed)
+
+**His ask:** a way to tell people who filed suggestions that he replied, and the suggestions
+easier to see on the admin page. **His calls:** option A (the app and the site check on their
+own, no contact details; the email opt-in not taken); no worker change or drop while the app
+is live. Built: `report_check` in `report.rs` + `src/report-replies.ts` (a notice per new
+reply, at most one read per open report per day; LOGGING.md § The report form); in
+DeetsSolutions, the admin page's Inbox and the *New reply* chip in *Your posts* (support.md,
+"The Inbox" and "Replies reach the filer"). DeetsSupport is unchanged. Desk test (his, open):
+reply to a test report on the admin page, relaunch the dev app after 30 s, see the notice.
+**Checks:** `npx tsc --noEmit`, `cargo test --lib report`, `npm run check`, `node --check` on the site scripts.
 
 ## 2026-10-25 — Shade behind the title (branch `main`, uncommitted)
 
