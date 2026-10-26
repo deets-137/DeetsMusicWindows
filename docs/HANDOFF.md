@@ -232,6 +232,13 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **Read marks on report replies (2026-10-26, built, NOT migrated or deployed; his to run).**
+  DeetsSupport notes when a filer's app or page reads a ticket, so the admin Inbox shows
+  *Seen* / *Opened* under each of his replies and *Last checked* on the post. No app change
+  (the app already reads `/t/<code>`); the README › Privacy bullet is new. The order: the
+  migration, the worker deploy, `/health` + `/token`, then publish DeetsSolutions.
+  DeetsSolutions docs/support.md › Read marks.
+
 - **Artist page albums (2026-10-26, committed, desk test passed).** The Full artist page's
   Albums shelf holds albums, singles and EPs, and live albums, read whole; Appears On under the
   Top Songs rows; the Top Songs bar has no fill at rest, and a line separates the sections.

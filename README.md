@@ -115,6 +115,12 @@ DeetsMusic builds only ([docs/ops/RELEASE.md](docs/ops/RELEASE.md) §7a).
   when you send a bug report with Attach log on (Settings › Bugs). The app shows the
   exact text before it sends, and a report goes to `support.deets.solutions` with the
   app version. A suggestion never carries the log.
+- **Replies to your reports.** While a report you sent is open, the app asks
+  `support.deets.solutions` about it at most once a day, so it can tell you when Aditya
+  replies. The server notes when your app or the support page last checked the report, and
+  when you first saw and opened each of his replies, so he knows his reply reached you. It
+  keeps only those times and the word "app" or "website": no ID, no IP address. Turn off
+  the reply notice (*Don't show again*) and the checks stop.
 - **Your playlists.** Playlists you make in DeetsMusic are stored on this PC only. A new
   PC or a reinstalled Windows starts without them. To keep a copy, use Apple Music ▸
   Export to Apple Music on the playlist.

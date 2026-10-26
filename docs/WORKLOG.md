@@ -6,6 +6,18 @@ updated: 2026-10-26
 ---
 # DeetsMusic — Work log
 
+## 2026-10-26 — Read marks: did a reply reach the filer (DeetsSupport + DeetsSolutions, uncommitted)
+
+**His ask:** a way to know whether his replies to reports reached the user. Nothing recorded
+it. **His calls** (DeetsSolutions docs/support.md › Read marks): R1 A (only his Inbox shows the
+mark; the privacy text says it), R2 B (also mark "opened"), R3 A (a worker change while live,
+with the guards). **Built:** `stampRead` in DeetsSupport's `handleTicket`, the migration
+`2026-10-26-read-marks.sql`, the Inbox marks, `?open=1` and the cookie on the page's ticket
+reads, `privacy3` and the README › Privacy bullet. **Found:** the page read `#t=` without the
+cookie, so his own visit would have marked his replies seen. **Tested** on a local worker with
+a throwaway D1 (support.md, the as-built list). **Open:** his migration and deploy; the
+owner's read is untested (it needs his cookie).
+
 ## 2026-10-26 — The pin: Keep on top in the title bar (branch `main`, committed 9460b39, pushed)
 
 **His ask:** make *Keep on top* easy to find: a title bar pin, a pick of what stays on top, and
