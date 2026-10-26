@@ -232,12 +232,11 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
-- **Read marks on report replies (2026-10-26; the worker and its migration LIVE, the site
-  not published).** DeetsSupport notes when a filer's app or page reads a ticket, so the
+- **Read marks on report replies (2026-10-26; LIVE: the worker, its migration and the site).** DeetsSupport notes when a filer's app or page reads a ticket, so the
   admin Inbox shows *Seen* / *Opened* under each of his replies and *Last checked* on the
   post. No app release needed (1.1.0 and later already read `/t/<code>`); the README ›
-  Privacy bullet ships with the next push. Open: publish DeetsSolutions (the Inbox shows
-  nothing until then). DeetsSolutions docs/support.md › Read marks.
+  Privacy bullet is pushed. Open: his look at the Inbox (the owner's read is untested).
+  DeetsSolutions docs/support.md › Read marks.
 
 - **Artist page albums (2026-10-26, committed, desk test passed).** The Full artist page's
   Albums shelf holds albums, singles and EPs, and live albums, read whole; Appears On under the
