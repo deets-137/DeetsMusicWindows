@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 802 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 814 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -269,6 +269,18 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--net-cell-radius` | `1px` | — |  |
 | `--net-good-strength` | `60%` | — | a Good cell is quieter than a Bad one, so |
 | `--net-ok-strength` | `85%` | — | the bar reads in a one-color theme too |
+| `--pin-btn-size` | `var(--traffic-size)` | — | The pin (docs/features/PIN.md): the title bar button family, the cog's panel family. |
+| `--pin-turn` | `var(--compass-spin)` | — | the pin's turns: the Compass needle's spring |
+| `--pin-rest` | `45deg` | — | his design: diagonal at rest |
+| `--pin-held` | `90deg` | — | horizontal while the pointer holds the button |
+| `--pin-set` | `0deg` | — | vertical while pinned |
+| `--pin-panel-pad` | `var(--quick-panel-pad)` | — |  |
+| `--pin-tile-w` | `96px` | — | one tile: "This window", the longest word, and its picture |
+| `--pin-panel-w` | `calc(2 * var(--pin-tile-w) + var(--space-2) + 2 * var(--pin-panel-pad) + 2px)` | — | Two tiles wide (his ask, 2026-10-26: single words and narrow pictures need no more): the tiles, the gap, the padding and the border (1px a side). |
+| `--pin-tile-radius` | `var(--sound-chip-radius)` | — | the panel chip family (UI-ARCHITECTURE.md §2a) |
+| `--pin-pic-size` | `28px` | — | a tile's picture of its view |
+| `--pin-cover-inset` | `var(--space-2)` | — | the Cover view's control bar and unpin icon, off the edges |
+| `--pin-cover-fade` | `var(--dur-fast)` | — | they come and go with the pointer |
 | `--split-rule-strength` | `45%` | — | The Settings split pill's line between its halves (settings.css): readable on every theme. --border alone vanished on the light themes (his screenshot, 2026-10-16). |
 | `--quick-icons` | `10` | — | The quick panel (QUICK-SETTINGS.md): the cog's strip of icons. One width, open or shut, so an icon press grows it down and never sideways. The width is the row's own sum: ten icons, nine gaps, one more gap between the two clusters, the padding, the border (1px a side) and the scrollbar gutter. A new icon adds one to --quick-icons. |
 | `--quick-panel-w` | `calc(var(--quick-icons) * (var(--quick-logo-size) + var(--space-2)) + 2 * var(--quick-panel-pad) + 2px + var(--scrollbar-w))` | — |  |
@@ -1122,6 +1134,8 @@ reader is a token nothing uses.
 | `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/skin.css, updates-btn.ts |
 | `--rewind-top-flip` | `var(--compass-spin)` | — | styles/rewind-top.css |
 | `--net-drive` | `var(--updates-roll)` | — | net.ts |
+| `--pin-turn` | `var(--compass-spin)` | — | styles/pin.css |
+| `--pin-cover-fade` | `var(--dur-fast)` | — | styles/pin.css |
 | `--sound-grow` | `0.22s` | — | styles.css |
 | `--sound-glide` | `var(--dur-fast)` | — | styles.css |
 | `--web-shrink-dur` | `0.32s` | — | web.ts |
@@ -1205,10 +1219,10 @@ reader is a token nothing uses.
 | `--theme-morph-ease` | `ease-in-out` | — | styles.css |
 | `--theme-morph-hand-ease` | `ease-out` | — | appearance.ts, styles.css |
 | `--search-pulse-dur` | `0.9s` | — | styles.css, styles/skin.css |
-| `--dur-fast` | `0.12s` | press, glass, cyber | copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
+| `--dur-fast` | `0.12s` | press, glass, cyber | copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/pin.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
 | `--dur-med` | `0.18s` | press | styles.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/walk.css |
 | `--dur-spin` | `0.7s` | — | styles.css |
-| `--ease-ui` | `ease` | — | copy-edit.ts, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
+| `--ease-ui` | `ease` | — | copy-edit.ts, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/hint.css, styles/net.css, styles/pin.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
 | `--pulse-ease` | `ease-in-out` | — | styles.css |
 | `--sh-cross-dur` | `0.42s` | — | styles.css |
 | `--rp-loop-dur` | `0.5s` | — | styles.css |
