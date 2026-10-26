@@ -56,6 +56,19 @@ test("web twin: an artist reply gives the three views", () => {
   assert.deepEqual(d.topSongs, [expected.songs[0]]);
   assert.deepEqual(d.albums, expected.albums);
   assert.deepEqual(d.featuredPlaylists, expected.playlists);
+  assert.deepEqual(d.appearsOn, []);
+});
+
+test("web twin: albums, singles and live merge; a release in two views shows once (2026-10-26)", () => {
+  const [a, b] = raw.albums;
+  const views = { "full-albums": { data: [a] }, singles: { data: [b, a] }, "live-albums": { data: [] }, "appears-on-albums": { data: [b] } };
+  const d = artistDetailFrom({ data: [{ ...raw.artists[0], views }] });
+  assert.deepEqual(d.albums, [expected.albums[0], expected.albums[1]]);
+  assert.deepEqual(d.appearsOn, []); // already on the Albums shelf
+  // A view read whole replaces the reply's first page.
+  const w = artistDetailFrom({ data: [{ ...raw.artists[0], views }] }, { singles: [] });
+  assert.deepEqual(w.albums, [expected.albums[0]]);
+  assert.deepEqual(w.appearsOn, [expected.albums[1]]);
 });
 
 test("web twin: related gives the first relation, or null", () => {

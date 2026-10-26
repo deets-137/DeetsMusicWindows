@@ -190,6 +190,9 @@ export interface Context {
    *  the block the windower measures. A function, so async facts fill in on `reload()`.
    *  Items carry `data-shelf-item`: a click goes to `onShelf`, a right-click to `shelfMenu`. */
   shelves?: () => string;
+  /** Shelves at the foot of the pane, after the last row (the artist page's Appears On,
+   *  ARTIST-VIEW.md §11). The same `data-shelf-item` contract as `shelves`. */
+  footer?: () => string;
   /** Draw the shelves ABOVE the Play / Shuffle row instead of under it (the Pinned shelf,
    *  PINS.md fork 9B). */
   shelvesFirst?: boolean;
@@ -587,6 +590,32 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     ro.observe(stuck);
     stuckObs.set(view, { ro, el: stuck });
   };
+  // The toolbar below a hero paints the card's fill only while it is stuck (`data-stuck`), so
+  // the rows pass under a solid bar; at rest it has no box of its own (his call, 2026-10-26: on a
+  // see-through card the fill read as a dark band behind Top Songs). The bar sits right after
+  // the head, so it is stuck exactly while no part of the head is in the view.
+  const barObs = new WeakMap<HTMLElement, { io: IntersectionObserver; el: HTMLElement }>();
+  const syncBarFill = (view: HTMLElement) => {
+    const head = view.querySelector<HTMLElement>(":scope > [data-view-head]");
+    const had = barObs.get(view);
+    if (had && had.el === head) return;
+    had?.io.disconnect();
+    barObs.delete(view);
+    const bar = view.querySelector<HTMLElement>(":scope > [data-view-bar]");
+    if (!head || !bar) return;
+    const setStuck = (stuck: boolean) => {
+      const b = view.querySelector<HTMLElement>(":scope > [data-view-bar]");
+      if (!b) return;
+      if (stuck) b.dataset.stuck = "";
+      else delete b.dataset.stuck;
+    };
+    // A head made again while the bar is stuck: marked now, not one frame late.
+    setStuck(head.getBoundingClientRect().bottom <= view.getBoundingClientRect().top);
+    if (typeof IntersectionObserver !== "function") return;
+    const io = new IntersectionObserver(([e]) => setStuck(!e.isIntersecting), { root: view });
+    io.observe(head);
+    barObs.set(view, { io, el: head });
+  };
   /** A pane leaves the DOM: its windower and its header observer go with it. */
   const dropPane = (pane: HTMLElement | null) => {
     dropWindower(pane);
@@ -595,6 +624,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     revealOf(v)?.cancel(); // a level swapped away or drilled past drops its hold (§7.1)
     stuckObs.get(v)?.ro.disconnect();
     stuckObs.delete(v);
+    barObs.get(v)?.io.disconnect();
+    barObs.delete(v);
   };
   /** What a row IS across a re-render: the grouping's pick id, else the item's own id or key,
    *  else its name — so a sort or a filter can find the same song, album or artist again
@@ -949,6 +980,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     else delete view.dataset.cols; // no attribute at rest (CARD-GROW.md §0)
     const actions = actionsHTML(g, items.length, nPicked, entering);
     const shelves = f.ctx.shelves?.() ?? "";
+    const footer = f.ctx.footer?.() ?? "";
     const heroData = f.ctx.hero?.();
     const heroStr = heroHTML(heroData);
     heroDrawn.set(view, { html: heroStr, aside: heroData?.aside ?? "" });
@@ -990,6 +1022,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const settleHead = () => {
       wirePops(pane);
       syncStuck(view);
+      syncBarFill(view);
       wireSearch(view);
       const input = view.querySelector<HTMLInputElement>("[data-search]");
       if (!input) return;
@@ -1012,7 +1045,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
           ? "" // on its way: the reveal holds, and nothing says "empty" (§7.1)
           : !f.query && f.ctx.dropInto
           ? `<div class="lib-empty__slot"><span class="lib-empty__art" aria-hidden="true">♪</span><span class="lib-empty__msg">${msg}</span></div>`
-          : `<p class="lib-empty__msg">${msg}</p>`,
+          : `<p class="lib-empty__msg">${msg}</p>` + footer,
       );
       settleHead();
       revealOf(view)?.check();
@@ -1022,7 +1055,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     // Long homogeneous lists are windowed (only the rows near the viewport exist); the
     // rest render whole, exactly as before. The gate keeps every small pane untouched.
     if (items.length > WINDOW_MIN && !g.mixed) {
-      const spec = { count: items.length, render: (i: number) => renderRow(g, items[i], f.density, i, cols), hero };
+      const spec = { count: items.length, render: (i: number) => renderRow(g, items[i], f.density, i, cols), hero, tail: footer };
       const w = windowers.get(view);
       if (w) w.update(spec);
       else windowers.set(view, windowView(view, spec));
@@ -1032,7 +1065,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       return;
     }
     dropWindower(pane);
-    fill(items.map((x, i) => keyRow(renderRow(g, x, f.density, i, cols), idOf(g, x))).join(""));
+    fill(items.map((x, i) => keyRow(renderRow(g, x, f.density, i, cols), idOf(g, x))).join("") + footer);
     settleHead();
     syncRail(pane, f, g);
     revealOf(view)?.check();

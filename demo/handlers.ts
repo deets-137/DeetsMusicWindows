@@ -217,7 +217,8 @@ function artistDetail(id: string) {
   const songs = cat.tracks.filter((t) => t.artistName === artist.name);
   const topSongs = songs.slice().sort((a, b) => (store.plays[b.catalogId!]?.full ?? 0) - (store.plays[a.catalogId!]?.full ?? 0)).slice(0, 10);
   const featuredPlaylists = cat.applePlaylists.filter((p) => p.playlist.catalogId && p.tracks.some((t) => t.artistName === artist.name)).map((p) => p.playlist);
-  return { artist, albums, topSongs, featuredPlaylists };
+  // The demo's catalog holds each artist's own albums only, so Appears On stays empty.
+  return { artist, albums, appearsOn: [], topSongs, featuredPlaylists };
 }
 
 function recentPlayed(): Track[] {

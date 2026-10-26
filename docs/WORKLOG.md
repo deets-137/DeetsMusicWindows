@@ -6,6 +6,21 @@ updated: 2026-10-26
 ---
 # DeetsMusic — Work log
 
+## 2026-10-26 — Artist page: singles, EPs, live albums, Appears On; the Top Songs bar (branch `main`, committed)
+
+**His ask:** LISA's page showed only Alter Ego, none of her new EPs. **His calls:** singles, EPs
+and live albums merged into the Albums shelf; Appears On as its own shelf at the bottom of the
+page; each list read whole; the band behind Top Songs taken off, a line between sections
+instead. **The probe** (dev app, MusicKit's API): EPs come in `singles`; each view sends 10 and
+a `next`; `/view/{name}?limit=100` gives the rest in one call. **Built:** `catalog_artist` asks
+for five views and reads a long one whole (`whole_view`, 10 pages of 100 at most);
+`ArtistDetail.appearsOn`; the web twin and its test; `Context.footer` and the windower's `tail`
+for a shelf under the rows; the bar's fill only while stuck (`syncBarFill`); the section lines
+(`--section-rule-w`). ARTIST-VIEW.md §11 has the as-built record; his desk test passed the same
+day (LISA has no Appears On: Apple's view is empty for her; he kept Apple's filing).
+Nothing is stored, so old installs have nothing to migrate.
+**Checks:** `cargo check`, `npx tsc --noEmit`, `npm test`, `npm run tokens`, `npm run docs:check`, `npx vite build`.
+
 ## 2026-10-26 — Replies reach the filer; the admin Inbox (branch `main`, committed, not pushed)
 
 **His ask:** a way to tell people who filed suggestions that he replied, and the suggestions

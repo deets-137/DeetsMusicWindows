@@ -6,6 +6,8 @@
 // with no library. An unknown command answers `null` and logs once, like the demo.
 
 import {
+  ALBUM_VIEWS,
+  APPEARS_VIEW,
   SEARCH_TYPES,
   artistDetailFrom,
   collectionTracksFrom,
@@ -79,11 +81,32 @@ async function collectionTracks(kind: string, id: string): Promise<unknown> {
 
 async function catalogArtist(id: string): Promise<unknown> {
   const base = `/v1/catalog/${storefront()}/artists/${encodeURIComponent(id)}?views=top-songs,full-albums`;
-  let r = await appleGet(`${base},featured-playlists`);
+  let r = await appleGet(`${base},singles,live-albums,${APPEARS_VIEW},featured-playlists`);
   if (r.status !== 200 && r.status !== 404) r = await appleGet(base); // a view Apple does not know
   if (r.status !== 200) throw new Error(`catalog/artists/${id} HTTP ${r.status}`);
-  return artistDetailFrom(r.body);
+  // A view with a `next` is read again whole, in pages of 100 (apple.rs `whole_view`).
+  const views = (r.body as { data?: { views?: Record<string, { data?: unknown[]; next?: string }> }[] })?.data?.[0]?.views ?? {};
+  const whole: Record<string, unknown[]> = {};
+  await Promise.all(
+    [...ALBUM_VIEWS, APPEARS_VIEW].map(async (v) => {
+      const head = views[v]?.data ?? [];
+      if (!views[v]?.next) return;
+      const all: unknown[] = [];
+      let next: string | undefined = `/v1/catalog/${storefront()}/artists/${encodeURIComponent(id)}/view/${v}?limit=100`;
+      for (let i = 0; next && i < VIEW_PAGES; i++) {
+        const page = await appleGet(next.includes("limit=") ? next : `${next}&limit=100`).catch(() => null);
+        if (page?.status !== 200) break; // keep what was read
+        const body = page.body as { data?: unknown[]; next?: string };
+        all.push(...(body.data ?? []));
+        next = body.next;
+      }
+      if (all.length >= head.length) whole[v] = all;
+    }),
+  );
+  return artistDetailFrom(r.body, whole);
 }
+/** Pages of 100 per view: a runaway guard (apple.rs `VIEW_PAGES`). */
+const VIEW_PAGES = 10;
 
 async function catalogRelated(kind: string, id: string, rel: string): Promise<unknown> {
   const { status, body } = await appleGet(`/v1/catalog/${storefront()}/${kind}/${encodeURIComponent(id)}?include=${rel}`);

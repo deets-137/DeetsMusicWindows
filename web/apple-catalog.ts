@@ -168,16 +168,33 @@ export function collectionTracksFrom(kind: "albums" | "playlists", body: Json, i
     });
 }
 
-/** The reply of `/v1/catalog/{sf}/artists/{id}?views=…` → `ArtistDetail`. */
-export function artistDetailFrom(body: Json): ArtistDetail {
+/** The views merged into the Albums shelf, in order (apple.rs `ALBUM_VIEWS`). */
+export const ALBUM_VIEWS = ["full-albums", "singles", "live-albums"] as const;
+export const APPEARS_VIEW = "appears-on-albums";
+
+/** The reply of `/v1/catalog/{sf}/artists/{id}?views=…` → `ArtistDetail`. `whole`: a view read
+ *  to its end (apple.rs `whole_view`), in place of the first 10 the reply holds. */
+export function artistDetailFrom(body: Json, whole: Record<string, Json[]> = {}): ArtistDetail {
   const a = at(body, "data", 0);
   const view = (name: string): Json[] => {
+    if (whole[name]) return whole[name];
     const d = at(a, "views", name, "data");
     return Array.isArray(d) ? d : [];
   };
+  // One release can sit in two views: it shows once, in the first.
+  const seen = new Set<string>();
+  const keep = (v: Json) => {
+    const id = str(at(v, "id"));
+    if (id === undefined) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  };
+  const albums = ALBUM_VIEWS.flatMap(view).filter(keep).map(albumFromCatalog);
   return {
     artist: artistFromCatalog(a),
-    albums: view("full-albums").map(albumFromCatalog),
+    albums,
+    appearsOn: view(APPEARS_VIEW).filter(keep).map(albumFromCatalog),
     topSongs: view("top-songs").filter((v) => str(at(v, "type")) === "songs").map(trackFromCatalogSong),
     featuredPlaylists: view("featured-playlists").map(playlistFromCatalog),
   };

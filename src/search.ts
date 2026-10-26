@@ -72,7 +72,10 @@ export interface SearchResults {
 
 export interface ArtistDetail {
   artist: Artist;
+  /** The Albums shelf: Apple's albums, singles and EPs, and live albums, merged (ARTIST-VIEW.md §11). */
   albums: Album[];
+  /** Releases by others the artist is on: the last shelf. */
+  appearsOn: Album[];
   topSongs: Track[];
   /** Apple's playlists that feature the artist (ARTIST-VIEW.md). */
   featuredPlaylists: Playlist[];
@@ -179,7 +182,7 @@ export function collectionTracks(kind: "albums" | "playlists", id: string): Prom
 export function artistDetail(id: string): Promise<ArtistDetail> {
   return remember(paneCache, PANE_CAP, `artists:${id}`, () => invoke<ArtistDetail>("catalog_artist", { id })).then((v) => {
     const d = v as ArtistDetail;
-    return { ...d, albums: [...d.albums], topSongs: [...d.topSongs], featuredPlaylists: [...d.featuredPlaylists] };
+    return { ...d, albums: [...d.albums], appearsOn: [...d.appearsOn], topSongs: [...d.topSongs], featuredPlaylists: [...d.featuredPlaylists] };
   });
 }
 

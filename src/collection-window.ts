@@ -28,6 +28,8 @@ export interface WindowSpec {
   render: (i: number) => string;
   /** HTML mounted once above the top spacer (the detail hero), or "". */
   hero: string;
+  /** HTML mounted once below the bottom spacer (`Context.footer`), or "". */
+  tail?: string;
 }
 
 export interface Windower {
@@ -58,6 +60,7 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
   let count = spec.count;
   let render = spec.render;
   let hero = spec.hero;
+  let tail = spec.tail ?? "";
 
   // rendered item range [a, b) — b exclusive; a and b are row-aligned
   let a = 0;
@@ -85,7 +88,7 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
 
   const mountShell = () => {
     view.classList.add("lib-view--windowed");
-    view.innerHTML = `${hero}<div class="${SPACER}" data-spacer="top"></div><div class="${SPACER}" data-spacer="bot"></div>`;
+    view.innerHTML = `${hero}<div class="${SPACER}" data-spacer="top"></div><div class="${SPACER}" data-spacer="bot"></div>${tail}`;
     top = view.querySelector<HTMLElement>('[data-spacer="top"]')!;
     bot = view.querySelector<HTMLElement>('[data-spacer="bot"]')!;
     a = b = 0;
@@ -308,6 +311,13 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
         el = n;
       }
       if (hero && !keepHero) top.insertAdjacentHTML("beforebegin", hero);
+      // The tail: everything after the bottom spacer, made again only when it changed.
+      const nextTail = s.tail ?? "";
+      if (nextTail !== tail) {
+        while (bot.nextElementSibling) bot.nextElementSibling.remove();
+        if (nextTail) bot.insertAdjacentHTML("afterend", nextTail);
+        tail = nextTail;
+      }
       a = b = 0;
       pitch = 0;
       pass(true);

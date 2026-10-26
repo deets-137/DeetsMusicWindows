@@ -1,9 +1,9 @@
 ---
 status: shipped
 shipped_in: 0.6.0
-desk_test: passed 2026-10-13
-sources: [src/artist-view.ts, src/media-levels.ts, src/collection-card.ts, src/library-card.ts, src/search-card.ts]
-updated: 2026-10-13
+desk_test: passed 2026-10-26
+sources: [src/artist-view.ts, src/media-levels.ts, src/collection-card.ts, src/collection-window.ts, src/library-card.ts, src/search-card.ts, src-tauri/src/apple.rs, web/apple-catalog.ts]
+updated: 2026-10-26
 ---
 # Artist view — hero, Featured Playlists, Your Playlists
 
@@ -31,8 +31,8 @@ Top to bottom. An empty shelf is hidden.
 | Hero title | Artist name | Artist name |
 | Hero meta | "12 albums · 84 songs" | The first genre |
 | Card / pane header | "Artist" | "Artist" |
-| Shelves | Albums (newest first; a tile drills in place), Featured Playlists, Your Playlists | Albums, Featured Playlists, Your Playlists |
-| Below | "Songs": the artist's library songs as rows, newest first (Sort/View still apply) | Top Songs (Apple's `top-songs` view: Apple's popularity order) |
+| Shelves | Albums (newest first; a tile drills in place), Featured Playlists, Your Playlists | Albums (albums, singles and EPs, live albums, in one shelf, §11), Featured Playlists, Your Playlists |
+| Below | "Songs": the artist's library songs as rows, newest first (Sort/View still apply) | Top Songs (Apple's `top-songs` view: Apple's popularity order), then Appears On (§11) |
 
 **Library Songs sorts** (user, 2026-09-15: "sort option for each"). Apple's library data has no
 popularity, so two sorts join A–Z / Release Date / Added Date:
@@ -104,7 +104,7 @@ Everything below is saved in `artist_catalog` (enrich.rs), keyed by the library 
 | After 7 days, or after the Library ⟳ | **1** — the featured playlists; the id is never fetched again |
 | "Check N more playlists" | **1 per 100 songs of each unopened Apple playlist**, once |
 | Chip flight to a Featured playlist | **1+** (its songs, fetched before the flight and handed to the Search pane, which then fetches nothing) |
-| Search artist view | **1 on every open** (`catalog_artist`) — `featured-playlists` joins that `views=` fetch, so the shelf adds 0. Not saved in `artist_catalog`; a memory-only cache is designed in CARD-MEMORY.md §6 |
+| Search artist view | **1 on every open** (`catalog_artist`) — `featured-playlists` joins that `views=` fetch, so the shelf adds 0. **+1 per album view longer than 10** (singles, full albums, live, Appears On; §11). Not saved in `artist_catalog`; held in memory for the session (CARD-MEMORY.md §6) |
 | Start Station on a Library artist | 0 once the id is saved (it shared a session-only cache before) |
 
 **`artist_catalog` belongs to the Library artist view only** (keyed by the library artist
@@ -112,9 +112,9 @@ name). The Search artist view (keyed by catalog id) reads nothing from it and wr
 it. On 2026-09-17 a plan assumed the Search pane was partly cached here; it was not. Read the
 command in `apple.rs` before you quote a call count.
 
-The Search fetch asks for `top-songs,full-albums,featured-playlists`. If Apple refuses the
-request (a non-200 that is not 404), it asks once more with the old two views, so a wrong
-view name cannot break the Search artist view.
+The Search fetch asks for `top-songs,full-albums,singles,live-albums,appears-on-albums,
+featured-playlists` (§11). If Apple refuses the request (a non-200 that is not 404), it asks once
+more with the old two views, so a wrong view name cannot break the Search artist view.
 
 ## 5. Opening a playlist from a shelf
 
@@ -400,3 +400,58 @@ Layout, terms and slots were put back. The ring held three `t?.closest` errors, 
 test's own synthetic Escape sent to `document` (no element): not the app.
 **Not run:** a play from a level row (it would sound on his machine); `joinStore` is read in
 the code only.
+
+## 11. Singles, EPs, live albums and Appears On (built 2026-10-26)
+> **Part:** built · 2026-10-26
+
+His report (2026-10-26): LISA's page showed one album (Alter Ego) and none of her new EPs. The
+Full artist page read only Apple's `full-albums` view, and only its first 10.
+
+**His calls (2026-10-26).**
+- Ask for `singles` and `live-albums` and merge them into the **Albums** shelf (one shelf, newest
+  first).
+- Ask for `appears-on-albums` and show it as its own shelf, **Appears On**, at the bottom of the
+  page, under the Top Songs rows.
+- Read each list **whole**, not only its first page.
+- Take the dark band off the Top Songs bar; put a **line between the sections** instead.
+
+**The probe (2026-10-26, the dev app, MusicKit's own API).**
+- Apple has no EP view. An EP comes in `singles` (LISA's "PRESS PLAY - EP").
+- Each view in the artist read holds 10 items and a `next` link.
+- `/artists/{id}/view/{name}?limit=100` gives 100 in one call: Taylor Swift's 87 singles came in one.
+- An empty view read on its own answers 404, so a view is read again only when it has a `next`.
+
+**As built.**
+- `catalog_artist` (apple.rs) asks for the five views in its one read. A view with a `next` is
+  read again from the top in pages of 100 (`whole_view`), the long views side by side. The
+  cap is 10 pages per view, a runaway guard. A failed page keeps what was read; the first 10
+  at least.
+- `ArtistDetail.albums` is `full-albums`, then `singles`, then `live-albums`; `appearsOn` is
+  the fifth view. A release in two views shows once, in the first.
+- Calls: still 1 for a small artist; +1 for each view longer than 10 (most well-known artists:
+  +1 or +2). The detail is held in memory only (CARD-MEMORY.md §6), so nothing is stored and
+  an old install has nothing to migrate.
+- The web twin (`web/apple-catalog.ts`, `web/handlers.ts`) does the same; the merge and the
+  de-duplication are in `artistDetailFrom`, held by `tests/web-catalog.test.ts`. The demo's
+  catalog has no Appears On.
+- The engine took a slot under the rows: `Context.footer` (collection-card.ts), drawn after the
+  last row, and the windower's `tail` (collection-window.ts) for a list of more than 200.
+  Shelf tiles there keep the `data-shelf-item` contract (`appears`).
+- The bar over the rows (`.lib-view-bar`) has no fill at rest. It paints the card's fill only
+  while stuck (`data-stuck`, set by `syncBarFill` from the head leaving the view), so the rows
+  still pass under a solid bar. The line between sections is `--section-rule-w` in `--border`,
+  above each shelf label under the hero, the label over the rows, and Appears On. This is
+  every page with a bar below a hero: the Lib and Full artist and the song (credits) page.
+
+### 11.1 Desk test
+
+**Passed 2026-10-26 (his word: "looks good").** LISA has no Appears On shelf: Apple's
+`appears-on-albums` view is empty for her, and her collaborations (SG, Priceless, Bad Angel)
+come in `singles`, so they sit on the Albums shelf. He kept Apple's filing.
+1. Search › LISA › Full: Albums holds Alter Ego, PRESS PLAY - EP and the singles, newest first.
+2. Taylor Swift: Albums holds the full list (well past 10), live albums among them; Appears On
+   at the bottom, under Top Songs. A tile there opens that album (its own artist).
+3. Childish Gambino: Appears On shows the six guest releases.
+4. At rest, no band behind "Top Songs"; scroll down: the bar sticks with the card's fill and the
+   rows pass under it. A line sits above each section label.
+5. A Lib artist with many songs (over 200): the bar and lines act the same; no Appears On (Lib).

@@ -32,7 +32,7 @@ import type { CollectionCardHandle, Context, Density, Grouping, SortSpec, ViewOp
 import { formatTotal, esc } from "./collection-card";
 import type { LibNav, SongOpts } from "./library-card";
 import type { MenuItem } from "./context-menu";
-import { catalogRelated, collectionTracks, artistDetail, searchCatalog, materializeTrack, type ArtistDetail } from "./search";
+import { catalogRelated, collectionTracks, artistDetail, searchCatalog, materializeTrack, type Album, type ArtistDetail } from "./search";
 import { notesFor, notesNow, type NotesRef } from "./album-notes";
 import { foldName, shortText, songPart } from "./album-notes-parse";
 import type { NotesViewData } from "./present";
@@ -191,6 +191,8 @@ interface ArtistData {
   /** The label over the rows, under which Sort / View / Search sit. */
   rowsLabel: string;
   albums: () => ShelfAlbum[];
+  /** Releases by others the artist is on (Full only): the shelf under the rows. */
+  appearsOn?: () => ShelfAlbum[];
   emptyText?: () => string | undefined;
   defaults: NonNullable<Context["defaults"]>;
   views: ViewSwitch;
@@ -369,6 +371,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     let yours: YourPlaylists | undefined; // the user's playlists with this artist (0 calls)
     let checking: CheckProgress | null = null;
     let albumList: ShelfAlbum[] = []; // the Albums shelf as last drawn (a tile's index → its album)
+    let appearsList: ShelfAlbum[] = []; // the Appears On shelf, the same way
 
     // The rows' extra sorts (ARTIST-VIEW.md §1). Popular = Apple's top-songs order, then the
     // rest newest first. Most Played = this app's own play counts (zero calls).
@@ -489,22 +492,30 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     };
 
     // Newest first, as the Search pane lists them; an album with no date goes last.
-    const albumsShelf = (): string => {
-      albumList = d.albums().sort((x, y) => (y.releaseDate ?? "").localeCompare(x.releaseDate ?? ""));
-      const tiles = albumList
+    const newestFirst = (list: ShelfAlbum[]) => list.sort((x, y) => (y.releaseDate ?? "").localeCompare(x.releaseDate ?? ""));
+    const albumTiles = (kind: "album" | "appears", list: ShelfAlbum[], label: string): string => {
+      const tiles = list
         .map((al, i) => {
           const url = artURL(al.artwork, TILE_PX);
           const cover = url
             ? `<img class="search__tile-art" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-art />`
             : `<div class="search__tile-art search__tile-art--empty" aria-hidden="true">♪</div>`;
           return (
-            `<div class="search__tile" data-shelf-item="album" data-shelf-idx="${i}" role="button" tabindex="0">${cover}` +
+            `<div class="search__tile" data-shelf-item="${kind}" data-shelf-idx="${i}" role="button" tabindex="0">${cover}` +
             `<span class="search__tile-name">${esc(al.name)}</span><span class="search__tile-sub">${esc(yearOf(al.releaseDate) ?? "")}</span></div>`
           );
         })
         .join("");
-      return tiles ? `<div class="search__label">Albums</div><div class="search__scroller search__scroller--albums">${tiles}</div>` : "";
+      return tiles ? `<div class="search__label">${label}</div><div class="search__scroller search__scroller--albums">${tiles}</div>` : "";
     };
+    // Albums, singles and EPs, and live albums in one shelf (his call, 2026-10-26).
+    const albumsShelf = (): string => albumTiles("album", (albumList = newestFirst(d.albums())), "Albums");
+    // Appears On: the last thing on the page, under the rows (his call, 2026-10-26).
+    const appearsShelf = (): string => {
+      const html = albumTiles("appears", (appearsList = newestFirst(d.appearsOn?.() ?? [])), "Appears On");
+      return html ? `<div class="lib-shelves lib-shelves--foot">${html}</div>` : "";
+    };
+    const shelfAlbum = (kind: string | undefined, i: number) => (kind === "album" ? albumList[i] : kind === "appears" ? appearsList[i] : undefined);
 
     const ctx: Context = {
       get title() {
@@ -538,6 +549,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         };
       },
       shelves: () => (d.ready() ? artistShelvesHTML(d.featured(), yours, checking, albumsShelf()) : ""),
+      footer: () => (d.ready() ? appearsShelf() : ""),
       // Sort / View / Search act only on the rows, so they sit under this label.
       toolbarBelow: d.rowsLabel,
       // An album drills in place. A featured playlist opens as a Search pane; one of yours in
@@ -546,8 +558,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       onShelf: (el) => {
         const i = Number(el.dataset.shelfIdx);
         const kind = el.dataset.shelfItem;
-        if (kind === "album") {
-          albumList[i]?.open?.();
+        if (kind === "album" || kind === "appears") {
+          shelfAlbum(kind, i)?.open?.();
         } else if (kind === "featured") {
           const p = d.featured()?.[i];
           const id = p?.catalogId;
@@ -577,7 +589,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       shelfMenu: (el) => {
         const i = Number(el.dataset.shelfIdx);
         const kind = el.dataset.shelfItem;
-        if (kind === "album") return albumList[i]?.menu() ?? [];
+        if (kind === "album" || kind === "appears") return shelfAlbum(kind, i)?.menu() ?? [];
         if (kind === "featured") {
           const p = d.featured()?.[i];
           const id = p?.catalogId;
@@ -866,6 +878,26 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     let failed: string | null = null;
     const top = () => d?.topSongs ?? [];
     const name = () => d?.artist.name ?? (src.name || "Artist");
+    // An Apple album tile: it drills to the Full album in place. An Appears On release is
+    // another artist's, so the album keeps its own artist name.
+    const shelfAlbum = (al: Album): ShelfAlbum => {
+      const aid = al.catalogId;
+      return {
+        name: al.title,
+        artwork: al.artwork,
+        releaseDate: al.releaseDate,
+        open: aid
+          ? () => card().drill(fullAlbumLevel({ albumId: aid, name: al.title, artist: al.artistName || name(), artwork: al.artwork, releaseDate: al.releaseDate }))
+          : undefined,
+        menu: () =>
+          aid
+            ? albumMenu(
+                { title: al.title, artistName: al.artistName, artwork: al.artwork, catalogId: aid, known: [], whole: () => collectionTracks("albums", aid), catalog: true },
+                { context: `search-albums:${aid}`, inArtist: true },
+              )
+            : [],
+      };
+    };
     return artistLevel({
       key: () => (id ? `full-artist:${id}` : undefined),
       name,
@@ -890,25 +922,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         },
       }),
       rowsLabel: "Top Songs",
-      albums: () =>
-        (d?.albums ?? []).map((al) => {
-          const aid = al.catalogId;
-          return {
-            name: al.title,
-            artwork: al.artwork,
-            releaseDate: al.releaseDate,
-            open: aid
-              ? () => card().drill(fullAlbumLevel({ albumId: aid, name: al.title, artist: al.artistName || name(), artwork: al.artwork, releaseDate: al.releaseDate }))
-              : undefined,
-            menu: () =>
-              aid
-                ? albumMenu(
-                    { title: al.title, artistName: al.artistName, artwork: al.artwork, catalogId: aid, known: [], whole: () => collectionTracks("albums", aid), catalog: true },
-                    { context: `search-albums:${aid}`, inArtist: true },
-                  )
-                : [],
-          };
-        }),
+      albums: () => (d?.albums ?? []).map(shelfAlbum),
+      appearsOn: () => (d?.appearsOn ?? []).map(shelfAlbum),
       emptyText: () => failed ?? (d ? "No songs." : "Loading…"),
       defaults: { density: "lines", sortKey: "popular" },
       views: {

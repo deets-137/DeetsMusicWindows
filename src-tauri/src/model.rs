@@ -257,7 +257,11 @@ pub struct NamedRef {
 #[serde(rename_all = "camelCase")]
 pub struct ArtistDetail {
     pub artist: Artist,
+    /// The Albums shelf: Apple's `full-albums`, `singles` (Apple files an EP there) and
+    /// `live-albums`, merged and read whole (ARTIST-VIEW.md §11).
     pub albums: Vec<Album>,
+    /// Releases by others the artist is on (`appears-on-albums`): the last shelf.
+    pub appears_on: Vec<Album>,
     pub top_songs: Vec<Track>,
     /// Apple's playlists that feature the artist (`views=featured-playlists`).
     pub featured_playlists: Vec<Playlist>,

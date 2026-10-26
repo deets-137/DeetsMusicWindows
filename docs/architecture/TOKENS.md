@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 801 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 802 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -770,7 +770,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--notes-short-fs` | `var(--fs-title)` | — | the short note, the first line in larger type (his draft §7) |
 | `--notes-lh` | `var(--lh-text)` | — | the note's line height |
 | `--lib-stuck-h` | `0px` | — | the height of a list's stuck header (.lib-view-bar / .lib-cols), its scroll-padding-top; the engine sets the measured value on each view, this is a list with none |
-| `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar): the card's own fill, so it reads as no box |
+| `--sticky-bar-surface` | `var(--panel)` | — | a list's stuck toolbar row (.lib-view-bar[data-stuck]): the card's own fill, only while rows pass under it |
+| `--section-rule-w` | `1px` | — | the line between a page's sections (artist page: Albums, playlists, Top Songs, Appears On); its color is --border, as .search__sec's |
 | `--sticky-bar-backdrop` | `var(--panel-backdrop)` | ocean, glass, cyber, happy | the card's own frost (Glass); a see-through skin without one adds a blur |
 | `--lib-row-art-radius` | `4px` | press, glass, cyber, metal | its corner — a skin shape lever (round still wins) |
 

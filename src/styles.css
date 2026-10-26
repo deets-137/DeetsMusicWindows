@@ -3228,8 +3228,10 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 /* A toolbar below the hero (Context.toolbarBelow): the head (hero + shelves), then the bar
    (section label + Sort / View / Search) right above the rows they act on. The bar sticks to
    the top of the scroll once the head has scrolled away; it is a direct child of the scroll
-   view for that (a sticky box stops at its parent's edge). It paints the card's own fill and
-   frost (skin tokens --sticky-bar-*), so it reads as no box at all while the rows pass under. */
+   view for that (a sticky box stops at its parent's edge). At rest it has no fill; once stuck
+   (`data-stuck`, collection-card.ts syncBarFill) it paints the card's own fill and frost (skin
+   tokens --sticky-bar-*) so the rows pass under it (his call, 2026-10-26: the resting fill read
+   as a band on a see-through card). */
 .lib-view-head { min-width: 0; }
 .lib-grid .lib-view-head,
 .lib-grid .lib-view-bar { grid-column: 1 / -1; }
@@ -3238,10 +3240,23 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   top: 0;
   z-index: 2;                       /* over rows that lift on hover */
   padding: var(--space-1) var(--space-2) 0;
+}
+.lib-view-bar[data-stuck] {
   background: var(--sticky-bar-surface);
   -webkit-backdrop-filter: var(--sticky-bar-backdrop);
   backdrop-filter: var(--sticky-bar-backdrop);
 }
+/* A line between a page's sections (his call, 2026-10-26): each shelf label under the hero,
+   the label over the rows, and the shelf at the foot of the rows (Appears On). The line sits
+   above the label, inside the same side padding, so every line is the same width. */
+.lib-view-head .lib-shelves .search__label,
+.lib-view-bar > .search__label,
+.lib-shelves--foot > .search__label {
+  border-top: var(--section-rule-w) solid var(--border);
+  padding-top: var(--space-2);
+}
+/* The foot shelf: clear of the last row. */
+.lib-shelves--foot { padding-top: var(--space-2); }
 .lib-hero__cover {
   width: var(--hero-cover); height: var(--hero-cover);
   border-radius: var(--lib-tile-radius);

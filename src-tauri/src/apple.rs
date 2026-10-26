@@ -2125,9 +2125,60 @@ pub async fn apple_add_to_library(
     Ok(())
 }
 
-/// A catalog artist's detail: albums + top songs + featured playlists, one fetch (`views=`).
-/// A refused request (not 200, not 404) retries once with the two original views, so a
-/// view Apple doesn't know can't break the Search artist view (ARTIST-VIEW.md §4).
+/// The views merged into the artist page's Albums shelf (his call, 2026-10-26). Apple files an
+/// EP under `singles` (probed 2026-10-26: LISA's "PRESS PLAY - EP"), so there is no EP view.
+const ALBUM_VIEWS: [&str; 3] = ["full-albums", "singles", "live-albums"];
+/// Releases by others the artist is on: its own shelf, the last on the page.
+const APPEARS_VIEW: &str = "appears-on-albums";
+/// Pages of 100 read per view after the first answer. A runaway guard: Taylor Swift's 87
+/// singles fit in one (probed 2026-10-26).
+const VIEW_PAGES: usize = 10;
+
+/// One view of an artist, whole. The artist read brings 10 of each view; a view with a `next`
+/// is read again from the top in pages of 100, so most artists cost one more call per long view
+/// and a small one none. A failed page keeps what was read (the first 10 at least): a shelf
+/// short of its tail is better than an artist page that fails.
+async fn whole_view(
+    client: &reqwest::Client,
+    dev: &str,
+    user: &str,
+    sf: &str,
+    id: &str,
+    view: &str,
+    first: &serde_json::Value,
+) -> Vec<serde_json::Value> {
+    let head = first["data"].as_array().cloned().unwrap_or_default();
+    if !first["next"].is_string() {
+        return head;
+    }
+    let mut all: Vec<serde_json::Value> = Vec::new();
+    let mut next = Some(format!("/v1/catalog/{sf}/artists/{id}/view/{view}?limit=100"));
+    for _ in 0..VIEW_PAGES {
+        let Some(path) = next.take() else { break };
+        // Apple's `next` carries the offset only; the page size is asked again.
+        let path = if path.contains("limit=") { path } else { format!("{path}&limit=100") };
+        match api_get(client, dev, user, &format!("https://api.music.apple.com{path}")).await {
+            Ok((200, page)) => {
+                all.extend(page["data"].as_array().cloned().unwrap_or_default());
+                next = page["next"].as_str().map(String::from);
+            }
+            Ok((status, _)) => {
+                crate::log::warn(&format!("catalog_artist: view {view} page HTTP {status}, keeping {}", all.len().max(head.len())));
+                break;
+            }
+            Err(e) => {
+                crate::log::warn(&format!("catalog_artist: view {view} page {e}, keeping {}", all.len().max(head.len())));
+                break;
+            }
+        }
+    }
+    if all.len() >= head.len() { all } else { head }
+}
+
+/// A catalog artist's detail: albums + top songs + featured playlists, one fetch (`views=`),
+/// plus one call per album view longer than Apple's first 10 (`whole_view`). A refused request
+/// (not 200, not 404) retries once with the two original views, so a view Apple doesn't know
+/// can't break the Search artist view (ARTIST-VIEW.md §4).
 #[tauri::command]
 pub async fn catalog_artist(
     id: String,
@@ -2140,9 +2191,10 @@ pub async fn catalog_artist(
     let sf = crate::enrich::storefront(&client, &dev, &user, &db).await?;
 
     let base = format!("https://api.music.apple.com/v1/catalog/{sf}/artists/{id}?views=top-songs,full-albums");
-    let (mut status, mut body) = api_get(&client, &dev, &user, &format!("{base},featured-playlists")).await?;
+    let (mut status, mut body) =
+        api_get(&client, &dev, &user, &format!("{base},singles,live-albums,{APPEARS_VIEW},featured-playlists")).await?;
     if status != 200 && status != 404 {
-        crate::log::warn(&format!("catalog_artist: featured-playlists view refused (HTTP {status}), retrying without it"));
+        crate::log::warn(&format!("catalog_artist: a view was refused (HTTP {status}), retrying with the two original views"));
         (status, body) = api_get(&client, &dev, &user, &base).await?;
     }
     if status != 200 {
@@ -2154,10 +2206,20 @@ pub async fn catalog_artist(
         .as_array()
         .map(|arr| arr.iter().filter(|v| v["type"].as_str() == Some("songs")).map(track_from_catalog_song).collect())
         .unwrap_or_default();
-    let albums: Vec<Album> = views["full-albums"]["data"]
-        .as_array()
-        .map(|arr| arr.iter().map(album_from_catalog).collect())
-        .unwrap_or_default();
+    // The long views are read at once, side by side.
+    let mut lists = futures::future::join_all(
+        ALBUM_VIEWS
+            .iter()
+            .chain(std::iter::once(&APPEARS_VIEW))
+            .map(|v| whole_view(&client, &dev, &user, &sf, &id, v, &views[*v])),
+    )
+    .await;
+    let appears = lists.pop().unwrap_or_default();
+    // One release can sit in two views: it shows once, in the first.
+    let mut seen = std::collections::HashSet::new();
+    let mut keep = |v: &serde_json::Value| v["id"].as_str().map_or(true, |i| seen.insert(i.to_string()));
+    let albums: Vec<Album> = lists.iter().flatten().filter(|v| keep(v)).map(album_from_catalog).collect();
+    let appears_on: Vec<Album> = appears.iter().filter(|v| keep(v)).map(album_from_catalog).collect();
     let featured_playlists: Vec<Playlist> = views["featured-playlists"]["data"]
         .as_array()
         .map(|arr| arr.iter().map(playlist_from_catalog).collect())
@@ -2169,6 +2231,7 @@ pub async fn catalog_artist(
     Ok(ArtistDetail {
         artist: artist_from_catalog(a),
         albums,
+        appears_on,
         top_songs,
         featured_playlists,
     })

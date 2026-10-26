@@ -229,6 +229,11 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **Artist page albums (2026-10-26, committed, desk test passed).** The Full artist page's
+  Albums shelf holds albums, singles and EPs, and live albums, read whole; Appears On under the
+  Top Songs rows; the Top Songs bar has no fill at rest, and a line separates the sections.
+  Ships with the next release. ARTIST-VIEW.md §11.
+
 - **1.0.0 is LIVE (2026-10-23, `4e6fa3e`, published; RELEASE.md §0a).** The first public
   release: the grand opening, update group 2, his three-line notes. Next on live: watch the
   first installs and the `csp-` lines in the weekly health counts.

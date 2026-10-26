@@ -84,7 +84,7 @@ a key or an agent.
 | `lookup` (web.rs) | `catalog/{sf}/search` | the playlist web's name lookups | 1 per name |
 | `catalog_collection_tracks` (apple.rs) | `catalog/{sf}/{kind}/{id}?include=tracks` | an album or playlist opened from Search | 1 |
 | `catalog_songs` (apple.rs, 2026-10-22) | `catalog/{sf}/songs?ids=` | the grand opening's preview player, its three songs (GRAND-OPENING.md §8b); once, then kept a month in the page's store | 1 |
-| `catalog_artist` (apple.rs) | `catalog/{sf}/artists/{id}?views=top-songs,full-albums` | an artist's Full level, the Search artist pane (session cache) | 1 |
+| `catalog_artist` (apple.rs) | `catalog/{sf}/artists/{id}?views=top-songs,full-albums,singles,live-albums,appears-on-albums,featured-playlists`, then `…/view/{name}?limit=100` for a view longer than 10 (ARTIST-VIEW.md §11, 2026-10-26) | an artist's Full level, the Search artist pane (session cache) | 1, +1 per long view |
 | `library_artist_info` (apple.rs) | `catalog/{sf}/songs/{song}?include=artists`, then `artists/{id}?views=featured-playlists,top-songs` | a Library artist view (cached in `artist_catalog`) | 0–2 |
 | `catalog_song_artist` (apple.rs) | `catalog/{sf}/songs/{id}?include=artists` | Go to Artist from a catalog song | 1 |
 | `catalog_related` (apple.rs) | `catalog/{sf}/{kind}/{id}?include={rel}` | a Search drill (song → album, album → artist) | 1 |
