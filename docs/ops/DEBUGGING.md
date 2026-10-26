@@ -1909,6 +1909,9 @@ answer it, in this order, and none of them needs a restart.
    reads the window's live ring — the `ui:act` gesture, the drill, the `player:*` lines,
    any toast. `--tag player` or `--tag ui:` narrows it. This is the step that names the
    bug; on 2026-09-18 it was one line, `player:reclick`.
+   When those lines are the evidence for a fix, add `--flush` (the MCP tool: `flush: true`):
+   it writes them to the log file now, so a restart or an install does not lose them
+   (2026-10-26, the pinned Cover's growth: the `pin:on` line lived only in the ring).
 
 3. **The log file** (`%APPDATA%\com.deetsmusic.app\deetsmusic.log`) only for what is
    older than the ring (300 events) or from an earlier session. It auto-flushes every

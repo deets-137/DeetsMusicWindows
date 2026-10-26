@@ -363,6 +363,10 @@ the new settings (`NEW_MARKS` gets `since`), previews; a changed default offered
 only while the user's value is the old one (§2: today a new default never reaches an existing
 user). × is done; *What's New* in the Compass holds the last 3 versions and an Older search
 page (§3.7). Not built.
+`density.md` — an idea (2026-10-26, from user feedback): a Compact | Spacious setting for every
+shelf (the gap, the label, the cover size), a pick on Grand Opening page 2 and a row in Settings ›
+Window; the scrollbar hidden until hover, its gutter always reserved (his calls §2). §1 what the
+code does today; §3.2 the thumb-fade probe; §4 forks D1–D5.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
