@@ -6,7 +6,7 @@ updated: 2026-10-26
 ---
 # DeetsMusic — Work log
 
-## 2026-10-26 — The pin: Keep on top in the title bar (branch `main`, uncommitted)
+## 2026-10-26 — The pin: Keep on top in the title bar (branch `main`, committed 9460b39, pushed)
 
 **His ask:** make *Keep on top* easy to find: a title bar pin, a pick of what stays on top, and
 one button to pin. **His calls** (features/PIN.md §2): the pin on every surface (beside the short

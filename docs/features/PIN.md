@@ -6,7 +6,8 @@ updated: 2026-10-26
 ---
 # Pin on top — a title bar button that keeps the window above other windows
 
-> **Built 2026-10-26 on `main`, uncommitted; his hand test under way the same day.** Every fork
+> **Built 2026-10-26 on `main`, committed and pushed (9460b39); ships in 1.1.0. His hand test
+> passed the four pins and unpins the same day; §5.1 lists the cases still open.** Every fork
 > is his (§2). §8 is the as-built record: where it disagrees with §3, §8 is the code.
 
 His ask (2026-10-26): make *Keep on top* easy to find. A pin button in the title bar opens a
