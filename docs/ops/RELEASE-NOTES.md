@@ -51,6 +51,11 @@ grows over the buttons beside it, so the window buttons stay in place. A scroll 
 timer's fade no longer leaves the music at the faded level. Settings › Playback › *Scroll over
 the Player for volume* turns it off.
 
+**Filter Singles, EPs and Live on Artist pages.** A small pill at the end of an artist's Albums
+shelf shows all releases, or only albums, singles and EPs, or live albums, with a count for
+each. Your pick stays the same on the next artist. To make every artist open on All, turn off
+Settings › Playback › *Remember Artist filters*.
+
 ## 1.1.2 — 2026-10-26
 
 **Singles, EPs, and Live Albums for Artists.** An artist's Apple Music page now shows their singles, EPs
