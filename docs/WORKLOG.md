@@ -6,6 +6,14 @@ updated: 2026-10-27
 ---
 # DeetsMusic — Work log
 
+## 2026-10-27 — Owner polls and suggestions: the idea doc (committed to `main`)
+
+**His ask:** an idea doc to send polls and suggestions from the admin page for users to see
+(his example: interest in voice control), "as open ended as possible". **Written:**
+`docs/ideas/owner-polls.md`: what exists (the board polls, the remote notice, the `/config` read
+at launch, the Updates panel), a sketch, and the open questions, with no recommendation.
+Nothing built.
+
 ## 2026-10-27 — Usage counts: updates, Setup.exe downloads, the accuracy audit (`onepointtwo` + DeetsSupport + DeetsSolutions, uncommitted)
 
 **His ask:** stats on the admin page "as accurate as possible … including pre-existing ones", a
