@@ -2490,6 +2490,9 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 }
 .lib-pop__opt:hover { background: var(--surface-hover); }
 .lib-pop__opt.is-active { background: var(--surface-hover); color: var(--title); font-weight: 600; }
+/* A shelf choice's count (the artist page's Albums filter, ARTIST-VIEW.md §12), at the row's end. */
+.lib-pop__opt:has(.lib-pop__count) { display: flex; justify-content: space-between; gap: var(--space-3); }
+.lib-pop__count { color: var(--subtext); font-weight: normal; font-variant-numeric: tabular-nums; }
 
 .lib-pop__dir {
   display: grid;
@@ -3254,6 +3257,17 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .lib-shelves--foot > .search__label {
   border-top: var(--section-rule-w) solid var(--border);
   padding-top: var(--space-2);
+}
+/* A shelf label with a choice pill at its end (the artist page's Albums filter, ARTIST-VIEW.md
+   §12; his call 2026-10-27: in the label's row, nothing else moves). The pill is the Sort
+   pill's family with no vertical padding, and its wrap has no height, so the pill centers on
+   the label's line and the row keeps the height of the label alone. */
+.search__label--pick { display: flex; align-items: center; gap: var(--space-2); }
+.lib-ctrl--shelf { margin-left: auto; height: 0; display: flex; align-items: center; }
+.lib-pill--shelf {
+  width: auto;
+  padding: 0 var(--space-2);
+  text-transform: none; letter-spacing: normal; font-weight: normal; font-stretch: normal;
 }
 /* The foot shelf: clear of the last row. */
 .lib-shelves--foot { padding-top: var(--space-2); }

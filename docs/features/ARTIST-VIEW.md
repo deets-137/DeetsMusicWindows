@@ -1,9 +1,9 @@
 ---
 status: shipped
 shipped_in: 0.6.0
-desk_test: passed 2026-10-26
+desk_test: passed 2026-10-27
 sources: [src/artist-view.ts, src/media-levels.ts, src/collection-card.ts, src/collection-window.ts, src/library-card.ts, src/search-card.ts, src-tauri/src/apple.rs, web/apple-catalog.ts]
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 # Artist view — hero, Featured Playlists, Your Playlists
 
@@ -455,3 +455,62 @@ come in `singles`, so they sit on the Albums shelf. He kept Apple's filing.
 4. At rest, no band behind "Top Songs"; scroll down: the bar sticks with the card's fill and the
    rows pass under it. A line sits above each section label.
 5. A Lib artist with many songs (over 200): the bar and lines act the same; no Appears On (Lib).
+
+## 12. The Albums shelf's filter (built 2026-10-27)
+> **Part:** built · 2026-10-27
+
+His ask (2026-10-27): a subtle filter in the style of the other dropdowns, to separate singles and
+EPs, live albums and albums on the Albums shelf (§11 merged them).
+
+**His calls (2026-10-27).**
+- A small pill at the end of the "Albums" label, the Sort pill's family, if it fits in the label's
+  row with nothing else changing visually.
+- The pick carries to the next artist, with a setting to turn that off: Settings › Playback ›
+  *Remember Artist filters* (`rememberArtistFilters`, default on).
+- The Full artist page only. The Lib page builds its albums from library songs and has no view
+  to read; a title test cannot find live albums.
+
+**As built.**
+- `Album.kind` (model.rs, search.ts): "album", "single" or "live", the Apple view the release came
+  from (`ALBUM_KINDS` beside `ALBUM_VIEWS` in apple.rs, the same in the web twin). A release in two
+  views keeps the first view's kind. Zero extra calls. Set on the artist page's albums only.
+- The engine's `Context.shelfPop` (collection-card.ts) and `shelfPillHTML`: a fourth kind on
+  `wirePops`, the same `makeDropdown`, `.lib-pop` panel, `enterRows`, arrow keys and Escape as
+  Sort. One column of `.lib-pop__opt` rows, each with its count (`.lib-pop__count`). A pick
+  closes the pop and re-renders the level.
+- The pill: `.lib-pill--shelf`, no vertical padding, in a wrap with no height
+  (`.lib-ctrl--shelf`), so it centers on the label's line and the row keeps its height. The label
+  takes `.search__label--pick` only when it holds a pill.
+- The options: All, Albums, Singles & EPs, Live, each with its count. A kind with no release is
+  not offered. An artist with one kind gets no pill: the label stays plain.
+- The pill names the pick in force ("All", "Live"). With *Remember* on, the pick is localStorage
+  `deets.artistAlbumPick`; an artist with none of that kind shows All, and the remembered pick
+  stays for the next artist. With it off, each page keeps its own pick until it closes (Back
+  returns to it), and a new page opens on All.
+- `diag.log("artist:albumPick", { pick, remember })` on each pick.
+
+**What Claude decided inside his calls (for his review).**
+- The option names: *All · Albums · Singles & EPs · Live*, with counts.
+- The pill's hint: *Shows all of the artist's releases, or only albums, singles and EPs, or live
+  albums*. The row's hint: *The filter on an artist's Albums shelf stays the same on the next
+  artist. Off: every artist opens on All*.
+- The row sits under *Show artist info on the artist's page* in Settings › Playback.
+- A pick closes the pop (Sort keeps its pop open; here the level re-renders with the pick).
+- The pick is not in the usage counts (`NOT_REPORTED`): a new key on the allow-list is his call.
+
+### 12.3 Desk test
+
+**Passed 2026-10-27 (his word: "looks good").**
+
+1. Search › Taylor Swift › Full: "ALBUMS" with a pill at the row's right end reading *All*. The
+   gap from the line above to the tiles is the same as on the Featured Playlists shelf.
+2. Click the pill (or hover, with *Open menus on hover*): the panel lists All, Albums, Singles &
+   EPs and Live with counts. Pick *Live*: only the live albums show; the pill reads *Live*.
+3. Open another artist with live albums: it opens on Live. Open LISA (no live albums): All, and
+   the pill offers no Live row. Back to an artist with live albums: Live again.
+4. Settings › Playback › *Remember Artist filters* off. A new artist opens on All. Pick Singles &
+   EPs, drill into an album, go Back: still Singles & EPs.
+5. A small artist with only albums: no pill, the label as before.
+6. Keyboard: Tab to the pill, Enter, the arrow keys move, Enter picks, Escape closes.
+7. Each skin: the pill sits in the label's line and does not cut the line above.
+

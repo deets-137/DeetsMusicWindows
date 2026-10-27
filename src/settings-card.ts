@@ -228,6 +228,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Skin settings", row: "happycards", skin: "happy" }, // Happy's Card opacity
   { section: "Window", row: "npoffcover" }, // Title under the cover, built 2026-10-26 (fullscreen-player.md §17)
   { section: "Window", row: "sizecover" }, // Cover opens at, the pin's Cover view, built 2026-10-26 (PIN.md)
+  { section: "Playback", row: "artistfilters" }, // Remember Artist filters, built 2026-10-27 (ARTIST-VIEW.md §12)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -475,7 +476,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1646,6 +1647,7 @@ function mountSettings(
         storeToggle("listeners", "Show play counts from Last.FM", "showListeners", () => "Now Playing shows how many plays and listeners a song has on Last.fm. Off: Last.fm is not asked"),
         // The artist facts box (LISTENERS.md §6; his calls 2026-10-12: its own row, on by default).
         storeToggle("artistinfo", "Show artist info on the artist's page", "showArtistInfo", () => "The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked"),
+        storeToggle("artistfilters", "Remember Artist filters", "rememberArtistFilters", () => "The filter on an artist's Albums shelf stays the same on the next artist. Off: every artist opens on All"),
         // The album facts box (LISTENERS.md §7; his call 2026-10-13: its own row).
         storeToggle("albuminfo", "Show album info on the album's page", "showAlbumInfo", () => "The album's page shows Last.fm's tags, plays and listeners, a few words about it from Apple Music or Last.fm, and a link. Off: neither is asked"),
         // The song facts box (LISTENERS.md §8; 2026-10-17: its own row, as the album's).

@@ -374,6 +374,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - **Playback › Show artist info on the artist's page** (2026-10-12, LISTENERS.md §6):
   `showArtistInfo` (On | Off, default On). On: an artist's page shows Last.fm's tags, plays and
   listeners, On tour and a link beside the photo. Off: no Last.fm artist call is made.
+- **Playback › Remember Artist filters** (2026-10-27, ARTIST-VIEW.md §12):
+  `rememberArtistFilters` (On | Off, default On). On: the pick on a Full artist page's Albums
+  shelf (All · Albums · Singles & EPs · Live) stays the same on the next artist. Off: every
+  artist page opens on All.
 - **Playback › Show album info on the album's page** (2026-10-13, LISTENERS.md §7):
   `showAlbumInfo` (On | Off, default On). On: an album's page shows Last.fm's tags, plays and
   listeners, the wiki's first two sentences and a link beside the cover. Off: no Last.fm album

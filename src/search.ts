@@ -18,6 +18,9 @@ export interface Album {
   /** Apple's real add date, set only by `recent_added` (HOME.md §9.2). The library
    *  sync never fills it: it groups albums from tracks, which carry no date. */
   dateAdded?: string;
+  /** The artist page's Albums shelf only: the Apple view the release came from, "single"
+   *  holding EPs (model.rs `Album.kind`, ARTIST-VIEW.md §12). */
+  kind?: "album" | "single" | "live";
 }
 
 export interface Artist {

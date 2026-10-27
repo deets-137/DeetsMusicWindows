@@ -325,6 +325,7 @@ const SPECS: Spec[] = [
   storeToggle("Playback", "historyShowDay", "Show the day in History"),
   storeToggle("Playback", "showListeners", "Show play counts from Last.FM"),
   storeToggle("Playback", "showArtistInfo", "Show artist info on the artist's page"),
+  storeToggle("Playback", "rememberArtistFilters", "Remember Artist filters"),
   storeToggle("Playback", "showAlbumInfo", "Show album info on the album's page"),
   storeToggle("Playback", "showSongInfo", "Show song info on the song's page"),
   storeChoice("Playback", "notesSource", "Notes from", [{ value: "both", label: "Apple and Last.fm" }, { value: "apple", label: "Apple only" }, { value: "lastfm", label: "Last.fm only" }, { value: "none", label: "None" }]),

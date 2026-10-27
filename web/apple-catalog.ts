@@ -170,6 +170,8 @@ export function collectionTracksFrom(kind: "albums" | "playlists", body: Json, i
 
 /** The views merged into the Albums shelf, in order (apple.rs `ALBUM_VIEWS`). */
 export const ALBUM_VIEWS = ["full-albums", "singles", "live-albums"] as const;
+/** `Album.kind` for each of ALBUM_VIEWS (apple.rs `ALBUM_KINDS`). */
+const ALBUM_KINDS = ["album", "single", "live"] as const;
 export const APPEARS_VIEW = "appears-on-albums";
 
 /** The reply of `/v1/catalog/{sf}/artists/{id}?views=…` → `ArtistDetail`. `whole`: a view read
@@ -190,7 +192,10 @@ export function artistDetailFrom(body: Json, whole: Record<string, Json[]> = {})
     seen.add(id);
     return true;
   };
-  const albums = ALBUM_VIEWS.flatMap(view).filter(keep).map(albumFromCatalog);
+  // Each release carries the view it came from, for the shelf's filter (ARTIST-VIEW.md §12).
+  const albums = ALBUM_VIEWS.flatMap((name, i) => view(name).map((v) => [v, ALBUM_KINDS[i]] as const))
+    .filter(([v]) => keep(v))
+    .map(([v, kind]) => ({ ...albumFromCatalog(v), kind }));
   return {
     artist: artistFromCatalog(a),
     albums,

@@ -1691,6 +1691,7 @@ pub(crate) fn album_from_catalog(v: &serde_json::Value) -> Album {
         release_date: a["releaseDate"].as_str().map(String::from),
         track_count: a["trackCount"].as_u64().map(|n| n as u32),
         date_added: None,
+        kind: None,
     }
 }
 
@@ -2128,6 +2129,8 @@ pub async fn apple_add_to_library(
 /// The views merged into the artist page's Albums shelf (his call, 2026-10-26). Apple files an
 /// EP under `singles` (probed 2026-10-26: LISA's "PRESS PLAY - EP"), so there is no EP view.
 const ALBUM_VIEWS: [&str; 3] = ["full-albums", "singles", "live-albums"];
+/// `Album.kind` for each of ALBUM_VIEWS, in the same order.
+const ALBUM_KINDS: [&str; 3] = ["album", "single", "live"];
 /// Releases by others the artist is on: its own shelf, the last on the page.
 const APPEARS_VIEW: &str = "appears-on-albums";
 /// Pages of 100 read per view after the first answer. A runaway guard: Taylor Swift's 87
@@ -2218,7 +2221,14 @@ pub async fn catalog_artist(
     // One release can sit in two views: it shows once, in the first.
     let mut seen = std::collections::HashSet::new();
     let mut keep = |v: &serde_json::Value| v["id"].as_str().map_or(true, |i| seen.insert(i.to_string()));
-    let albums: Vec<Album> = lists.iter().flatten().filter(|v| keep(v)).map(album_from_catalog).collect();
+    // Each release carries the view it came from, for the shelf's filter (ARTIST-VIEW.md §12).
+    let albums: Vec<Album> = lists
+        .iter()
+        .zip(ALBUM_KINDS)
+        .flat_map(|(list, kind)| list.iter().map(move |v| (v, kind)))
+        .filter(|(v, _)| keep(v))
+        .map(|(v, kind)| Album { kind: Some(kind.to_string()), ..album_from_catalog(v) })
+        .collect();
     let appears_on: Vec<Album> = appears.iter().filter(|v| keep(v)).map(album_from_catalog).collect();
     let featured_playlists: Vec<Playlist> = views["featured-playlists"]["data"]
         .as_array()
@@ -3141,6 +3151,7 @@ fn album_from_library(v: &serde_json::Value) -> Album {
         release_date: a["releaseDate"].as_str().map(String::from),
         track_count: None,
         date_added: a["dateAdded"].as_str().map(String::from),
+        kind: None,
     }
 }
 

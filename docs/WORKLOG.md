@@ -2,9 +2,20 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 # DeetsMusic — Work log
+
+## 2026-10-27 — The artist page's Albums filter (branch `onepointtwo`, committed)
+
+**His ask:** a subtle filter in the style of the other dropdowns, to separate singles and EPs, live
+albums and albums on the artist page's Albums shelf. **His calls** (ARTIST-VIEW.md §12): a small
+pill in the label's row if nothing else moves; the pick carries to the next artist, with a
+toggle *Remember Artist filters* (on); the Full page only. **Built:** `Album.kind` from the Apple
+view (apple.rs `ALBUM_KINDS`, the web twin and its test), the engine's `Context.shelfPop` and
+`shelfPillHTML` on `wirePops` (the Sort pop's family), `.lib-pill--shelf` in a wrap with no
+height, the setting in its five places. **Checks:** `npx tsc --noEmit`, the catalog test,
+`cargo check`. What Claude decided inside his calls: §12. His hand test passed ("looks good").
 
 ## 2026-10-26 — Read marks: did a reply reach the filer (DeetsSupport + DeetsSolutions, uncommitted)
 

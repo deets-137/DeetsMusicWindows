@@ -196,6 +196,16 @@ export interface Context {
   /** Draw the shelves ABOVE the Play / Shuffle row instead of under it (the Pinned shelf,
    *  PINS.md fork 9B). */
   shelvesFirst?: boolean;
+  /** One choice pill inside the shelves (the artist page's Albums filter, ARTIST-VIEW.md §12).
+   *  The shelf HTML draws it with `shelfPillHTML`; the engine opens it as the Sort pop's
+   *  family, one column of options, and a pick closes it. `pick` re-renders the level. */
+  shelfPop?: {
+    /** The panel's name, for a screen reader. */
+    label: string;
+    options: () => { value: string; label: string; count?: number }[];
+    active: () => string;
+    pick: (value: string) => void;
+  };
   onShelf?: (item: HTMLElement) => void;
   /** A press inside the shelves that starts a drag of its own — the grip on a pinned tile
    *  (MOVABLE-ROWS.md §5.2). Null when the press was somewhere else. */
@@ -433,6 +443,18 @@ interface Frame {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 export { esc }; // from dom.ts; its older callers import it from here
+
+/** The pill of `Context.shelfPop`, for the end of a shelf label (ARTIST-VIEW.md §12): the Sort
+ *  pill's family, short enough to sit in the label's line (`.lib-pill--shelf`). */
+export function shelfPillHTML(label: string, title: string): string {
+  return (
+    `<span class="lib-ctrl lib-ctrl--shelf" data-ctrl="shelf">` +
+    `<button class="lib-pill lib-pill--shelf" data-pop="shelf" type="button" aria-haspopup="true" aria-expanded="false" title="${esc(title)}">` +
+    `<span class="lib-pill__label">${esc(label)}</span>` +
+    `<svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
+    `</button></span>`
+  );
+}
 
 // One collator, built once. `a.localeCompare(b, undefined, {…})` builds one per CALL: the
 // library's 3,895 rows make ~100,000 of them in a single sort, which measured 204 ms against
@@ -711,6 +733,23 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       )
       .join("");
     return `<div class="lib-pop__cols"><div class="lib-pop__col" role="group" aria-label="Sort by">${keys}</div><div class="lib-pop__col lib-pop__col--dir" role="group" aria-label="Direction">${dirs}</div></div>`;
+  };
+
+  // A shelf's choices: one column of the Sort pop's rows, each with its count.
+  const shelfPopBody = (f: Frame) => {
+    const sp = f.ctx.shelfPop;
+    if (!sp) return "";
+    const on = sp.active();
+    const rows = sp
+      .options()
+      .map(
+        (o) =>
+          `<button class="lib-pop__opt${o.value === on ? " is-active" : ""}" type="button" data-shelf-pick="${esc(o.value)}">${esc(o.label)}${
+            o.count !== undefined ? `<span class="lib-pop__count">${o.count}</span>` : ""
+          }</button>`,
+      )
+      .join("");
+    return `<div class="lib-pop__cols"><div class="lib-pop__col" role="group" aria-label="${esc(sp.label)}">${rows}</div></div>`;
   };
 
   const viewPopBody = (f: Frame) => {
@@ -1760,7 +1799,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   // open, so tweaks can continue. The pills are rebuilt with the head on a render, so
   // `wirePops` re-binds each kind's handle to the live pill. Before this day it was its own
   // mechanism (built and placed on each open), the one popover off the primitive.
-  type PopKind = "sort" | "view" | "rule";
+  type PopKind = "sort" | "view" | "rule" | "shelf";
   const pops = new Map<PopKind, { panel: HTMLElement; handle: DropdownHandle | null; pill: HTMLElement | null }>();
   const popCols = (panel: HTMLElement) =>
     [...panel.querySelectorAll<HTMLElement>(".lib-pop__col")].map((c) => [...c.querySelectorAll<HTMLButtonElement>("button")]);
@@ -1773,6 +1812,13 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const setActive = (attr: string, val: string) =>
       pop.querySelectorAll<HTMLElement>(`[${attr}]`).forEach((el) => el.classList.toggle("is-active", el.getAttribute(attr) === val));
 
+    // A shelf's choice: the level draws again, its pill with it, so the pop closes first.
+    const sp = t.closest<HTMLElement>("[data-shelf-pick]");
+    if (sp) {
+      closePops();
+      cur().ctx.shelfPop?.pick(sp.dataset.shelfPick!);
+      return;
+    }
     const sk = t.closest<HTMLElement>("[data-sort-key]");
     if (sk) {
       cur().sortKey = sk.dataset.sortKey!;
@@ -1867,7 +1913,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     panel.className = "lib-pop pop";
     panel.dataset.frames = "lib-pop"; // the arrival's frames (frames.ts, through makeDropdown)
     panel.setAttribute("role", "menu");
-    panel.setAttribute("aria-label", which === "sort" ? "Sort" : "View");
+    panel.setAttribute("aria-label", which === "sort" ? "Sort" : which === "shelf" ? (cur().ctx.shelfPop?.label ?? "Show") : "View");
     panel.addEventListener("click", (e) => onPopClick(e, panel));
     panel.addEventListener("keydown", (e) => onPopKey(e, which, panel));
     document.body.appendChild(panel);
@@ -1903,7 +1949,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   /** Bind each kind's dropdown to the pane's live pill. Called after every head render and on
    *  a pane slide; a pill that is the same element keeps its handle (a kept head). */
   const wirePops = (pane: HTMLElement) => {
-    for (const which of ["sort", "view", "rule"] as PopKind[]) {
+    for (const which of ["sort", "view", "rule", "shelf"] as PopKind[]) {
       const pill = pane.querySelector<HTMLElement>(`[data-pop="${which}"]`);
       const bound = pops.get(which);
       if (bound && bound.pill === pill) continue;
@@ -1930,7 +1976,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
             placePop(panel, pill);
             return; // the panel enters its own rows (filter-panel.ts)
           }
-          panel.innerHTML = which === "sort" ? sortPopBody(cur()) : viewPopBody(cur());
+          panel.innerHTML = which === "sort" ? sortPopBody(cur()) : which === "shelf" ? shelfPopBody(cur()) : viewPopBody(cur());
           placePop(panel, pill);
           if (pill.matches(":focus-visible")) {
             const first = popCols(panel)[0] ?? [];

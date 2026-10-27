@@ -119,6 +119,11 @@ pub struct Album {
     pub track_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_added: Option<String>,
+    /// The artist page's Albums shelf only: the Apple view the release came from, "album"
+    /// (`full-albums`), "single" (`singles`, where Apple files EPs) or "live" (`live-albums`).
+    /// The shelf's filter reads it (ARTIST-VIEW.md §12). None everywhere else.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]

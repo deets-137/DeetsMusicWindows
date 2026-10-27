@@ -238,6 +238,11 @@ each step that touches those calls.
   Privacy bullet is pushed. Open: his look at the Inbox (the owner's read is untested).
   DeetsSolutions docs/support.md › Read marks.
 
+- **The artist page's Albums filter (2026-10-27, committed, his hand test passed).** A pill at the end
+  of the Full artist page's "Albums" label: All · Albums · Singles & EPs · Live, from the Apple
+  view of each release (`Album.kind`). Settings › Playback › *Remember Artist filters* (on).
+  ARTIST-VIEW.md §12; desk test §12.3.
+
 - **Artist page albums (2026-10-26, committed, desk test passed).** The Full artist page's
   Albums shelf holds albums, singles and EPs, and live albums, read whole; Appears On under the
   Top Songs rows; the Top Songs bar has no fill at rest, and a line separates the sections.

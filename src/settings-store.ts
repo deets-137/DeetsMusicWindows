@@ -316,6 +316,9 @@ export interface Settings {
   /** An artist's page shows the Last.fm facts box beside the photo: tags, plays and listeners,
    *  on tour, the Last.fm link (LISTENERS.md §6). Off: no artist call is made. */
   showArtistInfo: boolean;
+  /** The artist page's Albums filter (All · Albums · Singles & EPs · Live) carries to the next
+   *  artist (ARTIST-VIEW.md §12). Off: every artist page opens on All. */
+  rememberArtistFilters: boolean;
   /** An album's page shows the Last.fm facts box beside the cover: tags, plays and listeners,
    *  the wiki's first sentences, the Last.fm link (LISTENERS.md §7). Off: no album call. */
   showAlbumInfo: boolean;
@@ -648,6 +651,7 @@ export const DEFAULTS: Settings = {
   historyShowDay: false, // user's call 2026-09-15: History looks as it always did until you ask
   showListeners: true, // his call 2026-10-12: the badge shows for everyone; one Last.fm call per song, cached a month
   showArtistInfo: true, // his call 2026-10-12: on for everyone, its own row (not the badge's); one Last.fm call per artist, cached a month
+  rememberArtistFilters: true, // his call 2026-10-27: someone who picks Albums wants it on every artist; the pill always names the pick
   showAlbumInfo: true, // 2026-10-13: its own row (his call), on like the artist's; one or two Last.fm calls per album, cached a month
   showSongInfo: true, // 2026-10-17: its own row, on like the album's (his artist call); rides the song's one Last.fm call, cached a month
   notesSource: "both", // his call 2026-10-17: Apple first, then Last.fm; the row is for a user who wants one or none (LISTENERS.md §8.4)

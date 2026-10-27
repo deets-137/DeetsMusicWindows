@@ -178,6 +178,7 @@ nothing about authoring changed when the box did.
 | Presentation mode, Max (2026-10-13) | the shrink square · the age line | Back to the card (Esc) · When the app last asked Last.fm. Last.fm updates its counts in batches | present.ts (`PRESENT_HINTS`); [PresentationMode.md](PresentationMode.md) |
 | Settings › Playback (2026-10-12) | Show play counts from Last.FM | Now Playing shows how many plays and listeners a song has on Last.fm. Off: Last.fm is not asked | settings-card.ts |
 | Settings › Playback (2026-10-12) | Show artist info on the artist's page | The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked | settings-card.ts |
+| Settings › Playback (2026-10-27) | Remember Artist filters | The filter on an artist's Albums shelf stays the same on the next artist. Off: every artist opens on All | settings-card.ts |
 | Settings › Playback (2026-10-13; the words 2026-10-17, album notes) | Show album info on the album's page | The album's page shows Last.fm's tags, plays and listeners, a few words about it from Apple Music or Last.fm, and a link. Off: neither is asked | settings-card.ts |
 | Settings › Playback (2026-10-17) | Show song info on the song's page | Song Credits shows Last.fm's tags, plays and listeners, a few words about the song or its album, and a link | settings-card.ts |
 | Settings › Playback (2026-10-17) | Notes from | Where the About words on a song's or an album's page come from. Both: Apple first, then Last.fm | settings-card.ts |
@@ -203,6 +204,7 @@ nothing about authoring changed when the box did.
 | Radio | Refresh | Reads the stations from Apple Music again | radio-card.ts |
 | Any shelf tile (Home, Library, Playlists, Radio) | the pin badge (2026-09-18, PINS.md) | Unpin | pins.ts |
 | Library artist view | the hero cover | Opens the menu for this cover (the engine's cover button; the menu is Pin / Unpin) | collection-card.ts |
+| Full artist view (2026-10-27) | the Albums shelf's filter pill (All · Albums · Singles & EPs · Live) | Shows all of the artist's releases, or only albums, singles and EPs, or live albums | media-levels.ts; [ARTIST-VIEW.md §12](ARTIST-VIEW.md) |
 | Search | Clear · Filter | Clears the search · Picks which kinds of results show: songs, albums, artists, playlists, stations | search-card.ts |
 | Song pane (2026-09-17) | a writer chip | Other songs by this writer | search-card.ts (CREDITS.md §7) |
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |

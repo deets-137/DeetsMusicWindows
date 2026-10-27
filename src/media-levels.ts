@@ -29,7 +29,7 @@ import type { Artwork, Track } from "./library";
 import { TILE_PX } from "./art-size";
 import type { Playlist } from "./search";
 import type { CollectionCardHandle, Context, Density, Grouping, SortSpec, ViewOption, ViewSwitch } from "./collection-card";
-import { formatTotal, esc } from "./collection-card";
+import { formatTotal, esc, shelfPillHTML } from "./collection-card";
 import type { LibNav, SongOpts } from "./library-card";
 import type { MenuItem } from "./context-menu";
 import { catalogRelated, collectionTracks, artistDetail, searchCatalog, materializeTrack, type Album, type ArtistDetail } from "./search";
@@ -202,11 +202,42 @@ interface ShelfAlbum {
   name: string;
   artwork?: Artwork;
   releaseDate?: string;
+  /** The Apple view it came from (Full only): the Albums shelf's filter (ARTIST-VIEW.md §12). */
+  kind?: AlbumKind;
   open?: () => void;
   menu: () => MenuItem[];
 }
 
 const yearOf = (d?: string) => d?.slice(0, 4);
+
+// The Albums shelf's filter (ARTIST-VIEW.md §12, his calls 2026-10-27): a pill at the end of the
+// shelf label picks one kind. A kind with nothing in it is not offered, and an artist with one
+// kind gets no pill. With *Remember Artist filters* on, the pick is the next artist's too.
+type AlbumKind = NonNullable<Album["kind"]>;
+type AlbumPick = "all" | AlbumKind;
+const ALBUM_PICKS: { value: AlbumPick; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "album", label: "Albums" },
+  { value: "single", label: "Singles & EPs" },
+  { value: "live", label: "Live" },
+];
+const PICK_KEY = "deets.artistAlbumPick";
+const isPick = (v: unknown): v is AlbumPick => ALBUM_PICKS.some((p) => p.value === v);
+const storedPick = (): AlbumPick => {
+  try {
+    const v = localStorage.getItem(PICK_KEY);
+    return isPick(v) ? v : "all";
+  } catch {
+    return "all";
+  }
+};
+const storePick = (v: AlbumPick) => {
+  try {
+    localStorage.setItem(PICK_KEY, v);
+  } catch {
+    /* storage unavailable: this page keeps the pick */
+  }
+};
 
 /** Apple's songs join the store before they play, as the Library's Full rows do
  *  (library-card.ts `joinStore`): the play's stats resolve to the song. */
@@ -372,6 +403,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
     let checking: CheckProgress | null = null;
     let albumList: ShelfAlbum[] = []; // the Albums shelf as last drawn (a tile's index → its album)
     let appearsList: ShelfAlbum[] = []; // the Appears On shelf, the same way
+    let ownPick: AlbumPick = "all"; // this page's pick: the one in force while Remember is off
 
     // The rows' extra sorts (ARTIST-VIEW.md §1). Popular = Apple's top-songs order, then the
     // rest newest first. Most Played = this app's own play counts (zero calls).
@@ -493,7 +525,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
 
     // Newest first, as the Search pane lists them; an album with no date goes last.
     const newestFirst = (list: ShelfAlbum[]) => list.sort((x, y) => (y.releaseDate ?? "").localeCompare(x.releaseDate ?? ""));
-    const albumTiles = (kind: "album" | "appears", list: ShelfAlbum[], label: string): string => {
+    const albumTiles = (kind: "album" | "appears", list: ShelfAlbum[], label: string, pill = ""): string => {
       const tiles = list
         .map((al, i) => {
           const url = artURL(al.artwork, TILE_PX);
@@ -506,10 +538,41 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
           );
         })
         .join("");
-      return tiles ? `<div class="search__label">${label}</div><div class="search__scroller search__scroller--albums">${tiles}</div>` : "";
+      const head = pill ? `<div class="search__label search__label--pick">${label}${pill}</div>` : `<div class="search__label">${label}</div>`;
+      return tiles ? `${head}<div class="search__scroller search__scroller--albums">${tiles}</div>` : "";
     };
-    // Albums, singles and EPs, and live albums in one shelf (his call, 2026-10-26).
-    const albumsShelf = (): string => albumTiles("album", (albumList = newestFirst(d.albums())), "Albums");
+    // The kinds this artist has, with their counts; a kind with none is left out.
+    const kindCounts = (all: ShelfAlbum[]) => {
+      const n = new Map<AlbumKind, number>();
+      for (const al of all) if (al.kind) n.set(al.kind, (n.get(al.kind) ?? 0) + 1);
+      return n;
+    };
+    // The pick in force: the remembered one or this page's, and All when this artist has none
+    // of that kind (the remembered pick itself is kept for the next artist).
+    const pickNow = (counts: Map<AlbumKind, number>): AlbumPick => {
+      const want = setting("rememberArtistFilters") ? storedPick() : ownPick;
+      return want !== "all" && counts.has(want) ? want : "all";
+    };
+    const pickOptions = (all: ShelfAlbum[]) => {
+      const counts = kindCounts(all);
+      return ALBUM_PICKS.filter((p) => p.value === "all" || counts.has(p.value)).map((p) => ({
+        ...p,
+        count: p.value === "all" ? all.length : counts.get(p.value),
+      }));
+    };
+    // Albums, singles and EPs, and live albums in one shelf (his call, 2026-10-26), with a pill to
+    // show one kind (§12). Two kinds or more, or no pill.
+    const albumsShelf = (): string => {
+      const all = newestFirst(d.albums());
+      const counts = kindCounts(all);
+      const pick = pickNow(counts);
+      albumList = pick === "all" ? all : all.filter((al) => al.kind === pick);
+      const pill =
+        counts.size > 1
+          ? shelfPillHTML(ALBUM_PICKS.find((p) => p.value === pick)!.label, "Shows all of the artist's releases, or only albums, singles and EPs, or live albums")
+          : "";
+      return albumTiles("album", albumList, "Albums", pill);
+    };
     // Appears On: the last thing on the page, under the rows (his call, 2026-10-26).
     const appearsShelf = (): string => {
       const html = albumTiles("appears", (appearsList = newestFirst(d.appearsOn?.() ?? [])), "Appears On");
@@ -550,6 +613,18 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       },
       shelves: () => (d.ready() ? artistShelvesHTML(d.featured(), yours, checking, albumsShelf()) : ""),
       footer: () => (d.ready() ? appearsShelf() : ""),
+      shelfPop: {
+        label: "Show",
+        options: () => pickOptions(d.albums()),
+        active: () => pickNow(kindCounts(d.albums())),
+        pick: (v) => {
+          if (!isPick(v)) return;
+          ownPick = v;
+          if (setting("rememberArtistFilters")) storePick(v);
+          diag.log("artist:albumPick", { pick: v, remember: setting("rememberArtistFilters") });
+          card().reload(ctx);
+        },
+      },
       // Sort / View / Search act only on the rows, so they sit under this label.
       toolbarBelow: d.rowsLabel,
       // An album drills in place. A featured playlist opens as a Search pane; one of yours in
@@ -886,6 +961,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         name: al.title,
         artwork: al.artwork,
         releaseDate: al.releaseDate,
+        kind: al.kind,
         open: aid
           ? () => card().drill(fullAlbumLevel({ albumId: aid, name: al.title, artist: al.artistName || name(), artwork: al.artwork, releaseDate: al.releaseDate }))
           : undefined,

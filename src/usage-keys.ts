@@ -72,4 +72,5 @@ export const NOT_REPORTED: Readonly<Record<string, string>> = {
   npShade: "a new Window row (2026-10-25): his call before it is sent",
   npOffCover: "a new Window row (2026-10-26): his call before it is sent",
   pinView: "the pin panel's last tile (2026-10-26, PIN.md): his call before it is sent",
+  rememberArtistFilters: "a new Playback row (2026-10-27, ARTIST-VIEW.md §12): his call before it is sent",
 };
