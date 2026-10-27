@@ -56,13 +56,6 @@ shelf shows all releases, or only albums, singles and EPs, or live albums, with 
 each. Your pick stays the same on the next artist. To make every artist open on All, turn off
 Settings › Playback › *Remember Artist filters*.
 
-**Usage counts: more exact, and updates counted.** The day count now goes after a few minutes of
-use, even across short sessions, so a quick listen counts too. When an update downloads and when
-it applies, the app sends the two version numbers as a count, so the version numbers are right
-the same day. Each report carries a random key made for that one report, so a copy is never
-counted twice; the server keeps it alone for 2 days. Settings › About › *What is sent* shows
-each report as it leaves, and *Send usage counts* turns them all off.
-
 ## 1.1.2 — 2026-10-26
 
 **Singles, EPs, and Live Albums for Artists.** An artist's Apple Music page now shows their singles, EPs

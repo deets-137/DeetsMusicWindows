@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-27
 sources: [src/wheel-step.ts, src/wheel-volume.ts, src/main.ts, src/now-playing-card.ts, src/player.ts, src/settings-store.ts, src/settings-card.ts, src/agent-settings.ts, src/usage-keys.ts, tests/wheel-step.test.ts]
 updated: 2026-10-27
 ---
@@ -75,7 +75,9 @@ One `wheel:volume` line in the `diag` ring per gesture (`note: "start"`), and on
 turns smooth part way (`note: "smooth"`): `where` (pill / player), `device`, and the raw
 `wheelDeltaY`, `deltaY`, `deltaMode`. It is how the notch rule is checked on real hardware.
 
-## 5. Desk test (open)
+## 5. Desk test
+
+**Passed 2026-10-27 (his word: "desk tested and looks good").**
 1. Roll a notched mouse on the Now Playing card: one 5 % step per notch, up is louder. The
    ring shows `device: "notch"` with `wheelDeltaY` ±120.
 2. Swipe a touchpad up fast on the card: the volume rises smoothly, no faster than 40 % a

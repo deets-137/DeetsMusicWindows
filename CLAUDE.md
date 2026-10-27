@@ -250,7 +250,7 @@ for word, with RELEASE.md's section numbers.
   unchanged and the two hints name each other. Cover is a new view, controls on hover. The pin
   turns horizontal on press, diagonal at rest, vertical while pinned. §2 his calls; §3.6
   Claude's choices for his review.
-- `WHEEL-VOLUME.md` — BUILT 2026-10-27 on `onepointtwo`, desk test open (§5): the mouse wheel on
+- `WHEEL-VOLUME.md` — BUILT 2026-10-27 on `onepointtwo`, desk test passed 2026-10-27 (§5): the mouse wheel on
   the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
   volume*, default on), the scroll added up per notch, a trackpad's rise capped at 40 % a second
   (`src/wheel-step.ts`, pure; `src/wheel-volume.ts`). His calls §1.

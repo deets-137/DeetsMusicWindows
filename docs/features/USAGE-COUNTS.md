@@ -657,7 +657,8 @@ applies, the app sends the two version numbers, as a count."
    a move, a failed send repeated, a rollback), the plan in `usage.ts`, the kind `update` in
    `usage.rs`. *Show what is sent* shows the next update report.
 3. The admin page in DeetsSolutions (§12.4).
-4. The README sentence (§12.5) and a release-note line with a bold lead.
+4. The README sentence (§12.5). No release-note line: 1.2.0's draft paragraph was taken out
+   (his call, 2026-10-27: users do not care, and the *Send usage counts* row did not change).
 5. The desk test: the dev app against a local worker (§10's setup). A forced update to a local
    feed gives `downloaded`; a restart gives `applied` with the moved counts; a curl of a local
    Setup.exe, complete and cut short, gives `setup.start` and `setup.done`.
