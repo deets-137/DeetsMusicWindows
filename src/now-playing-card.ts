@@ -14,6 +14,7 @@ import { setting, onSettingsChange } from "./settings-store";
 import { listenersFor, fmtCount, type ListenCount } from "./listeners";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ICON_VOL, ICON_MUTE } from "./volume-icons";
+import { wireWheelVolume } from "./wheel-volume";
 import { mountAirplay, type AirplayMount } from "./airplay";
 import { onTracksChange } from "./track-store";
 import { watchAlbumColor } from "./album-color";
@@ -508,6 +509,9 @@ export const nowPlayingCard: CardDef = {
       unsubVolume = onVolumeChange(reflectVolume);
       reflectVolume();
     }
+    // The wheel anywhere on the card steps the volume (WHEEL-VOLUME.md), while Settings › Playback ›
+    // *Scroll over the Player for volume* is on. Off, the wheel passes through untouched.
+    const unwireWheel = wireWheelVolume(host, "player", () => setting("playerWheelVolume"));
 
     // Shuffle — the mode (press = on + Up Next shuffles now, press again = off), or the
     // one-shot when "Shuffle stays on" is off (player.toggleShuffle / FUTURE-SETTINGS §5).
@@ -731,6 +735,7 @@ export const nowPlayingCard: CardDef = {
         unsubFavToggle();
         unsubFavTracks();
         unsubVolume();
+        unwireWheel();
         airplay?.destroy();
         stackObserver?.disconnect();
         badgeObserver.disconnect();

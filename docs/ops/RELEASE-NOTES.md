@@ -41,6 +41,16 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.2.0 — 2026-10-27
+
+**Adjust volume by scrolling on the Player!** Roll the mouse wheel anywhere on Now Playing to
+turn the volume up or down, 5 % per notch. On a trackpad the volume goes up no faster than 40 %
+a second, so a fast swipe never makes the music suddenly loud. Turning it down is never held
+back. In Mini and Midi, the small volume bar in the title bar grows while you scroll. It now
+grows over the buttons beside it, so the window buttons stay in place. A scroll during the sleep
+timer's fade no longer leaves the music at the faded level. Settings › Playback › *Scroll over
+the Player for volume* turns it off.
+
 ## 1.1.2 — 2026-10-26
 
 **Singles, EPs, and Live Albums for Artists.** An artist's Apple Music page now shows their singles, EPs

@@ -1413,6 +1413,14 @@ body {
   padding: 0;
   gap: 0;
 }
+/* The small pill's slot never widens (his call, 2026-10-27; WHEEL-VOLUME.md §3b). The pill sits
+   on the slot's right edge and grows LEFT over the title bar buttons beside it, so the window
+   buttons never move. main.ts fades the buttons it covers (`data-vol-under`). */
+.vol--shrink { width: var(--vol-pill-w); height: var(--traffic-size); z-index: 1; }
+.vol--shrink .vol__pill { position: absolute; right: 0; top: 50%; translate: 0 -50%; }
+[data-vol-under] { transition: opacity var(--vol-grow) var(--pop-ease); }
+[data-vol-under="on"] { opacity: 0; pointer-events: none; }
+:root[data-motion="reduced"] [data-vol-under] { transition: none; }
 .vol__pill:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
 
 /* The fill sweeps the WHOLE pill, under the glyph squares, so 100 % reaches the far end.

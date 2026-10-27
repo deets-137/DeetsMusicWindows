@@ -247,6 +247,10 @@ for word, with RELEASE.md's section numbers.
   unchanged and the two hints name each other. Cover is a new view, controls on hover. The pin
   turns horizontal on press, diagonal at rest, vertical while pinned. §2 his calls; §3.6
   Claude's choices for his review.
+- `WHEEL-VOLUME.md` — BUILT 2026-10-27 on `onepointtwo`, desk test open (§5): the mouse wheel on
+  the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
+  volume*, default on), the scroll added up per notch, a trackpad's rise capped at 40 % a second
+  (`src/wheel-step.ts`, pure; `src/wheel-volume.ts`). His calls §1.
 - `GRAND-OPENING.md` — a project (2026-10-22, branch `grand-opening`), designed with him piece
   by piece: the startup screen, one large card over every card on first launch
   (`src/onboarding.ts`). Built: the frame (§1), the nav bar with Settings in it and the Compass row (§2), pages 2–3 and the glide (§4), page 1's welcome with the sign-ins (§5, `src/onboarding-welcome.ts`), the Happy skin's pair in front (§6), page 2's layout picks (§7, `src/onboarding-looks.ts`; the place API `setStartCards` in layout.ts), page 3 Fashion: skin and theme tiles in their own look, and the preview player with his three songs on the real record, drum and sea (§8, §8b, `src/onboarding-preview.ts`); Next / Let's Boogie (the launch's reveal, `revealApp`) and the warm-up after sign-in (§9); the walk waits for it to close.

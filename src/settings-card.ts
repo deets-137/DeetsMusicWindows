@@ -229,6 +229,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Window", row: "npoffcover" }, // Title under the cover, built 2026-10-26 (fullscreen-player.md §17)
   { section: "Window", row: "sizecover" }, // Cover opens at, the pin's Cover view, built 2026-10-26 (PIN.md)
   { section: "Playback", row: "artistfilters" }, // Remember Artist filters, built 2026-10-27 (ARTIST-VIEW.md §12)
+  { section: "Playback", row: "playerwheel" }, // Scroll over the Player for volume, built 2026-10-27 (WHEEL-VOLUME.md)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -476,7 +477,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1608,6 +1609,7 @@ function mountSettings(
           hint: "Songs dragged onto Now Playing play at once; Up Next can stay after them",
           options: [{ value: "keep", label: "Keep Queue" }, { value: "replace", label: "Replace it" }],
         },
+        storeToggle("playerwheel", "Scroll over the Player for volume", "playerWheelVolume", () => "The mouse wheel anywhere on Now Playing turns the volume up or down. The volume bar in the title bar always does"),
         {
           kind: "choice", id: "previous", label: "Previous behavior for mid-list songs", key: "previousReach",
           hint: "The list: the songs above the one you clicked",

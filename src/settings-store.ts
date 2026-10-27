@@ -336,6 +336,9 @@ export interface Settings {
   /** A drop on the Now Playing card: play it and keep Up Next after it, or replace Up Next
    *  as Play Now does (DRAG-DROP.md §3). */
   dropPlayQueue: "keep" | "replace";
+  /** The wheel anywhere on the Now Playing card steps the volume (WHEEL-VOLUME.md). Off: the wheel
+   *  passes through. The title bar pill always takes the wheel. */
+  playerWheelVolume: boolean;
   /** What Previous may rewind into: the parked list above the click, or only heard songs (§4). */
   previousReach: "lookback" | "heard";
   /** At launch: bring back last session's song as Now Playing (paused) + Up Next + Previous,
@@ -657,6 +660,7 @@ export const DEFAULTS: Settings = {
   notesSource: "both", // his call 2026-10-17: Apple first, then Last.fm; the row is for a user who wants one or none (LISTENERS.md §8.4)
   usageReports: true, // his call 2026-09-29, again 2026-10-23: on, with a clear off switch on the grand opening's page 4; nothing leaves before that page was shown (USAGE-COUNTS.md §1, §7)
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
+  playerWheelVolume: true, // his call 2026-10-27: on; the card has nothing that scrolls, and the sound itself is the feedback
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
   listEndWeb: true, // user's call 2026-09-29: an ended album goes on like autoplay, with a web of songs like it

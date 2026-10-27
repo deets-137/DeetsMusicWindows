@@ -232,6 +232,12 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **The mouse wheel on the volume (2026-10-27, branch `onepointtwo`, committed and pushed; release notes in 1.2.0).** The wheel
+  on the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
+  volume*, on), one step per notch, a trackpad's rise capped at 40 % a second; the title bar
+  pill gets the same rule. Desk test open: features/WHEEL-VOLUME.md §5. The DeetsSupport copy of
+  the usage key list (`src/usage-keys.js`) is updated, not deployed; the worker drops the new key
+  until a deploy (his call).
 - **Read marks on report replies (2026-10-26; LIVE: the worker, its migration and the site).** DeetsSupport notes when a filer's app or page reads a ticket, so the
   admin Inbox shows *Seen* / *Opened* under each of his replies and *Last checked* on the
   post. No app release needed (1.1.0 and later already read `/t/<code>`); the README ›

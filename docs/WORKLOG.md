@@ -17,6 +17,21 @@ view (apple.rs `ALBUM_KINDS`, the web twin and its test), the engine's `Context.
 height, the setting in its five places. **Checks:** `npx tsc --noEmit`, the catalog test,
 `cargo check`. What Claude decided inside his calls: §12. His hand test passed ("looks good").
 
+## 2026-10-27 — The mouse wheel on the volume (branch `onepointtwo`, committed and pushed)
+
+**His ask:** the wheel over the player turns the volume, and the same on the title bar volume
+bar. The pill already took the wheel, one 5 % step per EVENT, so a touchpad swipe could jump to
+full volume. **His calls** (features/WHEEL-VOLUME.md §1): no extra feedback (the sound is the
+feedback); a toggle *Scroll over the Player for volume*, default on; a trackpad's rise capped at
+40 % a second, a notched mouse never capped. **Built:** `src/wheel-step.ts` (pure: the device by
+the 120 grid, the scroll added up per notch, a token bucket for the rise; 9 tests),
+`src/wheel-volume.ts` (one stepper for the pill and the card, a `wheel:volume` diag line per
+gesture), `getLevel` in player.ts (a step no longer starts from a wind-down's level). `npm run
+check` and `vite build` pass. **What Claude decided inside his calls:** a pinch (Ctrl + wheel)
+and a sideways swipe never move the volume; a 300 ms pause ends a gesture; the row sits under
+*Dragging a Song into Now Playing behavior* in Settings › Playback; the hint text. Desk test
+open (§5).
+
 ## 2026-10-26 — Read marks: did a reply reach the filer (DeetsSupport + DeetsSolutions, uncommitted)
 
 **His ask:** a way to know whether his replies to reports reached the user. Nothing recorded

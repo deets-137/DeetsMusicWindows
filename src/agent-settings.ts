@@ -316,6 +316,7 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "playNowScope", "Right Click > Play Now behavior", [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }]),
   storeChoice("Playback", "pinNewAct", "Pinned Item click behavior", [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }]),
   storeChoice("Playback", "dropPlayQueue", "Dragging a Song into Now Playing behavior", [{ value: "keep", label: "Keep Queue" }, { value: "replace", label: "Replace it" }]),
+  storeToggle("Playback", "playerWheelVolume", "Scroll over the Player for volume"),
   storeChoice("Playback", "previousReach", "Previous behavior for mid-list songs", [{ value: "lookback", label: "The list" }, { value: "heard", label: "Played songs" }]),
   storeChoice("Playback", "restoreQueue", "Restore on launch", [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }]),
   storeToggle("Playback", "listEndWeb", "Play a web when a list ends"),

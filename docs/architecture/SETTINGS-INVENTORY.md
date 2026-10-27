@@ -313,6 +313,7 @@ under Cyber the whole section is gone.
 | Stream quality | Auto follows your network live | **Auto** / High / Low |
 | Right Click > Play Now behavior | What right-click › Play Now starts | Song only / **Song and rest of list** |
 | Dragging a Song into Now Playing behavior | Dragging a song onto Now Playing | **Keep Queue** / Replace it |
+| Scroll over the Player for volume | The mouse wheel anywhere on Now Playing turns the volume up or down (a trackpad rises at most 40 % a second). Off: the wheel passes through. The title bar volume bar always takes the wheel | **On** / Off |
 | Previous behavior for mid-list songs | What Previous may go back into | **The list** / only Played songs |
 | Restore on launch | What comes back when the app opens | **Last song** (paused, with its queue) / Up Next only / Nothing |
 | Play a web when a list ends | A list that ends with Repeat off: a temporary web (1 day) from the album, or from the last song of any other list, plays next. Off: the list is loaded again at its first song, paused. Nothing in a room, after a station break-out, or while the sleep timer waits for an end | **On** / Off |

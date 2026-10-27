@@ -38,7 +38,8 @@ import { initSkinSettings } from "./skin-settings";
 import { initMetal } from "./metal";
 import { initScene } from "./scene";
 import { initPet } from "./pet";
-import { getVolume, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
+import { wireWheelVolume, onWheelVolume } from "./wheel-volume";
+import { getVolume, getLevel, setVolume, toggleMute, isMuted, onVolumeChange, onPlayerState, warmPlayer, noteSignedIn, clearMusicKitSignIn, playPause } from "./player";
 import { toast } from "./toast";
 import { initReportReplies } from "./report-replies";
 import { repairText, type LoadProblems } from "./settings-repair";
@@ -716,15 +717,35 @@ window.addEventListener("DOMContentLoaded", () => {
     const hoverMode = () => setting("menuMode") === "hover";
     const isGrown = () => volPill.classList.contains("is-grown");
     const held = () => slider.dragging || volAirplay?.getAttribute("aria-expanded") === "true";
+    // The small pill grows left over its neighbors, never pushing the window buttons
+    // (WHEEL-VOLUME.md §3b). The title bar buttons and the app title it will cover fade out
+    // while it is grown; a button's open panel (a child with its own role) is not touched.
+    const under = () => {
+      const right = volRoot.getBoundingClientRect().right;
+      const grownW = parseFloat(getComputedStyle(volPill).getPropertyValue("--vol-pill-grown-w")) || 0;
+      const left = right - grownW;
+      return [...document.querySelectorAll<HTMLElement>(".titlebar button, .titlebar .app-title")].filter((el) => {
+        if (el.closest(".vol, .lights, .pop, [role=menu], [role=dialog], [role=group]")) return false;
+        if (el.getAttribute("aria-expanded") === "true") return false; // its panel is open: keep the trigger it hangs from
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.right > left && r.left < right;
+      });
+    };
+    const coverNeighbors = (on: boolean) => {
+      for (const el of document.querySelectorAll<HTMLElement>("[data-vol-under=on]")) el.dataset.volUnder = "off";
+      if (on) for (const el of under()) el.dataset.volUnder = "on";
+    };
     const grow = () => {
       window.clearTimeout(shrinkTimer);
       if (!shrinkMode() || isGrown()) return;
       frames.during("menu", 300, "volume");
+      coverNeighbors(true);
       volPill.classList.add("is-grown");
     };
     const shrinkNow = () => {
       window.clearTimeout(shrinkTimer);
       volPill.classList.remove("is-grown");
+      coverNeighbors(false);
     };
     const shrinkSoon = () => {
       window.clearTimeout(shrinkTimer);
@@ -767,15 +788,24 @@ window.addEventListener("DOMContentLoaded", () => {
       if (e.key === "Escape" && isGrown() && !held()) shrinkNow();
     });
 
-    // The wheel and the arrow keys step the level by 5 %.
+    // The arrow keys step the level by 5 %; the wheel does too, by its own rule (wheel-volume.ts:
+    // the scroll added up per notch, a trackpad's rise capped). Both step from the user's own
+    // level, not a wind-down's.
     const step = (dir: number) => {
-      setVolume(Math.max(0, Math.min(1, getVolume() + dir * 0.05)));
+      setVolume(Math.max(0, Math.min(1, getLevel() + dir * 0.05)));
       reflect(getVolume());
     };
-    volPill.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      step(e.deltaY < 0 ? 1 : -1);
-    }, { passive: false });
+    wireWheelVolume(volPill, "pill");
+    // The wheel grows the small pill while it turns, when no other volume bar is on screen
+    // (his call, 2026-10-27; WHEEL-VOLUME.md §3a): Mini and Midi without the stage volume row.
+    // It shrinks on the pill's own grace after the last wheel event.
+    onWheelVolume(() => {
+      if (!shrinkMode()) return;
+      const other = [...document.querySelectorAll<HTMLElement>(".np__vol")].some((el) => el.checkVisibility());
+      if (other) return;
+      grow();
+      shrinkSoon();
+    });
     volPill.addEventListener("keydown", (e) => {
       if (e.target !== volPill) return; // the mute or AirPlay square has its own keys
       if (e.key === "ArrowUp" || e.key === "ArrowRight") step(1);

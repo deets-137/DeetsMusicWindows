@@ -4163,6 +4163,12 @@ export function getVolume(): number {
   return muted ? 0 : level * duck;
 }
 
+/** The user's own level (0..1): 0 while muted, never lowered by a duck. A step from the wheel
+ *  or the keys starts here, so a step during a wind-down does not keep the wind-down's level. */
+export function getLevel(): number {
+  return muted ? 0 : level;
+}
+
 /** Whether output is currently muted (distinct from level === 0). */
 export function isMuted(): boolean {
   return muted;
