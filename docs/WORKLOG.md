@@ -18,8 +18,10 @@ untraceable). **Built:** USAGE-COUNTS.md §13: `/usage/update` with moves, the a
 report key on every route, the owner channel, the Setup.exe count, the open-time clocks, the
 admin page's two tables, `npm run usage:r2`. **Checks:** tsc, 409 tests, cargo check and the
 usage tests, vite build, docs:check; the desk test §13.1 (27 worker cases in
-`docs/ops/checks/usage-worker.mjs`, 7 app cases on a hidden second dev app). Not deployed, not
-published.
+`docs/ops/checks/usage-worker.mjs`, 7 app cases on a hidden second dev app). **Then live (his
+go):** committed (1b6ebaa; DeetsSupport 4f2accd, d5bc333; DeetsSolutions d9f81cf), `usage_seen`
+on the live D1, the worker deployed (`dec25899`), the admin page published; the live download
+checked (size and signature).
 
 ## 2026-10-27 — The artist page's Albums filter (branch `onepointtwo`, committed)
 

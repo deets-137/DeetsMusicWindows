@@ -236,8 +236,8 @@ each step that touches those calls.
   on the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
   volume*, on), one step per notch, a trackpad's rise capped at 40 % a second; the title bar
   pill gets the same rule. Desk test open: features/WHEEL-VOLUME.md §5. The DeetsSupport copy of
-  the usage key list (`src/usage-keys.js`) is updated, not deployed; the worker drops the new key
-  until a deploy (his call).
+  the usage key list (`src/usage-keys.js`) is deployed (2026-10-27, with the usage counts' §13
+  worker, version `dec25899`), so the worker takes the key.
 - **Read marks on report replies (2026-10-26; LIVE: the worker, its migration and the site).** DeetsSupport notes when a filer's app or page reads a ticket, so the
   admin Inbox shows *Seen* / *Opened* under each of his replies and *Last checked* on the
   post. No app release needed (1.1.0 and later already read `/t/<code>`); the README ›
@@ -430,11 +430,11 @@ each step that touches those calls.
   seen in a run. §11 the as-built record. §12 DESIGNED 2026-10-27, not built: the update reports
   (downloaded, applied as a move between versions) and the worker's Setup.exe count; his calls
   §12.7; the accuracy audit of today's counts §12.9 (A4 his call: a key per report, 2 days,
-  untraceable). **BUILT 2026-10-27 (§13), desk test passed by Claude (§13.1), not committed.**
-  His steps, in order: run `migrations/2026-10-27-usage-seen.sql` on the live D1, deploy
-  DeetsSupport (`npx wrangler@4 deploy`), publish the admin page (DeetsSolutions), then the
-  release. `setx DEETS_USAGE_OWNER 1` on his PCs. The new admin strings and the README and
-  release-note paragraphs are drafts. The 1.1.2 Setup.exe is fetched every 10 minutes since 2026-10-26 by one fixed
+  untraceable). **BUILT 2026-10-27 (§13), desk test passed by Claude (§13.1). LIVE the same
+  day:** `usage_seen` on the live D1, the worker deployed (version `dec25899`; the one before
+  is `89f4a98e`), the admin page published. The app side ships with 1.2.0. Open:
+  `setx DEETS_USAGE_OWNER 1` on his PCs; his eye on the admin page's new parts; the new
+  admin strings and the README and release-note paragraphs are drafts. The 1.1.2 Setup.exe is fetched every 10 minutes since 2026-10-26 by one fixed
   User-Agent, most likely the Microsoft Store's check of the Package URL (§12.1): confirm in
   Partner Center; do not block it.
 - **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test passed 2026-10-17 (§10.5,

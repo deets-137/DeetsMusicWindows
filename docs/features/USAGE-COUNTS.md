@@ -752,9 +752,17 @@ nothing about him is sent that is not sent today. The worker accepts `owner` (`C
 
 ## 13. As built (2026-10-27)
 
-> **Part:** built · 2026-10-27 (all of §12, on `onepointtwo`). Not deployed, not published,
-> not committed: the worker deploy, its D1 migration and the admin page's publish are his call.
-> Where this record and §12 disagree, this record is the code.
+> **Part:** built · 2026-10-27 (all of §12, on `onepointtwo`, 1b6ebaa). **The worker side LIVE
+> 2026-10-27 (his go):** `usage_seen` created on the live D1, DeetsSupport deployed (version
+> `dec25899`; before it `89f4a98e`), the admin page published (DeetsSolutions d9f81cf). The app
+> side ships with 1.2.0. Where this record and §12 disagree, this record is the code.
+>
+> **The live check after the deploy:** the release list's link carries `?from=site`; the health
+> probe and the signed feed answer 200; a full download of the 1.1.2 Setup.exe arrived at
+> 23,154,488 bytes with a valid signature, and the worker counted it (`setup.start` and
+> `setup.done`, bucket `bot`, from the check's `curl` User-Agent). That one bot download on
+> 2026-10-27 is the check, not a user. The migration ran as one `--command`: `--file` goes
+> through D1's import API, which the wrangler login may not use (an authentication error).
 
 **The worker** (`../DeetsSupport`):
 - `src/usage.js`: `POST /usage/update`; every route takes the app's `day` (±1 day of the
