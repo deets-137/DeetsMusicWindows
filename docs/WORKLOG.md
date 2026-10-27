@@ -6,6 +6,21 @@ updated: 2026-10-27
 ---
 # DeetsMusic — Work log
 
+## 2026-10-27 — Usage counts: updates, Setup.exe downloads, the accuracy audit (`onepointtwo` + DeetsSupport + DeetsSolutions, uncommitted)
+
+**His ask:** stats on the admin page "as accurate as possible … including pre-existing ones", a
+ping when an update downloads and when it applies, a count of first-install downloads, and the
+10-minute caller found. **Found:** the 1.1.2 Setup.exe is fetched every 10 minutes by one fixed
+User-Agent (Firefox 19 on Windows 8), most likely the Microsoft Store's check of the Package URL
+(USAGE-COUNTS.md §12.1); the live counts lag a version a week behind (§12.1). **His calls:**
+§12.7 (count a first start; the R2 check script) and §12.9 A4 (a key per report, 2 days,
+untraceable). **Built:** USAGE-COUNTS.md §13: `/usage/update` with moves, the app's day and the
+report key on every route, the owner channel, the Setup.exe count, the open-time clocks, the
+admin page's two tables, `npm run usage:r2`. **Checks:** tsc, 409 tests, cargo check and the
+usage tests, vite build, docs:check; the desk test §13.1 (27 worker cases in
+`docs/ops/checks/usage-worker.mjs`, 7 app cases on a hidden second dev app). Not deployed, not
+published.
+
 ## 2026-10-27 — The artist page's Albums filter (branch `onepointtwo`, committed)
 
 **His ask:** a subtle filter in the style of the other dropdowns, to separate singles and EPs, live

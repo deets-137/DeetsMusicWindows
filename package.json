@@ -30,6 +30,7 @@
     "icons": "python scripts/icons.py",
     "signin:assets": "node scripts/signin-assets.mjs",
     "usage:keys": "node --import ./tests/setup.mjs scripts/usage-keys.mjs",
+    "usage:r2": "node scripts/usage-r2.mjs",
     "dev:perf": "node scripts/dev-app.mjs --perf",
     "dev:built": "node scripts/dev-app.mjs --built",
     "dev:fresh": "node scripts/dev-app.mjs --fresh",

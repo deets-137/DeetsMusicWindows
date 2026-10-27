@@ -140,7 +140,9 @@ for word, with RELEASE.md's section numbers.
   Apple calls) to DeetsSupport. No ID, no IP, an allow-list (`src/usage-keys.ts`, copied to the
   worker by `npm run usage:keys`), real numbers, 13 months. §2 the privacy rules; §1 his calls;
   §11 the as-built record. The owner page deets.solutions/deetsmusic/admin/ built 2026-10-14 (§6);
-  the README › Privacy paragraph and the release-note line written 2026-10-14. Next: a release.
+  the README › Privacy paragraph and the release-note line written 2026-10-14. §12 DESIGNED
+  2026-10-27: update reports (downloaded, applied) and Setup.exe download counts; his calls §12.7;
+  §12.9 the accuracy audit of the existing counts (A1–A7).
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   Not built. The Album theme (colors from the cover, §12) is to be built with it; its forks are open.

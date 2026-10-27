@@ -427,7 +427,16 @@ each step that touches those calls.
   playlist page's own place for the rule (§13.3, his to design).
 - **Usage counts** (USAGE-COUNTS.md): shipped in 0.27.0 (2026-10-14). Watch the first weekly
   reports arrive on deets.solutions/deetsmusic/admin/; the cron's in-window delete is still not
-  seen in a run. §11 the as-built record.
+  seen in a run. §11 the as-built record. §12 DESIGNED 2026-10-27, not built: the update reports
+  (downloaded, applied as a move between versions) and the worker's Setup.exe count; his calls
+  §12.7; the accuracy audit of today's counts §12.9 (A4 his call: a key per report, 2 days,
+  untraceable). **BUILT 2026-10-27 (§13), desk test passed by Claude (§13.1), not committed.**
+  His steps, in order: run `migrations/2026-10-27-usage-seen.sql` on the live D1, deploy
+  DeetsSupport (`npx wrangler@4 deploy`), publish the admin page (DeetsSolutions), then the
+  release. `setx DEETS_USAGE_OWNER 1` on his PCs. The new admin strings and the README and
+  release-note paragraphs are drafts. The 1.1.2 Setup.exe is fetched every 10 minutes since 2026-10-26 by one fixed
+  User-Agent, most likely the Microsoft Store's check of the Package URL (§12.1): confirm in
+  Partner Center; do not block it.
 - **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test passed 2026-10-17 (§10.5,
   his word; the Safari steps wait for the site page).
   Not built: the site page (part H, a DeetsSolutions session); the worker change is not deployed

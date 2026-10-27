@@ -2632,7 +2632,7 @@ function mountSettings(
         kinds
           .map((k) =>
             `<div class="set__usage-kind">${esc(k.title)}</div>` +
-            `<div class="set__status">Next${k.note ? `: ${esc(k.note)}` : ""}</div>${json(k.next)}` +
+            `<div class="set__status">Next${k.note ? `: ${esc(k.note)}` : ""}</div>${k.next === null ? "" : json(k.next)}` +
             (k.last ? `<div class="set__status">Last sent ${esc(k.last.day)} (UTC)</div>${json(k.last.body)}` : `<div class="set__status">Not sent yet.</div>`),
           )
           .join("");

@@ -124,16 +124,22 @@ DeetsMusic builds only ([docs/ops/RELEASE.md](docs/ops/RELEASE.md) §7a).
 - **Your playlists.** Playlists you make in DeetsMusic are stored on this PC only. A new
   PC or a reinstalled Windows starts without them. To keep a copy, use Apple Music ▸
   Export to Apple Music on the playlist.
-- **Usage counts.** While Settings › About › *Send usage counts* is on, the app sends three
-  small reports to `support.deets.solutions`, each at its own random moment:
-  - once a day, the app version, and whether this is its first count of the week or month;
+- **Usage counts.** While Settings › About › *Send usage counts* is on, the app sends small
+  reports to `support.deets.solutions`, each at its own random moment:
+  - once a day, the app version, and whether this is its first count of the week or month,
+    or its first ever;
   - once a week, your on/off and choice settings (never a slider, a time, a name, or
     anything you typed);
   - once a week, how many errors the log counted, by area, and how Apple's replies went,
-    as numbers only.
+    as numbers only;
+  - when an update downloads and when it applies, the two version numbers, as a count.
 
-  No report carries an ID. The server stores no IP address, no songs and nothing about
-  where you are, and deletes everything after 13 months. The row is on by default, and the
+  No report carries an ID. Each one carries the day and a random key made for that one
+  report, so the server can drop a copy it already has; the server keeps the key alone for 2
+  days and nothing points from it to you. The server stores no IP address, no songs and
+  nothing about where you are, and deletes everything after 13 months. A download of the
+  installer from deets.solutions or the Microsoft Store is counted by the server, as a number
+  per day and version. The row is on by default, and the
   welcome screen shows it on its Nitpicks page. *What is sent*, in Settings › About, shows each
   report exactly as it leaves.
   Turn the row off and nothing is sent.

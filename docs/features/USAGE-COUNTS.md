@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
-sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md]
-updated: 2026-10-23
+sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, scripts/usage-r2.mjs, docs/ops/checks/usage-worker.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md]
+updated: 2026-10-27
 ---
 # DeetsMusic — Usage counts: how many people use the app, and how
 
@@ -75,7 +75,10 @@ of them is a new fork for the owner, never a build detail.
 
 1. **No ID of any kind.** No install ID, no random ID, no rotating ID, no hash of anything on
    the PC, no Apple or DeetsAccounts ID, no friend code. The app itself makes sure it counts once
-   per day (§3.1), so the server needs no ID to count.
+   per day (§3.1), so the server needs no ID to count. **Added 2026-10-27 (his call, §12.9
+   A4):** a report may carry a random key made for that one report, so the worker can drop a
+   retry it already has. It lives 2 days on the server, is stored alone, and is never traced
+   (the rules are in §12.9 A4).
 2. **No IP address is stored.** Cloudflare must see the IP to deliver the request. The worker
    never reads it, never writes it, and never logs the request. No `cf.country`, no city, no
    ASN, no user agent, no request time finer than the UTC day or the ISO week.
@@ -434,3 +437,425 @@ Where this record and the design above disagree, this record is the code.
   turns the switch back on (no Reset group holds it).
 - **Not sent yet:** the count of rules and the built-in recipes that are on (§4 allows them;
   his call named the toggle and choice specs only).
+
+## 12. Updates and first-install downloads
+
+> **Part:** designed · 2026-10-27 (his ask: an exact version split, a ping when an update
+> downloads and when it applies, and a count of first-install downloads). Not built. §12.7 his
+> calls. His words the same day: "I want stats to be as accurate as possible on the admin
+> dashboard including pre-existing ones", so §12.9 is the accuracy audit of the counts that
+> exist today. Every fork is closed (A4 his call, the same day).
+
+**The terms.**
+- *Downloaded:* the app has a new version on disk, checked against the signed feed
+  (`update_download` reached `ready`, VELOPACK.md §4).
+- *Applied:* the first start of the app on a version that is different from the version of its
+  last day count.
+- *Setup download:* one `GET` of `DeetsMusic-<v>-Setup.exe` from the update route. This is a
+  first install from the website, before any app exists on the PC.
+
+### 12.1 What is wrong today, and what R2 shows now
+
+**The version split lags.** The day count carries `v`, but the app state (`deets-usage`) keeps
+only the day, week and month of the last count, not its version (`usage-rules.ts` `dayCount`).
+So:
+- An update during the day shows on the next day's count.
+- The `(week, v)` and `(month, v)` counters go up only on the first count of that week or month.
+  An install that starts the week on 1.1.2 and updates on Wednesday stays on 1.1.2 for the whole
+  week, and for the whole month in the month view. Weekly and monthly adoption shows too slowly.
+
+**R2's own numbers (read 2026-10-27).** Cloudflare's GraphQL Analytics
+(`r2OperationsAdaptiveGroups` on the bucket `deetsmusic-releases`, by `objectName`,
+`actionType: GetObject`) already counts every Setup.exe and package fetch per day, with no
+change to the code. The wrangler login token can read it. It goes back 4 weeks and 4 days at
+most per query. What it showed:
+
+| Object | GETs | Days |
+|---|---|---|
+| `DeetsMusic-1.0.0-Setup.exe` | 43 | 2026-10-24 to 10-26, at uneven hours (people, most likely) |
+| `DeetsMusic-1.1.2-Setup.exe` | 135 | 2026-10-26 21:00 UTC to 10-27 20:00 UTC |
+| 1.1.2 delta + full packages (updates) | 18 | 2026-10-26 to 10-27 |
+
+**The 1.1.2 Setup.exe count is almost all a timer.** From 2026-10-26 22:00 UTC, the file is
+fetched exactly 6 times each hour (every 10 minutes), each a full 23 MB. It is not DeetsSupport's
+own cron: the installer health probe uses `HEAD` (`installerHealth`), and those show as
+`HeadObject`. No script in `Documents` fetches it.
+
+**The caller (investigated 2026-10-27, the zone's HTTP analytics, `httpRequestsAdaptiveGroups`
+filtered to `*Setup.exe`; the free plan gives the User-Agent and country, not the ASN, query or
+referer):**
+- 123 of the 130 Setup.exe requests on 2026-10-27 carry one User-Agent: `Mozilla/5.0 (Windows
+  NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0`, a browser from 2013 on Windows 8, from
+  the US. No person runs it. It is a fixed string that a program sends.
+- That User-Agent asks for nothing else on deets.solutions: never the release list
+  (`/update/deetsmusic/releases`), never the site. So it got the file's address from somewhere
+  outside our hosts.
+- It first came on 2026-10-26: 2 fetches of the 1.0.0 Setup.exe, then 3 of the 1.1.2 one, then
+  the 10-minute rhythm.
+- The same day, the session "Velopack and Microsoft Store compatibility" chose to submit the
+  Velopack Setup.exe to the Microsoft Store as a Win32 app, with its versioned URL as the
+  Partner Center *Package URL*. `store-art/` (the Store's 1:1 box art and 2:3 poster) was made
+  that evening.
+- 6 more requests on 2026-10-27 carry `Microsoft-Delivery-Optimization/10.1`: Windows' own
+  download service, which the Store uses to fetch a Win32 app's installer.
+
+**Conclusion: most likely Microsoft's Store pipeline** (certification, then a watch that the
+binary at the Package URL does not change; Microsoft requires that it never changes after
+submission). Not proven: Microsoft does not document the check's rhythm. Partner Center's
+status for the submission confirms or rules it out. It costs nothing that matters (R2 egress is
+free; ~4,300 reads a month against 10 million free). **Do not block it**: a Store check that
+fails can fail the listing. The `Microsoft-Delivery-Optimization` requests are most likely real
+installs from the Store, so they are first-install downloads (§12.3 counts them as `store`).
+
+This is the reason R2's count alone cannot be the measure: it cannot tell a person from a
+machine, and it cannot tell a finished download from a broken one.
+
+**The live D1 numbers show the version lag (read 2026-10-27, `usage_counts`, channel live).**
+On 2026-10-27, 11 installs counted on 1.0.0 and 3 on 1.1.2. The week 2026-W44 shows 16 on 1.0.0
+and 1 on 1.1.2, and October shows 0.27.0 and 0.28.0 for two installs that have since updated. R2
+shows 18 update packages for 1.1.2 fetched in the same day. So most installs on 1.1.2 still show
+under 1.0.0. The settings rows match the weekly active counts (W42 2, W43 13, W44 17), so no
+duplicate settings report shows in the data so far.
+
+### 12.2 The two app reports
+
+One new route, `POST /usage/update`, beside the three in §5. It is sent from Rust (`usage_send`
+gets the kind `update`), at a random moment, and it follows every rule in §2: no ID, the switch,
+the told gate, not in the same minute as another report.
+
+**Downloaded.** When an update reaches `ready` (`download()` in `updater.ts`, or a check that
+finds it already `ready`), the app plans:
+
+```json
+{ "event": "downloaded", "channel": "live", "from": "1.1.2", "to": "1.2.0", "rollback": false }
+```
+
+- Once per install per version: the state keeps `downloaded: "1.2.0"` after a send that
+  reached the worker. A second download of the same version (after *Skip this version* is
+  cleared, or a failed apply) is not sent again.
+- It leaves 3–60 minutes after `ready`, like the day count. If the app restarts first, the
+  report is sent on the next launch, before the applied report (the state still holds the
+  download).
+- The worker adds 1 to `(day, channel, to, 'update.downloaded', bucket)`, where the bucket is
+  `''` or `'rollback'`.
+
+**Applied (the move).** The app state gains `v`: the version of the last day count that reached
+the worker. On a launch where the running version is not `state.v`:
+
+```json
+{ "event": "applied", "channel": "live", "from": "1.1.2", "to": "1.2.0",
+  "day": true, "week": true, "month": true, "rollback": false }
+```
+
+- `day`, `week` and `month` are true for each period in which this install already counted
+  under `from` (its stored day, week or month equals the current one).
+- The worker, for each true flag: subtracts 1 from `(period, channel, from, 'active')` (never
+  below 0) and adds 1 to `(period, channel, to, 'active')`. The totals do not change. The
+  install moves from one version to the other in that period. The worker also adds 1 to
+  `(day, channel, to, 'update.applied', bucket)`.
+- When no flag is true (the first launch on a new day, week and month), the normal day count
+  sends `to` and no move is needed. The `update.applied` counter still goes up.
+- After a send that reached the worker, `state.v` becomes the running version. If it fails, the
+  next launch sees the same difference and sends again. So the report repairs itself and counts
+  once.
+- A rollback (Settings › Updates › Roll back) is the same move with `rollback: true` and the
+  bucket `'rollback'`.
+
+**What the counters then mean.**
+- `active` per day, week and month: installs whose **latest** version in that period is `v`.
+- `update.downloaded` and `update.applied` per day and version: the adoption of each release.
+- `downloaded − applied` for a version: installs that hold the update and have not restarted.
+  An update applies at the next start (VELOPACK.md F1 A), so this is how long people keep the
+  app open.
+
+### 12.3 Setup downloads, counted by the worker
+
+No app exists yet, so no switch applies. The worker counts in `serveVp` (`update.js`), on a
+`GET` of a name that matches `VP_SETUP`:
+
+- **Started:** 1 into `(day, channel, v, 'setup.start', source)` when the response starts.
+- **Finished:** the R2 body goes through a `TransformStream` that counts the bytes. When the
+  stream ends with every byte sent, 1 goes into `(day, channel, v, 'setup.done', source)`
+  (through `ctx.waitUntil`, so `handleUpdate` needs the `ctx`). A download that the browser
+  cancels never reaches the end, so it is not counted as finished.
+- **The source** (the bucket), the first rule that matches:
+  - `store`: the User-Agent starts with `Microsoft-Delivery-Optimization/`: a Microsoft Store
+    install (§12.1).
+  - `site`: the link from the website. `listReleases` adds `?from=site` to `row.url`, so the
+    install box on deets.solutions carries it with no change in DeetsSolutions.
+  - `check`: the exact User-Agent of the 10-minute caller in §12.1. It is one string in the
+    worker, named for what it is, so a change of that caller's string shows as a jump in
+    `direct`, never as new users.
+  - `bot`: a request whose User-Agent is empty or names a script or crawler (`bot`, `spider`,
+    `crawl`, `curl`, `wget`, `python`, `go-http`, `headless`; a short fixed list). It is read
+    in memory to choose the bucket and never stored, like the `DeetsMusic/` check on the usage
+    routes.
+  - `direct`: every other request (a link shared on Reddit that names the file, a download
+    manager).
+- The channel maps `deetsmusic` → `live` and `deetsmusic-test` → `beta`. `v` comes from the file
+  name.
+- `HEAD` requests (the health probe) are never counted.
+- A `KILL_USAGE` switch stops this count too, and the download still works.
+
+`setup.done` from `site` plus `store` is the first-install download number. The timer in §12.1
+lands in `check`, so it is visible but kept apart.
+
+### 12.4 The admin page
+
+On deets.solutions/deetsmusic/admin/ (§6), two new parts. Their layout and words are his to
+approve, like the page's other strings:
+- **Updates:** one row per version: downloaded, applied, waiting (the difference), rollbacks;
+  the day each count started.
+- **Setup downloads:** per day and version: finished from the site, finished direct, bots,
+  and started but not finished.
+
+`GET /admin/usage` returns the new metrics with the others. The page reads them by name.
+
+### 12.5 The privacy check (§2)
+
+| Rule | Holds? |
+|---|---|
+| 1 No ID | Yes. `from` and `to` are versions that thousands of installs share. |
+| 2 No IP | Yes. The setup count reads the User-Agent in memory only, and stores nothing per request. |
+| 4 Not linkable | Yes. The update report is a counter. The settings row has no version, so `from` / `to` cannot join it. |
+| 5 No order | Yes. Counters only, no rows. |
+| 9 Off means off | Yes for the app reports. The setup count has no app and no switch: it counts a web request, like the R2 analytics Cloudflare already keeps. |
+| 10 Told first | Yes. The same gate as the day count. |
+
+The README's Privacy paragraph gains one sentence: "When an update downloads and when it
+applies, the app sends the two version numbers, as a count."
+
+### 12.6 What can still be wrong
+
+- A forged `applied` report can move counts from one version to another (it subtracts). The
+  `USAGE_RL` limit bounds it, as it bounds a forged day count (the faults in the answer of
+  2026-10-27: no ID means the worker cannot tell a real report from a script).
+- Cleared localStorage loses `state.v`. The next day count is then a new count, and no move is
+  sent. This is the same fault as in §3.1.
+- The setup count's `bot` list catches only callers that name themselves. A script that copies
+  a browser's User-Agent counts as `direct`.
+
+### 12.7 His calls (2026-10-27)
+
+1. **Count a new install's first start: yes.** The day count gains `new: true` when the app has
+   no usage state at all, and the worker adds 1 to `(day, channel, v, 'install.first')`. With
+   §12.3 this gives the full path: download → first start → active. An uninstall keeps the user
+   data unless *Delete app data* is on (RELEASE.md), so a reinstall is not counted as new; with
+   that box on, it is a new install, and it counts as one.
+2. **Keep the R2 analytics read as a check: yes.** `npm run usage:r2` prints, per day, R2's
+   Setup.exe and package GETs, the zone's Setup.exe requests by source (the same rules as §12.3,
+   from the User-Agent), and the worker's own counts beside them, so a gap between them shows a
+   fault. It uses the wrangler login token, and reads 4 weeks at most per query.
+
+### 12.8 The build, in order
+
+1. The worker: `POST /usage/update`, the setup count in `serveVp`, `?from=site` in
+   `listReleases`, the new metrics in `GET /admin/usage`. No new table (`usage_counts` holds it
+   all). **The deploy is his call, and it comes first**, so the worker takes the report before
+   any app sends it.
+2. The app: `v` and `downloaded` in the usage state (`usage-rules.ts`, with tests: the flags of
+   a move, a failed send repeated, a rollback), the plan in `usage.ts`, the kind `update` in
+   `usage.rs`. *Show what is sent* shows the next update report.
+3. The admin page in DeetsSolutions (§12.4).
+4. The README sentence (§12.5) and a release-note line with a bold lead.
+5. The desk test: the dev app against a local worker (§10's setup). A forced update to a local
+   feed gives `downloaded`; a restart gives `applied` with the moved counts; a curl of a local
+   Setup.exe, complete and cut short, gives `setup.start` and `setup.done`.
+6. The accuracy fixes in §12.9 (A1, A3, A4, A5, A6) go in the same worker
+   deploy and the same app release as steps 1–2.
+
+### 12.9 The accuracy audit of the counts that exist today
+
+His ask: every number on the admin page as accurate as possible, the old ones too. Each fault
+below was checked against the code (`usage.ts`, `usage-rules.ts`, DeetsSupport `usage.js`) on
+2026-10-27.
+
+**A1. A short session never counts (an undercount, and a bias).** The day count leaves at a
+random moment 3–60 minutes after launch (`DAY_WINDOW`, `FIRST`), and the moment is drawn again
+at each launch. A user who opens the app for 10 minutes a day is counted on about 1 day in 8. The
+weekly reports wait 3–90 minutes, so the settings shares and health counts come mostly from
+installs that stay open: a bias toward long sessions in every share. (These timings were
+Claude's, for his review, §11.)
+*Fix:* the random moment is measured in **open time**, and it is kept across launches. The app
+draws the moment once per period (day count: 20 s to 5 min of open time that UTC day; weekly
+reports: 1 to 30 min of open time that week), adds the time the app is open (a minute tick, saved
+in the usage state), and sends when the sum passes the moment. The moments stay random and at
+least a minute apart, so §2 rule 4 holds, and every install that is open long enough in the
+period counts.
+
+**A2. The version split lags.** §12.1's numbers. *Fix:* §12.2's move report. The weeks and
+months before the release with the fix keep the lag: there is no record to correct them from.
+The admin page marks those periods "version mix lags (before 1.x)" so they are not read as exact.
+
+**A3. Two clocks decide the day.** The app decides "a new UTC day" by the PC clock; the worker
+files the count under its own day (`periods(new Date())`). A count planned at 23:59 that
+arrives at 00:01 is filed under the new day, and the app sends again that day: one install
+counted twice in one day and zero times in the other. A PC clock that is wrong does the same at
+any hour. *Fix:* the day count and the move report carry the app's `day` (`2026-10-27`). The
+worker files them under that day, its week and its month, and accepts it only within one day of
+its own date (else it drops the report). One clock, the app's, decides every period of one
+install.
+
+**A4. A lost answer counts twice.** The worker writes after it answers (`ctx.waitUntil`). If the
+answer does not reach the app, the app sends again at the next launch and the worker stores it
+again. *Fix (a rule question):* each report carries a key made once for that report: random, a
+new one for every report, the same one only on its retry. The worker keeps the key 2 days in its
+own table (`usage_seen`, the key alone) and drops a report whose key it has seen. Two reports of
+one install have two unrelated keys, so nothing links them, and the key is gone in 2 days. §2
+rule 1 (2026-09-29) says "no random ID". It was written against an ID that follows an install;
+this key does not.
+
+**His call (2026-10-27): yes**, "as long as there's no way for us server-side to trace the key".
+So the key follows these rules:
+- **Made by the app, from nothing.** 16 bytes from the OS random source (Rust `getrandom`),
+  never derived from a time, a version, a counter or anything on the PC. A new key for every
+  report; the same key only on that report's retry.
+- **Gone from the app when the report lands.** The app holds the key only inside the pending
+  report in the usage state. When the worker has the report, the app deletes it. No list of
+  sent keys exists, so the app cannot show one, and an agent or a support request cannot ask
+  for one.
+- **In the body only.** Never in the URL or a header, so Cloudflare's request analytics and
+  Workers Logs never see it. The worker never logs it (the same rule as the token and the IP,
+  index.js "Never log a token or a client IP").
+- **Stored alone.** `usage_seen (key TEXT PRIMARY KEY, day TEXT) WITHOUT ROWID`: the key and
+  the UTC day it arrived, nothing else. No channel, version, period or metric, so no column
+  joins it to `usage_counts` or `usage_settings`. The random primary key and `WITHOUT ROWID`
+  keep no order of arrival (§2 rule 5).
+- **Deleted after 2 days** by the 5-minute cron, in its 00:00–00:04 UTC run.
+- **Never read out.** No admin route returns it; the worker only asks "seen?" and drops the
+  report if so.
+
+With these, a key names one report for 2 days, and nothing on the server points from it to an
+install, a person, or another report. **The difference from a suggestion's `code`** (DeetsSupport
+`src/index.js`, `randomCode()` and the header note on a post's two ids): that code is meant to be traced: the worker makes it, stores it with the post for as
+long as the post lives, and it is the reporter's way back to the thread (`/t/<code>`). The usage
+key is the opposite: the app makes it, it points to nothing, and it is gone in 2 days.
+
+**A5. Two tries, then the period is lost.** `mayTry` allows two tries per day or week. An
+install offline at two launches loses that week's settings and health reports. *Fix:* try again
+at each launch and each hourly check until the period ends. With A4, a retry cannot count twice.
+
+**A6. His own installs are in `live`.** From 2026-10-15 to 10-23 the daily live count was 1–2,
+which was his own app. At today's ~14 a day, that is up to 1 in 7. A test install in a sandbox
+also counts as a new install. *Fix:* an `owner` channel, like `beta`: a DevTools command on his
+PC (`__usage.owner(true)`) writes a flag in the usage state, and Rust sends `channel: "owner"`.
+His installs then leave `live`, his desk tests still reach the admin page under *owner*, and
+nothing about him is sent that is not sent today. The worker accepts `owner` (`CHANNELS`).
+
+**A7. Checked and not a fault:**
+- *A reinstall.* An uninstall keeps the user data (unless *Delete app data* is on), and with it
+  the usage state, so a reinstall counts once.
+- *Nothing in the app clears its localStorage.* The one `localStorage.clear()` (apple.rs) is on
+  the sign-in page in the browser, a different origin.
+- *The settings rows against the weekly count:* equal every week so far (§12.1).
+- *The current day is partial.* The admin page labels today "so far".
+
+## 13. As built (2026-10-27)
+
+> **Part:** built · 2026-10-27 (all of §12, on `onepointtwo`). Not deployed, not published,
+> not committed: the worker deploy, its D1 migration and the admin page's publish are his call.
+> Where this record and §12 disagree, this record is the code.
+
+**The worker** (`../DeetsSupport`):
+- `src/usage.js`: `POST /usage/update`; every route takes the app's `day` (±1 day of the
+  worker's, else the report is dropped; a report without one is filed under the worker's day,
+  so 1.1.2 and older keep working) and a `key` (22 characters, base64url of 16 bytes). The key's
+  `INSERT INTO usage_seen` goes FIRST in the report's batch: a key already seen fails it, and D1
+  rolls the whole batch back. No SELECT, so two copies arriving together cannot both land.
+- **The applied report carries `moves`, not one `from`** (§12.2 said one `from` and three
+  flags). One install's day, week and month counts can sit under three different versions (a
+  week counted on 1.0.0, today on 1.1.2), so each period names its own old version:
+  `moves: {day: "1.1.2", week: "1.0.0"}`. Each move is `MOVE_IN` (+1 under `to` only while the
+  old version holds a count above 0) then `MOVE_OUT` (−1, never below 0). A forged move from a
+  version with no count makes nothing.
+- The day count's `new: true` adds `install.first`.
+- `owner` is a channel. `KEY_DAYS = 2`: the daily cron run deletes older keys.
+- `src/update.js`: the Setup.exe count (`countedSetup`): `setup.start` at once, and the body
+  piped through a native `FixedLengthStream`; `setup.done` when the pipe ends, never when the
+  client goes away. `handleUpdate` takes `ctx`. `listReleases` adds `?from=site`.
+  `setupSource` and `countSetup` live in `usage.js`. **Limit found in the desk test:** `done`
+  means the worker handed the last byte to the network. A download cut in its last few MB
+  (what the socket buffers hold) can count as done. With a 3 MB test file, a cut download
+  counted as done; with 40 MB it did not.
+- `migrations/2026-10-27-usage-seen.sql` and `schema.sql`: the `usage_seen` table. The README
+  and the `USAGE_RL` note are updated.
+
+**The app:**
+- `src/usage-rules.ts` (pure, tested): the state gains `vDay` / `vWeek` / `vMonth` (the
+  version each count sits under), `runV`, `dl` / `downloaded`, `keys`, `open`. `dayCount` gives
+  `new`; `afterDay(state, now, v)`; `movesFor`, `appliedReport`, `afterApplied`,
+  `onDownloaded`, `reportId`, `clockFor`, `tickClock`, `keyFor`, `waited`. `mayTry`, `afterTry`
+  and `apart` are gone, and so is the stored `tries`.
+- `src/usage.ts`: one 15-second tick moves each due report's open-time clock (a tick adds at
+  most 2 minutes, so a sleep does not count) and sends at most one report whose moment has come,
+  never within a minute of the last. The windows: day count, applied and downloaded 20 s to
+  5 min of open time; the weekly reports 1 to 30 min. A failure waits an hour or the next launch
+  (`failedAt`, in memory). `onUpdateStatus` (updater.ts) records a download when an update
+  reaches `ready`, only while the switch is on. Off drops every clock and a waiting download.
+  The key comes from `crypto.getRandomValues` (the OS random source; the design said Rust
+  `getrandom`: the same source, and the key then lives where the report waits).
+- `src-tauri/src/usage.rs`: the kinds `downloaded` and `applied` go to `/usage/update` with
+  `event` set; Rust writes `from` (a download) or `to` (an applied update) from its own
+  version. The health report takes the front end's `day` and `key` and nothing else of its body.
+  **`owner` is the user environment variable `DEETS_USAGE_OWNER=1`** (the design said a
+  DevTools command: DevTools do not open in a release build, and an environment variable also
+  covers every test install on his PC). Set it once from his own terminal:
+  `setx DEETS_USAGE_OWNER 1` (not from a Claude shell: its registry writes are not real, CLAUDE.md).
+- *Show what is sent* shows the update reports when one waits or was sent, and the key as
+  "(a random key for this one report; not kept)": the last bodies kept for the panel never hold
+  the real key.
+
+**The admin page** (DeetsSolutions, not published): the Owner channel; "Today so far"; the
+lag note under the version mix (a week holding a version before 1.2.0); **Updates** and
+**Downloads and first starts**, from `events`. The new strings are drafts for his edit
+(`strings.js`, under "Updates, first starts and Setup.exe downloads"). `?mock` shows them.
+
+**The check script:** `npm run usage:r2 [-- --days N]` (§12.7 call 2). The zone counts only
+200 answers (a 404 or 429 never reaches R2). Read on 2026-10-27: the zone and R2 can still
+differ on a small day (Oct 25: 26 against 17), and the 26 sent 286 MB, about 12 full copies of
+the 23 MB file. That is why the worker's own `done` count is the measure.
+
+**Decided in the build, for his review:** the open-time windows above; the tick (15 s) and its
+cap (2 min); the retry wait (1 hour); the admin page's two tables and their column names; 14
+days in the Downloads table; the lag note's rule (any version before 1.2.0 in the week); the
+README paragraph and the 1.2.0 release-note paragraph (both drafts); `install.first` counts
+an install's first count ever, so an install that turned the switch on months after it
+installed counts as first then.
+
+**Not changed, his words:** the Settings row's hint "Anonymous counts, once a day and once a
+week" (his, 2026-10-23) does not name the update reports. A draft for him: "Anonymous counts,
+once a day, once a week and on each update."
+
+### 13.1 Desk test (2026-10-27, run by Claude)
+
+> **Part:** desk test passed · 2026-10-27 (run by Claude: a local worker and a hidden second
+> dev app; the owner channel in a real install and the admin page's look are open)
+
+**The worker half:** `node docs/ops/checks/usage-worker.mjs` against `wrangler dev` on 8791
+(the setup is in the script's head). 27 cases, all pass: the day count with its day, key and
+`new`; a retry with the same key writes nothing; a new key counts; a day 3 days off, an
+impossible day and a malformed key are dropped; yesterday's day is filed under yesterday; the
+owner channel; an applied update moves the day, week and month counts; a second move and a
+forged move make nothing; a download; a rollback moves back, bucketed; a settings retry stores
+one row; health under the week it covers; the Setup.exe sources (site, store, check, bot); a
+cut 40 MB download starts and never finishes; a HEAD is never counted; the cron (through the
+Local Explorer's scheduled call at 00:01 UTC) deletes a key older than 2 days and keeps
+today's. The first run failed three: a cut 3 MB download counted as done (the limit in §13),
+the HEAD case's expected total was wrong in the script, and `/__scheduled?time=` does not set
+the time.
+
+**The app half:** `npm run dev:app -- --second --hidden` with
+`DEETS_USAGE_BASE=http://localhost:8791`, driven by `scripts/webview-eval.mjs --second`:
+
+| Case | Result | Seen |
+|---|---|---|
+| The day count leaves early | pass | Planned at 2 min of open time, sent 2 min after launch: `usage: day sent (dev)`; the body held `day`, `new: true` and the key's stand-in |
+| The applied move, by the clock | pass | The state set to `runV`/`vDay`/`vWeek`/`vMonth` 1.1.0 over a seeded 1.1.0 count: planned at 96 s of open time, sent on its own (`usage: applied sent`). On the worker: 1.1.0 at 0 for the day, week and month, 1.1.2 one higher each, `update.applied` 1. The state then held 1.1.2 for all four, and no key |
+| Open time across a reload | pass | The settings clock held its 120 s of open time across `location.reload()` and went on from there |
+| The download report | pass | A waiting `dl` of 1.2.0 planned at 257 s; sent with `__usage.send`: `update.downloaded` 1 under 1.2.0; the state `downloaded: "1.2.0"`, no `dl`, no key |
+| A retry through Rust | pass | `usage_send` twice with the same key: both answered, one settings row stored |
+| No real key kept | pass | Every stored body in `deets-usage-last` shows the stand-in, never a 22-character key |
+| Off means off | pass | *Send usage counts* off: every clock dropped at once; a send then did nothing (`settingsWeek` unchanged); on again |
+| The owner channel | not run in an app | The worker takes `owner` (worker case); the app's side is one `std::env::var` read. On his PC: `setx DEETS_USAGE_OWNER 1`, restart the installed app, then *Show what is sent* names `owner` |
+| `onUpdateStatus` records a real download | not run | A dev build does not update (`update: check: A dev build doesn't update.`); the rule is `onDownloaded`, unit-tested. The first real update to the release with this code shows it |
+| The admin page | not run | His eye on `?mock` (the two new tables, the Owner channel, the lag note) before the publish |

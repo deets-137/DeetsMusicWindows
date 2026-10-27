@@ -219,9 +219,14 @@ pub fn fold() {
 }
 
 /// `live`, `beta` or `dev`, from the build itself: the page's DEV flag is false under
-/// `dev:built`, and that run must never count as a live user (§2 rule 11).
+/// `dev:built`, and that run must never count as a live user (§2 rule 11). `owner` on the
+/// owner's own PCs (§12.9 A6): the user environment variable `DEETS_USAGE_OWNER=1` (set once
+/// with `setx`), so his installs and his test installs stay out of `live` and still reach the
+/// admin page under their own channel. It names nothing about him.
 fn channel() -> &'static str {
-    if cfg!(debug_assertions) {
+    if std::env::var("DEETS_USAGE_OWNER").is_ok_and(|v| v.trim() == "1") {
+        "owner"
+    } else if cfg!(debug_assertions) {
         "dev"
     } else if crate::beta::is_beta() {
         "beta"
@@ -263,23 +268,36 @@ pub async fn usage_health() -> Result<serde_json::Value, String> {
     .map_err(|e| e.to_string())
 }
 
-/// Send one report. `day` and `settings` come from the front end (Rust sets `channel`, and `v`
-/// on the day count); `health` is the pending week from the file, and leaves the file once the
-/// worker has it. `Ok(false)`: nothing to send, or no worker for this build.
+/// Send one report. `day`, `settings`, `downloaded` and `applied` come from the front end
+/// (Rust sets `channel`, `v` on the day count, `from` on a download and `to` on an applied
+/// update: the running version is Rust's to say); `health` is the pending week from the file,
+/// with the front end's `day` and `key` added, and leaves the file once the worker has it. The
+/// two update kinds go to `/usage/update` (USAGE-COUNTS.md §12.2). `Ok(false)`: nothing to
+/// send, or no worker for this build.
 #[tauri::command]
 pub async fn usage_send(kind: String, body: Option<serde_json::Value>) -> Result<bool, String> {
     let Some(base) = base() else {
         crate::log::info(&format!("usage: {kind} not sent: a dev build sends only to DEETS_USAGE_BASE"));
         return Ok(false);
     };
-    let (mut body, health_week) = match kind.as_str() {
+    let running = env!("CARGO_PKG_VERSION");
+    let object = |body: Option<serde_json::Value>| match body {
+        Some(serde_json::Value::Object(map)) => Ok(serde_json::Value::Object(map)),
+        _ => Err(String::from("usage: the report is not an object")),
+    };
+    let (mut body, health_week, route) = match kind.as_str() {
         "day" | "settings" => {
-            let Some(serde_json::Value::Object(map)) = body else { return Err("usage: the report is not an object".into()) };
-            let mut v = serde_json::Value::Object(map);
+            let mut v = object(body)?;
             if kind == "day" {
-                v["v"] = env!("CARGO_PKG_VERSION").into();
+                v["v"] = running.into();
             }
-            (v, None)
+            (v, None, kind.as_str())
+        }
+        "downloaded" | "applied" => {
+            let mut v = object(body)?;
+            v["event"] = kind.as_str().into();
+            v[if kind == "downloaded" { "from" } else { "to" }] = running.into();
+            (v, None, "update")
         }
         "health" => {
             let pending = tauri::async_runtime::spawn_blocking(|| {
@@ -289,7 +307,16 @@ pub async fn usage_send(kind: String, body: Option<serde_json::Value>) -> Result
             .await
             .map_err(|e| e.to_string())?;
             let Some((week, counts)) = pending else { return Ok(false) };
-            (counts.report(&week), Some(week))
+            let mut report = counts.report(&week);
+            // The front end's day and key (§12.9 A3, A4); nothing else of its body is taken.
+            if let Some(serde_json::Value::Object(extra)) = body {
+                for name in ["day", "key"] {
+                    if let Some(v) = extra.get(name).filter(|v| v.is_string()) {
+                        report[name] = v.clone();
+                    }
+                }
+            }
+            (report, Some(week), "health")
         }
         _ => return Err(format!("usage: no report kind {kind:?}")),
     };
@@ -304,7 +331,7 @@ pub async fn usage_send(kind: String, body: Option<serde_json::Value>) -> Result
         .user_agent(format!("DeetsMusic/{}", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| e.to_string())?;
-    let mut req = client.post(format!("{base}/usage/{kind}")).header("Content-Type", "application/json");
+    let mut req = client.post(format!("{base}/usage/{route}")).header("Content-Type", "application/json");
     if let Some(key) = crate::apple::build_key() {
         req = req.header(crate::apple::BUILD_HEADER, key);
     }
