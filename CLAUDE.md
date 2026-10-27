@@ -378,6 +378,10 @@ code does today; §3.2 the thumb-fade probe; §4 forks D1–D5.
 and shown in the app (his example: is anyone interested in voice control). Open ended on
 purpose (his ask): what exists (§1, the board polls, the `/config` read at launch), a sketch (§2),
 the open questions (§3); no recommendation.
+`friends-shelf.md` — an idea (2026-10-27, his ask): a "Friends are listening to" Home shelf,
+shown only when the user has friends in DeetsMusic. Open ended on purpose (his ask): what
+exists (§1: Apple has no friend data; the watch sockets already hold each friend's live song,
+no history), a sketch (§2), the open questions (§3); no recommendation.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
