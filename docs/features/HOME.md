@@ -33,9 +33,10 @@ in [`src-tauri/src/library.rs`](../../src-tauri/src/library.rs).
 | **Recently Played** | Mixed: songs, albums, playlists, stations, artists | `play_events`, last 60 days |
 | **Recently Added** | Mixed: songs, albums, playlists | `addedRank` (songs/albums), `dateAdded` (playlists), `added_at` (this app's own adds) |
 | **Weekday evening** (the bucket's own name) | Mixed: the songs and lists this kind of hour usually holds | `play_events`, last 180 days |
+| **Friends on DM** (2026-10-29, last) | Albums: friends' playing now, a line, their recent | Friends presences, kept on this PC — [friends-shelf.md](friends-shelf.md) |
 
 **The shelves can be reordered (2026-09-20).** Each shelf now carries a stable `id`
-(`played` · `added` · `new` · `bucket` · `pinned` · `sotd`) and is drawn as one
+(`played` · `added` · `new` · `bucket` · `pinned` · `sotd` · `friends`) and is drawn as one
 `<section class="home-shelf">`; hold a shelf's label for a moment and drag it where you want
 it. The push order in `homeShelves()` is the built-in order underneath, and a shelf a later
 version adds appears at the end ([MOVABLE-ROWS.md](MOVABLE-ROWS.md) §13). The id matters:

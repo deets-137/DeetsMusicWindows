@@ -42,6 +42,7 @@ import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from 
 import * as diag from "./diag";
 import { errorOf } from "./dom";
 import { TILE_PX } from "./art-size";
+import { friendShelfParts, listenAlong, onFriendsChange } from "./friends";
 
 const err = errorOf("home");
 
@@ -83,10 +84,14 @@ const tileHTML = (it: HomeItem, i: number, pinShelf: boolean): string =>
 
 // A shelf is one block: its label and the tiles under it move together (§4.1). The label
 // is the header you hold.
+// The Friends on DM shelf's `split`: a plain vertical line between the albums friends play now
+// and their recent ones (friends-shelf.md §2.3). The sides' sizes say which is which; no words.
+const SPLIT_RULE = `<span class="home-split" aria-hidden="true"></span>`;
+
 const shelfHTML = (sh: HomeShelf, i: number): string =>
   `<section class="home-shelf" data-idx="${i}" data-shelf="${sh.id}" data-key="shelf:${sh.id}">` +
   `<div class="search__label">${esc(sh.label)}</div>` +
-  `<div class="search__scroller">${sh.items.map((it, n) => tileHTML(it, n, sh.id === "pinned")).join("")}</div></section>`;
+  `<div class="search__scroller">${sh.items.map((it, n) => (n === sh.split ? SPLIT_RULE : "") + tileHTML(it, n, sh.id === "pinned")).join("")}</div></section>`;
 
 export const homeCard: CardDef = {
   id: "home",
@@ -101,8 +106,12 @@ export const homeCard: CardDef = {
     let loading = true;
     let alive = true;
 
-    const itemOf = (key: string | undefined): HomeItem | undefined =>
-      key ? shelves.flatMap((s) => s.items).find((i) => i.key === key) : undefined;
+    const itemOf = (key: string | undefined, shelf?: string): HomeItem | undefined =>
+      key ? shelves.filter((s) => !shelf || s.id === shelf).flatMap((s) => s.items).find((i) => i.key === key) : undefined;
+    /** A tile's item from its OWN shelf: one album can sit on two shelves (Recently Played and
+     *  Friends on DM), and each shelf's tile has its own menu. */
+    const shelfOf = (el: HTMLElement | null): string | undefined => el?.closest<HTMLElement>(".home-shelf")?.dataset.shelf;
+    const itemAt = (el: HTMLElement | null): HomeItem | undefined => itemOf(el?.dataset.key, shelfOf(el));
 
     // A rebuild keeps each shelf's sideways scroll where the user left it.
     /** The shelves this render draws, in the user's own order (MOVABLE-ROWS.md §2). The
@@ -229,7 +238,13 @@ export const homeCard: CardDef = {
     });
 
     // Every tile's menu is its kind's menu (CONTEXT-MENUS.md), then Hide, the last row.
-    const menuFor = (it: HomeItem): MenuItem[] => {
+    const menuFor = (it: HomeItem, shelf: string | undefined): MenuItem[] => {
+      // Friends on DM (friends-shelf.md §2.3): a friend's album, never Hide (it is their play,
+      // not a suggestion to you); a tile they play now adds Listen Along, the people panel's verb.
+      if (shelf === "friends") {
+        const code = it.listenWith;
+        return tileMenu(it, { own: code ? [{ label: "Listen Along", run: () => listenAlong(code) }] : [] });
+      }
       const away = [hideRow(it)];
       // A station redraws the shelves after it starts (the Recently Played shelf moves).
       if (it.kind === "station" && it.station) {
@@ -288,7 +303,7 @@ export const homeCard: CardDef = {
           }
         }
         const el = tileAt(target);
-        const it = itemOf(el?.dataset.key);
+        const it = itemAt(el);
         return el && it ? { row: el, index: 0, payload: payloadFor(it) } : null;
       },
     });
@@ -301,24 +316,24 @@ export const homeCard: CardDef = {
       if (handleUnpin(e)) return; // the badge unpins; the tile does not play
       if (isPinGrip(e)) return; // the grip moves the tile; it never plays it
       if (drag.consumeClick()) return; // the tail of a drag, not a play
-      const it = itemOf(tileAt(e.target)?.dataset.key);
+      const it = itemAt(tileAt(e.target));
       if (it) activate(it);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       if (e.target instanceof HTMLElement && e.target.closest("[data-unpin]")) return; // the badge's own key press
-      const it = itemOf(tileAt(e.target)?.dataset.key);
+      const it = itemAt(tileAt(e.target));
       if (!it) return;
       e.preventDefault();
       activate(it);
     };
     const onMenu = (e: MouseEvent) => {
       const el = tileAt(e.target);
-      const it = itemOf(el?.dataset.key);
+      const it = itemAt(el);
       if (!el || !it) return;
       e.preventDefault();
       el.classList.add("is-context");
-      openContextMenu(e.clientX, e.clientY, menuFor(it), () => el.classList.remove("is-context"));
+      openContextMenu(e.clientX, e.clientY, menuFor(it, shelfOf(el)), () => el.classList.remove("is-context"));
     };
     body.addEventListener("click", onClick);
     body.addEventListener("keydown", onKey);
@@ -342,6 +357,17 @@ export const homeCard: CardDef = {
     const offPins = onPinsChange(() => build());
     const offSotd = onSotdChange(() => build());
     const offArtists = onHomeArtistsReady(() => build()); // the photos and New, after a first sync
+    // Friends on DM: a friend's song change. Friends speaks on every socket event (a connect, a
+    // name), so the build waits for the shelf's own content to change, and coalesces a burst.
+    let friendsSig = "";
+    let friendsTimer: number | undefined;
+    const offFriends = onFriendsChange(() => {
+      const sig = JSON.stringify(friendShelfParts().map((p) => [p.code, p.name, p.now?.album, p.albums.map((a) => a.album + a.at)]));
+      if (sig === friendsSig) return;
+      friendsSig = sig;
+      window.clearTimeout(friendsTimer);
+      friendsTimer = window.setTimeout(build, 1500);
+    });
     // The empty card's sync line follows the sync (render's `syncing`). The first call is the
     // state at mount, which the first render already reads.
     let syncWords: string | null = null;
@@ -393,6 +419,8 @@ export const homeCard: CardDef = {
       destroy() {
         alive = false;
         window.clearTimeout(timer);
+        window.clearTimeout(friendsTimer);
+        offFriends();
         offState();
         offSotd();
         offArtists();

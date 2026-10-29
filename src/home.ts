@@ -37,6 +37,8 @@ import { isConnected } from "./apple";
 import { pinnedItems, pinsOf, pinPlayCounts } from "./pins";
 import { sortByOrder } from "./row-order";
 import { sotdOn, pickTiles, suggestionTile } from "./sotd";
+import { friendShelfParts } from "./friends";
+import { albumIdOf, takeTurns, type LogAlbum } from "./friends-log";
 
 // ── the windows ───────────────────────────────────────────────────────────────
 const DAY_MS = 86_400_000;
@@ -122,6 +124,8 @@ export interface HomeItem {
   /** The credited artist, where `sub` is not it (a coming release reads "Coming 09/25 ·
    *  Name"). The drill-in names the pane with it until the resolved name lands. */
   artistName?: string;
+  /** A Friends on DM tile of an album a friend plays now: their code, for Listen Along. */
+  listenWith?: string;
 }
 
 export interface HomeShelf {
@@ -129,9 +133,12 @@ export interface HomeShelf {
    *  is NOT the label: the fourth shelf's label is `bucketLabel()`, which changes with
    *  the hour and the day, so an order keyed on the label would lose that shelf every
    *  few hours. */
-  id: "played" | "added" | "new" | "bucket" | "pinned" | "sotd";
+  id: "played" | "added" | "new" | "bucket" | "pinned" | "sotd" | "friends";
   label: string;
   items: HomeItem[];
+  /** The Friends on DM shelf: a plain vertical line before this tile, between the albums
+   *  friends play now and their recent ones (friends-shelf.md §2.3). Only when both sides have tiles. */
+  split?: number;
 }
 
 // ── hiding ────────────────────────────────────────────────────────────────────
@@ -1032,7 +1039,51 @@ export async function homeShelves(): Promise<HomeShelf[]> {
   if (scored.length) shelves.push({ id: "bucket", label: bucketLabel(), items: scored });
   if (pinned.length) shelves.push({ id: "pinned", label: "Pinned", items: pinned });
   if (sotd.length) shelves.push({ id: "sotd", label: "Songs of the Day", items: sotd });
+  const friends = friendsShelf();
+  if (friends) shelves.push(friends);
   return shelves;
+}
+
+/** One album a friend played, as a Home album tile: the same tile a catalog album played from
+ *  Search makes (`albumItem` with one known song, the whole album on a press), under the
+ *  friend's name. The song is yours from the store when you have it. */
+function friendAlbumItem(a: LogAlbum, name: string, listenWith?: string): HomeItem | null {
+  const seed: Track = trackById(a.catalogId) ?? {
+    catalogId: a.catalogId,
+    title: a.title,
+    artistName: a.artist,
+    albumName: a.album,
+    genres: [],
+    hasLyrics: false,
+    artwork: a.artworkUrl ? { urlTemplate: a.artworkUrl, width: 600, height: 600 } : undefined,
+  };
+  const it = albumItem(albumKey(seed), [seed]);
+  return it ? { ...it, title: a.album, sub: name, artistName: a.artist, listenWith } : null;
+}
+
+/** The Friends on DM shelf (features/friends-shelf.md §2.3): the albums friends play now, a
+ *  plain line, then up to 10 recent albums, the friends taking turns. All of it from the
+ *  presences the friends' sockets already carry, at no Apple call. Not hidden by Hide (the
+ *  tiles are your friends' plays, not your suggestions), and left out when empty. */
+function friendsShelf(): HomeShelf | null {
+  const parts = friendShelfParts();
+  if (!parts.length) return null;
+  const items: HomeItem[] = [];
+  const keys = new Set<string>();
+  const add = (it: HomeItem | null): void => {
+    if (it && !keys.has(it.key)) {
+      keys.add(it.key);
+      items.push(it);
+    }
+  };
+  const playing = parts.filter((p) => p.now).sort((a, b) => (b.now?.at ?? 0) - (a.now?.at ?? 0));
+  for (const p of playing) if (p.now) add(friendAlbumItem(p.now, p.name, p.code));
+  const left = items.length;
+  const skip = new Set(playing.map((p) => (p.now ? albumIdOf(p.now) : "")));
+  const names = new Map(parts.map((p) => [p.code, p.name]));
+  for (const { code, album } of takeTurns(parts, skip)) add(friendAlbumItem(album, names.get(code) ?? "A friend"));
+  if (!items.length) return null;
+  return { id: "friends", label: "Friends on DM", items, split: left && items.length > left ? left : undefined };
 }
 
 /** The last shelf: the picks, newest first, with today's suggestion at its head. Left out

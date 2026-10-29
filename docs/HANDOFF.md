@@ -112,6 +112,10 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
+- **Friends on DM, the Home shelf (2026-10-29, built, uncommitted).** The worker change in
+  `../DeetsMusicFriends` is NOT deployed; deploy it before the app release that carries the
+  shelf. His desk test is open: features/friends-shelf.md §5. WORKLOG 2026-10-29.
+
 - **Replies reach the filer + the admin Inbox (2026-10-26, committed, his desk test open).**
   The app part ships with the next release; the site part (DeetsSolutions) is LIVE since
   2026-10-26 (d6a6528 pushed). The Inbox strings await his OK. WORKLOG 2026-10-26.
@@ -231,6 +235,19 @@ each step that touches those calls.
 - (The card grow stress test and Fable review ran on 2026-10-20 instead: see below.)
 
 ### Built, waiting on a release or a desk test
+
+- **Clear Queue (2026-10-29, on `main`, uncommitted; his hand test open).** From a user's
+  report: ~430 hand-added songs sat on top of every new list, so the songs they added later
+  never played (`modelUp 443` after a 13-song album). Right-click any Up Next row › *Clear
+  Queue* (a flyout *Manually added* / *Entire queue* when Up Next holds both), each with its
+  count; the first click reads *Confirm?*, the second clears; a toast offers Undo. Also the
+  Compass, the agent (`clear_queue`, `mode: added`) and Settings › Playback › *Clear the queue
+  on launch* (off). The design, the as-built and the desk test: QUEUE.md § Clear Queue. The CLI
+  change (`cli/src/main.rs`) ships with the next release's CLI. **In listening rooms too** (his
+  call, 2026-10-29): a new `clear` command in `../DeetsMusicRooms` (uncommitted, **not
+  deployed**; his plan: deploy it with the next release, before the release goes out); its 7
+  checks pass on `wrangler dev`. ROOMS.md §22. That repo's uncommitted `src/sanitize.js` (Apple
+  cover hosts only, live since 2026-09-29) is not part of this change.
 
 - **The mouse wheel on the volume (2026-10-27, branch `onepointtwo`, committed and pushed; release notes in 1.2.0).** The wheel
   on the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
@@ -444,6 +461,10 @@ each step that touches those calls.
 
 ### His to design or decide (asks and ideas, not built)
 
+- **Should a new Play keep a large pile of hand-added songs?** (2026-10-29, from the Clear
+  Queue bug report.) QUEUE.md § `setContext` rule 1 keeps every manual entry on top of each new
+  list; one user had ~430 and their later Add to Queue songs never came up. Clear Queue (below,
+  *Built*) is the way out; this rule is how they got in. His call whether to change it.
 
 - **Two motion ideas** (2026-10-21, found in a frame review): the look change in the full player
   blinks to dark (fullscreen-player.md §15), and a layout change has no motion (MAX-CARDS.md §12).

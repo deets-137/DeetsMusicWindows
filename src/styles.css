@@ -3235,6 +3235,13 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 .lib-shelves { display: flex; flex-direction: column; padding: 0 var(--space-2) var(--space-2); min-width: 0; }
 /* One Home shelf as one block: its label and its tiles move together (MOVABLE-ROWS.md). */
 .home-shelf { display: flex; flex-direction: column; min-width: 0; }
+/* Friends on DM (friends-shelf.md §2.3): a plain vertical line between the albums friends play
+   now and their recent ones. The menu divider's family: its width and its --border color. */
+.home-split {
+  flex: none; align-self: stretch;
+  width: var(--home-split-w); margin-inline: var(--home-split-gap);
+  background: var(--border);
+}
 .lib-grid .lib-shelves { grid-column: 1 / -1; }
 /* A toolbar below the hero (Context.toolbarBelow): the head (hero + shelves), then the bar
    (section label + Sort / View / Search) right above the rows they act on. The bar sticks to

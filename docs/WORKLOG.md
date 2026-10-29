@@ -2,9 +2,43 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-27
+updated: 2026-10-29
 ---
 # DeetsMusic — Work log
+
+## 2026-10-29 — Friends on DM: the Home shelf of friends' albums (built, uncommitted)
+
+He designed it in this sitting: the albums friends play now, a plain vertical line, then up to
+10 recent albums, the friends taking turns; each presence carries the last 3 albums; this app
+keeps 10 per friend and deletes them the moment the friend turns *Share what I play* off; the
+label "Friends on DM". His calls are features/friends-shelf.md §2, the build §4, Claude's choices
+§4.1. The worker change (`recent`, `sharing`) passes `scripts/check.mjs` against `wrangler dev`;
+not deployed (his OK given; the deploy waits on his word for the moment). App: tsc, vite build,
+`npm test` (420, 8 new in `tests/friends-log.test.ts`) and docs:check pass. Not run: the
+two-app desk test (§5); the Queue session shared this checkout, so no dev app was driven.
+Shared the checkout with the "Queue stuck bug" session by an agreed file split.
+
+## 2026-10-29 — A stuck Queue: Clear Queue documented (doc only, uncommitted)
+
+**The report:** a user's Queue was "stuck" for a day; songs they added to the queue did not
+play, through a reload and a PC restart. **Found in their log:** about 430 manual entries in
+Up Next (`modelUp 443` after a 13-song album, `815` after a 376-song shuffle), kept on top of
+every new list by `setContext` and brought back by the saved queue. **His ask:** doc a right-click
+*Clear Queue* in the Queue menu. **Written:** HANDOFF.md › His to design or decide, with the
+cause, the existing `"clear"` path in np-bus.ts, and his forks. Nothing built.
+
+**Then built (his calls):** *Clear Queue* on every Up Next row's right-click, a flyout *Manually
+added* / *Entire queue* when both kinds are there, *Confirm?* on the first click, counts on
+the rows (2A), an Undo toast (1A), and Settings › Playback › *Clear the queue on launch*
+(off). The menu primitive gained `ActionItem.confirm`. Also the Compass and the agent's
+`clear_queue` `mode: added`. QUEUE.md § Clear Queue is the record and the desk test. **Checks:**
+tsc, the queue tests (2 new), vite build, cargo check, docs:check. **A slip:** a `sed -i` on
+AGENT.md read `\|` as "or" and garbled 28 lines; restored from git and redone with Edit.
+
+**Then (his asks):** a divider above the Queue's own rows in the right-click menu; Clear Queue in
+listening rooms (ROOMS.md §22): the `added` mark, the worker's `clear` → `tailClear` to the
+keeper, `clearTail` (pure, tested), the room Undo. `../DeetsMusicRooms/scripts/check.mjs` §11g
+passes on `wrangler dev`; the worker is not deployed (his plan: with the next release).
 
 ## 2026-10-27 — Owner polls and suggestions: the idea doc (committed to `main`)
 

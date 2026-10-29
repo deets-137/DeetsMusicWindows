@@ -176,6 +176,11 @@ for word, with RELEASE.md's section numbers.
   song, then its album; Apple, then Last.fm) and *Notes from* in Settings › Playback to pick
   one source or none. §9 DESIGNED 2026-10-17: a library album's plays as the sum of its songs',
   and a row per song in presentation mode (the probe §9.1; forks §9.6).
+- `friends-shelf.md` — BUILT 2026-10-29, desk test open (§5): the **Friends on DM** Home shelf
+  (his calls §2): albums friends play now, a plain line, up to 10 recent albums (the friends
+  take turns). Each presence carries the last 3 albums (`recent`); your app keeps 10 per friend
+  (`src/friends-log.ts`, pure) and deletes them on `sharing: false`. The Friends worker change
+  is built, not deployed (§2.4, his OK). §4 the as-built record; §4.1 Claude's choices.
 - `LOCAL-RADIO.md` — DESIGNED 2026-10-13, not built: web stations from Radio Browser in the
   Radio card (a Local shelf by the user's city, search for any station), played through a Rust
   loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms
@@ -378,10 +383,6 @@ code does today; §3.2 the thumb-fade probe; §4 forks D1–D5.
 and shown in the app (his example: is anyone interested in voice control). Open ended on
 purpose (his ask): what exists (§1, the board polls, the `/config` read at launch), a sketch (§2),
 the open questions (§3); no recommendation.
-`friends-shelf.md` — an idea (2026-10-27, his ask): a "Friends are listening to" Home shelf,
-shown only when the user has friends in DeetsMusic. Open ended on purpose (his ask): what
-exists (§1: Apple has no friend data; the watch sockets already hold each friend's live song,
-no history), a sketch (§2), the open questions (§3); no recommendation.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

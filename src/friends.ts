@@ -41,6 +41,7 @@ import { toast } from "./toast";
 import { plainError } from "./plain-error";
 import { judgeKey, pinsForWorker } from "./friend-pin";
 import { netNote } from "./net-feed";
+import { asLogAlbum, expireLogs, mergeAlbums, recentToSend, SEND_MAX, type FriendLog, type LogAlbum } from "./friends-log";
 
 /** A friends-list write failed: the words for a person, and the raw text in the ring. */
 function friendFailed(what: string, e: unknown, fallback: string): void {
@@ -87,6 +88,9 @@ export interface FriendPresence {
   playing: boolean;
   /** Their room code, when they host one and their own switch allows it. */
   room: string | null;
+  /** Their last albums, without the one playing now (features/friends-shelf.md §2.1). An app
+   *  or a worker from before 2026-10-29 sends none. */
+  recent?: LogAlbum[];
   at: number;
 }
 
@@ -305,6 +309,7 @@ async function handle(link: Link, ws: WebSocket, message: Record<string, unknown
       link.allowed = true;
       link.theirName = String(message.name ?? "");
       link.presence = (message.presence as FriendPresence | null) ?? null;
+      logPresence(link.of, link.presence, message.sharing);
       return emit();
     }
     case "offline": {
@@ -316,6 +321,7 @@ async function handle(link: Link, ws: WebSocket, message: Record<string, unknown
       // says "Waiting for them to add you", which is the honest and actionable version.
       link.allowed = false;
       link.presence = null;
+      forgetLog(link.of, "denied");
       return emit();
     }
     // Somebody pressed Listen Along on your row (§7.3). Your own switch answers it; this
@@ -348,6 +354,123 @@ function send(ws: WebSocket | null, message: Record<string, unknown>): void {
 }
 
 const home = (): Link | undefined => links.get(homeKey);
+
+// ── the Friends on DM log (features/friends-shelf.md §2.2) ───────────────────
+// Two small lists on this PC, in the webview's storage: the albums each friend played lately
+// (from their presences, up to LOG_MAX each), and the few albums this app sends as your own
+// `recent`. Neither goes to the worker's storage. Storage can be missing or full; the shelf
+// then lives in memory for the session, which is all it loses.
+
+const LOG_KEY = "deets.friends.log";
+const SENT_KEY = "deets.friends.sent";
+
+function readJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJSON(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage full or blocked: memory only */
+  }
+}
+
+/** Every entry re-read on load, so a hand-edited or old file cannot draw a broken tile. */
+function loadLogs(): Record<string, FriendLog> {
+  const raw = readJSON<Record<string, FriendLog>>(LOG_KEY, {});
+  const out: Record<string, FriendLog> = {};
+  for (const [code, log] of Object.entries(raw ?? {})) {
+    const albums = Array.isArray(log?.albums) ? log.albums.map(asLogAlbum).filter((a): a is LogAlbum => !!a) : [];
+    if (albums.length && Number(log.heard) > 0) out[code] = { heard: Number(log.heard), paused: log.paused === true, albums };
+  }
+  return expireLogs(out, Date.now());
+}
+
+let logs: Record<string, FriendLog> = loadLogs();
+let sentAlbums: LogAlbum[] = (readJSON<unknown[]>(SENT_KEY, []) ?? []).map(asLogAlbum).filter((a): a is LogAlbum => !!a);
+
+function saveLogs(): void {
+  writeJSON(LOG_KEY, logs);
+}
+
+function saveSent(list: LogAlbum[]): void {
+  sentAlbums = list;
+  if (list.length) writeJSON(SENT_KEY, list);
+  else {
+    try {
+      localStorage.removeItem(SENT_KEY);
+    } catch {
+      /* nothing to remove */
+    }
+  }
+}
+
+/** Delete one friend's albums at once: sharing off, removed, or they removed you. */
+function forgetLog(code: string, why: string): void {
+  if (!(code in logs)) return;
+  delete logs[code];
+  saveLogs();
+  diag.log("friends:log-forget", { of: code, why });
+}
+
+/** Fold one presence into the friend's log. `sharing` is the reason a last presence carries. */
+function logPresence(code: string, p: FriendPresence | null, sharing: unknown): void {
+  if (sharing === false) return forgetLog(code, "sharing off");
+  const was = logs[code];
+  if (sharing === "paused") {
+    if (was && !was.paused) {
+      logs[code] = { ...was, paused: true };
+      saveLogs();
+      diag.log("friends:log-pause", { of: code });
+    }
+    return;
+  }
+  if (!p) {
+    // "Here, and playing nothing": they still spoke, so the age-out starts again.
+    if (was) logs[code] = { ...was, heard: Date.now() };
+    if (was) saveLogs();
+    return;
+  }
+  const playing = asLogAlbum({ album: p.album, artist: p.artist, title: p.title, catalogId: p.catalogId, artworkUrl: p.artworkUrl, at: p.startedAt });
+  const incoming = [...(playing ? [playing] : []), ...(p.recent ?? []).map(asLogAlbum).filter((a): a is LogAlbum => !!a)];
+  logs[code] = { heard: Date.now(), albums: mergeAlbums(was?.albums ?? [], incoming) };
+  saveLogs();
+}
+
+/** One friend's part of the shelf: what they play now (when playing) and their kept albums. */
+export interface FriendShelfPart {
+  code: string;
+  name: string;
+  now: LogAlbum | null;
+  albums: LogAlbum[];
+}
+
+/** The shelf's source (home.ts): every friend on your list with something to show, the
+ *  friends inside the hour's pause left out. Aged-out logs drop here too. */
+export function friendShelfParts(): FriendShelfPart[] {
+  const kept = expireLogs(logs, Date.now());
+  if (Object.keys(kept).length !== Object.keys(logs).length) {
+    logs = kept;
+    saveLogs();
+  }
+  const parts: FriendShelfPart[] = [];
+  for (const row of rowsNow()) {
+    if (!row.allowed) continue;
+    const log = logs[row.code];
+    if (log?.paused) continue;
+    const p = row.online ? row.presence : null;
+    const now = p?.playing ? asLogAlbum({ album: p.album, artist: p.artist, title: p.title, catalogId: p.catalogId, artworkUrl: p.artworkUrl, at: p.startedAt }) : null;
+    const albums = log?.albums ?? [];
+    if (now || albums.length) parts.push({ code: row.code, name: row.name || row.theirName || "A friend", now, albums });
+  }
+  return parts;
+}
 
 // ── what you are playing ─────────────────────────────────────────────────────
 
@@ -389,11 +512,33 @@ function mine(): Record<string, unknown> | null {
   };
 }
 
+/** The album you play now, as one log entry: a song with a catalog id and an album name, never a
+ *  station (a station has no album, and its song id is not one a friend can open). */
+function nowAlbum(): LogAlbum | null {
+  if (player.station) return null;
+  const t = queue.getCurrent();
+  return asLogAlbum({
+    album: player.album ?? "",
+    artist: player.artist ?? "",
+    title: player.title ?? "",
+    catalogId: t?.catalogId ?? "",
+    artworkUrl: player.artworkUrl ?? null,
+    at: Date.now() - Math.max(0, progress.currentTime) * 1000,
+  });
+}
+
 function sendNow(why: string): void {
   const link = home();
   if (!link?.ready) return;
   lastSentAt = Date.now();
   const presence = asleep ? null : mine();
+  if (presence) {
+    // Your last albums ride the same message (features/friends-shelf.md §2.1). The list only
+    // grows here, while *Share what I play* is on: nothing played with it off is ever sent.
+    const now = nowAlbum();
+    presence.recent = recentToSend(sentAlbums, now);
+    if (now) saveSent(mergeAlbums(sentAlbums, [now], SEND_MAX + 1));
+  }
   lastKey = presence ? keyOf(player) : "";
   send(link.ws, { t: "presence", presence, name: roomName() || "Listener" });
   diag.log("friends:push", { why, song: presence ? String(presence.title) : null });
@@ -408,11 +553,15 @@ function push(why: string, now = false): void {
   trailing = window.setTimeout(() => sendNow(`${why}+coalesced`), wait);
 }
 
-/** Sharing went off, or the hour's pause began: one empty presence and the socket goes. */
-function stopSharing(why: string): void {
+/** Sharing went off, or the hour's pause began: one empty presence and the socket goes. The
+ *  message says which, so a friend's app deletes (off) or hides (the pause) your albums
+ *  (features/friends-shelf.md §2.2); off also deletes the list this app sends. */
+function stopSharing(why: "sharing off" | "paused for an hour"): void {
   window.clearTimeout(trailing);
+  const off = why === "sharing off";
+  if (off) saveSent([]);
   const link = home();
-  if (link?.ready) send(link.ws, { t: "presence", presence: null });
+  if (link?.ready) send(link.ws, { t: "presence", presence: null, sharing: off ? false : "paused" });
   diag.log("friends:sharing-off", { why });
   closeLink(homeKey);
   state = { ...state, connected: false, sharing: false };
@@ -635,6 +784,8 @@ function keyChanged(friend: StoredFriend, where: string): void {
 
 async function reloadList(): Promise<void> {
   listCache = await invoke<StoredFriend[]>("friend_list");
+  // A friend off the list takes their albums with them, however they left (§2.2).
+  for (const code of Object.keys(logs)) if (!listCache.some((f) => f.code === code)) forgetLog(code, "removed");
   // A friend who was removed loses their socket; one who was added gets one.
   for (const key of [...links.keys()]) {
     if (key !== homeKey && !listCache.some((f) => f.code === key)) closeLink(key);

@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 814 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 816 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -385,6 +385,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--menu-min-w` | `122px` | — |  |
 | `--menu-fly-max-w` | `calc(var(--menu-min-w) * 2.6)` | — | A flyout is as wide as its longest row, up to this (2026-10-10: an absolute box at left: 100% has no room to grow, so every long label wrapped at its longest word). |
 | `--ctx-divider-gap` | `var(--space-1)` | — | above and below a menu divider (DividerItem) |
+| `--home-split-w` | `1px` | — | The Friends on DM shelf's line between "playing now" and "recent" (friends-shelf.md §2.3): the menu divider's line, standing up — the same 1px and the same --border color. |
+| `--home-split-gap` | `var(--space-2)` | — | beside the line, on top of the shelf's own tile gap |
 | `--menu-search-w` | `calc(var(--menu-min-w) * 2.3)` | — | A menu with a searching field (context-menu.ts `onInput`, the Diary's New entry): wide enough for an album name, and its results area grows as the answers arrive. |
 | `--menu-results-max-h` | `calc(var(--lib-row-art) * 8)` | — | about seven result rows, then it scrolls |
 | `--menu-grow-dur` | `var(--pop-in)` | — |  |
