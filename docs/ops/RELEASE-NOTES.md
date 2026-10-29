@@ -41,6 +41,21 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.2.1 — 2026-10-29
+
+**Friends on DM, a new shelf on Home.** When you have friends in DeetsMusic, Home shows the
+albums they are playing now, then a line, then up to 10 albums they played lately. With several
+friends, they take turns on the shelf. Click an album to play it. Right-click an album a friend
+is playing now to Listen Along. Your friends see your last 3 albums only while *Share what I
+play* is on. Turn it off, and your albums are deleted from your friends' apps: at once when
+they are online, otherwise within 7 days.
+
+**Clear Queue on the Queue's right-click.** Right-click any song in Up Next and pick *Clear
+Queue*: the songs you added by hand, or the entire queue. Each choice shows how many songs it
+clears. A second click confirms, and Undo puts the songs back. It works in a listening room
+too. To start every launch with an empty Up Next, turn on Settings › Playback › *Clear the
+queue on launch*.
+
 ## 1.2.0 — 2026-10-27
 
 **Adjust volume by scrolling on the Player!** Roll the mouse wheel anywhere on Now Playing to
