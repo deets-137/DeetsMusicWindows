@@ -112,9 +112,8 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-- **Friends on DM, the Home shelf (2026-10-29, built, uncommitted).** The worker change in
-  `../DeetsMusicFriends` is NOT deployed; deploy it before the app release that carries the
-  shelf. His desk test is open: features/friends-shelf.md §5. WORKLOG 2026-10-29.
+- **Friends on DM, the Home shelf (2026-10-29, shipped in 1.2.1).** The Friends worker is
+  deployed. The two-app desk test is open: features/friends-shelf.md §5. WORKLOG 2026-10-29.
 
 - **Replies reach the filer + the admin Inbox (2026-10-26, committed, his desk test open).**
   The app part ships with the next release; the site part (DeetsSolutions) is LIVE since
