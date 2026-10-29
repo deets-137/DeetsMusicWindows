@@ -47,6 +47,16 @@ export async function initQueuePersist(): Promise<void> {
     const mode = fromUpdate ? "song" : setting("restoreQueue");
     if (s && (s.v === 1 || s.v === 2) && mode !== "off") {
       queue.restore(s, mode === "song");
+      // Clear the queue on launch (QUEUE.md § Clear Queue): Up Next starts empty. Up Next mode's
+      // parked song stays, since it is the last song. An update or graphics restart keeps all.
+      if (!fromUpdate && setting("clearQueueOnLaunch")) {
+        const up = queue.getUpcoming();
+        const keep = mode === "queue" && s.current ? up.slice(0, 1) : [];
+        if (up.length > keep.length) {
+          diag.log("queue:clearOnLaunch", { n: up.length - keep.length });
+          queue.setUpcoming(keep);
+        }
+      }
       const cur = queue.getCurrent();
       const id = cur?.catalogId ?? cur?.libraryId;
       if (fromUpdate && id && typeof s.at === "number" && s.at > 1) setResumeAt(s.at, id);

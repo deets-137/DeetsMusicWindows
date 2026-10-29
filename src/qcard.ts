@@ -12,7 +12,7 @@ import { setting, onSettingsChange } from "./settings-store";
 import * as queue from "./queue";
 import {
   onPlayerState, jumpToUpcoming, moveInQueue, removeFromQueue, reconcileUpcoming,
-  stopStation, dropResumeStation, suggestSkipped, type PlayerState,
+  stopStation, dropResumeStation, suggestSkipped, clearQueueWithUndo, type PlayerState,
 } from "./player";
 import { onSuggestChange } from "./suggest";
 import { onTracksChange } from "./track-store";
@@ -21,7 +21,7 @@ import { resolveEntry as resolve, artURL, rowHTML } from "./queue-rows";
 import { patchHTML, keyRow } from "./keyed";
 import { ROW_PX } from "./art-size";
 import { addSquareHTML, isAddSquare } from "./add-square";
-import { openContextMenu, type MenuItem } from "./context-menu";
+import { openContextMenu, menuState, MENU_DIVIDER, type ActionItem, type MenuItem } from "./context-menu";
 import { songMenu, setMenu } from "./media-menu";
 import { rowPick, picksText } from "./row-pick";
 import type { Track } from "./library";
@@ -39,6 +39,23 @@ const entryKey = (e: object): string => {
 };
 
 const UP_NEXT_CAP = 50; // render a bounded slice; virtualize if queues get huge
+
+/** Clear Queue on every Up Next row's menu (QUEUE.md § Clear Queue, his call 2026-10-29): one
+ *  row when Up Next holds one kind of song, a flyout of the two when it holds both. Each row
+ *  shows its count and asks "Confirm?" before it clears; the toast after it holds the Undo.
+ *  In a listening room it clears the room's queue for everyone (his call 2026-10-29). */
+function clearQueueItem(): MenuItem | null {
+  const { manual, all } = queue.upcomingCounts();
+  if (!all) return null;
+  const row = (label: string, only: "manual" | "all", n: number): ActionItem => ({
+    label,
+    badge: menuState(String(n)),
+    confirm: "Confirm?",
+    run: () => void clearQueueWithUndo(only).catch((err) => console.error("[qcard] clear queue", err)),
+  });
+  if (!manual || manual === all) return row("Clear Queue", "all", all);
+  return { label: "Clear Queue", sub: () => [row("Manually added", "manual", manual), row("Entire queue", "all", all)] };
+}
 
 export const queueCard: CardDef = {
   id: "queue",
@@ -206,7 +223,7 @@ function mountQueue(host: HTMLElement): CardInstance {
         // Already in the queue: no Play group, only file them or take them out.
         const setItems = setMenu(() => ts, set.length, "song", {
           play: [],
-          away: [{
+          away: [MENU_DIVIDER, {
             label: `Remove ${picksText(set.length)}`,
             run: () => {
               const live = queue.getUpcoming();
@@ -216,7 +233,7 @@ function mountQueue(host: HTMLElement): CardInstance {
                 .then(() => pick.clear())
                 .catch((err) => console.error("[qcard] remove picked", err));
             },
-          }],
+          }, clearQueueItem()],
         });
         e.preventDefault();
         row.classList.add("is-context");
@@ -231,10 +248,11 @@ function mountQueue(host: HTMLElement): CardInstance {
         catalogId: entry.catalogId,
         play: [{ label: "Play Now", run: act(jumpToUpcoming, "play now"), quick: "play" }],
         own: [
+          MENU_DIVIDER, // the queue's own rows, set apart from the song's (his call 2026-10-29)
           { label: "Move to Top", run: act((i) => moveInQueue(i, "top"), "move top") },
           { label: "Move to Bottom", run: act((i) => moveInQueue(i, "bottom"), "move bottom") },
         ],
-        away: [{ label: "Remove", run: act(removeFromQueue, "remove") }],
+        away: [{ label: "Remove", run: act(removeFromQueue, "remove") }, clearQueueItem()],
       });
       openContextMenu(e.clientX, e.clientY, items, () => row.classList.remove("is-context"));
       return;

@@ -796,6 +796,7 @@ fn mode_kind(kind: &str, mode: &str) -> String {
     let mode = mode.trim().to_ascii_lowercase();
     match (kind, mode.as_str()) {
         ("repeat", "off" | "all" | "one") | ("shuffle", "on" | "off") => format!("{kind}-{mode}"),
+        ("clear", "added") => "clear-added".to_string(), // only the songs added by hand (QUEUE.md § Clear Queue)
         _ => kind.to_string(),
     }
 }
@@ -1027,7 +1028,7 @@ fn tools(small: bool) -> Value {
           "inputSchema": { "type": "object", "required": ["action"], "additionalProperties": false, "properties": {
               "action": { "type": "string", "enum": ["play", "pause", "next", "previous", "shuffle", "repeat", "mute", "seek", "volume", "clear_queue"] },
               "value": { "type": "number", "description": "Percent, for seek and volume only." },
-              "mode": { "type": "string", "description": "For repeat: off | all | one (omit to cycle). For shuffle: on | off (omit to press the button)." } } } }));
+              "mode": { "type": "string", "description": "For repeat: off | all | one (omit to cycle). For shuffle: on | off (omit to press the button). For clear_queue: added (only the songs added by hand; omit to clear all of Up Next)." } } } }));
     list.push(json!({ "name": "list", "description": "List the queue (now playing + numbered Up Next), the play history, or the user's playlists (with ids). what=album with an id reads the songs inside an album or playlist, numbered — use it to see a tracklist (and who features on it) without playing or adding anything. what=library lists the user's own songs sorted and filtered (shortest, longest, newest added, most played, most skipped), each with a song:… id to play.",
           "inputSchema": { "type": "object", "required": ["what"], "additionalProperties": false, "properties": {
               "what": { "type": "string", "enum": ["queue", "history", "playlists", "album", "library"] },

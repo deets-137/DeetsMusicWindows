@@ -2,7 +2,7 @@
 status: foundation
 desk_test: passed 2026-09-24
 sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts, src/license-watch.ts, src/license-reply.ts, docs/ops/checks/license-fail.mjs]
-updated: 2026-10-18
+updated: 2026-10-29
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -320,6 +320,56 @@ never moves — `windowPos` and model-follow stay valid.
 > **Edge:** "Move to Bottom" appends at the end of MusicKit's *window* via `playLater`;
 > if the model's `upcoming` is longer than the window, that's not the model's true bottom
 > (it reconciles on re-window). Fine for typical queues.
+
+### Clear Queue (built 2026-10-29)
+> **Part:** built · 2026-10-29 · desk test open
+
+**Why.** A user's bug report (2026-10-29): the Queue was "stuck" for a day. Their log showed
+about 430 manual entries in Up Next (`modelUp 443` after a 13-song album). The stacking rule
+(§ `setContext`, rule 1) keeps manual entries on top of every new list, Add to Queue pushes
+to the end, and Restore on launch brings it all back, so the songs they added never came up.
+
+**His calls (2026-10-29).** A *Clear Queue* row on every Up Next row's right-click; a flyout
+*Manually added* / *Entire queue* when Up Next holds both kinds; the first click turns the
+row into *Confirm?* and the second clears (1A: then a toast with Undo; 2A: each row shows its
+count). A Settings row, *Clear the queue on launch*, default off.
+
+**As built.**
+- `queue.ts`: `upcomingCounts()`, `clearUpcoming(only)` (returns Up Next as it was),
+  `setUpcoming(entries)` (the Undo). `current`, history and the plan never change.
+- `player.ts`: `clearQueue(only)` — the model first, then one `reconcileUpcoming` (gapless;
+  the current song plays on). It returns the undo, or null when nothing changed or a room
+  owns the queue. The undo puts Up Next back exactly when nothing changed since; otherwise
+  (a song ended, a song was added) the cleared songs go back on top of Up Next as it is now.
+  `clearQueueWithUndo(only)` adds the toast. Log: `player:queueEdit` `clear-manual` /
+  `clear-all` / `undo-clear-*`.
+- `qcard.ts` `clearQueueItem()`: the row in group 7 (take-away) after *Remove*, on an Up Next
+  row and on picked rows. One row (*Clear Queue*, the whole of Up Next) when Up Next holds
+  one kind of song; the flyout when it holds both. The count is the row's trailing state mark
+  (`menuState`). Left out when Up Next is empty. A divider sets the queue's own rows (Move to
+  Top, Move to Bottom, Remove, Clear Queue) apart from the song's rows (his ask, 2026-10-29).
+- **In a listening room (his call, 2026-10-29):** the room clears it for everyone, held by
+  *Change the queue*; songs a member added carry a mark, so *Manually added* works there too.
+  The Undo puts the songs back on top. The worker change and the keeper's part: ROOMS.md §22.
+- `context-menu.ts`: `ActionItem.confirm` — the first click shows that label, keeps the menu
+  open and holds the row's width; the second click runs. Closing the menu forgets the first click.
+- The Compass: *Clear Queue* and *Clear Queue: Manually added* (no Confirm; the toast's Undo).
+- The agent: `control clear_queue` (all) and `mode: added` (`clear-added` on `/command`).
+- `queue-persist.ts`: with `clearQueueOnLaunch` on, Up Next is emptied after the restore
+  (`queue:clearOnLaunch`). Restore on launch = *Up Next* keeps its parked last song. An update
+  or a graphics restart keeps the whole queue.
+
+**Desk test (open).**
+1. Play an album, add three songs with Add to Queue. Right-click an Up Next row › *Clear Queue ›*:
+   the flyout shows *Manually added 3* and *Entire queue N*.
+2. Click *Manually added*: it reads *Confirm?*, the menu stays, its width does not change.
+   Click again: the three songs go, the album's songs stay, the song plays on, a toast offers Undo.
+3. Undo: the three songs come back in their places.
+4. *Entire queue* twice: Up Next is empty, the song plays on. Undo brings it back.
+5. Up Next with only the album: one row, *Clear Queue N*, no flyout.
+6. Arm *Confirm?*, then press Escape and open the menu again: the row reads *Clear Queue* again.
+7. Settings › Playback › *Clear the queue on launch* on, quit, start: Up Next is empty, the
+   last song is in Now Playing (Restore on launch = Last song).
 
 ### Arbitrary reorder — `reconcileUpcoming` (drag-and-drop)
 

@@ -264,6 +264,23 @@ export function removeAt(index: number): void {
     emit();
   }
 }
+/** How many Up Next entries the user added by hand, and how many in all (Clear Queue's counts). */
+export function upcomingCounts(): { manual: number; all: number } {
+  return { manual: state.upcoming.filter((e) => e.origin === "manual").length, all: state.upcoming.length };
+}
+/** Clear Queue (QUEUE.md § Clear Queue): take out every Up Next entry, or only the ones the
+ *  user added by hand. `current` and history stay. Returns Up Next as it was, for Undo. */
+export function clearUpcoming(only: "manual" | "all"): QueueEntry[] {
+  const before = state.upcoming.slice();
+  state.upcoming = only === "manual" ? state.upcoming.filter((e) => e.origin !== "manual") : [];
+  emit();
+  return before;
+}
+/** Put Up Next back to a list (Clear Queue's Undo). */
+export function setUpcoming(entries: QueueEntry[]): void {
+  state.upcoming = entries.slice();
+  emit();
+}
 export function move(from: number, to: number): void {
   const [entry] = state.upcoming.splice(from, 1);
   if (entry) state.upcoming.splice(to, 0, entry);
@@ -367,9 +384,11 @@ export function jumpTo(index: number): QueueEntry | null {
  * joins the heard trail the same way a local advance would, so a room song counts in
  * History and the play log (§9.5).
  */
-export function setRoomQueue(handles: TrackHandle[]): void {
+export function setRoomQueue(handles: (TrackHandle & { added?: boolean })[]): void {
+  const plain = ({ added: _a, ...h }: TrackHandle & { added?: boolean }): TrackHandle => h;
   const [head, ...rest] = handles;
-  const nextUp = rest.map((h): QueueEntry => ({ ...h, origin: "auto" }));
+  // A song a member added by hand is `manual`, as it is outside a room (Clear Queue's counts).
+  const nextUp = rest.map((h): QueueEntry => ({ ...plain(h), origin: h.added ? "manual" : "auto" }));
   const sameSong = !!head && !!state.current && idOf(head) === idOf(state.current);
   if (sameSong) {
     state.upcoming = nextUp;
@@ -377,7 +396,7 @@ export function setRoomQueue(handles: TrackHandle[]): void {
     return;
   }
   if (state.current) pushHistory(state.current);
-  state.current = head ? { ...head, origin: "auto", played: true } : null;
+  state.current = head ? { ...plain(head), origin: "auto", played: true } : null;
   state.upcoming = nextUp;
   emit();
 }

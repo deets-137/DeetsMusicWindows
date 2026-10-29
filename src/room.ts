@@ -44,7 +44,7 @@ import {
   type RoomStationSong,
 } from "./player";
 import type { Station } from "./radio";
-import { applyChange, editTail, gather, tailOf, topUpOf } from "./room-list";
+import { applyChange, clearTail, editTail, gather, tailOf, topUpOf } from "./room-list";
 import { toast } from "./toast";
 import { busy, busyOver, causeOf } from "./busy";
 import * as diag from "./diag";
@@ -68,6 +68,9 @@ export interface RoomEntry {
   durationMs: number;
   addedBy: { memberId: string; name: string } | null;
   addedAt: number;
+  /** A member added it by hand (Add to Queue, Play Next), not the list that was played:
+   *  Clear Queue › Manually added takes these (QUEUE.md § Clear Queue, 2026-10-29). */
+  added?: boolean;
 }
 
 export type Permission = "everyone" | "host";
@@ -267,6 +270,8 @@ const ROOM_LEAD_MS = 1500;
 
 /** The room's window (DeetsMusicRooms protocol.js MAX_WINDOW). */
 const MAX_WINDOW = 100;
+/** The most songs the room's Up Next takes from adds (protocol.js MAX_QUEUE). */
+const MAX_QUEUE = 500;
 /** Top the window up when it holds this many songs or fewer. */
 const TOPUP_AT = 50;
 /** Entries per list packet: ~300 real entries are ~120 KB, under the worker's 256 KB. */
@@ -435,6 +440,18 @@ function keeperAppend(entries: RoomEntry[]): void {
   if (!add.length) return;
   list = { ...list, rev: list.rev + 1, items: [...list.items, ...add] };
   listChanged({ op: "append", entries: add });
+}
+
+/** Keeper: Clear Queue reached the tail (the worker cleared the window). The tail goes out
+ *  again whole, then the numbers (QUEUE.md § Clear Queue). */
+function keeperClear(only: "added" | "all"): void {
+  if (!isKeeper()) return;
+  const next = clearTail(list, listInfo.fed, only);
+  if (!next) return;
+  list = next;
+  diag.log("room:listClear", { only, rev: list.rev, songs: list.offset + list.items.length });
+  sendList();
+  send({ type: "listMeta", list: { rev: list.rev, len: list.offset + list.items.length, fed: listInfo.fed } });
 }
 
 /** A tail change from this app: the keeper does it, anyone else asks the keeper. */
@@ -945,7 +962,9 @@ function onMessage(raw: string): void {
       // The worker refused a change: say so, never leave a click doing nothing (2026-10-16,
       // a 4,000-song click refused as too large with no sign, ROOMS.md §21.1).
       if (message.code === "rate") toast({ kind: "warn", text: "That was too fast for the room. Try again in a few seconds." });
-      else if (message.code === "too-large" || message.code === "bad-packet" || message.code === "bad-json" || message.code === "bad-message") {
+      // unknown-command: a room server older than this app (Clear Queue before the worker
+      // deploy, ROOMS.md §22).
+      else if (message.code === "too-large" || message.code === "bad-packet" || message.code === "bad-json" || message.code === "bad-message" || message.code === "unknown-command") {
         toast({ kind: "warn", text: "The room didn't take that change. Try again." });
       }
       return;
@@ -961,6 +980,9 @@ function onMessage(raw: string): void {
       return;
     case "tailAdd":
       keeperAppend(Array.isArray(message.entries) ? (message.entries as RoomEntry[]) : []);
+      return;
+    case "tailClear":
+      keeperClear(message.only === "added" ? "added" : "all");
       return;
     case "friendOffer":
       if (typeof message.from !== "string" || typeof message.code !== "string") return;
@@ -1141,10 +1163,11 @@ function writeModel(current: RoomEntry | null, upcoming: RoomEntry[]): void {
     addTransientTracks(tail.map(trackOf));
   }
   addTransientTracks([...(current ? [current] : []), ...windowEntries].map(trackOf));
-  const handles: TrackHandle[] = all.map((entry) => ({
+  const handles = all.map((entry) => ({
     catalogId: entry.catalogId,
     // Room plays count everywhere, and this context marks them (§9.5).
     context: `room:${state.code}`,
+    added: !!entry.added, // Clear Queue's counts (QUEUE.md § Clear Queue)
   }));
   queue.setRoomQueue(handles);
 }
@@ -1495,7 +1518,8 @@ const bridge: RoomBridge = {
     playList(entries as Record<string, unknown>[]);
   },
   enqueue(handles: readonly TrackHandle[], where: "next" | "later"): void {
-    const entries = entriesFrom(handles);
+    // Songs added by hand carry the mark Clear Queue › Manually added reads.
+    const entries = entriesFrom(handles).map((e) => ({ ...(e as object), added: true }));
     noteDropped(entries.length);
     if (!entries.length) return;
     // The keeper adding at the end puts the songs on its own list when there is a tail.
@@ -1550,6 +1574,26 @@ const bridge: RoomBridge = {
       return;
     }
     send({ type: "move", entryId: entry.entryId, toIndex: to === "top" ? 0 : state.windowLen - 1 });
+  },
+  clear(only: "manual" | "all"): (() => void) | null {
+    // Clear Queue (QUEUE.md § Clear Queue): the worker clears the window and asks the keeper
+    // to clear the tail. The song playing plays on.
+    const removed = state.upcoming.filter((e) => only === "all" || !!e.added);
+    if (!removed.length) return null;
+    if (!may("changeQueue")) {
+      toast({ kind: "info", text: "The host keeps that control in this room." });
+      return null;
+    }
+    send({ type: "clear", only: only === "manual" ? "added" : "all" });
+    // Undo: the cleared songs go back on top of Up Next, in their order. Each add "next" goes
+    // on top, so the parts go last part first. The room's Up Next holds MAX_QUEUE songs; a
+    // longer clear comes back cut there.
+    return () => {
+      if (!inRoom()) return;
+      const back = removed.slice(0, MAX_QUEUE).map(({ entryId: _id, ...rest }) => rest);
+      for (let at = Math.floor((back.length - 1) / PACKET_SIZE) * PACKET_SIZE; at >= 0; at -= PACKET_SIZE)
+        send({ type: "add", entries: back.slice(at, at + PACKET_SIZE), where: "next" });
+    };
   },
   station(s: Station): boolean {
     // The web port has no feeder (its MusicKit plays the room's songs one at a time).

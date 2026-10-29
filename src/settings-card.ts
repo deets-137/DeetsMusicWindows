@@ -230,6 +230,7 @@ const NEW_MARKS: NewMark[] = [
   { section: "Window", row: "sizecover" }, // Cover opens at, the pin's Cover view, built 2026-10-26 (PIN.md)
   { section: "Playback", row: "artistfilters" }, // Remember Artist filters, built 2026-10-27 (ARTIST-VIEW.md §12)
   { section: "Playback", row: "playerwheel" }, // Scroll over the Player for volume, built 2026-10-27 (WHEEL-VOLUME.md)
+  { section: "Playback", row: "clearqueuelaunch" }, // Clear the queue on launch, built 2026-10-29 (QUEUE.md § Clear Queue)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -477,7 +478,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1620,6 +1621,8 @@ function mountSettings(
           hint: "Last song shows in Now Playing, paused; Up Next parks it at the top of the queue",
           options: [{ value: "song", label: "Last song" }, { value: "queue", label: "Up Next" }, { value: "off", label: "Nothing" }],
         },
+        // Clear Queue (QUEUE.md § Clear Queue; his call 2026-10-29, default off).
+        storeToggle("clearqueuelaunch", "Clear the queue on launch", "clearQueueOnLaunch", () => "Up Next starts empty each time the app opens. The last song still comes back as Restore on launch says"),
         // The end of a list (QUEUE.md §The end of a list, PLAYLIST-WEB.md §12; 2026-09-29).
         storeToggle("listendweb", "Play a web when a list ends", "listEndWeb", () => "A web of songs like the album or song that ended plays next, and is deleted after 1 day. Off: the list waits at its first song"),
         {

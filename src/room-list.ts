@@ -6,9 +6,11 @@
 // was given `fed` of it (its window); the rest, L[fed..], is the tail. A member holds the
 // part of L it was sent: `items` = L[offset..].
 
-/** One song in the list. Only the id matters to these rules. */
+/** One song in the list. Only the id matters to these rules, and `added` to Clear Queue. */
 export interface ListEntry {
   entryId: string;
+  /** A member added it by hand (Add to Queue, Play Next), not the list that was played. */
+  added?: boolean;
 }
 
 export interface ListCopy<E extends ListEntry> {
@@ -126,6 +128,20 @@ export function editTail<E extends ListEntry>(
   }
   if (op === "remove") return { kind: "change", copy: { ...copy, rev, items }, packet: { op: "remove", entryId } };
   return { kind: "none" };
+}
+
+/**
+ * Clear Queue on the keeper's copy (QUEUE.md § Clear Queue): the tail goes, or only its songs
+ * added by hand. The songs the room was fed stay; the worker clears those. Null when nothing
+ * changes. The keeper then sends the tail out again as a whole list.
+ */
+export function clearTail<E extends ListEntry>(copy: ListCopy<E>, fed: number, only: "added" | "all"): ListCopy<E> | null {
+  const fedAt = fed - copy.offset;
+  if (fedAt < 0) return null;
+  const tail = copy.items.slice(fedAt);
+  const keep = only === "added" ? tail.filter((e) => !e.added) : [];
+  if (keep.length === tail.length) return null;
+  return { rev: copy.rev + 1, offset: copy.offset, items: [...copy.items.slice(0, fedAt), ...keep] };
 }
 
 /** The keeper's next top-up: the songs that fill the window back up, and the new `fed`. */

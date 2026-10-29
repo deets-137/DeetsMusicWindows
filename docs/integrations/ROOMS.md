@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.10.0
 desk_test: passed 2026-09-19
 sources: [src/room.ts, src/room-panel.ts, src/player.ts, src/queue.ts, src-tauri/src/rooms.rs, src-tauri/src/lib.rs]
-updated: 2026-10-17
+updated: 2026-10-29
 ---
 # DeetsMusic — DeetsMusicRooms (listening rooms)
 
@@ -1773,3 +1773,46 @@ the feeder and the worker, not the sound.
 §21.8 rows 1, 2, 4, 6 and 7 with sound; the host's own connection dropping and coming back with
 the list (`takeList`, not reachable from a script); Pause / Listen again on a live broadcast;
 the Queue card's station row and the panel line on screen.
+
+## 22. Clear Queue in a room (BUILT 2026-10-29, not deployed)
+
+> **Part:** built · 2026-10-29 · worker not deployed · desk test open
+
+**His call (2026-10-29):** the Queue card's *Clear Queue* (QUEUE.md § Clear Queue) works in a
+listening room too. The worker deploy goes with the next app release (his words: "can do both
+as we push our next update").
+
+**The mark.** A song a member adds by hand (Add to Queue, Play Next, a drop) carries
+`added: true` (`bridge.enqueue` in room.ts). The worker keeps only `true`: `markAdded` in
+`list.js`, on a plain `add` and inside `keptEntry` (so a top-up, a list packet and a `tailAdd`
+keep it). `setRoomQueue` makes a marked song `manual`, so the Queue card's counts and the
+*Manually added* row work as they do outside a room.
+
+**The command.** `{ type: "clear", only: "added" | "all" }`, held by *Change the queue* (§8).
+The worker clears its window (all of it, or the marked songs) and, while the list has a tail,
+sends `{ type: "tailClear", only, from }` to the keeper first, then the new state. The keeper
+(`keeperClear`, the pure `clearTail` in room-list.ts) drops its tail or the tail's marked songs,
+moves its version on, sends the tail again whole and then `listMeta`. Because `tailClear` reaches
+the keeper before the state, the keeper never tops the window up from the old tail. The song
+playing plays on.
+
+**Undo in a room.** The cleared songs go back on top of Up Next, in their order, as `add`
+`next` (in parts of 300, last part first), up to the room's 500. Other members may have changed
+the queue meanwhile, so the room's Undo never claims the exact old order.
+
+**Mixed versions.** An app from before this change sends no mark and ignores `tailClear`: in a
+room whose keeper runs an older app, *Clear Queue* clears the window only, and the keeper tops it
+up again from its tail. A new app against the old worker: the worker answers `unknown-command`,
+and the app shows "The room didn't take that change. Try again." So deploy the worker before
+(or with) the release.
+
+**Checks.** `../DeetsMusicRooms/scripts/check.mjs` §11g: 7 new checks (the mark kept on an add
+and a top-up, Manually added, the song plays on, the keeper told, the guest denied under
+*Host only*, Entire queue). All pass against `wrangler dev` (2026-10-29). `tests/room-list.test.ts`:
+`clearTail`.
+
+**Desk test (owner, two apps):** a room with a long list; the guest adds 3 songs; the guest's
+Queue right-click › *Clear Queue › Manually added*: both apps lose the 3, the list stays.
+*Entire queue*: both apps show an empty Up Next, the song plays on, the list's tail is gone on
+both. Undo on the guest: the songs come back on top on both. With *Change the queue* = Host only,
+the guest's click shows "The host keeps that control in this room."

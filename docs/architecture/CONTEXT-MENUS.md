@@ -334,8 +334,8 @@ Start Station). One press makes a web playlist with no panel (`startWebItem`, we
 
 | Card | Item | Own rows (group 6) | Take-away (group 7) |
 |---|---|---|---|
-| Queue | upcoming row | Play Now (jumps to the row) replaces group 1 · Move to Top · Move to Bottom | Remove |
-| Queue | picked rows | — (no Play group) | Remove *N songs* |
+| Queue | upcoming row | Play Now (jumps to the row) replaces group 1 · a divider (2026-10-29), then Move to Top · Move to Bottom | Remove · Clear Queue (▸ Manually added · Entire queue when Up Next holds both; each asks *Confirm?*; QUEUE.md § Clear Queue) |
+| Queue | picked rows | — (no Play group) | Remove *N songs* · Clear Queue |
 | Queue · Now Playing | now hero · cover and title | Stop Station (while one plays) | — |
 | Now Playing | cover and title | Expand Player / Shrink Player (Midi, Max) | — |
 | Queue | station row | Stop Station, or Don't resume (not a media menu) | — |

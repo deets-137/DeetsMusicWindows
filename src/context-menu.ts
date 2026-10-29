@@ -46,6 +46,10 @@ export interface ActionItem {
   /** Not a row: only its quick glyph shows, as a mark and not a button. Add to Library's ✓,
    *  whose row leaves itself out when the item is held (his call, 2026-10-16). */
   listless?: boolean;
+  /** Asks first, in place: the first click shows this label and keeps the menu open; a second
+   *  click runs the row (Clear Queue, his call 2026-10-29; the MCP panel's "Sure?" press).
+   *  Closing the menu forgets the first click. */
+  confirm?: string;
 }
 /** The quick column's glyphs, in their order top to bottom (CONTEXT-MENUS.md §2a). */
 export type QuickGlyph = "play" | "queue" | "library" | "favorite" | "pin" | "expand" | "shrink";
@@ -390,16 +394,23 @@ function openMenu(items: MenuItem[], place: Place, onClose?: () => void): void {
       btn.type = "button";
       btn.className = "ctx-menu__item";
       btn.setAttribute("role", "menuitem");
+      const lbl = document.createElement("span");
+      lbl.textContent = item.label;
+      btn.append(lbl);
       if (item.badge) {
         btn.classList.add("ctx-menu__item--badged");
-        const lbl = document.createElement("span");
-        lbl.textContent = item.label;
-        btn.append(lbl);
         btn.insertAdjacentHTML("beforeend", item.badge);
-      } else btn.textContent = item.label;
+      }
       if (item.disabled) btn.disabled = true;
       else
         btn.addEventListener("click", () => {
+          if (item.confirm && !btn.classList.contains("is-armed")) {
+            btn.classList.add("is-armed");
+            btn.style.minWidth = `${btn.offsetWidth}px`; // the shorter word must not shrink the menu
+            lbl.textContent = item.confirm;
+            diag.log("ui:act", { do: "menu", what: `arm ${item.label.slice(0, 40)}` });
+            return;
+          }
           closeContextMenu();
           // The click trail (LOGGING.md §The click trail): which menu row ran. The label
           // is the gesture — a UI word, never a song title.

@@ -36,12 +36,13 @@ import type { Track } from "./library";
 import {
   playPause, nextTrack, prevTrack, toggleShuffle, cycleRepeat, toggleMute, isMuted, isPlayingNow, isShuffleOn, getRepeat,
   playTracks, playStation, jumpToUpcoming, setVolume, queueTracksNext, queueTracksLater, queueTracksAt, shuffledPlay,
+  clearQueueWithUndo,
 } from "./player";
 import { sleepIn, sleepOff, sleepArmed, sleepAtEnd, openSleepPanel } from "./sleep";
 import { restartWalk } from "./walk";
 import { checkPlaylistRefreshNow } from "./playlist-refresh";
 import { presetOptions, selectPreset } from "./sound";
-import { getUpcoming, getRecentlyPlayed, getCurrent } from "./queue";
+import { getUpcoming, getRecentlyPlayed, getCurrent, upcomingCounts } from "./queue";
 import { isLoved, setLoved, favoriteOffered } from "./favorites";
 import { addTrackToLibrary, alreadyInLibrary, libraryAddEnabled } from "./library-add";
 import { trackById } from "./track-store";
@@ -477,6 +478,16 @@ function actions(all: boolean): Row[] {
     { group: "Actions", title: isMuted() ? "Unmute" : "Mute", aliases: ["silence", "quiet", "sound off"], run: () => toggleMute() },
     ...[15, 30, 45, 60].map((m): Row => ({ group: "Actions", title: `Sleep in ${m} min`, sub: "The sleep timer", run: () => sleepIn(m) })),
   );
+  // Clear Queue (QUEUE.md § Clear Queue): the Queue menu's rows. The bar has no "Confirm?"
+  // press; the toast after it holds the Undo. In a room it clears the room's queue.
+  const counts = upcomingCounts();
+  if (counts.all) {
+    const clear = (only: "manual" | "all") => () => void clearQueueWithUndo(only).catch((e) => console.error("[compass] clear queue", e));
+    const songs = (n: number) => `${n} ${n === 1 ? "song" : "songs"}`;
+    rows.push({ group: "Actions", title: "Clear Queue", sub: `Entire queue · ${songs(counts.all)}`, aliases: ["clear up next", "empty queue"], run: clear("all") });
+    if (counts.manual && counts.manual < counts.all)
+      rows.push({ group: "Actions", title: "Clear Queue: Manually added", sub: songs(counts.manual), aliases: ["clear added songs"], run: clear("manual") });
+  }
   // The song pane for what is playing (CREDITS.md §7). Only while a song with a catalog
   // id is on: an uploaded track has no credits to show.
   const playing = getCurrent();

@@ -33,7 +33,7 @@ import { favoriteOffered, isLoved, toggleLoved, onFavoritesChange } from "./favo
 import { isPinned, songKey, togglePin, onPinsChange } from "./pins";
 import { startStationItem } from "./start-station";
 import { inLibrary, loadTracks, onTracksChange } from "./track-store";
-import { playTracks, playTracksKeepQueue, queueTracksAt, queueTracksNext, queueTracksLater, playStation, reconcileUpcoming } from "./player";
+import { playTracks, playTracksKeepQueue, queueTracksAt, queueTracksNext, queueTracksLater, playStation, clearQueue } from "./player";
 import { toggleShuffle, setShuffleMode, shuffleOff, cycleRepeat, setRepeat, getRepeat, isShuffleOn } from "./player";
 import { runAgentWrite } from "./agent-writes";
 import { materializeTrack } from "./search";
@@ -252,12 +252,10 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
         case "repeat-off": setRepeat("off"); break;
         case "repeat-all": setRepeat("all"); break;
         case "repeat-one": setRepeat("one"); break;
-        case "clear": {
-          // Drop every upcoming entry (the current song keeps playing), then re-sync MusicKit.
-          for (let i = queue.getUpcoming().length - 1; i >= 0; i--) queue.removeAt(i);
-          await reconcileUpcoming();
-          break;
-        }
+        // Clear Queue (QUEUE.md § Clear Queue): all of Up Next, or only the songs added by hand.
+        // The current song plays on. No Undo toast: the agent's own reply says what it did.
+        case "clear": await clearQueue("all"); break;
+        case "clear-added": await clearQueue("manual"); break;
         default: throw new Error(`unknown command ${JSON.stringify(k)}`);
       }
       publish(true);

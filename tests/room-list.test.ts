@@ -2,7 +2,7 @@
 // room holds a window of `fed` songs, and members hold the tail they were sent.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyChange, editTail, gather, tailOf, topUpOf, type ListCopy } from "../src/room-list.ts";
+import { applyChange, clearTail, editTail, gather, tailOf, topUpOf, type ListCopy } from "../src/room-list.ts";
 
 const e = (id: string) => ({ entryId: id });
 const L = (n: number) => Array.from({ length: n }, (_, i) => e(`s${i}`));
@@ -94,4 +94,17 @@ test("2026-10-16 a top-up fills the window back to its size from where the room 
   assert.equal(topUpOf(copy, { ...room, fed: 250 }, 0, 100, 50), null);
   // An older copy never feeds the room.
   assert.equal(topUpOf({ ...copy, rev: 1 }, room, 0, 100, 50), null);
+});
+
+test("2026-10-29 Clear Queue: the keeper clears the tail, or only its added songs; the fed part stays", () => {
+  const items = ["a", "b", "c", "d", "e"].map((id) => ({ entryId: id, added: id === "d" }));
+  const copy: ListCopy<{ entryId: string; added: boolean }> = { rev: 4, offset: 0, items };
+  // fed = 2: a and b went to the room; c, d, e are the tail.
+  assert.deepEqual(clearTail(copy, 2, "all")!.items.map((e) => e.entryId), ["a", "b"]);
+  const added = clearTail(copy, 2, "added")!;
+  assert.deepEqual(added.items.map((e) => e.entryId), ["a", "b", "c", "e"]);
+  assert.equal(added.rev, 5);
+  // Nothing to take out: no new version.
+  assert.equal(clearTail({ ...copy, items: items.filter((e) => !e.added) }, 2, "added"), null);
+  assert.equal(clearTail(copy, 5, "all"), null);
 });

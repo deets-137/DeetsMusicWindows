@@ -127,3 +127,27 @@ test("Repeat all refills an empty Up Next with the whole list, in order", () => 
   assert.deepEqual(ids(q.getUpcoming()), ["a", "b"]);
   assert.equal(q.refillFromPlan(), false, "no refill while Up Next still has songs");
 });
+
+// Clear Queue (QUEUE.md § Clear Queue, 2026-10-29): a user's ~430 added songs sat on top of
+// every new list, so the songs they added later never came up.
+test("2026-10-29 Clear Queue › Manually added keeps the list's own songs and the current song", () => {
+  q.setContext([h("a"), h("b"), h("c")], 0);
+  q.playNext(h("x", "song"));
+  q.addToQueue(h("y", "song"));
+  assert.deepEqual(q.upcomingCounts(), { manual: 2, all: 4 });
+  const before = q.clearUpcoming("manual");
+  assert.deepEqual(ids(q.getUpcoming()), ["b", "c"]);
+  assert.equal(q.getCurrent()?.catalogId, "a");
+  q.setUpcoming(before); // Undo
+  assert.deepEqual(ids(q.getUpcoming()), ["x", "b", "c", "y"]);
+});
+
+test("2026-10-29 Clear Queue › Entire queue empties Up Next, never the current song or history", () => {
+  q.setContext([h("a"), h("b"), h("c")], 1);
+  q.addToQueue(h("x", "song"));
+  q.clearUpcoming("all");
+  assert.deepEqual(ids(q.getUpcoming()), []);
+  assert.equal(q.getCurrent()?.catalogId, "b");
+  assert.deepEqual(ids(q.getHistory()), ["a"]);
+  assert.deepEqual(q.upcomingCounts(), { manual: 0, all: 0 });
+});

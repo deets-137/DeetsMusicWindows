@@ -2659,6 +2659,56 @@ export async function removeFromQueue(index: number): Promise<void> {
   await ensureAligned("remove");
 }
 
+/**
+ * Clear Queue (the Queue card's right-click, QUEUE.md § Clear Queue): take out every Up Next
+ * entry, or only the songs added by hand. The current song plays on. Model first, then one
+ * gapless reconcile; in a room, the room clears it for everyone. Returns the undo, or null
+ * when nothing changed.
+ */
+export async function clearQueue(only: "manual" | "all"): Promise<(() => Promise<void>) | null> {
+  if (roomBridge) {
+    const n = queue.upcomingCounts();
+    const undo = roomBridge.clear(only);
+    if (!undo) return null;
+    diag.log("player:queueEdit", { op: `clear-${only}`, n: only === "manual" ? n.manual : n.all, of: n.all, room: true });
+    return async () => {
+      diag.log("player:queueEdit", { op: `undo-clear-${only}`, room: true });
+      undo();
+    };
+  }
+  const before = queue.getUpcoming().slice();
+  const removed = only === "manual" ? before.filter((e) => e.origin === "manual") : before;
+  if (!removed.length) return null;
+  diag.log("player:queueEdit", { op: `clear-${only}`, n: removed.length, of: before.length });
+  queue.clearUpcoming(only);
+  const kept = queue.getUpcoming().slice();
+  await reconcileUpcoming();
+  return async () => {
+    if (roomBridge) return;
+    // Up Next untouched since the clear: the list comes back exactly. Otherwise (a song
+    // ended, a song was added) the cleared songs go back on top of what is there now.
+    const now = queue.getUpcoming();
+    const same = now.length === kept.length && now.every((e, i) => e === kept[i]);
+    queue.setUpcoming(same ? before : [...removed, ...now]);
+    diag.log("player:queueEdit", { op: `undo-clear-${only}`, n: removed.length, exact: same });
+    await reconcileUpcoming();
+  };
+}
+
+/** Clear Queue from a gesture (the Queue card's menu, the Compass): the clear, then a toast
+ *  that holds the Undo (his call 2026-10-29, TOASTS.md §5). */
+export async function clearQueueWithUndo(only: "manual" | "all"): Promise<void> {
+  const n = only === "manual" ? queue.upcomingCounts().manual : queue.upcomingCounts().all;
+  const undo = await clearQueue(only);
+  if (!undo) return;
+  const songs = `${n} ${n === 1 ? "song" : "songs"}`;
+  toast({
+    kind: "info",
+    text: only === "manual" ? `Cleared the ${songs} you added to the queue.` : `Cleared ${songs} from the queue.`,
+    actions: [{ label: "Undo", run: () => void undo().catch((e) => console.error("[player] undo clear", e)) }],
+  });
+}
+
 /** Move an Up Next entry to the front (top) or back (bottom) of upcoming (gapless). */
 export async function moveInQueue(index: number, to: "top" | "bottom"): Promise<void> {
   if (roomBridge) return roomBridge.moveTo(index, to);
@@ -2860,6 +2910,9 @@ export interface RoomBridge {
   jumpTo(index: number): void;
   removeAt(index: number): void;
   moveTo(index: number, to: "top" | "bottom"): void;
+  /** Clear Queue in a room: the worker clears the window, the keeper the tail. Returns the
+   *  undo, or null when nothing was cleared (QUEUE.md § Clear Queue). */
+  clear(only: "manual" | "all"): (() => void) | null;
   /** A station in a room: this app feeds it to the room (§21.8). Returns false: the
    *  caller's own station play stops, because the room plays it, not radio mode. */
   station(s: Station): boolean;

@@ -344,6 +344,9 @@ export interface Settings {
   /** At launch: bring back last session's song as Now Playing (paused) + Up Next + Previous,
    *  only the queue (song parked at the top of Up Next, Now Playing idle), or nothing. */
   restoreQueue: "song" | "queue" | "off";
+  /** At launch: empty Up Next (QUEUE.md § Clear Queue). The last song still follows
+   *  `restoreQueue`. An update or graphics restart keeps the queue. */
+  clearQueueOnLaunch: boolean;
   /** When a list ends with Repeat off: play a temporary web from it (on), or load the list
    *  again at its first song, paused (off). QUEUE.md §The end of a list. */
   listEndWeb: boolean;
@@ -663,6 +666,7 @@ export const DEFAULTS: Settings = {
   playerWheelVolume: true, // his call 2026-10-27: on; the card has nothing that scrolls, and the sound itself is the feedback
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
+  clearQueueOnLaunch: false, // his call 2026-10-29: off; the queue comes back as Restore on launch says
   listEndWeb: true, // user's call 2026-09-29: an ended album goes on like autoplay, with a web of songs like it
   suggestSkipStations: true, // his call 2026-10-16 (SUGGEST-LESS.md F1, changed): a mark you made acts everywhere by default
   suggestSkipWebs: true, // his call 2026-10-12, kept 2026-10-16: a mark you made reads as "keep it out of new webs"

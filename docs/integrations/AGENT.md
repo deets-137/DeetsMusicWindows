@@ -76,7 +76,7 @@ answer (15 s; 90 s for `export`, `new_copy`, `get_songs`, `import`). An add goes
 | Route | Body → Reply |
 |---|---|
 | `GET /now-playing` | `{active, playing, title, artist, album, artworkUrl, catalogId, inLibrary, live, progress, currentTime, duration, volume, muted, repeat, shuffle}` (`repeat` = off / all / one; `shuffle` = the mode is on) |
-| `POST /command` | `{kind, value?}` — `play-pause` · `play` · `pause` · `next` · `previous` · `seek` (0..1) · `volume` (0..1) · `mute` · `shuffle` (the button: the mode, or once) · `shuffle-on` / `shuffle-off` (off is a press: Up Next follows Settings › Playback › *Shuffle off plays* — in order, or as shuffled) · `repeat` (cycle) · `repeat-off` / `repeat-all` / `repeat-one` · `clear` (drops Up Next) → the snapshot after |
+| `POST /command` | `{kind, value?}` — `play-pause` · `play` · `pause` · `next` · `previous` · `seek` (0..1) · `volume` (0..1) · `mute` · `shuffle` (the button: the mode, or once) · `shuffle-on` / `shuffle-off` (off is a press: Up Next follows Settings › Playback › *Shuffle off plays* — in order, or as shuffled) · `repeat` (cycle) · `repeat-off` / `repeat-all` / `repeat-one` · `clear` (drops Up Next; the current song plays on) · `clear-added` (only the songs added by hand; QUEUE.md § Clear Queue) → the snapshot after |
 | `POST /play` | `{id}` \| `{term}` \| `{track}` \| `{tracks:[…]}`, `keepQueue?` → `{ok, tracks}` or `{ok, station}` |
 | `POST /queue` | same + `{mode: "next" \| "later"}` or `{at: N}` (row of Up Next, 1 = top) → `{ok, tracks}` (a station → `400`) |
 | `POST /tracks` | same body as `/play` → `{tracks:[Track…]}`. A **read**: it resolves the id and hands back the songs without touching playback. Use it to see inside an album or playlist (a station → `400`, it has no fixed list). Added 2026-09-16, so reading a tracklist no longer means writing one to a playlist first. |
@@ -180,7 +180,7 @@ subset a tool server needs, no SDK. Tools:
 | `stations` | `group: featured\|genres\|genre:<id>` | both | |
 | `play` | `id` (+ `keep_queue` full) | both | rejects non-ids with "search first" |
 | `queue` | `id`, `position: next\|later` (full: also a row number) | both | |
-| `control` | `action: play\|pause\|next\|previous\|shuffle\|repeat\|mute\|seek\|volume\|clear_queue`, `value?` (percent), `mode?` (repeat: off / all / one, else cycle; shuffle: on / off, else the button) | both | |
+| `control` | `action: play\|pause\|next\|previous\|shuffle\|repeat\|mute\|seek\|volume\|clear_queue`, `value?` (percent), `mode?` (repeat: off / all / one, else cycle; shuffle: on / off, else the button; clear_queue: added = only the songs added by hand, else all of Up Next) | both | |
 | `list` | `what: queue\|history\|playlists\|album\|library`, `id?`; library: `sort?`, `order?`, `limit?`, `artist?`, `genre?`, `shorter_than?`, `longer_than?` | both | `what=library` = `POST /songs` (LOCAL-DATA.md §6); CLI: `deetsmusic library --sort length -n 5`. playlists are tagged `[DeetsMusic]` / `[Apple Music, yours]` / `[Apple Music, read-only]`. `what=album` + an `album:` / `playlist:` id prints the numbered tracklist (`POST /tracks`); CLI: `deetsmusic tracks <id>` |
 | `library` | `action: add\|favorite\|unfavorite`, `id` (`current` allowed) | both | consent rules, §5 |
 | `playlist_add` | `playlist`, `id` (`current` allowed) | both | local or your own Apple playlist |
@@ -365,6 +365,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   (On | Off), `webSkipSeed` ("Skip the song you just heard": On | Off), and two keys with no
   Settings row: `webPlayMode` (Replaces the queue | Plays now, keeps Up Next | Plays after the
   song) and `webSkipSeedAt` (1–100 %, default 75). All four are rule keys.
+- **Playback › Clear the queue on launch** (2026-10-29, QUEUE.md § Clear Queue):
+  `clearQueueOnLaunch` (On | Off, default Off). On: Up Next starts empty at each launch; the
+  last song still follows Restore on launch.
 - **Playback › Scroll over the Player for volume** (2026-10-27, WHEEL-VOLUME.md):
   `playerWheelVolume` (On | Off, default On). On: the mouse wheel on Now Playing steps the
   volume 5 % per notch; a trackpad rises at most 40 % a second. Off: the wheel passes through.
