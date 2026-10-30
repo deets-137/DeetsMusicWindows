@@ -36,7 +36,11 @@
 //      two dev folders, and SQLite once took the main file from one and the -wal from the
 //      other (the library broke, DEBUGGING.md § Sign-in). A dev app inside the package also
 //      cannot play (Apple refuses the license, -42585); started outside, it plays.
+//  10. --support-local : reports go to a local DeetsSupport worker and a report's Open to the
+//      site's local dev server (scripts/support-local.mjs; DEBUGGING.md § A local support
+//      worker). `npm run support:reply` answers as Aditya.
 import { createServer } from "node:net";
+import { startSupportLocal } from "./support-local.mjs";
 import { copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, closeSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync, spawn } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -298,7 +302,8 @@ const BUILT = process.argv.includes("--built");
 const PERF = BUILT || process.argv.includes("--perf");
 const passThrough = process.argv
   .slice(2)
-  .filter((a) => a !== "--perf" && a !== "--built" && a !== "--second" && a !== "--hidden" && !a.startsWith("--gpu=") && a !== "--fresh" && !a.startsWith("--fresh="));
+  .filter((a) => a !== "--perf" && a !== "--built" && a !== "--second" && a !== "--hidden" && a !== "--support-local" && !a.startsWith("--gpu=") && a !== "--fresh" && !a.startsWith("--fresh="));
+const support = process.argv.includes("--support-local") ? await startSupportLocal(free) : null;
 // `tauri dev -- -- <args>`: after the second `--`, the arguments reach the app itself.
 const HIDDEN = process.argv.includes("--hidden");
 if (HIDDEN) passThrough.push("--", "--", "--tray");
@@ -361,10 +366,12 @@ const child = spawn(
       // token and library (lib.rs), or the "signed out" first run opens signed in (desk test
       // B3, 2026-09-27 night).
       ...(freshArg && !freshArg.includes("=") ? { DEETS_NO_SEED: "1" } : {}),
+      ...(support ? support.env : {}),
     },
   },
 );
 child.on("exit", (code) => {
   preview?.kill(); // the preview server outlives tauri otherwise and holds the port
+  support?.stop();
   process.exit(code ?? 0);
 });

@@ -14,8 +14,12 @@ interface ReplyNews {
   title: string;
 }
 
-const FIRST_MS = 30_000; // after the launch's own requests
-const EVERY_MS = 6 * 60 * 60 * 1000; // report.rs skips a report read within 20 h
+// `npm run dev:app -- --support-local` (a local DeetsSupport worker): check every 15 s, so a
+// reply from `npm run support:reply` shows as it would for a user. report.rs drops its 20 h
+// wait there too. A release build has no such flag.
+const LOCAL = import.meta.env.DEV && import.meta.env.VITE_SUPPORT_LOCAL === "1";
+const FIRST_MS = LOCAL ? 5_000 : 30_000; // after the launch's own requests
+const EVERY_MS = LOCAL ? 15_000 : 6 * 60 * 60 * 1000; // report.rs skips a report read within 20 h
 // The toast's Don't show again: the checks stop too, since nothing would show.
 const NOTICE_KEY = "deets.notice.reportReplies";
 

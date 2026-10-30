@@ -40,7 +40,9 @@
     "demo:build": "tsc --noEmit -p demo && vite build --config vite.demo.config.ts",
     "demo:publish": "node scripts/demo-publish.mjs",
     "listen": "vite --config vite.listen.config.ts --mode listen",
-    "listen:build": "tsc --noEmit -p web && vite build --config vite.listen.config.ts --mode listen"
+    "listen:build": "tsc --noEmit -p web && vite build --config vite.listen.config.ts --mode listen",
+    "support:reply": "node scripts/support-reply.mjs",
+    "support:pull": "node scripts/support-pull.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

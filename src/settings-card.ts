@@ -953,9 +953,28 @@ function mountSettings(
     state?: string | null; // at the last Refresh
     newReply?: boolean;
   }
-  // The worker's post states as My reports shows them ("gone": the post no longer exists).
+  // The worker's post states as My reports shows them ("gone": the post was deleted into the
+  // archive; his call 2026-10-30: it reads "Closed", as on the site, not the clinical "Removed").
   const STATE_LABEL: Record<string, string> = {
-    new: "New", open: "Open", planned: "Planned", fixed: "Fixed", wontfix: "Won't fix", closed: "Closed", gone: "Removed",
+    new: "New", open: "Open", planned: "Planned", fixed: "Fixed", wontfix: "Won't fix", closed: "Closed", gone: "Closed",
+  };
+  // My reports' second group (his ask, 2026-10-30): every state that needs nothing more from
+  // the user. Shut until opened, for this Settings card's life.
+  const RESOLVED = new Set(["closed", "fixed", "wontfix", "gone"]);
+  const isResolved = (r: ReportView) => !!r.state && RESOLVED.has(r.state);
+  let resolvedOpen = false;
+  const reportRow = (r: ReportView): string => {
+    const tip = `${r.kind === "issue" ? "Bug" : "Suggestion"} · ${new Date(r.at * 1000).toLocaleDateString()}`;
+    const tag = r.state ? `<span class="set__tag">${esc(STATE_LABEL[r.state] ?? r.state)}</span>` : "";
+    const dot = r.newReply ? `<span class="set__new" title="New reply">•</span>` : "";
+    const close = isResolved(r)
+      ? ""
+      : `<button class="set__half" type="button" data-report-close="${esc(r.code)}" title="Closes the post on the support page">${closeArmed === r.code ? "Sure?" : "Close"}</button>`;
+    return (
+      `<div class="set__row set__row--choice" data-report-row="${esc(r.code)}" title="${esc(tip)}"><span class="set__label">${esc(r.title)}${tag}${dot}</span>` +
+      `<div class="set__split"><button class="set__half" type="button" data-report-open="${esc(r.code)}">Open</button>` +
+      `<button class="set__half" type="button" data-report-copy="${esc(r.url)}">Copy link</button>${close}</div></div>`
+    );
   };
   let refreshing = false;
   let closeArmed: string | null = null; // Close → "Sure?" → sends; disarms after CLOSE_ARM_MS
@@ -2473,8 +2492,10 @@ function mountSettings(
         // code is a lost thread).
         {
           kind: "html", id: "myreports",
-          html: () =>
-            reports.length === 0
+          html: () => {
+            const resolved = reports.filter(isResolved);
+            const open = reports.filter((r) => !isResolved(r));
+            return reports.length === 0
               ? ""
               : // One bordered group: a heading (the card headers' refresh square) over its report rows.
                 `<div class="set__group"><div class="set__group-head"><span>My reports</span>` +
@@ -2483,23 +2504,20 @@ function mountSettings(
                 `<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline>` +
                 `<polyline points="1 20 1 14 7 14"></polyline>` +
                 `<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button></div>` +
-                reports
-                  .map((r) => {
-                    const tip = `${r.kind === "issue" ? "Bug" : "Suggestion"} · ${new Date(r.at * 1000).toLocaleDateString()}`;
-                    const tag = r.state ? `<span class="set__tag">${esc(STATE_LABEL[r.state] ?? r.state)}</span>` : "";
-                    const dot = r.newReply ? `<span class="set__new" title="New reply">•</span>` : "";
-                    const done = r.state === "closed" || r.state === "gone";
-                    const close = done
-                      ? ""
-                      : `<button class="set__half" type="button" data-report-close="${esc(r.code)}" title="Closes the post on the support page">${closeArmed === r.code ? "Sure?" : "Close"}</button>`;
-                    return (
-                      `<div class="set__row set__row--choice" data-report-row="${esc(r.code)}" title="${esc(tip)}"><span class="set__label">${esc(r.title)}${tag}${dot}</span>` +
-                      `<div class="set__split"><button class="set__half" type="button" data-report-open="${esc(r.code)}">Open</button>` +
-                      `<button class="set__half" type="button" data-report-copy="${esc(r.url)}">Copy link</button>${close}</div></div>`
-                    );
-                  })
-                  .join("") +
-                `</div>`,
+                // Open reports first; the resolved ones under a fold of their own (his ask,
+                // 2026-10-30), shut until opened, with the section headers' chevron and count.
+                (open.length
+                  ? open.map(reportRow).join("")
+                  : `<div class="set__row"><span class="set__label">No open reports</span></div>`) +
+                (resolved.length
+                  ? `<div class="set__group-head set__group-fold${resolvedOpen ? "" : " is-collapsed"}">` +
+                    `<button class="set__fold" type="button" data-report-resolved aria-expanded="${resolvedOpen}" title="Closed, fixed and won't fix reports">` +
+                    `<svg class="lib-shelf__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
+                    `<span>Resolved</span><span class="lib-shelf__count">${resolved.length}</span></button></div>` +
+                    (resolvedOpen ? resolved.map(reportRow).join("") : "")
+                  : "") +
+                `</div>`;
+          },
         },
       ],
     },
@@ -2999,6 +3017,15 @@ function mountSettings(
     }
     if (t.closest("[data-report-refresh]")) {
       void refreshReports();
+      return;
+    }
+    if (t.closest("[data-report-resolved]")) {
+      // A section fold's motion (toggleSection): the rows slide in under the head on open,
+      // a close stays instant.
+      resolvedOpen = !resolvedOpen;
+      frames.during("fold", 250, resolvedOpen ? "open" : "close");
+      render();
+      if (resolvedOpen) enterRows(body.querySelectorAll(".set__group-fold ~ [data-report-row]"));
       return;
     }
     const closeCode = t.closest<HTMLElement>("[data-report-close]")?.dataset.reportClose;

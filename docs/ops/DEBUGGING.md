@@ -1813,6 +1813,47 @@ ring.
 4. Real installs: the weekly health counts carry `log.warn.csp-<directive>` (USAGE-COUNTS.md
    §3.3). A count there and a host in a bug report → `npm run csp:relax` (RELEASE.md §6.6).
 
+## A local support worker — Settings › Bugs against your own DeetsSupport (2026-10-30)
+
+His ask, 2026-10-30: see how a report and Aditya's reply look from the app side, with no post
+on the live forum. **`npm run dev:app -- --support-local`** (`scripts/support-local.mjs`) runs
+the REAL DeetsSupport worker (`../DeetsSupport`, on Miniflare through `wrangler dev`) with a
+local D1, and the site's dev server (`../DeetsSolutions`, `scripts/dev.js`) for the thread page.
+A fake worker would drift from the real one, so there is none. It needs both sibling repos and
+`npm install` in DeetsSolutions (its wrangler 4 runs both).
+
+- **Ports:** the worker from 8790 up, the site from 8787 up (both probed). The dev:app line
+  names them: `--support-local: the DeetsSupport worker on http://localhost:8790 · the site on …`.
+- **The local D1** is `../DeetsSupport/.wrangler/state` (gitignored). Each start applies
+  `schema.sql`, then every migration (an old local database lacks the newer columns). Delete
+  that folder for an empty forum.
+- **The app** (debug builds only; a release build has none of it): `report.rs` reads
+  `DEETS_SUPPORT_URL` and `DEETS_SUPPORT_PAGE`, so Send, Refresh, Close and the reply check go
+  to the local worker and Open goes to the local site's thread page. The list is its own file,
+  `reports-local.json`, so a live report never reads as gone against the local worker. The
+  reply check has no 20 h wait there, and `report-replies.ts` checks every 15 s
+  (`VITE_SUPPORT_LOCAL`). Usage counts, the speed test and `/config` still go to the live
+  worker.
+- **Aditya's side:** `npm run support:reply -- "Thanks, on it"` replies to the newest local
+  report (or `-- <code> "text"`); `--state planned` sets the status; `--delete` deletes it into
+  the archive. It calls the worker's real owner routes with an owner cookie signed by a secret
+  made for this run only (`node_modules/.support-local.json`, gone when the run ends), and it
+  refuses any address that is not localhost.
+- **The site** (DeetsSolutions docs/support.md, "Local testing"): its dev server reads the
+  local worker and makes the site's sign-in button the switch. Signed in = "Aditya (local)",
+  the owner (a localhost cookie signed with the run's secret; no Google sign-in); signed out =
+  a visitor, so a report's thread link replies as its poster. That gives both sides of a thread
+  in one browser, with the app as the poster's third view.
+- **Live data:** `npm run support:pull` copies the live forum's rows into the local D1 (a read
+  of live; the local copy replaces every local row). Reports the dev app sent before it read as
+  gone. It needs your Cloudflare login, the one a deploy uses.
+- **A second dev app** works too: `npm run dev:app -- --second --support-local`
+  (`support:reply` finds the newest report in either dev profile).
+- **A walk-through:** start it, send a bug from Settings › Bugs, run
+  `npm run support:reply -- "Thanks, on it" --state planned`; within 15 s the reply toast shows;
+  its Open shows the thread on the local site. `npm run support:reply -- --delete` and the next
+  check shows the report as gone in My reports.
+
 ## Threads — the ledger (2026-10-13)
 
 > **Part:** built · 2026-10-13

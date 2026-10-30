@@ -242,6 +242,17 @@ each step that touches those calls.
 
 ### Built, waiting on a release or a desk test
 
+- **A local support worker, and My reports' Resolved fold (2026-10-30, on `updatez`, pushed;
+  he tested through it).** `npm run dev:app -- --support-local` runs the real DeetsSupport
+  worker and the site locally, with a local owner sign-in; `npm run support:reply` answers as
+  Aditya; `npm run support:pull` copies the live forum in (DEBUGGING.md § A local support
+  worker). Debug builds only. Settings › Bugs › My reports: open reports, then a *Resolved*
+  fold (closed, fixed, won't fix, removed) whose rows slide in; resolved reports stay until
+  cleared (the one-day expiry is gone); a removed report reads *Closed*. Built with the forum
+  archive and edits (DeetsSolutions docs/support.md, "The archive"; the worker and the site are
+  on branch `forum-archive`, NOT deployed or published: the migration, the worker deploy and
+  the site merge go with the release).
+
 - **Clear Queue (2026-10-29, on `main`, uncommitted; his hand test open).** From a user's
   report: ~430 hand-added songs sat on top of every new list, so the songs they added later
   never played (`modelUp 443` after a 13-song album). Right-click any Up Next row › *Clear

@@ -19,9 +19,34 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
-const POSTS_URL: &str = "https://support.deets.solutions/posts";
+const SUPPORT: &str = "https://support.deets.solutions";
 const TICKET_PAGE: &str = "https://deets.solutions/deetsmusic/#t=";
 const APP_ID: &str = "deetsmusic";
+
+/// Where reports go. A dev build started with `npm run dev:app -- --support-local` talks to a
+/// local DeetsSupport worker instead (DEBUGGING.md § A local support worker): dev-app.mjs sets
+/// DEETS_SUPPORT_URL (the worker) and DEETS_SUPPORT_PAGE (the local site's thread page). A
+/// release build never reads either.
+struct Endpoints {
+    base: String,
+    page: String,
+    /// The local worker: its own list file (a live code must not read as gone against it),
+    /// and no 20 h wait between reply checks.
+    local: bool,
+}
+
+fn endpoints() -> &'static Endpoints {
+    static E: std::sync::OnceLock<Endpoints> = std::sync::OnceLock::new();
+    E.get_or_init(|| {
+        #[cfg(debug_assertions)]
+        if let Ok(base) = std::env::var("DEETS_SUPPORT_URL") {
+            let page = std::env::var("DEETS_SUPPORT_PAGE").unwrap_or_else(|_| TICKET_PAGE.into());
+            crate::log::info(&format!("report: the local support worker at {base}"));
+            return Endpoints { base: base.trim_end_matches('/').into(), page, local: true };
+        }
+        Endpoints { base: SUPPORT.into(), page: TICKET_PAGE.into(), local: false }
+    })
+}
 
 // The worker's limits (DeetsSupport src/index.js). Lengths are JS `.length`: UTF-16 units.
 const TITLE_WORDS: usize = 10;
@@ -148,11 +173,11 @@ struct Saved {
     #[serde(default)]
     told_replies: u32,
     /// When the worker last answered for this report (Unix seconds): `report_check` skips a
-    /// report read within CHECK_EVERY_S.
+    /// report read within `check_every_s()`.
     #[serde(default)]
     checked_at: Option<i64>,
-    /// When the post was first stored closed or removed (Unix seconds). `load` drops the
-    /// report CLOSED_KEEP_S later, so the file cannot grow without bound.
+    /// When the post was first stored closed or removed (Unix seconds). Until 2026-10-30
+    /// `load` dropped the report a day later; now it is the record only.
     #[serde(default)]
     closed_at: Option<i64>,
 }
@@ -171,7 +196,7 @@ pub struct ReportView {
 
 impl From<Saved> for ReportView {
     fn from(s: Saved) -> Self {
-        let url = format!("{TICKET_PAGE}{}", s.code);
+        let url = format!("{}{}", endpoints().page, s.code);
         let new_reply = s.owner_replies > s.seen_replies;
         ReportView { code: s.code, kind: s.kind, title: s.title, at: s.at, url, state: s.state, new_reply }
     }
@@ -243,7 +268,7 @@ pub async fn report_send(
         .user_agent(format!("DeetsMusic/{version}"))
         .build()
         .map_err(|e| e.to_string())?;
-    let mut req = client.post(POSTS_URL).header("Content-Type", "application/json");
+    let mut req = client.post(format!("{}/posts", endpoints().base)).header("Content-Type", "application/json");
     if let Some(key) = crate::apple::build_key() {
         req = req.header(crate::apple::BUILD_HEADER, key);
     }
@@ -290,20 +315,15 @@ fn valid_code(code: &str) -> bool {
 }
 
 fn store_path(app: &AppHandle) -> Option<PathBuf> {
-    app.path().app_data_dir().ok().map(|d| d.join(STORE))
+    let name = if endpoints().local { "reports-local.json" } else { STORE };
+    app.path().app_data_dir().ok().map(|d| d.join(name))
 }
 
-/// A closed or removed report stays this long after it was first stored that way (the user's
-/// call: keep closed tickets a day, so the file cannot grow without bound).
-const CLOSED_KEEP_S: i64 = 24 * 60 * 60;
-
+/// Closed and removed reports stay until the user clears them (his call 2026-10-30, with My
+/// reports' Resolved fold; it was a day, from 2026-09-14). The list is still capped at KEEP
+/// newest on each send, so the file cannot grow without bound.
 fn is_done(s: &Saved) -> bool {
     matches!(s.state.as_deref(), Some("closed") | Some("gone"))
-}
-
-/// Drop the reports closed for longer than CLOSED_KEEP_S.
-fn fresh(list: Vec<Saved>, now: i64) -> Vec<Saved> {
-    list.into_iter().filter(|s| s.closed_at.map_or(true, |t| now - t < CLOSED_KEEP_S)).collect()
 }
 
 /// Stamp `closed_at` on a report first stored closed; clear it if the owner reopened the post.
@@ -318,11 +338,10 @@ fn stamped(list: &[Saved], now: i64) -> Vec<Saved> {
 }
 
 fn load(app: &AppHandle) -> Vec<Saved> {
-    let list = store_path(app)
+    store_path(app)
         .and_then(|p| std::fs::read(p).ok())
         .and_then(|b| serde_json::from_slice(&b).ok())
-        .unwrap_or_default();
-    fresh(list, chrono::Utc::now().timestamp())
+        .unwrap_or_default()
 }
 
 /// Write beside, then rename over: a crash mid-write must not lose the only copy of the codes.
@@ -362,7 +381,7 @@ fn open(app: &AppHandle, code: &str) -> Result<(), String> {
         s.told_replies = s.owner_replies;
         save(app, &list);
     }
-    app.opener().open_url(format!("{TICKET_PAGE}{code}"), None::<&str>).map_err(|e| e.to_string())
+    app.opener().open_url(format!("{}{code}", endpoints().page), None::<&str>).map_err(|e| e.to_string())
 }
 
 // ── tracking: Refresh, the daily check, and Close ──
@@ -371,9 +390,14 @@ fn open(app: &AppHandle, code: &str) -> Result<(), String> {
 // learns about his reply without contact details (DeetsSolutions docs/support.md, "Replies
 // reach the filer").
 
-const TICKET_API: &str = "https://support.deets.solutions/t/";
+fn ticket_api() -> String {
+    format!("{}/t/", endpoints().base)
+}
 /// A report the worker answered for within this long is not read again by `report_check`.
-const CHECK_EVERY_S: i64 = 20 * 60 * 60;
+/// None against the local worker, so a test reply shows within the dev poll.
+fn check_every_s() -> i64 {
+    if endpoints().local { 0 } else { 20 * 60 * 60 }
+}
 const NO_NETWORK: &str = "Couldn't reach the support server. Check the connection and try again.";
 
 fn client() -> Result<reqwest::Client, String> {
@@ -419,7 +443,7 @@ pub async fn report_check(app: AppHandle) -> Result<Vec<ReplyNews>, String> {
     let now = chrono::Utc::now().timestamp();
     let codes: Vec<String> = load(&app)
         .into_iter()
-        .filter(|s| !is_done(s) && s.checked_at.map_or(true, |t| now - t >= CHECK_EVERY_S))
+        .filter(|s| !is_done(s) && s.checked_at.map_or(true, |t| now - t >= check_every_s()))
         .map(|s| s.code)
         .collect();
     if codes.is_empty() {
@@ -470,7 +494,7 @@ async fn fetch_states(client: &reqwest::Client, codes: &[String]) -> (Vec<(Strin
     let mut found: Vec<(String, String, u32)> = Vec::new(); // code, state, owner replies
     let mut failed = 0;
     for code in codes {
-        match client.get(format!("{TICKET_API}{code}")).send().await {
+        match client.get(format!("{}{code}", ticket_api())).send().await {
             Ok(resp) if resp.status().as_u16() == 404 => found.push((code.clone(), "gone".into(), 0)),
             Ok(resp) if resp.status().is_success() => {
                 let v: serde_json::Value = resp.json().await.unwrap_or_default();
@@ -505,7 +529,7 @@ pub async fn report_close(app: AppHandle, code: String) -> Result<Vec<ReportView
     if !valid_code(&code) || !load(&app).iter().any(|s| s.code == code) {
         return Err("unknown report".into());
     }
-    let resp = client()?.post(format!("{TICKET_API}{code}/close")).send().await.map_err(|e| {
+    let resp = client()?.post(format!("{}{code}/close", ticket_api())).send().await.map_err(|e| {
         crate::log::warn(&format!("report: close failed: {}", e.without_url()));
         NO_NETWORK.to_string()
     })?;
@@ -548,17 +572,6 @@ mod tests {
 
     fn saved(state: Option<&str>, closed_at: Option<i64>) -> Saved {
         Saved { code: "c0de0000".into(), state: state.map(Into::into), closed_at, ..Default::default() }
-    }
-
-    #[test]
-    fn closed_reports_expire_after_a_day() {
-        let now = 1_000_000;
-        let list = vec![
-            saved(Some("closed"), Some(now - CLOSED_KEEP_S)),
-            saved(Some("gone"), Some(now - 60)),
-            saved(Some("open"), None),
-        ];
-        assert_eq!(fresh(list, now).len(), 2);
     }
 
     #[test]

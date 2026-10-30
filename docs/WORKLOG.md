@@ -2,9 +2,36 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-29
+updated: 2026-10-30
 ---
 # DeetsMusic — Work log
+
+## 2026-10-30 — The forum archive and a local support worker (built, uncommitted)
+
+His asks: an archive of deleted forum posts for counts over time, and a local worker to see a
+report and a reply from the app side. His calls: the whole post kept for good (1B), no "Delete
+for good" (2B), History on the admin page (3A), the local run includes the site (4A). Written
+down, not designed: the forum page at /deetsmusic/forum and editing posts (DeetsSolutions
+docs/support.md, "The forum page", "Editing posts").
+
+- **DeetsSupport** (uncommitted, NOT deployed): `archived_posts`, the copy first in the
+  delete's batch, `/admin/archive`, `/admin/archive/<code>`, `/admin/history`.
+- **DeetsSolutions** (uncommitted): the admin page's History tab, the mock's archive,
+  `deetsmusic.js`'s localhost-only `?support=`.
+- **Here:** `scripts/support-local.mjs`, `--support-local` in dev-app.mjs,
+  `scripts/support-reply.mjs` (`npm run support:reply`), `report.rs`'s debug-only endpoints and
+  `reports-local.json`, `report-replies.ts`'s 15 s check (DEBUGGING.md § A local support worker).
+- **Run by Claude:** the copy SQL on a post with a reply, a comment, a poll and a vote; then
+  through the real routes on a local worker: post, reply + status by `support:reply`, delete,
+  archive list and one, history before and after, 403 without the cookie. All as expected.
+- **Later the same day, from his test through it:** the local site signs in as a local owner
+  (no Google sign-in on localhost) and `npm run support:pull` copies the live forum in; History
+  in DeetsLeague's match row with no `[ph]`; a deleted post's link shows it as *Closed*; the
+  owner menu on a post's page; Edit for any post (*Edited by Aditya*) and his own replies; a
+  signed-in poster's account id kept, with the privacy page's new paragraph (his OK). Here:
+  My reports' *Resolved* fold (`enterRows` on open), kept until cleared, *Closed* for a removed
+  report. Committed and pushed: this on `updatez`; DeetsSupport and DeetsSolutions on
+  `forum-archive`. Not deployed or published (his call: a few more things before the release).
 
 ## 2026-10-29 — The update card, the settings change log, the Updates panel's own open (built, uncommitted)
 

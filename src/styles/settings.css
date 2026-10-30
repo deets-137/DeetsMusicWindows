@@ -291,6 +291,13 @@
   text-transform: uppercase;
   letter-spacing: var(--caps-tracking, 0.06em);
 }
+/* My reports' Resolved fold (2026-10-30): a group head that is a fold button, with the
+   section headers' chevron and count (.set__fold). A rule above it, since it follows rows;
+   shut, it is the group's last line, so no rule under it. */
+.set__group-fold { border-top: 1px solid var(--border); }
+.set__group-fold:last-child { border-bottom: none; }
+.set__group-fold.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
+
 /* The record of what has left this PC (docs/integrations/DeetsOTD.md §10.6): five rows, then it scrolls
    inside the group so the section does not grow without end. `app-scroll` for the themed bar
    (never the grey OS one) and a stable gutter, so the rows do not shift when it appears. */
