@@ -381,7 +381,7 @@ is the reference (`features/happy.md`).
 shelf (the gap, the label, the cover size), a pick on Grand Opening page 2 and a row in Settings ›
 Window; the scrollbar hidden until hover, its gutter always reserved (his calls §2). §1 what the
 code does today; §3.2 the thumb-fade probe; §4 forks D1–D5.
-`owner-polls.md` — an idea (2026-10-27, his ask): polls and suggestions written on the admin page
+`owner-polls.md` — an idea (2026-10-27, his ask), DESIGNED 2026-10-30 in DeetsSolutions support.md: polls and suggestions written on the admin page
 and shown in the app (his example: is anyone interested in voice control). Open ended on
 purpose (his ask): what exists (§1, the board polls, the `/config` read at launch), a sketch (§2),
 the open questions (§3); no recommendation.

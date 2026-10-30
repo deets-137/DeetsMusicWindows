@@ -2,9 +2,14 @@
 status: idea
 desk_test: none
 sources: [src/main.ts, src-tauri/src/csp.rs, src-tauri/src/apple.rs, src/updates-btn.ts, ../DeetsSupport/src/index.js, ../DeetsSupport/src/usage.js]
-updated: 2026-10-27
+updated: 2026-10-30
 ---
 # Owner polls and suggestions: ask every install a question from the admin page
+
+> **Designed 2026-10-30 — the design moved to DeetsSolutions `docs/support.md` › The forum
+> page › "Deets posts" (his calls D1 A, D2 A, D3 A, D4 A: a signing key in his browser)
+> and "Pictures on posts" (P1 A).** This doc is kept as the record of what existed on
+> 2026-10-27 and of the questions he chose from.
 
 **An idea (2026-10-27), his ask.** His words: "use the admin dashboard to send out polls and
 suggestions for users to see. For example so I can poll if users are interested in voice

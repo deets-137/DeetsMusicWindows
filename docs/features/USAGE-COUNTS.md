@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, scripts/usage-r2.mjs, docs/ops/checks/usage-worker.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md]
-updated: 2026-10-27
+updated: 2026-10-30
 ---
 # DeetsMusic — Usage counts: how many people use the app, and how
 
@@ -868,3 +868,92 @@ the time.
 | The owner channel | not run in an app | The worker takes `owner` (worker case); the app's side is one `std::env::var` read. On his PC: `setx DEETS_USAGE_OWNER 1`, restart the installed app, then *Show what is sent* names `owner` |
 | `onUpdateStatus` records a real download | not run | A dev build does not update (`update: check: A dev build doesn't update.`); the rule is `onDownloaded`, unit-tested. The first real update to the release with this code shows it |
 | The admin page | not run | His eye on `?mock` (the two new tables, the Owner channel, the lag note) before the publish |
+
+## 14. Byte ranges on the Velopack folder (2026-10-30)
+
+> **Part:** built · 2026-10-30 (DeetsSupport `src/update.js`, uncommitted, NOT deployed; the
+> worker check passed, §14.4). The deploy is his call (§14.5).
+
+**Why.** On 2026-10-30 the admin page's flag said 26–28 % of the site and Store Setup.exe
+downloads in 7 days did not finish (38 starts, 28 finishes). The zone's request log (bytes per
+request, by browser; no IP) showed that every person got the whole file. The 10 extra starts
+were extra connections:
+
+| Day | Who | Requests | Bytes | What happened |
+|---|---|---|---|---|
+| Oct 28 | One Store install (US) | 5 | 26.8 MB | One whole copy (23.2 MB) and 4 short connections, one of them a 499 |
+| Oct 28 | One Chrome user (BD) | 3 | 25.3 MB | One whole copy and 2 short connections |
+| Oct 30 | One Firefox user (VN) | 4 | 32.4 MB | One whole copy and 3 short connections |
+| Oct 30 | One Chrome user (JM) | 2 | 2.4, then 23.2 MB | The first try stopped at 2.4 MB; a new try 2 hours later got the whole file |
+
+The cause: the worker ignored `Range`. Every request got the whole file from byte 0, so Delivery
+Optimization's parts and a browser's resume each counted as a start that never finished. The
+same fault made a broken download start again from zero (the JM user).
+
+### 14.1 What the worker does now
+
+- A package (`.nupkg`) or the Setup.exe takes **one** byte range: `bytes=a-b`, `bytes=a-` or
+  `bytes=-n`. The answer is 206 with `Content-Range` and the part's `Content-Length`. The R2
+  read is a `head` (for the size), then a `get` with the range; the head runs only when a
+  `Range` line is there.
+- Every answer for those files carries `Accept-Ranges: bytes`, so a browser knows it can resume.
+- Several ranges, another unit, a bad form or a backwards range: the whole file, 200 (RFC 9110
+  lets a server ignore a range).
+- A start at or past the end: 416 with `Content-Range: bytes */<size>`.
+- `If-Range` that is not this file's ETag (an older copy, or a date): the whole file, 200, so a
+  resume never joins two different files.
+- The feeds (`releases.<channel>.json[.sig]`, the rollback feeds) are always whole.
+- The old NSIS route (`/update/<channel>/file/`) is not changed: only installs from before 0.28
+  use it, and those move to Velopack by hand.
+
+### 14.2 The count rule
+
+- `setup.start` when the part holds the file's **first** byte (or there is no range).
+- `setup.done` when the part holds the file's **last** byte and goes out in full (the same
+  `FixedLengthStream` as §13, sized to the part).
+- A part that holds neither is not counted.
+- So a download in parts counts one start and one finish, and so does a resume. A new try from
+  zero is a second start, which is true. The parts of one download are never joined: that would
+  need an ID or the IP (§2 rules 1 and 2).
+- The §13 limit still holds: a download cut in its last few MB can count as finished.
+
+### 14.3 The rate limit
+
+The Velopack folder moved from `TOKEN_RL` (the mint, 30 a minute per IP) to its own `FILE_RL`
+(namespace 3005, 300 a minute per IP). A download in many parts must never meet a 429, and 300 a
+minute still holds a runaway loop. The mint keeps its strict limit. 300 is Claude's draft value,
+for his review.
+
+### 14.4 The worker check (2026-10-30, run by Claude)
+
+`node docs/ops/checks/usage-worker.mjs` against `wrangler dev` on 8791: **44 cases, all pass**
+(the 27 of §13.1 and 17 new, section 7b). The new cases: a HEAD names `Accept-Ranges`; a resume
+in two parts (206, the bytes join into the file, one start and one finish); Delivery
+Optimization in 4 parts at once (all 206, the bytes join, one start and one finish); a middle
+part (no count); the last 1000 bytes (a finish only); an end past the file (cut to the file); a
+start past the end (416, no count); a cut last part (no finish); `If-Range` with another ETag
+(200, whole) and with this ETag (206); several ranges (200, whole); a backwards range (200,
+whole); a package range (206, the right bytes, never counted).
+
+### 14.5 Still open
+
+- ~~**The deploy (his call).**~~ **DEPLOYED 2026-10-30** with the archive, as he chose (wait for
+  the archive): DeetsSupport `f08916b` on `master`, worker version `0dfc4b0d`.
+- **After the deploy — checked the same day, by Claude:** a middle byte range (`bytes=100-199`,
+  which counts neither a start nor a finish) answers 206 with `Accept-Ranges: bytes` and
+  `Content-Range` on the 0.28.0 package and Setup.exe; the 1.2.1 package downloads whole (200,
+  15,605,803 bytes); a stale `If-Range` answers the whole file (200). **Still open:** `npm run
+  usage:r2` on 2026-10-31 shows the worker's starts equal to the people in the zone log.
+
+### 14.6 The correction of the live counts (his call, 2026-10-30: "Correct them")
+
+One D1 update on the live `usage_counts`, channel `live`, from the zone log above:
+- 2026-10-28, 1.2.0, `setup.start`, `site`: 4 → 2 (the BD user's 2 short connections).
+- 2026-10-28, 1.2.0, `setup.start`, `store`: 5 → 1 (the Store install's 4 short connections).
+- 2026-10-30, 1.2.1, `setup.start`, `site`: 25 → 21 (the VN user's 3 short connections and the
+  JM user's first try). The JM user's second try may have been a resume that the worker could
+  not answer; the log cannot tell. It is taken out as a resume, so the count says what Range
+  support would have counted.
+
+After it: 30 starts and 30 finishes in the 7 days, so the flag clears. Until the deploy, a new
+download in parts can add a false start again.

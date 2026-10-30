@@ -137,6 +137,15 @@ which carries `ideas-nineteen` and `net-worked`. Everything up to the 0.30.0 rel
 
 Every hand and desk test listed here before closed on 2026-10-13 (his report, WORKLOG
 2026-10-13 *desk tests closed*; the rows are DESK-TESTS.md §5). What is left:
+- **Setup.exe byte ranges: DEPLOYED 2026-10-30 with the forum archive (worker version
+  `0dfc4b0d`); checked right after: a middle range answers 206 with `Accept-Ranges: bytes` on a
+  package and a Setup.exe, a whole 1.2.1 package 200, a stale `If-Range` 200 (USAGE-COUNTS.md
+  §14).** Open: `npm run usage:r2` on 2026-10-31 (starts equal the people in the zone log). The admin
+  page's "not finished" flag was extra connections, not people: the worker ignored `Range`.
+  DeetsSupport `src/update.js` now answers one range (206 / 416, `If-Range`), counts a start on
+  the first byte and a finish on the last, and the Velopack folder has its own `FILE_RL` (300 a
+  minute, a draft). The worker check passes (44). The 10 false starts are corrected in live D1
+  (his call). It went out in one deploy with the archive, as he chose (§14.5).
 - **Metal's full player drew the cover as a tall strip (0.31.0 on live): fixed and committed
   2026-10-21, ships with the next release.** The box from the square (his call A; the band at the
   cover's width stays, his call after the test), the drum's perspective grows with the cover
@@ -249,9 +258,9 @@ each step that touches those calls.
   worker). Debug builds only. Settings › Bugs › My reports: open reports, then a *Resolved*
   fold (closed, fixed, won't fix, removed) whose rows slide in; resolved reports stay until
   cleared (the one-day expiry is gone); a removed report reads *Closed*. Built with the forum
-  archive and edits (DeetsSolutions docs/support.md, "The archive"; the worker and the site are
-  on branch `forum-archive`, NOT deployed or published: the migration, the worker deploy and
-  the site merge go with the release).
+  archive and edits (DeetsSolutions docs/support.md, "The archive"), which are LIVE since
+  2026-10-30 (the migration, worker `0dfc4b0d`, the site's `master`). This app part ships with
+  the next release.
 
 - **Clear Queue (2026-10-29, on `main`, uncommitted; his hand test open).** From a user's
   report: ~430 hand-added songs sat on top of every new list, so the songs they added later
