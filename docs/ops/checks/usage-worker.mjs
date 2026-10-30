@@ -155,6 +155,78 @@ expect("bot: curl", setupRow("start", "bot"), 1);
 expect("a cut download starts and never finishes", [setupRow("start", "direct"), setupRow("done", "direct")], [1, 0]);
 expect("a HEAD is never counted: five GETs, five starts", n(`v = '9.9.9' AND metric = 'setup.start'`), 5);
 
+// 7b. Byte ranges (§14): the right bytes, 206 / 416, and a resume or a download in parts counts
+// once. Each case reads the change in [start, done] for its source.
+const whole = readFileSync(file);
+const SIZE = whole.length;
+const MB = 1024 * 1024;
+const pause = () => new Promise((r) => setTimeout(r, 800));
+const pair = (src) => [setupRow("start", src), setupRow("done", src)];
+async function changed(src, run) {
+  const a = pair(src);
+  const out = await run();
+  await pause();
+  const b = pair(src);
+  return { out, delta: [b[0] - a[0], b[1] - a[1]] };
+}
+async function part(range, agent = edge, extra = {}, cut = false) {
+  const res = await fetch(setup, { headers: { "User-Agent": agent, Range: range, ...extra } });
+  const got = { status: res.status, range: res.headers.get("Content-Range"), length: res.headers.get("Content-Length") };
+  if (cut) {
+    const r = res.body.getReader();
+    await r.read();
+    await r.cancel();
+    return got;
+  }
+  return { ...got, buf: Buffer.from(await res.arrayBuffer()) };
+}
+const same = (buf, from) => buf.equals(whole.subarray(from, from + buf.length));
+const headRes = await fetch(setup, { method: "HEAD", headers: { "User-Agent": edge } });
+expect("a HEAD names Accept-Ranges", headRes.headers.get("Accept-Ranges"), "bytes");
+const etag = headRes.headers.get("ETag");
+
+let c = await changed("direct", async () => [await part(`bytes=0-${MB - 1}`), await part(`bytes=${MB}-`)]);
+expect("a resume: two 206 parts", c.out.map((p) => [p.status, p.range]), [[206, `bytes 0-${MB - 1}/${SIZE}`], [206, `bytes ${MB}-${SIZE - 1}/${SIZE}`]]);
+expect("a resume: the parts join into the file", Buffer.concat(c.out.map((p) => p.buf)).equals(whole), true);
+expect("a resume counts one start and one finish", c.delta, [1, 1]);
+
+const cuts = [0, 10 * MB, 20 * MB, 30 * MB];
+c = await changed("store", () => Promise.all(cuts.map((at, k) =>
+  part(k < cuts.length - 1 ? `bytes=${at}-${cuts[k + 1] - 1}` : `bytes=${at}-`, "Microsoft-Delivery-Optimization/10.1"))));
+expect("Delivery Optimization in 4 parts at once: all 206", c.out.map((p) => p.status), [206, 206, 206, 206]);
+expect("the 4 parts join into the file", Buffer.concat(c.out.map((p) => p.buf)).equals(whole), true);
+expect("4 parts count one start and one finish", c.delta, [1, 1]);
+
+c = await changed("direct", () => part("bytes=100-199"));
+expect("a middle part: 206, its 100 bytes, no count", [c.out.status, c.out.buf.length, same(c.out.buf, 100), c.delta], [206, 100, true, [0, 0]]);
+c = await changed("direct", () => part("bytes=-1000"));
+expect("the last 1000 bytes: 206, the file's tail, a finish only", [c.out.status, c.out.range, same(c.out.buf, SIZE - 1000), c.delta],
+  [206, `bytes ${SIZE - 1000}-${SIZE - 1}/${SIZE}`, true, [0, 1]]);
+c = await changed("direct", () => part(`bytes=0-${SIZE + 5000}`));
+expect("an end past the file is cut to the file", [c.out.status, c.out.buf.length, c.delta], [206, SIZE, [1, 1]]);
+c = await changed("direct", () => part(`bytes=${SIZE}-`));
+expect("a start past the end: 416, no count", [c.out.status, c.out.range, c.delta], [416, `bytes */${SIZE}`, [0, 0]]);
+c = await changed("direct", () => part(`bytes=${10 * MB}-`, edge, {}, true));
+expect("a cut last part never finishes", c.delta, [0, 0]);
+c = await changed("direct", () => part("bytes=0-99", edge, { "If-Range": '"an-older-file"' }));
+expect("If-Range with another ETag: the whole file, 200", [c.out.status, c.out.buf.length, c.delta], [200, SIZE, [1, 1]]);
+c = await changed("direct", () => part("bytes=0-99", edge, { "If-Range": etag }));
+expect("If-Range with this ETag: the part, 206", [c.out.status, c.out.buf.length, c.delta], [206, 100, [1, 0]]);
+c = await changed("direct", () => part("bytes=0-1,5-6"));
+expect("several ranges: the whole file, 200", [c.out.status, c.out.buf.length, c.delta], [200, SIZE, [1, 1]]);
+c = await changed("direct", () => part("bytes=500-100"));
+expect("a backwards range: the whole file, 200", [c.out.status, c.out.buf.length], [200, SIZE]);
+
+const pkgFile = join(dir, "pkg.bin");
+writeFileSync(pkgFile, randomBytes(4096));
+execFileSync(process.execPath, [wrangler, "r2", "object", "put", "deetsmusic-releases/deetsmusic/vp/DeetsMusic-9.9.9-deetsmusic-full.nupkg", "--local", "--file", pkgFile],
+  { cwd: support, stdio: "ignore" });
+const startsBefore = n(`v = '9.9.9' AND metric LIKE 'setup.%'`);
+const pkg = await fetch(`${BASE}/update/deetsmusic/vp/DeetsMusic-9.9.9-deetsmusic-full.nupkg`, { headers: { "User-Agent": UA, Range: "bytes=10-19" } });
+const pkgBuf = Buffer.from(await pkg.arrayBuffer());
+await pause();
+expect("a package takes a range and is never counted", [pkg.status, pkgBuf.equals(readFileSync(pkgFile).subarray(10, 20)), n(`v = '9.9.9' AND metric LIKE 'setup.%'`) - startsBefore], [206, true, 0]);
+
 // 8. The cron: a key older than 2 days goes, today's stays (the run at 00:01 UTC).
 sql(`INSERT INTO usage_seen (key, day) VALUES ('${key()}', '2020-01-01')`);
 const before = sql("SELECT COUNT(*) AS n FROM usage_seen")[0].n;

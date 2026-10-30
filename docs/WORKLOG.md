@@ -6,6 +6,63 @@ updated: 2026-10-30
 ---
 # DeetsMusic — Work log
 
+## 2026-10-30 — Deployed: the forum archive, the edits and Setup.exe byte ranges; Deets posts designed
+
+The forum session's last part, after the two entries below. His calls this part, all recorded in
+DeetsSolutions `docs/support.md`:
+- **Editing:** he edits any post (1A), never silently: *Edited by Aditya {date}* for every
+  reader; his own replies too (*edited*); nobody else's words. A post filed on the website while
+  signed in keeps the poster's DeetsAccounts id (`posts.uid`, never sent out); app posts keep
+  none. His question "a local settings id for everyone else?": no install id exists, by his
+  usage-counts rule (USAGE-COUNTS.md §2, "No ID"); reply notices need none (each install keeps
+  its codes and asks). The privacy page's DeetsMusic paragraph rewritten first (his OK of the
+  draft), since it promised to change before the site stored more.
+- **My reports (this repo, on `updatez`):** resolved reports stay until cleared (2A; the one-day
+  expiry of 2026-09-14 is gone); a removed report reads *Closed* (his: "Removed" read as
+  clinical, on the site too); the Resolved fold's rows slide in (`enterRows`).
+- **The site:** History in DeetsLeague's match row (`.lol-match`, as it is); the owner menu on a
+  post's own page; a closed post's page.
+- **Designed, not built (support.md › The forum page):** "Deets posts", polls and suggestions
+  every install receives (D1 A one record on the forum and in the app; D2 A a per-poll random
+  answer key; D3 A a toast once, then the Updates panel; D4 A a signing key in his browser,
+  since his sign-in guards who writes, not what a taken-over worker serves), and "Pictures on
+  posts" (P1 A: his public, users' private). `docs/ideas/owner-polls.md` points there.
+
+**The deploy (his go, "let me know if there are any hiccups"; none):**
+1. D1 Time Travel bookmark before anything:
+   `000037aa-00000000-00005114-ad3718faa05256ee725634a3a947ad70`.
+2. `migrations/2026-10-30-archive.sql` on live: the archive table, `replies.edited_at`,
+   `posts.edited_at`, `posts.uid`; read back; the 8 posts untouched.
+3. The worker from DeetsSupport `forum-archive` (`f08916b`, with the byte ranges committed on
+   top as his call said): version `0dfc4b0d`; the rollback target was `dec25899`.
+4. Checked: `/health` both hosts, `/config`, `/status`, the boards: 200; owner routes with no
+   cookie: 403; a live public post reads, no uid in it; the feed and its `.sig`: 200; the 1.2.1
+   package whole: 200, 15,605,803 bytes; `bytes=100-199` (counts neither a start nor a finish):
+   206 with `Accept-Ranges` on a package and a Setup.exe; a stale `If-Range`: 200.
+5. The site: `forum-archive` fast-forwarded into `master` and pushed (`f36fc01`, live in ~10 s);
+   then the docs marked live (`e1df00d`). DeetsSupport `master` fast-forwarded to `f08916b`.
+
+**Open:** his look at the live History tab, a closed post's page and the privacy page;
+`npm run usage:r2` on 2026-10-31 (USAGE-COUNTS.md §14.5); this repo's part ships with the next
+release. The local test setup (DEBUGGING.md § A local support worker) keeps working.
+
+## 2026-10-30 — Setup.exe downloads: the "not finished" flag, and byte ranges (built, not deployed)
+
+His ask: the admin page said 28 % of installs did not finish. Read: the live D1 counts and the
+zone's request log (bytes per request, by browser, no IP). Every person in the 7 days got the
+whole file; the 10 unfinished starts were extra connections (the Store's Delivery Optimization
+in parts, two browsers' extra connections, one retry). The cause: the worker ignored `Range`.
+His calls: set up Range support; correct the 10 starts in live D1 ("Correct them").
+
+- **DeetsSupport** (uncommitted on `forum-archive`, NOT deployed): `byteRange` and the ranged
+  read in `serveVp`, the count rule in `countedSetup` (start on the first byte, finish on the
+  last), `FILE_RL` in wrangler.jsonc, a README line.
+- **Here:** section 7b of `docs/ops/checks/usage-worker.mjs` (17 cases); USAGE-COUNTS.md §14.
+- **Run by Claude:** the worker check against `wrangler dev`: 44 of 44 pass. The live D1
+  correction: three rows, read back (30 starts, 30 finishes in 7 days).
+- **Claude's choices for his review:** `FILE_RL` at 300 a minute; one range per request (several
+  ranges get the whole file); the NSIS route left as it is.
+
 ## 2026-10-30 — The forum archive and a local support worker (built, uncommitted)
 
 His asks: an archive of deleted forum posts for counts over time, and a local worker to see a
