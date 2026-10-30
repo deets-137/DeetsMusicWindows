@@ -1,8 +1,8 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-30
 sources: [src/pin.ts, src/styles/pin.css, src-tauri/src/tray.rs, src/hint.ts, src/surface.ts, src/main.ts, src/rules-eval.ts, src/rulez-card.ts, src/rulez-words.ts, src/settings-card.ts, src/settings-store.ts, src/agent-settings.ts, src/compass.ts, src/usage-keys.ts, src/styles/skin.css, index.html, tests/rules-eval.test.ts]
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 # Pin on top — a title bar button that keeps the window above other windows
 

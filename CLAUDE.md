@@ -40,7 +40,8 @@ HANDOFF.md › Open now; there is no separate backlog doc.
 §5.3). Move one there with `node scripts/docs-move.mjs NAME=archive`; its open items go to
 HANDOFF first. `NEXT-VERSION.md` — the 2026-09 feature batches, all shipped.
 `RELEASE-NSIS.md` — the release runbook up to 0.27.0 (the NSIS installer and its updater), word
-for word, with RELEASE.md's section numbers.
+for word, with RELEASE.md's section numbers. `HOP-IN.md` — the Cruisin / Pro welcome screen,
+designed 2026-09-28, never built; scratched 2026-10-30 (his call: the grand opening solves it).
 
 **`docs/architecture/`** — the engine
 - `UI-ARCHITECTURE.md` — the token / theme / skin tiers and the collection-card engine.
@@ -119,9 +120,6 @@ for word, with RELEASE.md's section numbers.
 - `LAYOUT.md` — two Settings › Window rows: the artist view's order and hidden shelves, and
   the On / Faded / Hidden buttons; each part is its own rule target. Designed 2026-09-27, every
   fork his; on the docket, not built.
-- `HOP-IN.md` — DESIGNED, not built (2026-09-28): the welcome screen before sign-in, the
-  Cruisin / Pro pick, the two presets (Cruisin = defaults, Pro = his own settings), the Rulez
-  gate. Recipes in Settings are RULEZ.md §16.
 - `GRAPHICS-FALLBACK.md` — BUILT 2026-10-11, desk test passed 2026-10-12 (§8): when the GPU process falls
   back to WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers
   a restart; Settings › Motion › *If graphics fail*; the `graphics` fact (`src/gpu.ts`); the

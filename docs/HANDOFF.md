@@ -143,33 +143,28 @@ item closes, delete it here and write the day in WORKLOG.md.
 
 ### Live, waiting on his test or his look
 
+Verified 2026-10-30 against his logs (the installed log reaches back only to 2026-10-27), the
+live ring and the live D1, then by his word for what left no trace. Closed that day: Clear
+Queue, the pin's open cases and Claude's pin choices, the Rewind sweep's fixes, his looks at
+the forum archive, read marks, the sign-in city icon, the Health tab on live data, and Claude's
+choices for rooms (§21.10), the Rewind button (§9.2), the Network panel (§8.3) and the Setup.exe
+ranges; the Partner Center check (the 10-minute fetch is the Store's); the site's Metal skin
+(already in `controls.js`). What is left:
+
 - **Friends on DM, the Home shelf (1.2.1; the Friends worker deployed):** the two-app desk test,
   features/friends-shelf.md §5.
-- **Clear Queue (1.2.1; in rooms too, DeetsMusicRooms `c8af48a` deployed 2026-10-29):** his
-  hand test, QUEUE.md § Clear Queue.
-- **The forum archive and edits (live 2026-10-30):** his look at the admin page's History tab,
-  a closed post's page and the privacy page (DeetsSolutions docs/support.md, "The archive").
-- **The admin page's Health tab (live 2026-10-30):** his look at live data; the *Needs a look*
-  thresholds (`FLAG` in DeetsSolutions `admin.js`) are drafts (support.md, "The Health tab").
-- **Read marks on report replies (live 2026-10-26):** his look at the Inbox's *Seen* /
-  *Opened* (the owner's read is untested). support.md › Read marks.
-- **Usage counts (live):** `setx DEETS_USAGE_OWNER 1` on his PCs; confirm in Partner Center
-  that the 10-minute Setup.exe fetch is the Store's check of the Package URL (USAGE-COUNTS.md
-  §12.1; do not block it).
-- **Setup.exe byte ranges (deployed 2026-10-30):** `npm run usage:r2` on 2026-10-31 (starts
-  equal the people in the zone log, USAGE-COUNTS.md §14.5); Claude's choices for his review:
-  `FILE_RL` at 300 a minute, one range per request.
-- **The sign-in page's city icon (live 2026-10-23):** his look at a real sign-in.
-- **Pin on top (1.1.2):** the open cases, features/PIN.md §5.1; Claude's choices §3.6, §8.
-- **Rooms: a long queue and stations:** his look at what Claude decided (ROOMS.md §21.10).
-- **The Rewind button:** his look at listening-time.md §9.2, and whether the Rewind card goes
-  (§9.4).
-- **The Network panel:** the fetch wrap's A/B (`checks/fetch-wrap.mjs`, §9 step 8, an agent's);
-  his look at what Claude decided (speedtest.md §8.3).
-- **The Rewind quality sweep:** his desk test (DEETS-REWIND.md §8.5) and his look at Claude's
-  choices there. V1's rule (`styles.css`) also changes the Queue's and every revealed list's
-  entrance: watch them. Next sweep: his pick, or the ledger's order (QUALITY-SWEEP.md §7).
-- **Metal:** DeetsSolutions' skin list (his call).
+- **`setx DEETS_USAGE_OWNER 1` on his PCs** (checked 2026-10-30: not set on this one, and live
+  D1 has no `owner` rows, so his installs count as live users; USAGE-COUNTS.md §12).
+- **`npm run usage:r2` on 2026-10-31:** Setup.exe starts should equal the people in the zone
+  log (USAGE-COUNTS.md §14.5).
+- **The admin page's *Needs a look* thresholds** (`FLAG` in DeetsSolutions `admin.js`) are
+  drafts for his edit (support.md, "The Health tab").
+- **The Rewind card:** keep it or let the Rewind button replace it (listening-time.md §9.4, his
+  call).
+- **The Network panel's fetch wrap A/B** (`checks/fetch-wrap.mjs`, speedtest.md §9 step 8): an
+  agent's run.
+- **The Rewind sweep's V1 rule** (`styles.css`) also changes the Queue's and every revealed
+  list's entrance: watch them. Next sweep: his pick, or the ledger's order (QUALITY-SWEEP.md §7).
 - **Rooms on the web** (WebRooms.md): not built, the site page (part H, a DeetsSolutions
   session); not deployed, the worker change (§10.6).
 
@@ -229,9 +224,6 @@ item closes, delete it here and write the day in WORKLOG.md.
 
 ### Decided, not built (his next sittings)
 
-- **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen (skipped for now, his call
-  2026-10-15); ready when he says go, but the words and the Pro walk's order. HOP-IN.md §5,
-  RULEZ.md §16.
 - **Deets posts and Pictures on posts** (2026-10-30, his calls D1–D4, P1): polls and
   suggestions every install receives, and pictures on forum posts. DeetsSolutions
   docs/support.md › The forum page.
@@ -559,7 +551,7 @@ complete.
   `artist:` ids for `play`, durable history as a second history source, a small-model test of
   `mcp --small`.
 - **Designed, not built:** a second
-  Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)), Hop in ([HOP-IN.md](features/HOP-IN.md)),
+  Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)), Hop in ([HOP-IN.md](archive/HOP-IN.md)),
   Layout ([LAYOUT.md](features/LAYOUT.md)), Skinz ([SKINZ.md](features/SKINZ.md)), Backup
   ([BACKUP.md](features/BACKUP.md)), Local radio ([LOCAL-RADIO.md](features/LOCAL-RADIO.md)),
   Threads ([THREADS.md](integrations/THREADS.md)). Ideas with no schedule: [ideas/](ideas/README.md).

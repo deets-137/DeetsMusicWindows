@@ -1031,7 +1031,7 @@ The questions of §13 (same Do per case, both kinds, *otherwise*) are part of th
 
 > **Part:** designed · 2026-09-28 · his calls below; the start pick's forks are HOP-IN.md §4; nothing built
 
-**The terms** (Cruisin, Pro) are defined in [HOP-IN.md](HOP-IN.md).
+**The terms** (Cruisin, Pro) are defined in [HOP-IN.md](../archive/HOP-IN.md).
 
 **The problem.** Rulez is a heavy feature. Many users will never want to build a rule. But the
 effect of a recipe (a quieter night, Focus, Battery saver) is useful to everyone. Today a user
@@ -1051,7 +1051,7 @@ turns on a recipe only in the Rulez card, and that card is in Max only, behind a
    entry point.
 4. **A start pick, on a welcome screen before sign-in.** The user selects Cruisin or Pro; the
    pick pre-sets settings once. The screen, the two presets and their forks are
-   [HOP-IN.md](HOP-IN.md).
+   [HOP-IN.md](../archive/HOP-IN.md).
 5. **Switching to Cruisin keeps your rules running** (third round). Only the Rulez card leaves
    the card picker. The gate never changes what the app does; the recipes in Settings still work.
 6. **Ctrl + Space finds the Rulez card as usual, under Cruisin too** (third round). The gate is

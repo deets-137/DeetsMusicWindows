@@ -1,9 +1,9 @@
 ---
 status: shipped
 shipped_in: 0.4.3
-desk_test: open
+desk_test: passed 2026-10-30
 sources: [src/stats.ts, src/player.ts, src-tauri/src/library.rs, src/rewind.ts, src/rewind-card.ts, src/library.ts, src/replay.ts, src/rewind-window.ts, src-tauri/src/playlists.rs, docs/ops/checks/rewind-sweep.mjs]
-updated: 2026-10-18
+updated: 2026-10-30
 ---
 # DeetsRewind — listening stats & the data-viz card
 
@@ -336,7 +336,7 @@ song on live).
 
 ### 8.5 The fixes (2026-10-18)
 
-> **Part:** built · 2026-10-18 · desk test: his
+> **Part:** built · 2026-10-18 · desk test: his, passed 2026-10-30 (his word)
 
 His ask: fix all of them, here, in one sitting (not one at a time, QUALITY-SWEEP.md C4 set
 aside by him for this sweep). His calls for F1 and F4 (2026-10-18): a deleted playlist keeps its

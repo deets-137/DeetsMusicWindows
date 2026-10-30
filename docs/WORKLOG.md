@@ -30,6 +30,16 @@ then less text ("a wall of text").
 - **HANDOFF › Open now pruned:** everything that shipped up to 1.2.1 or closed went out; the
   1.3.0 list and its release steps lead; the live items waiting on his test or look are one list.
   Open: his hand test of [Report]; the 1.3.0 release.
+- **The live list, verified (his ask):** his installed log (from 2026-10-27 only: the per-song
+  `license:keys` line filled it), the dev logs, the installed app's ring and the live D1 showed
+  his Health tab look; the site's Metal skin was already in `controls.js`; `DEETS_USAGE_OWNER`
+  is not set on this PC (no `owner` rows on live). Nothing else left a trace either way, so his
+  word closed them: Clear Queue (QUEUE.md), the pin (PIN.md), the Rewind sweep (DEETS-REWIND.md),
+  his looks at the forum archive, read marks, the sign-in city icon, Claude's choices for rooms
+  §21.10, the Rewind button §9.2, the Network panel §8.3, the Setup.exe ranges, and the Partner
+  Center check. Left: the Friends shelf's two-app test, the owner variable, `usage:r2` tomorrow.
+- **Cruisin and Pro scratched (his call: "our onboarding screen solves this piece"):** HOP-IN.md
+  moved to `archive/` with a status box; RULEZ.md §16's Recipes are not part of that call.
 
 ## 2026-10-30 — Deployed: the forum archive, the edits and Setup.exe byte ranges; Deets posts designed
 

@@ -25,7 +25,7 @@ through it all").
 ## 1. His calls (2026-09-29)
 
 1. **On by default, with a clear off switch.** A row in Settings › About, a line on the Hop in
-   screen ([HOP-IN.md](HOP-IN.md)), and a new Privacy paragraph in the README.
+   screen ([HOP-IN.md](../archive/HOP-IN.md)), and a new Privacy paragraph in the README.
    **2026-10-23 (his calls):** off by default for an hour, then on again, with the switch on the
    grand opening's page 4 ([GRAND-OPENING.md](GRAND-OPENING.md) §10) and the hint "Anonymous
    counts, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no

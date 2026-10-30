@@ -1,14 +1,20 @@
 ---
-status: designed
+status: archived
 desk_test: none
 sources: [src/walk.ts, src/settings-store.ts, src/rules.ts, src/layout.ts]
-updated: 2026-10-11
+updated: 2026-10-30
 ---
 # DeetsMusic — Hop in: the welcome screen and the Cruisin / Pro pick
 
+> **Archived 2026-10-30, not built (his call: "Scratch cruisin/pro, our onboarding screen solves
+> this piece").** The grand opening (features/GRAND-OPENING.md) is the first screen of a new
+> install: its layout and Fashion pages do what the Cruisin / Pro pick was for. Kept as the
+> record of the design. The Recipes section and the Rulez gate in RULEZ.md §16 are not part of
+> this call.
+
 **Hop in is the first screen of a new install.** It asks one question: Cruisin or Pro. The pick
 pre-sets settings once. Then the first-run walk (ONBOARDING.md §4) goes on from it. The Recipes
-section in Settings and the Rulez gate are in [RULEZ.md §16](RULEZ.md); this doc is the screen
+section in Settings and the Rulez gate are in [RULEZ.md §16](../features/RULEZ.md); this doc is the screen
 and the two presets.
 
 **The terms.** *Cruisin* is a listener who wants the app to play and stay out of the way. *Pro*
@@ -21,7 +27,7 @@ it. The names are his.
    The one thing the pick keeps on is a gate: the Rulez card is offered in the card picker only
    under Pro (RULEZ.md §16.1). Under Cruisin your own rules keep running, and Ctrl + Space still
    opens the Rulez card. **Since 2026-10-10 the gate is the `hiddenCards` list**
-   ([HIDE-CARDS.md](HIDE-CARDS.md) §6.2, his call): Cruisin puts `"rulez"` in it, and the user
+   ([HIDE-CARDS.md](../features/HIDE-CARDS.md) §6.2, his call): Cruisin puts `"rulez"` in it, and the user
    can show the card again from Settings › Cards.
 2. **A welcome screen before sign-in.** One screen, not several. It is the one exception to
    ONBOARDING.md §4.6.

@@ -39,7 +39,7 @@ the fix for the user is a restart.
 ## 2. His calls (2026-09-29)
 
 1. **A Settings row owns a built-in rule, on by default** (not a recipe). Every user gets it,
-   Cruisin users too ([HOP-IN.md](HOP-IN.md)). It shows in Rulez like the look schedule's rules.
+   Cruisin users too ([HOP-IN.md](../archive/HOP-IN.md)). It shows in Rulez like the look schedule's rules.
 2. **What turns off:** Battery saver's set and more (RULES.md §18a) — Fancy Glass off
    (`glassFancy`), Animate backgrounds **Off** (`backgroundMotion`, not Reduced), Animate card
    swaps off (`cardSwapMotion`), Animate look changes off (`appearanceMotion`), and a Covers or

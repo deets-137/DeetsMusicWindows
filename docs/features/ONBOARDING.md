@@ -592,7 +592,7 @@ sentences take the Tips voice (§3): the habit and why it is safe, not the list 
 - No multi-page welcome screen before sign-in — sign-in is the first-run step, and it has
   its own copy (HANDOFF.md, the Account row). **One exception (his call, 2026-09-28,
   designed):** a single welcome screen that asks Cruisin or Pro comes before sign-in
-  ([HOP-IN.md](HOP-IN.md)). Still no multi-page screen.
+  ([HOP-IN.md](../archive/HOP-IN.md)). Still no multi-page screen.
 - No tips on a timer, and no "Did you know" toasts after the walk (TOASTS.md §4: a toast that
   interrupts must be about what the user just did).
 

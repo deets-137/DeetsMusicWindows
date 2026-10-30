@@ -237,7 +237,7 @@ The test names carry the date (CLAUDE.md, *How to verify*). The existing
 | [ONBOARDING.md](ONBOARDING.md) §1, §2 | the hints; the picker's right-click |
 | [QUICK-SETTINGS.md](QUICK-SETTINGS.md) §3, §9 | the second part under Window; the row count |
 | [COMPASS.md](COMPASS.md) | Rewind is in the bar from the first day |
-| [HOP-IN.md](HOP-IN.md) §1, §2, §3 | done 2026-10-10 (§6.2); check again at build |
+| [HOP-IN.md](../archive/HOP-IN.md) §1, §2, §3 | done 2026-10-10 (§6.2); check again at build |
 | [RULEZ.md](RULEZ.md) §16.1 | done 2026-10-10 (§6.2); check again at build |
 | [WEB-DEMO.md](WEB-DEMO.md) | the seed writes `hiddenCards` |
 | [DEBUGGING.md](../ops/DEBUGGING.md) | `__toast.sim.rewind()` takes `"rewind"` out of the list |

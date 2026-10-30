@@ -26,7 +26,7 @@ The Metal skin ([metal.md](../features/metal.md)) is the test case for this doc.
 > **Part:** idea · 2026-10-19
 
 A page in the style of a marketplace, beside the onboarding, where a new user sets up the app
-when it first loads. It goes with Hop in ([HOP-IN.md](../features/HOP-IN.md), designed, not
+when it first loads. It goes with Hop in ([HOP-IN.md](../archive/HOP-IN.md), designed, not
 built): the welcome screen and the Cruisin / Pro pick. Not designed. Points to settle when it
 is:
 

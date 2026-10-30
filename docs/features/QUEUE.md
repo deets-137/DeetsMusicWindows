@@ -1,8 +1,8 @@
 ---
 status: foundation
-desk_test: passed 2026-09-24
+desk_test: passed 2026-10-30
 sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts, src/license-watch.ts, src/license-reply.ts, docs/ops/checks/license-fail.mjs]
-updated: 2026-10-29
+updated: 2026-10-30
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -322,7 +322,7 @@ never moves — `windowPos` and model-follow stay valid.
 > (it reconciles on re-window). Fine for typical queues.
 
 ### Clear Queue (built 2026-10-29)
-> **Part:** built · 2026-10-29 · desk test open
+> **Part:** shipped in 1.2.1 · his hand test passed 2026-10-30 (his word)
 
 **Why.** A user's bug report (2026-10-29): the Queue was "stuck" for a day. Their log showed
 about 430 manual entries in Up Next (`modelUp 443` after a 13-song album). The stacking rule
@@ -359,7 +359,7 @@ count). A Settings row, *Clear the queue on launch*, default off.
   (`queue:clearOnLaunch`). Restore on launch = *Up Next* keeps its parked last song. An update
   or a graphics restart keeps the whole queue.
 
-**Desk test (open).**
+**Desk test (passed 2026-10-30, his word).**
 1. Play an album, add three songs with Add to Queue. Right-click an Up Next row › *Clear Queue ›*:
    the flyout shows *Manually added 3* and *Entire queue N*.
 2. Click *Manually added*: it reads *Confirm?*, the menu stays, its width does not change.
