@@ -112,13 +112,15 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-- **Errors users never report (2026-10-30, on `updatez`, uncommitted).** His calls 1A and 2A:
+- **Errors users never report (2026-10-30, `0d9e415` on `updatez`).** His calls 1A and 2A:
   error fingerprints in the weekly health report (`src/error-fp.ts`, `usage.rs`; read back with
   `npm run errors:where`, the maps in `installers/maps/<version>/`), the admin page's Health ›
-  Error kinds and its "new error" flag (DeetsSolutions, not published), and [Report] on error
+  Error kinds and its "new error" flag (DeetsSolutions, published), and [Report] on error
   toasts. Also the three log fixes: `fe-` families, the `webview:` utility exits at INFO, no
-  `license:keys` warning on "released". **The DeetsSupport worker change is built, not
-  deployed (his call).** Reaches users with the next release. features/USAGE-COUNTS.md §15–§16.
+  `license:keys` warning on "released". **The DeetsSupport worker is DEPLOYED 2026-10-30
+  (version `5a38985e`; rollback `0dfc4b0d`); smoke passed.** Claude's run on the dev app passed
+  (a Report filled the form; three errors gave their fingerprints in the week's counts). His
+  hand test of [Report] is open. Reaches users with the next release. USAGE-COUNTS.md §15–§16.
 
 - **The update card + the settings change log + the Updates panel's own open (2026-10-29, branch
   `updatez`, uncommitted).** The change log and the panel's open: desk test passed. The card:
