@@ -6,6 +6,31 @@ updated: 2026-10-30
 ---
 # DeetsMusic — Work log
 
+## 2026-10-30 — The admin page's Health tab; errors users never report; HANDOFF pruned
+
+**His ask:** the admin page's Apple Music calls read 0 % everywhere. **The cause:** an install
+reports a finished week during the week after, and the page read the current week. Then his
+asks: a sysadmin-style dashboard (scale on top of weekly health, clear about what is shown),
+then less text ("a wall of text").
+- **DeetsSolutions** (published, `44e1f26` and after): a Health tab on the newest week with
+  reports (the 7 weeks before read too), weeks as dates, an Apple Music calls tile, each Release
+  card's share of the week, the explanations as hover hints, Error kinds. The local sign-in now
+  checks the cookie's signature (`scripts/dev.js`). Strings approved ("No ph needed").
+- **Read on live data (W43, 14 reports) and his PC's logs:** `fe` errors on 13 of 14 installs
+  could not be told apart; `gpu` warnings were mostly WebView2 utility exits at a Windows wake,
+  boot or sleep; `license:keys` warned once per song. Fixed (USAGE-COUNTS.md §15).
+- **His calls 1A and 2A** (USAGE-COUNTS.md §16): error fingerprints in the weekly report, read
+  back with `npm run errors:where` through maps kept in `installers/maps/<version>/` (a map
+  taken before Vite's last step was one line off; fixed and checked on three known strings);
+  [Report] on error toasts (TOASTS.md §2). DeetsMusic `0d9e415` on `updatez`; DeetsSupport
+  deployed (version `5a38985e`, rollback `0dfc4b0d`; smoke passed, no test report sent to live).
+- **Run by Claude:** the worker on a local copy of live data (a path fingerprint dropped); on the
+  dev app, a Report filled the form and three errors gave their fingerprints in the week's counts.
+- **His word:** the update card passed ("I've checked the update card"). UPDATE-CARD.md marked.
+- **HANDOFF › Open now pruned:** everything that shipped up to 1.2.1 or closed went out; the
+  1.3.0 list and its release steps lead; the live items waiting on his test or look are one list.
+  Open: his hand test of [Report]; the 1.3.0 release.
+
 ## 2026-10-30 — Deployed: the forum archive, the edits and Setup.exe byte ranges; Deets posts designed
 
 The forum session's last part, after the two entries below. His calls this part, all recorded in

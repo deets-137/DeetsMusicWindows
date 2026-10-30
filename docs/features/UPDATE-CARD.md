@@ -1,8 +1,8 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-10-30
 sources: [src/update-card.ts, src/update-card-rules.ts, src/paged-card.ts, src/onboarding.ts, src/styles/onboarding.css, src/settings-card.ts, src/settings-store.ts, src/release-leads.ts, vite-release-notes.ts, src/updates-btn.ts, src/update-rules.ts, src/compass.ts]
-updated: 2026-10-29
+updated: 2026-10-30
 ---
 # The update card — new settings after an update
 
@@ -260,7 +260,7 @@ The steps:
 4. In Mini and Midi the open shows the quick panel's Updates square.
 
 ### 3.12 The card, as built (2026-10-29)
-> **Part:** built · 2026-10-29 on `updatez`; Claude's run on the dev app passed (below); his hand test open.
+> **Part:** built · 2026-10-29 on `updatez`; Claude's run on the dev app passed (below); his hand test passed 2026-10-30 (his word: "I've checked the update card").
 
 - **The frame** is `src/paged-card.ts`, moved out of onboarding.ts unchanged (GRAND-OPENING.md's
   status box). One paged card at a time: opening one closes the other. `src/update-card.ts` is the

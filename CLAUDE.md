@@ -259,7 +259,7 @@ for word, with RELEASE.md's section numbers.
   the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
   volume*, default on), the scroll added up per notch, a trackpad's rise capped at 40 % a second
   (`src/wheel-step.ts`, pure; `src/wheel-volume.ts`). His calls §1.
-- `UPDATE-CARD.md` — BUILT 2026-10-29 on `updatez` (his calls §1, §1.1): the update card, the
+- `UPDATE-CARD.md` — BUILT 2026-10-29 on `updatez`, desk test passed 2026-10-30 (his calls §1, §1.1): the update card, the
   grand opening's frame (`src/paged-card.ts`, now shared) with a page per version line from 1.0,
   oldest first: the notes (leads only when too long), the new settings (`since` on every
   `NEW_MARKS` line), a changed default's *Use it* (only while the value is the old one;

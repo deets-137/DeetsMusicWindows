@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-10-20
+updated: 2026-10-30
 ---
 # DeetsMusic — Handoff
 
@@ -70,8 +70,8 @@ install, uninstall, publishing and the updater (§6, shipped in 0.4.3) — is in
 short version:
 
 ```bash
-npm run release          # secrets → cli:build → sign → tauri build (signed + .sig) → release-check → archive; ~3 min cold
-npm run release:publish  # after testing the installed build: R2 upload + update index → installs update
+npm run release          # cli:build → sign → tauri build → stage → vpk pack (signed) → sign the feed → release-check; ~3 min cold
+npm run release:publish  # after testing the installed build: R2 upload + the feed → installs update
 ```
 
 Since 0.28.0 (Velopack) it produces `installers/velopack/<Id>-<channel>/`: the full and delta
@@ -112,60 +112,69 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-- **Errors users never report (2026-10-30, `0d9e415` on `updatez`).** His calls 1A and 2A:
-  error fingerprints in the weekly health report (`src/error-fp.ts`, `usage.rs`; read back with
-  `npm run errors:where`, the maps in `installers/maps/<version>/`), the admin page's Health ›
-  Error kinds and its "new error" flag (DeetsSolutions, published), and [Report] on error
-  toasts. Also the three log fixes: `fe-` families, the `webview:` utility exits at INFO, no
-  `license:keys` warning on "released". **The DeetsSupport worker is DEPLOYED 2026-10-30
-  (version `5a38985e`; rollback `0dfc4b0d`); smoke passed.** Claude's run on the dev app passed
-  (a Report filled the form; three errors gave their fingerprints in the week's counts). His
-  hand test of [Report] is open. Reaches users with the next release. USAGE-COUNTS.md §15–§16.
+**Live: 1.2.1** (2026-10-29). `main` ends at its release log (`29b7804`); the next release is
+**1.3.0**, from `updatez`. Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
+closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
+item closes, delete it here and write the day in WORKLOG.md.
 
-- **The update card + the settings change log + the Updates panel's own open (2026-10-29, branch
-  `updatez`, uncommitted).** The change log and the panel's open: desk test passed. The card:
-  Claude's run on the dev app passed, his hand test open, and his review of Claude's choices
-  (features/UPDATE-CARD.md §3.12; a page per minor line first). The frame moved to
-  `src/paged-card.ts`: the grand opening is its first caller. The new row's `since` says 1.3.0:
-  fix it at release time. WORKLOG 2026-10-29.
+### 1.3.0 — on `updatez`, not released
 
-- **Friends on DM, the Home shelf (2026-10-29, shipped in 1.2.1).** The Friends worker is
-  deployed. The two-app desk test is open: features/friends-shelf.md §5. WORKLOG 2026-10-29.
+- **The update card + the settings change log + the Updates panel's own open (2026-10-29,
+  `ef4a458`).** Desk tests passed: the change log and the panel's open 2026-10-29, the card
+  2026-10-30 (his word). Open: his look at Claude's choices (features/UPDATE-CARD.md §3.11,
+  §3.12; a page per minor line first). The frame is `src/paged-card.ts`, shared with the grand
+  opening.
+- **My reports' Resolved fold, and a local support worker (2026-10-30, `9ae4e80`).** Built from
+  his own test through it. The fold ships with 1.3.0; the local worker is debug builds only
+  (DEBUGGING.md § A local support worker).
+- **Errors users never report (2026-10-30, `0d9e415`).** His calls 1A and 2A: error
+  fingerprints in the weekly health report (`src/error-fp.ts`, `usage.rs`; read back with
+  `npm run errors:where`, the maps in `installers/maps/<version>/`) and [Report] on error
+  toasts; also the three log fixes (`fe-` families, the `webview:` utility exits at INFO, no
+  `license:keys` warning on "released"). The DeetsSupport worker is DEPLOYED (2026-10-30,
+  version `5a38985e`, rollback `0dfc4b0d`) and the admin page's Error kinds is published.
+  Claude's run on the dev app passed. Open: his hand test of [Report]. The first fingerprints
+  arrive the week after 1.3.0 installs. USAGE-COUNTS.md §15–§16.
+- **To release 1.3.0** (RELEASE.md §0): the version in the six files (RELEASE.md §1); the
+  1.3.0 entry in RELEASE-NOTES.md, each paragraph with its bold lead (the update card shows the
+  notes); the new rows' `since` already says 1.3.0; merge `updatez` into `main` (his call);
+  `npm run release`. **Publish only after his hand test:** this release changes every error
+  toast and the error log path, so it is not low risk (RELEASE.md §0b).
 
-- **Replies reach the filer + the admin Inbox (2026-10-26, committed, his desk test open).**
-  The app part ships with the next release; the site part (DeetsSolutions) is LIVE since
-  2026-10-26 (d6a6528 pushed). The Inbox strings await his OK. WORKLOG 2026-10-26.
+### Live, waiting on his test or his look
 
-The short list of what is not finished, as of 2026-10-19 (pruned for 0.30.0: everything that
-shipped or closed went out; the WORKLOG has each day). Each item names where the detail is.
-When an item closes, delete it here and write the day in WORKLOG.md. `seventheenth` and
-`v-thirty` are merged into `main`; so is `v-thirtyone` (fast-forwarded 2026-10-20, his call),
-which carries `ideas-nineteen` and `net-worked`. Everything up to the 0.30.0 release commit
-(`b4dffde`) is on live; the work committed after it waits on the next release (0.31.0).
+- **Friends on DM, the Home shelf (1.2.1; the Friends worker deployed):** the two-app desk test,
+  features/friends-shelf.md §5.
+- **Clear Queue (1.2.1; in rooms too, DeetsMusicRooms `c8af48a` deployed 2026-10-29):** his
+  hand test, QUEUE.md § Clear Queue.
+- **The forum archive and edits (live 2026-10-30):** his look at the admin page's History tab,
+  a closed post's page and the privacy page (DeetsSolutions docs/support.md, "The archive").
+- **The admin page's Health tab (live 2026-10-30):** his look at live data; the *Needs a look*
+  thresholds (`FLAG` in DeetsSolutions `admin.js`) are drafts (support.md, "The Health tab").
+- **Read marks on report replies (live 2026-10-26):** his look at the Inbox's *Seen* /
+  *Opened* (the owner's read is untested). support.md › Read marks.
+- **Usage counts (live):** `setx DEETS_USAGE_OWNER 1` on his PCs; confirm in Partner Center
+  that the 10-minute Setup.exe fetch is the Store's check of the Package URL (USAGE-COUNTS.md
+  §12.1; do not block it).
+- **Setup.exe byte ranges (deployed 2026-10-30):** `npm run usage:r2` on 2026-10-31 (starts
+  equal the people in the zone log, USAGE-COUNTS.md §14.5); Claude's choices for his review:
+  `FILE_RL` at 300 a minute, one range per request.
+- **The sign-in page's city icon (live 2026-10-23):** his look at a real sign-in.
+- **Pin on top (1.1.2):** the open cases, features/PIN.md §5.1; Claude's choices §3.6, §8.
+- **Rooms: a long queue and stations:** his look at what Claude decided (ROOMS.md §21.10).
+- **The Rewind button:** his look at listening-time.md §9.2, and whether the Rewind card goes
+  (§9.4).
+- **The Network panel:** the fetch wrap's A/B (`checks/fetch-wrap.mjs`, §9 step 8, an agent's);
+  his look at what Claude decided (speedtest.md §8.3).
+- **The Rewind quality sweep:** his desk test (DEETS-REWIND.md §8.5) and his look at Claude's
+  choices there. V1's rule (`styles.css`) also changes the Queue's and every revealed list's
+  entrance: watch them. Next sweep: his pick, or the ledger's order (QUALITY-SWEEP.md §7).
+- **Metal:** DeetsSolutions' skin list (his call).
+- **Rooms on the web** (WebRooms.md): not built, the site page (part H, a DeetsSolutions
+  session); not deployed, the worker change (§10.6).
 
-### Open on live: text to fix, watches, data to read
+### Open on live: watches, data, measurements
 
-Every hand and desk test listed here before closed on 2026-10-13 (his report, WORKLOG
-2026-10-13 *desk tests closed*; the rows are DESK-TESTS.md §5). What is left:
-- **Setup.exe byte ranges: DEPLOYED 2026-10-30 with the forum archive (worker version
-  `0dfc4b0d`); checked right after: a middle range answers 206 with `Accept-Ranges: bytes` on a
-  package and a Setup.exe, a whole 1.2.1 package 200, a stale `If-Range` 200 (USAGE-COUNTS.md
-  §14).** Open: `npm run usage:r2` on 2026-10-31 (starts equal the people in the zone log). The admin
-  page's "not finished" flag was extra connections, not people: the worker ignored `Range`.
-  DeetsSupport `src/update.js` now answers one range (206 / 416, `If-Range`), counts a start on
-  the first byte and a finish on the last, and the Velopack folder has its own `FILE_RL` (300 a
-  minute, a draft). The worker check passes (44). The 10 false starts are corrected in live D1
-  (his call). It went out in one deploy with the archive, as he chose (§14.5).
-- **Metal's full player drew the cover as a tall strip (0.31.0 on live): fixed and committed
-  2026-10-21, ships with the next release.** The box from the square (his call A; the band at the
-  cover's width stays, his call after the test), the drum's perspective grows with the cover
-  (§6.8.2), the title block under the cover with Cover change = Zoetrope (§6.8.3). The same
-  evening's Metal polish, all hand-tested by him: the side covers in the open's flight, the
-  Queue list's height following the card, the tray's texture, the textures baked per surface
-  color with no blend modes, no texture in software drawing, blank sleeves in empty side slots
-  (metal.md §6.7, §6.8). Closed as demo only: the empty previous side cover, the 120 ms close.
-  Not measured: the scroll's dropped frames since the bake. The site's demo shows the fix after
-  the next release and demo build.
 - **Playback, watch the live ring:** the music stopped at a song change and the catalog heal
   (`player:retryCurrent`, `keyRetry`, `recoverSilent`; QUEUE.md); a healed library id's old
   play counts may stay on the old key (read 2026-10-17: the 5 healed songs on live have no
@@ -211,167 +220,37 @@ Every hand and desk test listed here before closed on 2026-10-13 (his report, WO
   **Not to do:** fewer Tokio workers (an idle worker costs no CPU, and one blocking task holds
   more of a smaller pool); the watchdog's wakes (the price of freeze detection); WebView2's
   threads (not ours).
-- **A dev app Claude starts plays again (fixed 2026-10-17, `642943a`):** `npm run dev:app` from
-  a Claude shell starts itself outside the Claude package through WMI, on the real dev folder,
-  and plays. The private copies of the dev profile are deleted (one dev profile now). Still not
-  known: why Widevine began to refuse the package on 2026-10-16. DEBUGGING.md § Sign-in.
-
-### Build order (recommended 2026-10-15, for his next sessions)
-
-One load-bearing feature in flight at a time; two small ones may share a step (CLAUDE.md ›
-Working style). Each step is its own branch and session, desk-tested before the next starts.
-
-Steps 1–4 and 6 (the sheen, the Library ⟳'s spin, a song's primary artist and its guests, S1
-and S3, Max for a new install, the tray hover text) shipped in 0.28.0; WORKLOG 2026-10-15
-(twenty-eighth). Step 7, album notes, was built 2026-10-17 (below, *Built, waiting*). One step
-is left:
-
-5. **Hop in** (HOP-IN.md): decided. **Skipped for now (his call, 2026-10-15).**
-
-**Now, with no code:** S2's week of mirror dates (apple-calls.md S2): one read-only call a day,
-run from a script, so the evidence is ready when S2 is built. S5 (`fields[…]`) rides along with
-each step that touches those calls.
+- **A dev app Claude starts plays (fixed 2026-10-17, `642943a`):** still not known why Widevine
+  began to refuse the Claude package on 2026-10-16. DEBUGGING.md § Sign-in.
+- **The loading set** (built 2026-10-17, a back-pocket tool): the first `latency.json` is thin
+  (n ≈ 5); run `npm run latency:profile` again after some days of use. guide/LOADING-SET.md §7.
+- **The first public installs:** watch the `csp-` areas in the weekly health counts (the CSP
+  enforces since 1.0.0; CSP.md §9).
 
 ### Decided, not built (his next sittings)
 
-- **Pin on top** (2026-10-26): BUILT the same day, pushed (9460b39), ships in 1.1.2 (1.1.0 and 1.1.1 were local builds only); his hand test passed the four pins. The
-  open cases are features/PIN.md §5.1; Claude's choices for his review §3.6 and §8.
+- **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen (skipped for now, his call
+  2026-10-15); ready when he says go, but the words and the Pro walk's order. HOP-IN.md §5,
+  RULEZ.md §16.
+- **Deets posts and Pictures on posts** (2026-10-30, his calls D1–D4, P1): polls and
+  suggestions every install receives, and pictures on forum posts. DeetsSolutions
+  docs/support.md › The forum page.
+- **S2's week of mirror dates** (apple-calls.md S2), with no code: one read-only call a day,
+  from a script, so the evidence is ready when S2 is built.
 
-- **The loading set** (2026-10-16): BUILT 2026-10-17 on `seventheenth`, all five steps, kept as
-  a back-pocket tool (his words). guide/LOADING-SET.md §7, §8; how to use it: DEBUGGING.md § The
-  loading set. Open: the first `latency.json` is thin (my reloads, n ≈ 5); run
-  `npm run latency:profile` again after some days of use. No UX-COVERUPS rows yet: each finding
-  is a fork for him when he picks it up.
+### Shipped, with leftovers
 
-- **Rooms: a long queue and stations** (2026-10-16): live since 0.29.0; the worker is deployed
-  (`4f61445`). Claude's two-app desk run passed 11 rows without sound (one Apple ID). His desk
-  test with real playback passed on his word (2026-10-17). Open: his look at the list of what
-  Claude decided (ROOMS.md §21.10).
+Each of these shipped; what is left is listed.
 
-- **Cruisin and Pro** (2026-09-28): the *Hop in* welcome screen; ready when he says go, but the
-  words and the Pro walk's order. HOP-IN.md §5, RULEZ.md §16.
+- **The motion monitor** ([the checks archive](ops/checks/README.md) §2a): the `--dev` run, his
+  go first. One old fault (on 0.31.0 too): **the card picker draws one tall column for about
+  two frames, then two columns**, in Midi (`fit()` in layout.ts at open; a frame trace in
+  headless Edge did not reproduce it; the cause is open).
+- **The tao panic on quit** (`cannot move state from Destroyed`, in a Windows shutdown or
+  sleep): a WARN since 1.0.0, so it is not counted; the panic itself stays (tao 0.37.1 has the
+  same `panic!`). DEBUGGING.md § What the 2026-09-17 health check found.
 
-- **Suggest Less and proactive skips** (SUGGEST-LESS.md): live since 0.29.0; schema **v20**.
-  §12 is the as-built record. The DeetsSupport usage allow-list copy is deployed (2026-10-17,
-  DeetsSupport `9f49f84` and `67b6dc0`, pushed).
-
-### Set for 2026-10-21 (his ask, 2026-10-20; doc only, not started)
-
-- (The card grow stress test and Fable review ran on 2026-10-20 instead: see below.)
-
-### Built, waiting on a release or a desk test
-
-- **A local support worker, and My reports' Resolved fold (2026-10-30, on `updatez`, pushed;
-  he tested through it).** `npm run dev:app -- --support-local` runs the real DeetsSupport
-  worker and the site locally, with a local owner sign-in; `npm run support:reply` answers as
-  Aditya; `npm run support:pull` copies the live forum in (DEBUGGING.md § A local support
-  worker). Debug builds only. Settings › Bugs › My reports: open reports, then a *Resolved*
-  fold (closed, fixed, won't fix, removed) whose rows slide in; resolved reports stay until
-  cleared (the one-day expiry is gone); a removed report reads *Closed*. Built with the forum
-  archive and edits (DeetsSolutions docs/support.md, "The archive"), which are LIVE since
-  2026-10-30 (the migration, worker `0dfc4b0d`, the site's `master`). This app part ships with
-  the next release.
-
-- **Clear Queue (2026-10-29, on `main`, uncommitted; his hand test open).** From a user's
-  report: ~430 hand-added songs sat on top of every new list, so the songs they added later
-  never played (`modelUp 443` after a 13-song album). Right-click any Up Next row › *Clear
-  Queue* (a flyout *Manually added* / *Entire queue* when Up Next holds both), each with its
-  count; the first click reads *Confirm?*, the second clears; a toast offers Undo. Also the
-  Compass, the agent (`clear_queue`, `mode: added`) and Settings › Playback › *Clear the queue
-  on launch* (off). The design, the as-built and the desk test: QUEUE.md § Clear Queue. The CLI
-  change (`cli/src/main.rs`) ships with the next release's CLI. **In listening rooms too** (his
-  call, 2026-10-29): a new `clear` command in `../DeetsMusicRooms` (uncommitted, **not
-  deployed**; his plan: deploy it with the next release, before the release goes out); its 7
-  checks pass on `wrangler dev`. ROOMS.md §22. That repo's uncommitted `src/sanitize.js` (Apple
-  cover hosts only, live since 2026-09-29) is not part of this change.
-
-- **The mouse wheel on the volume (2026-10-27, branch `onepointtwo`, committed and pushed; release notes in 1.2.0).** The wheel
-  on the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
-  volume*, on), one step per notch, a trackpad's rise capped at 40 % a second; the title bar
-  pill gets the same rule. Desk test passed 2026-10-27 (his word; features/WHEEL-VOLUME.md §5). The DeetsSupport copy of
-  the usage key list (`src/usage-keys.js`) is deployed (2026-10-27, with the usage counts' §13
-  worker, version `dec25899`), so the worker takes the key.
-- **Read marks on report replies (2026-10-26; LIVE: the worker, its migration and the site).** DeetsSupport notes when a filer's app or page reads a ticket, so the
-  admin Inbox shows *Seen* / *Opened* under each of his replies and *Last checked* on the
-  post. No app release needed (1.1.0 and later already read `/t/<code>`); the README ›
-  Privacy bullet is pushed. Open: his look at the Inbox (the owner's read is untested).
-  DeetsSolutions docs/support.md › Read marks.
-
-- **The artist page's Albums filter (2026-10-27, committed, his hand test passed).** A pill at the end
-  of the Full artist page's "Albums" label: All · Albums · Singles & EPs · Live, from the Apple
-  view of each release (`Album.kind`). Settings › Playback › *Remember Artist filters* (on).
-  ARTIST-VIEW.md §12; desk test §12.3.
-
-- **Artist page albums (2026-10-26, committed, desk test passed).** The Full artist page's
-  Albums shelf holds albums, singles and EPs, and live albums, read whole; Appears On under the
-  Top Songs rows; the Top Songs bar has no fill at rest, and a line separates the sections.
-  Ships with the next release. ARTIST-VIEW.md §11.
-
-- **1.0.0 is LIVE (2026-10-23, `4e6fa3e`, published; RELEASE.md §0a).** The first public
-  release: the grand opening, update group 2, his three-line notes. Next on live: watch the
-  first installs and the `csp-` lines in the weekly health counts.
-- **0.99.0, a test build (2026-10-23, `be1fe6f`, merged into `main`, not published).** The
-  grand opening, the tray fixes (TRAY.md §8) and the CSP **enforced** (CSP.md §6, step 3). Built
-  and signed to `installers/DeetsMusic_0.99.0_x64-setup.exe`; he installs it and uses it a day.
-  **Next:** read the `csp-<directive>:` lines in his installed app's log and the `diag` ring's
-  `csp:blocked`; then the public release as **1.0.0 or higher** (an install of 0.99.0 takes no
-  lower version). **Correction (2026-10-23):** 0.32.0 was never published; the live channel's
-  latest is 0.31.0 (`/update/deetsmusic/releases`). **Done 2026-10-23:**
-  `installers/velopack/DeetsMusic-deetsmusic` is the `before-0.99.0` copy with 0.32.0 taken out
-  (its two packages, its feed rows, its `RELEASES` line); its feed now equals the live one,
-  0.28.0 … 0.31.0, SHA-256 for SHA-256. So 1.0.0's delta is against 0.31.0 and the live feed
-  names no package that is not on R2 (`liveAssets` in publish-update.mjs copies the local
-  feed). The 0.99.0 folder is kept as `_DeetsMusic-deetsmusic.with-0.99.0`. The version is
-  1.0.0 in the six files; next: `npm run release`. Never `release:publish` 0.99.0. 1.0.0 starts update group 2 (`package.json`, his call
-  2026-10-23): no 1.0.0 install can roll back to a 0.x version (RELEASE.md §6.5).
-- **The browser extension left v1 (2026-10-23, his call; not in 0.99.0).** `extension/` stays
-  in the repo, parked; the installer, Settings › Connections and the bridge no longer carry it
-  (EXTENSION.md, the status box). The bridge now refuses any request with an `Origin` header.
-  No release-notes line: there are no live users before v1 (his word, 2026-10-23).
-  Desk test passed 2026-10-23 (his word).
-- **The grand opening (2026-10-22/23, branch `grand-opening`, merged into `main` with 0.99.0).**
-  The startup screen: GRAND-OPENING.md §1–§11 (five pages: Hi, Layout-Maxxing Time, Fashion,
-  Nitpicks, You're Ready); the tour after it (ONBOARDING.md §4.0: four steps, Next on each,
-  Deets points); usage counts told by page 4 (USAGE-COUNTS.md §1). Every desk test passed
-  2026-10-23 (his word), with the first sign-in (DATA-ARCHITECTURE.md §5d), Metal's and
-  Ocean's cases and the demo. Six commits after 0.99.0 are on `grand-opening` only (the first
-  sign-in, the account flyout, the quick panel squares, the walk's pointing, Happy's full
-  player, the extension's removal): merge them into `main` before 1.0.0. The nav bar's page
-  numbers stay for now (his call: they show how far along a user is). Kept by him 2026-10-23:
-  Claude's `point_up.png` and page 4's labels.
-- **The sign-in page shows the city icon (2026-10-23, his ask; LIVE, DeetsSupport `86b188d`).** The page's mark
-  is the city at 48 CSS px, one file per screen density (`npm run icons` →
-  `src-tauri/icons/signin/`, a `srcset`), so the face stays pixel-true; Apple's Access Request
-  takes the 1024 city (`app-icon.png`); the browser tab keeps the head (a city is unreadable at
-  16 px). `npm run signin:assets` also brought the stylesheets up to the app (the Happy and
-  Metal changes) and the Happy faces, now served by `signin.js`. Deployed 2026-10-23 (version
-  `8e7679b2`, his go); every mark, the favicon, the icon and the new faces curl 200 and match
-  the commit. Open: his look at a real sign-in.
-- **The motion monitor for 1.0.0 (2026-10-23):** the demo run passed by an A/B against 0.31.0,
-  no new motion fault ([the checks archive](ops/checks/README.md) §2a, *The 1.0.0 run*). The
-  `--dev` run is next, his go first. One old fault found (on 0.31.0 too): **the card picker
-  draws one tall column for about two frames, then two columns**, in Midi (`fit()` in
-  layout.ts runs at open, and a frame trace in headless Edge did not reproduce it: the cause is
-  open).
-- **Bugs read from his installed log (2026-10-23).** (1) After the PC woke at 13:34 on
-  2026-10-22, the app started at 13:35 with no network: the syncs failed and the "offline" check
-  ran once; then the log went silent at 13:36 (no 5-minute `diag` flush, no 5-minute Apple
-  recheck) until a new start at 13:56 with no quit line. Closed: he ended that session himself
-  (his word, 2026-10-23). (2) The tao panic on quit (`cannot move state from Destroyed`) came on
-  3 of the last 7 quits. The 03:05 one on 2026-10-23 was his PC shutdown (his word; Windows
-  logged no clean shutdown, only "unexpected" at the next boot), so every known case is the
-  session-end or sleep path (DEBUGGING.md § What the 2026-09-17 health check found). It comes
-  after the `calls quit` line, so the exit's own work is done; Windows has no crash report for
-  it. tao 0.37.1 has the same `panic!` (runner.rs:371), so an update does not fix it. Its one
-  cost was that each panic was an ERROR line, counted in the weekly `log.error.other`
-  (USAGE-COUNTS.md). **Fixed for the count (his call, 2026-10-23):** `log.rs` writes this one
-  panic as a WARN `exit: tao panic in a Windows shutdown, known (…)` (LOGGING.md); the panic
-  itself stays. Ships with the next release. (3) A WebView2 utility process (kind 4)
-  exits with 0xC0000142 one second after every launch; harmless, noise in the log. (4) One 403
-  on a library page in a full sync (03:04:53): the Apple check said signed in, and the pass
-  finished 4,083 of 4,083.
-
-- **Drill motion review (2026-10-21, on `happy-thirtytwo`; paused by him for the evening).** Go
+- **Drill motion review (2026-10-21, `happy-thirtytwo`, merged; paused by him).** Go
   to Album / Artist and Back: five faults fixed (CARD-GROW.md §22.2), his four calls built (§22.4,
   §22.6: the skin's own swap motion, a 300 ms wait for the page, no wave when warm, his row's
   Back as one shrink). Fable: round 1 before 3.5 → after 5.5; round 2 after 7 (the swaps 8).
@@ -379,97 +258,23 @@ each step that touches those calls.
   during the open) passed all 20 shots; round 3 was stopped before its scores. **Next:** run
   round 3 (`shots/drill-review/review3/`, sheets made), then the open items: the artist page
   empty past the 300 ms cap on a first visit (a longer hold is his call), and whether a card's
-  own page slide in Ocean / Glass should cross in order like the swap. His dev app lost
-  *Layout for Max* "4 cards" and the Ocean skin at 13:22 (another session's take), not reset.
-
-- **Card grow: the shell (2026-10-20, on `v-thirtyone`; his calls 1A, 2A, 3A).** The stress test and
-  the Fable review ran (CARD-GROW.md §20: Max 5/10, Midi 6/10, 23 faults), and §21 is the fix:
-  the card's surface moves as its own shell (a clip over a still fill, plus an edge), the
-  content rides the moving edge, the collapse rebuilds first, a hand-off between two cards,
-  Escape reverses an open, the edge bar's double click is held, one layout per click. Then
-  (§21.5–§21.7) his Glass report fixed (the covers no longer jump: the shell's layer hint),
-  Midi's short measure, the Midi stale fill, the title ahead of the edge, and his "flash" report:
-  the rows wave in at 0.4 of the open and of the collapse at the full stagger, as live. Fable on the final build: Max 8/10 (live code 5), Midi 7; Claude's check against
-  live: no regression (48 clips, every probe; grow-settle.py clean; worst gaps ≤ 29 ms without
-  the recorder). Desk test passed 2026-10-20 (his word, §21.4 steps 1–10). Not moved yet: the full player and
-  Presentation mode (still the clip and pad); the curve and each skin's own grow motion (his
-  calls); a covered card's hairline coming back late (same as live); the Queue title a few px
-  above the edge for ~3 frames (§21.6).
-
-- **Get the graphics card back by itself, and Reduce motion** (2026-10-20, on `v-thirtyone`;
-  [GRAPHICS-FALLBACK.md](features/GRAPHICS-FALLBACK.md) §10.10). Rust watches the
-  adapters and says when the card works again; the app restarts by itself while its window is
-  hidden or minimized (between songs if music plays) and comes back the same way, playing on;
-  on screen a toast asks. A *Reduce motion* row (first in Settings › Motion, locked On under
-  Windows' reduced motion) is the catch-all the graphics rule now holds. Desk test and the
-  break-it pass run by Claude (§10.11); his hand test passed 2026-10-20 (his word). Open: the song-start restart with music and
-  its gap (P3); a real driver change (P4, his: the Parsec adapter off and on); Glass's blur
-  cost (P2).
-
-- **The Metal skin** (2026-10-20, on `v-thirtyone`; [metal.md](features/metal.md) §6.4, §6.7). A
-  sixth skin in the title menu: brushed steel or acrylic over every theme (Sepia as brushed brass),
-  the thumbwheel scrubber, the zoetrope cover change with the peek, four Settings rows, font B
-  (Bahnschrift titles and SemiCondensed labels, §7 F7, his pick). The agent's stress test is done:
-  the break-it pass, the scripted motion lists (`docs/ops/checks/metal-*.json`), an independent
-  design review at 9/10, the readability check at 0 failures in all six Metal looks. His desk
-  test passed 2026-10-20 (his word, DESK-TESTS.md row A11). Defaults (his call, 2026-10-20):
-  Steel, Cover change on Zoetrope, Peek on. The texture under software drawing stays on (only
-  the 3D turn is in the graphics fallback). Lessons for the next stress test: DESK-TESTS.md §6.7.
-  **Open:** DeetsSolutions' skin list (his call). The sign-in page's Metal assets are live: DeetsSupport
-  `60127e5`, deployed 2026-10-21 06:54 UTC (read from `wrangler deployments list`, 2026-10-23).
-- **The full player's frames** (2026-10-18 and 2026-10-19, on `main`; fullscreen-player.md
-  §14, §14.9). The stacked open and close per skin, the frame recorder (`frame-why.mjs`), and
-  the player's state moved from `<html>` to the bento (the close's last frame restyles 256–536
-  elements, not 1,500–1,868). **Open, for the next sitting:**
-  1. His desk test (§14.5): passed 2026-10-20 (his word). It covered the state move: the Compass over the full
-     player, the toasts under the title bar, the flip and the History column, stacked and not.
-     Nothing on screen should differ from 0.30.0.
-  2. Measure again on a quiet PC: the 2026-10-19 A/B ran with the CPU at 90 % (a game was
-     running), so its times are high on both sides (§14.9 table).
-  3. The close's last frame in Max portrait is still ~60–70 ms on a quiet PC: a layout-tree
-     rebuild (`.stage` leaves `display: contents`; the History column goes to `display: none`)
-     and ~20 forced passes in frame callbacks (`album-color.ts applyText`, `enterBand`,
-     `compass.ts place`, `card-swap.ts onScreen`). Each is its own step, with frame-why first.
-  4. The close's click keeps two ~20 ms layout reads (`rect` in `closeFullPlayer`).
-  5. **The motion monitor's new checks** (2026-10-19, [the checks archive](ops/checks/README.md),
-     part 2a; WORKLOG 2026-10-19 *motion monitor*). TELEPORT and ROW JUMP are built and proved on
-     the old code; `smooth.mjs --dev` ran portrait in four skins before he stopped it. Left: the
-     rest of the dev run (portrait Cyber, landscape, Midi: `node docs/ops/checks/smooth.mjs
-     --dev`); the whole demo set once, to add each shot's designed TELEPORT and ROW JUMP hits to
-     the baseline (only the full player shots ran); and one new hit to read in the frames:
-     portrait Glass and Ocean, the Queue list's shown part ~25 px shorter in one frame at the
-     close's end (`shots/scratch/smooth-dev-portrait/`).
-  6. **The moving card box** (§14.10, 2026-10-19, his call after his Glass report): in Max the
-     card grows out of its place and shrinks back into it, as an empty card box with the rim and
-     the glow; the old left-edge wipe is gone. Committed `98e5a78` on `v-thirtyone`; desk test
-     passed 2026-10-19 (his word). Open: the monitor before the release.
-  Then a release (the monitor runs first, RELEASE.md §0 step 1a).
-- **The Rewind button in the Max title bar** (2026-10-19, on `ideas-nineteen`;
-  [features/listening-time.md](features/listening-time.md) §9). The hourglass right of the updates
-  button opens a panel: *Today: N mins*, then Top Listens and SOTD, each list sliding in. One new
-  setting (`rewindToday`). Desk test passed 2026-10-19 (§9.3, his word and the dev log).
-  **Open:** his look at §9.2, whether the Rewind card goes (§9.4), and the merge of
-  `v-thirtyone` into `main`. (The `rewindToday` usage key is in the worker deployed 2026-10-19.)
-- **The Network panel, v1** (2026-10-19, on `net-worked`; merged on `v-thirtyone`, right of the
-  Rewind button;
-  [features/speedtest.md](features/speedtest.md) §7–§9). The car button in Max (his
-  drawing, 2026-10-19), "Network: Good", per link one status word (numbers on hover) and a bar
-  for the last hour, the Test row; Wi-Fi out, AirPlay second (speedtest.md §10, his review);
-  the ping every 30 s only while playing; the fetch wrap. Desk test passed 2026-10-19 (§9, his
-  word and the dev log: 12 Tests, the AirPlay row). **Open:** the fetch wrap's A/B
-  (`checks/fetch-wrap.mjs`, §9 step 8, an agent's), his look at what Claude decided (§8.3). The
-  DeetsSupport `/speed` route is live (deployed 2026-10-19, branch `net-worked`).
-
-- **The quality sweep, Rewind: all faults fixed** (2026-10-18, on `v-thirty`;
-  [ops/QUALITY-SWEEP.md](ops/QUALITY-SWEEP.md), DEETS-REWIND.md §8). The first sweep found 8
-  faults and 2 visual faults (a third, V3, was a test artifact); his ask was to fix all of them in
-  one sitting. Every guard and fault shot in `checks/rewind-sweep.mjs` passes, and so do the
-  motion shots and readability in all 30 looks. **Schema v22** (`playlist_names`). His calls:
-  K1–K3, a deleted playlist keeps its name, one "Deleted playlists" row, saves every 30 s.
-  **Open:** his desk test (DEETS-REWIND.md §8.5) and his look at what Claude decided there. V1's
-  rule (`styles.css`) also changes the Queue's and every revealed list's entrance: watch them.
-  Next sweep: his pick, or the ledger's order (QUALITY-SWEEP.md §7).
-
+  own page slide in Ocean / Glass should cross in order like the swap.
+- **Card grow: the shell** (CARD-GROW.md §21, desk test passed 2026-10-20). Not moved yet: the
+  full player and Presentation mode (still the clip and pad); the curve and each skin's own grow
+  motion (his calls); a covered card's hairline coming back late (same as before); the Queue
+  title a few px above the edge for ~3 frames (§21.6).
+- **Get the graphics card back by itself** (GRAPHICS-FALLBACK.md §10.10, his hand test passed
+  2026-10-20). Open: the song-start restart with music and its gap (P3); a real driver change
+  (P4, his: the Parsec adapter off and on); Glass's blur cost (P2).
+- **The full player's frames** (fullscreen-player.md §14, §14.9; desk test passed 2026-10-20).
+  Open: measure again on a quiet PC (the 2026-10-19 A/B ran at 90 % CPU); the close's last
+  frame in Max portrait is still ~60–70 ms (a layout-tree rebuild and ~20 forced passes in
+  frame callbacks: `album-color.ts applyText`, `enterBand`, `compass.ts place`,
+  `card-swap.ts onScreen`; each its own step, frame-why first); the close's two ~20 ms layout
+  reads (`rect` in `closeFullPlayer`); the motion monitor's dev run (`node
+  docs/ops/checks/smooth.mjs --dev`: portrait Cyber, landscape, Midi), the demo set once for
+  the TELEPORT / ROW JUMP baseline, and one hit to read: portrait Glass and Ocean, the Queue
+  list ~25 px short for one frame at the close's end (`shots/scratch/smooth-dev-portrait/`).
 - **Shipped in 0.30.0 (2026-10-18), the leftovers only:** Album notes, not run: card memory
   with a note open, the Search album pane, Mini (album-notes.md §8.3). The song facts box: the
   song's Last.fm call asks under Apple's whole artist text; a main-artist form, as the album's,
@@ -478,37 +283,23 @@ each step that touches those calls.
 
 - **Filter and Rulez Playlists** (features/filter-rules.md): live since 0.29.0. Not built: the
   playlist page's own place for the rule (§13.3, his to design).
-- **Usage counts** (USAGE-COUNTS.md): shipped in 0.27.0 (2026-10-14). Watch the first weekly
-  reports arrive on deets.solutions/deetsmusic/admin/; the cron's in-window delete is still not
-  seen in a run. §11 the as-built record. §12 DESIGNED 2026-10-27, not built: the update reports
-  (downloaded, applied as a move between versions) and the worker's Setup.exe count; his calls
-  §12.7; the accuracy audit of today's counts §12.9 (A4 his call: a key per report, 2 days,
-  untraceable). **BUILT 2026-10-27 (§13), desk test passed by Claude (§13.1). LIVE the same
-  day:** `usage_seen` on the live D1, the worker deployed (version `dec25899`; the one before
-  is `89f4a98e`), the admin page published. The app side ships with 1.2.0. Open:
-  `setx DEETS_USAGE_OWNER 1` on his PCs; his eye on the admin page's new parts; the new
-  admin strings and the README and release-note paragraphs are drafts. The 1.1.2 Setup.exe is fetched every 10 minutes since 2026-10-26 by one fixed
-  User-Agent, most likely the Microsoft Store's check of the Package URL (§12.1): confirm in
-  Partner Center; do not block it.
-- **Rooms on the web** (WebRooms.md): the app side built 2026-10-13, desk test passed 2026-10-17 (§10.5,
-  his word; the Safari steps wait for the site page).
-  Not built: the site page (part H, a DeetsSolutions session); the worker change is not deployed
-  (§10.6).
+- **Usage counts' cron:** the in-window delete (13 months) is still not seen in a run
+  (USAGE-COUNTS.md §11).
 
 ### His to design or decide (asks and ideas, not built)
 
 - **Should a new Play keep a large pile of hand-added songs?** (2026-10-29, from the Clear
   Queue bug report.) QUEUE.md § `setContext` rule 1 keeps every manual entry on top of each new
-  list; one user had ~430 and their later Add to Queue songs never came up. Clear Queue (below,
-  *Built*) is the way out; this rule is how they got in. His call whether to change it.
+  list; one user had ~430 and their later Add to Queue songs never came up. Clear Queue (live
+  since 1.2.1) is the way out; this rule is how they got in. His call whether to change it.
 
 - **Two motion ideas** (2026-10-21, found in a frame review): the look change in the full player
   blinks to dark (fullscreen-player.md §15), and a layout change has no motion (MAX-CARDS.md §12).
 
-- **Redesign the sign-in flow before a public release** (2026-10-17, his words: "I wanted to
-  redesign the login flow eventually before public (non-friends) release anyway"). The mark's
-  size snap (DeetsSupport `16f8f45`) is "for now"; since 2026-10-23 the mark is the city icon
-  (above, *Built, waiting*). The flow: DATA-ARCHITECTURE.md §2a, HOP-IN.md.
+- **Redesign the sign-in flow** (2026-10-17, his words: "I wanted to redesign the login flow
+  eventually before public (non-friends) release anyway"). 1.0.0 went public on the current
+  flow, so this is still his. The mark is the city icon since 2026-10-23. The flow:
+  DATA-ARCHITECTURE.md §2a, HOP-IN.md.
 
 - **Open an item inside Home** (2026-10-17): today an album, playlist or artist opened from Home
   hops to the card that holds it. On the collection engine it would open inside Home, with
@@ -605,8 +396,10 @@ check found".
 
 ## State of play
 
-**Live: 0.29.0** (2026-10-16, `deetsmusic` channel, Velopack since 0.28.0). The last beta is
-`0.28.0-beta.6` on `deetsmusic-test` (VELOPACK.md §12).
+**Live: 1.2.1** (2026-10-29, `deetsmusic` channel, Velopack since 0.28.0). 1.0.0 (2026-10-23)
+was the first public release and starts update group 2: no 1.x install rolls back to a 0.x
+version (RELEASE.md §6.5). The last beta is `0.28.0-beta.6` on `deetsmusic-test` (VELOPACK.md
+§12); beta-first is paused.
 Every release is in the log at [RELEASE.md §0a](ops/RELEASE.md); what each version added is
 in [RELEASE-NOTES.md](ops/RELEASE-NOTES.md); the newest work is at the top of
 [WORKLOG.md](WORKLOG.md). Each feature doc's front matter names the release it shipped in.
@@ -765,7 +558,6 @@ complete.
 - **The agent's "Later" list** ([AGENT.md §7](integrations/AGENT.md)): the installer PATH entry,
   `artist:` ids for `play`, durable history as a second history source, a small-model test of
   `mcp --small`.
-- **Built, desk-tested, not released:** Suggest Less ([SUGGEST-LESS.md](features/SUGGEST-LESS.md), 2026-10-16).
 - **Designed, not built:** a second
   Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)), Hop in ([HOP-IN.md](features/HOP-IN.md)),
   Layout ([LAYOUT.md](features/LAYOUT.md)), Skinz ([SKINZ.md](features/SKINZ.md)), Backup
