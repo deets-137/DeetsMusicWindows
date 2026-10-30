@@ -465,6 +465,59 @@
     linear-gradient(180deg, var(--sky-day), var(--sky-day-low));
 }
 
+/* ── The update card (src/update-card.ts; docs/features/UPDATE-CARD.md §3.3) ──
+   A version page: the page title and two columns (the notes, the settings) until a page has a
+   preview (§3.6). Midi and Mini stack them, by the rule above. */
+.onboarding__cols--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.uc__notes { display: flex; flex-direction: column; gap: var(--space-2); }
+.uc__release { padding-left: 0; }
+/* A paragraph reads like the letter: the body face at text size; its lead in bold, the title color. */
+.uc__para {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  line-height: var(--lh-text);
+  color: var(--text);
+}
+.uc__lead {
+  display: inline;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: var(--fw-title);
+  color: var(--title);
+  text-align: start;
+  cursor: default;
+}
+/* Too long for the page (his call 6): the leads only, each one opens its own paragraph. */
+.uc__notes[data-compact="true"] .uc__lead { cursor: pointer; }
+.uc__notes[data-compact="true"] .uc__lead:hover { color: var(--text); }
+.uc__notes[data-compact="true"] .uc__para:not(.is-open) .uc__text { display: none; }
+.uc__notes[data-compact="true"] .uc__para.is-open .uc__text { display: block; margin-top: var(--space-half); }
+.uc__lead:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.uc__back { align-self: flex-start; margin-bottom: var(--space-1); }
+/* Older (§3.7): the Library's search field, then the versions or the hits as rows — the layout
+   picks' look (page 2): no fill until hover, the picked edge on focus. */
+.uc__search { flex: none; }
+.uc__hits { display: flex; flex-direction: column; gap: var(--space-1); }
+.uc__hit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-half);
+  padding: var(--space-2);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  text-align: start;
+  cursor: pointer;
+}
+.uc__hit:hover { background: var(--surface-hover); }
+.uc__hit:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.uc__hit-top { font-family: var(--font-body); font-size: var(--fs-text); color: var(--title); }
+.uc__hit-sub { font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--subtext); }
+
 .onboarding__speakers { display: flex; flex-direction: column; gap: var(--space-1); }
 .onboarding__speakers .set__head { padding-left: 0; }
 .onboarding__scan { justify-content: center; }

@@ -98,8 +98,8 @@ export function initRulesPlayback(): void {
   registerAction("pause", { cost: "free", run: () => pausePlayback("rule") });
   registerAction("next", { cost: "free", run: () => nextTrack("rule") });
   registerAction("prev", { cost: "free", run: () => prevTrack("rule") });
-  registerAction("shuffle", { cost: "free", run: (on) => setShuffleMode(!!on) });
-  registerAction("repeat", { cost: "free", run: (m) => setRepeat(m as "off" | "all" | "one") });
+  registerAction("shuffle", { cost: "free", run: (on) => setShuffleMode(!!on, "rule") });
+  registerAction("repeat", { cost: "free", run: (m) => setRepeat(m as "off" | "all" | "one", "rule") });
   registerAction("volume", { cost: "free", run: (v) => setVolume(Math.max(0, Math.min(100, Number(v))) / 100) });
   registerAction("playPlaylist", {
     cost: "apple",
@@ -130,7 +130,7 @@ export function initRulesPlayback(): void {
     },
   });
   registerProp("volume", { apply: applyVolume, off: null });
-  registerAction("shuffleLibrary", { cost: "free", run: () => shuffleLibrary() });
+  registerAction("shuffleLibrary", { cost: "free", run: () => shuffleLibrary("rule") });
   void refreshPlaylists().catch(() => {});
 
   onTransport((way) => emit(way === "next" ? "skip.next" : "skip.prev", { card: "*" }));

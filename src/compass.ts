@@ -54,6 +54,7 @@ import { webQuick, openTitleWeb, type WebRequest } from "./web";
 import { openSoundPanel } from "./sound-panel";
 import { openQuickPanel } from "./quick-panel";
 import { openUpdatesPanel } from "./updates-btn";
+import { openUpdateCard } from "./update-card";
 import { openRewindPanel } from "./rewind-btn";
 import { windowPinned, openPinPanel, unpin } from "./pin";
 import { openNetworkPanel } from "./net";
@@ -360,10 +361,9 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   rows.push({ group: "Places", title: "Sleep timer", sub: "The alarm clock", run: () => openSleepPanel() });
   rows.push({ group: "Places", title: "Web", sub: "Makes a playlist from an artist and the artists around them", run: () => openTitleWeb() });
   rows.push({ group: "Places", title: "Quick settings", sub: "Every setting, by what it is for", run: () => openQuickPanel() });
-  // The updates panel (docs/features/UpdatesButton.md): Max only; elsewhere the quick panel's
-  // Updates and bugs square holds the same rows, and What's new has no place.
-  if (currentSurface() === "max")
-    rows.push({ group: "Places", title: "What's new", sub: "This version's changes", aliases: ["release notes", "changelog", "news"], run: () => openUpdatesPanel(true) });
+  // The update card (docs/features/UPDATE-CARD.md §3.7): the last 3 versions' changes and new
+  // settings, on every surface. Until 2026-10-29 this row opened the Max updates panel.
+  rows.push({ group: "Places", title: "What's New", sub: "The last 3 versions' changes and new settings", aliases: ["release notes", "changelog", "news", "new settings", "updates"], run: () => void openUpdateCard() });
   // The Rewind panel (docs/features/listening-time.md): Max only, as its button.
   if (currentSurface() === "max")
     rows.push({ group: "Places", title: "Listening today", sub: "The Rewind panel: today's minutes, Top Listens, SOTD", aliases: ["top listens", "minutes listened", "most played"], run: () => void openRewindPanel() });
@@ -473,8 +473,8 @@ function actions(all: boolean): Row[] {
   if (!all) return rows;
   const repeatNext = { off: "all", all: "one", one: "off" }[getRepeat()];
   rows.push(
-    { group: "Actions", title: isShuffleOn() ? "Shuffle off" : "Shuffle on", sub: "The Shuffle button", aliases: ["random"], run: () => void toggleShuffle().catch((e) => console.error("[compass] shuffle", e)) },
-    { group: "Actions", title: `Repeat ${repeatNext}`, sub: `Now: ${getRepeat()}`, aliases: ["loop"], run: () => void cycleRepeat() },
+    { group: "Actions", title: isShuffleOn() ? "Shuffle off" : "Shuffle on", sub: "The Shuffle button", aliases: ["random"], run: () => void toggleShuffle("compass").catch((e) => console.error("[compass] shuffle", e)) },
+    { group: "Actions", title: `Repeat ${repeatNext}`, sub: `Now: ${getRepeat()}`, aliases: ["loop"], run: () => void cycleRepeat("compass") },
     { group: "Actions", title: isMuted() ? "Unmute" : "Mute", aliases: ["silence", "quiet", "sound off"], run: () => toggleMute() },
     ...[15, 30, 45, 60].map((m): Row => ({ group: "Actions", title: `Sleep in ${m} min`, sub: "The sleep timer", run: () => sleepIn(m) })),
   );
@@ -609,7 +609,7 @@ function soundRows(): Row[] {
   const cur = effective("soundEqPreset");
   return presetOptions().map((p): Row => ({
     group: "Sound", title: `EQ: ${p.name}`, sub: "Equalizer preset", side: p.id === cur ? "On" : undefined,
-    run: () => selectPreset(p.id),
+    run: () => selectPreset(p.id, "compass"),
   }));
 }
 
@@ -963,7 +963,7 @@ function shuffleRow(term: string): Row[] {
         .then((ts) => {
           if (!ts.length) return;
           diag.log("compass:shuffle", { title: hit.title, n: ts.length });
-          return new Promise<void>((res, rej) => shuffledPlay(ts, (list, start) => playTracks(list, start, CONTEXT).then(res, rej)));
+          return new Promise<void>((res, rej) => shuffledPlay(ts, (list, start) => playTracks(list, start, CONTEXT).then(res, rej), "compass"));
         })
         .catch((e) => console.error("[compass] shuffle", e));
     },

@@ -907,7 +907,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
   };
   const stepDays = (dir: 1 | -1) => {
     const i = TEMP_DAYS.indexOf(setting("webTempDays"));
-    setSetting("webTempDays", TEMP_DAYS[(i + dir + TEMP_DAYS.length) % TEMP_DAYS.length] as TempDays);
+    setSetting("webTempDays", TEMP_DAYS[(i + dir + TEMP_DAYS.length) % TEMP_DAYS.length] as TempDays, "panel");
   };
 
   /** The field's placeholder and hint follow the Start row. */
@@ -1404,9 +1404,9 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
         return;
       }
       if (opt.hasAttribute("aria-disabled")) return;
-      if (seg === "reach") setSetting("webReach", Number(v) as 1 | 2 | 3);
-      else if (seg === "size") setSetting("webSize", Number(v) as 25 | 50 | 100);
-      else setSetting("webPrefer", v as WebPrefer);
+      if (seg === "reach") setSetting("webReach", Number(v) as 1 | 2 | 3, "panel");
+      else if (seg === "size") setSetting("webSize", Number(v) as 25 | 50 | 100, "panel");
+      else setSetting("webPrefer", v as WebPrefer, "panel");
       return;
     }
     if (t.closest(".web__again")) {

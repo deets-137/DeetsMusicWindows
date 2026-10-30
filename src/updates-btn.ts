@@ -19,8 +19,10 @@ import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { onUpdateStatus, updateStatus, updateStatusWords, isDevBuild, isRequiredUpdate, checkForUpdate, download, restartNow, type UpdateStatus } from "./updater";
 import { releaseLeads } from "./release-leads";
-import { mountSettingsParts, quickFoldOpen, toggleQuickFold } from "./settings-card";
-import { setting, isFreshInstall } from "./settings-store";
+import { mountSettingsParts, quickFoldOpen, toggleQuickFold, newMarkVersions } from "./settings-card";
+import { setting, ownSetting, isFreshInstall, DEFAULT_CHANGES, type Settings } from "./settings-store";
+import { opensWhatsNew, offeredDefaultVersions, compareVersions } from "./update-rules";
+import { openUpdateCard, notePreviousRun } from "./update-card";
 import { openQuickPanel, keepRightInWindow } from "./quick-panel";
 import { currentSurface } from "./surface";
 import { tokenMs } from "./boot-cover";
@@ -36,6 +38,9 @@ const NEW_FOLD = "updates::whatsnew";
 /** The last version this install opened the panel in (F4). Not a setting: a per-install mark,
  *  like the quick panel's folds. */
 const SEEN_KEY = "deets.updates.seen";
+/** The version the app ran last (UPDATE-CARD.md §3.10): written at every launch, after the
+ *  check for the panel's own open. A per-install mark too, not a setting. */
+const LAST_RUN_KEY = "deets.updates.lastRun";
 
 const reduced = () => motionReduced();
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -54,6 +59,50 @@ const writeSeen = (v: string) => {
     /* storage unavailable: the dot comes back next start */
   }
 };
+const readLastRun = (): string | null => {
+  try {
+    return localStorage.getItem(LAST_RUN_KEY);
+  } catch {
+    return null;
+  }
+};
+const writeLastRun = (v: string) => {
+  try {
+    localStorage.setItem(LAST_RUN_KEY, v);
+  } catch {
+    /* storage unavailable: no own open, which is the quiet side */
+  }
+};
+
+/**
+ * The panel opens by itself on the first launch after an update (UPDATE-CARD.md §3.10, his
+ * call 9): the rule is `opensWhatsNew` (update-rules.ts). Never on a new install or while the
+ * grand opening is pending. The first launch of the build that brings this has no last-run
+ * mark yet: it takes the version the panel was last opened in (F4), else nothing.
+ */
+function openByItself(): void {
+  const now = built.version;
+  const fresh = isFreshInstall();
+  const last = readLastRun() ?? (fresh ? "" : (readSeen() ?? ""));
+  writeLastRun(now);
+  if (fresh) return;
+  // The update card opens on the first version this user has not run yet (his call 13).
+  if (last && compareVersions(last, now) < 0) notePreviousRun(last);
+  // A changed default counts only while the user's own value is still the old one (his call 12).
+  const versions = [...newMarkVersions(), ...offeredDefaultVersions(DEFAULT_CHANGES, (k) => ownSetting(k as keyof Settings))];
+  const every = setting("whatsNewEveryUpdate");
+  if (!opensWhatsNew(last, now, versions, every)) return;
+  diag.log("updates:openByItself", { from: last, to: now, every });
+  const go = () => openUpdatesPanel(true);
+  if (document.visibilityState === "visible") return go();
+  // Started to the tray: open when the window first shows.
+  const onShow = () => {
+    if (document.visibilityState !== "visible") return;
+    document.removeEventListener("visibilitychange", onShow);
+    go();
+  };
+  document.addEventListener("visibilitychange", onShow);
+}
 
 /** A version the user skipped is not news: no highlight, and the row offers Check now. */
 const skipped = (s: UpdateStatus): boolean =>
@@ -214,12 +263,25 @@ export function initUpdatesButton(): void {
   const notes = (s: UpdateStatus): { version: string; leads: string[] } =>
     offered(s) && s.notes != null ? { version: s.version!, leads: releaseLeads(s.notes) } : { version: built.version, leads: built.leads };
   let forceOpen = false; // F4 / the Compass: unfolded this once, whatever the fold memory says
+  const newOpen = () => forceOpen || quickFoldOpen(NEW_FOLD);
+  // What's new's own row, *Show what's new after every update* (UPDATE-CARD.md §3.10): the
+  // Settings › Updates row, drawn by the Settings card's code under the leads. A host of its
+  // own, since `top` is redrawn on every status.
+  const newRowsHost = document.createElement("div");
+  newRowsHost.hidden = true;
+  top.after(newRowsHost);
+  let newRows: CardInstance | null = null;
+  const showNewRows = () => {
+    newRows ??= mountSettingsParts(newRowsHost, [{ title: "Updates", rows: ["whatsnewevery"], bare: true }], "panel");
+    newRowsHost.hidden = !newOpen();
+  };
   const whatsNew = (s: UpdateStatus): string => {
     const n = notes(s);
-    const open = forceOpen || quickFoldOpen(NEW_FOLD);
+    const open = newOpen();
     const inside = open
       ? (n.leads.length ? `<ul class="updates__leads">${n.leads.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "") +
-        `<div class="updates__more"><button class="account__link" type="button" data-unotes title="Opens every version's notes on deets.solutions">All release notes</button></div>`
+        `<div class="updates__more"><button class="account__link" type="button" data-ucard title="Opens each version's changes and new settings over the cards">See the new settings</button>` +
+        `<button class="account__link" type="button" data-unotes title="Opens every version's notes on deets.solutions">All release notes</button></div>`
       : "";
     return (
       `<section class="set__section" data-ugroup>` +
@@ -236,6 +298,8 @@ export function initUpdatesButton(): void {
     const s = cur;
     top.innerHTML = s ? versionRow(s) + whatsNew(s) : "";
     applyCss(top); // the download bar's value (data-css: the CSP refuses style="…", CSP.md §3)
+    if (s) showNewRows();
+    else newRowsHost.hidden = true;
   };
 
   top.addEventListener("click", (e) => {
@@ -256,6 +320,12 @@ export function initUpdatesButton(): void {
       void openUrl(NOTES_URL);
       return;
     }
+    if (t.closest("[data-ucard]")) {
+      // The update card (UPDATE-CARD.md §3.2, his call 10): the panel steps aside for it.
+      dropdown?.close();
+      void openUpdateCard();
+      return;
+    }
     if (t.closest("[data-ufold]")) {
       const from = panel.offsetHeight;
       const open = forceOpen ? false : toggleQuickFold(NEW_FOLD);
@@ -266,7 +336,7 @@ export function initUpdatesButton(): void {
       }
       frames.during("fold", 250, open ? "open" : "close");
       renderTop();
-      if (open) enterRows([...(top.querySelector("[data-ugroup]")?.children ?? [])].slice(1));
+      if (open) enterRows([...[...(top.querySelector("[data-ugroup]")?.children ?? [])].slice(1), ...newRowsHost.querySelectorAll(".set__row")]);
       animateHeight(from);
     }
   });
@@ -278,6 +348,7 @@ export function initUpdatesButton(): void {
     bugs ??= mountSettingsParts(
       bugsHost,
       [{ title: "Bugs", except: ["version"], label: "Bugs and suggestions", fold: "updates:" }],
+      "panel",
       (change) => {
         const from = panel.offsetHeight;
         change();
@@ -333,9 +404,10 @@ export function initUpdatesButton(): void {
       mountBugs();
       renderTop();
       keepRightInWindow(root, panel);
-      enterRows([...top.children, ...(forceOpen ? top.querySelectorAll(".updates__leads, .updates__more") : []), ...bugsHost.querySelectorAll(".set__section > *")]);
+      enterRows([...top.children, ...(forceOpen ? top.querySelectorAll(".updates__leads, .updates__more") : []), ...(newRowsHost.hidden ? [] : newRowsHost.querySelectorAll(".set__row")), ...bugsHost.querySelectorAll(".set__section > *")]);
       diag.log("updates:open", { state: s?.state ?? null, whatsNew: forceOpen });
     },
   });
   window.addEventListener("resize", () => { if (!panel.hidden) keepRightInWindow(root, panel); });
+  openByItself();
 }

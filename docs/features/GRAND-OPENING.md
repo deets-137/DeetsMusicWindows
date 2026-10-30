@@ -1,13 +1,18 @@
 ---
 status: project
 desk_test: passed 2026-10-23
-sources: [src/onboarding.ts, src/boot-cover.ts, src/onboarding-welcome.ts, src/onboarding-looks.ts, src/onboarding-fashion.ts, src/onboarding-preview.ts, src/onboarding-nitpicks.ts, src/onboarding-letter.ts, src/ocean.ts, src/metal.ts, src/vinyl.ts, src/album-color.ts, src/styles/onboarding.css, src/main.ts, src/compass.ts, src/styles/skin.css, src/pet.ts, index.html]
-updated: 2026-10-23
+sources: [src/onboarding.ts, src/paged-card.ts, src/boot-cover.ts, src/onboarding-welcome.ts, src/onboarding-looks.ts, src/onboarding-fashion.ts, src/onboarding-preview.ts, src/onboarding-nitpicks.ts, src/onboarding-letter.ts, src/ocean.ts, src/metal.ts, src/vinyl.ts, src/album-color.ts, src/styles/onboarding.css, src/main.ts, src/compass.ts, src/styles/skin.css, src/pet.ts, index.html]
+updated: 2026-10-29
 ---
 # Grand opening — the startup screen
 
 > **A project, opened 2026-10-22 on the branch `grand-opening`.** The owner narrates and designs
 > the screen piece by piece. Every fork is his. Built: the frame (§1), the nav bar and Settings (§2), page 1 (§3), pages 2 and 3 and the motion (§4), the welcome on page 1 (§5), Midi stacking and the Happy skin (§6), page 2's layout picks (§7), page 3's title (§8).
+>
+> **2026-10-29:** the frame moved to `src/paged-card.ts` (the nav bar, the glide, the page slide,
+> the foot button, the ×, Escape), unchanged, so the update card (UPDATE-CARD.md §3.12) is its
+> second caller. onboarding.ts keeps the pages, *Let's Boogie*, the sign-in warm-up and the close
+> (openingPending, the usage counts). The card's class is now `onboarding onboarding--onboarding`.
 
 Terms: the **card** is the one large panel that covers every other card. The **launch cover**
 is the color the window shows until the cards rise (boot-cover.ts). The **walk** is the

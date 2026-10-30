@@ -6,6 +6,22 @@ updated: 2026-10-29
 ---
 # DeetsMusic — Work log
 
+## 2026-10-29 — The update card, the settings change log, the Updates panel's own open (built, uncommitted)
+
+On the new branch `updatez`. His calls (features/UPDATE-CARD.md §1.1): one record per setting plus
+a log line (fork 1 A); a changed default is offered to everyone still on the old value (fork 2
+B); the Updates panel opens by itself after a 1.X update with a new setting, a toggle for every
+update; the panel replaces the update card's own open (fork 3 A); the history starts at 1.0; a
+changed default opens the panel only while the user's value is the old one, and never changes it.
+Built: `setSetting(key, value, source)` at every call (about 130, tagged by `tsc`), the Settings
+card's source from its mount, Rust's rows recorded under the agent's keys, `since` on every
+`NEW_MARKS` line (dated from git), `DEFAULT_CHANGES`, `opensWhatsNew`, the toggle row in Settings
+and in What's new (`bare` parts). Desk test passed (his click, then Claude's reloads, §3.11).
+Then the update card (§3.12): the grand opening's frame moved to `src/paged-card.ts` and shared;
+a page per minor line from 1.0 (notes, new settings, changed defaults), Older search, opened from
+the panel and the Compass. Claude's run on the dev app passed; his hand test and his review of
+Claude's choices (§3.12) are open. `npm run check` passes (429 tests). The doc moved to features/.
+
 ## 2026-10-29 — Friends on DM: the Home shelf of friends' albums (built, uncommitted)
 
 He designed it in this sitting: the albums friends play now, a plain vertical line, then up to

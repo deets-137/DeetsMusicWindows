@@ -183,11 +183,11 @@ export async function initWalk(): Promise<void> {
 /** Show the walk again from the start (Settings › Tips). */
 export async function restartWalk(): Promise<void> {
   if (live) return;
-  setSetting("onboardingStep", 1);
+  setSetting("onboardingStep", 1, "app");
   // Every New badge comes back too: the quick panel's squares and the cog (QUICK-SETTINGS.md
   // §8, §11), and each new setting's row, section and pill mark (§10, §10a). His call
   // 2026-09-25; before, the tour kept the "row:" / "sec:" marks seen.
-  setSetting("quickSeen", []);
+  setSetting("quickSeen", [], "app");
   run(1);
 }
 
@@ -264,7 +264,7 @@ function run(from: number): void {
     unmark();
     stopWatch?.();
     stopWatch = null;
-    setSetting("onboardingStep", 0);
+    setSetting("onboardingStep", 0, "app");
     diag.log("walk:end", { why, step: at });
     card.classList.add("is-leaving");
     const still = motionReduced();
@@ -480,7 +480,7 @@ function run(from: number): void {
   function step(n: number): void {
     if (!live) return;
     if (n > STOPS.length) return end("finished");
-    setSetting("onboardingStep", n);
+    setSetting("onboardingStep", n, "app");
     diag.log("walk:step", { step: n });
     // Walk, then stand: the legs run for the length of the travel, then stop.
     stepAway(() => show(n));

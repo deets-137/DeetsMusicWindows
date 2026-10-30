@@ -245,13 +245,13 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
         case "seek": await seekToFraction(v ?? 0); break;
         case "volume": setVolume(v ?? 0); break;
         case "mute": toggleMute(); break;
-        case "shuffle": await toggleShuffle(); break; // as the button: the mode, or once
-        case "shuffle-on": setShuffleMode(true); break;
-        case "shuffle-off": await shuffleOff(); break; // a press: the list goes on in order, per Settings
-        case "repeat": cycleRepeat(); break;
-        case "repeat-off": setRepeat("off"); break;
-        case "repeat-all": setRepeat("all"); break;
-        case "repeat-one": setRepeat("one"); break;
+        case "shuffle": await toggleShuffle("agent"); break; // as the button: the mode, or once
+        case "shuffle-on": setShuffleMode(true, "agent"); break;
+        case "shuffle-off": await shuffleOff("agent"); break; // a press: the list goes on in order, per Settings
+        case "repeat": cycleRepeat("agent"); break;
+        case "repeat-off": setRepeat("off", "agent"); break;
+        case "repeat-all": setRepeat("all", "agent"); break;
+        case "repeat-one": setRepeat("one", "agent"); break;
         // Clear Queue (QUEUE.md § Clear Queue): all of Up Next, or only the songs added by hand.
         // The current song plays on. No Undo toast: the agent's own reply says what it did.
         case "clear": await clearQueue("all"); break;

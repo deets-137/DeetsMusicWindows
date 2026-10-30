@@ -24,7 +24,7 @@ import * as diag from "./diag";
 import * as perf from "./perf";
 import { TELEMETRY } from "./telemetry-on";
 import { toast } from "./toast";
-import { setting, setSetting, effective, onSettingsChange, adaptiveOn, type Settings } from "./settings-store";
+import { setting, setSetting, effective, onSettingsChange, adaptiveOn, type Settings, type SettingSource } from "./settings-store";
 import { emit as emitRule, onRulesChange, registerChipText, registerEvent, registerFact, registerProp, ruleReads } from "./rules";
 import { BUILTIN, type EqPreset } from "./sound-presets";
 
@@ -624,24 +624,24 @@ export function presetOptions(): { id: string; name: string }[] {
 }
 
 /** Pick a preset; with per-output profiles on, the current output remembers it. */
-export function selectPreset(id: string): void {
-  setSetting("soundEqPreset", id);
+export function selectPreset(id: string, source: SettingSource): void {
+  setSetting("soundEqPreset", id, source);
   if (setting("soundEqPerOutput")) {
-    setSetting("soundEqOutputs", { ...setting("soundEqOutputs"), [output.key]: id });
-    if (setting("soundOutputNames")[output.key] !== output.name) setSetting("soundOutputNames", { ...setting("soundOutputNames"), [output.key]: output.name });
+    setSetting("soundEqOutputs", { ...setting("soundEqOutputs"), [output.key]: id }, source);
+    if (setting("soundOutputNames")[output.key] !== output.name) setSetting("soundOutputNames", { ...setting("soundOutputNames"), [output.key]: output.name }, "app");
   }
   diag.log("sound:preset", { id, output: output.kind });
 }
 
 /** An edit: a user preset changes in place; a built-in becomes Custom. */
-export function commitBands(bands: EqPreset["bands"]): void {
+export function commitBands(bands: EqPreset["bands"], source: SettingSource): void {
   const id = effective("soundEqPreset");
   const cur = activePreset();
   if (id.startsWith("u:")) {
-    setSetting("soundEqUser", { ...setting("soundEqUser"), [id]: { ...cur, bands } });
+    setSetting("soundEqUser", { ...setting("soundEqUser"), [id]: { ...cur, bands } }, source);
   } else {
-    setSetting("soundEqCustom", { name: "Custom", bands, design: id === "custom" ? cur.design : "matched" });
-    if (id !== "custom") selectPreset("custom");
+    setSetting("soundEqCustom", { name: "Custom", bands, design: id === "custom" ? cur.design : "matched" }, source);
+    if (id !== "custom") selectPreset("custom", source);
   }
 }
 
@@ -690,7 +690,7 @@ function applySettings(): void {
   if (config.match !== matchWas) diag.log(config.match ? "sound:matchOn" : "sound:matchOff", { routed: routedCount });
   const on = wanted();
   if (on !== was) diag.log(on ? "sound:on" : "sound:off", { eq: config.eqOn, lowVolume: config.lowVolume, crossfeed: config.crossfeed.on, routed: routedCount });
-  if (on && !setting("soundFirstOn")) setSetting("soundFirstOn", Date.now());
+  if (on && !setting("soundFirstOn")) setSetting("soundFirstOn", Date.now(), "app");
   // At launch the context waits for main.ts (`startSoundContext`, after the window shows): its
   // creation cost ~90–115 ms of the launch handler (DEBUGGING.md §Launch). A play before that
   // makes it on the spot (the play hook). After launch, turning an effect on makes it at once.
@@ -854,12 +854,12 @@ function checkReview(): void {
     text: "You have used Sound effects for a while. Keep them?",
     onceKey: `sound-review-${setting("soundFirstOn")}`,
     actions: [
-      { label: "Keep", run: () => setSetting("soundReviewed", true) },
+      { label: "Keep", run: () => setSetting("soundReviewed", true, "panel") },
       {
         label: "Turn off",
         run: () => {
-          setSetting("soundEq", false);
-          setSetting("soundAdaptive", false);
+          setSetting("soundEq", false, "panel");
+          setSetting("soundAdaptive", false, "panel");
         },
       },
     ],

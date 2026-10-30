@@ -14,7 +14,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { onPlayerState, onPlayerProgress, type PlayerState, type PlayerProgress } from "./player";
-import { setting, effective, ownSetting, onSettingsChange } from "./settings-store";
+import { setting, effective, ownSetting, onSettingsChange, type SettingSource } from "./settings-store";
 import { onRoomChange, roomState } from "./room";
 import * as queue from "./queue";
 import * as diag from "./diag";
@@ -296,15 +296,15 @@ export function initPresence(): void {
 function setPauseOver(): void {
   // Written through the store so every card's row repaints (settings-store.ts).
   void import("./settings-store").then(({ setSetting }) => {
-    setSetting("sharePauseUntil", 0);
+    setSetting("sharePauseUntil", 0, "app");
     if (sharing() && state.playing) push("pause over");
   });
 }
 
 /** Settings › Sharing: "Pause sharing for an hour" (D11 — it covers every sharing row). */
-export function pauseSharingForAnHour(): void {
+export function pauseSharingForAnHour(source: SettingSource): void {
   void import("./settings-store").then(({ setSetting }) => {
-    setSetting("sharePauseUntil", Date.now() + 60 * 60 * 1000);
+    setSetting("sharePauseUntil", Date.now() + 60 * 60 * 1000, source);
   });
 }
 

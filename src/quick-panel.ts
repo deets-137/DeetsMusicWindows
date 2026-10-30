@@ -186,7 +186,7 @@ export function initQuickPanel(): void {
     acct.hidden = part !== "apple";
     if (part) {
       // A group's fold (QUICK-SETTINGS.md §12) grows or shrinks the panel the same way.
-      rows = mountSettingsParts(rowsHost, PARTS[part], (change) => {
+      rows = mountSettingsParts(rowsHost, PARTS[part], "quick", (change) => {
         const from = panel.offsetHeight;
         change();
         animateHeight(from);
@@ -243,13 +243,13 @@ export function initQuickPanel(): void {
   onSkinChange(() => paintNew()); // a skin's own rows light the N only under that skin (§10a)
   cog.addEventListener("click", () => {
     const seen = setting("quickSeen");
-    if (!seen.includes("cog")) setSetting("quickSeen", [...seen, "cog"]);
+    if (!seen.includes("cog")) setSetting("quickSeen", [...seen, "cog"], "app");
   });
   panel.addEventListener("click", (e) => {
     const sq =(e.target as HTMLElement).closest<HTMLElement>(".quick__logo");
     if (!sq) return;
     const seen = setting("quickSeen");
-    if (!seen.includes(idOf(sq))) setSetting("quickSeen", [...seen, idOf(sq)]);
+    if (!seen.includes(idOf(sq))) setSetting("quickSeen", [...seen, idOf(sq)], "app");
   });
 
   // ── the Tips pointer: Tips stay in the Settings card; the line takes you to them ──

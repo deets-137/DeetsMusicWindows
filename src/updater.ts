@@ -106,7 +106,7 @@ function offerDownload(s: UpdateStatus): void {
   ask(`DeetsMusic ${v} is available.`, [
     { label: "Download", run: () => void download() },
     { label: "Later", run: () => void (laterFor = v) },
-    { label: "Skip this version", run: () => setSetting("updateSkip", v) },
+    { label: "Skip this version", run: () => setSetting("updateSkip", v, "app") },
   ]);
 }
 
@@ -152,7 +152,7 @@ export function offerRestart(s: UpdateStatus): void {
 /** Skip a version (the toast, and the agent's `update skip`): remember the skip, and when that
  *  version is already downloaded, delete the package the next start would apply. "" clears it. */
 export async function skipVersion(v: string): Promise<void> {
-  setSetting("updateSkip", v);
+  setSetting("updateSkip", v, "app");
   if (!v || status?.version !== v || status.state !== "ready" || status.rollback) return;
   try {
     take(await invoke<UpdateStatus>("update_discard"));
@@ -166,14 +166,14 @@ export async function restartNow(): Promise<void> {
   const s = status;
   if (!s || s.state !== "ready") return;
   const skipWas = setting("updateSkip");
-  if (s.rollback) setSetting("updateSkip", rollbackSkip(skipWas, s.current)); // update-rules.ts
+  if (s.rollback) setSetting("updateSkip", rollbackSkip(skipWas, s.current), "app"); // update-rules.ts
   await flushForRestart();
   diag.log("update:install", { from: s.current, to: s.version, rollback: s.rollback });
   diag.flush();
   try {
     await invoke("update_install"); // does not return on success: the process exits
   } catch (e) {
-    if (s.rollback) setSetting("updateSkip", skipWas);
+    if (s.rollback) setSetting("updateSkip", skipWas, "app");
     const msg = String(e);
     toast({ kind: "warn", text: msg.includes("dev build") ? msg : "Couldn't install the update. Try again." });
   }

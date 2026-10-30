@@ -152,7 +152,7 @@ export function mountWelcome(host: HTMLElement): CardInstance {
   const rows = mountSettingsParts(rowsHost, [
     { title: "Sharing", rows: ["shareDiscord"], label: "Discord", fold: "ob" },
     { title: "Connections", rows: ["mcpsetup", "mcpapps"], label: "AI apps", fold: "ob" },
-  ]);
+  ], "onboarding");
   more.append(speakersPart());
 
   return {

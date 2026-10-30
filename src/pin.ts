@@ -234,7 +234,7 @@ export function initPin(): void {
   panel.addEventListener("click", (e) => {
     const t = (e.target as HTMLElement).closest<HTMLElement>("[data-pin-view]");
     if (t) {
-      setSetting("pinView", t.dataset.pinView as PinView);
+      setSetting("pinView", t.dataset.pinView as PinView, "panel");
       return;
     }
     if ((e.target as HTMLElement).closest("[data-pin-go]")) {

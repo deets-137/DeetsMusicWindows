@@ -522,7 +522,7 @@ export const nowPlayingCard: CardDef = {
       shuffleBtn.classList.remove("is-crossing");
       void shuffleBtn.offsetWidth; // reflow, so a second press inside the run replays it
       shuffleBtn.classList.add("is-crossing");
-      toggleShuffle().catch((e) => console.error("[player] shuffle failed:", e));
+      toggleShuffle("panel").catch((e) => console.error("[player] shuffle failed:", e));
     });
     // Both wires end together; the first event clears the class for the next press.
     shuffleBtn?.addEventListener("animationend", () => shuffleBtn.classList.remove("is-crossing"));
@@ -531,7 +531,7 @@ export const nowPlayingCard: CardDef = {
     // one song, going round and round. Only that press — "all" and "off" stay still, so the
     // turn means the mode it names. The "1" sits outside the <svg> and does not turn with it.
     repeatBtn?.addEventListener("click", () => {
-      if (cycleRepeat() !== "one" || !repeatBtn) return;
+      if (cycleRepeat("panel") !== "one" || !repeatBtn) return;
       repeatBtn.classList.remove("is-looping");
       void repeatBtn.offsetWidth; // reflow, so cycling back round to "one" replays the turn
       repeatBtn.classList.add("is-looping");

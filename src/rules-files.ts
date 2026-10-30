@@ -45,8 +45,8 @@ export function initRulesFiles(): void {
         diag.warn("rule:file", { do: "picture", id, why: "gone" });
         return;
       }
-      setSetting("glassCanvas", "picture");
-      setSetting("glassPictureId", f.id);
+      setSetting("glassCanvas", "picture", "rule");
+      setSetting("glassPictureId", f.id, "rule");
     },
   });
   registerAction("playSound", {

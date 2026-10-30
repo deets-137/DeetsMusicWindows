@@ -3,7 +3,7 @@
 // EFFECTIVE pair: at launch at once, later inside the appearance transition. A change from
 // anywhere — a menu pick, Reset, an agent, a rule starting or ending — lands here.
 
-import { effective, onSettingsChange, setSetting } from "./settings-store";
+import { effective, onSettingsChange, setSetting, type SettingSource } from "./settings-store";
 import { paintTheme, type ThemeName } from "./theme";
 import { paintSkin, type SkinName } from "./skin";
 import { withAppearanceTransition, withThemeFade } from "./appearance";
@@ -71,17 +71,18 @@ function schedule(opts?: Opts): void {
 
 /**
  * A theme or skin picked by hand (the title menu, Reset, an agent): it becomes your value.
- * `after` runs once the new look is on screen (or at once when nothing changes).
+ * `after` runs once the new look is on screen (or at once when nothing changes). `source` is
+ * for the change log (UPDATE-CARD.md §3.9).
  */
-export function pickLook(look: { theme?: ThemeName; skin?: SkinName }, opts: Opts = {}): void {
+export function pickLook(look: { theme?: ThemeName; skin?: SkinName }, source: SettingSource, opts: Opts = {}): void {
   // The half you did not pick stays as it shows. Under the look schedule the two are one look,
   // and your change holds both (RULES.md §8), so a theme pick must not bring back an older skin.
   const theme = look.theme ?? effective("theme");
   const skin = look.skin ?? effective("skin");
   noteHandPick(); // *For good* keeps this pick when it turns the schedule off (look-schedule.ts)
   schedule({ ...opts, hand: !opts.by });
-  setSetting("theme", theme);
-  setSetting("skin", skin);
+  setSetting("theme", theme, source);
+  setSetting("skin", skin, source);
 }
 
 /** Launch: paint the look at once (no animation), then follow every change. */

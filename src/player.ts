@@ -8,7 +8,7 @@
 // without calling `authorize()` (whose OAuth popup can't open in WebView2 — the
 // reason auth runs through the loopback browser flow). See `injectUserToken`.
 
-import { setting, setSetting, onSettingsChange } from "./settings-store";
+import { setting, setSetting, onSettingsChange, type SettingSource } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
@@ -757,25 +757,25 @@ function applyRepeatToMusicKit(): void {
     diag.warn("player:repeatApply", { e: String(e) });
   }
 }
-export function setRepeat(m: RepeatMode): void {
+export function setRepeat(m: RepeatMode, source: SettingSource): void {
   if (roomBridge) return; // repeat is off in a room (§10)
   diag.log("player:repeat", { mode: m });
-  setSetting("repeatMode", m); // the settings listener applies + emits
+  setSetting("repeatMode", m, source); // the settings listener applies + emits
   applyRepeatToMusicKit(); // unchanged value: no notification — still make sure
 }
 /** The Now Playing square: off → all → one → off. */
-export function cycleRepeat(): RepeatMode {
+export function cycleRepeat(source: SettingSource): RepeatMode {
   const next: Record<RepeatMode, RepeatMode> = { off: "all", all: "one", one: "off" };
   const m = next[getRepeat()];
-  setRepeat(m);
+  setRepeat(m, source);
   return m;
 }
 /** Turn the shuffle mode on or off (the toolbar Shuffle, the agent). No-op while the button
  *  is one-shot (`shuffleStays` off) — there is no mode to set then. */
-export function setShuffleMode(on: boolean): void {
+export function setShuffleMode(on: boolean, source: SettingSource): void {
   if (!setting("shuffleStays")) return;
   diag.log("player:shuffleMode", { on });
-  setSetting("shuffleMode", on);
+  setSetting("shuffleMode", on, source);
 }
 onSettingsChange((k) => {
   if (k === "repeatMode") applyRepeatToMusicKit();
@@ -2832,9 +2832,9 @@ export async function unshuffleQueue(): Promise<void> {
  * Playback › *Shuffle off plays* says whether the list goes on in its order (unshuffle) or
  * stays as shuffled. A rule's *Turn shuffle off* is not a press: it only sets the mode.
  */
-export async function shuffleOff(): Promise<void> {
+export async function shuffleOff(source: SettingSource): Promise<void> {
   if (roomBridge) return;
-  setShuffleMode(false);
+  setShuffleMode(false, source);
   if (setting("shuffleOff") === "order") await unshuffleQueue();
 }
 
@@ -2845,10 +2845,10 @@ export async function shuffleOff(): Promise<void> {
  * 3A), and the plan keeps the list's order, so unshuffle can bring it back. With the row
  * off there is no mode and no unshuffle: a shuffled copy plays from its top, as before.
  */
-export function shuffledPlay<T>(items: T[], play: (list: T[], start: number) => void): void {
+export function shuffledPlay<T>(items: T[], play: (list: T[], start: number) => void, source: SettingSource): void {
   if (!items.length) return;
   if (setting("shuffleStays")) {
-    setShuffleMode(true);
+    setShuffleMode(true, source);
     play(items, queue.randomIndex(items.length));
   } else {
     play(queue.shuffleInPlace(items.slice()), 0);
@@ -2861,7 +2861,7 @@ export function shuffledPlay<T>(items: T[], play: (list: T[], start: number) => 
 export const shuffledStart = <T>(ts: T[]): [T[], number] => [ts, isShuffleOn() ? queue.randomIndex(ts.length) : 0];
 
 /** Play the whole cached library shuffled (the idle shuffle press's rule, *Play the library shuffled*). */
-export async function shuffleLibrary(): Promise<void> {
+export async function shuffleLibrary(source: SettingSource): Promise<void> {
   if (roomBridge) return;
   await initPlayer();
   const all = tracks();
@@ -2871,7 +2871,7 @@ export async function shuffleLibrary(): Promise<void> {
   }
   const handles = all.map((t) => toHandle(t));
   diag.log("player:shuffle", { idle: true, n: handles.length });
-  await new Promise<void>((resolve, reject) => shuffledPlay(handles, (list, start) => playContext(list, start).then(resolve, reject)));
+  await new Promise<void>((resolve, reject) => shuffledPlay(handles, (list, start) => playContext(list, start).then(resolve, reject), source));
 }
 
 /**
@@ -2880,11 +2880,11 @@ export async function shuffleLibrary(): Promise<void> {
  * list goes on in its order, or stays as shuffled: `shuffleOff`). With the row off it is
  * the one-shot.
  */
-export async function toggleShuffle(): Promise<void> {
+export async function toggleShuffle(source: SettingSource): Promise<void> {
   if (roomBridge) return;
   if (!setting("shuffleStays")) return shuffleQueue();
-  if (setting("shuffleMode")) return shuffleOff();
-  setShuffleMode(true);
+  if (setting("shuffleMode")) return shuffleOff(source);
+  setShuffleMode(true, source);
   await shuffleQueue();
 }
 

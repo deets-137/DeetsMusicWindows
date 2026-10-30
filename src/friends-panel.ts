@@ -130,7 +130,7 @@ export function buildFriends(panel: El, gate: NameGate, inRoomWithStrangers = fa
     const open = el("button", "friend__inline", "Turn on");
     open.type = "button";
     open.title = "Starts sharing what you play with the friends you added";
-    open.addEventListener("click", () => setSetting("shareActivityApp", true));
+    open.addEventListener("click", () => setSetting("shareActivityApp", true, "panel"));
     line.append(" ", open);
     panel.append(line);
   } else if (!state.connected) {

@@ -9,7 +9,7 @@ import { emit, registerAction, registerEvent } from "./rules";
 import { onSurfaceChange } from "./surface";
 import { pickLook } from "./look";
 import { selectPreset } from "./sound";
-import { setSetting } from "./settings-store";
+import { setSetting, recordSetting } from "./settings-store";
 import { sleepIn } from "./sleep";
 import type { ThemeName, SkinName } from "./look-ids";
 import * as diag from "./diag";
@@ -53,12 +53,12 @@ export function initRulesApp(): void {
     run: (arg) => {
       const { key, value } = arg as { key: string; value: unknown };
       if (!SETTABLE.has(key)) return diag.warn("rule:set", { key, refused: true });
-      if (key === "theme") pickLook({ theme: value as ThemeName }, { by: "rule" });
-      else if (key === "skin") pickLook({ skin: value as SkinName }, { by: "rule" });
-      else selectPreset(String(value));
+      if (key === "theme") pickLook({ theme: value as ThemeName }, "rule", { by: "rule" });
+      else if (key === "skin") pickLook({ skin: value as SkinName }, "rule", { by: "rule" });
+      else selectPreset(String(value), "rule");
     },
   });
-  registerAction("sharePause", { cost: "free", run: (min) => setSetting("sharePauseUntil", Date.now() + Math.max(1, Number(min) || 60) * 60_000) });
+  registerAction("sharePause", { cost: "free", run: (min) => setSetting("sharePauseUntil", Date.now() + Math.max(1, Number(min) || 60) * 60_000, "rule") });
   registerAction("sleepIn", { cost: "free", run: (min) => sleepIn(Math.max(1, Number(min) || 30)) });
 
   // Route 6 (RULEZ.md §3): what the app already does. ♥ and an Apple Music playlist are Apple
@@ -105,7 +105,10 @@ export function initRulesApp(): void {
       requestDiaryAlbum({ album, tracks: () => tracks().filter((x) => x.albumName === t.albumName && x.artistName === t.artistName) });
     },
   });
-  registerAction("scrobble", { cost: "free", run: (on) => invoke("settings_set_lastfm_scrobble", { on: on === true }) });
+  registerAction("scrobble", { cost: "free", run: (on) => {
+    recordSetting("lastfmScrobble", "rule");
+    return invoke("settings_set_lastfm_scrobble", { on: on === true });
+  } });
   registerAction("hide", { cost: "free", run: () => getCurrentWindow().hide() });
   // The cancel events' sites register their own event (player.ts, card-grow.ts, replay.ts).
 

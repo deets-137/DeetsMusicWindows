@@ -44,8 +44,8 @@ let unlocking = false;
 function maybeUnlockRewind(): void {
   if (startCount === null || startCount < REWIND_UNLOCK_STARTS || setting("rewindAutoShown")) return;
   unlocking = true;
-  setSetting("rewindAutoShown", true);
-  setSetting("hiddenCards", setting("hiddenCards").filter((c) => c !== "rewind")); // Settings › Cards (HIDE-CARDS.md §4)
+  setSetting("rewindAutoShown", true, "app");
+  setSetting("hiddenCards", setting("hiddenCards").filter((c) => c !== "rewind"), "app"); // Settings › Cards (HIDE-CARDS.md §4)
   unlocking = false;
   diag.log("stats:rewind-unlock", { starts: startCount });
   toast({ kind: "info", text: "Rewind unlocked: your listening, ranked. Pick it from any slot's title." });
@@ -60,7 +60,7 @@ onSettingsChange((k) => {
   if (k !== "hiddenCards") return;
   const now = setting("hiddenCards").includes("rewind");
   if (now !== rewindHidden && !unlocking && !setting("rewindAutoShown")) {
-    setSetting("rewindAutoShown", true);
+    setSetting("rewindAutoShown", true, "app");
     diag.log("stats:rewind-hand", { hidden: now });
   }
   rewindHidden = now;
@@ -83,7 +83,7 @@ if (import.meta.env.DEV) {
   window.__toast.sim = {
     ...window.__toast.sim,
     rewind: () => {
-      setSetting("rewindAutoShown", false);
+      setSetting("rewindAutoShown", false, "app");
       startCount = Math.max(startCount ?? 0, REWIND_UNLOCK_STARTS);
       maybeUnlockRewind();
     },

@@ -103,7 +103,7 @@ function cyclePill<K extends keyof Settings>(key: K, values: Settings[K][], labe
   };
   btn.addEventListener("click", () => {
     const i = values.indexOf(ownSetting(key));
-    setSetting(key, values[(i + 1) % values.length]);
+    setSetting(key, values[(i + 1) % values.length], "panel");
   });
   return { btn, sync };
 }
@@ -315,7 +315,7 @@ function build(panel: HTMLElement): void {
 
   // 2. Equalizer on/off
   eqPill = pill("Turns the equalizer on or off");
-  eqPill.addEventListener("click", () => setSetting("soundEq", !setting("soundEq")));
+  eqPill.addEventListener("click", () => setSetting("soundEq", !setting("soundEq"), "panel"));
   resetBtn = el("button", "sound__chip", "Reset");
   resetBtn.type = "button";
   resetBtn.title = "Puts every band back to 0 dB (the Flat preset). Undo is offered for a moment";
@@ -448,8 +448,8 @@ function build(panel: HTMLElement): void {
     const from = setting("soundEq") ? effective("soundEqPreset") : "flat";
     const i = list.findIndex((p) => p.id === from);
     selected = -1;
-    sound.selectPreset(list[(i + dir + list.length) % list.length].id);
-    if (!setting("soundEq")) setSetting("soundEq", true);
+    sound.selectPreset(list[(i + dir + list.length) % list.length].id, "panel");
+    if (!setting("soundEq")) setSetting("soundEq", true, "panel");
   };
   prev.addEventListener("click", () => walk(-1));
   next.addEventListener("click", () => walk(1));
@@ -521,7 +521,7 @@ function build(panel: HTMLElement): void {
 
   // 6. DeetsAdaptiveSound
   adaptivePill = pill("Turns adaptive sound on or off. Each of the three parts below also has its own switch");
-  adaptivePill.addEventListener("click", () => setSetting("soundAdaptive", !adaptiveOn()));
+  adaptivePill.addEventListener("click", () => setSetting("soundAdaptive", !adaptiveOn(), "panel"));
   adaptView.append(row("Adaptive sound", adaptivePill, "sound__row--strong"));
 
   const loud = cyclePill("soundLoudness", [true, false], ["On", "Off"], "Plays every song at about the same loudness, so you do not reach for the volume between songs");
@@ -651,11 +651,11 @@ function resetToFlat(): void {
   const prev = effective("soundEqPreset");
   if (prev === "flat") return;
   selected = -1;
-  sound.selectPreset("flat");
+  sound.selectPreset("flat", "panel");
   diag.log("sound:reset", { from: prev.startsWith("u:") ? "saved" : prev });
   undoReset = () => {
     endUndo();
-    sound.selectPreset(prev);
+    sound.selectPreset(prev, "panel");
     diag.log("sound:resetUndone", {});
   };
   resetBtn.textContent = "Undo";
@@ -757,7 +757,7 @@ function editBand(fn: (b: Band) => void): void {
   const next = cloneBands();
   if (!next[selected]) return;
   fn(next[selected]);
-  sound.commitBands(next);
+  sound.commitBands(next, "panel");
 }
 
 function removeBand(i: number): void {
@@ -765,12 +765,12 @@ function removeBand(i: number): void {
   const next = cloneBands();
   next.splice(i, 1);
   selected = Math.min(i, next.length - 1);
-  sound.commitBands(next);
+  sound.commitBands(next, "panel");
 }
 
 function setMode(mode: "parametric" | "graphic"): void {
   selected = -1;
-  setSetting("soundEqMode", mode);
+  setSetting("soundEqMode", mode, "panel");
 }
 
 function wireGraph(): void {
@@ -827,7 +827,7 @@ function handleFor(i: number, b: Band): HTMLButtonElement {
     h.toggleAttribute("data-dragging", false);
     const done = live;
     live = null;
-    if (done) sound.commitBands(done);
+    if (done) sound.commitBands(done, "panel");
   };
   h.addEventListener("pointerup", end);
   h.addEventListener("pointercancel", end);
@@ -860,12 +860,12 @@ function handleFor(i: number, b: Band): HTMLButtonElement {
  *  Custom curve (never an edit of the hidden preset), and it turns the equalizer on. */
 function commitFromScreen(next: Band[]): void {
   if (!setting("soundEq")) {
-    setSetting("soundEqCustom", { name: "Custom", bands: next, design: "matched" });
-    sound.selectPreset("custom");
-    setSetting("soundEq", true);
+    setSetting("soundEqCustom", { name: "Custom", bands: next, design: "matched" }, "panel");
+    sound.selectPreset("custom", "panel");
+    setSetting("soundEq", true, "panel");
     return;
   }
-  sound.commitBands(next);
+  sound.commitBands(next, "panel");
 }
 
 /** The ten slider gains for the current curve: the bands themselves, or a fit of any other curve. */
@@ -954,7 +954,7 @@ function commitName(): void {
   if (!name) return;
   const id = effective("soundEqPreset");
   if (nameMode === "rename" && id.startsWith("u:")) {
-    setSetting("soundEqUser", { ...setting("soundEqUser"), [id]: { ...sound.activePreset(), name } });
+    setSetting("soundEqUser", { ...setting("soundEqUser"), [id]: { ...sound.activePreset(), name } }, "panel");
   } else {
     addUserPreset({ ...sound.activePreset(), name, bands: cloneBands() });
   }
@@ -963,9 +963,9 @@ function commitName(): void {
 
 function addUserPreset(p: EqPreset): void {
   const id = `u:${Date.now().toString(36)}`;
-  setSetting("soundEqUser", { ...setting("soundEqUser"), [id]: p });
+  setSetting("soundEqUser", { ...setting("soundEqUser"), [id]: p }, "panel");
   selected = -1;
-  sound.selectPreset(id);
+  sound.selectPreset(id, "panel");
   diag.log("sound:presetSaved", { bands: p.bands.length, design: p.design });
 }
 
@@ -986,8 +986,8 @@ function deletePreset(): void {
   const user = { ...setting("soundEqUser") };
   const name = user[id]?.name ?? "";
   delete user[id];
-  sound.selectPreset("flat");
-  setSetting("soundEqUser", user);
+  sound.selectPreset("flat", "panel");
+  setSetting("soundEqUser", user, "panel");
   note(`Deleted ${name}.`);
 }
 
@@ -998,7 +998,7 @@ function importText(text: string, name: string): void {
     return;
   }
   addUserPreset(preset);
-  if (setting("soundEqMode") === "graphic") setSetting("soundEqMode", "parametric");
+  if (setting("soundEqMode") === "graphic") setSetting("soundEqMode", "parametric", "panel");
   note(`Imported ${preset.bands.length} band${preset.bands.length === 1 ? "" : "s"}${notes.length ? ` (${notes.join(", ")})` : ""}.`);
 }
 

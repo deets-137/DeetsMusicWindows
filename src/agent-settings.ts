@@ -68,32 +68,32 @@ const ON_OFF: Opt[] = [{ value: "on", label: "On" }, { value: "off", label: "Off
 const storeChoice = (section: string, key: keyof Settings, label: string, options: Opt[], extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "choice", options,
   get: () => String(ownSetting(key)),
-  set: (v) => setSetting(key, v as never),
+  set: (v) => setSetting(key, v as never, "agent"),
   ...extra,
 });
 const storeToggle = (section: string, key: BoolKey, label: string, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "toggle", options: ON_OFF,
   get: () => (ownSetting(key) ? "on" : "off"),
-  set: (v) => setSetting(key, v === "on"),
+  set: (v) => setSetting(key, v === "on", "agent"),
   ...extra,
 });
 const storeRange = (section: string, key: NumKey, label: string, extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "range", min: 0, max: 100,
   get: () => String(ownSetting(key)),
-  set: (v) => setSetting(key, Number(v)),
+  set: (v) => setSetting(key, Number(v), "agent"),
   ...extra,
 });
 const storeTime = (key: "dayStart" | "nightStart" | "sleepAt", label: string, from: number, to: number, section = "Look schedule"): Spec => ({
   key, label, section, kind: "time", min: from, max: to,
   get: () => setting(key),
-  set: (v) => setSetting(key, v),
+  set: (v) => setSetting(key, v, "agent"),
 });
 /** An open size (FUTURE-SETTINGS §8a): "WxH" in px. surface.ts resizes the window when the
  *  set is for the view that shows. */
 const storeSize = (slot: SizeSlot, label: string): Spec => ({
   key: SIZE_KEYS[slot], label, section: "Window", kind: "size", slot,
   get: () => setting(SIZE_KEYS[slot]),
-  set: (v) => setSetting(SIZE_KEYS[slot], v),
+  set: (v) => setSetting(SIZE_KEYS[slot], v, "agent"),
 });
 
 /** Rust owns these (settings.json, the Run key); the card caches them, so tell it. */
@@ -106,7 +106,7 @@ const rustToggle = (section: string, key: string, label: string, get: () => Prom
   get: async () => ((await get()) ? "on" : "off"),
   set: async (v) => {
     await set(v === "on");
-    notifyOwnedSettingChange();
+    notifyOwnedSettingChange(key, "agent");
   },
   ...extra,
 });
@@ -114,7 +114,7 @@ const rustToggle = (section: string, key: string, label: string, get: () => Prom
 /** A theme or skin set from outside the title menu: the same hand pick (look.ts), with the
  *  slower cover an agent's change rides (UX-COVERUPS §6b). */
 const agentLook = (kind: "theme" | "skin", v: string): void =>
-  pickLook(kind === "theme" ? { theme: v as ThemeName } : { skin: v as SkinName }, { by: "agent" });
+  pickLook(kind === "theme" ? { theme: v as ThemeName } : { skin: v as SkinName }, "agent", { by: "agent" });
 
 const skinNote = (skin: SkinName, name: string) => () => (currentSkin() === skin ? undefined : `It shows while ${name} is the skin.`);
 const MINUTES = [-60, -45, -30, -15, 0, 15, 30, 45, 60];
@@ -203,7 +203,7 @@ const SPECS: Spec[] = [
       return presetOptions().map((p) => ({ value: p.id, label: p.name }));
     },
     get: () => effective("soundEqPreset"),
-    set: (v) => selectPreset(v),
+    set: (v) => selectPreset(v, "agent"),
   },
   storeChoice("Sound", "soundEqMode", "Equalizer view", [{ value: "graphic", label: "Sliders" }, { value: "parametric", label: "Dots" }]),
   storeChoice("Sound", "soundEqPreamp", "Avoid distortion", [{ value: "limiter", label: "Limiter only" }, { value: "needed", label: "When needed" }, { value: "always", label: "Always" }, { value: "manual", label: "By hand" }]),
@@ -216,7 +216,7 @@ const SPECS: Spec[] = [
         storeToggle("Sound", "soundLoudness", "Match loudness"),
         storeChoice("Sound", "soundLoudTarget", "Match songs to", [[-16, "Standard"], [-14, "Louder"], [-18, "Quieter"]].map(([v, l]) => ({ value: String(v), label: `${l} (${v} LUFS)` })), {
           get: () => String(setting("soundLoudTarget")),
-          set: (v) => setSetting("soundLoudTarget", Number(v)),
+          set: (v) => setSetting("soundLoudTarget", Number(v), "agent"),
         }),
         storeToggle("Sound", "soundLoudAlbum", "Keep albums together"),
         storeChoice("Sound", "soundLoudUnmeasured", "Songs not measured get", [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }]),
@@ -228,7 +228,7 @@ const SPECS: Spec[] = [
     : []),
   storeChoice("Sound", "soundReviewDays", "Ask to keep after", [7, 14, 3, 0].map((d) => ({ value: String(d), label: d ? `${d} days` : "Never" })), {
     get: () => String(setting("soundReviewDays")),
-    set: (v) => setSetting("soundReviewDays", Number(v)),
+    set: (v) => setSetting("soundReviewDays", Number(v), "agent"),
   }),
   // ── Rooms (ROOMS.md §8): the guest controls a room YOU host starts with. The room you
   // are in is the panel's (a live change is a room command, not a setting), and the name
@@ -246,7 +246,7 @@ const SPECS: Spec[] = [
     kind: "choice",
     options: [{ value: "everyone", label: "Everyone" }, { value: "host", label: "Host only" }],
     get: () => String((setting("roomGuestControls") as Record<string, string>)[which] ?? "everyone"),
-    set: (v) => setSetting("roomGuestControls", { ...setting("roomGuestControls"), [which]: v }),
+    set: (v) => setSetting("roomGuestControls", { ...setting("roomGuestControls"), [which]: v }, "agent"),
     note: (v) =>
       which === "playPause" && v === "host"
         ? "A guest's Pause still stops their own app; it just does not stop the room (ROOMS.md §12.3)."
@@ -260,13 +260,13 @@ const SPECS: Spec[] = [
   storeToggle("Sleep", "sleepPlayOut", "Play out song"),
   storeChoice("Sleep", "sleepWind", "Wind down", [0, 1, 2, 5, 10, 15, 30].map((m) => ({ value: String(m), label: m ? `${m} min` : "Off" })), {
     get: () => String(setting("sleepWind")),
-    set: (v) => setSetting("sleepWind", Number(v)),
+    set: (v) => setSetting("sleepWind", Number(v), "agent"),
   }),
   {
     key: "sunShift", label: "Offset Sunset/Sunrise", section: "Look schedule", kind: "choice",
     options: MINUTES.map((v) => ({ value: String(v), label: v === 0 ? "None" : `${v > 0 ? "+" : "−"}${Math.abs(v)} min` })),
     get: () => String(setting("sunShift")),
-    set: (v) => setSetting("sunShift", Number(v)),
+    set: (v) => setSetting("sunShift", Number(v), "agent"),
   },
   storeChoice("Look schedule", "lookHold", "Manual pick lasts", [{ value: "next", label: "Until next change" }, { value: "always", label: "For good" }]),
   storeToggle("Motion", "reduceMotion", "Reduce motion"),
@@ -302,7 +302,7 @@ const SPECS: Spec[] = [
   {
     key: "menuMode", label: "Open menus on hover", section: "Menus, hints and notices", kind: "toggle", options: ON_OFF,
     get: () => (setting("menuMode") === "hover" ? "on" : "off"),
-    set: (v) => setSetting("menuMode", v === "on" ? "hover" : "click"),
+    set: (v) => setSetting("menuMode", v === "on" ? "hover" : "click", "agent"),
   },
   storeChoice("Menus, hints and notices", "toasts", "Show notices", [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }]),
   // The hover box (ONBOARDING.md §1a). Missing until 2026-09-27 (the consistency survey): the
@@ -342,7 +342,7 @@ const SPECS: Spec[] = [
     get: async () => (await rustSettings()).airplayCapture,
     set: async (v) => {
       await invoke("settings_set_airplay_capture", { v });
-      notifyOwnedSettingChange();
+      notifyOwnedSettingChange("airplaySend", "agent");
     },
   },
   storeChoice("Playback", "shuffleIdle", "Shuffle with nothing currently playing behavior", [{ value: "library", label: "Library" }, { value: "noop", label: "Nothing" }]),
@@ -372,11 +372,11 @@ const SPECS: Spec[] = [
   storeChoice("Playlists", "newPlaylistCover", "New cover", [{ value: "letters", label: "Letters" }, { value: "mosaic", label: "Mosaic" }, { value: "note", label: "Note" }]),
   storeChoice("Playlists", "webReach", "Web reach", [1, 2, 3].map((n) => ({ value: String(n), label: String(n) })), {
     get: () => String(setting("webReach")),
-    set: (v) => setSetting("webReach", Number(v) as 1 | 2 | 3),
+    set: (v) => setSetting("webReach", Number(v) as 1 | 2 | 3, "agent"),
   }),
   storeChoice("Playlists", "webSize", "Web size", [25, 50, 100].map((n) => ({ value: String(n), label: String(n) })), {
     get: () => String(setting("webSize")),
-    set: (v) => setSetting("webSize", Number(v) as 25 | 50 | 100),
+    set: (v) => setSetting("webSize", Number(v) as 25 | 50 | 100, "agent"),
   }),
   storeChoice("Playlists", "webMakeMotion", "Web panel closes", [{ value: "shrink", label: "Shrink to chip" }, { value: "pop", label: "Pop out" }]),
   storeChoice("Playlists", "webSeedFilter", "Web genre chips filter", [{ value: "all", label: "All songs" }, { value: "floor", label: "Keep 5" }, { value: "off", label: "Web only" }]),
@@ -384,7 +384,7 @@ const SPECS: Spec[] = [
   // No Settings row: the web panel's Keep · Temp row under Make playlist (PLAYLIST-WEB.md §10).
   storeChoice("Playlists", "webTempDays", "Temp web playlist days", [1, 3, 5, 7, 30].map((n) => ({ value: String(n), label: String(n) })), {
     get: () => String(setting("webTempDays")),
-    set: (v) => setSetting("webTempDays", Number(v) as 1 | 3 | 5 | 7 | 30),
+    set: (v) => setSetting("webTempDays", Number(v) as 1 | 3 | 5 | 7 | 30, "agent"),
   }),
   // PLAYLIST-WEB.md §11. The mode and the skip point have no Settings row; an agent and a rule set them.
   storeToggle("Playlists", "webPlayNew", "Play a web from the song playing"),
@@ -398,8 +398,8 @@ const SPECS: Spec[] = [
     get: () => (setting("hiddenCards").includes(id) ? "off" : "on"),
     set: (v) => {
       const hidden = setting("hiddenCards").filter((c) => c !== id);
-      if (v === "on") setSetting("hiddenCards", hidden);
-      else if (canHide(setting("hiddenCards"), id)) setSetting("hiddenCards", [...hidden, id]);
+      if (v === "on") setSetting("hiddenCards", hidden, "agent");
+      else if (canHide(setting("hiddenCards"), id)) setSetting("hiddenCards", [...hidden, id], "agent");
     },
     // Read before the set: a hide that the three-card minimum refuses says so.
     note: (v) => (v === "off" && !canHide(setting("hiddenCards"), id) ? `It stays: ${HIDE_LOCK_HINT.toLowerCase()}.` : undefined),
@@ -410,7 +410,7 @@ const SPECS: Spec[] = [
     get: () => (setting("instantCards").includes(id) ? "off" : "on"),
     set: (v) => {
       const instant = setting("instantCards").filter((c) => c !== id);
-      setSetting("instantCards", v === "on" ? instant : [...instant, id]);
+      setSetting("instantCards", v === "on" ? instant : [...instant, id], "agent");
     },
   })),
   storeChoice("Rewind", "fullPlayRule", "Count a play at", [{ value: "fraction", label: "90%" }, { value: "end", label: "End" }, { value: "scrobble", label: "Half or 4 min" }]),
@@ -439,7 +439,7 @@ const SPECS: Spec[] = [
     get: async () => String((await sotdRust()).sotdDayStart),
     set: async (v) => {
       await invoke("settings_set_sotd_day_start", { hour: Number(v) });
-      notifyOwnedSettingChange();
+      notifyOwnedSettingChange("sotdDayStart", "agent");
     },
   },
   {
@@ -448,7 +448,7 @@ const SPECS: Spec[] = [
     get: async () => String((await sotdRust()).sotdPicksPerDay),
     set: async (v) => {
       await invoke("settings_set_sotd_picks_per_day", { n: Number(v) });
-      notifyOwnedSettingChange();
+      notifyOwnedSettingChange("sotdPicksPerDay", "agent");
     },
   },
   {
@@ -457,7 +457,7 @@ const SPECS: Spec[] = [
     get: async () => (await sotdRust()).sotdPostMode,
     set: async (v) => {
       await invoke("settings_set_sotd_post_mode", { mode: v });
-      notifyOwnedSettingChange();
+      notifyOwnedSettingChange("sotdPostMode", "agent");
     },
   },
   {
@@ -465,7 +465,7 @@ const SPECS: Spec[] = [
     get: async () => (await sotdRust()).sotdPostAt,
     set: async (v) => {
       await invoke("settings_set_sotd_post_at", { at: v });
-      notifyOwnedSettingChange();
+      notifyOwnedSettingChange("sotdPostAt", "agent");
     },
   },
   // ── Connections ──
@@ -486,6 +486,7 @@ const SPECS: Spec[] = [
   }),
   // ── Updates ──
   storeChoice("Updates", "updateMode", "Get updates", [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }]),
+  storeToggle("Updates", "whatsNewEveryUpdate", "Show what's new after every update"),
   // ── About: usage counts (USAGE-COUNTS.md); a consent gate, so an agent may only turn it off ──
   storeToggle("About", "usageReports", "Send usage counts", { offOnly: true }),
 ];

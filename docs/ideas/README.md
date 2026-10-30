@@ -83,7 +83,7 @@ the app can do any of these things.
   its first part was built (the stats cell grows over the card in Max).
 - [WebRooms.md](../features/WebRooms.md) — moved to features/ on 2026-10-13, when its app side
   was built (the rooms web port: a friend on a Mac listens in a browser).
-- [UPDATE-CARD.md](UPDATE-CARD.md) — an idea (2026-10-26), designed, every fork his: a copy of
+- [UPDATE-CARD.md](../features/UPDATE-CARD.md) — an idea (2026-10-26), designed, every fork his: a copy of
   the grand-opening card after an update with new settings, one page per version (notes, new
   settings, previews), the changed defaults offered; *What's New* in the Compass.
 

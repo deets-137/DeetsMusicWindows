@@ -21,7 +21,7 @@ import { listen } from "@tauri-apps/api/event";
 import { lastfmStatus, type LastfmStatus } from "./lastfm";
 import { HIDEABLE_CARDS, HIDE_LOCK_HINT, canHide } from "./layout-rules";
 import { REVEAL_CARDS } from "./reveal-wave";
-import { setting, setSetting, ownSetting, effective, onOwnChange, onSettingsChange, RULE_KEYS, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, type RuleKey, type Settings } from "./settings-store";
+import { setting, setSetting as writeSetting, ownSetting, effective, onOwnChange, onSettingsChange, RULE_KEYS, onOwnedSettingChange, isFreshInstall, DEFAULTS, adaptiveUnhidden, recordSetting, type RuleKey, type Settings, type SettingSource } from "./settings-store";
 import { currentSkin, onSkinChange, defaultSkin, type SkinName } from "./skin";
 import { pickLook } from "./look";
 import { ruleChip, type RuleChip } from "./rule-chip";
@@ -174,63 +174,68 @@ const shown = (rows: Row[]): Row[] => rows.filter((r) => !r.when || r.when());
 //    cog or a quick panel square (his call 2026-09-25: nothing leads you to a row you cannot
 //    see). `via`: the row shows only after a pill in another row is picked; that pill wears
 //    the N while the row is unseen, so the N leads you to it (QUICK-SETTINGS.md §10a).
+//    `since`: the version that brings the row (UPDATE-CARD.md §3.1): the next release's
+//    number for a new line. The Updates panel opens by itself when the range has one (§3.10).
+//    The lines before 2026-10-29 were dated from git: the first version bump after the line.
 interface NewMark {
+  since: string;
   section: string;
   row?: string;
   skin?: SkinName;
   via?: { row: string; values: string[] };
 }
 const NEW_MARKS: NewMark[] = [
-  { section: "Friends" }, // Friends, built 2026-09-20
-  { section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
-  { section: "Skin settings", row: "oceancards", skin: "ocean" }, // Ocean card opacity, built 2026-09-23
-  { section: "Skin settings", row: "oceanlight", skin: "ocean" }, // Ocean album light, built 2026-09-23
-  { section: "Album Reviews" }, // the card's section, built 2026-09-24 as "Diary"
-  { section: "Connections", row: "agentdiary" }, // Agents use the Diary, built 2026-09-24
-  { section: "Skin settings", row: "glasswallpaper", skin: "glass" }, // Glass Canvas (Cover Wallpaper), built 2026-09-24
-  { section: "Skin settings", row: "glasstiles", skin: "glass", via: { row: "glasswallpaper", values: ["covers"] } },
-  { section: "Skin settings", row: "glasspicture", skin: "glass", via: { row: "glasswallpaper", values: ["picture"] } },
-  { section: "Skin settings", row: "glassdiffusion", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
-  { section: "Skin settings", row: "glassauroracolor", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
-  { section: "Window", row: "drillgrow" }, // Grow on album or artist, the rules engine's first row, built 2026-09-26
-  { section: "Menus, hints and notices", row: "gototarget" }, // Go to opens, route 8, built 2026-09-27
-  { section: "Playlists", row: "webplaynew" }, // Play a web from the song playing, built 2026-09-28
-  { section: "Playlists", row: "webskipseed" },
-  { section: "Playback", row: "listendweb" }, // Play a web when a list ends, built 2026-09-29
-  { section: "Apple Music", row: "getnewsongs" }, // Get songs from Apple copy, built 2026-09-29
-  { section: "Cards" }, // Settings › Cards, which cards the pickers offer, built 2026-10-10 (HIDE-CARDS.md)
-  { section: "Connections", row: "mcpsetup" }, // Set up the DeetsMusic MCP, built 2026-10-11 (MCP-INSTALL.md)
-  { section: "Window", row: "maxcards" }, // Layout for Max, built 2026-10-11 (MAX-CARDS.md)
-  { section: "Window", row: "npshade" }, // Shade behind the title, built 2026-10-25 (fullscreen-player.md §16)
-  { section: "Motion", row: "graphicsfallback" }, // If graphics fail, built 2026-10-11 (GRAPHICS-FALLBACK.md)
-  { section: "Motion", row: "reducemotion" }, // Reduce motion, built 2026-10-20 (GRAPHICS-FALLBACK.md §10.4)
-  { section: "Playback", row: "shuffleoff" }, // Shuffle off plays, unshuffle, built 2026-10-12 (QUEUE.md §Shuffle and unshuffle)
-  { section: "Playback", row: "listeners" }, // Show play counts from Last.FM, built 2026-10-12 (LISTENERS.md §4)
-  { section: "Playback", row: "artistinfo" }, // Show artist info on the artist's page, built 2026-10-12 (LISTENERS.md §6)
-  { section: "Playback", row: "albuminfo" }, // Show album info on the album's page, built 2026-10-13 (LISTENERS.md §7)
-  { section: "Playback", row: "songinfo" }, // Show song info on the song's page, built 2026-10-17 (LISTENERS.md §8)
-  { section: "Playback", row: "notessource" }, // Notes from, built 2026-10-17 (LISTENERS.md §8.4)
-  { section: "Playback", row: "suggeststations" }, // Suggest Less: Skip on stations, built 2026-10-16 (SUGGEST-LESS.md §4)
-  { section: "Playback", row: "suggestwebs" }, // Suggest Less: Leave out of webs, built 2026-10-16
-  { section: "Playback", row: "suggestqueue" }, // Suggest Less: Skip in queues, built 2026-10-16
-  { section: "Playback", row: "suggestclear" }, // Suggest Less marks › Clear, built 2026-10-16
-  { section: "About", row: "usage" }, // Send usage counts, built 2026-10-13 (USAGE-COUNTS.md)
-  { section: "Playlists", row: "createsummonsolo" }, // Also when Playlists is the only card, built 2026-10-16 (FUTURE-SETTINGS §16)
+  { since: "0.13.0", section: "Friends" }, // Friends, built 2026-09-20
+  { since: "0.13.0", section: "Sharing", row: "shareDiscord" }, // Share activity on Discord, built 2026-09-20
+  { since: "0.14.0", section: "Skin settings", row: "oceancards", skin: "ocean" }, // Ocean card opacity, built 2026-09-23
+  { since: "0.14.0", section: "Skin settings", row: "oceanlight", skin: "ocean" }, // Ocean album light, built 2026-09-23
+  { since: "0.14.5", section: "Album Reviews" }, // the card's section, built 2026-09-24 as "Diary"
+  { since: "0.14.5", section: "Connections", row: "agentdiary" }, // Agents use the Diary, built 2026-09-24
+  { since: "0.14.5", section: "Skin settings", row: "glasswallpaper", skin: "glass" }, // Glass Canvas (Cover Wallpaper), built 2026-09-24
+  { since: "0.14.5", section: "Skin settings", row: "glasstiles", skin: "glass", via: { row: "glasswallpaper", values: ["covers"] } },
+  { since: "0.14.5", section: "Skin settings", row: "glasspicture", skin: "glass", via: { row: "glasswallpaper", values: ["picture"] } },
+  { since: "0.14.5", section: "Skin settings", row: "glassdiffusion", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
+  { since: "0.14.5", section: "Skin settings", row: "glassauroracolor", skin: "glass", via: { row: "glasswallpaper", values: ["covers", "picture"] } },
+  { since: "0.25.0", section: "Window", row: "drillgrow" }, // Grow on album or artist, the rules engine's first row, built 2026-09-26
+  { since: "0.25.1", section: "Menus, hints and notices", row: "gototarget" }, // Go to opens, route 8, built 2026-09-27
+  { since: "0.25.2", section: "Playlists", row: "webplaynew" }, // Play a web from the song playing, built 2026-09-28
+  { since: "0.25.2", section: "Playlists", row: "webskipseed" },
+  { since: "0.25.4", section: "Playback", row: "listendweb" }, // Play a web when a list ends, built 2026-09-29
+  { since: "0.25.4", section: "Apple Music", row: "getnewsongs" }, // Get songs from Apple copy, built 2026-09-29
+  { since: "0.26.0", section: "Cards" }, // Settings › Cards, which cards the pickers offer, built 2026-10-10 (HIDE-CARDS.md)
+  { since: "0.26.0", section: "Connections", row: "mcpsetup" }, // Set up the DeetsMusic MCP, built 2026-10-11 (MCP-INSTALL.md)
+  { since: "0.26.0", section: "Window", row: "maxcards" }, // Layout for Max, built 2026-10-11 (MAX-CARDS.md)
+  { since: "1.1.0", section: "Window", row: "npshade" }, // Shade behind the title, built 2026-10-25 (fullscreen-player.md §16)
+  { since: "0.27.0", section: "Motion", row: "graphicsfallback" }, // If graphics fail, built 2026-10-11 (GRAPHICS-FALLBACK.md)
+  { since: "0.31.0", section: "Motion", row: "reducemotion" }, // Reduce motion, built 2026-10-20 (GRAPHICS-FALLBACK.md §10.4)
+  { since: "0.27.0", section: "Playback", row: "shuffleoff" }, // Shuffle off plays, unshuffle, built 2026-10-12 (QUEUE.md §Shuffle and unshuffle)
+  { since: "0.27.0", section: "Playback", row: "listeners" }, // Show play counts from Last.FM, built 2026-10-12 (LISTENERS.md §4)
+  { since: "0.27.0", section: "Playback", row: "artistinfo" }, // Show artist info on the artist's page, built 2026-10-12 (LISTENERS.md §6)
+  { since: "0.27.0", section: "Playback", row: "albuminfo" }, // Show album info on the album's page, built 2026-10-13 (LISTENERS.md §7)
+  { since: "0.30.0", section: "Playback", row: "songinfo" }, // Show song info on the song's page, built 2026-10-17 (LISTENERS.md §8)
+  { since: "0.30.0", section: "Playback", row: "notessource" }, // Notes from, built 2026-10-17 (LISTENERS.md §8.4)
+  { since: "0.29.0", section: "Playback", row: "suggeststations" }, // Suggest Less: Skip on stations, built 2026-10-16 (SUGGEST-LESS.md §4)
+  { since: "0.29.0", section: "Playback", row: "suggestwebs" }, // Suggest Less: Leave out of webs, built 2026-10-16
+  { since: "0.29.0", section: "Playback", row: "suggestqueue" }, // Suggest Less: Skip in queues, built 2026-10-16
+  { since: "0.29.0", section: "Playback", row: "suggestclear" }, // Suggest Less marks › Clear, built 2026-10-16
+  { since: "0.28.0", section: "About", row: "usage" }, // Send usage counts, built 2026-10-13 (USAGE-COUNTS.md)
+  { since: "0.29.0", section: "Playlists", row: "createsummonsolo" }, // Also when Playlists is the only card, built 2026-10-16 (FUTURE-SETTINGS §16)
   // Cover load animations, one toggle per card, built 2026-10-17 (UX-COVERUPS.md §7.12)
-  ...["library", "playlists", "home", "search", "queue", "history", "rewind", "radio", "diary"].map((id): NewMark => ({ section: "Cards", row: `wait-${id}` })),
-  { section: "Skin settings", row: "pressvinylfps", skin: "press", via: { row: "pressvinyl", values: ["spin"] } }, // Spin FPS, built 2026-10-17 (VINYL.md §12)
-  { section: "Rewind", row: "rewindtoday" }, // Today's time in, built 2026-10-19 (listening-time.md)
-  { section: "Skin settings", row: "metalmaterial", skin: "metal" }, // Metal's Material, built 2026-10-20 (metal.md)
-  { section: "Skin settings", row: "metalgrain", skin: "metal" }, // Metal's Grain
-  { section: "Skin settings", row: "metalcover", skin: "metal" }, // Metal's Cover change
-  { section: "Skin settings", row: "metalpeek", skin: "metal" }, // Metal's Peek
-  { section: "Skin settings", row: "happysky", skin: "happy" }, // Happy's Sky, built 2026-10-21 (happy.md)
-  { section: "Skin settings", row: "happycards", skin: "happy" }, // Happy's Card opacity
-  { section: "Window", row: "npoffcover" }, // Title under the cover, built 2026-10-26 (fullscreen-player.md §17)
-  { section: "Window", row: "sizecover" }, // Cover opens at, the pin's Cover view, built 2026-10-26 (PIN.md)
-  { section: "Playback", row: "artistfilters" }, // Remember Artist filters, built 2026-10-27 (ARTIST-VIEW.md §12)
-  { section: "Playback", row: "playerwheel" }, // Scroll over the Player for volume, built 2026-10-27 (WHEEL-VOLUME.md)
-  { section: "Playback", row: "clearqueuelaunch" }, // Clear the queue on launch, built 2026-10-29 (QUEUE.md § Clear Queue)
+  ...["library", "playlists", "home", "search", "queue", "history", "rewind", "radio", "diary"].map((id): NewMark => ({ since: "0.30.0", section: "Cards", row: `wait-${id}` })),
+  { since: "0.30.0", section: "Skin settings", row: "pressvinylfps", skin: "press", via: { row: "pressvinyl", values: ["spin"] } }, // Spin FPS, built 2026-10-17 (VINYL.md §12)
+  { since: "0.31.0", section: "Rewind", row: "rewindtoday" }, // Today's time in, built 2026-10-19 (listening-time.md)
+  { since: "0.31.0", section: "Skin settings", row: "metalmaterial", skin: "metal" }, // Metal's Material, built 2026-10-20 (metal.md)
+  { since: "0.31.0", section: "Skin settings", row: "metalgrain", skin: "metal" }, // Metal's Grain
+  { since: "0.31.0", section: "Skin settings", row: "metalcover", skin: "metal" }, // Metal's Cover change
+  { since: "0.31.0", section: "Skin settings", row: "metalpeek", skin: "metal" }, // Metal's Peek
+  { since: "0.32.0", section: "Skin settings", row: "happysky", skin: "happy" }, // Happy's Sky, built 2026-10-21 (happy.md)
+  { since: "0.32.0", section: "Skin settings", row: "happycards", skin: "happy" }, // Happy's Card opacity
+  { since: "1.1.0", section: "Window", row: "npoffcover" }, // Title under the cover, built 2026-10-26 (fullscreen-player.md §17)
+  { since: "1.1.0", section: "Window", row: "sizecover" }, // Cover opens at, the pin's Cover view, built 2026-10-26 (PIN.md)
+  { since: "1.2.0", section: "Playback", row: "artistfilters" }, // Remember Artist filters, built 2026-10-27 (ARTIST-VIEW.md §12)
+  { since: "1.2.0", section: "Playback", row: "playerwheel" }, // Scroll over the Player for volume, built 2026-10-27 (WHEEL-VOLUME.md)
+  { since: "1.2.1", section: "Playback", row: "clearqueuelaunch" }, // Clear the queue on launch, built 2026-10-29 (QUEUE.md § Clear Queue)
+  { since: "1.3.0", section: "Updates", row: "whatsnewevery" }, // Show what's new after every update, built 2026-10-29 (UPDATE-CARD.md §3.10)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -254,7 +259,7 @@ const newBadge = (key: string) => `<span class="new-badge" data-new-mark="${esc(
 /** Mark one New badge seen (the first hover on its row or heading). */
 function seeNew(key: string): void {
   const seen = setting("quickSeen");
-  if (!seen.includes(key)) setSetting("quickSeen", [...seen, key]);
+  if (!seen.includes(key)) writeSetting("quickSeen", [...seen, key], "app");
 }
 /** On a brand-new install, mark every New mark that exists today seen: a setting that was
  *  there before the user arrived is not new to them. A mark added in a later version is. */
@@ -262,7 +267,7 @@ export function seedNewMarks(): void {
   if (!isFreshInstall()) return;
   const seen = setting("quickSeen");
   const add = NEW_MARKS.map(markKey).filter((k) => !seen.includes(k));
-  if (add.length) setSetting("quickSeen", [...seen, ...add]);
+  if (add.length) writeSetting("quickSeen", [...seen, ...add], "app");
 }
 /** Does anything in these parts still wear a New badge? (a quick panel square shows its own N then) */
 export function unseenNewIn(parts: SettingsPart[]): boolean {
@@ -272,6 +277,32 @@ export function unseenNewIn(parts: SettingsPart[]): boolean {
 }
 /** Does any New mark anywhere still wear its N? (the title bar cog shows its own N then) */
 export const unseenNewAny = (): boolean => NEW_MARKS.some(liveNew);
+/** Every version that brought a new row or section (the Updates panel's own open, UPDATE-CARD.md §3.10). */
+export const newMarkVersions = (): string[] => NEW_MARKS.map((m) => m.since);
+/** The update card's settings (UPDATE-CARD.md §3.3): each mark with the name the user reads, the
+ *  row's label or the section's title. */
+export interface NewMarkEntry {
+  since: string;
+  section: string;
+  row?: string;
+  label: string;
+}
+export function newMarkEntries(): NewMarkEntry[] {
+  const rows = settingsRows();
+  return NEW_MARKS.map((m) => ({
+    since: m.since,
+    section: m.section,
+    row: m.row,
+    label: m.row ? (rows.find((r) => r.id === m.row)?.label ?? m.row) : m.section,
+  }));
+}
+/** A row or section shown on a version page is seen (UPDATE-CARD.md §3.5): its N goes, so the
+ *  badges and the card agree. */
+export function seeNewMarks(marks: { section: string; row?: string }[]): void {
+  const seen = setting("quickSeen");
+  const add = marks.map((m) => (m.row ? `row:${m.row}` : `sec:${m.section}`)).filter((k) => !seen.includes(k));
+  if (add.length) writeSetting("quickSeen", [...seen, ...add], "app");
+}
 /** The header's count and the Compass index both mean settings, not sub-headings. */
 const settingRows = (rows: Row[]): Row[] => shown(rows).filter((r) => r.kind !== "head");
 const headRow = (id: string, label: string): HeadRow => ({ kind: "head", id, label });
@@ -357,7 +388,7 @@ export const CARD_ROWS: Record<(typeof HIDEABLE_CARDS)[number], { label: string;
   diary: { label: "Album Reviews", hint: () => "Your notes and scores on albums, song by song" },
   rulez: { label: "Rulez", hint: () => "Your own rules (Max only)" },
 };
-const cardRow = (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
+const cardRow = (src: SettingSource) => (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
   const shown = () => !setting("hiddenCards").includes(id);
   const locked = () => shown() && !canHide(setting("hiddenCards"), id);
   return {
@@ -369,7 +400,7 @@ const cardRow = (id: (typeof HIDEABLE_CARDS)[number]): ToggleRow => {
     set: (on) => {
       const hidden = setting("hiddenCards").filter((c) => c !== id);
       if (!on && !canHide(setting("hiddenCards"), id)) return;
-      setSetting("hiddenCards", on ? hidden : [...hidden, id]);
+      writeSetting("hiddenCards", on ? hidden : [...hidden, id], src);
     },
     locked,
   };
@@ -383,7 +414,7 @@ const WAIT_LABEL: Record<(typeof REVEAL_CARDS)[number], string> = {
   history: "History", rewind: "Rewind", radio: "Radio", diary: "Album Reviews",
 };
 const WAIT_HINT = "On: the card shows once its covers are in, in one smooth wave. Off: it shows at once, and covers pop in as they load";
-const waitRow = (id: (typeof REVEAL_CARDS)[number]): ToggleRow => ({
+const waitRow = (src: SettingSource) => (id: (typeof REVEAL_CARDS)[number]): ToggleRow => ({
   kind: "toggle",
   id: `wait-${id}`,
   label: WAIT_LABEL[id],
@@ -391,26 +422,26 @@ const waitRow = (id: (typeof REVEAL_CARDS)[number]): ToggleRow => ({
   get: () => !setting("instantCards").includes(id),
   set: (on) => {
     const instant = setting("instantCards").filter((c) => c !== id);
-    setSetting("instantCards", on ? instant : [...instant, id]);
+    writeSetting("instantCards", on ? instant : [...instant, id], src);
   },
 });
-const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => string | undefined): ToggleRow => ({
+const storeToggleFor = (src: SettingSource, id: string, label: string, key: BoolKey, hint?: () => string | undefined): ToggleRow => ({
   key,
   kind: "toggle",
   id,
   label,
   hint,
   get: () => inForce(key),
-  set: (on) => setSetting(key, on),
+  set: (on) => writeSetting(key, on, src),
 });
 
 // ── the look schedule's rows (LOOK-SCHEDULE.md) ──
 type LookKey = "dayTheme" | "daySkin" | "nightTheme" | "nightSkin" | "dayStart" | "nightStart";
-const storeMenu = (key: LookKey, options: Option[]): Half => ({
+const storeMenuFor = (src: SettingSource, key: LookKey, options: Option[]): Half => ({
   type: "menu",
   options,
   get: () => setting(key),
-  set: (v) => setSetting(key, v as never),
+  set: (v) => writeSetting(key, v as never, src),
 });
 /** Half-hour steps from `from` to `to` (local minutes), labelled in the user's clock format. */
 const timeOptions = (from: number, to: number, step = 30): Option[] => {
@@ -526,9 +557,9 @@ const defaultOf = (k: keyof Settings): unknown =>
 const sameSnapshot = (a: ResetSnapshot, b: ResetSnapshot): boolean =>
   JSON.stringify(a.values) === JSON.stringify(b.values) && a.look?.theme === b.look?.theme && a.look?.skin === b.look?.skin;
 /** Write a snapshot: the store keys first (the schedule settles), then the theme and skin as a hand pick. */
-function applySnapshot(s: ResetSnapshot): void {
-  for (const k of Object.keys(s.values) as (keyof Settings)[]) setSetting(k, s.values[k] as never);
-  if (s.look) pickLook(s.look);
+function applySnapshot(s: ResetSnapshot, src: SettingSource): void {
+  for (const k of Object.keys(s.values) as (keyof Settings)[]) writeSetting(k, s.values[k] as never, src);
+  if (s.look) pickLook(s.look, src);
 }
 
 const SETUP_CLIENTS: Option[] = [
@@ -542,7 +573,7 @@ const SETUP_CLIENTS: Option[] = [
 export const settingsCard: CardDef = {
   id: "settings",
   title: "Settings",
-  mount: (host, opts) => mountSettings(host, false, opts),
+  mount: (host, opts) => mountSettings(host, "settings", false, opts),
 };
 
 // ── The Compass's index (COMPASS.md §3): the card's own rows, built once, inert ──
@@ -556,6 +587,10 @@ export interface SettingEntry {
   section: string;
   hint: () => string | undefined;
   when: () => boolean;
+  /** The store key the row writes, when it has one (the update card finds a changed default's row). */
+  key?: keyof Settings;
+  /** A choice row's options (the update card names a changed default's new value). */
+  options?: Option[];
   control?:
     | { kind: "toggle"; get: () => boolean; set: (on: boolean) => void }
     | { kind: "choice"; options: Option[]; get: () => string; set: (v: string) => void };
@@ -563,7 +598,8 @@ export interface SettingEntry {
 let entries: SettingEntry[] | null = null;
 export function settingsRows(): SettingEntry[] {
   if (entries) return entries;
-  const { sections } = mountSettings(document.createElement("div"), true);
+  // The index's rows are set from the Compass (a toggle or a choice in the bar).
+  const { sections } = mountSettings(document.createElement("div"), "compass", true);
   entries = sections.flatMap((s) =>
     s.rows
       .filter((r) => r.kind !== "html" && r.kind !== "head")
@@ -574,17 +610,19 @@ export function settingsRows(): SettingEntry[] {
         let control: SettingEntry["control"];
         if (r.kind === "toggle" && r.key) {
           const key = r.key;
-          control = { kind: "toggle", get: () => inForce(key), set: (on) => setSetting(key, on) };
+          control = { kind: "toggle", get: () => inForce(key), set: (on) => writeSetting(key, on, "compass") };
         } else if (r.kind === "choice" && r.key && !r.menu && r.options.length <= SPLIT_MAX) {
           const key = r.key;
           control = {
             kind: "choice",
             options: r.options,
             get: () => (r.get ? r.get() : String(inForce(key))),
-            set: (v) => (r.set ? r.set(v) : setSetting(key, v as never)),
+            set: (v) => (r.set ? r.set(v) : writeSetting(key, v as never, "compass")),
           };
         }
-        return { id: r.id, label, section: s.title, hint, when, control };
+        const key = "key" in r ? (r.key as keyof Settings | undefined) : undefined;
+        const options = r.kind === "choice" ? r.options : undefined;
+        return { id: r.id, label, section: s.title, hint, when, key, options, control };
       }),
   );
   return entries;
@@ -601,6 +639,9 @@ export interface SettingsPart {
   label?: string;
   /** A prefix on the fold keys, so a second panel keeps its own folds (docs/features/UpdatesButton.md). */
   fold?: string;
+  /** The rows only: no heading and no fold, for a part that sits inside a group of the host's
+   *  own (the updates panel's What's new, UPDATE-CARD.md §3.10). */
+  bare?: boolean;
 }
 
 /** The quick panel's rows (QUICK-SETTINGS.md §3): the Settings card's own sections, drawn by
@@ -608,17 +649,25 @@ export interface SettingsPart {
  *  no search, no folds, no section move, and it never answers a row request (the card does). */
 /** `aroundFold` wraps a group's fold (QUICK-SETTINGS.md §12): the panel reads its height
  *  before the change and animates to the new one after it. */
-export function mountSettingsParts(host: HTMLElement, parts: SettingsPart[], aroundFold?: (change: () => void) => void): CardInstance {
-  return mountSettings(host, false, undefined, parts, aroundFold);
+/** `source` names the host for the change log (UPDATE-CARD.md §3.9): the quick panel, the
+ *  grand opening, the updates panel. */
+export function mountSettingsParts(host: HTMLElement, parts: SettingsPart[], source: SettingSource, aroundFold?: (change: () => void) => void): CardInstance {
+  return mountSettings(host, source, false, undefined, parts, aroundFold);
 }
 
 function mountSettings(
   host: HTMLElement,
+  src: SettingSource,
   inert = false,
   mountOpts?: MountOpts,
   parts?: SettingsPart[],
   aroundFold: (change: () => void) => void = (change) => change(),
 ): CardInstance & { sections: Section[] } {
+  // Every write from this mount's rows names the mount as its source (the change log,
+  // UPDATE-CARD.md §3.9): these shadow the module's own for the rest of the mount.
+  const setSetting = <K extends keyof Settings>(key: K, value: Settings[K]): void => writeSetting(key, value, src);
+  const storeToggle = (id: string, label: string, key: BoolKey, hint?: () => string | undefined) => storeToggleFor(src, id, label, key, hint);
+  const storeMenu = (key: LookKey, options: Option[]) => storeMenuFor(src, key, options);
   // The search pill (MOVABLE-ROWS.md §10, fork S1 = 1A): the header idiom every other
   // card has, and the same slide-down field under it. It reads `settingsRows()` — the
   // Compass's own index — so there is one list of settings, not two.
@@ -688,6 +737,8 @@ function mountSettings(
 
   /** Write one Rust-owned Song of the Day row, then let sotd.ts tell every card. */
   const setRust = (cmd: string, args: Record<string, unknown>) => {
+    // The change log's name is the agent's: settings_set_sotd_day_start → sotdDayStart.
+    recordSetting(cmd.replace(/^settings_set_/, "").replace(/_(\w)/g, (_, c: string) => c.toUpperCase()), src);
     invoke(cmd, args)
       .then(() => refreshSotdSettings())
       .catch((e) => {
@@ -1038,12 +1089,12 @@ function mountSettings(
                 run: () => {
                   resetAsk = null;
                   const before = snapshotOf(groups);
-                  applySnapshot(defaultsOf(groups));
+                  applySnapshot(defaultsOf(groups), src);
                   toast({
                     kind: "success",
                     text: `${label} reset to the defaults.`,
                     timeout: RESET_UNDO_MS,
-                    actions: [{ label: "Undo", run: () => applySnapshot(before) }],
+                    actions: [{ label: "Undo", run: () => applySnapshot(before, src) }],
                   });
                 },
               },
@@ -1137,6 +1188,7 @@ function mountSettings(
           set: (on) => {
             minimizeToTray = on;
             invoke("settings_set_minimize_to_tray", { on }).catch((e) => console.error("[settings] tray", e));
+            recordSetting("closeToTray", src);
           },
         },
         {
@@ -1152,6 +1204,7 @@ function mountSettings(
           get: () => autostart,
           set: (on) => {
             autostart = on;
+            recordSetting("startWithWindows", src);
             invoke<boolean>("autostart_set", { on })
               .then((v) => { autostart = v; render(); })
               .catch((e) => console.error("[settings] autostart", e));
@@ -1230,10 +1283,10 @@ function mountSettings(
       rows: [
         // His style (2026-10-17): no colons, a direct name; it was "Enable / Disable these Cards:".
         headRow("g-cardlist", "Cards in the picker"),
-        ...HIDEABLE_CARDS.map(cardRow),
+        ...HIDEABLE_CARDS.map(cardRow(src)),
         // Each card's wait or instant (UX-COVERUPS.md §7.12, his W1 A: a second list under the first).
         headRow("g-cardwait", "Cover load animations"),
-        ...REVEAL_CARDS.map(waitRow),
+        ...REVEAL_CARDS.map(waitRow(src)),
       ],
     },
     // Look and feel became four sections on 2026-09-18 (fork 1C). RESET_GROUPS had split it
@@ -1378,7 +1431,7 @@ function mountSettings(
                 if (v) setSetting("glassPictureId", v);
               },
             },
-            { type: "action", label: "Choose", hint: "Opens a picture from your PC", run: () => pickWallpaper() },
+            { type: "action", label: "Choose", hint: "Opens a picture from your PC", run: () => pickWallpaper(src) },
           ],
           when: () => currentSkin() === "glass" && ownSetting("glassCanvas") === "picture",
         },
@@ -1788,6 +1841,7 @@ function mountSettings(
           set: (v) => {
             airplayCapture = v as AirplayCapture;
             invoke("settings_set_airplay_capture", { v }).catch((e) => console.error("[settings] airplay", e));
+            recordSetting("airplaySend", src);
           },
         },
       ],
@@ -1830,6 +1884,7 @@ function mountSettings(
           set: (on) => {
             lastfmScrobble = on;
             invoke("settings_set_lastfm_scrobble", { on }).catch((e) => console.error("[settings] lastfm scrobble", e));
+            recordSetting("lastfmScrobble", src);
             render();
           },
         },
@@ -1842,6 +1897,7 @@ function mountSettings(
           set: (on) => {
             lastfmNowPlaying = on;
             invoke("settings_set_lastfm_now_playing", { on }).catch((e) => console.error("[settings] lastfm now playing", e));
+            recordSetting("lastfmNowPlaying", src);
             render();
           },
         },
@@ -1895,7 +1951,7 @@ function mountSettings(
               hint: "Takes effect at once",
               run: () => {
                 if (sharePauseLeft()) setSetting("sharePauseUntil", 0);
-                else pauseSharingForAnHour();
+                else pauseSharingForAnHour(src);
                 render();
               },
             },
@@ -2192,6 +2248,7 @@ function mountSettings(
               set: (on) => {
                 agentControl = on;
                 invoke("settings_set_agent_control", { on }).catch((e) => console.error("[settings] agent", e));
+                recordSetting("agentControl", src);
                 render();
               },
             },
@@ -2213,6 +2270,7 @@ function mountSettings(
           set: (on) => {
             agentHistory = on;
             invoke("settings_set_agent_history", { on }).catch((e) => console.error("[settings] agent history", e));
+            recordSetting("agentHistory", src);
             render();
           },
         },
@@ -2226,6 +2284,7 @@ function mountSettings(
           set: (on) => {
             agentDiary = on;
             invoke("settings_set_agent_diary", { on }).catch((e) => console.error("[settings] agent diary", e));
+            recordSetting("agentDiary", src);
             render();
           },
         },
@@ -2259,6 +2318,7 @@ function mountSettings(
           hint: "Automatic: downloads in the background, then asks to restart. Ask: asks before the download",
           options: [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }],
         },
+        storeToggle("whatsnewevery", "Show what's new after every update", "whatsNewEveryUpdate", () => "What's new opens by itself after every update. Off: only after a bigger update, such as 1.2 to 1.3, that brings new settings"),
         {
           kind: "split", id: "updatecheck", label: "Check for updates",
           hint: () => "Asks music-api.deets.solutions for a newer version",
@@ -2789,6 +2849,7 @@ function mountSettings(
           );
           const tail = p.rows ? "" : tailOf(s);
           if (!rows.length && !tail) return "";
+          if (p.bare) return rows.map(rowHTML).join("") + tail;
           return quickGroups(s.title, rows)
             .map((g, i) => ({ ...g, key: (p.fold ?? "") + g.key, label: i === 0 && p.label ? p.label : g.label }))
             .map((g, i, all) => {
@@ -3127,7 +3188,7 @@ function mountSettings(
     e.preventDefault();
     row.classList.remove("is-drop");
     const file = e.dataTransfer!.files[0];
-    if (file) setWallpaperFromFile(file);
+    if (file) setWallpaperFromFile(file, src);
   });
   // Right-click the Picture row: rename or delete the picture in use (RULEZ.md §5.2). Delete
   // asks first, as a playlist delete does; a rule that names the picture goes idle.

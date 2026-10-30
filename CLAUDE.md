@@ -259,6 +259,14 @@ for word, with RELEASE.md's section numbers.
   the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
   volume*, default on), the scroll added up per notch, a trackpad's rise capped at 40 % a second
   (`src/wheel-step.ts`, pure; `src/wheel-volume.ts`). His calls §1.
+- `UPDATE-CARD.md` — BUILT 2026-10-29 on `updatez` (his calls §1, §1.1): the update card, the
+  grand opening's frame (`src/paged-card.ts`, now shared) with a page per version line from 1.0,
+  oldest first: the notes (leads only when too long), the new settings (`since` on every
+  `NEW_MARKS` line), a changed default's *Use it* (only while the value is the old one;
+  `DEFAULT_CHANGES` in settings-store.ts); Older search; opened by the Updates panel's *See the
+  new settings* and *What's New* in the Compass, never by itself. The Updates panel opens by
+  itself after a 1.X update with a new setting (§3.10). The settings change log: every
+  `setSetting(key, value, source)` (§3.9). §3.11–§3.12 the as-built records.
 - `GRAND-OPENING.md` — a project (2026-10-22, branch `grand-opening`), designed with him piece
   by piece: the startup screen, one large card over every card on first launch
   (`src/onboarding.ts`). Built: the frame (§1), the nav bar with Settings in it and the Compass row (§2), pages 2–3 and the glide (§4), page 1's welcome with the sign-ins (§5, `src/onboarding-welcome.ts`), the Happy skin's pair in front (§6), page 2's layout picks (§7, `src/onboarding-looks.ts`; the place API `setStartCards` in layout.ts), page 3 Fashion: skin and theme tiles in their own look, and the preview player with his three songs on the real record, drum and sea (§8, §8b, `src/onboarding-preview.ts`); Next / Let's Boogie (the launch's reveal, `revealApp`) and the warm-up after sign-in (§9); the walk waits for it to close.
@@ -368,13 +376,7 @@ a first load (§1); new theme slots later (§4, his note); the DeetsRGB widget t
 §9 the Halloween test (what tokens reach today), §10 the public layer that makes a mod
 future-proof, §11 the slots (images, ornaments, icons, cursors, motion presets); the Happy skin
 is the reference (`features/happy.md`).
-`UPDATE-CARD.md` — an idea (2026-10-26), designed, every fork his (§1): a copy of the
-grand-opening card on the first launch after an update that has a new setting or a changed
-default, one page per version oldest first: the notes (the bold leads expand when they do not fit),
-the new settings (`NEW_MARKS` gets `since`), previews; a changed default offered with *Use it*
-only while the user's value is the old one (§2: today a new default never reaches an existing
-user). × is done; *What's New* in the Compass holds the last 3 versions and an Older search
-page (§3.7). Not built.
+(`UPDATE-CARD.md` moved to `features/` when it was built, 2026-10-29.)
 `density.md` — an idea (2026-10-26, from user feedback): a Compact | Spacious setting for every
 shelf (the gap, the label, the cover size), a pick on Grand Opening page 2 and a row in Settings ›
 Window; the scrollbar hidden until hover, its gutter always reserved (his calls §2). §1 what the

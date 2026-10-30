@@ -112,6 +112,13 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
+- **The update card + the settings change log + the Updates panel's own open (2026-10-29, branch
+  `updatez`, uncommitted).** The change log and the panel's open: desk test passed. The card:
+  Claude's run on the dev app passed, his hand test open, and his review of Claude's choices
+  (features/UPDATE-CARD.md §3.12; a page per minor line first). The frame moved to
+  `src/paged-card.ts`: the grand opening is its first caller. The new row's `since` says 1.3.0:
+  fix it at release time. WORKLOG 2026-10-29.
+
 - **Friends on DM, the Home shelf (2026-10-29, shipped in 1.2.1).** The Friends worker is
   deployed. The two-app desk test is open: features/friends-shelf.md §5. WORKLOG 2026-10-29.
 

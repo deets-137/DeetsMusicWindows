@@ -149,7 +149,7 @@ const sessionScope = (): boolean => setting("homeHideLasts") === "session";
 const hiddenMap = (): Record<string, number> => (sessionScope() ? sessionHidden : setting("homeHidden"));
 const writeHidden = (m: Record<string, number>): void => {
   if (sessionScope()) sessionHidden = m;
-  else setSetting("homeHidden", m);
+  else setSetting("homeHidden", m, "panel");
 };
 
 /** Hide one tile. Returns an undo for the toast's button. */

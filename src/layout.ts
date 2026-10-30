@@ -536,7 +536,7 @@ export function initLayout(): void {
     const before = setting("hiddenCards");
     if (before.includes(id) || !canHide(before, id)) return;
     const where = comp.slots.find((s) => layout[s] === id);
-    setSetting("hiddenCards", [...before, id]);
+    setSetting("hiddenCards", [...before, id], "panel");
     const name = registry[id]?.title ?? id;
     toast({
       kind: "info",
@@ -544,7 +544,7 @@ export function initLayout(): void {
       actions: [{
         label: "Undo",
         run: () => {
-          setSetting("hiddenCards", setting("hiddenCards").filter((c) => c !== id));
+          setSetting("hiddenCards", setting("hiddenCards").filter((c) => c !== id), "panel");
           if (where) setSlot(where, id);
           diag.log("card:hide-undo", { card: id, slot: where ?? "" });
         },

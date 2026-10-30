@@ -22,13 +22,17 @@ import { mountVinyl } from "./vinyl";
 import { applyVinylAttrs, isVinylKey } from "./skin-settings";
 import { paintSkin, type SkinName } from "./skin";
 import { initMetalMaterial } from "./metal-material";
-import { onSettingsChange } from "./settings-store";
+import { onSettingsChange, setSettingsVersion, onSettingChanged } from "./settings-store";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { initHints } from "./hint";
 import { watchCsp } from "./csp-watch";
 import type { NpState } from "./np-bus";
 import { auroraSlots, type AlbumPalette } from "./album-slots";
 import type { Track } from "./library";
+import built from "virtual:release-notes";
+
+setSettingsVersion(built.version); // the change log's version (UPDATE-CARD.md §3.9)
+onSettingChanged((key, source) => log("setting", { key, source }));
 
 interface WinNowPlaying {
   present: boolean;

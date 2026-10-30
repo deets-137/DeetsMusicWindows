@@ -547,9 +547,15 @@ Rust-owned rows take readable keys: `closeToTray` → `settings_set_minimize_to_
 `settings_set_airplay_capture` (a change while a speaker plays reconnects it in place),
 `sotd` / `sotdDayStart` / `sotdPicksPerDay` / `sotdPostMode` / `sotdPostAt` → their own
 `settings_set_sotd*` commands (2026-09-18). After one,
-`notifyOwnedSettingChange()` (settings-store.ts) makes an open Settings card read them again.
+`notifyOwnedSettingChange(key, "agent")` (settings-store.ts) makes an open Settings card read
+them again, and records the change in the settings change log under that key
+([UPDATE-CARD.md](../features/UPDATE-CARD.md) §3.9). Every store write names its source too:
+`setSetting(key, value, "agent")`.
 A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass is the skin."
 `updateMode` is here and stays on `update action=mode` too (same write).
+`whatsNewEveryUpdate` (Updates › Show what's new after every update, 2026-10-29,
+[UPDATE-CARD.md](../features/UPDATE-CARD.md) §3.10) is an ordinary toggle: on, the Updates panel opens
+by itself after every update; off (the default), only after a 1.X update that brings a new setting.
 
 ### Writes
 

@@ -31,7 +31,7 @@ export function openInfoBoxMenu(e: MouseEvent, box: HTMLElement): void {
       // The row goes off for good (no more calls). Every open box of this kind fades out and
       // its cover slides back to the center, and comes back the same way on Undo (hero-slide.ts
       // watches the row).
-      setSetting(key, false);
+      setSetting(key, false, "panel");
       diag.log("info-box:hide", { kind });
       toast({
         kind: "info",
@@ -39,7 +39,7 @@ export function openInfoBoxMenu(e: MouseEvent, box: HTMLElement): void {
         actions: [
           {
             label: "Undo",
-            run: () => setSetting(key, true),
+            run: () => setSetting(key, true, "panel"),
           },
         ],
       });

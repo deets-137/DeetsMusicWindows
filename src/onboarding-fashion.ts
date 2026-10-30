@@ -82,7 +82,7 @@ export function mountFashion(host: HTMLElement): CardInstance {
     if (!b) return;
     const id = b.dataset.lookId!;
     diag.log("onboarding:look", { [b.dataset.lookKind!]: id });
-    pickLook(b.dataset.lookKind === "skin" ? { skin: id as SkinName } : { theme: id as ThemeName });
+    pickLook(b.dataset.lookKind === "skin" ? { skin: id as SkinName } : { theme: id as ThemeName }, "onboarding");
   };
   skinBox.addEventListener("click", onPick);
   themeBox.addEventListener("click", onPick);

@@ -190,7 +190,7 @@ export function mountLooks(host: HTMLElement): CardInstance {
     if (!v || currentSurface() !== "max") return; // Mini's and Midi's one layout is not a choice
     diag.log("onboarding:maxCards", { v });
     carryOrder("max", v);
-    setSetting("maxCards", v);
+    setSetting("maxCards", v, "onboarding");
   });
 
   // 3. The cards: the name, the switch (its own column), then Start with — the place the card
@@ -341,7 +341,7 @@ export function mountLooks(host: HTMLElement): CardInstance {
     const on = hidden.includes(id);
     if (!on && !canHide(hidden, id)) return; // the last three stay (HIDE-CARDS.md)
     diag.log("onboarding:card", { card: id, on });
-    setSetting("hiddenCards", on ? hidden.filter((c) => c !== id) : [...hidden, id]);
+    setSetting("hiddenCards", on ? hidden.filter((c) => c !== id) : [...hidden, id], "onboarding");
   });
 
   paintSurfaces();

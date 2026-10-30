@@ -74,7 +74,7 @@ export function mountNitpicks(host: HTMLElement): CardInstance {
   const mount = (col: string, parts: SettingsPart[]) => {
     const at = document.createElement("div");
     host.querySelector(`[data-col="${col}"]`)!.append(at);
-    return mountSettingsParts(at, parts);
+    return mountSettingsParts(at, parts, "onboarding");
   };
   const rules = mount("rules", RULES);
   const app = mount("app", APP);

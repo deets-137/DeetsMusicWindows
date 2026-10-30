@@ -530,7 +530,25 @@ export interface Settings {
   updateMode: "auto" | "ask" | "off";
   /** The version "Skip this version" (or a rollback) set aside; "" = none. A newer one is offered. */
   updateSkip: string;
+  /** The Updates panel opens by itself after every update (UPDATE-CARD.md §3.10). Off: only after
+   *  a 1.X update whose range brings a new setting or a changed default. updates-btn.ts reads it. */
+  whatsNewEveryUpdate: boolean;
 }
+
+/**
+ * A default that changed in a release (UPDATE-CARD.md §3.1): one line, in the same commit as the
+ * change to DEFAULTS. A user whose value is still `from` is offered `to` (§3.4); the app never
+ * changes it without their press. `since` is the release that brings it. Its version also opens
+ * the Updates panel by itself (§3.10).
+ */
+export interface DefaultChange {
+  since: string;
+  key: keyof Settings;
+  from: unknown;
+  to: unknown;
+  why: string;
+}
+export const DEFAULT_CHANGES: DefaultChange[] = [];
 
 const KEY = "deets.settings";
 
@@ -723,6 +741,7 @@ export const DEFAULTS: Settings = {
   agentSettings: "ask", // user's call 2026-09-15: a runtime permission on top of the off-only gates
   updateMode: "auto", // user's call 2026-09-14: download in the background, then ask to restart
   updateSkip: "",
+  whatsNewEveryUpdate: false, // his call 2026-10-29: by default only a 1.X update with a new setting opens it
 };
 
 /** Keys that lived on their own before the store (2026-09-10); read once, then owned here. */
@@ -968,9 +987,67 @@ export const adaptiveUnhidden = (): boolean => ADAPTIVE_UNHIDDEN;
 /** Adaptive sound is on right now: unhidden AND switched on. Read this, never `soundAdaptive`. */
 export const adaptiveOn = (): boolean => ADAPTIVE_UNHIDDEN && state.soundAdaptive;
 
+// ── the change log (docs/features/UPDATE-CARD.md §3.9, his call 7, 2026-10-29) ─────
+// Every write names where it came from. One record per key (the last write), kept beside the
+// store, plus one diag line per change. The value is never logged: it can be personal.
+/** Where a change came from. `app` is the app's own state (the walk's step, the New marks seen,
+ *  a skipped update): logged, never a user's pick. `before`: set before this log existed. */
+export type SettingSource =
+  | "onboarding" | "walk" | "settings" | "quick" | "compass" | "panel" | "update" | "agent" | "rule" | "app" | "before";
+export interface SettingChange {
+  source: SettingSource;
+  /** ms since the epoch; 0 for `before`. */
+  at: number;
+  /** The app version that made the change; "" for `before`. */
+  version: string;
+}
+const LOG_KEY = "deets.settings.log";
+let appVersion = "";
+/** main.ts and tray.ts give the version at boot (the store cannot import the virtual module:
+ *  the unit tests load this file). A write before that records "". */
+export const setSettingsVersion = (v: string): void => void (appVersion = v);
+let changeLog: Record<string, SettingChange> = loadLog();
+function loadLog(): Record<string, SettingChange> {
+  try {
+    const raw = localStorage.getItem(LOG_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, SettingChange>;
+  } catch {
+    /* corrupt or unavailable — start a new log */
+  }
+  // The first run with the log: a key that is not its default was set by hand before.
+  const log: Record<string, SettingChange> = {};
+  for (const k of Object.keys(DEFAULTS) as (keyof Settings)[])
+    if (JSON.stringify(state[k]) !== JSON.stringify(DEFAULTS[k])) log[k] = { source: "before", at: 0, version: "" };
+  saveLog(log);
+  return log;
+}
+function saveLog(log: Record<string, SettingChange>): void {
+  try {
+    localStorage.setItem(LOG_KEY, JSON.stringify(log));
+  } catch {
+    /* storage disabled — the log lives for the session */
+  }
+}
+const changeListeners = new Set<(key: string, source: SettingSource) => void>();
+/** diag.ts cannot be imported here (the tests load this file); main.ts wires the log line. */
+export function onSettingChanged(cb: (key: string, source: SettingSource) => void): () => void {
+  changeListeners.add(cb);
+  return () => changeListeners.delete(cb);
+}
+/** Record a change. `setSetting` calls it; so do the writes of Rust's own settings (Close to
+ *  tray, Start with Windows, Agent control), which are not in this store. */
+export function recordSetting(key: string, source: SettingSource): void {
+  changeLog = { ...changeLog, [key]: { source, at: Date.now(), version: appVersion } };
+  saveLog(changeLog);
+  changeListeners.forEach((cb) => cb(key, source));
+}
+/** The last change to `key`, or null (never changed since the log began, or still a default). */
+export const lastChange = (key: string): SettingChange | null => changeLog[key] ?? null;
+
 /** Write one setting (your value), persist, and notify subscribers. No-op if unchanged.
- *  Under an active rule the effective value does not move: `onOwnChange` hears it instead. */
-export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
+ *  Under an active rule the effective value does not move: `onOwnChange` hears it instead.
+ *  `source` says where the change came from (the change log above). */
+export function setSetting<K extends keyof Settings>(key: K, value: Settings[K], source: SettingSource): void {
   if (state[key] === value) {
     // Your value already, but a rule shows another: still a hand change (you picked what you
     // have, to see it again), so the rule hears it and stands aside.
@@ -985,6 +1062,8 @@ export function setSetting<K extends keyof Settings>(key: K, value: Settings[K])
   } catch {
     /* storage disabled — still applies for the session */
   }
+  for (const k of Object.keys(extra) as (keyof Settings)[]) if (before[k] !== state[k]) recordSetting(k, source);
+  recordSetting(key, source);
   // The day and night looks first: the schedule that turns on reads them.
   for (const k of Object.keys(extra) as (keyof Settings)[]) if (before[k] !== state[k]) listeners.forEach((cb) => cb(k));
   if (key in MIRROR) mirror(key, value);
@@ -1007,6 +1086,7 @@ window.addEventListener("storage", (e) => {
   if (e.key !== KEY) return;
   const prev = state;
   state = load();
+  changeLog = loadLog(); // the other window recorded its own change
   (Object.keys(state) as (keyof Settings)[]).forEach((k) => {
     if (prev[k] !== state[k]) listeners.forEach((cb) => cb(k));
   });
@@ -1020,7 +1100,12 @@ export function onOwnedSettingChange(cb: () => void): () => void {
   ownedListeners.add(cb);
   return () => ownedListeners.delete(cb);
 }
-export const notifyOwnedSettingChange = (): void => ownedListeners.forEach((cb) => cb());
+/** `key` is the agent's name for the Rust row (`closeToTray`, `agentControl`): the change log
+ *  records it under that name (UPDATE-CARD.md §3.9). */
+export const notifyOwnedSettingChange = (key: string, source: SettingSource): void => {
+  recordSetting(key, source);
+  ownedListeners.forEach((cb) => cb());
+};
 
 declare global {
   interface Window {
@@ -1033,5 +1118,5 @@ declare global {
 if (import.meta.env?.DEV && typeof window !== "undefined")
   window.__store = {
     get: (key) => ownSetting(key as keyof Settings),
-    set: (key, value) => setSetting(key as keyof Settings, value as never),
+    set: (key, value) => setSetting(key as keyof Settings, value as never, "app"),
   };

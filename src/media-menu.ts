@@ -98,7 +98,7 @@ export function playRows(
         if (how === "now") return opts.now ? opts.now(ts) : playTracks(ts, 0, context);
         // The Shuffle button's rule (shuffledPlay): the mode turns on, the list goes over in
         // order from a random song, and the queue shuffles the rest (3A, 2026-10-12).
-        if (how === "shuffle") return new Promise<void>((res, rej) => shuffledPlay(ts, (list, start) => playTracks(list, start, context).then(res, rej)));
+        if (how === "shuffle") return new Promise<void>((res, rej) => shuffledPlay(ts, (list, start) => playTracks(list, start, context).then(res, rej), "panel"));
         return how === "next" ? queueTracksNext(ts, context) : queueTracksLater(ts, context);
       })
       .catch(err(`play ${how}`));

@@ -37,3 +37,31 @@ export function compareVersions(a: string, b: string): number {
 export function rollbackSkip(skipWas: string, leaving: string): string {
   return skipWas && compareVersions(skipWas, leaving) > 0 ? skipWas : leaving;
 }
+
+/**
+ * Does the Updates panel open by itself at this launch (UPDATE-CARD.md §3.10, his call 9)?
+ * `last` is the version the app ran last ("" on a fresh install: never). Only after an update
+ * (a rollback or the same version: never). By default only when the major or minor number
+ * changed (1.2.X → 1.3.0, not 1.2.1 → 1.2.4) AND a version in the range (after `last`, up to
+ * `now`) brought a new setting or a changed default. `everyUpdate` (the What's new toggle):
+ * after every update, patch or not, with or without a setting.
+ */
+/**
+ * The versions of the default changes that still have something to offer this user (UPDATE-CARD.md
+ * §3.4, his call 12): their value is still the old default. A user who picked another value, or
+ * already has the new one, is not told. The app never changes the value itself.
+ */
+export function offeredDefaultVersions(
+  changes: readonly { since: string; key: string; from: unknown }[],
+  valueOf: (key: string) => unknown,
+): string[] {
+  return changes.filter((c) => JSON.stringify(valueOf(c.key)) === JSON.stringify(c.from)).map((c) => c.since);
+}
+
+export function opensWhatsNew(last: string, now: string, settingVersions: string[], everyUpdate: boolean): boolean {
+  if (!last || compareVersions(last, now) >= 0) return false;
+  if (everyUpdate) return true;
+  const mm = (v: string) => /^(\d+)\.(\d+)\./.exec(v.trim())?.slice(1, 3).join(".") ?? "";
+  if (mm(last) === mm(now)) return false;
+  return settingVersions.some((v) => compareVersions(v, last) > 0 && compareVersions(v, now) <= 0);
+}

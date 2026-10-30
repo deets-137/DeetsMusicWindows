@@ -336,7 +336,7 @@ function actionsHTML(g: Grouping, count: number, picked: number, enter: boolean)
  */
 export function runListAction<T>(act: string, items: T[], run: (list: T[], start: number) => void): void {
   if (!items.length) return;
-  if (act === "shuffle") return shuffledPlay(items, run);
+  if (act === "shuffle") return shuffledPlay(items, run, "panel");
   run(items, isShuffleOn() ? randomIndex(items.length) : 0);
 }
 

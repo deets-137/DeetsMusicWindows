@@ -556,7 +556,7 @@ export function initSleep(): void {
   });
   // Off sits inside the dial: its press must not start a turn.
   off.addEventListener("pointerdown", (e) => e.stopPropagation());
-  playout.addEventListener("click", () => setSetting("sleepPlayOut", !setting("sleepPlayOut")));
+  playout.addEventListener("click", () => setSetting("sleepPlayOut", !setting("sleepPlayOut"), "panel"));
 
   chips.forEach((c) =>
     c.addEventListener("click", () => {
@@ -567,13 +567,13 @@ export function initSleep(): void {
   );
   wind.addEventListener("click", () => {
     const i = WIND_STEPS.indexOf(setting("sleepWind"));
-    setSetting("sleepWind", WIND_STEPS[(i + 1) % WIND_STEPS.length]);
+    setSetting("sleepWind", WIND_STEPS[(i + 1) % WIND_STEPS.length], "panel");
   });
   sched.addEventListener("click", () => {
     const order: ("off" | "sun" | "clock")[] = ["off", "sun", "clock"];
-    setSetting("sleepSchedule", order[(order.indexOf(setting("sleepSchedule")) + 1) % order.length]);
+    setSetting("sleepSchedule", order[(order.indexOf(setting("sleepSchedule")) + 1) % order.length], "panel");
   });
-  const shiftTime = (delta: number) => setSetting("sleepAt", toHHMM((toMinutes(setting("sleepAt")) + delta + 1440) % 1440));
+  const shiftTime = (delta: number) => setSetting("sleepAt", toHHMM((toMinutes(setting("sleepAt")) + delta + 1440) % 1440), "panel");
   $("sleep-earlier")?.addEventListener("click", () => shiftTime(-15));
   $("sleep-later")?.addEventListener("click", () => shiftTime(15));
   off.addEventListener("click", () => disarm("button"));

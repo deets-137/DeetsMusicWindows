@@ -151,7 +151,7 @@ export function userRules(): Rule[] {
 
 /** Save your rules (Rulez). A row change rebuilds through the store's listener. */
 export function saveUserRules(rules: Rule[]): void {
-  setSetting("rules", { ...(allSettings().rules ?? EMPTY), v: 1, rules });
+  setSetting("rules", { ...(allSettings().rules ?? EMPTY), v: 1, rules }, "rule");
 }
 
 /** The recipes you turned on (RULEZ.md §4, route 3: all ship off). */
@@ -162,7 +162,7 @@ export function setRecipe(id: string, on: boolean): void {
   if (on) now.add(id);
   else now.delete(id);
   diag.log("rule:recipe", { id, on });
-  setSetting("rules", { ...stored, recipes: [...now] });
+  setSetting("rules", { ...stored, recipes: [...now] }, "rule");
 }
 
 /** For the Logs view: when each rule last ran, each rule's recent fires, the overlay and holds. */
@@ -661,7 +661,7 @@ function onHand(key: RuleKey): void {
   } else if (out.do === "off") {
     const row = "row" in rule.source ? rule.source.row : "";
     const off = ROW_OFF[row];
-    if (off) setSetting(off[0] as keyof Settings, off[1] as never);
+    if (off) setSetting(off[0] as keyof Settings, off[1] as never, "rule");
     recheck("hand");
   }
   // "learn": the feature wrote the row's data itself (sound.ts selectPreset); the rules are made

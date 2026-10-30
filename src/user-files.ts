@@ -89,7 +89,7 @@ export function loadFiles(): Promise<UserFile[]> {
     .then((r) => {
       files = r.files;
       if (r.migrated) {
-        setSetting("glassPictureId", r.migrated.id);
+        setSetting("glassPictureId", r.migrated.id, "app");
         diag.log("files:migrated", { id: r.migrated.id });
       }
       publish();

@@ -481,6 +481,7 @@ Mark one song a day ([DeetsOTD.md](../integrations/DeetsOTD.md)).
 | Control | What it does | Choices |
 |---|---|---|
 | Get updates | **Automatic** downloads in the background, then asks to restart. **Ask** asks before the download | **Automatic** / Ask / Off |
+| Show what's new after every update | **On**: the Updates panel opens with What's new after every update. **Off**: only after a 1.X update that brings a new setting. The same row sits in the Updates panel's What's new | On / **Off** |
 | Check for updates | **Check now** | — |
 | Roll back | Pick an older version and **Install** it | — |
 

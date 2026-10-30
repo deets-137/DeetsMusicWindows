@@ -25,7 +25,7 @@ import { getUpcoming, getHistory, getPlan, type TrackHandle } from "./queue";
 import { trackById } from "./track-store";
 import { currentCover, lookupPalette } from "./album-color";
 import { auroraSlots, type AlbumPalette } from "./album-slots";
-import { setting, setSetting, effective, onSettingsChange } from "./settings-store";
+import { setting, setSetting, effective, onSettingsChange, type SettingSource } from "./settings-store";
 import { addPicture } from "./user-files";
 import { tokenMs } from "./boot-cover";
 import * as diag from "./diag";
@@ -529,20 +529,20 @@ async function update(reason: string): Promise<void> {
 
 /** Save a picture the user chose or dropped as one of their files (user-files.ts: resized,
  *  its colors read) and show it: it becomes your picture. The canvas crossfades to it. */
-export function setWallpaperFromFile(file: File): void {
+export function setWallpaperFromFile(file: File, source: SettingSource): void {
   void addPicture(file).then((r) => {
-    if (r) setSetting("glassPictureId", r.id);
+    if (r) setSetting("glassPictureId", r.id, source);
   });
 }
 
 /** The Choose button: pick an image file for the canvas. */
-export function pickWallpaper(): void {
+export function pickWallpaper(source: SettingSource): void {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
   input.addEventListener("change", () => {
     const file = input.files?.[0];
-    if (file) setWallpaperFromFile(file);
+    if (file) setWallpaperFromFile(file, source);
   });
   input.click();
 }

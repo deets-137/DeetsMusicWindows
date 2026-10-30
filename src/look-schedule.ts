@@ -263,8 +263,8 @@ function keepShownLook(): void {
   const root = document.documentElement;
   const theme = root.dataset.theme as ThemeName | undefined;
   const skin = root.dataset.skin as SkinName | undefined;
-  if (theme && theme !== ownSetting("theme")) setSetting("theme", theme);
-  if (skin && skin !== ownSetting("skin")) setSetting("skin", skin);
+  if (theme && theme !== ownSetting("theme")) setSetting("theme", theme, "app");
+  if (skin && skin !== ownSetting("skin")) setSetting("skin", skin, "app");
 }
 
 /** Launch, before look.ts paints: the facts and the chip's words, then the plan. The engine

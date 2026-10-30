@@ -19,7 +19,7 @@ import { initWallpaper } from "./wallpaper";
 import { initArtworkHeal } from "./artwork-heal";
 import { initBrowserDefaults } from "./browser-defaults";
 import { initHints } from "./hint";
-import { setting, onSettingsChange, adaptiveUnhidden } from "./settings-store";
+import { setting, onSettingsChange, adaptiveUnhidden, setSettingsVersion, onSettingChanged } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
 import { nextSyncEnd } from "./library";
@@ -94,8 +94,14 @@ import { appleBackingOff } from "./apple-health";
 import { ruleChip } from "./rule-chip";
 import { launchMark } from "./launch-perf";
 import { watchCsp } from "./csp-watch";
+import built from "virtual:release-notes";
 
 launchMark("module");
+
+// The settings change log (UPDATE-CARD.md §3.9): each change carries this version, and one
+// diag line names the key and where the change came from. The value is never logged.
+setSettingsVersion(built.version);
+onSettingChanged((key, source) => diag.log("setting", { key, source }));
 
 // Wire the custom traffic lights to the OS window. The titlebar drag is
 // handled declaratively by data-tauri-drag-region="deep" on the <header> in index.html.
@@ -311,12 +317,12 @@ window.addEventListener("DOMContentLoaded", () => {
   // colors fade (UX-COVERUPS.md §6c.2). With a cover, the menu closes under it.
   document.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => {
     // A hand pick: your theme (look.ts paints it inside the transition and publishes it).
-    el.addEventListener("click", () => pickLook({ theme: el.dataset.themeChoice as ThemeName }, { close }));
+    el.addEventListener("click", () => pickLook({ theme: el.dataset.themeChoice as ThemeName }, "panel", { close }));
   });
 
   // Skin choices (same pattern as Theme) — the incoming skin's own entrance.
   document.querySelectorAll<HTMLElement>("[data-skin-choice]").forEach((el) => {
-    el.addEventListener("click", () => pickLook({ skin: el.dataset.skinChoice as SkinName }, { close }));
+    el.addEventListener("click", () => pickLook({ skin: el.dataset.skinChoice as SkinName }, "panel", { close }));
   });
   // The rule chip (RULES.md §9): a bolt while the look schedule shows its look, a hand while
   // your pick holds (a press gives the look back to the schedule).

@@ -962,7 +962,7 @@ export async function initFriends(): Promise<void> {
   // An hour's pause ends by itself. One timer, and it only ever writes when a pause ran.
   window.setInterval(() => {
     const until = setting("sharePauseUntil") || 0;
-    if (until && Date.now() >= until) setSetting("sharePauseUntil", 0);
+    if (until && Date.now() >= until) setSetting("sharePauseUntil", 0, "app");
   }, 30_000);
 }
 

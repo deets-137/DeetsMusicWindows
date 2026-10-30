@@ -679,7 +679,7 @@ export const formatCode = (code: string): string =>
 /** The name this app joins under. Empty until the member types one. */
 export const roomName = (): string => setting("roomName").trim();
 export function setRoomName(name: string): void {
-  setSetting("roomName", name.slice(0, 24));
+  setSetting("roomName", name.slice(0, 24), "panel");
 }
 
 // ── start / join / leave ─────────────────────────────────────────────────────
@@ -1402,7 +1402,7 @@ export function may(which: keyof GuestControls): boolean {
 export function setControls(patch: Partial<GuestControls>): void {
   if (!state.isHost) return;
   send({ type: "setControls", guestControls: patch });
-  setSetting("roomGuestControls", { ...storedControls(), ...patch });
+  setSetting("roomGuestControls", { ...storedControls(), ...patch }, "panel");
 }
 function storedControls(): GuestControls {
   return { ...DEFAULT_CONTROLS, ...(setting("roomGuestControls") as Partial<GuestControls>) };
