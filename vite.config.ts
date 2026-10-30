@@ -8,6 +8,39 @@ import { releaseNotesPlugin } from "./vite-release-notes";
 // passes Tauri's asset protocol, so its policy would not reach it.
 import { cspDevPlugin } from "./scripts/csp-dev-plugin.mjs";
 
+// The source maps of a build, moved out of it (USAGE-COUNTS.md §16): an error fingerprint names
+// a place in a minified chunk (`main.js:2:4439`), and `npm run errors:where` reads it back as a
+// source line through these. They go to installers/maps/<version>/ (gitignored, beside the
+// release's installers), never into dist/, so the app package carries none. A `--built` dev
+// app (VITE_PERF=1) keeps them in dist/ for the page sample.
+// Moved once the files are on disk: Vite's own last step adds a line to the top of a chunk
+// (`__vite__mapDeps`) and fixes its map then, so a map taken earlier is one line off (seen
+// 2026-10-30: every place read one line too high).
+import { copyFileSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
+import { dirname, join } from "node:path";
+function releaseMapsPlugin() {
+  return {
+    name: "release-maps",
+    apply: "build" as const,
+    enforce: "post" as const,
+    writeBundle(options: { dir?: string }, bundle: Record<string, unknown>) {
+      // @ts-expect-error process is a nodejs global
+      if (process.env.VITE_PERF === "1" || !options.dir) return;
+      const root = dirname(fileURLToPath(import.meta.url));
+      const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+      const out = join(root, "installers", "maps", version);
+      for (const name of Object.keys(bundle)) {
+        if (!name.endsWith(".map")) continue;
+        const from = join(options.dir, name);
+        const to = join(out, name);
+        mkdirSync(dirname(to), { recursive: true });
+        copyFileSync(from, to);
+        unlinkSync(from);
+      }
+    },
+  };
+}
+
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
@@ -34,15 +67,14 @@ function ipcTimingPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [ipcTimingPlugin(), copyEditPlugin(), releaseNotesPlugin(), cspDevPlugin()],
+  plugins: [ipcTimingPlugin(), copyEditPlugin(), releaseNotesPlugin(), cspDevPlugin(), releaseMapsPlugin()],
 
   // Two pages: the player (index.html) and the tray panel (tray.html, TRAY.md).
   build: {
-    // A `--built` dev app (VITE_PERF=1) writes hidden source maps beside the chunks: the page
-    // sample names a timer's line through them (page-sample.ts). Hidden = no comment in the JS,
-    // so the code is the same bytes. A release (no VITE_PERF) writes none.
-    // @ts-expect-error process is a nodejs global
-    sourcemap: process.env.VITE_PERF === "1" ? "hidden" : false,
+    // Hidden source maps (no comment in the JS, so the code is the same bytes). A `--built` dev
+    // app (VITE_PERF=1) keeps them beside the chunks for the page sample (page-sample.ts); any
+    // other build moves them to installers/maps/<version>/ (releaseMapsPlugin above).
+    sourcemap: "hidden",
     rollupOptions: {
       input: { main: "index.html", tray: "tray.html" },
     },

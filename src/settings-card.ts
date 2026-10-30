@@ -54,6 +54,7 @@ import * as frames from "./frames";
 import { enterRows } from "./pop";
 import { mcpPanel, type McpPanel } from "./mcp-panel";
 import { takeSettingRequest, onSettingRequest } from "./layout-bus";
+import { takeReportDraft } from "./report-draft";
 import { whatIsSent } from "./usage";
 import { rowDrag } from "./row-drag";
 import { searchField, fieldClearHTML } from "./search-field";
@@ -3302,6 +3303,17 @@ function mountSettings(
   };
   const takeRequest = () => {
     if (parts) return; // a toast's [Settings] opens the card; the quick panel never takes it
+    // An error toast's Report (report-draft.ts): fill the form, unless the user has typed in it.
+    const d = takeReportDraft();
+    if (d) {
+      if (!draft.title.trim() && !draft.body.trim()) {
+        draft.title = d.title;
+        draft.body = d.body;
+      }
+      draft.area = d.area;
+      draft.attach = true;
+      preview = null;
+    }
     const id = takeSettingRequest();
     if (id) focusRow(id);
   };

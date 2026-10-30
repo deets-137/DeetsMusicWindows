@@ -228,7 +228,11 @@ function watchSessions(): void {
         s.keyStatuses.forEach((v) => keys.push(String(v)));
         const exp = s.expiration;
         const ev = push({ kind: "keys", id, keys, expiresIn: Number.isFinite(exp) ? Math.round((exp - Date.now()) / 1000) : null });
-        if (keys.some((k) => k !== "usable")) diag.warn("license:keys", ev);
+        // "released" is a session MusicKit closed after its song: the normal end, once per song.
+        // As a warning it filled the log (222 lines in 4 days, so the 512 KB file kept 3 days)
+        // and counted on 12 of 14 installs' weekly reports (2026-10-30). The ring still has it.
+        if (keys.some((k) => k !== "usable" && k !== "released")) diag.warn("license:keys", ev);
+        else if (keys.some((k) => k !== "usable")) diag.log("license:keys", ev);
       });
       s.closed.then(() => push({ kind: "closed", id })).catch(() => {});
     } catch (e) {

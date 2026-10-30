@@ -2,7 +2,7 @@
 status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
-sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, scripts/usage-r2.mjs, docs/ops/checks/usage-worker.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md]
+sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, scripts/usage-r2.mjs, docs/ops/checks/usage-worker.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md, src/error-fp.ts, src/diag.ts, src-tauri/src/gpu.rs, src/license-watch.ts, scripts/errors-where.mjs, vite.config.ts, src/report-draft.ts]
 updated: 2026-10-30
 ---
 # DeetsMusic — Usage counts: how many people use the app, and how
@@ -177,6 +177,9 @@ a song.
   A Content Security Policy block is one WARN line in its own area per directive
   (`csp-connect-src`, …), so the report counts blocks per directive and never their host
   (his call C1, 2026-10-21, `architecture/CSP.md` §9, §12.2). The worker takes these names as they are.
+  A front-end line (`fe: player:stall …`) counts under `fe-` and its tag's family
+  (`fe-player`, `fe-window`, `fe-console`, `fe-toast` …, from `FE_FAMILIES` in `usage.rs`;
+  `fe-other` for the rest), §15.
 - **Panics, freezes, database write failures.** The panic hook, the freeze watchdog
   (`watchdog.rs`) and the database canary (`dbhealth.rs`) each add to a count.
 - **Apple calls.** The totals from `apple_calls.rs` (its 6 groups × 8 status classes), and the
@@ -957,3 +960,94 @@ One D1 update on the live `usage_counts`, channel `live`, from the zone log abov
 
 After it: 30 starts and 30 finishes in the 7 days, so the flag clears. Until the deploy, a new
 download in parts can add a false start again.
+
+## 15. The log areas read on live data (2026-10-30, built, not released)
+
+His ask, 2026-10-30, after the admin page's Health tab showed week 2026-W43 (14 reports): look
+into the logged errors and warnings. The three loudest areas, read against every log on his PC
+and the Windows event log:
+
+- **`fe` ERROR on 13 of 14 installs could not be read.** Every window line starts with `fe:`, so
+  uncaught errors, unhandled rejections, every `console.error` (MusicKit's own too) and the
+  error toasts were one count. His installed app had one in 4 days: MusicKit's own request,
+  `Failed to fetch` while offline, a promise MusicKit does not catch. **Built:** the `fe-`
+  families (§3.3). No worker change: the worker takes any `^[a-z][a-z-]{0,15}$` area. The list
+  is fixed in the code, so §2 holds (no text, no ID).
+- **`gpu` WARN on 12 of 14 installs was mostly not the GPU.** Every WebView2 process failure
+  was a `gpu:` WARN. On his PC 9 of 10 were kind 4 (a utility process), exit 0xC0000142,
+  8 of 10 within 20 s of a Windows wake, boot or sleep; the app acts only on kind 6. **Built:**
+  `process_failed_line` in `gpu.rs`: kind 6 keeps its `gpu:` WARN, the browser and renderer
+  processes (kinds 0–3) are a `webview:` WARN, the rest a `webview:` INFO (logged, not counted).
+- **`fe` WARN on 12 of 14 installs was mostly `license:keys`.** It warned on any key status but
+  `usable`, and every song ends with `released` (MusicKit closes its session): 222 lines in 4
+  days, so the 512 KB log kept 3 days. **Built:** `released` goes to the ring only
+  (`license-watch.ts`); `expired`, `output-restricted`, `internal-error` stay a warning.
+
+Tests: `a_front_end_line_counts_by_its_family_2026_10_30` (usage.rs) and
+`only_the_processes_that_matter_warn_2026_10_30` (gpu.rs). It reaches users with the next
+release; the first week of reports after it names the window's errors by family.
+
+## 16. Errors users never report (2026-10-30, built; the worker not deployed)
+
+His worry, 2026-10-30: a user meets an error, does not report it, calls the app clunky and
+stops using it. His calls the same day, of two forks: **1A**, automatic error fingerprints in
+the weekly health report, and **2A**, a Report button on error toasts that opens the bug form
+filled in. The log text itself never leaves without the user's Send: it holds song ids,
+speaker names, friend codes and paths (the site's privacy promise).
+
+### 16.1 The fingerprint
+
+`how.Type@place` with an optional `<caller`: `rejection.TypeError@main.js:2:4439<musickit.js:28:6351`.
+- **how:** `window` (an uncaught error), `rejection` (a promise nobody caught), `console`
+  (a `console.error`, MusicKit's too), `rust` (a panic).
+- **Type:** the error's `name` (`TypeError`, `MKError`), `String` or `Value` for anything else.
+- **place:** the first stack frame in a file we serve, as `file.js:line:col` with the build hash
+  and any query dropped; a panic's source file and line, no folder. When a frame from another
+  file (MusicKit) called that place, its place follows after `<`.
+- **Never** the message: a message can carry a song, a playlist or a path.
+
+`src/error-fp.ts` makes it (pure; `tests/error-fp.test.ts`). `diag.ts` adds it as `fp` to the
+three ERROR lines it writes (`window:error`, `window:unhandledrejection`, `console:error`), so the
+local log shows it too. `usage.rs` reads `"fp":"…"` from a front-end ERROR line and makes a
+panic's from its `at`; each passes one character rule (`fp_ok`), the same as the worker's `FP`.
+At most 30 a week, any more count as `other`. The report carries `"errors": {fp: count}`.
+
+### 16.2 The worker
+
+`healthWrites` stores each as `err.<fp>` with the count's range, like every health metric:
+installs per range, per version, under the week the report covers. A fingerprint that fails
+`FP` is dropped (checked on a local worker 2026-10-30: a place holding a Windows path was
+dropped, `<` and `other` were kept). A report from an app before this change has no `errors`,
+and the worker before this change ignores the field, so the app and the worker can ship in
+either order. **Built in `../DeetsSupport/src/usage.js`, not deployed: the deploy is his call.**
+
+### 16.3 Reading a place
+
+The release build writes hidden source maps and moves them to `installers/maps/<version>/`
+after the files are written (`releaseMapsPlugin` in vite.config.ts), so the app package carries
+none. Taken earlier, a map is one line off: Vite's own last step adds `__vite__mapDeps` to the top
+of a chunk. `npm run errors:where -- <version> <place>` prints the source file, the line and the
+lines around it, through `src/source-map-lite.ts`. A place in `musickit.js` is Apple's: no map.
+A release built before this change kept no maps, so its places cannot be read back.
+
+### 16.4 The admin page
+
+Health › **Error kinds** (DeetsSolutions `admin.js` `renderErrKinds`): one row per fingerprint,
+most installs first, `other` last: the place, the type, how it reached the log, installs (and
+the share of the week's reports), the versions. A kind no earlier week on the tab has wears
+**new**. *Needs a look* flags a kind on the newest version that no other version and no
+earlier week has (`FLAG.newErrMin`, 1 install, a draft for his edit).
+
+### 16.5 Report on an error toast
+
+TOASTS.md §2: every error toast that is not a question gets **[Report]**, which opens Settings ›
+Bugs filled in (`report-draft.ts`). Uncaught errors with no toast are seen only through §16.1.
+
+### 16.6 What Claude decided inside his calls
+
+- The fingerprint's parts and its character rule; the 30-a-week cap; panics included.
+- The place is our own first frame, with MusicKit's caller after `<`, because most of the
+  window's errors pass through our fetch wrap on their way out of MusicKit.
+- The maps live in `installers/` (local, gitignored), not in the repo or on R2.
+- The Report button's draft wording and that it keeps text the user already typed.
+- "new" means not seen in the 8 weeks the tab reads; the flag fires from 1 install.

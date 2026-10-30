@@ -38,6 +38,8 @@
 
 import { effective } from "./settings-store";
 import * as diag from "./diag";
+import { startReport, type ReportDraft } from "./report-draft";
+import { WEB_ROOMS } from "./platform";
 import "./styles/toast.css";
 
 export type ToastKind = "info" | "success" | "warn" | "error";
@@ -93,6 +95,17 @@ const ASK_WAIT_MS = 30_000; // a question answered after you forgot you asked it
 
 /** The log copy drops every “quoted” name — LOGGING.md §Ids, never titles. */
 const strip = (t: string): string => t.replace(/“[^”]*”/g, "“…”");
+
+/** A bug report from an error toast: the title is its first words (the form takes 10), the
+ *  details say what the app showed; the user adds what they were doing before Send. */
+function reportDraft(text: string): ReportDraft {
+  const words = text.replace(/[.!]+$/, "").split(/\s+/).filter(Boolean);
+  return {
+    title: words.slice(0, 10).join(" "),
+    body: `The app showed: ${text}\n\nWhat I was doing: `,
+    area: "other",
+  };
+}
 
 let host: HTMLElement | null = null;
 function ensureHost(): HTMLElement {
@@ -279,6 +292,11 @@ export function toast(opts: ToastOptions): ToastHandle {
   // Buttons: the caller's actions, then the notice's own close ("Got it" for a once-notice,
   // "Don't show again" for a dismissKey notice), then Dismiss (any other sticky toast).
   const buttons: ToastAction[] = [...(opts.actions ?? [])];
+  // An error the user is told about can be sent from here in one step (his call 2A,
+  // 2026-10-30): Report opens Settings › Bugs with the form filled. A question is not an error.
+  // The draft carries the log copy (names stripped): a report becomes a post on the support page.
+  // The web rooms port has no Settings card to send from.
+  if (kind === "error" && !asks && !notice && !WEB_ROOMS) buttons.push({ label: "Report", run: () => startReport(reportDraft(logged)) });
   if (opts.onceKey) buttons.push({ label: "Got it" });
   else if (notice) buttons.push({ label: "Don't show again", run: () => silenceNotice(noticeKey!) });
   // A question that brings its own Cancel (the delete confirm) or Later (the update offer)

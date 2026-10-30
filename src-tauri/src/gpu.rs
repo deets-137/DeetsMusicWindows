@@ -26,6 +26,42 @@ struct Failed {
     exit_code: Option<i32>,
 }
 
+/// The log line for a WebView2 process failure, and whether it is a WARN. Every kind was one
+/// `gpu:` WARN until 2026-10-30, and that area read on 12 of 14 installs (week 2026-W43). On his
+/// PC 9 of 10 were kind 4, a UTILITY process, exit 0xC0000142 (a DLL failed to start), within
+/// 20 s of a Windows wake, boot or sleep: Windows changing state, not a fault, and the app does
+/// nothing on it. Now the GPU process keeps its `gpu:` WARN (GRAPHICS-FALLBACK.md reads it), the
+/// browser and renderer processes are a `webview:` WARN (the window can go blank), and the rest
+/// is a `webview:` INFO, so it is in the log but never counted.
+fn process_failed_line(kind: i32, exit: Option<i32>) -> (String, bool) {
+    let what = match kind {
+        0 => "the browser process exited",
+        1 => "the renderer exited",
+        2 => "the renderer stopped answering",
+        3 => "a frame's renderer exited",
+        4 => "a utility process exited",
+        5 => "a sandbox helper exited",
+        6 => return (format!("gpu: a WebView2 process failed (kind 6, exit {exit:?})"), true),
+        _ => "another process exited",
+    };
+    (format!("webview: {what} (kind {kind}, exit {exit:?})"), kind <= 3)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::process_failed_line;
+
+    #[test]
+    fn only_the_processes_that_matter_warn_2026_10_30() {
+        let (gpu, warn) = process_failed_line(6, Some(1));
+        assert!(warn && gpu.starts_with("gpu: a WebView2 process failed (kind 6"));
+        let (util, warn) = process_failed_line(4, Some(-1073741502));
+        assert!(!warn && util.starts_with("webview: a utility process exited"));
+        assert!(process_failed_line(1, None).1, "a renderer crash stays a warning");
+        assert!(process_failed_line(0, None).1, "so does the browser process");
+    }
+}
+
 /// Add the `ProcessFailed` handler to the main window's WebView. A failure to add it is one
 /// log line: the page's own timer still reads the renderer every 5 minutes (§4.3).
 pub fn watch(app: &AppHandle, win: &WebviewWindow) {
@@ -41,7 +77,8 @@ pub fn watch(app: &AppHandle, win: &WebviewWindow) {
                     let mut code = 0i32;
                     unsafe { a2.ExitCode(&mut code) }.ok().map(|_| code)
                 });
-                log::warn(&format!("gpu: a WebView2 process failed (kind {}, exit {:?})", kind.0, exit_code));
+                let line = process_failed_line(kind.0, exit_code);
+                if line.1 { log::warn(&line.0) } else { log::info(&line.0) }
                 // Only the GPU process matters here; a renderer crash has its own path.
                 if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED {
                     let _ = app.emit("gpu-process-failed", Failed { kind: kind.0, exit_code });

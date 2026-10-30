@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-20
-sources: [src/toast.ts, src/styles/toast.css]
-updated: 2026-10-23
+sources: [src/toast.ts, src/styles/toast.css, src/report-draft.ts]
+updated: 2026-10-30
 ---
 # DeetsMusic — Toasts
 
@@ -59,6 +59,14 @@ The kind is severity; sticky-or-timed is *what the user must do*:
   a notice and sticky.
 
 A caller may override `sticky` either way; none does today.
+
+**Report on an error (his call 2A, 2026-10-30; USAGE-COUNTS.md §16).** Every `error` toast that
+is not a question and not a notice gets a **[Report]** button before Dismiss, in the app only
+(not in the web rooms port). It opens Settings › Bugs with the form filled
+(`report-draft.ts`, the `requestSetting` pattern): the title is the toast's first 10 words, the
+details read *The app showed: …* then *What I was doing:*, and Attach log is on. It uses the
+log copy of the text, so a “quoted” name is “…” there: a report becomes a post on the support
+page. Text the user already typed in the form is kept. Nothing is sent until they press Send.
 
 ## 3. Where it differs from the site
 

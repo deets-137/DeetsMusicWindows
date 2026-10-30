@@ -31,10 +31,30 @@ const BODY_MAX: usize = 12 * 1024;
 /// code writes them on 2026-10-13. Any other area is counted as `other`. The worker takes any
 /// short lowercase name, so a new area here needs no worker deploy.
 const AREAS: &[&str] = &[
-    "apple", "app", "audio-out", "autostart", "bridge", "db", "dev", "enrich", "fe", "friends",
+    "apple", "app", "audio-out", "autostart", "bridge", "db", "dev", "enrich", "friends",
     "gpu", "launch", "lastfm", "library", "playlists", "report", "rooms", "settings", "sign-in",
     "smtc", "sotd", "token", "ui", "update", "usage", "watchdog", "web", "webview",
 ];
+
+/// A front-end line (`fe: player:stall {…}`) counts under `fe-` and its tag's family, so a week's
+/// report says which part of the window failed: one `fe` bucket held every window error, MusicKit's
+/// console errors and the error toasts at once (13 of 14 installs, week 2026-W43, and nothing to
+/// tell them apart). A family not listed is `fe-other`. Each name is at most 16 characters, the
+/// worker's limit.
+const FE_FAMILIES: &[&str] = &[
+    "account", "airplay", "apple", "boot", "console", "fetchwrap", "files", "filter", "friends",
+    "lastfm", "library", "license", "net", "onboarding", "player", "playlist", "room", "rule",
+    "settings", "sleep", "sound", "toast", "update", "usage", "web", "window",
+];
+
+/// The area of a front-end line's text after `fe:`.
+fn fe_area(rest: &str) -> String {
+    let family = rest.trim_start().split(|ch: char| ch == ':' || ch == ' ' || ch == '{').next().unwrap_or("");
+    match FE_FAMILIES.iter().find(|f| **f == family) {
+        Some(f) => format!("fe-{f}"),
+        None => "fe-other".to_string(),
+    }
+}
 
 const GROUPS: [&str; 6] = crate::apple_calls::GROUPS;
 const CLASSES: [&str; 8] = crate::apple_calls::CLASSES;
@@ -51,6 +71,8 @@ struct Counts {
     backoff_arms: u64,
     /// GROUPS × CLASSES, as `apple_calls.rs` keeps them.
     apple: Vec<Vec<u64>>,
+    /// ERROR lines by fingerprint (§16): the window's `fp` field, or a panic's file and line.
+    errors: BTreeMap<String, u64>,
 }
 
 impl Counts {
@@ -60,6 +82,9 @@ impl Counts {
         }
         for (k, v) in &o.warn {
             *self.warn.entry(k.clone()).or_default() += v;
+        }
+        for (k, v) in &o.errors {
+            note_fp(&mut self.errors, k, *v);
         }
         self.panics += o.panics;
         self.freezes += o.freezes;
@@ -104,6 +129,7 @@ impl Counts {
             "dbWriteFails": self.db_write_fails,
             "apple": apple,
             "backoffArms": self.backoff_arms,
+            "errors": self.errors,
         })
     }
 }
@@ -135,18 +161,80 @@ fn with_now(f: impl FnOnce(&mut Counts)) {
 
 /// A WARN or ERROR line (log.rs `write`). `level` is "WARN " or "ERROR".
 pub fn note_log(level: &str, msg: &str) {
-    let word = msg.split_once(':').map(|(w, _)| w).unwrap_or("");
+    let (word, rest) = msg.split_once(':').unwrap_or(("", ""));
     with_now(|c| {
         if word == "panic" {
             c.panics += 1;
+            if let Some(fp) = panic_fp(rest) {
+                note_fp(&mut c.errors, &fp, 1);
+            }
             return;
         }
-        // A CSP block is its own area per directive, `csp-connect-src` (CSP.md §9, his call C1).
-        let csp = word.strip_prefix("csp-").filter(|d| *d == "other" || crate::csp::DIRECTIVES.contains(d)).map(|_| word);
-        let area = csp.or_else(|| AREAS.iter().find(|a| **a == word).copied()).unwrap_or("other");
-        let map = if level.starts_with("ERROR") { &mut c.error } else { &mut c.warn };
-        *map.entry(area.to_string()).or_default() += 1;
+        let area = log_area(word, rest);
+        let error = level.starts_with("ERROR");
+        if error && word == "fe" {
+            if let Some(fp) = fe_fp(rest) {
+                note_fp(&mut c.errors, fp, 1);
+            }
+        }
+        let map = if error { &mut c.error } else { &mut c.warn };
+        *map.entry(area).or_default() += 1;
     });
+}
+
+// ── Error fingerprints (§16, his call 1A, 2026-10-30) ───────────────────────────
+// What broke and where in the code, never a message: `src/error-fp.ts` makes the window's
+// (`window.TypeError@main.js:2:4439`), and a panic's is its source file and line. The worker
+// holds them to the same characters.
+
+/// At most this many fingerprints a week; any more count as `other`.
+const MAX_FPS: usize = 30;
+
+fn fp_ok(fp: &str) -> bool {
+    let Some((head, place)) = fp.split_once('@') else { return false };
+    let Some((family, name)) = head.split_once('.') else { return false };
+    let part = |s: &str| !s.is_empty() && s.len() <= 48 && s.chars().all(|ch| ch.is_ascii_alphanumeric() || "_.:-".contains(ch));
+    let (at, via) = place.split_once('<').map_or((place, None), |(a, v)| (a, Some(v)));
+    !family.is_empty()
+        && family.chars().all(|ch| ch.is_ascii_lowercase())
+        && name.len() <= 24
+        && name.chars().next().is_some_and(|ch| ch.is_ascii_alphabetic())
+        && name.chars().all(|ch| ch.is_ascii_alphanumeric())
+        && part(at)
+        && via.is_none_or(part)
+}
+
+fn note_fp(map: &mut BTreeMap<String, u64>, fp: &str, n: u64) {
+    let key = if map.contains_key(fp) || map.len() < MAX_FPS { fp } else { "other" };
+    *map.entry(key.to_string()).or_default() += n;
+}
+
+/// The `"fp":"…"` field of a front-end ERROR line, when it passes the rule.
+fn fe_fp(rest: &str) -> Option<&str> {
+    let start = rest.find("\"fp\":\"")? + 6;
+    let len = rest[start..].find('"')?;
+    let fp = &rest[start..start + len];
+    fp_ok(fp).then_some(fp)
+}
+
+/// A panic line's place (`… at src\usage.rs:140`) as `rust.panic@usage.rs:140`: the file name
+/// only, so no folder of the machine that built it.
+fn panic_fp(rest: &str) -> Option<String> {
+    let at = rest.rsplit_once(" at ")?.1.trim();
+    let (path, line) = at.rsplit_once(':')?;
+    let file = path.rsplit(['/', '\\']).next()?;
+    let fp = format!("rust.panic@{file}:{line}");
+    fp_ok(&fp).then_some(fp)
+}
+
+/// The area a line counts under: `word` before its first `:`, `rest` after it.
+fn log_area(word: &str, rest: &str) -> String {
+    if word == "fe" {
+        return fe_area(rest);
+    }
+    // A CSP block is its own area per directive, `csp-connect-src` (CSP.md §9, his call C1).
+    let csp = word.strip_prefix("csp-").filter(|d| *d == "other" || crate::csp::DIRECTIVES.contains(d)).map(|_| word);
+    csp.or_else(|| AREAS.iter().find(|a| **a == word).copied()).unwrap_or("other").to_string()
 }
 
 /// The window stopped answering (watchdog.rs).
@@ -382,6 +470,43 @@ mod tests {
         assert_eq!(r["log"]["error"]["lastfm"], 3);
         assert_eq!(r["week"], "2026-W41");
         assert_eq!(r["freezes"], 1);
+    }
+
+    #[test]
+    fn a_front_end_line_counts_by_its_family_2026_10_30() {
+        assert_eq!(log_area("fe", " window:unhandledrejection {\"reason\":\"x\"}"), "fe-window");
+        assert_eq!(log_area("fe", " toast {\"text\":\"x\"}"), "fe-toast");
+        assert_eq!(log_area("fe", " sound:clockSlip {}"), "fe-sound");
+        assert_eq!(log_area("fe", " rulezPlaylist:fail {}"), "fe-other", "a family not listed");
+        assert_eq!(log_area("lastfm", " scrobble failed"), "lastfm");
+        assert_eq!(log_area("nope", ""), "other");
+        // Every name fits the worker's area rule: lowercase, at most 16 characters.
+        for f in FE_FAMILIES {
+            let a = format!("fe-{f}");
+            assert!(a.len() <= 16 && a.chars().all(|ch| ch.is_ascii_lowercase() || ch == '-'), "{a}");
+        }
+    }
+
+    #[test]
+    fn an_error_counts_by_its_fingerprint_never_its_text_2026_10_30() {
+        let line = r#" window:unhandledrejection {"reason":"Failed to fetch","at":"x","fp":"rejection.TypeError@main.js:2:4439<musickit.js:28:6351"}"#;
+        assert_eq!(fe_fp(line), Some("rejection.TypeError@main.js:2:4439<musickit.js:28:6351"));
+        assert_eq!(fe_fp(r#" toast {"text":"x"}"#), None, "no fp field");
+        assert_eq!(fe_fp(r#" window:error {"fp":"window.Type Error@main.js:1:1"}"#), None, "a space fails the rule");
+        assert_eq!(fe_fp(r#" window:error {"fp":"window.Error@C:\\Users\\x"}"#), None, "a path fails the rule");
+        assert_eq!(
+            panic_fp(r" called `Option::unwrap()` on a `None` value at src\usage.rs:140").as_deref(),
+            Some("rust.panic@usage.rs:140"),
+        );
+        let mut m = BTreeMap::new();
+        for k in 0..MAX_FPS + 5 {
+            note_fp(&mut m, &format!("window.Error@main.js:{k}:1"), 1);
+        }
+        assert_eq!(m.len(), MAX_FPS + 1, "past the cap, one `other`");
+        assert_eq!(m["other"], 5);
+        let mut c = Counts::default();
+        c.errors.insert("window.Error@main.js:1:1".into(), 2);
+        assert_eq!(c.report("2026-W44")["errors"]["window.Error@main.js:1:1"], 2);
     }
 
     #[test]

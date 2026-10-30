@@ -13,6 +13,7 @@
 // form opening — so a crash still leaves a trace.
 
 import { invoke } from "@tauri-apps/api/core";
+import { errorFp } from "./error-fp";
 
 export interface DiagEvent {
   n: number; // sequence number, monotonic for the session — what a flush counts from
@@ -168,7 +169,9 @@ async function copyReport(): Promise<void> {
 window.addEventListener("error", (e) => {
   setTimeout(() => {
     if (e.defaultPrevented) return log("window:error", { msg: e.message, swallowed: true });
-    error("window:error", { msg: e.message, src: e.filename, line: e.lineno });
+    // `fp` is what the weekly report counts (usage.rs reads it from this line): no message.
+    const fp = errorFp("window", e.error, e.error?.stack, { origin: location.origin, fallback: `${e.filename}:${e.lineno}:${e.colno}` });
+    error("window:error", { msg: e.message, src: e.filename, line: e.lineno, fp });
     flushOnError();
   }, 0);
 });
@@ -187,7 +190,8 @@ window.addEventListener("unhandledrejection", (e) => {
   setTimeout(() => {
     const reason = e.reason instanceof Error ? e.reason.message : String(e.reason?.message ?? e.reason);
     if (e.defaultPrevented) return log("window:unhandledrejection", { reason, swallowed: true });
-    error("window:unhandledrejection", { reason, at: topFrames(e.reason?.stack) });
+    const fp = errorFp("rejection", e.reason, e.reason?.stack, { origin: location.origin });
+    error("window:unhandledrejection", { reason, at: topFrames(e.reason?.stack), fp });
     flushOnError();
   }, 0);
 });
@@ -220,8 +224,14 @@ for (const level of ["error", "warn"] as const) {
     if (msg.startsWith("[diag]")) return; // this file's own complaints
     inConsoleHook = true;
     try {
-      if (level === "error") error("console:error", { msg });
-      else log("console:warn", { msg });
+      if (level === "error") {
+        // An Error passed in has the stack that matters; else the caller's place, past this hook.
+        const thrown = args.find((a) => a instanceof Error) as Error | undefined;
+        const fp = thrown
+          ? errorFp("console", thrown, thrown.stack, { origin: location.origin })
+          : errorFp("console", { name: "Console" }, new Error().stack, { origin: location.origin, skip: 1 });
+        error("console:error", { msg, fp });
+      } else log("console:warn", { msg });
     } finally {
       inConsoleHook = false;
     }
