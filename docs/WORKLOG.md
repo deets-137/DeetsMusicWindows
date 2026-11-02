@@ -25,8 +25,16 @@ updated: 2026-11-01
   on 13 of 14. The `fe` share is the same on both versions. Fingerprints arrive with 1.3.0.
 - **A stray file:** a `>` in a `wrangler --command` became a `cmd` redirect and wrote
   `strftime('%s'` (wrangler's help text) into `../DeetsSupport`; deleted.
-- **The live MCP designed (his calls L1–L3):** [LIVE-MCP.md](ops/LIVE-MCP.md). Not built; the
-  read-only token probe (§5) comes first.
+- **The live MCP designed (his calls L1–L4):** [LIVE-MCP.md](ops/LIVE-MCP.md). L4 is the remote
+  route: on the DeetsSupport worker behind Cloudflare Access, so he can check from his phone or
+  claude.ai, and a worker cron emails a flag. Not built.
+- **The D1 Read token probe:** part 1 from Cloudflare's API reference (D1 Read is accepted on
+  the query endpoint). Part 2 (does it refuse a write) was never run; with L4 no token reads the
+  D1, so it is no longer needed.
+- **A friend on the project (his question):** the private repos need a collaborator invite; the
+  release keys stay on his PC; the build and Last.fm keys can be shared (both readable from the
+  exe), the Apple developer account cannot (DPLA §2.8); the docs assume one owner, so a line must
+  name who decides before a second person's Claude reads them.
 
 ## 2026-11-01 — Docs: DESIGN.md archived, CLAUDE.md trimmed, a staleness pass
 

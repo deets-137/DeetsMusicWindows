@@ -197,6 +197,8 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.
 - `NET-CALLS.md` — one counter for every outside call (not built; §1 what talks to the network).
+- `LIVE-MCP.md` — a remote MCP on the DeetsSupport worker, behind Cloudflare Access, that
+  reads the live support D1 with fixed queries; no tool returns a post's `code`, `uid` or `meta`.
 - `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (`apple_calls.rs`); which
   commands are background jobs.
 **`docs/ideas/`** — not built; never tell a user the app does these. Where he designs the

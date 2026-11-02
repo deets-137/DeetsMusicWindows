@@ -248,6 +248,10 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
 - **Deets posts and Pictures on posts** (2026-10-30, his calls D1–D4, P1): polls and
   suggestions every install receives, and pictures on forum posts. DeetsSolutions
   docs/support.md › The forum page.
+- **The live MCP** (2026-11-01, his calls L1–L4): a remote MCP on the DeetsSupport worker
+  behind Cloudflare Access, for his phone, claude.ai and sessions; fixed queries, a combined
+  `live_check`, a daily email on a flag, no week-over-week yet. The build-time checks are
+  [LIVE-MCP.md](ops/LIVE-MCP.md) §5; build and deploy on his go.
 - **S2's week of mirror dates** (apple-calls.md S2), with no code: one read-only call a day,
   from a script, so the evidence is ready when S2 is built.
 
