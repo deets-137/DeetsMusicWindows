@@ -240,7 +240,8 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
 - **The loading set** (built 2026-10-17, a back-pocket tool): the first `latency.json` is thin
   (n ≈ 5); run `npm run latency:profile` again after some days of use. guide/LOADING-SET.md §7.
 - **The first public installs:** watch the `csp-` areas in the weekly health counts (the CSP
-  enforces since 1.0.0; CSP.md §9).
+  enforces since 1.0.0; CSP.md §9). Read 2026-11-01: none through week W44 (37 installs on
+  1.2.1); the desk test passed on that (CSP.md §10.1). Keep an eye on it after a policy change.
 
 ### Decided, not built (his next sittings)
 

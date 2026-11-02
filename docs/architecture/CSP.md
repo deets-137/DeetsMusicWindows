@@ -1,13 +1,14 @@
 ---
 status: shipped
 shipped_in: 1.0.0
-desk_test: open
+desk_test: passed 2026-11-01
 sources: [src-tauri/tauri.conf.json, src-tauri/src/csp.rs, src-tauri/src/lib.rs, src-tauri/src/velo.rs, src-tauri/src/usage.rs, index.html, src/csp-watch.ts, src/main.ts, src/tray.ts, src/dom.ts, src/settings-card.ts, src/updates-btn.ts, scripts/csp-dev-plugin.mjs, scripts/csp-relax.mjs, scripts/release-check.mjs, vite.config.ts]
 updated: 2026-11-01
 ---
 # A Content Security Policy for the webview
 
-> **Designed and built 2026-10-21; the desk test (§10) is open. §12 is the as-built record.
+> **Designed and built 2026-10-21; enforced since 1.0.0; the desk test (§10) passed on live
+> 2026-11-01 (§10.1). §12 is the as-built record.
 > Every fork closed (C1 a, §9).** The owner asked for it after the
 > whole-app security review of 2026-10-21, before the official release. This doc replaces
 > Part A of `ideas/SECRETS-AND-CSP.md` (2026-09-29). That doc keeps Part B (the secrets under
@@ -229,6 +230,21 @@ report.
   when someone tells us.
 
 ## 10. The desk test (step 3, enforce)
+
+### 10.1 Result: passed on live (2026-11-01, his call)
+
+The shots list was never written. His call: the live app already ran these steps, so no extra
+run. The evidence, read 2026-11-01:
+- **His use.** He used every skin, cold starts and the rest of the list on the installed app.
+  His live log shows `csp: Enforce` at each start and no `csp-` WARN line (2026-10-30 to
+  2026-11-01, the logs on disk).
+- **Every live install.** A block writes `csp-<directive>: blocked …` (`csp_blocked`, csp.rs)
+  and the weekly health counts send it as `log.warn.csp-<directive>` (usage.rs); both shipped
+  in 1.0.0. DeetsSupport's `usage_counts` holds no `csp` metric for any live version from
+  1.0.0 (weeks 2026-W43 and W44; W44 had 37 installs on 1.2.1), and no user has reported a
+  break.
+- **Not run:** the forced injection and the signed relaxation (the last two steps below). They
+  test the policy's guard rails, not a feature a user touches; run them if the policy changes.
 
 Run on `dev:built` with `enforce`, as a shots list in `docs/ops/checks/csp.json`, then his
 hand test. The console and the ring show no `csp:blocked` through all of it:

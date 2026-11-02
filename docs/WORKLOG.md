@@ -34,6 +34,12 @@ updated: 2026-11-01
   MAX-CARDS, USAGE-COUNTS, BACKUP (where a restore is offered is open again).
   DATA-ARCHITECTURE and two code comments (apple.rs, lib.rs) said the installer writes
   `deetsmusic://`; since Velopack a release build registers it with `register_all()` at each start.
+- **Stale code names (later the same sitting):** about 25 references in 16 docs pointed at the
+  code they now mean (the one media menu, Search's engine levels, grow rules, renames).
+- **The CSP desk test passed on live (his call: no extra run).** He used every skin and cold
+  starts on the installed app; DeetsSupport's `usage_counts` holds no `log.warn.csp-*` metric for
+  any live version from 1.0.0 (W43, W44; 37 installs on 1.2.1 in W44); counting and the block's
+  WARN line both shipped in 1.0.0. CSP.md §10.1. The injection and relaxation steps are not run.
 
 ## 2026-11-01 — Glass text investigated; the update card's choices looked at
 
