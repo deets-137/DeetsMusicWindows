@@ -129,7 +129,10 @@ item closes, delete it here and write the day in WORKLOG.md.
   section (Replay, the Later list, Rulez Playlists, then new webs after a divider), *Made Here*
   renamed *Created Here*, the Replay folder emptied once. Open: his desk test (§5, §7), his look
   at Claude's choices (§3), and his idea of an opt-in action in the
-  Updates panel that moves a user's old webs.
+  Updates panel that moves a user's old webs. Read 2026-11-02: his own use on the dev app on
+  2026-11-01 covered §5 step 1 (the dev list was made 16:44, 14 songs) and step 9, and found the
+  3-second skip (§8, fixed); the dev log of that evening has rolled over, so the other steps
+  have no record. The live app has no Later list yet.
 
 - **My reports' Resolved fold, and a local support worker (2026-10-30, `9ae4e80`).** Built from
   his own test through it. The fold ships with 1.3.0; the local worker is debug builds only
@@ -150,8 +153,9 @@ item closes, delete it here and write the day in WORKLOG.md.
   worker deploy (version `3cb23124`, rollback `5a38985e`; the updater, the token mint, the
   usage and admin routes answered as expected after it), and the admin page (DeetsSolutions
   `5f31156` pushed; Pages). The app side ships in 1.3.0. Not seen: a real sync or a real
-  feature use on the dev app, the admin page's new sections in a browser. Open: his look at
-  the minutes' drafts (§17.3) and Claude's choices in §21.4. The first numbers: the library size
+  feature use on the dev app, the admin page's new sections in a browser. His look at the Stats
+  tab passed 2026-11-02 on the mock ("Looks good"); its flag's numbers (20 %, 20 rows) are
+  drafts with the *Needs a look* thresholds below. Open: his look at Claude's choices in §21.4. The first numbers: the library size
   per version the day 1.3.0 goes out; uses and reach the day after; the weekly ones (library
   size tiles, sync, AI routes) about 2026-11-09.
 - **1.3.0 is published (2026-11-02, his call).** Built from `7ccbd74` on `main`; every check in
@@ -170,18 +174,17 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
 
 - **Friends on DM, the Home shelf (1.2.1; the Friends worker deployed):** the two-app desk test,
   features/friends-shelf.md §5.
-- **`setx DEETS_USAGE_OWNER 1` on his PCs** (checked 2026-10-30: not set on this one, and live
-  D1 has no `owner` rows, so his installs count as live users; USAGE-COUNTS.md §12).
-- **`npm run usage:r2` on 2026-10-31:** Setup.exe starts should equal the people in the zone
-  log (USAGE-COUNTS.md §14.5).
+- **`DEETS_USAGE_OWNER` on his other PCs, if any.** This PC is done (closed 2026-11-02): the
+  user variable is `1`, and the live log reads `usage: health sent (owner)`.
 - **The admin page's *Needs a look* thresholds** (`FLAG` in DeetsSolutions `admin.js`) are
   drafts for his edit (support.md, "The Health tab").
 - **The Rewind card:** keep it or let the Rewind button replace it (listening-time.md §9.4, his
   call).
 - **The Network panel's fetch wrap A/B** (`checks/fetch-wrap.mjs`, speedtest.md §9 step 8): an
   agent's run.
-- **The Rewind sweep's V1 rule** (`styles.css`) also changes the Queue's and every revealed
-  list's entrance: watch them. Next sweep: his pick, or the ledger's order (QUALITY-SWEEP.md §7).
+- **The next quality sweep:** his pick, or the ledger's order (QUALITY-SWEEP.md §7). (The watch
+  on the Rewind sweep's V1 rule closed 2026-11-02: live since 0.30.0, through 1.3.0, used by him
+  in every skin, no report; his rule that day: what he has used on live is tested.)
 - **Rooms on the web** (WebRooms.md): not built, the site page (part H, a DeetsSolutions
   session); not deployed, the worker change (§10.6).
 
@@ -192,7 +195,10 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   play counts may stay on the old key (read 2026-10-17: the 5 healed songs on live have no
   plays under either id yet, so there is nothing to check). None of these fired on live from
   2026-10-08 to 2026-10-17. (The dead-next heal fired on live 2026-10-17 and played the song
-  once: QUEUE.md § The healed song played twice, passed.)
+  once: QUEUE.md § The healed song played twice, passed.) Read again 2026-11-02 over the live
+  log 2026-10-30 → 2026-11-02 (1.2.1 and 1.3.0): still none of the three; the license heal
+  (10-30 17:05) and the dead-next heal (11-01 22:08) each fired once and the music played on;
+  the 8 healed ids still have no plays under either id.
 - **Data:** the next song's colors one ahead (ALBUM-COLOR.md, data path item 4). The `db: slow`
   lines were read on 2026-10-13: the read connection is real but not on the launch's path, so
   it stopped there (ideas/WORKERS.md §5.1). What gates `ready` is the library reply itself.
@@ -234,8 +240,6 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   threads (not ours).
 - **A dev app Claude starts plays (fixed 2026-10-17, `642943a`):** still not known why Widevine
   began to refuse the Claude package on 2026-10-16. DEBUGGING.md § Sign-in.
-- **The loading set** (built 2026-10-17, a back-pocket tool): the first `latency.json` is thin
-  (n ≈ 5); run `npm run latency:profile` again after some days of use. guide/LOADING-SET.md §7.
 - **The first public installs:** watch the `csp-` areas in the weekly health counts (the CSP
   enforces since 1.0.0; CSP.md §9). Read 2026-11-01: none through week W44 (37 installs on
   1.2.1); the desk test passed on that (CSP.md §10.1). Keep an eye on it after a policy change.

@@ -6,6 +6,30 @@ updated: 2026-11-01
 ---
 # DeetsMusic — Work log
 
+## 2026-11-02 — The live tests and watches, read against the record
+
+His ask: close what his own use already covers. Read: the live log (2026-10-30 14:39 →
+now: 1.2.1, then 1.3.0 from 02:12), the dev log (only 11-02 00:13 → 02:14 is left), the live
+and dev databases (read-only), his messages of the last week, the git history of three repos.
+- **Closed:** `DEETS_USAGE_OWNER` on this PC (the user variable is `1`; `usage: health sent
+  (owner)` on 11-01 and 11-02). The Rewind sweep's V1 watch (in 0.30.0, live through 1.3.0, no
+  report; his words this morning: "I've used all skins, cold starts, and more when using the
+  live app"). His look at the minutes' Stats tab ("Looks good", on the mock).
+- **His calls after the read:** `usage:r2` passed (41 starts against 42 people; the gaps go
+  both ways: USAGE-COUNTS.md §14.5), and `latency.json` written from the 2-hour run
+  (LOADING-SET.md §3.2).
+- **Read, still open:** the playback watch (the license heal and the dead-next heal each fired once and
+  played on; no `retryCurrent`, `keyRetry` or `recoverSilent`; the 8 healed ids have no
+  plays); Listen Later (his dev use covered §5 steps 1 and 9 and found the 3-second skip).
+- **No record, so still open:** the Friends on DM two-app test (no `friends:` shelf line on
+  live), [Report] on an error toast (he was told how; no record that he pressed it), the CPU
+  floor over hours (the sampler last ran 2026-10-17 for 40 minutes), readability, deetsmeter's
+  cold start, the Discord art, the Widevine cause, the CSP's week W45 (ends 11-08), and every
+  item that is his call or look.
+- **Seen in passing, not looked into:** the `deetsmusic-dev` MCP said "no bridge on
+  127.0.0.1:47825–47828" while the live app's bridge listened on 47825 (its log at 11:13,
+  `netstat` LISTENING). The database was read directly instead.
+
 ## 2026-11-02 — One source for the version
 
 - **His call:** copies a script writes (of three options: that, `tauri.conf.json` pointing at

@@ -87,7 +87,9 @@ which calls that global). The recorder wraps the global once at boot. No call si
 ### 3.2 The profile — `scripts/latency-profile.mjs` → `docs/guide/latency.json`
 
 > **Part:** built · 2026-10-17 (the script; the first `latency.json` waits for a day or more of
-> his use, §4 step 2).
+> his use, §4 step 2). **Written again 2026-11-02, his call:** n ≈ 50 a command (the first had
+> n ≈ 5), all from 2026-11-02 00:13 → 02:14 on the dev app. The dev log keeps only about
+> 2 hours (512 KB × 2), so one run never holds days of use.
 
 - Reads every `[perf] ipc` and `[perf] art` line in `deetsmusic.log` and `deetsmusic.1.log`,
   over the last N days (`--days 14` default).

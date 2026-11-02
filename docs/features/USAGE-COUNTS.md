@@ -953,6 +953,11 @@ whole); a package range (206, the right bytes, never counted).
   `Content-Range` on the 0.28.0 package and Setup.exe; the 1.2.1 package downloads whole (200,
   15,605,803 bytes); a stale `If-Range` answers the whole file (200). **Still open:** `npm run
   usage:r2` on 2026-10-31 shows the worker's starts equal to the people in the zone log.
+  **Read 2026-11-02 (`--days 10`):** the worker's site starts against the zone's people, by UTC
+  day: 10-31 17 / 18, 11-01 7 / 9, 11-02 (to 20:30 UTC) 17 / 15; 41 against 42 in all.
+  **Passed 2026-11-02, his call:** the total is off by 1 and the daily gaps go both ways, so
+  no downloads are lost. (A download that crosses midnight UTC could land on two days; that is
+  a guess, not checked.)
 
 ### 14.6 The correction of the live counts (his call, 2026-10-30: "Correct them")
 
