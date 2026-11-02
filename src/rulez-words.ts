@@ -267,6 +267,7 @@ const ON_OFF: Choice[] = [{ value: true, label: "On" }, { value: false, label: "
 const MOTION: Choice[] = [{ value: "on", label: "On" }, { value: "reduced", label: "Reduced" }, { value: "off", label: "Off" }];
 const NOTICES: Choice[] = [{ value: "all", label: "Everything" }, { value: "failures", label: "Failures" }];
 const MAX_LAYOUT: Choice[] = [{ value: "4", label: "4 cards" }, { value: "2cols", label: "2 columns" }, { value: "2rows", label: "2 rows" }, { value: "1", label: "1 card" }];
+const LEFT_RIGHT: Choice[] = [{ value: "left", label: "Left" }, { value: "right", label: "Right" }];
 const WEB_PLAY: Choice[] = [{ value: "replace", label: "Replaces the queue" }, { value: "keep", label: "Plays now, keeps Up Next" }, { value: "after", label: "Plays after the song" }];
 /** A While word that holds one Settings row at a value: its id is the row's key, so `doWordOf`
  *  finds it by the key (RULES.md §18, the rule keys of 2026-09-27). The label is the row's. */
@@ -357,6 +358,9 @@ export const DOS: DoWord[] = [
   keyWord("toasts", "Window", "Show notices", NOTICES),
   // Layout for Max (MAX-CARDS.md §4.9, 2026-10-11): e.g. two cards while on battery.
   keyWord("maxCards", "Window", "Layout for Max", MAX_LAYOUT),
+  // The two sides in Max (MAX-CARDS.md §13, fullscreen-player.md §18.2, 2026-11-02).
+  keyWord("maxStageSide", "Window", "Now Playing and Queue in Max", LEFT_RIGHT),
+  keyWord("fpQueueSide", "Window", "Queue in the full player", LEFT_RIGHT),
   // Play a web from the song playing (PLAYLIST-WEB.md §11, 2026-09-28): the mode and the skip
   // point have no Settings row; these words are how a pro user sets them.
   keyWord("webPlayNew", "Playback", "Play a web from the song playing", ON_OFF),
@@ -650,7 +654,9 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   friendsRoomInvite: { keep: "keeps the room-code invite on my box" }, toasts: { keep: "shows notices for" },
   webPlayNew: { keep: "keeps a web from the song playing" }, webPlayMode: { keep: "keeps a web from the song playing at" },
   webSkipSeed: { keep: "keeps skipping the song you just heard" }, webSkipSeedAt: { keep: "skips the song you just heard past" },
-  maxCards: { keep: "keeps Max at" }, glassCanvas: { keep: "keeps the Glass canvas on" },
+  maxCards: { keep: "keeps Max at" },
+  maxStageSide: { keep: "keeps Now Playing and the Queue in Max on the" }, fpQueueSide: { keep: "keeps the Queue in the full player on the" },
+  glassCanvas: { keep: "keeps the Glass canvas on" },
 };
 /** Every Do word has its own SAYS phrase (tests/rulez-words.test.ts checks it); the label is only
  *  a fallback, and it goes through `lowerFirst` so a name in it keeps its case. */

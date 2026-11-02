@@ -2,7 +2,7 @@
 // may be hidden from the picker? (HIDE-CARDS.md)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { repairAssignment, fillSlots, canHide, newlyHidden, maxCardsOf, maxSlots, maxNeighbors, maxCanFill, maxBeyond, keepCard } from "../src/layout-rules.ts";
+import { repairAssignment, fillSlots, canHide, newlyHidden, maxCardsOf, maxSlots, maxNeighbors, maxCanFill, maxBeyond, maxStageSideOf, keepCard } from "../src/layout-rules.ts";
 
 const slots = ["left", "right"] as const;
 const pool = new Set(["home", "library", "search"]);
@@ -108,6 +108,26 @@ test("2026-10-11 the left edge of content column 2 is the gap beside the stage i
   for (const n of ["4", "2cols", "2rows", "1"] as const) assert.equal(maxBeyond(n, "left", "left", null), "outer", n);
   assert.equal(maxBeyond("2rows", "right", "left", null), "outer");
   assert.equal(maxBeyond("2cols", "right", "left", null), "card");
+});
+
+test("2026-11-02 the stage on the right: the content area's right side is the gap beside it, its left the window edge", () => {
+  for (const n of ["4", "2cols", "2rows", "1"] as const) {
+    assert.equal(maxBeyond(n, "left", "left", null, "right"), "edge", n);
+  }
+  assert.equal(maxBeyond("4", "right", "right", null, "right"), "outer");
+  assert.equal(maxBeyond("4", "d", "right", null, "right"), "outer");
+  assert.equal(maxBeyond("4", "left", "right", null, "right"), "card"); // the cards keep their order (his call 1A)
+  assert.equal(maxBeyond("4", "left", "right", "wide", "right"), "outer");
+  assert.equal(maxBeyond("4", "right", "left", "wide", "right"), "edge");
+  assert.equal(maxBeyond("2rows", "right", "right", null, "right"), "outer");
+  assert.equal(maxBeyond("1", "left", "right", null, "right"), "outer");
+  // Up and down do not change.
+  assert.equal(maxBeyond("4", "c", "up", "tall", "right"), "outer");
+  assert.equal(maxBeyond("4", "left", "down", null, "right"), "card");
+  // A stored value that is not "right" reads as today's left.
+  assert.equal(maxStageSideOf("right"), "right");
+  assert.equal(maxStageSideOf("middle"), "left");
+  assert.equal(maxStageSideOf(undefined), "left");
 });
 
 test("2026-10-11 what lies past each side, at rest and grown", () => {

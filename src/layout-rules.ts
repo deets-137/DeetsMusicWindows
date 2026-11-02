@@ -146,20 +146,27 @@ export function keepCard<S extends string, C extends string>(slots: readonly S[]
  *  whole content area already (his call, 2026-10-11), and one card has nothing to cover. */
 export const maxCanFill = (n: MaxCards): boolean => n === "4";
 
+/** Which side of the cards the stage column sits on (MAX-CARDS.md §13, 2026-11-02). The cards
+ *  keep their order on screen (his call 1A): the cells above are the same; the grid puts the
+ *  stage after them, so only the outer sides of the content area change. */
+export type MaxStageSide = "left" | "right";
+export const maxStageSideOf = (v: unknown): MaxStageSide => (v === "right" ? "right" : "left");
+
 /**
  * What lies past `side` of `slot`, at rest or grown by `mode`: another content card, the
- * stage or the top padding ("outer"), or the window edge. The left edge of content column 2
- * is always the gap beside the stage, in every layout (the full player's strip shares it).
+ * stage or the top padding ("outer"), or the window edge. The content area's side toward the
+ * stage is always the gap beside it, in every layout (the full player's strip shares it); the
+ * other side is the window edge.
  */
-export function maxBeyond(n: MaxCards, slot: MaxSlot, side: MaxSide, mode: "wide" | "tall" | "full" | null): "card" | "outer" | "edge" | null {
+export function maxBeyond(n: MaxCards, slot: MaxSlot, side: MaxSide, mode: "wide" | "tall" | "full" | null, stage: MaxStageSide = "left"): "card" | "outer" | "edge" | null {
   const me = MAX_CELLS[n][slot];
   if (!me) return null;
   const end = maxExtent(n);
   const cols = mode === "wide" || mode === "full" ? [2, end.col] : [me.col, me.col];
   const rows = mode === "tall" || mode === "full" ? [1, end.row] : [me.row, me.row];
   switch (side) {
-    case "right": return cols[1] < end.col ? "card" : "edge";
-    case "left": return cols[0] > 2 ? "card" : "outer";
+    case "right": return cols[1] < end.col ? "card" : stage === "right" ? "outer" : "edge";
+    case "left": return cols[0] > 2 ? "card" : stage === "left" ? "outer" : "edge";
     case "up": return rows[0] > 1 ? "card" : "outer";
     case "down": return rows[1] < end.row ? "card" : "edge";
   }

@@ -85,6 +85,12 @@ export function stillCutRight(rest: Box, boxLeft: number): number {
   return rest.right - boxLeft;
 }
 
+/** The mirror (MAX-CARDS.md §13): the stage on the right, the box leaves the place by its left
+ *  side, and the still is cut on its left edge at the box's right edge. */
+export function stillCutLeft(rest: Box, boxRight: number): number {
+  return boxRight - rest.left;
+}
+
 /** The transform that puts a picture at `from` onto `to` (a flight copy laid out at `to`):
  *  the translate of the top-left corner and one scale (both boxes are squares). */
 export function flightFrom(from: Box, to: Box): { dx: number; dy: number; scale: number } {

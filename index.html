@@ -54,6 +54,8 @@
         // layout.ts sets it again with a rule's value, once the rules have loaded.
         var M = S && S.maxCards;
         document.documentElement.setAttribute("data-max-cards", /^(4|2cols|2rows|1)$/.test(M) ? M : "4");
+        // Now Playing and Queue in Max (MAX-CARDS.md §13): the stage's side, the same way.
+        document.documentElement.setAttribute("data-stage-side", S && S.maxStageSide === "right" ? "right" : "left");
         // Reduce motion (GRAPHICS-FALLBACK.md §10.4): Windows' setting or your row, so the first
         // paint already holds still. reduce-motion.ts sets it again with the graphics rule's value.
         var reduced = S && S.reduceMotion === true;

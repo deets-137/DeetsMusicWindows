@@ -378,6 +378,14 @@ export function initScene(): void {
   });
   onSettingsChange((k) => {
     if (k === "happySky" && active()) paintSky();
+    // The stage changed sides in Max (MAX-CARDS.md §13): place again once the slide (layout.ts,
+    // after this listener) has landed, or the edge clouds measure the cards at their old places.
+    if (k === "maxStageSide") {
+      setTimeout(() => {
+        const slides = document.getAnimations().filter((a) => a.id === "stage-side").map((a) => a.finished);
+        void Promise.allSettled(slides).then(schedulePlace);
+      }, 0);
+    }
   });
   onSurfaceChange(() => schedulePlace());
   window.addEventListener("pointermove", sunDodge, { passive: true });

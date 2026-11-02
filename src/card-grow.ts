@@ -30,7 +30,7 @@ import * as diag from "./diag";
 import { countUse } from "./use-counts";
 import { TELEMETRY } from "./telemetry-on";
 import { cancelled, registerAction, registerEvent, registerFact } from "./rules";
-import { maxBeyond, maxCanFill, maxNeighbors, type MaxCards, type MaxSlot } from "./layout-rules";
+import { maxBeyond, maxCanFill, maxNeighbors, maxStageSideOf, type MaxCards, type MaxSlot, type MaxStageSide } from "./layout-rules";
 import { motionReduced } from "./motion";
 import { readyIn } from "./reveal";
 
@@ -187,6 +187,8 @@ const growSlots = (): Slot[] => {
 const isLive = (s: Slot): boolean => growSlots().includes(s);
 /** Max's layout now (Layout for Max); today's 2×2 when the layout gives none. */
 const maxNow = (): MaxCards => opts?.maxCards?.() ?? "4";
+/** The stage column's side in Max (MAX-CARDS.md §13): the content cards' side toward it. */
+const stageSideNow = (): MaxStageSide => maxStageSideOf(effective("maxStageSide"));
 const neighbors = (): Record<Slot, Partial<Record<SideDir, Slot>>> => (currentSurface() === "max" ? MAX_NEIGHBOR[maxNow()] : MIDI_NEIGHBOR);
 /** Fill is its own grow in four-card Max only (MAX-CARDS.md §4.4). Exported for the full
  *  player: with no Fill strip beside the stage, Now Playing's strip takes the whole gap. */
@@ -1061,7 +1063,7 @@ function beyond(slot: Slot, side: Side): "card" | "outer" | "edge" | null {
     // The max map: content columns 2.., rows 1.. of the layout (layout-rules.ts); a grown card
     // spans more of them.
     const g = state?.slot === slot ? state : null;
-    return maxBeyond(maxNow(), slot as MaxSlot, side, g?.mode ?? null);
+    return maxBeyond(maxNow(), slot as MaxSlot, side, g?.mode ?? null, stageSideNow());
   }
   const n = neighbors()[slot][side];
   return n && opts.slots().includes(n) ? "card" : null;
@@ -1105,7 +1107,7 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
   // card's bottom; the right card's right...) grow the card over the other one, as the strip
   // toward it does (his ask, 2026-10-20: only the top strip grew the bottom card). The left
   // strip beside the stage stays Now Playing's.
-  if (!canFill() && !mine && currentSurface() === "max" && !state && side !== "left") {
+  if (!canFill() && !mine && currentSurface() === "max" && !state && side !== stageSideNow()) {
     const dirs = growDirs(slot);
     if (dirs.length !== 1) return null;
     return { dir: dirs[0], act: "grow", reach: b === "edge" ? "edge" : "full" };
@@ -1115,7 +1117,7 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
   // The gap beside the stage is shared with Now Playing's full-player strip: split at its
   // middle line, as a gap between two cards is (features/fullscreen-player.md §10.3). A grown
   // card's collapse strip shares it too: Now Playing's strip acts while a card is grown.
-  const shared = side === "left" && npRightLive();
+  const shared = side === stageSideNow() && npRightLive();
   return { dir: "full", act: mine ? "collapse" : "grow", reach: b === "edge" ? "edge" : shared ? "half" : "full" };
 }
 
@@ -1123,7 +1125,8 @@ function zoneAction(slot: Slot, side: Side): ZoneAct | null {
  *  strip then takes only its half of the gap (full-player.ts). */
 export function stageGapShared(): boolean {
   if (!opts || currentSurface() !== "max") return false;
-  return opts.slots().some((s) => !isStage(s) && isLive(s) && beyond(s, "left") === "outer" && !!zoneAction(s, "left"));
+  const side = stageSideNow();
+  return opts.slots().some((s) => !isStage(s) && isLive(s) && beyond(s, side) === "outer" && !!zoneAction(s, side));
 }
 
 // A second click on an edge bar lands on the grown card's rows: the bar's place is inside the
@@ -1297,7 +1300,8 @@ export function initCardGrow(o: Opts): void {
     // Layout for Max changed: collapse with no motion, as on a surface change, before the
     // layout remounts the slots (this listener is wired first).
     // Only in Max: a Midi grow has nothing to do with Max's layout (the break-it pass, §20, A3).
-    if (k === "maxCards" && currentSurface() === "max") {
+    // The stage's side changed (MAX-CARDS.md §13): the same, and the strips change sides.
+    if ((k === "maxCards" || k === "maxStageSide") && currentSurface() === "max") {
       collapseNow("layout");
       paintZones();
     }

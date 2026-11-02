@@ -135,6 +135,8 @@ const SPECS: Spec[] = [
   storeSize("max", "Max opens at"),
   storeChoice("Window", "maxShortWindow", "Max window when short", [{ value: "flip", label: "Becomes Midi" }, { value: "floor", label: "Stops at floor" }]),
   storeChoice("Window", "maxCards", "Layout for Max", [{ value: "4", label: "4 cards" }, { value: "2cols", label: "2 columns" }, { value: "2rows", label: "2 rows" }, { value: "1", label: "1 card" }]),
+  storeChoice("Window", "maxStageSide", "Now Playing and Queue in Max", [{ value: "left", label: "Left" }, { value: "right", label: "Right" }]),
+  storeChoice("Window", "fpQueueSide", "Queue in the full player", [{ value: "left", label: "Left" }, { value: "right", label: "Right" }]),
   storeChoice("Window", "npShade", "Shade behind the title", [{ value: "text", label: "Text only" }, { value: "band", label: "Band" }]),
   storeToggle("Window", "npOffCover", "Title under the cover"),
   storeChoice("Window", "alwaysOnTop", "Keep on top", [{ value: "always", label: "Always" }, { value: "player", label: "Player" }, { value: "off", label: "Off" }]),

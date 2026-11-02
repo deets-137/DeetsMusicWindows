@@ -42,6 +42,7 @@ const TARGETS: Record<string, string> = {
   "key:webPlayNew": "Play a web from the song playing", "key:webPlayMode": "how a web from the song playing plays",
   "key:webSkipSeed": "Skip the song you just heard", "key:webSkipSeedAt": "the skip point of the song you just heard",
   "key:maxCards": "Layout for Max",
+  "key:maxStageSide": "Now Playing and Queue in Max", "key:fpQueueSide": "Queue in the full player",
 };
 const targetWords = (t: unknown) => TARGETS[String(t)] ?? String(t);
 

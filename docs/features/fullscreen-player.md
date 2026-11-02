@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.1
 desk_test: passed 2026-10-11
 sources: [src/full-player.ts, src/full-player-layout.ts, src/now-playing-card.ts, src/styles.css, src/styles/skin.css, src/queue-rows.ts, src/card-grow.ts, src/player.ts, src/album-color.ts, src/layout.ts, src/rulez-words.ts, src/compass.ts, src-tauri/tauri.conf.json]
-updated: 2026-10-26
+updated: 2026-11-02
 ---
 # Full player — grow the Now Playing card
 
@@ -1274,3 +1274,45 @@ took it out (a pick in the column's picker calls it).
 3. Pick another card in the column's picker: its strip is still there.
 4. Narrow the window until the column goes: no strip for it while it slides out.
 
+### 18.2 Settings › Window › *Queue in the full player* (built 2026-11-02)
+> **Part:** built · 2026-11-02 · desk test passed 2026-11-02 (his word: "looks good")
+
+**His ask (2026-11-02):** "Let's make a settings row for it", for the Queue's side in the full
+player in Max. Before, the strip and the picker were the only ways in, and the side lived in
+`deets.fullplayer.side` (localStorage), out of the agent's and the rules' reach.
+
+**His calls:** two separate rows, *Left | Right* each (2A): this row, and *Now Playing and Queue
+in Max* for the card layouts ([MAX-CARDS.md](MAX-CARDS.md) §13). Neither row follows the other.
+
+**As built:**
+- The key `fpQueueSide` ("left" | "right", default "left"), a rule key. `flipped()` reads
+  `effective("fpQueueSide")`. `deets.fullplayer.side` keeps only the side column's card; a stored
+  `flip: true` migrates once to "right" (`migrate()` in settings-store.ts).
+- The strip on the Queue's edge, the side column's strip and **Queue** in the column's picker
+  write the setting (`flipSides` → `setSetting(…, "app")`). The setting's listener moves the
+  columns (`applyFlip`): the same slide as before, from any source (the row, the agent, a rule).
+  Under a rule, a press on a strip is a hand change: the rule's `onHand` decides, and the columns
+  move when the value does. `player:side` logs `cause: "settings"` for a change from outside.
+- The crossing open and close (§18) now asks whether the Queue's side differs from its stage
+  column's side (`queueCrosses()`), not whether it is on the right. With the stage on the left,
+  that is the same rule as before.
+- With the stage on the right, the full player looks the same as with the stage on the left:
+  its CSS places the Queue, the side column and Now Playing by width over the whole grid
+  (`[data-stage-side="right"]` rules in styles.css), because the grid's first column is then a
+  card's. The moving still is cut on its left side (`stillCutLeft`, full-player-layout.ts).
+- The row, its agent spec, the AGENT.md line, the Rulez words, the New badge (`since: "1.3.1"`),
+  the usage allow-list (and the DeetsSupport copy, not deployed).
+
+**What Claude decided inside his calls:** the key's name; the row sits under *Now Playing and
+Queue in Max*, under *Layout for Max*; a change from Settings while the player is full slides
+the columns, as the strip does; the source of a strip press is `"app"`.
+
+**Desk test (his):**
+1. Max, the full player open, Queue left. Settings › Window › *Queue in the full player* ›
+   Right: the Queue slides to the right of the cover. Close and open: it is still right.
+2. The strip on the Queue's edge: the Queue goes left, and the row shows *Left*.
+3. With the side column shown, pick **Queue** in its picker: the columns swap, and the row
+   follows.
+4. Ask the agent `settings set fpQueueSide right`: the same as step 1.
+5. An install that had flipped the Queue with the strip before this build opens with the Queue
+   on the right and the row on *Right*.

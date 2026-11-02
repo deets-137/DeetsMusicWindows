@@ -20,7 +20,7 @@ export const REPORTED: readonly string[] = [
   "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek", "happySky",
   // Window
   "surface", "closeToTray", "trayView", "startWithWindows", "surfaceAutoFlip", "volumeShrink",
-  "maxShortWindow", "maxCards", "alwaysOnTop", "cardGrow", "moveSections", "cardGrowOutside",
+  "maxShortWindow", "maxCards", "maxStageSide", "fpQueueSide","alwaysOnTop", "cardGrow", "moveSections", "cardGrowOutside",
   "cardGrowPick", "cardDrill", "cardDrillBring", "cardGrowView", "drillGrow", "cardMemoryDisk",
   // Sharing, Discord, Friends (on/off only)
   "shareActivityDiscord", "shareActivityApp", "discordRoomInvite", "friendsListenAlong", "friendsRoomInvite",

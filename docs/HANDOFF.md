@@ -162,6 +162,15 @@ item closes, delete it here and write the day in WORKLOG.md.
   RELEASE.md §0b passed. The Rooms reconnect fix (`e0524cf`) is on `main` now and waits for the
   next release.
 
+### Built after 1.3.0, for 1.3.1
+
+- **Two Max settings (2026-11-02).** Settings › Window › *Now Playing and Queue in
+  Max* (`maxStageSide`) and *Queue in the full player* (`fpQueueSide`). BUILT; his look passed
+  2026-11-02 ("looks good"); the update card's 1.3 page lists both, and 1.3.1's note is written. Desk tests passed:
+  [MAX-CARDS.md](features/MAX-CARDS.md) §13, [fullscreen-player.md](features/fullscreen-player.md)
+  §18.2. The DeetsSupport copy of the usage allow-list (`src/usage-keys.js`) is committed, not
+  deployed: until it is, the worker drops the two keys from reports.
+
 ### Live, waiting on his test or his look
 
 Verified 2026-10-30 against his logs (the installed log reaches back only to 2026-10-27), the

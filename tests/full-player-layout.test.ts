@@ -1,7 +1,7 @@
 // full-player-layout.ts: the full player's pure rules (features/fullscreen-player.md §12.2).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rowsPlace, coverSide, closePlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight } from "../src/full-player-layout.ts";
+import { rowsPlace, coverSide, closePlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight, stillCutLeft } from "../src/full-player-layout.ts";
 
 test("2026-10-26 Title under the cover: the close square goes above the cover, else beside it", () => {
   // A narrow card: the cover takes the width, room over the block.
@@ -102,6 +102,17 @@ test("2026-10-19 the resting still shows only where the moving box is not", () =
   assert.equal(stillCutRight(rest, 188), 164);
   // Landed: the box is on the place, the still is cut to nothing.
   assert.equal(stillCutRight(rest, 12), rest.right - rest.left);
+});
+
+test("2026-11-02 the stage on the right: the still is cut on its left, at the box's right edge", () => {
+  // The same window mirrored: the resting card in the last column, the full card left of it.
+  const rest = { left: 728, top: 52, right: 1068, bottom: 560 };
+  // The box starts on the full card, left of the place: the still shows whole.
+  assert.equal(stillCutLeft(rest, 715), -13);
+  // Halfway, the box's right edge is inside the place: the still shows right of it only.
+  assert.equal(stillCutLeft(rest, 892), 164);
+  // Landed: the box is on the place, the still is cut to nothing.
+  assert.equal(stillCutLeft(rest, 1068), rest.right - rest.left);
 });
 
 test("the flight puts the large picture on the small one", () => {

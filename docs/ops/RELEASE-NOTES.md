@@ -48,6 +48,16 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.3.1 — 2026-11-02
+
+**Flip flip (the side of the Queue and Now Playing).** In Settings > Window, there now exists two
+new settings rows. Now Playing and Queue in Max chooses which side the playing card and queue
+appear while you have 1/2/4 other cards on screen. Queue in the full player sets which side of
+the player the queue falls in while the player is expanded to be fullscreen.
+
+**Fixes.** The app no longer keeps trying to reconnect to a listening room that ended while it
+was closed, asleep or offline.
+
 ## 1.3.0 — 2026-11-01
 
 **Find out What's New.** Each sizable update now starts with a full page of what's changed, the

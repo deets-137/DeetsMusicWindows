@@ -2014,6 +2014,29 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: "stage left";
 }
+/* Now Playing and Queue in Max: Right (MAX-CARDS.md §13, his call 2026-11-02): the stage column
+   goes after the cards, and the cards keep their order on screen. Each layout's grid, mirrored
+   only in the stage's place; one attribute more than the rules above, so it wins. */
+[data-surface="max"][data-stage-side="right"] .bento {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, var(--max-stage-w));
+  grid-template-areas:
+    "left  right stage"
+    "c     d     stage";
+}
+[data-surface="max"][data-stage-side="right"][data-max-cards="2cols"] .bento {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, var(--max-stage-w));
+  grid-template-areas: "left right stage";
+}
+[data-surface="max"][data-stage-side="right"][data-max-cards="2rows"] .bento {
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--max-stage-w));
+  grid-template-areas:
+    "left  stage"
+    "right stage";
+}
+[data-surface="max"][data-stage-side="right"][data-max-cards="1"] .bento {
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--max-stage-w));
+  grid-template-areas: "left stage";
+}
 
 /* mini (2026-09-09, first slice): ONE wide column — Now Playing, then the two content
    cards stacked. The composition is being built piece by piece from here. */
@@ -4474,6 +4497,18 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
    the left card's tall span (1 / 2 / 3 / 3), each the whole content area. The right card of
    2 rows sits in column 2, not 3. */
 [data-surface="max"][data-max-cards="2rows"] .panel[data-slot="right"][data-grow="tall"] { grid-area: 1 / 2 / 3 / 3; }
+/* The stage on the right (MAX-CARDS.md §13): the content columns are 1.. instead of 2.., so each
+   span above moves one column left. */
+[data-surface="max"][data-stage-side="right"] .panel[data-slot="left"][data-grow="wide"],
+[data-surface="max"][data-stage-side="right"] .panel[data-slot="right"][data-grow="wide"] { grid-area: 1 / 1 / 2 / 3; }
+[data-surface="max"][data-stage-side="right"] .panel[data-slot="c"][data-grow="wide"],
+[data-surface="max"][data-stage-side="right"] .panel[data-slot="d"][data-grow="wide"]     { grid-area: 2 / 1 / 3 / 3; }
+[data-surface="max"][data-stage-side="right"] .panel[data-slot="left"][data-grow="tall"],
+[data-surface="max"][data-stage-side="right"] .panel[data-slot="c"][data-grow="tall"]     { grid-area: 1 / 1 / 3 / 2; }
+[data-surface="max"][data-stage-side="right"] .panel[data-slot="right"][data-grow="tall"],
+[data-surface="max"][data-stage-side="right"] .panel[data-slot="d"][data-grow="tall"]     { grid-area: 1 / 2 / 3 / 3; }
+[data-surface="max"][data-stage-side="right"] .panel[data-grow="full"]                    { grid-area: 1 / 1 / 3 / 3; }
+[data-surface="max"][data-stage-side="right"][data-max-cards="2rows"] .panel[data-slot="right"][data-grow="tall"] { grid-area: 1 / 1 / 3 / 2; }
 /* The stage column (STAGE-COLUMN.md §7): the Queue grows UP over Now Playing, and nowhere
    else. The span is inside the stage's own two-row grid, so it can never reach the bento. */
 [data-surface="max"] .stage > .panel[data-slot="queue"][data-grow="tall"] { grid-row: 1 / 3; }
@@ -4810,6 +4845,32 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
   justify-self: end;
   width: var(--max-stage-w);
   z-index: 2;
+}
+/* The stage on the right (MAX-CARDS.md §13): the grid's first column is a card's, not the
+   stage's, so the rules above that name column 1 or 2 are placed here by width instead, over the
+   whole grid. The full player looks the same as with the stage on the left: the Queue's side is
+   its own setting (§18.2). The flipped rules with no side column already work by width. Not
+   stacked: the stacked grid has its own two columns. */
+:where(:root)[data-surface="max"][data-stage-side="right"] .bento[data-player="full"]:not([data-fp-stack]):not([data-fp-flip]) .stage > .panel[data-slot="queue"] {
+  grid-area: 1 / 1 / -1 / -1;
+  justify-self: start;
+  width: var(--max-stage-w);
+}
+:where(:root)[data-surface="max"][data-stage-side="right"] .bento[data-player="full"]:not([data-fp-stack]):not([data-fp-flip]) .stage > .panel[data-slot="np"] {
+  grid-area: 1 / 1 / -1 / -1;
+  margin-left: calc(var(--max-stage-w) + var(--panel-gap));
+}
+:where(:root)[data-surface="max"][data-stage-side="right"] .bento[data-player="full"]:not([data-fp-stack]) .panel.fp-history { grid-area: 1 / 1 / -1 / -1; }
+:where(:root)[data-surface="max"][data-stage-side="right"] .bento[data-player="full"][data-fp-flip]:not([data-fp-stack]) .panel.fp-history {
+  justify-self: start;
+  width: var(--max-stage-w);
+}
+:where(:root)[data-surface="max"][data-stage-side="right"] .bento[data-player="full"][data-fp-flip][data-fp-history="on"]:not([data-fp-stack]) .stage > .panel[data-slot="queue"] {
+  grid-area: 1 / 1 / -1 / -1;
+}
+:where(:root)[data-surface="max"][data-stage-side="right"] .bento[data-player="full"][data-fp-flip][data-fp-history="on"]:not([data-fp-stack]) .stage > .panel[data-slot="np"] {
+  grid-area: 1 / 1 / -1 / -1;
+  margin-left: calc(var(--max-stage-w) + var(--panel-gap));
 }
 /* Stacked (his calls, 2026-10-11): a window taller than wide, with room under a full-width
    cover for the cards. The player takes the whole width at the top, as tall as its cover and

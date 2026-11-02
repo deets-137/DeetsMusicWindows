@@ -24,7 +24,7 @@
 // On for everyone since 2026-10-11 (his call); the DevTools flag of the test version is gone.
 
 import { currentSurface, onSurfaceChange } from "./surface";
-import { setting, onSettingsChange } from "./settings-store";
+import { setting, effective, setSetting, onSettingsChange } from "./settings-store";
 import { enterRows } from "./pop";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
@@ -34,7 +34,7 @@ import { TELEMETRY } from "./telemetry-on";
 import { registerAction, registerFact } from "./rules";
 import { refreshPlayerState } from "./player";
 import { setFullArtPx, stageArtPx } from "./queue-rows";
-import { rowsPlace, coverSide, closePlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight, type Box, type ClosePlace, type RowsPlace } from "./full-player-layout";
+import { rowsPlace, coverSide, closePlace, fullArtPx, fullClipFrom, flightFrom, stillCutRight, stillCutLeft, type Box, type ClosePlace, type RowsPlace } from "./full-player-layout";
 import {
   clipBetween, clipOpen, clipPad, cover, uncover, collapseGrow, grownState, onGrowChange, refreshGrowZones, setPlayerHooks, stageGapShared, type Slot,
 } from "./card-grow";
@@ -244,18 +244,19 @@ function layoutNow(panel: HTMLElement): Layout {
 // ── the side column (Max, a wide card) ──────────────────────────────────────────
 // History by default; its title is the slots' picker, any card but Now Playing and Rulez (his
 // calls, 2026-10-11). Queue in that list FLIPS the two columns: the side card (with its picker)
-// takes the Queue's place on the left and the Queue goes right. The card and the flip are
-// remembered (localStorage). A window too narrow for the column keeps the Queue on the right of
-// the cover, and the handle on the Queue's edge flips it too (§18, his ask 2026-10-26).
+// takes the Queue's place on the left and the Queue goes right. The card is remembered
+// (localStorage); the flip is Settings › Window › Queue in the full player (`fpQueueSide`, §18.2,
+// 2026-11-02), which the picker and the strips write. A window too narrow for the column keeps
+// the Queue on the right of the cover, and the handle on the Queue's edge flips it too (§18).
 const SIDE_KEY = "deets.fullplayer.side";
-let side: { card: string; flip: boolean } = (() => {
+let side: { card: string } = (() => {
   try {
     const s = JSON.parse(localStorage.getItem(SIDE_KEY) ?? "null");
-    if (s && typeof s.card === "string") return { card: s.card, flip: s.flip === true };
+    if (s && typeof s.card === "string") return { card: s.card };
   } catch {
     /* storage off or not JSON: the defaults */
   }
-  return { card: "history", flip: false };
+  return { card: "history" };
 })();
 const saveSide = () => {
   try {
@@ -264,16 +265,21 @@ const saveSide = () => {
     /* storage off: kept for the session */
   }
 };
-const markFlip = () => fp().toggleAttribute("data-fp-flip", side.flip);
 /** The Queue is on the right of the cover (the side column, if it shows, on the left). */
-const flipped = (): boolean => side.flip;
+const flipped = (): boolean => effective("fpQueueSide") === "right";
+const markFlip = () => fp().toggleAttribute("data-fp-flip", flipped());
+/** The stage column sits on the right of the cards (MAX-CARDS.md §13). */
+const stageRight = (): boolean => effective("maxStageSide") === "right";
+/** In Max, the Queue's full-player column is on the other side from its stage column: the
+ *  open and the close carry it across the cover (§18). */
+const queueCrosses = (): boolean => flipped() !== stageRight();
 
 let historyInst: { destroy(): void } | null = null;
 let historyGen = 0;
 const historyHost = (): HTMLElement | null => opts?.bento.querySelector<HTMLElement>(".panel.fp-history") ?? null;
 const queuePanel = (): HTMLElement | null => opts?.hosts.queue ?? null;
 /** The side column slides in and out at its own edge: the right, or the left when flipped. */
-const awayX = (): string => (side.flip ? `translateX(calc(-100% - ${pxToken("--panel-gap")}px))` : `translateX(calc(100% + ${pxToken("--panel-gap")}px))`);
+const awayX = (): string => (flipped() ? `translateX(calc(-100% - ${pxToken("--panel-gap")}px))` : `translateX(calc(100% + ${pxToken("--panel-gap")}px))`);
 
 /** Mount the side card (and its picker) into the column's host. */
 function mountSide(host: HTMLElement): void {
@@ -304,12 +310,25 @@ function pickSide(id: string): void {
  *  2026-10-26); Now Playing keeps its width, so its cover keeps its size. `cause`: the side
  *  column's picker, or the strip on the Queue's edge or on the side column's. */
 function flipSides(cause: "picker" | "handle" | "side-handle" = "picker"): void {
+  // The setting is the one truth: its listener (`applyFlip`) moves the columns. Under a rule a
+  // hand change goes to the rule first (onHand), and the columns move when the value does.
+  flipCause = cause;
+  setSetting("fpQueueSide", flipped() ? "left" : "right", "app");
+}
+let flipCause: "picker" | "handle" | "side-handle" | "settings" = "settings";
+let shownFlip: boolean | null = null; // the side on screen, so a repeat notice moves nothing
+
+/** The Queue's side changed (the strip, the picker, Settings, the agent or a rule): move the
+ *  columns to it, with the slide when the full player shows. */
+function applyFlip(): void {
+  if (shownFlip === flipped()) return;
+  shownFlip = flipped();
+  const cause = flipCause;
+  flipCause = "settings";
   const host = fp().dataset.fpHistory === "on" ? historyHost() : null;
-  const queue = queuePanel();
+  const queue = full ? queuePanel() : null;
   const np = full && !stack && !host ? npHost() : null;
-  side = { ...side, flip: !side.flip };
-  saveSide();
-  diag.log("player:side", { flip: side.flip, cause });
+  diag.log("player:side", { flip: flipped(), cause });
   const m = full ? motion() : null;
   const moving = [host, queue, np].filter((p): p is HTMLElement => !!p);
   // Where each one is on screen now (mid-slide after a quick second click), then the slide that
@@ -330,7 +349,7 @@ function flipSides(cause: "picker" | "handle" | "side-handle" = "picker"): void 
       if (p !== np && !p.getAnimations().some((a) => a.id === "side-swap")) p.style.removeProperty("z-index");
     }).catch(() => {});
   });
-  frames.during("player-side", m.dur, side.flip ? "flip" : "back");
+  frames.during("player-side", m.dur, flipped() ? "flip" : "back");
 }
 
 /** The edge strips of the two columns beside the cover (Max, full, not stacked): the app's
@@ -382,7 +401,7 @@ function setHistory(on: boolean, m: Motion | null): (() => void) | null {
   if (!host || !opts?.mountSide) return null;
   const my = ++historyGen;
   host.getAnimations().forEach((a) => a.cancel());
-  const queue = side.flip ? queuePanel() : null;
+  const queue = flipped() ? queuePanel() : null;
   const qBefore = queue ? rect(queue) : null;
   const away = awayX();
   /** The Queue slides from where it was to where the new layout put it. */
@@ -397,7 +416,7 @@ function setHistory(on: boolean, m: Motion | null): (() => void) | null {
     fp().dataset.fpHistory = "on";
     mountSide(host);
     paintZones(); // the right strip moves from the window edge to the gap beside the column
-    diag.log("player:history", { on: true, card: side.card, flip: side.flip });
+    diag.log("player:history", { on: true, card: side.card, flip: flipped() });
     return m
       ? () => {
           host.animate([{ transform: away }, { transform: "none" }], { duration: m.dur, easing: m.ease });
@@ -801,8 +820,12 @@ function ghostMotion(panel: HTMLElement, a: DOMRect, b: DOMRect, artA: DOMRect, 
   if (still) {
     still.classList.add("is-bare");
     const pad = clipPad();
-    const cut = (left: number) => `inset(${-pad}px ${stillCutRight(rest, left)}px ${-pad}px ${-pad}px)`;
-    anims.push(still.animate([{ clipPath: cut(a.left) }, { clipPath: cut(b.left) }], timing));
+    // The stage on the right (MAX-CARDS.md §13): the box leaves the place by its left side, so
+    // the still is cut on its left, at the box's right edge (the same rule, mirrored).
+    const cut = stageRight()
+      ? (r: DOMRect) => `inset(${-pad}px ${-pad}px ${-pad}px ${stillCutLeft(rest, r.right)}px)`
+      : (r: DOMRect) => `inset(${-pad}px ${stillCutRight(rest, r.left)}px ${-pad}px ${-pad}px)`;
+    anims.push(still.animate([{ clipPath: cut(a) }, { clipPath: cut(b) }], timing));
   }
   return anims;
 }
@@ -1023,9 +1046,10 @@ export async function openFullPlayer(cause: string): Promise<void> {
           }),
         ];
     if (fly) anims.push(flyAnim(fly, fromArt, toArt, m.dur, m.ease, false));
-    // The Queue on the right of the cover (flipped, not stacked; §18): it crosses the cover, so it
-    // moves as the stacked Queue does, in the skin's own way (slide or fade), with no side card.
-    const across = !stack && surface === "max" && side.flip;
+    // The Queue on the other side of the cover from its stage column (not stacked; §18): it
+    // crosses the cover, so it moves as the stacked Queue does, in the skin's own way (slide or
+    // fade), with no side card.
+    const across = !stack && surface === "max" && queueCrosses();
     const move = stacked || across ? stackMove() : null;
     if (queue && fromQueue && move) {
       // Stacked (§14.4): the Queue goes from its column to the band under the player. A still of
@@ -1137,8 +1161,8 @@ export async function closeFullPlayer(cause: string, withMotion = true): Promise
   // Stacked in Max, the side card leaves with the Queue's motion (§14.4). Otherwise the History
   // column ends at once: the close measures the layout without it.
   const stacked = !!m && stack && surface === "max";
-  // The Queue on the right of the cover (§18) crosses back as the stacked Queue does.
-  const across = !!m && !stack && surface === "max" && side.flip;
+  // The Queue on the other side from its stage column (§18) crosses back as the stacked Queue does.
+  const across = !!m && !stack && surface === "max" && queueCrosses();
   if (!stacked) dropHistory();
   panel?.getAnimations({ subtree: true }).forEach((a) => a.id === "rows-slide" && a.cancel());
   busy = true;
@@ -1378,10 +1402,12 @@ function reachOf(side: Side): "half" | "full" | "edge" | null {
       if (side === queueSide) return "half";
       return fp().dataset.fpHistory === "on" ? "half" : "edge";
     }
-    if (side === "left") return "edge";
-    // Half the gap beside the stage when a card's strip takes the other half (the Fill strips of
-    // four-card Max, or a grown card's collapse strip); the whole gap when none is there.
-    if (side === "right") return stageGapShared() ? "half" : "full";
+    // The stage's outer side is the window edge; its inner side faces the cards (MAX-CARDS.md §13:
+    // the stage on the left or the right). Half the gap beside the stage when a card's strip
+    // takes the other half (the Fill strips of four-card Max, or a grown card's collapse strip);
+    // the whole gap when none is there.
+    const inner: Side = stageRight() ? "left" : "right";
+    if (side === "left" || side === "right") return side === inner ? (stageGapShared() ? "half" : "full") : "edge";
     // The top and the bottom of the resting card open it too (his ask, 2026-10-11). The bottom
     // gap is the Queue's as well (its grow up over Now Playing): each takes half of it, also
     // while another card is grown (both strips act then, 2026-10-14).
@@ -1480,10 +1506,17 @@ export function initFullPlayer(o: Opts): void {
   // Title under the cover (§17): the attribute the layout reads (the look watch lays out again).
   const applyOffCover = () => { root.dataset.npOffCover = setting("npOffCover") ? "on" : "off"; };
   applyOffCover();
+  // Queue in the full player (§18.2): the side on screen from the start.
+  shownFlip = flipped();
+  markFlip();
   onSettingsChange((k) => {
     if (k === "npShade") applyShade();
     if (k === "npOffCover") applyOffCover();
     if (k === "cardGrow") emit();
+    if (k === "fpQueueSide") applyFlip();
+    // The stage changed sides (MAX-CARDS.md §13): Now Playing's strips change sides with it. An
+    // open full player stays open; it looks the same either way.
+    if (k === "maxStageSide") paintZones();
     // Layout for Max changed: close with no motion before the layout remounts (MAX-CARDS.md).
     if (k === "maxCards") {
       if (full) void closeFullPlayer("layout", false);

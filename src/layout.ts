@@ -27,7 +27,7 @@ import { playSwap, playOut, flushSwapOut, onScreen, type SwapMove } from "./card
 import { initFullPlayer, isFullPlayer, closeFullPlayer } from "./full-player";
 import { initCardGrow, fillCard, attachGrowButton, isCovered, collapseGrow, grownState, onGrowChange, onRuleGrowStart, refreshGrowZones, ruleGrowComing, type Slot, type GrowButton } from "./card-grow";
 
-import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE_LOCK_HINT, maxCardsOf, maxSlots, keepCard, type MaxCards } from "./layout-rules";
+import { repairAssignment, fillSlots, newlyHidden, canHide, HIDEABLE_CARDS, HIDE_LOCK_HINT, maxCardsOf, maxStageSideOf, maxSlots, keepCard, type MaxCards } from "./layout-rules";
 import { openContextMenu } from "./context-menu";
 import { toast } from "./toast";
 import { cancelled, emit, registerAction, registerEvent, registerFact } from "./rules";
@@ -1013,6 +1013,48 @@ export function initLayout(): void {
     lastMax = now;
     markMax();
     if (currentSurface() === "max") recompose(maxComposition(now), "layout", keepSettings ? "settings" : undefined);
+  });
+
+  // Now Playing and Queue in Max (MAX-CARDS.md §13, his ask 2026-11-02): the stage column on the
+  // left or the right of the cards. Nothing remounts: the attribute moves the grid, and the stage
+  // and the cards slide from their old places to the new ones, as the full player's columns do
+  // when the Queue changes sides (the same tokens). Card grow hears the key first and collapses.
+  const stageSideNow = () => maxStageSideOf(effective("maxStageSide"));
+  const markStage = () => { document.documentElement.dataset.stageSide = stageSideNow(); };
+  markStage();
+  let lastStage = stageSideNow();
+  onSettingsChange((k) => {
+    if (k !== "maxStageSide") return;
+    const now = stageSideNow();
+    if (now === lastStage) return;
+    const motion = currentSurface() === "max" && !isFullPlayer() && !motionReduced() && tokenMs("--player-dur") > 0;
+    diag.log("layout:stage-side", { from: lastStage, to: now, surface: currentSurface(), motion });
+    lastStage = now;
+    const bento = document.querySelector<HTMLElement>(".bento");
+    const stage = bento?.querySelector<HTMLElement>(":scope > .stage") ?? null;
+    const moving = motion && bento && stage
+      ? [stage, ...bento.querySelectorAll<HTMLElement>(":scope > .panel[data-slot]")].filter((p) => p === stage || onScreen(p))
+      : [];
+    // Where each one is now (mid-slide after a quick second change), then the slide that runs
+    // ends: the new one starts from that place, so a change back reverses with no jump.
+    const before = moving.map((p) => p.getBoundingClientRect());
+    moving.forEach((p) => p.getAnimations().forEach((a) => a.id === "stage-side" && a.cancel()));
+    markStage();
+    if (!moving.length) return;
+    const dur = tokenMs("--player-dur");
+    const ease = getComputedStyle(document.documentElement).getPropertyValue("--player-ease").trim() || "ease";
+    moving.forEach((p, i) => {
+      const dx = before[i].left - p.getBoundingClientRect().left;
+      if (Math.abs(dx) < 1) return;
+      // The stage passes over the cards; the cards keep their own order.
+      if (p === stage) p.style.zIndex = "3";
+      const anim = p.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: dur, easing: ease });
+      anim.id = "stage-side";
+      void anim.finished.finally(() => {
+        if (p === stage && !p.getAnimations().some((a) => a.id === "stage-side")) p.style.removeProperty("z-index");
+      }).catch(() => {});
+    });
+    frames.during("stage-side", dur, now);
   });
 
   // ── Summon requests (e.g. the NP card's queue button) — bring the card into the

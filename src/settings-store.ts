@@ -52,6 +52,12 @@ export interface Settings {
   /** Layout for Max (MAX-CARDS.md): four content cards in a 2×2, two side by side ("2cols"),
    *  two stacked ("2rows"), or one, beside the stage column. Midi and Mini do not change. */
   maxCards: "4" | "2cols" | "2rows" | "1";
+  /** Max's stage column (Now Playing over the Queue) on the left or the right of the content
+   *  cards (MAX-CARDS.md §13, his ask 2026-11-02). The cards keep their order on screen. */
+  maxStageSide: "left" | "right";
+  /** The full player in Max (fullscreen-player.md §18): the Queue on the left or the right of the
+   *  cover. The strip on the Queue's edge and the side column's picker write it too. */
+  fpQueueSide: "left" | "right";
   /** The full player, controls under the cover (fullscreen-player.md §16): the dark area behind
    *  the title, artist and album. "text" = a soft shade the size of the text; "band" = the band
    *  across the cover's width. Rows over the cover always keep the band. */
@@ -580,6 +586,8 @@ export const DEFAULTS: Settings = {
   maxShortWindow: "flip", // the width already behaves this way: a window that no longer fits a
                           // surface becomes the one that does, instead of refusing to move
   maxCards: "4", // today's layout, so an update changes nothing on screen (MAX-CARDS.md §3)
+  maxStageSide: "left", // today's layout, so an update changes nothing on screen (MAX-CARDS.md §13)
+  fpQueueSide: "left", // today's full player; a flip made with the strip before 2026-11-02 migrates in
   npShade: "text", // his call 2026-10-25: the band hid too much of the cover; the text keeps its shade
   npOffCover: false, // his call 2026-10-26: off by default; the cover keeps its full size
   cardGrowPick: "keep", // decided 6A
@@ -813,6 +821,16 @@ function migrate(into: Partial<Settings>): void {
   // differs from the default as picked, so turning the schedule on keeps it. Every save writes
   // all keys, so "stored" alone says nothing; "differs" does.
   if (into.lookPairsPicked === undefined) into.lookPairsPicked = LOOK_PAIR_KEYS.some((k) => into[k] !== undefined && into[k] !== DEFAULTS[k]);
+  // The full player's Queue side lived in full-player.ts's own key until 2026-11-02, when it got
+  // a Settings row (fullscreen-player.md §18.2). A flip made with the strip comes along.
+  if (into.fpQueueSide === undefined) {
+    try {
+      const fp = JSON.parse(localStorage.getItem("deets.fullplayer.side") ?? "null");
+      if (fp && fp.flip === true) into.fpQueueSide = "right";
+    } catch {
+      /* not JSON: the default */
+    }
+  }
 }
 
 /** The day and night look keys. */
@@ -929,6 +947,8 @@ export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDis
   "webPlayNew", "webPlayMode", "webSkipSeed", "webSkipSeedAt",
   // Layout for Max (MAX-CARDS.md §4.9, his call 2026-10-11): e.g. two cards while on battery.
   "maxCards",
+  // The two sides in Max (MAX-CARDS.md §13, fullscreen-player.md §18.2, 2026-11-02).
+  "maxStageSide", "fpQueueSide",
   // Metal's cover change (docs/features/metal.md §6.7): the graphics fallback turns the 3D turn off.
   "metalCoverChange",
   // Reduce motion (GRAPHICS-FALLBACK.md §10.4): the graphics rule holds it on in software.

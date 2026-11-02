@@ -259,6 +259,8 @@ nothing about authoring changed when the box did.
 | Grown list | a rail letter | *Jump to M* · *Jump to numbers and symbols* · an empty letter: `aria-label` *No M here* | collection-card.ts (`syncRail`) |
 | Settings › Window (2026-09-17) | Max window when short | Max needs height for the album cover and the queue rows. Dragged under 745 px tall it becomes Midi, or it stops there. Becomes Midi needs Resize changes surface on | settings-card.ts |
 | Settings › Window (2026-10-11) | Layout for Max | How many cards Max shows beside Now Playing and the Queue. Each layout keeps its own cards | settings-card.ts |
+| Settings › Window (2026-11-02) | Now Playing and Queue in Max | In Max, Now Playing and the Queue sit on this side of the cards | settings-card.ts |
+| Settings › Window (2026-11-02) | Queue in the full player | In Max, with the player full, the Queue sits on this side of the cover. The strip on the Queue's edge moves it too | settings-card.ts |
 | Settings › Window (2026-10-25) | Shade behind the title | In the full player, a soft shade behind the title, artist and album, or a band across the cover. A near-square card keeps the band | settings-card.ts |
 | Settings › Window (2026-10-26) | Title under the cover | In the full player, the title, artist, album and buttons sit under the cover, not on it | settings-card.ts |
 | Settings › Window | Grow cards from edges · Collapse on outside click · Grown card on a new pick | Click the gap beside a card to open it over its neighbor. Hover a card's title for the button · A click outside a grown card collapses it. Pin holds it open · Pick another card in a grown card's title: it keeps the size, or collapses first | settings-card.ts |

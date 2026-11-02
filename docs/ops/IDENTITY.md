@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.29.0
 desk_test: passed 2026-10-17
 sources: [src-tauri/src/identity.rs, src-tauri/src/velo.rs, src-tauri/src/media.rs, src-tauri/src/app_icon.rs, src-tauri/build.rs, src-tauri/identity/identity.json, src-tauri/identity/AppxManifest.template.xml, scripts/identity-pack.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/icons.py, docs/ops/VELOPACK.md, docs/ideas/whitelabel.md]
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 # Package identity — exact-size taskbar icons for the installed app
 
@@ -328,3 +328,57 @@ the worktree (uncommitted) for the build.
 - The PNG set and `mcpb/icon.png` became the city; the browser extension's icons did not.
 - The Beta's package uses the same city logos (its own look is still open, whitelabel.md).
 - The identity version is separate from the app version, raised by hand when the logos change.
+
+## 10. A user's own taskbar icon (idea)
+
+> **Part:** idea · 2026-11-02. His ask: a power user can put their own picture on the taskbar
+> button and the pin, and accepts a softer icon for it. Most users, him included, keep the
+> city. Not designed: the three probes in §10.4 come first, then his forks (§10.5).
+
+### 10.1 Why the app cannot do it today
+- With identity, the taskbar button (running) and the pin (closed) draw the package logos from
+  the install folder (§2, P4). The running app cannot change them: `WM_SETICON` (big) only
+  reaches the taskbar of a window with no identity (the dev app).
+- The pin is the package's own pin, with no `.lnk` (P4). So Windows shows no Properties ›
+  Change Icon for it either.
+- Places the app CAN give a user's picture today, with no shortcut: the title bar and Alt+Tab
+  (`app_icon.rs`, the small icon), the tray (`tray.set_icon`, as `refresh_tray()` does), and
+  a 16 px badge on the corner of the taskbar button (`ITaskbarList3::SetOverlayIcon`, not
+  used yet). The badge is the only one of these on the live taskbar, and it sits on the city.
+- Rejected: write the user's picture over the package logos in `current\`. Windows does not
+  support it, every update replaces `current\`, and a half-done swap gives the grey plate
+  (§3.1).
+
+### 10.2 The mechanism (P3 and T2, read the other way)
+P3 found that a Start shortcut carrying the package app ID makes the taskbar draw **the
+shortcut's icon**, on the running button and on a pin (T2). For the city that was a fault. For
+this setting it is the feature: the shortcut carries the user's icon.
+1. The user turns the setting on and picks a picture (PNG or ICO).
+2. Rust decodes it with a size limit and writes an `.ico` (16 … 256 frames) to the data folder,
+   never to the install folder.
+3. The app writes a Start shortcut: the package app ID, that `.ico`, the name (§10.5). Then
+   `ie4uinit.exe -show` (the cache row in §8.1).
+4. Off: delete the shortcut and the `.ico`, `ie4uinit.exe -show`. The city comes back.
+A user who never turns it on has no shortcut, so nothing changes for them.
+
+### 10.3 The costs the user accepts
+- **A softer icon.** With a shortcut Windows shrinks the icon's 32 frame (100 %, 125 %) or its
+  48 frame (150 %) to the button's size (§2): 339 of 576 pixels differed in P3. A picture
+  drawn for 24 px does not help, since Windows does not pick that frame.
+- **Two DeetsMusic entries in Start.** The package's entry (`AppListEntry` shown, the city) and
+  the shortcut (the user's icon). The entry is in the signed manifest, so the app cannot hide it
+  for one user.
+
+### 10.4 The probes first (Claude, on a Beta install, as in §8; about an hour)
+| # | Question | How |
+|---|---|---|
+| C1 | Does an update leave the shortcut alone when its target is `explorer.exe shell:AppsFolder\<package app ID>`? P1: Velopack rewrites the target, icon and app ID of every `.lnk` that points into the install root, on every update. A target outside the root should escape it. Does the shortcut still start the app and group with its window? | Write it, update the Beta to the next build, read the `.lnk`, start from Start, capture the taskbar |
+| C1b | If C1 fails: the app checks the shortcut at each start and writes it again. How long does the city show after an update before the user's icon is back? | Same run, a shortcut that targets the exe |
+| C2 | Does a pin made BEFORE the shortcut existed switch to the user's icon (T2 suggests yes), or must the user unpin and pin again? Does turning the setting off bring the pin back to the city at 1:1? | Pin from the running button, turn on, capture closed and running; turn off, capture |
+| C3 | Uninstall: a target outside the root is not one Velopack deletes (P8). `on_uninstall` must delete the shortcut and the `.ico`. Does anything stay in Start or the pin? | Uninstall the Beta, list Start, `User Pinned`, the data folder |
+
+### 10.5 His forks, after the probes
+- The setting's name, wording and place (Settings, the Compass row), with its trade-off line.
+- Whether one picture also covers the tray and the title bar, or the taskbar only.
+- The shortcut's name in Start, beside the package's "DeetsMusic".
+- The badge (§10.1) as well, or instead, for a user who wants the sharp city with a mark.

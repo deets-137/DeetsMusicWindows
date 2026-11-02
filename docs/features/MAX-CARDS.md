@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.26.0
 desk_test: passed 2026-10-12
-sources: [src/layout.ts, src/layout-rules.ts, src/card-grow.ts, src/full-player.ts, src/styles.css, index.html, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/rulez-words.ts, src/rulez-logs.ts, src/compass.ts, src/appearance.ts, src/boot-cover.ts, src/rulez-card.ts, src/surface.ts]
-updated: 2026-10-21
+sources: [src/layout.ts, src/layout-rules.ts, src/card-grow.ts, src/full-player.ts, src/styles.css, index.html, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/rulez-words.ts, src/rulez-logs.ts, src/compass.ts, src/appearance.ts, src/boot-cover.ts, src/rulez-card.ts, src/surface.ts, src/scene.ts]
+updated: 2026-11-02
 ---
 # DeetsMusic — Max cards: one, two or four content cards in Max
 
@@ -459,3 +459,53 @@ Ideas (none decided): the cards that stay glide to their new boxes (the grow's F
 the cards that come or go use the skin's `--swap-*` shape; or the launch cover's lift, as a look
 change does (UX-COVERUPS.md §6a); or keep the snap and say so. Open: whether a rule's change and
 a hand pick move the same way.
+
+## 13. Now Playing and Queue on the right (built 2026-11-02)
+> **Part:** built · 2026-11-02 · desk test passed 2026-11-02 (his word: "looks good")
+
+**His ask (2026-11-02):** "another settings row to move the now playing / queue stack to the
+right even in the 1/2/4 card view for max".
+
+**His calls:** the cards keep their places on screen (1A): Now Playing and the Queue take the
+right column, the cards move left as one block, and Library stays where it was. Two separate
+rows (2A): this one, and *Queue in the full player* (fullscreen-player.md §18.2).
+
+**As built:**
+- The key `maxStageSide` ("left" | "right", default "left"), a rule key, read with
+  `effective`. Settings › Window › *Now Playing and Queue in Max*, *Left | Right*, under
+  *Layout for Max*. Agent spec, AGENT.md, the Rulez words, the New badge (`since: "1.3.1"`), the
+  usage allow-list (the DeetsSupport copy is written, not deployed).
+- `data-stage-side` on `<html>`: the pre-paint in `index.html` sets your value, `layout.ts`
+  sets the effective one. styles.css has a grid per layout with the stage after the cards
+  (`"left right stage"`), and the grow spans one column left (content columns 1.. instead of
+  2..). `MAX_CELLS` does not change.
+- `maxBeyond` takes the stage's side: the content area's side toward the stage is the gap
+  (`"outer"`), the other side is the window edge. card-grow.ts uses the stage's side where it
+  used "left" (the two-card strips, the shared gap, `stageGapShared`); Now Playing's resting
+  strips in full-player.ts mirror (the inner side is the gap, the outer side the window edge).
+- A change slides the stage and the cards on screen from their old boxes to the new ones
+  (`--player-dur` / `--player-ease`, the animation id `stage-side`; the stage over the cards),
+  as the full player's columns do when the Queue changes sides. A change during the slide
+  starts from where each one is. Reduced motion, another surface or an open full player: no
+  slide. A grown card collapses with no motion first (the `maxCards` rule). The full player
+  stays open and looks the same. `layout:stage-side` logs each change.
+- Happy's edge clouds place again after the slide (`scene.ts`).
+- Tests: `tests/layout-rules.test.ts` (the mirrored `maxBeyond`), `tests/full-player-layout.test.ts`
+  (`stillCutLeft`).
+
+**What Claude decided inside his calls:** the row's words and place; the slide on a change
+(the full player's flip motion and tokens, not a new one); the full player keeps its open
+state across a change; the key's name.
+
+**Desk test (his):**
+1. Max, 4 cards. Settings › Window › *Now Playing and Queue in Max* › Right: Now Playing and the
+   Queue slide to the right; the four cards slide left and keep their order.
+2. Try 2 columns, 2 rows and 1 card: each has the stage on the right, with no gap or overlap.
+3. Grow strips: the gap beside the stage is now on the cards' right. Grow a card wide, tall
+   and Fill: each covers only the cards, never the stage. Now Playing's strip in that gap opens
+   the full player; the Queue's top strip still grows it up.
+4. Open the full player with *Queue in the full player* on Left: the Queue crosses the cover to
+   the left, and crosses back on the close. On Right: the Queue grows up in its own column.
+5. Change the row back to Left twice quickly: no jump.
+6. Restart the app with Right: the first frame already has the stage on the right.
+7. Happy skin: after a change, the edge clouds sit on the new outer cards.

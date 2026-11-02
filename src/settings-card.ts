@@ -238,6 +238,8 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.2.1", section: "Playback", row: "clearqueuelaunch" }, // Clear the queue on launch, built 2026-10-29 (QUEUE.md § Clear Queue)
   { since: "1.3.0", section: "Updates", row: "afterupdate" }, // After an update, show, built 2026-11-02 (UPDATE-CARD.md §3.15)
   { since: "1.3.0", section: "Playlists", row: "laterremove" }, // Remove from Later list automatically, built 2026-11-01 (LISTEN-LATER.md)
+  { since: "1.3.1", section: "Window", row: "maxstageside" }, // Now Playing and Queue in Max, built 2026-11-02 (MAX-CARDS.md §13)
+  { since: "1.3.1", section: "Window", row: "fpqueueside" }, // Queue in the full player, built 2026-11-02 (fullscreen-player.md §18.2)
   { since: "1.3.0", section: "Playlists", row: "newcover" }, // New cover, from 0.14: shown again beside the Later list, which starts with it (his call 2026-11-01, LISTEN-LATER.md §2.2)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
@@ -509,7 +511,7 @@ const RESET_GROUPS: ResetGroup[] = [
     hint: "Open menus on hover, the three hover-hint rows, Show notices, and the Compass outside-click rule",
     keys: ["menuMode", "hoverHints", "hoverHintDelay", "hoverSongNames", "toasts", "goToTarget", "compassCloseAway"],
   },
-  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
+  { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, the sides of Now Playing and the Queue in Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "maxStageSide", "fpQueueSide", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
     keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
@@ -1254,6 +1256,16 @@ function mountSettings(
           kind: "choice", id: "maxcards", label: "Layout for Max", key: "maxCards",
           hint: "How many cards Max shows beside Now Playing and the Queue. Each layout keeps its own cards",
           options: [{ value: "4", label: "4 cards" }, { value: "2cols", label: "2 columns" }, { value: "2rows", label: "2 rows" }, { value: "1", label: "1 card" }],
+        },
+        {
+          kind: "choice", id: "maxstageside", label: "Now Playing and Queue in Max", key: "maxStageSide",
+          hint: "In Max, Now Playing and the Queue sit on this side of the cards",
+          options: [{ value: "left", label: "Left" }, { value: "right", label: "Right" }],
+        },
+        {
+          kind: "choice", id: "fpqueueside", label: "Queue in the full player", key: "fpQueueSide",
+          hint: "In Max, with the player full, the Queue sits on this side of the cover. The strip on the Queue's edge moves it too",
+          options: [{ value: "left", label: "Left" }, { value: "right", label: "Right" }],
         },
         {
           kind: "choice", id: "npshade", label: "Shade behind the title", key: "npShade",

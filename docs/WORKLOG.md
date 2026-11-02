@@ -2,9 +2,39 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 # DeetsMusic — Work log
+
+## 2026-11-02 — Two Max settings: the stage's side, the Queue's side in the full player
+
+His asks: a Settings row for the Queue's side in the full player (only the strip and the picker
+set it), and a row that puts Now Playing and the Queue on the right in Max's card layouts. His
+calls: the cards keep their order on screen (1A); two separate rows (2A); the badges at 1.3.1.
+- **Built:** `maxStageSide` and `fpQueueSide`, both rule keys, rows under *Layout for Max*
+  (MAX-CARDS.md §13, fullscreen-player.md §18.2). The full player's flip moved from
+  `deets.fullplayer.side` into the store (migrated once). The stage-right grids, grow spans and
+  full-player rules in styles.css; `maxBeyond` takes the stage's side; the slide on a change.
+- **Checks:** tsc, 450 tests (two new), vite build, docs:check. The DeetsSupport copy of the
+  usage allow-list is written (`npm run usage:keys`) and committed there, not deployed.
+- **His look:** "looks good" on the dev app; the desk tests marked passed.
+
+## 2026-11-02 — How much rooms are used: the worker's history
+
+His question: how many people use rooms, and how often. The app counts `room.made`,
+`room.joined` and `panel.room` from 1.3.0 (USAGE-COUNTS.md §21); live D1 had no room rows yet
+(1.3.0 went out today). For the time before, a read-only query of the deets.solutions zone
+analytics for `rooms.deets.solutions`, per UTC day, 2026-10-03 → 2026-11-02 (10-23 not read:
+the GraphQL rate limit):
+- **Rooms started** (`POST /room` answered 2xx): 10-14 3 · 10-16 1 · 10-17 22 (of 26) ·
+  10-24 4 · 10-25 4 · 10-30 2. 36 in all, 32 different rooms with a socket. About 2 sockets a
+  room (the host and one guest, or a reconnect). Every launch, test rooms included: the zone
+  cannot tell people apart, and the dev apps use the live worker.
+- **Invite pages** (`/j/<code>`): 0. **Peeks:** 16, all on 10-17.
+- **One room that ended, retried for ever:** 404 on `/room/<code>/ws`, all one room: 10-31
+  1,661 · 11-01 5,650 · 11-02 4,085 (to about 20:40 UTC). This is the loop that `e0524cf` fixes
+  (found today); the fix is on `main`, not in 1.3.0, so that app keeps trying until it updates
+  to the release that carries it. About 6 % of the free plan's 100,000 requests a day.
 
 ## 2026-11-02 — The live tests and watches, read against the record
 
