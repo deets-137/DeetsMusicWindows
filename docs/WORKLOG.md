@@ -26,6 +26,10 @@ updated: 2026-11-01
 - **Then:** his intro is in (TODO gone); each column of a version page scrolls on its own in Max
   (§3.18); *While You Read*, a bare player at the right column's foot in Max (§3.19). TOKENS.md
   regenerated (the ⟳ panel's token had missed it).
+- **Where a setting was last changed (his calls):** the weekly settings report carries
+  `<key>.src` and `<key>.v` (the change's release line) per reported setting; §2 rule 4 changed;
+  the worker keeps them for known keys and checked values (USAGE-COUNTS.md §22). Worker check
+  passed on a local worker. Not deployed; the Stats tab view is for tomorrow.
 
 ## 2026-11-01 — The Library ⟳: Quick Refresh and Full Refresh
 

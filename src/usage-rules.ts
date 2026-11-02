@@ -256,6 +256,25 @@ export function settingValue(kind: "toggle" | "choice", options: readonly string
   return options.includes(raw) && /^[A-Za-z0-9._:+-]{1,32}$/.test(raw) ? raw : "other";
 }
 
+/** The places a setting can be changed from (settings-store.ts `SettingSource`), as the
+ *  settings report may name them (§22). Kept here, not imported: this file stays pure. */
+export const CHANGE_SOURCES: readonly string[] = [
+  "onboarding", "walk", "settings", "quick", "compass", "panel", "update", "agent", "rule", "app", "before",
+];
+
+/** Where one reported setting was last changed, and in which release line (§22, his call
+ *  2026-11-02: to find the settings worth posing again). `<key>.src`: the source, `default` when
+ *  the change log has no record (never changed since 1.3.0, the first version with the log), or
+ *  `other` for a name the list does not know. `<key>.v`: the line ("1.3") of that change, only
+ *  when the record has a version (`before` has none). Never the time, never the exact version. */
+export function changeFields(key: string, change: { source: string; version: string } | null): Record<string, string> {
+  if (!change) return { [`${key}.src`]: "default" };
+  const out: Record<string, string> = { [`${key}.src`]: CHANGE_SOURCES.includes(change.source) ? change.source : "other" };
+  const line = /^(\d{1,3})\.(\d{1,3})\./.exec(change.version);
+  if (line) out[`${key}.v`] = `${line[1]}.${line[2]}`;
+  return out;
+}
+
 /** A random moment, in ms from now, inside the next `windowMs`, never closer than `minMs`
  *  (§3.4: each report at its own random moment). `rand` is Math.random, passed in for tests. */
 export function randomDelay(rand: () => number, windowMs: number, minMs = 0): number {

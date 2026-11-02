@@ -13,7 +13,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type { RustSettings } from "./rust-settings";
-import { setting, setSetting, ownSetting, effective, notifyOwnedSettingChange, adaptiveUnhidden, type Settings } from "./settings-store";
+import { setting, setSetting, ownSetting, effective, notifyOwnedSettingChange, adaptiveUnhidden, lastChange, type Settings } from "./settings-store";
 import { toast } from "./toast";
 import { HIDEABLE_CARDS, HIDE_LOCK_HINT, canHide } from "./layout-rules";
 import { libraryAddEnabled, setLibraryAddEnabled } from "./library-add";
@@ -24,7 +24,7 @@ import { applySurface, currentSurface, MIN_SIZES, SIZE_KEYS, type SurfaceName, t
 import { THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
 import { withAppearanceTransition } from "./appearance";
 import { presetOptions, selectPreset } from "./sound";
-import { settingValue } from "./usage-rules";
+import { settingValue, changeFields } from "./usage-rules";
 import { REVEAL_CARDS } from "./reveal-wave";
 
 type Opt = { value: string; label: string };
@@ -503,6 +503,8 @@ export async function reportedSettings(keys: readonly string[]): Promise<Record<
     if (!want.has(s.key) || (s.kind !== "toggle" && s.kind !== "choice")) continue;
     try {
       out[s.key] = settingValue(s.kind, (s.options ?? []).map((o) => o.value), String(await s.get()));
+      // Where it was last changed and the release line of that change (USAGE-COUNTS.md §22).
+      Object.assign(out, changeFields(s.key, lastChange(s.key)));
     } catch {
       // A value Rust could not give now (the Last.fm switches before the first read): left out.
     }

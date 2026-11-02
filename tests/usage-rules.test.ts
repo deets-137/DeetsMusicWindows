@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  utcDay, utcMonth, isoWeek, dayCount, afterDay, weeklyDue, settingValue, randomDelay, waited,
+  utcDay, utcMonth, isoWeek, dayCount, afterDay, weeklyDue, settingValue, changeFields, randomDelay, waited,
   movesFor, appliedReport, afterApplied, onDownloaded, reportId, clockFor, tickClock, keyFor,
   listenDay, listenMinutes, DAY_MINUTES, addUse, usesOn, afterUses, reachOf, afterReach,
 } from "../src/usage-rules.ts";
@@ -169,6 +169,16 @@ test("2026-10-27: a failed report waits its hour; the first try never waits", ()
   assert.equal(waited(undefined, 5, 3_600_000), true);
   assert.equal(waited(1_000, 3_600_999, 3_600_000), false);
   assert.equal(waited(1_000, 3_601_000, 3_600_000), true);
+});
+
+test("2026-11-02 a setting's last change goes as its source and line, never its time or exact version", () => {
+  assert.deepEqual(changeFields("skin", null), { "skin.src": "default" });
+  assert.deepEqual(changeFields("skin", { source: "onboarding", version: "1.3.0" }), { "skin.src": "onboarding", "skin.v": "1.3" });
+  assert.deepEqual(changeFields("skin", { source: "settings", version: "1.12.4-beta.2" }), { "skin.src": "settings", "skin.v": "1.12" });
+  // `before`: changed before the log began, no version.
+  assert.deepEqual(changeFields("skin", { source: "before", version: "" }), { "skin.src": "before" });
+  // A name the list does not know never goes itself.
+  assert.deepEqual(changeFields("skin", { source: "C:\\Users\\me", version: "1.3.0" }), { "skin.src": "other", "skin.v": "1.3" });
 });
 
 test("a toggle goes as on or off, anything else as other", () => {

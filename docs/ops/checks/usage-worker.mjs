@@ -174,6 +174,17 @@ const ks = key();
 await send("settings", { channel: "dev", settings: { skin: "glass" }, day: today, key: ks });
 await send("settings", { channel: "dev", settings: { skin: "glass" }, day: today, key: ks });
 expect("settings: a retry with the same key stores one row", sql("SELECT COUNT(*) AS n FROM usage_settings WHERE channel = 'dev'")[0].n, 1);
+// 6a. Where a setting was last changed (§22): a known key's .src and .v ride in the row; an
+// unknown source, a long version, an unknown key's .src and free text are dropped.
+await send("settings", {
+  channel: "dev", day: today, key: key(),
+  settings: { skin: "glass", "skin.src": "onboarding", "skin.v": "1.3", "theme.src": "C:\\Users\\me", "theme.v": "1.3.0", "nope.src": "settings", "skin.x": "a" },
+});
+expect(
+  "settings: .src and .v stored for a known key only, checked values only",
+  JSON.parse(sql("SELECT settings FROM usage_settings WHERE channel = 'dev' AND settings LIKE '%skin.src%'")[0].settings),
+  { skin: "glass", "skin.src": "onboarding", "skin.v": "1.3" },
+);
 await send("health", { v: "1.2.0", channel: "dev", week: weekOf, panics: 2, day: today, key: key() });
 expect("health: filed under the week it covers", n(`channel = 'dev' AND period = '${weekOf}' AND metric = 'reports'`), 1);
 

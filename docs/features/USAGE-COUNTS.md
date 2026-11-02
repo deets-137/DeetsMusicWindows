@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, scripts/usage-r2.mjs, docs/ops/checks/usage-worker.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md, src/error-fp.ts, src/diag.ts, src-tauri/src/gpu.rs, src/license-watch.ts, scripts/errors-where.mjs, vite.config.ts, src/report-draft.ts, src/stats.ts, src/rewind.ts]
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 # DeetsMusic — Usage counts: how many people use the app, and how
 
@@ -93,7 +93,8 @@ of them is a new fork for the owner, never a build detail.
 4. **The three reports cannot be linked to each other.** They go in three separate requests, at
    three separate random moments (§3.4). Each is stored in its own table. No table shares a
    column that could join it to another. The settings row carries no version; the health report
-   carries no settings.
+   carries no settings. **Changed 2026-11-02 (his call, §22):** the settings row carries no
+   *app* version; each setting may carry the release line ("1.3") its last change was made in.
 5. **No row order.** A row carries no timestamp and no auto-increment number that shows the order
    of arrival. The settings table's key is a random value made by the server (§5), so two
    rows written one after the other cannot be told apart by their keys.
@@ -1481,3 +1482,44 @@ skins, surfaces and every toggle (the settings report shows them, §3.2).
   `[ph]`.
 - **Checks:** `npm test`, `cargo test`, and the worker check §4d (reach) and §6e (routes) on a
   local worker. Not done: a real use on the dev app, and the admin page in a browser.
+
+## 22. Where a setting was last changed (2026-11-02, built; the worker not deployed)
+
+> **Part:** built · 2026-11-02 (his calls: "1 works", then "Yes, line per change")
+
+**His ask (2026-11-02).** "Send info back to the server to be stored in D1 where the setting was
+changed … what folks are changing via the settings app vs changing at onboarding." The goal: "to
+evaluate what settings are worth posing to users to reconsider by where they set them (ie if they
+overlooked it, bringing it back up)."
+
+**What is sent.** The weekly settings report (§3.2) gains, for each reported setting, two entries
+from the local change log (UPDATE-CARD.md §3.9, `deets.settings.log`):
+- `<key>.src`: where it was last changed: `onboarding` (the grand opening), `walk` (the first-run
+  tour), `settings`, `quick`, `compass`, `panel`, `update` (the update card: a setting posed again
+  and taken), `agent`, `rule`, `app`, `before` (changed before 1.3.0, the first version with the
+  log), `default` (no record: never changed), or `other` (a name the list does not know).
+- `<key>.v`: the release line of that change ("1.3"), when the record has a version (`before` and
+  `default` have none).
+
+**How to read it.** `default` on most installs: overlooked, or the default is right.
+`onboarding` with an old line ("1.0"): set once at the start and never again, the best candidate to
+pose again. Many `settings` and few `onboarding`: people needed it and found it late, a candidate
+to show earlier. `update`: the update card's offers that were taken.
+
+**Privacy (§2).** Rule 4 changed (his call): no app version on the row; a change's release line
+may ride with its setting. Never the change's time, never its exact version, never a key that is
+not on the allow-list. A source the worker does not know is dropped; so is a `.v` that is not
+`N.N`. *Show what is sent* shows the new entries, since it shows the real JSON.
+
+**As built.**
+- **The app:** `usage-rules.ts` `CHANGE_SOURCES` and `changeFields(key, change)` (pure; a test
+  dated 2026-11-02); `agent-settings.ts` `reportedSettings` adds them beside each value from
+  `lastChange(key)`.
+- **The worker** (DeetsSupport `src/usage.js`): `settingsWrites` keeps a known key's `.src` (from
+  `SOURCES`) and `.v` (`LINE`) in the same JSON; they do not count as values. `GET /admin/usage`
+  takes `a=skin&b=skin.src` (`rowKey`), so the existing two-setting view reads them. No migration.
+  A new case in `docs/ops/checks/usage-worker.mjs` (§6a).
+- **Not built:** the Stats tab table (one row per setting; Onboarding · Tour · Settings · Quick
+  panel · Other · Never changed, and onboarding by line). A draft for him; the data is readable
+  through the two-setting view until then.
+
