@@ -400,6 +400,10 @@ puck a far-away speaker with a screen (the AirPlay tap → Opus → a sealed soc
 is what he said and is fixed; everything after it is Claude's proposal and may shift.** §3 why the
 puck can never play Apple Music on its own (settled); §6 the terms read; §9 the connectivity
 routes C1–C6 and the phone's battery; forks T, S, L open.
+`glass-text.md` — an idea (2026-11-01): why Glass text is soft (see-through layers lose
+ClearType; the probes §2), what Liquid Glass does (§3), his route: canvas-drawn lists first (§5,
+forks C1–C5), our own GPU renderer only if it comes to it (§6); the small pieces any route
+needs (§7). `docs/ops/checks/layers.mjs` lists the dev app's layers.
 
 **`docs/legal/`** — the agreements we run under, saved as read. `APPLE-DPLA.md` — the Apple
 Developer Program License Agreement (English UK, effective 2026-10-01, PDF and text beside it),

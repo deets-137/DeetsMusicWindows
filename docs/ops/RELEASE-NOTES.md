@@ -41,6 +41,34 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.3.0 — 2026-11-01
+
+**What's New, a card for every update.** Each version gets a page: what changed, the new
+settings with a link to each, and *Use it* where a default changed (your own setting stays until
+you press it). The last three versions have their own pages; *Older* searches the rest. Open it
+from the Updates panel's *See the new settings* or *What's New* in the Compass. After a bigger
+update, such as 1.2 to 1.3, that brings new settings, the Updates panel opens by itself. To see
+it after every update, turn on Settings › Updates › *Show what's new after every update*.
+
+**Listen Later on songs and albums.** Right-click a song, an album or the songs you picked and
+choose *Listen later*. They go to the end of *Saved for the Right Day*, and Undo takes them out
+again. A song already there is not added twice. Rename the list if you like; Listen later finds
+it by its role, not its name. To clear it as you go, set Settings › Playlists › *Remove from
+Later list automatically*: *Played from List* takes a song off when you play it to the end, or
+skip it, from the list; *Played Anywhere* does the same wherever you play it. A skip shows a
+notice with Undo. Off, the default, keeps every song.
+
+**DeetsMusic Lists on the Playlists card.** The lists the app makes for you now sit together
+at the top: Replay, the Later list, Rulez Playlists, then your playlist webs. *Made Here* is
+now *Created Here*.
+
+**Report from an error notice.** An error notice now has a *Report* button. It opens Settings ›
+Bugs with the form filled in: what went wrong, and the log lines around it, with names taken
+out. You read it before you send it.
+
+**Resolved reports fold away.** In Settings › Bugs › My reports, closed, fixed and won't-fix
+reports move into a *Resolved* fold, so the open ones stay on top.
+
 ## 1.2.1 — 2026-10-29
 
 **Friends on DM, a new shelf on Home.** When you have friends in DeetsMusic, Home shows the

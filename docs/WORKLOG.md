@@ -6,6 +6,20 @@ updated: 2026-11-01
 ---
 # DeetsMusic — Work log
 
+## 2026-11-01 — Glass text investigated; the update card's choices looked at
+
+- **Glass looks low DPI (his report).** Probes on the dev app: text on see-through layers gets
+  grey smoothing, not ClearType. The layers come from the aurora blobs' `will-change`, the album
+  aurora's spin and the lists' scroll layers. An opaque canvas keeps ClearType over a gradient.
+  His route: canvas-drawn lists first, our own renderer only if it comes to it; a later sitting.
+  Written up in ideas/glass-text.md; the layer reader is `docs/ops/checks/layers.mjs`. Nothing
+  built.
+- **The update card:** his look at Claude's choices (UPDATE-CARD.md §3.11, §3.12): "it looked
+  good". Closed in HANDOFF.
+- **The admin page's minutes on `?mock`:** DeetsSolutions `mock.js` `mockUsage` now returns
+  `listen` rows (89 days, four versions, the 0-minute flag on the newest), so the chart, the
+  spread and the version table draw locally. Uncommitted in DeetsSolutions.
+
 ## 2026-11-01 — Listen Later: designed and built
 
 **Listen Later (`features/LISTEN-LATER.md`).** Talked through with him, then built the same

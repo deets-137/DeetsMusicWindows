@@ -133,11 +133,6 @@ item closes, delete it here and write the day in WORKLOG.md.
   at Claude's choices (§3), and his idea of an opt-in action in the
   Updates panel that moves a user's old webs.
 
-- **The update card + the settings change log + the Updates panel's own open (2026-10-29,
-  `ef4a458`).** Desk tests passed: the change log and the panel's open 2026-10-29, the card
-  2026-10-30 (his word). Open: his look at Claude's choices (features/UPDATE-CARD.md §3.11,
-  §3.12; a page per minor line first). The frame is `src/paged-card.ts`, shared with the grand
-  opening.
 - **My reports' Resolved fold, and a local support worker (2026-10-30, `9ae4e80`).** Built from
   his own test through it. The fold ships with 1.3.0; the local worker is debug builds only
   (DEBUGGING.md § A local support worker).
@@ -304,6 +299,11 @@ Each of these shipped; what is left is listed.
   (USAGE-COUNTS.md §11).
 
 ### His to design or decide (asks and ideas, not built)
+
+- **Glass text (2026-11-01):** sharp text on smooth glass. His route: canvas-drawn lists first,
+  our own renderer only if it comes to it; a later sitting. Forks C1–C5 and the small pieces
+  (§7: the font, the blobs, the Now Playing card's order, the contrast probe):
+  [ideas/glass-text.md](ideas/glass-text.md).
 
 - **Should a new Play keep a large pile of hand-added songs?** (2026-10-29, from the Clear
   Queue bug report.) QUEUE.md § `setContext` rule 1 keeps every manual entry on top of each new

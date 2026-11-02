@@ -1113,11 +1113,12 @@ Privacy paragraph and *Show what is sent* each get a line.
   whole number from 0 to 1,440, a bad version. The cron deletes rows older than 13 months.
   `GET /admin/usage` adds `listen`: the last 90 days as `(day, v, minutes, n)`, never a row id.
   The table: `migrations/2026-11-01-usage-listen.sql`, applied to the local database only.
-- **The admin page** (DeetsSolutions `admin.js`, the Growth tab, under Active installs):
-  *Minutes listened per day* (the median as the line, the average dashed; a hover reads the
-  day's median, average, installs and installs at 0), the spread of one day over 0 · 1–29 ·
-  30–119 · 120–299 · 300+ (the newest day with rows; a click on the chart picks another), and
-  *By version, the last 7 days* (installs, median, average, share at 0). A flag: the newest
+- **The admin page** (DeetsSolutions `admin.js` `renderListenTiles`, the **Stats** tab after
+  History; his call 2026-11-01, "simplify the display", in place of the first draft's chart,
+  spread and version table): four tiles in one row, *Total minutes* (with its change against the
+  7 days before), *Average* and *Median* (minutes per install a day) and *At 0 min* (the share
+  of install-days), each with a 30-day sparkline. They read the 7 days that end the day before
+  yesterday, since yesterday is still filling in (`LISTEN_LAST`). A flag: the newest
   version with 20 or more rows in the last 7 days, and more than 20 % of them at 0 minutes
   (`FLAG.silent`, `FLAG.silentMin`).
 - **The words.** Rule 3 (§2) names the exception. The usage row's hint (Settings › About and
@@ -1176,7 +1177,7 @@ uses is not a time and not a setting; a new name is his call, as a new setting i
   `use.reports` once and, per use, its range and its sum. No migration: the table exists, and
   the cron already deletes day counters older than 13 months. `GET /admin/usage` adds `uses`:
   the last 90 days of `use.*` day counters.
-- **The admin page** (DeetsSolutions `admin.js` `renderUses`, the Growth tab, under the minutes):
+- **The admin page** (DeetsSolutions `admin.js` `renderUses`, the Growth tab, under Active installs):
   *Feature use, the last 7 days*: per use, the installs that used it, the times, and the share of
   the installs that sent their counts. Its strings carry no `[ph]`: the admin pages need none
   (his call, 2026-11-01, DeetsSolutions CLAUDE.md › Copy).
