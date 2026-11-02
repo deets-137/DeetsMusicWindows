@@ -112,12 +112,12 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-**Live: 1.2.1** (2026-10-29). `main` ends at its release log (`29b7804`); the next release is
-**1.3.0**, from `updatez`. Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
+**Live: 1.3.0** (2026-11-02). `main` ends at its release log; `updatez` has one commit more,
+the Rooms reconnect fix (`e0524cf`), for the next release. Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
 
-### 1.3.0 — on `updatez`, not released
+### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)
 
 - **Listen Later (2026-11-01, uncommitted).** BUILT, desk test open
   ([LISTEN-LATER.md](features/LISTEN-LATER.md) §5): a right-click row on songs, albums and
@@ -156,11 +156,9 @@ item closes, delete it here and write the day in WORKLOG.md.
   the minutes' drafts (§17.3) and Claude's choices in §21.4. The first numbers: the library size
   per version the day 1.3.0 goes out; uses and reach the day after; the weekly ones (library
   size tiles, sync, AI routes) about 2026-11-09.
-- **To release 1.3.0** (RELEASE.md §0): the worker side is live (above). Then the version in the six files (RELEASE.md §1); the
-  1.3.0 entry in RELEASE-NOTES.md, each paragraph with its bold lead (the update card shows the
-  notes); the new rows' `since` already says 1.3.0; merge `updatez` into `main` (his call);
-  `npm run release`. **Publish only after his hand test:** this release changes every error
-  toast and the error log path, so it is not low risk (RELEASE.md §0b).
+- **1.3.0 is published (2026-11-02, his call).** Built from `7ccbd74` on `main`; every check in
+  RELEASE.md §0b passed. The Rooms reconnect fix (`e0524cf`) is on `updatez` only and waits for
+  the next release.
 
 ### Live, waiting on his test or his look
 
