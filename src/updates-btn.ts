@@ -22,7 +22,7 @@ import { releaseLeads } from "./release-leads";
 import { mountSettingsParts, quickFoldOpen, toggleQuickFold, newMarkVersions } from "./settings-card";
 import { setting, ownSetting, isFreshInstall, DEFAULT_CHANGES, type Settings } from "./settings-store";
 import { opensWhatsNew, offeredDefaultVersions, compareVersions, assumedLastRun } from "./update-rules";
-import { openUpdateCard, notePreviousRun } from "./update-card";
+import { openUpdateCard, notePreviousRun, devAsVersion, setDevAsVersion, leadsOf } from "./update-card";
 import { openQuickPanel, keepRightInWindow } from "./quick-panel";
 import { currentSurface } from "./surface";
 import { tokenMs } from "./boot-cover";
@@ -95,11 +95,11 @@ function openByItself(): void {
   if (last && compareVersions(last, now) < 0) notePreviousRun(last);
   // A changed default counts only while the user's own value is still the old one (his call 12).
   const versions = [...newMarkVersions(), ...offeredDefaultVersions(DEFAULT_CHANGES, (k) => ownSetting(k as keyof Settings))];
-  const every = setting("whatsNewEveryUpdate");
-  if (!opensWhatsNew(last, now, versions, every)) return;
+  // A patch he marked `### Show after update` opens it too (§3.17; `built.shown`).
+  if (!opensWhatsNew(last, now, versions, built.shown)) return;
   // What opens (§3.15, his call 2026-11-02): the update card by default, the panel, or nothing.
   const show = setting("afterUpdateShow");
-  diag.log("updates:openByItself", { from: last, to: now, every, show });
+  diag.log("updates:openByItself", { from: last, to: now, show });
   if (show === "off") return;
   const go = () => (show === "card" ? void openUpdateCard() : openUpdatesPanel(true));
   if (document.visibilityState === "visible") return go();
@@ -122,8 +122,10 @@ const offered = (s: UpdateStatus | null): s is UpdateStatus =>
 declare global {
   interface Window {
     /** Dev only: paint the button and panel in a pretend state, for the desk test (no toast,
-     *  no download). `__updates.fake("downloading", 0.4)`, then `__updates.real()`. */
-    __updates?: { fake: (state: UpdateStatus["state"], got?: number) => void; real: () => void };
+     *  no download). `__updates.fake("downloading", 0.4)`, then `__updates.real()`.
+     *  `asVersion("1.3.0")` runs the panel and the update card as that version, from its entry in
+     *  RELEASE-NOTES.md, across reloads; `asVersion(null)` ends it (UPDATE-CARD.md §3.16). */
+    __updates?: { fake: (state: UpdateStatus["state"], got?: number) => void; real: () => void; asVersion: (v: string | null) => void };
   }
 }
 
@@ -268,11 +270,25 @@ export function initUpdatesButton(): void {
     );
   };
   /** What's new: the offered version's leads (what you will get), else the installed one's. */
+  // Dev only (UPDATE-CARD.md §3.16): a dev app set to run as a later version shows that version
+  // and its leads, read from RELEASE-NOTES.md as written now.
+  const as = devAsVersion();
+  let asLeads: string[] = [];
+  if (as) {
+    void leadsOf(as).then((l) => {
+      asLeads = l ?? [];
+      if (!panel.hidden) renderTop();
+    });
+  }
   const notes = (s: UpdateStatus): { version: string; leads: string[] } =>
-    offered(s) && s.notes != null ? { version: s.version!, leads: releaseLeads(s.notes) } : { version: built.version, leads: built.leads };
+    as
+      ? { version: as, leads: asLeads }
+      : offered(s) && s.notes != null
+        ? { version: s.version!, leads: releaseLeads(s.notes) }
+        : { version: built.version, leads: built.leads };
   let forceOpen = false; // F4 / the Compass: unfolded this once, whatever the fold memory says
   const newOpen = () => forceOpen || quickFoldOpen(NEW_FOLD);
-  // What's new's own row, *Show what's new after every update* (UPDATE-CARD.md §3.10): the
+  // What's new's own row, *After an update, show* (UPDATE-CARD.md §3.15): the
   // Settings › Updates row, drawn by the Settings card's code under the leads. A host of its
   // own, since `top` is redrawn on every status.
   const newRowsHost = document.createElement("div");
@@ -280,7 +296,7 @@ export function initUpdatesButton(): void {
   top.after(newRowsHost);
   let newRows: CardInstance | null = null;
   const showNewRows = () => {
-    newRows ??= mountSettingsParts(newRowsHost, [{ title: "Updates", rows: ["afterupdate", "whatsnewevery"], bare: true }], "panel");
+    newRows ??= mountSettingsParts(newRowsHost, [{ title: "Updates", rows: ["afterupdate"], bare: true }], "panel");
     newRowsHost.hidden = !newOpen();
   };
   const whatsNew = (s: UpdateStatus): string => {
@@ -367,7 +383,7 @@ export function initUpdatesButton(): void {
 
   // ── follow the updater ──
   const onStatus = (s: UpdateStatus | null) => {
-    cur = s;
+    cur = s && as ? { ...s, current: as } : s;
     paintButton(s);
     paintNew(s);
     if (!panel.hidden) {
@@ -391,6 +407,10 @@ export function initUpdatesButton(): void {
         });
       },
       real: () => onStatus(updateStatus()),
+      asVersion: (v) => {
+        setDevAsVersion(v);
+        location.reload();
+      },
     };
   }
 

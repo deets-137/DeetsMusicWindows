@@ -72,10 +72,16 @@ export function offeredDefaultVersions(
   return changes.filter((c) => JSON.stringify(valueOf(c.key)) === JSON.stringify(c.from)).map((c) => c.since);
 }
 
-export function opensWhatsNew(last: string, now: string, settingVersions: string[], everyUpdate: boolean): boolean {
+/**
+ * `marked` (UPDATE-CARD.md §3.17, his call 2026-11-02, in place of the "every update" toggle):
+ * the releases he marked `### Show after update` in RELEASE-NOTES.md. One in the range opens it
+ * after any update, a patch too ("selectively turn it on if it's substantial").
+ */
+export function opensWhatsNew(last: string, now: string, settingVersions: string[], marked: string[]): boolean {
   if (!last || compareVersions(last, now) >= 0) return false;
-  if (everyUpdate) return true;
+  const inRange = (v: string) => compareVersions(v, last) > 0 && compareVersions(v, now) <= 0;
+  if (marked.some(inRange)) return true;
   const mm = (v: string) => /^(\d+)\.(\d+)\./.exec(v.trim())?.slice(1, 3).join(".") ?? "";
   if (mm(last) === mm(now)) return false;
-  return settingVersions.some((v) => compareVersions(v, last) > 0 && compareVersions(v, now) <= 0);
+  return settingVersions.some(inRange);
 }

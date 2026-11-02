@@ -82,6 +82,14 @@ test("releaseEntries reads ### Start open; openFaults names what is not a lead, 
   assert.equal(releaseEntries(MD)[0].open, undefined);
 });
 
+test("releaseEntries marks a release with ### Show after update, empty or not, 2026-11-02", () => {
+  const md = ["## 1.3.2 — 2026-11-20", "", "**Big fix.** Text.", "", "### Show after update", "", "## 1.3.1 — 2026-11-10", "", "**Small fix.** Text.", ""].join("\n");
+  const [big, small] = releaseEntries(md);
+  assert.equal(big.shown, true);
+  assert.equal(big.body, "**Big fix.** Text.");
+  assert.equal(small.shown, undefined);
+});
+
 test("releaseLeads takes each paragraph's bold start, drops the period and Fixes", () => {
   assert.deepEqual(releaseLeads(releaseEntries(MD)[0].body), ["App updates in 2 seconds", "New App Icon"]);
 });

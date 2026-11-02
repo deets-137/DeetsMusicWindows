@@ -37,6 +37,10 @@ export interface ReleaseEntry {
   /** The leads that start open on the update card, from `### Start open` (one lead per line,
    *  §3.14). With the list, the entry's other paragraphs start closed at every size. */
   open?: string[];
+  /** `### Show after update` (UPDATE-CARD.md §3.17): he marked this release substantial, so the
+   *  card (or the panel) opens after an update that brings it, a patch too. The section may be
+   *  empty; its heading is the mark. */
+  shown?: boolean;
 }
 
 /** A lead as the card and the lists compare it: no closing period, no case. */
@@ -60,7 +64,7 @@ export function releaseEntries(md: string): ReleaseEntry[] {
     const [lead, ...parts] = text.slice(start, end).split(/^### /m);
     const body = lead.trim();
     const section = (name: string) => {
-      const head = new RegExp(`^${name}\\s*\\n`);
+      const head = new RegExp(`^${name}[ \\t]*(\\n|$)`);
       return parts.find((p) => head.test(p))?.replace(head, "").trim();
     };
     const entry: ReleaseEntry = { version: m[1], date: m[2], body };
@@ -68,6 +72,7 @@ export function releaseEntries(md: string): ReleaseEntry[] {
     if (intro) entry.intro = intro;
     const open = section("Start open");
     if (open !== undefined) entry.open = open.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (section("Show after update") !== undefined) entry.shown = true;
     out.push(entry);
   });
   return out;

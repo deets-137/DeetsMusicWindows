@@ -20,6 +20,9 @@ updated: 2026-11-01
   the installed version for it.
 - **Claude's run on the dev app:** card / panel / nothing / no mark, each as written; his marks
   put back. His hand test of the preview: the 1.3 page with the first 3 open.
+- **Later the same day (his calls):** one Updates row only; the "every update" toggle is gone
+  before it shipped; he marks a substantial patch with `### Show after update` (§3.17). The dev app
+  runs as 1.3.0 for the panel and the card through `__updates.asVersion` (§3.16).
 
 ## 2026-11-01 — The Library ⟳: Quick Refresh and Full Refresh
 

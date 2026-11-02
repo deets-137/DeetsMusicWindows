@@ -558,12 +558,11 @@ them again, and records the change in the settings change log under that key
 `setSetting(key, value, "agent")`.
 A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass is the skin."
 `updateMode` is here and stays on `update action=mode` too (same write).
-`whatsNewEveryUpdate` (Updates › Show what's new after every update, 2026-10-29,
-[UPDATE-CARD.md](../features/UPDATE-CARD.md) §3.10) is an ordinary toggle: on, the Updates panel opens
-by itself after every update; off (the default), only after a 1.X update that brings a new setting.
-`afterUpdateShow` (Updates › After an update, show, 2026-11-02, UPDATE-CARD.md §3.15) is a choice:
-`card` (the default) opens the update card on that first start, `panel` the Updates panel, `off`
-nothing.
+`afterUpdateShow` (Updates › After an update, show, 2026-11-02,
+[UPDATE-CARD.md](../features/UPDATE-CARD.md) §3.15) is a choice: `card` (the default) opens the update
+card on the first start after an update, `panel` the Updates panel, `off` nothing. Which updates
+is not a setting (§3.17): a 1.X update that brings a new setting, or a release the owner marked.
+(The 2026-10-29 "every update" toggle was removed before it shipped.)
 
 ### Writes
 

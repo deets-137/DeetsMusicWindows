@@ -8,10 +8,10 @@ test("an install with no last-run mark stands in the line before, 2026-11-02", (
   assert.equal(assumedLastRun("2.0.0"), "1.999.999");
   assert.equal(assumedLastRun("0.0.1"), "");
   // A 1.2.1 install with no mark, updated to 1.3.0 with a 1.3.0 setting: the card opens.
-  assert.equal(opensWhatsNew(assumedLastRun("1.3.0"), "1.3.0", ["1.3.0"], false), true);
+  assert.equal(opensWhatsNew(assumedLastRun("1.3.0"), "1.3.0", ["1.3.0"], []), true);
   // A patch of the same line still does not (1.3.1 stands in 1.2.999: a minor jump, but only
   // when a setting is new in the range).
-  assert.equal(opensWhatsNew(assumedLastRun("1.3.1"), "1.3.1", ["1.2.0"], false), false);
+  assert.equal(opensWhatsNew(assumedLastRun("1.3.1"), "1.3.1", ["1.2.0"], []), false);
 });
 
 test("a pre-release sorts before its release, and numbers compare as numbers", () => {
@@ -32,15 +32,15 @@ test("a rollback skips the version it leaves when nothing newer was skipped", ()
 
 // The Updates panel's own open (UPDATE-CARD.md §3.10, his call 9, 2026-10-29).
 test("2026-10-29 what's new opens after a minor or major update with a new setting in the range", () => {
-  assert.equal(opensWhatsNew("1.2.1", "1.3.0", ["1.3.0"], false), true);
-  assert.equal(opensWhatsNew("1.2.1", "1.3.2", ["1.2.3"], false), true); // a patch inside the range counts
-  assert.equal(opensWhatsNew("1.9.0", "2.0.0", ["2.0.0"], false), true);
+  assert.equal(opensWhatsNew("1.2.1", "1.3.0", ["1.3.0"], []), true);
+  assert.equal(opensWhatsNew("1.2.1", "1.3.2", ["1.2.3"], []), true); // a patch inside the range counts
+  assert.equal(opensWhatsNew("1.9.0", "2.0.0", ["2.0.0"], []), true);
 });
 
 test("2026-10-29 what's new stays shut after a patch, or with no setting in the range", () => {
-  assert.equal(opensWhatsNew("1.2.1", "1.2.4", ["1.2.3"], false), false); // 1.2.X: never by default
-  assert.equal(opensWhatsNew("1.2.1", "1.3.0", ["1.2.1", "1.4.0"], false), false); // both outside the range
-  assert.equal(opensWhatsNew("1.2.1", "1.3.0", [], false), false);
+  assert.equal(opensWhatsNew("1.2.1", "1.2.4", ["1.2.3"], []), false); // 1.2.X: never by default
+  assert.equal(opensWhatsNew("1.2.1", "1.3.0", ["1.2.1", "1.4.0"], []), false); // both outside the range
+  assert.equal(opensWhatsNew("1.2.1", "1.3.0", [], []), false);
 });
 
 test("2026-10-29 a changed default counts only while the user's value is still the old one", () => {
@@ -54,9 +54,13 @@ test("2026-10-29 a changed default counts only while the user's value is still t
   assert.deepEqual(offeredDefaultVersions(changes, (k) => mine[k]), []);
 });
 
-test("2026-10-29 what's new: the toggle opens it after every update, never on a fresh install or a rollback", () => {
-  assert.equal(opensWhatsNew("1.2.1", "1.2.2", [], true), true);
-  assert.equal(opensWhatsNew("", "1.3.0", ["1.3.0"], true), false); // fresh install
-  assert.equal(opensWhatsNew("1.3.0", "1.2.1", ["1.3.0"], true), false); // rollback
-  assert.equal(opensWhatsNew("1.3.0", "1.3.0", ["1.3.0"], true), false); // same version
+// 2026-11-02 (§3.17): the "every update" toggle is gone; he marks a substantial release instead.
+test("2026-11-02 a release he marked opens it after a patch too, never on a fresh install or a rollback", () => {
+  assert.equal(opensWhatsNew("1.3.0", "1.3.2", [], ["1.3.2"]), true);
+  assert.equal(opensWhatsNew("1.3.0", "1.3.2", [], ["1.3.1"]), true); // skipped past it: still in the range
+  assert.equal(opensWhatsNew("1.3.1", "1.3.2", [], ["1.3.1"]), false); // already ran it
+  assert.equal(opensWhatsNew("1.3.0", "1.3.1", [], []), false); // an unmarked patch stays shut
+  assert.equal(opensWhatsNew("", "1.3.0", ["1.3.0"], ["1.3.0"]), false); // fresh install
+  assert.equal(opensWhatsNew("1.3.0", "1.2.1", ["1.3.0"], ["1.3.0"]), false); // rollback
+  assert.equal(opensWhatsNew("1.3.0", "1.3.0", ["1.3.0"], ["1.3.0"]), false); // same version
 });

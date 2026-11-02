@@ -487,7 +487,6 @@ const SPECS: Spec[] = [
   }),
   // ── Updates ──
   storeChoice("Updates", "updateMode", "Get updates", [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }]),
-  storeToggle("Updates", "whatsNewEveryUpdate", "Show what's new after every update"),
   storeChoice("Updates", "afterUpdateShow", "After an update, show", [{ value: "card", label: "What's New card" }, { value: "panel", label: "Updates panel" }, { value: "off", label: "Nothing" }]),
   // ── About: usage counts (USAGE-COUNTS.md); a consent gate, so an agent may only turn it off ──
   storeToggle("About", "usageReports", "Send usage counts", { offOnly: true }),

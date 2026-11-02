@@ -18,11 +18,12 @@ default to 1 | 2 | 4 cards for Max.** · **One-click MCP.** Never a category wor
 ("Lists."); **Fixes.** may close an entry, and the panel leaves it out. docs:check 31 tests
 the shape.
 
-**Two sections for the update card only** (after a `###`, so nothing below copies them):
-`### Intro`, your intro above *What's new* on the version's page; and `### Start open`, one lead
-per line, the paragraphs that start open on the card (the others start closed until a click;
-without the list, the card's fit rule decides). docs:check fails a name that is not a lead.
-UPDATE-CARD.md §3.13 and §3.14.
+**Three sections for the update card only** (after a `###`, so nothing below copies them):
+`### Intro`, your intro above *What's new* on the version's page; `### Start open`, one lead per
+line, the paragraphs that start open on the card (the others start closed until a click; without
+the list, the card's fit rule decides; docs:check fails a name that is not a lead); and
+`### Show after update`, empty, which makes the card open after an update that brings this
+release, a patch too (unmarked patches open nothing). UPDATE-CARD.md §3.13, §3.14, §3.17.
 
 Each entry, up to its first `###`, is copied into the update index by `release:publish` and
 shown in the app's update offer and on `deets.solutions/deetsmusic/` (RELEASE.md §6.2, §6.7).

@@ -361,12 +361,11 @@ off. His pick: one choice row with three values.
 
 - **Settings › Updates › After an update, show** (`afterUpdateShow`): **What's New card** (the
   default) · **Updates panel** (the open of §3.10, as before) · **Nothing**. Also in the Max
-  panel's What's new, above *Show what's new after every update*. A `NEW_MARKS` line (1.3.0), an
-  agent spec, AGENT.md, SETTINGS.md; not in usage counts until his call.
-- **When:** unchanged (`opensWhatsNew`): the first start after a 1.X update that brings a new
-  setting or an offered default, or after every update with *Show what's new after every update*
-  on. Only one thing opens: the card replaces the panel. The card opens on the first version the
-  user has not run (call 13).
+  panel's What's new, its only row since §3.17. A `NEW_MARKS` line (1.3.0), an agent spec,
+  AGENT.md, SETTINGS.md; not in usage counts until his call.
+- **When** (`opensWhatsNew`): the first start after a 1.X update that brings a new setting or an
+  offered default, or after a release he marked (§3.17). Only one thing opens: the card replaces
+  the panel. The card opens on the first version the user has not run (call 13).
 - **An install with no mark** (found 2026-11-01): `deets.updates.lastRun` came with 1.3.0, so a
   1.2.1 install that never opened the Updates panel had neither mark, and nothing opened.
   `assumedLastRun` (update-rules.ts, a test) now stands in the last patch of the line before
@@ -382,6 +381,34 @@ mark again, reload: the panel opens. *Nothing*: nothing opens. Remove `deets.upd
 and set `deets.updates.seen` to `"1.0.0"`, reload: the log has `updates:assumedLastRun` with
 `1.1.999`, and the card opens on 1.2, not 1.1.
 Claude's run on the dev app, 2026-11-02: all four cases as written (the build is 1.2.1).
+
+### 3.16 The dev app as the next version (built 2026-11-02)
+> **Part:** built · 2026-11-02; dev only.
+
+His ask: "get the dev app back to 1.3" to see the Updates panel and write the intro before 1.3.0
+is built. `__updates.asVersion("1.3.0")` (DevTools) stores `deets.dev.asVersion` and reloads: the
+panel's version row and *What's new in 1.3.0* read that version, with the leads from its entry in
+RELEASE-NOTES.md as written now, and *See the new settings* opens the card as a user of this
+build who took it (as `__updateCard.preview`). It stays across reloads, so an edit to the notes
+shows on the next open. `__updates.asVersion(null)` ends it. The launch's own open
+(`openByItself`) and the updater are not changed. A release build has none of it.
+
+### 3.17 One row; he marks a substantial release (built 2026-11-02)
+> **Part:** built · 2026-11-02; replaces the toggle of §3.10 and §3.11 (*Show what's new after
+> every update*, `whatsNewEveryUpdate`), removed before it shipped.
+
+His call ("one row only, we can by default exclude the smaller 1.3.X versions and selectively
+turn it on if it's substantial"):
+- **Settings › Updates** has one row: *After an update, show* (§3.15). The toggle, its agent spec,
+  its `NEW_MARKS` line, its usage-keys line and its ledger rows are gone. It never reached a user
+  (1.3.0 brought it), so its N mark needed no keeping.
+- **He marks a release** with an empty `### Show after update` section in its RELEASE-NOTES.md
+  entry. `releaseEntries` reads it (`shown`); `virtual:release-notes` carries the marked versions
+  (`shown`, a few strings) so the launch needs no entries. `opensWhatsNew`'s fourth argument is
+  that list: a marked release in the range (after the last run, up to now) opens it after any
+  update, a patch too. A user who skipped past it still gets it.
+- **Unmarked patches** (1.3.1, 1.3.2, …) open nothing, as before.
+- Tests: `tests/update-rules.test.ts` (2026-11-02), `tests/release-leads.test.ts`.
 
 ## 4. Not in scope
 - A toast for a small update (his call 3).

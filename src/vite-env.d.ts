@@ -2,7 +2,7 @@
 
 /** The installed version's What's new leads (vite.config.ts, docs/features/UpdatesButton.md §3.4). */
 declare module "virtual:release-notes" {
-  const notes: { version: string; leads: string[] };
+  const notes: { version: string; leads: string[]; shown: string[] };
   export default notes;
 }
 

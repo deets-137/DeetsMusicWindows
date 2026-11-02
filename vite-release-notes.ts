@@ -44,7 +44,10 @@ export function releaseNotesPlugin(): Plugin {
         return `export default ${JSON.stringify(shown)};`;
       }
       const entry = entries.find((e) => e.version === version);
-      return `export default ${JSON.stringify({ version, leads: entry ? releaseLeads(entry.body) : [] })};`;
+      // `shown`: the releases he marked `### Show after update` (UPDATE-CARD.md §3.17), so the
+      // launch can tell, without the entries, whether an update brought one. A few short strings.
+      const shown = entries.filter((e) => e.shown && !versionAfter(ENTRIES_FROM, e.version)).map((e) => e.version);
+      return `export default ${JSON.stringify({ version, leads: entry ? releaseLeads(entry.body) : [], shown })};`;
     },
   };
 }

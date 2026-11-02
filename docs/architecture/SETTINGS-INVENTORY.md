@@ -482,7 +482,7 @@ Mark one song a day ([DeetsOTD.md](../integrations/DeetsOTD.md)).
 | Control | What it does | Choices |
 |---|---|---|
 | Get updates | **Automatic** downloads in the background, then asks to restart. **Ask** asks before the download | **Automatic** / Ask / Off |
-| Show what's new after every update | **On**: the Updates panel opens with What's new after every update. **Off**: only after a 1.X update that brings a new setting. The same row sits in the Updates panel's What's new | On / **Off** |
+| After an update, show | **What's New card**: the update card opens on the first start after an update. **Updates panel**: the panel opens with What's new unfolded. **Nothing**: nothing opens. Either opens after a 1.X update that brings a new setting, or after a release the owner marked substantial (UPDATE-CARD.md §3.17). The same row sits in the Updates panel's What's new | **What's New card** / Updates panel / Nothing |
 | Check for updates | **Check now** | — |
 | Roll back | Pick an older version and **Install** it | — |
 

@@ -20,7 +20,7 @@ import { searchField } from "./search-field";
 import { wireListKeys } from "./list-keys";
 import { enterRows } from "./pop";
 import * as diag from "./diag";
-import { versionAfter, leadKey } from "./release-leads";
+import { versionAfter, leadKey, releaseLeads } from "./release-leads";
 
 declare global {
   interface Window {
@@ -302,9 +302,31 @@ function mountOlder(el: HTMLElement, lines: Line[], inNav: Set<string>, handle: 
 
 let handle: PagedHandle | null = null;
 
-/** The version the card reads as installed: the build's, or a dev preview's (§3.13). */
+/** Dev only (§3.16): the version the dev app reads as installed, for the Updates panel and this
+ *  card, so the next release's panel and card can be seen and written before it is built. Set
+ *  with `__updates.asVersion("1.3.0")`, kept across reloads, cleared with `asVersion(null)`. */
+const DEV_AS_KEY = "deets.dev.asVersion";
+export function devAsVersion(): string | null {
+  if (!import.meta.env.DEV) return null;
+  try {
+    return localStorage.getItem(DEV_AS_KEY);
+  } catch {
+    return null;
+  }
+}
+export function setDevAsVersion(v: string | null): void {
+  if (!import.meta.env.DEV) return;
+  try {
+    if (v) localStorage.setItem(DEV_AS_KEY, v);
+    else localStorage.removeItem(DEV_AS_KEY);
+  } catch {
+    /* storage unavailable: the build's own version */
+  }
+}
+
+/** The version the card reads as installed: the build's, or a dev preview's (§3.13, §3.16). */
 let pretend: string | null = null;
-const installed = (): string => pretend ?? built.version;
+const installed = (): string => pretend ?? devAsVersion() ?? built.version;
 
 /** The version the app ran before the last update, and the version the card was last opened in
  *  (his call 13): the page it opens on. Per-install marks, like `deets.updates.lastRun`. */
@@ -330,7 +352,17 @@ export const notePreviousRun = (v: string): void => writeMark(BEFORE_KEY, v);
 /** Opens the update card on the last 3 version lines, oldest first, on the first version the
  *  user has not run yet (the newest when nothing is new; `startLine`). Resolves when it closes. */
 export function openUpdateCard(): Promise<void> {
-  return openCard();
+  // A dev app set to run as a later version opens as a user of this build who took it (§3.16).
+  const as = devAsVersion();
+  return as ? openCard({ version: as, from: built.version }) : openCard();
+}
+
+/** The leads of one version's entry (the dev app's "as" version, §3.16), from the entries the
+ *  dev server carries; null when it has no entry. */
+export async function leadsOf(version: string): Promise<string[] | null> {
+  const { default: all } = (await import("virtual:release-entries")) as { default: Entry[] };
+  const e = all.find((x) => x.version === version);
+  return e ? releaseLeads(e.body) : null;
 }
 
 /** `preview`: a dev run as `version`, updated from `from` — nothing is written. */
