@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 # DeetsMusic — Handoff
 
@@ -255,6 +255,13 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   [LIVE-MCP.md](ops/LIVE-MCP.md) §5; build and deploy on his go.
 - **S2's week of mirror dates** (apple-calls.md S2), with no code: one read-only call a day,
   from a script, so the evidence is ready when S2 is built.
+- **One source for the version** (2026-11-02, his call: "we should fix it"). Today a release
+  sets the version by hand in six files (RELEASE.md §1), and `release-check` finds a missed one
+  only after the signed build. Fix: one file holds the version, and one command writes it into
+  the other five (the two `Cargo.lock` files through cargo). How (which file is the source, a
+  script or an npm `version` hook, whether `release` runs it) is his fork; bring it to him
+  first. Not while a release build is in the tree. Then RELEASE.md §1 and the release-check
+  line change with it.
 
 ### Shipped, with leftovers
 
