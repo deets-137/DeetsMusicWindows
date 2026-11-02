@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-10-30
 sources: [src/update-card.ts, src/update-card-rules.ts, src/paged-card.ts, src/onboarding.ts, src/styles/onboarding.css, src/settings-card.ts, src/settings-store.ts, src/release-leads.ts, vite-release-notes.ts, src/updates-btn.ts, src/update-rules.ts, src/compass.ts]
-updated: 2026-10-30
+updated: 2026-11-02
 ---
 # The update card — new settings after an update
 
@@ -226,6 +226,7 @@ calls in 29 files. The log sits there.
 - **The last-run version is not a setting:** `localStorage["deets.updates.lastRun"]`, a
   per-install mark like `deets.updates.seen`. The first launch of the build that brings it has
   no mark: it takes `deets.updates.seen` (the version the panel was last opened in), else none.
+  (Replaced 2026-11-02, §3.15: the panel's mark is not read; `assumedLastRun` stands in.)
 - **`since` on every `NEW_MARKS` line.** The 49 older lines were dated from git: the first
   `package.json` version after the commit that added the line (a beta rounds to its release).
   Three by hand from their dated comments: *Album Reviews* (renamed from Diary; 0.14.5),
@@ -306,6 +307,81 @@ The steps:
 - The grand opening on the shared frame: pages 1–5 by Next, *Let's Boogie* on page 5, Settings at
   the foot with no foot button, Escape closed it.
 - Not run: a changed default (none exists), Mini and Midi, the motion's timing gate.
+
+### 3.13 His intro on a version page (built 2026-11-02)
+> **Part:** built · 2026-11-02; desk test open.
+
+His ask: a place on the card to write an intro to the update, in the letter style of the grand
+opening's page 5, above *What's new* in the first column, titled "Intro to X.Y".
+
+- **Where he writes it:** RELEASE-NOTES.md, a `### Intro` section in the version's entry.
+  `releaseEntries` (release-leads.ts) reads it as `intro`. It sits after a `###`, so
+  `release:publish` never copies it: the update offer and the website do not carry it.
+- **What shows:** the line's page gets "Intro to 1.3" (a `panel__title`), then the intro in
+  `.onboarding__letter` (the body face at text size, the text color), then *What's new*. A line
+  with two releases that both have an intro shows both, oldest first. No intro: the page is as
+  before. Bold and italics work as in the notes (`inlineHtml`). No sign-off is added: he writes
+  his own.
+- The notes' fit (his call 6) now measures the room under everything above the notes, the intro
+  included.
+- **A guard:** a release build fails while a shown intro starts with `TODO`
+  (vite-release-notes.ts).
+- **The dev preview:** `__updateCard.preview("1.3.0")` (dev only) opens the card as a user of
+  today's build who takes 1.3.0 sees it, from the entry as written now; nothing is written. The dev
+  server carries the entries above the installed version for it; a build does not.
+
+**Desk test** (dev app, no restart): in DevTools, `__updateCard.preview("1.3.0")`. The card opens
+on 1.3; "Intro to 1.3" and his words sit above *What's new*; the three 1.3.0 settings show. Edit
+the intro in RELEASE-NOTES.md, close and preview again: the new words show.
+
+### 3.14 Which paragraphs start open (built 2026-11-02)
+> **Part:** built · 2026-11-02; desk test open.
+
+His ask: choose per paragraph which start open and which start closed until a click (1.3.0:
+the first 3 of 6 open).
+
+- **Where he sets it:** a `### Start open` section in the entry, one lead per line (the period
+  and the case do not matter, `leadKey`). Card only, like `### Intro`.
+- **With the list,** that entry's paragraphs start as the list says **at every size**: the fit
+  rule (his call 6) does not touch them. Every lead is a button that opens or closes its own
+  paragraph (`uc__para--set`). **Without the list,** the fit rule decides, as before.
+- **docs:check 31** fails a name that is not a lead of its entry (`openFaults`), so a renamed lead
+  cannot quietly close.
+
+**Desk test** (dev app): `__updateCard.preview("1.3.0")`: *Find out What's New*, *Mark a song or
+album to Listen Later* and *DeetsMusic Lists category in Playlists* show their paragraphs; the
+other three show the lead only, and a click opens each one.
+
+### 3.15 The card opens by itself (built 2026-11-02)
+> **Part:** built · 2026-11-02; desk test open. Replaces his call 10 (the panel's own open
+> replaced the card's): the card opens again, by default.
+
+His ask: the card opens automatically after an update, as the default, and a user can turn it
+off. His pick: one choice row with three values.
+
+- **Settings › Updates › After an update, show** (`afterUpdateShow`): **What's New card** (the
+  default) · **Updates panel** (the open of §3.10, as before) · **Nothing**. Also in the Max
+  panel's What's new, above *Show what's new after every update*. A `NEW_MARKS` line (1.3.0), an
+  agent spec, AGENT.md, SETTINGS.md; not in usage counts until his call.
+- **When:** unchanged (`opensWhatsNew`): the first start after a 1.X update that brings a new
+  setting or an offered default, or after every update with *Show what's new after every update*
+  on. Only one thing opens: the card replaces the panel. The card opens on the first version the
+  user has not run (call 13).
+- **An install with no mark** (found 2026-11-01): `deets.updates.lastRun` came with 1.3.0, so a
+  1.2.1 install that never opened the Updates panel had neither mark, and nothing opened.
+  `assumedLastRun` (update-rules.ts, a test) now stands in the last patch of the line before
+  (`1.3.0` → `1.2.999`); log `updates:assumedLastRun`. **The panel's mark is no longer read for
+  this** (his call 2026-11-02: "the panel bears no weight here"): it says when the panel was last
+  opened, not what ran, so a 1.2.x user who last opened it in 1.1 opened on the 1.2 page. Every
+  install with no `lastRun` mark now opens on its new line's page (1.3 for every 1.2.x user).
+- Log: `updates:openByItself {from, to, every, show}`.
+
+**Desk test** (dev app): in DevTools set `localStorage["deets.updates.lastRun"] = "1.1.2"`,
+reload: the card opens on 1.2 (the dev build is 1.2.1; 1.2.0 brought new settings). Set the row to *Updates panel*, set the
+mark again, reload: the panel opens. *Nothing*: nothing opens. Remove `deets.updates.lastRun`
+and set `deets.updates.seen` to `"1.0.0"`, reload: the log has `updates:assumedLastRun` with
+`1.1.999`, and the card opens on 1.2, not 1.1.
+Claude's run on the dev app, 2026-11-02: all four cases as written (the build is 1.2.1).
 
 ## 4. Not in scope
 - A toast for a small update (his call 3).

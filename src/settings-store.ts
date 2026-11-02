@@ -535,6 +535,10 @@ export interface Settings {
   /** The Updates panel opens by itself after every update (UPDATE-CARD.md §3.10). Off: only after
    *  a 1.X update whose range brings a new setting or a changed default. updates-btn.ts reads it. */
   whatsNewEveryUpdate: boolean;
+  /** What opens by itself on the first start after an update (UPDATE-CARD.md §3.15): the update
+   *  card, the Updates panel, or nothing. `whatsNewEveryUpdate` says after which updates.
+   *  updates-btn.ts reads it. */
+  afterUpdateShow: "card" | "panel" | "off";
 }
 
 /**
@@ -745,6 +749,7 @@ export const DEFAULTS: Settings = {
   updateMode: "auto", // user's call 2026-09-14: download in the background, then ask to restart
   updateSkip: "",
   whatsNewEveryUpdate: false, // his call 2026-10-29: by default only a 1.X update with a new setting opens it
+  afterUpdateShow: "card", // his call 2026-11-02: the card itself opens, not the panel; a user can pick the panel or nothing
 };
 
 /** Keys that lived on their own before the store (2026-09-10); read once, then owned here. */

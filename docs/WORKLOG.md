@@ -6,6 +6,21 @@ updated: 2026-11-01
 ---
 # DeetsMusic — Work log
 
+## 2026-11-02 — The update card: his 1.3.0 notes, his intro, which paragraphs start open, its own open
+
+- **His 1.3.0 notes** are in RELEASE-NOTES.md, his words, typos only ("what when wrong",
+  "everyday"). The intro is a TODO for him; a release build fails while it says TODO.
+- **Built (his calls):** `### Intro` above *What's new* in the letter style (UPDATE-CARD.md §3.13);
+  `### Start open` picks the paragraphs that start open, the rest closed at every size (§3.14,
+  docs:check 31 checks the names); the card opens by itself again, Settings › Updates › *After an
+  update, show*: What's New card (default) · Updates panel · Nothing (§3.15). An install with no
+  `lastRun` mark stands in the line before (1.3.0 → 1.2.999); the panel's mark is not read (his
+  call: "the panel bears no weight here"), so every 1.2.x user opens on 1.3.
+- **The dev preview:** `__updateCard.preview("1.3.0")`; the dev server carries the entries above
+  the installed version for it.
+- **Claude's run on the dev app:** card / panel / nothing / no mark, each as written; his marks
+  put back. His hand test of the preview: the 1.3 page with the first 3 open.
+
 ## 2026-11-01 — The Library ⟳: Quick Refresh and Full Refresh
 
 - **His report:** 2 songs added on the phone, the ⟳ on live took a long time. The live log: the ⟳

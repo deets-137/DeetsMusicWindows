@@ -18,6 +18,12 @@ default to 1 | 2 | 4 cards for Max.** · **One-click MCP.** Never a category wor
 ("Lists."); **Fixes.** may close an entry, and the panel leaves it out. docs:check 31 tests
 the shape.
 
+**Two sections for the update card only** (after a `###`, so nothing below copies them):
+`### Intro`, your intro above *What's new* on the version's page; and `### Start open`, one lead
+per line, the paragraphs that start open on the card (the others start closed until a click;
+without the list, the card's fit rule decides). docs:check fails a name that is not a lead.
+UPDATE-CARD.md §3.13 and §3.14.
+
 Each entry, up to its first `###`, is copied into the update index by `release:publish` and
 shown in the app's update offer and on `deets.solutions/deetsmusic/` (RELEASE.md §6.2, §6.7).
 So keep the body to paragraphs and **bold**, and use absolute links only: a relative link
@@ -43,37 +49,44 @@ download page. Older entries stay as written: they were true for their version.
 
 ## 1.3.0 — 2026-11-01
 
-**What's New, a card for every update.** Each version gets a page: what changed, the new
-settings with a link to each, and *Use it* where a default changed (your own setting stays until
-you press it). The last three versions have their own pages; *Older* searches the rest. Open it
-from the Updates panel's *See the new settings* or *What's New* in the Compass. After a bigger
-update, such as 1.2 to 1.3, that brings new settings, the Updates panel opens by itself. To see
-it after every update, turn on Settings › Updates › *Show what's new after every update*.
+**Find out What's New.** Each sizable update now starts with a full page of what's changed, the
+relevant settings that have been added, and updated defaults. Search through patch notes as
+needed and check what's about to go in so you don't get defaults or settings you'd rather not
+have. To see after you've closed it, you can always open the update panel (the up/down arrow
+icon) and hit "See the new settings" in the What's New section.
 
-**Listen Later on songs and albums.** Right-click a song, an album or the songs you picked and
-choose *Listen later*. They go to the end of *Saved for the Right Day*, and Undo takes them out
-again. A song already there is not added twice. Rename the list if you like; Listen later finds
-it by its role, not its name. To clear it as you go, set Settings › Playlists › *Remove from
-Later list automatically*: *Played from List* takes a song off when you play it to the end, or
-skip it, from the list; *Played Anywhere* does the same wherever you play it. A skip shows a
-notice with Undo. Off, the default, keeps every song.
+**Mark a song or album to Listen Later.** Right-click a song or album and hit Listen Later to
+add them to a playlist ("Saved for the Right Day" since not every day is a bedroom pop or a
+reggae type of day for me anyway). In Settings > Playlists > Remove from Later, you can choose
+what takes the song out of the Later list, if you listened anywhere or if you listened
+specifically from the playlist (gone are the days of my 2500 video youtube watch later list).
 
-**DeetsMusic Lists on the Playlists card.** The lists the app makes for you now sit together
-at the top: Replay, the Later list, Rulez Playlists, then your playlist webs. *Made Here* is
-now *Created Here*.
+**DeetsMusic Lists category in Playlists.** The lists the app makes on its own for you, like
+"Saved for the Right Day" and "Replay" along with webs, are now grouped together in the
+Playlists card. The "Made Here" section is now "Created Here" to be a little more accurate to
+your created playlists.
 
-**Report from an error notice.** An error notice now has a *Report* button. It opens Settings ›
-Bugs with the form filled in: what went wrong, and the log lines around it, with names taken
-out. You read it before you send it.
+**Reporting errors.** An error notice now has a Report button which opens Settings > Bugs with
+the form already filled in: what went wrong and logs (with the songs themselves removed /
+de-identified).
 
-**Resolved reports fold away.** In Settings › Bugs › My reports, closed, fixed and won't-fix
-reports move into a *Resolved* fold, so the open ones stay on top.
+**Grouping resolved reports.** In Settings > Bugs > My reports, closed / fixed reports fold
+away into a "Resolved" folder so the open ones stay on the top for you to reference.
 
-**Quick Refresh | Full Refresh on the Library.** A click on the Library's refresh button now
-reads only the songs you added since the last refresh: two new songs show in about a second,
-not half a minute. Rest the pointer on the button for both choices. *Full Refresh* reads your
-whole library again and removes the songs you deleted on another device. The button now stops
-turning as soon as your songs are on screen.
+**Quicker Refreshes for your Library.** Clicking the refresh button now does a quicker check
+and adds only songs you added since the last refresh. If you hover the icon, you'll have a
+dropdown and an option to do a Full Refresh, removing songs you removed on AM and such. Should
+speed up pulling a one or two song addition by almost 15-30 seconds in many instances.
+
+### Intro
+
+TODO: your intro to 1.3 goes here. A release build fails while this line starts with TODO.
+
+### Start open
+
+Find out What's New
+Mark a song or album to Listen Later
+DeetsMusic Lists category in Playlists
 
 ## 1.2.1 — 2026-10-29
 

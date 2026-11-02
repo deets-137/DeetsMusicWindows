@@ -47,6 +47,20 @@ export function rollbackSkip(skipWas: string, leaving: string): string {
  * after every update, patch or not, with or without a setting.
  */
 /**
+ * The last run of an install that is not fresh but carries no mark (UPDATE-CARD.md §3.15, found
+ * 2026-11-01): `deets.updates.lastRun` came with 1.3.0, so a 1.2.1 install that never opened the
+ * Updates panel has neither mark. It ran some earlier line; the newest one before `now`'s line is
+ * the likely one, so its last patch stands in: 1.3.0 → "1.2.999", 2.0.0 → "1.999.999". The card
+ * then opens on `now`'s line, and the open rule sees a minor update.
+ */
+export function assumedLastRun(now: string): string {
+  const [maj, min] = now.split("-")[0].split(".").map(Number);
+  if (!Number.isFinite(maj) || !Number.isFinite(min)) return "";
+  if (min > 0) return `${maj}.${min - 1}.999`;
+  return maj > 0 ? `${maj - 1}.999.999` : "";
+}
+
+/**
  * The versions of the default changes that still have something to offer this user (UPDATE-CARD.md
  * §3.4, his call 12): their value is still the old default. A user who picked another value, or
  * already has the new one, is not told. The app never changes the value itself.

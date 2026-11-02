@@ -33,7 +33,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { COPIES, render as renderCopy } from "./docs-copies.mjs";
 import { blocks as skinBlocks } from "./skin-resolve.mjs";
 // Node strips the types; the file has no imports of its own (check 31).
-import { LEAD_RULE_AFTER, leadFaults, releaseEntries, versionAfter } from "../src/release-leads.ts";
+import { LEAD_RULE_AFTER, leadFaults, openFaults, releaseEntries, versionAfter } from "../src/release-leads.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const GRACE_END = "2026-09-28"; // F5: the release check fails on facts from this date
@@ -511,6 +511,8 @@ export function check() {
     const NOTES = "docs/ops/RELEASE-NOTES.md";
     for (const e of releaseEntries(read(NOTES)).filter((e) => versionAfter(e.version, LEAD_RULE_AFTER))) {
       for (const f of leadFaults(e.body)) fail(31, NOTES, 0, `${e.version}: ${f} (UpdatesButton.md §6.3)`);
+      // The update card's `### Start open` list names leads; a renamed lead would quietly close.
+      for (const f of openFaults(e)) fail(31, NOTES, 0, `${e.version}: ${f} (UPDATE-CARD.md §3.14)`);
     }
   }
 

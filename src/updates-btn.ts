@@ -21,7 +21,7 @@ import { onUpdateStatus, updateStatus, updateStatusWords, isDevBuild, isRequired
 import { releaseLeads } from "./release-leads";
 import { mountSettingsParts, quickFoldOpen, toggleQuickFold, newMarkVersions } from "./settings-card";
 import { setting, ownSetting, isFreshInstall, DEFAULT_CHANGES, type Settings } from "./settings-store";
-import { opensWhatsNew, offeredDefaultVersions, compareVersions } from "./update-rules";
+import { opensWhatsNew, offeredDefaultVersions, compareVersions, assumedLastRun } from "./update-rules";
 import { openUpdateCard, notePreviousRun } from "./update-card";
 import { openQuickPanel, keepRightInWindow } from "./quick-panel";
 import { currentSurface } from "./surface";
@@ -83,17 +83,25 @@ const writeLastRun = (v: string) => {
 function openByItself(): void {
   const now = built.version;
   const fresh = isFreshInstall();
-  const last = readLastRun() ?? (fresh ? "" : (readSeen() ?? ""));
+  // No mark on an install that is not fresh: one from before the marks (§3.15, assumedLastRun).
+  // The panel's own mark (`deets.updates.seen`) is not used (his call 2026-11-02): it says when
+  // the panel was last opened, not what ran, and few open it.
+  const marked = readLastRun() ?? (fresh ? "" : null);
+  const last = marked ?? assumedLastRun(now);
   writeLastRun(now);
   if (fresh) return;
+  if (marked == null) diag.log("updates:assumedLastRun", { last, now });
   // The update card opens on the first version this user has not run yet (his call 13).
   if (last && compareVersions(last, now) < 0) notePreviousRun(last);
   // A changed default counts only while the user's own value is still the old one (his call 12).
   const versions = [...newMarkVersions(), ...offeredDefaultVersions(DEFAULT_CHANGES, (k) => ownSetting(k as keyof Settings))];
   const every = setting("whatsNewEveryUpdate");
   if (!opensWhatsNew(last, now, versions, every)) return;
-  diag.log("updates:openByItself", { from: last, to: now, every });
-  const go = () => openUpdatesPanel(true);
+  // What opens (§3.15, his call 2026-11-02): the update card by default, the panel, or nothing.
+  const show = setting("afterUpdateShow");
+  diag.log("updates:openByItself", { from: last, to: now, every, show });
+  if (show === "off") return;
+  const go = () => (show === "card" ? void openUpdateCard() : openUpdatesPanel(true));
   if (document.visibilityState === "visible") return go();
   // Started to the tray: open when the window first shows.
   const onShow = () => {
@@ -272,7 +280,7 @@ export function initUpdatesButton(): void {
   top.after(newRowsHost);
   let newRows: CardInstance | null = null;
   const showNewRows = () => {
-    newRows ??= mountSettingsParts(newRowsHost, [{ title: "Updates", rows: ["whatsnewevery"], bare: true }], "panel");
+    newRows ??= mountSettingsParts(newRowsHost, [{ title: "Updates", rows: ["afterupdate", "whatsnewevery"], bare: true }], "panel");
     newRowsHost.hidden = !newOpen();
   };
   const whatsNew = (s: UpdateStatus): string => {

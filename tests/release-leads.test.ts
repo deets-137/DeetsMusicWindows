@@ -1,7 +1,7 @@
 // The release notes' bold leads (docs/ideas/UpdatesButton.md §6.3), 2026-10-16.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { releaseEntries, releaseLeads, leadFaults, versionAfter } from "../src/release-leads";
+import { releaseEntries, releaseLeads, leadFaults, versionAfter, leadKey, openFaults } from "../src/release-leads";
 
 const MD = [
   "# Release notes",
@@ -33,6 +33,53 @@ test("releaseEntries cuts each entry at its first ### and keeps the order", () =
   const e = releaseEntries(MD);
   assert.deepEqual(e.map((x) => [x.version, x.date]), [["0.29.0", "2026-10-20"], ["0.28.0", "2026-10-16"]]);
   assert.ok(!e[0].body.includes("Not a lead"));
+});
+
+test("releaseEntries reads an entry's ### Intro for the update card only, 2026-11-02", () => {
+  const md = [
+    "## 1.3.0 — 2026-11-01",
+    "",
+    "**Find out What's New.** A page.",
+    "",
+    "### Intro",
+    "",
+    "Hi all.",
+    "",
+    "Second line.",
+    "",
+    "### Installing",
+    "",
+    "Not the intro.",
+    "",
+    "## 1.2.1 — 2026-10-29",
+    "",
+    "**Clear Queue.** Right-click.",
+  ].join("\r\n");
+  const [e, older] = releaseEntries(md);
+  assert.equal(e.body, "**Find out What's New.** A page.");
+  assert.equal(e.intro, "Hi all.\n\nSecond line.");
+  assert.equal(older.intro, undefined);
+  assert.equal(releaseEntries(MD)[0].intro, undefined);
+});
+
+test("releaseEntries reads ### Start open; openFaults names what is not a lead, 2026-11-02", () => {
+  const md = [
+    "## 1.3.0 — 2026-11-01",
+    "",
+    "**Find out What's New.** A page.",
+    "",
+    "**Reporting errors.** A button.",
+    "",
+    "### Start open",
+    "",
+    "find out what's new.",
+    "Not a lead here",
+  ].join("\n");
+  const [e] = releaseEntries(md);
+  assert.deepEqual(e.open, ["find out what's new.", "Not a lead here"]);
+  assert.equal(leadKey("**Find out What's New.**"), leadKey("find out what's new"));
+  assert.deepEqual(openFaults(e), ['### Start open names "Not a lead here", which is not a lead of this entry']);
+  assert.equal(releaseEntries(MD)[0].open, undefined);
 });
 
 test("releaseLeads takes each paragraph's bold start, drops the period and Fixes", () => {

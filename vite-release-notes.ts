@@ -18,8 +18,16 @@ const ENTRIES_FROM = "1.0.0";
 export function releaseNotesPlugin(): Plugin {
   const id = "virtual:release-notes";
   const all = "virtual:release-entries";
+  // The dev server also carries the entries above the installed version, so
+  // `__updateCard.preview("1.3.0")` shows the next release's card before it is built
+  // (UPDATE-CARD.md §3.13); the card itself cuts at the version it runs as. A build stops at the
+  // installed version, as before.
+  let serve = false;
   return {
     name: "deets-release-notes",
+    configResolved: (c) => {
+      serve = c.command === "serve";
+    },
     resolveId: (s) => (s === id || s === all ? `\0${s}` : null),
     load(s) {
       if (s !== `\0${id}` && s !== `\0${all}`) return null;
@@ -29,7 +37,10 @@ export function releaseNotesPlugin(): Plugin {
       this.addWatchFile(notes);
       const entries = releaseEntries(readFileSync(notes, "utf8"));
       if (s === `\0${all}`) {
-        const shown = entries.filter((e) => !versionAfter(ENTRIES_FROM, e.version) && !versionAfter(e.version, version) && !e.version.includes("-"));
+        const shown = entries.filter((e) => !versionAfter(ENTRIES_FROM, e.version) && (serve || !versionAfter(e.version, version)) && !e.version.includes("-"));
+        // An intro still marked TODO never reaches a user: the release build fails on it.
+        const todo = serve ? undefined : shown.find((e) => /^TODO\b/.test(e.intro ?? ""));
+        if (todo) this.error(`RELEASE-NOTES.md ${todo.version}: the ### Intro still says TODO (UPDATE-CARD.md §3.13)`);
         return `export default ${JSON.stringify(shown)};`;
       }
       const entry = entries.find((e) => e.version === version);

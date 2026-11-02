@@ -561,6 +561,9 @@ A skin-only row sets at any time; the reply adds "It shows while Ocean / Glass i
 `whatsNewEveryUpdate` (Updates › Show what's new after every update, 2026-10-29,
 [UPDATE-CARD.md](../features/UPDATE-CARD.md) §3.10) is an ordinary toggle: on, the Updates panel opens
 by itself after every update; off (the default), only after a 1.X update that brings a new setting.
+`afterUpdateShow` (Updates › After an update, show, 2026-11-02, UPDATE-CARD.md §3.15) is a choice:
+`card` (the default) opens the update card on that first start, `panel` the Updates panel, `off`
+nothing.
 
 ### Writes
 

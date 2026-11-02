@@ -1,7 +1,18 @@
 // update-rules.ts: the version order and the skip a rollback leaves (VELOPACK.md §12.4).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { compareVersions, rollbackSkip, opensWhatsNew, offeredDefaultVersions } from "../src/update-rules.ts";
+import { compareVersions, rollbackSkip, opensWhatsNew, offeredDefaultVersions, assumedLastRun } from "../src/update-rules.ts";
+
+test("an install with no last-run mark stands in the line before, 2026-11-02", () => {
+  assert.equal(assumedLastRun("1.3.0"), "1.2.999");
+  assert.equal(assumedLastRun("2.0.0"), "1.999.999");
+  assert.equal(assumedLastRun("0.0.1"), "");
+  // A 1.2.1 install with no mark, updated to 1.3.0 with a 1.3.0 setting: the card opens.
+  assert.equal(opensWhatsNew(assumedLastRun("1.3.0"), "1.3.0", ["1.3.0"], false), true);
+  // A patch of the same line still does not (1.3.1 stands in 1.2.999: a minor jump, but only
+  // when a setting is new in the range).
+  assert.equal(opensWhatsNew(assumedLastRun("1.3.1"), "1.3.1", ["1.2.0"], false), false);
+});
 
 test("a pre-release sorts before its release, and numbers compare as numbers", () => {
   assert.equal(compareVersions("0.28.0-beta.4", "0.28.0"), -1);

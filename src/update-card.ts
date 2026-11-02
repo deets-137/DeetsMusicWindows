@@ -3,9 +3,11 @@
 // settings it brought and the defaults it changed. Older (search every update since 1.0, §3.7)
 // and Settings at the bar's foot. The last version page's button is *Done*.
 //
-// It never opens by itself (his call 10): the Updates panel does, and its *See the new settings*
-// opens this; so does *What's New* in the Compass. Both show the last 3 lines (§3.7). The notes
-// load with a dynamic import when it opens, so the launch does not carry them (§3.1).
+// It opens by itself on the first start after an update (§3.15, his call 2026-11-02; Settings ›
+// Updates › After an update, show: the card by default, or the Updates panel, or nothing); the
+// panel's *See the new settings* and *What's New* in the Compass open it too. All show the last
+// 3 lines (§3.7). The notes load with a dynamic import when it opens, so the launch does not
+// carry them (§3.1).
 
 import built from "virtual:release-notes";
 import type { CardInstance } from "./cards";
@@ -18,11 +20,14 @@ import { searchField } from "./search-field";
 import { wireListKeys } from "./list-keys";
 import { enterRows } from "./pop";
 import * as diag from "./diag";
+import { versionAfter, leadKey } from "./release-leads";
 
 declare global {
   interface Window {
-    /** Opens the update card (the Compass row, the Updates panel's button; a desk test's handle). */
-    __updateCard?: { open: () => Promise<void> };
+    /** Opens the update card (the Compass row, the Updates panel's button; a desk test's handle).
+     *  `preview` (dev only, §3.13): the card as a user updating `from` → `version` sees it, from
+     *  the entries in RELEASE-NOTES.md, before that version is built. Nothing is written. */
+    __updateCard?: { open: () => Promise<void>; preview?: (version: string, from?: string) => Promise<void> };
   }
 }
 
@@ -45,20 +50,43 @@ const opened = new Set<string>();
  *  When they do not fit the page's height, each paragraph shows as its lead only, and a lead
  *  opens its own paragraph under it. The fit is measured on mount and when the card resizes. */
 function notesColumn(col: HTMLElement, line: Line, sheet: HTMLElement): () => void {
+  // His intro (§3.13, his call 2026-11-02): above What's new, read like the grand opening's
+  // letter. Each release of the line that has one, oldest first, under one heading.
+  const intros = line.entries.map((e) => e.intro).filter((t): t is string => !!t);
+  if (intros.length) {
+    const head = document.createElement("h2");
+    head.className = "panel__title";
+    head.textContent = `Intro to ${line.line}`;
+    const letter = document.createElement("div");
+    letter.className = "onboarding__letter uc__intro";
+    letter.innerHTML = intros
+      .flatMap((t) => t.replace(/\r\n/g, "\n").split(/\n\s*\n/))
+      .map((p) => p.trim().replace(/\s*\n\s*/g, " "))
+      .filter(Boolean)
+      .map((p) => `<p>${inlineHtml(p)}</p>`)
+      .join("");
+    col.prepend(head, letter);
+  }
   const box = document.createElement("div");
   box.className = "uc__notes";
+  // An entry with a `### Start open` list (§3.14, his ask 2026-11-02) sets each paragraph's start
+  // itself, at every size: the listed leads open, the rest closed until a click. Its paragraphs
+  // are `uc__para--set`; the fit below leaves them alone.
   box.innerHTML = [...line.entries]
-    .map(
-      (e) =>
+    .map((e) => {
+      const open = e.open && new Set(e.open.map(leadKey));
+      return (
         `<div class="set__head uc__release">${esc(e.version)} · ${esc(dateText(e.date))}</div>` +
         paragraphs(e.body)
-          .map((p) =>
-            p.shown
-              ? `<p class="uc__para"><button class="uc__lead" type="button" aria-expanded="true" title="Shows or hides this change">${esc(p.shown)}</button> <span class="uc__text">${inlineHtml(p.text)}</span></p>`
-              : `<p class="uc__para"><span class="uc__text">${inlineHtml(p.text)}</span></p>`,
-          )
-          .join(""),
-    )
+          .map((p) => {
+            if (!p.shown) return `<p class="uc__para"><span class="uc__text">${inlineHtml(p.text)}</span></p>`;
+            const starts = open ? open.has(leadKey(p.shown)) : true;
+            const cls = open ? ` uc__para--set${starts ? " is-open" : ""}` : "";
+            return `<p class="uc__para${cls}"><button class="uc__lead" type="button" aria-expanded="${starts}" title="Shows or hides this change">${esc(p.shown)}</button> <span class="uc__text">${inlineHtml(p.text)}</span></p>`;
+          })
+          .join("")
+      );
+    })
     .join("");
   col.append(box);
 
@@ -67,10 +95,12 @@ function notesColumn(col: HTMLElement, line: Line, sheet: HTMLElement): () => vo
     const was = box.dataset.compact === "true";
     box.dataset.compact = "false";
     const head = sheet.querySelector<HTMLElement>(".onboarding__hello");
-    const room = sheet.clientHeight - (head?.offsetHeight ?? 0) - col.querySelector<HTMLElement>(".panel__title")!.offsetHeight;
+    // Everything in the column above the notes (the intro, the What's new title) takes room too.
+    const above = box.getBoundingClientRect().top - col.getBoundingClientRect().top;
+    const room = sheet.clientHeight - (head?.offsetHeight ?? 0) - above;
     const compact = box.scrollHeight > room;
     box.dataset.compact = String(compact);
-    for (const b of box.querySelectorAll<HTMLButtonElement>(".uc__lead")) {
+    for (const b of box.querySelectorAll<HTMLButtonElement>(".uc__para:not(.uc__para--set) .uc__lead")) {
       b.tabIndex = compact ? 0 : -1;
       const p = b.closest(".uc__para")!;
       if (compact !== was) p.classList.remove("is-open");
@@ -79,8 +109,9 @@ function notesColumn(col: HTMLElement, line: Line, sheet: HTMLElement): () => vo
   };
   box.addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>(".uc__lead");
-    if (!b || box.dataset.compact !== "true") return;
+    if (!b) return;
     const p = b.closest(".uc__para")!;
+    if (box.dataset.compact !== "true" && !p.classList.contains("uc__para--set")) return;
     const open = p.classList.toggle("is-open");
     b.setAttribute("aria-expanded", String(open));
     if (open) enterRows([p.querySelector(".uc__text")!]);
@@ -116,10 +147,10 @@ function valueName(c: DefaultChange, options?: { value: string; label: string }[
 }
 
 function settingsColumn(col: HTMLElement, line: Line): () => void {
-  const marks = inLine(newMarkEntries(), line.line, built.version);
+  const marks = inLine(newMarkEntries(), line.line, installed());
   // A changed default shows only while the user's own value is still the old one (§3.4, his
   // call 12): the app never changes it; *Use it* is the user's press.
-  const offered = inLine(DEFAULT_CHANGES, line.line, built.version).filter(
+  const offered = inLine(DEFAULT_CHANGES, line.line, installed()).filter(
     (c) => JSON.stringify(ownSetting(c.key)) === JSON.stringify(c.from),
   );
   const stops: (() => void)[] = [];
@@ -271,6 +302,10 @@ function mountOlder(el: HTMLElement, lines: Line[], inNav: Set<string>, handle: 
 
 let handle: PagedHandle | null = null;
 
+/** The version the card reads as installed: the build's, or a dev preview's (§3.13). */
+let pretend: string | null = null;
+const installed = (): string => pretend ?? built.version;
+
 /** The version the app ran before the last update, and the version the card was last opened in
  *  (his call 13): the page it opens on. Per-install marks, like `deets.updates.lastRun`. */
 const BEFORE_KEY = "deets.updates.before";
@@ -294,14 +329,24 @@ export const notePreviousRun = (v: string): void => writeMark(BEFORE_KEY, v);
 
 /** Opens the update card on the last 3 version lines, oldest first, on the first version the
  *  user has not run yet (the newest when nothing is new; `startLine`). Resolves when it closes. */
-export async function openUpdateCard(): Promise<void> {
+export function openUpdateCard(): Promise<void> {
+  return openCard();
+}
+
+/** `preview`: a dev run as `version`, updated from `from` — nothing is written. */
+async function openCard(preview?: { version: string; from: string }): Promise<void> {
   if (handle) return handle.done;
-  const { default: entries } = (await import("virtual:release-entries")) as { default: Entry[] };
+  pretend = preview?.version ?? null;
+  const { default: all } = (await import("virtual:release-entries")) as { default: Entry[] };
+  // The dev server carries entries above the build's version too (vite-release-notes.ts).
+  const entries = all.filter((e) => !versionAfter(e.version, installed()));
   const lines = groupLines(entries);
   const shown = lastLines(lines, 3);
   if (!shown.length) return;
-  const start = startLine(shown, readMark(BEFORE_KEY), readMark(CARD_SEEN_KEY) === built.version);
-  writeMark(CARD_SEEN_KEY, built.version);
+  const start = preview
+    ? startLine(shown, preview.from, false)
+    : startLine(shown, readMark(BEFORE_KEY), readMark(CARD_SEEN_KEY) === built.version);
+  if (!preview) writeMark(CARD_SEEN_KEY, built.version);
   const inNav = new Set(shown.map((l) => l.line));
   const pages: PagedPage[] = shown.map((l, i) => ({
     id: `v${l.line}`,
@@ -314,8 +359,26 @@ export async function openUpdateCard(): Promise<void> {
   pages.push({ id: "older", face: ICON_OLDER, label: "Older updates", hint: "Searches every update since 1.0", foot: true, mount: (el) => mountOlder(el, lines, inNav, () => handle) });
   pages.push(settingsPage());
   diag.log("updatecard:start", { start });
-  handle = openPagedCard({ name: "updatecard", ariaLabel: "What's new in DeetsMusic", pages, start: start && `v${start}`, onClosed: () => (handle = null) });
+  handle = openPagedCard({
+    name: "updatecard",
+    ariaLabel: "What's new in DeetsMusic",
+    pages,
+    start: start && `v${start}`,
+    onClosed: () => {
+      handle = null;
+      pretend = null;
+    },
+  });
   return handle?.done;
 }
 
-window.__updateCard = { open: openUpdateCard };
+window.__updateCard = {
+  open: openUpdateCard,
+  // `from` defaults to the build's own version: a user of today's build who takes the update.
+  preview: import.meta.env.DEV
+    ? (version, from) => {
+        diag.log("updatecard:preview", { version, from });
+        return openCard({ version, from: from ?? built.version });
+      }
+    : undefined,
+};

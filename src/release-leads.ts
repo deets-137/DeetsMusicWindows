@@ -31,6 +31,21 @@ export interface ReleaseEntry {
   date: string;
   /** The text the update offer shows: up to the first `###` or the next entry. */
   body: string;
+  /** His intro to the version, from the entry's `### Intro` section (UPDATE-CARD.md §3.13): on
+   *  the update card only. After a `###`, so the update offer and the website never carry it. */
+  intro?: string;
+  /** The leads that start open on the update card, from `### Start open` (one lead per line,
+   *  §3.14). With the list, the entry's other paragraphs start closed at every size. */
+  open?: string[];
+}
+
+/** A lead as the card and the lists compare it: no closing period, no case. */
+export const leadKey = (s: string): string => s.trim().replace(/^[-*]\s+/, "").replace(/\*\*/g, "").replace(/\.$/, "").toLowerCase();
+
+/** What the `### Start open` list names that is not a lead of its entry, for docs:check. */
+export function openFaults(e: ReleaseEntry): string[] {
+  const leads = new Set(releaseLeads(e.body).map(leadKey));
+  return (e.open ?? []).filter((n) => !leads.has(leadKey(n))).map((n) => `### Start open names "${n}", which is not a lead of this entry`);
 }
 
 /** Every `## <version> — <date>` entry of RELEASE-NOTES.md, newest first, each body cut at its
@@ -42,8 +57,18 @@ export function releaseEntries(md: string): ReleaseEntry[] {
   heads.forEach((m, i) => {
     const start = m.index! + m[0].length;
     const end = i + 1 < heads.length ? heads[i + 1].index! : text.length;
-    const body = text.slice(start, end).split(/^### /m)[0].trim();
-    out.push({ version: m[1], date: m[2], body });
+    const [lead, ...parts] = text.slice(start, end).split(/^### /m);
+    const body = lead.trim();
+    const section = (name: string) => {
+      const head = new RegExp(`^${name}\\s*\\n`);
+      return parts.find((p) => head.test(p))?.replace(head, "").trim();
+    };
+    const entry: ReleaseEntry = { version: m[1], date: m[2], body };
+    const intro = section("Intro");
+    if (intro) entry.intro = intro;
+    const open = section("Start open");
+    if (open !== undefined) entry.open = open.split("\n").map((l) => l.trim()).filter(Boolean);
+    out.push(entry);
   });
   return out;
 }

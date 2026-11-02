@@ -237,6 +237,7 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.2.0", section: "Playback", row: "playerwheel" }, // Scroll over the Player for volume, built 2026-10-27 (WHEEL-VOLUME.md)
   { since: "1.2.1", section: "Playback", row: "clearqueuelaunch" }, // Clear the queue on launch, built 2026-10-29 (QUEUE.md § Clear Queue)
   { since: "1.3.0", section: "Updates", row: "whatsnewevery" }, // Show what's new after every update, built 2026-10-29 (UPDATE-CARD.md §3.10)
+  { since: "1.3.0", section: "Updates", row: "afterupdate" }, // After an update, show, built 2026-11-02 (UPDATE-CARD.md §3.15)
   { since: "1.3.0", section: "Playlists", row: "laterremove" }, // Remove from Later list automatically, built 2026-11-01 (LISTEN-LATER.md)
   { since: "1.3.0", section: "Playlists", row: "newcover" }, // New cover, from 0.14: shown again beside the Later list, which starts with it (his call 2026-11-01, LISTEN-LATER.md §2.2)
 ];
@@ -2344,6 +2345,11 @@ function mountSettings(
           kind: "choice", id: "updatemode", label: "Get updates", key: "updateMode",
           hint: "Automatic: downloads in the background, then asks to restart. Ask: asks before the download",
           options: [{ value: "auto", label: "Automatic" }, { value: "ask", label: "Ask" }, { value: "off", label: "Off" }],
+        },
+        {
+          kind: "choice", id: "afterupdate", label: "After an update, show", key: "afterUpdateShow",
+          hint: "Opens What's New, the Updates panel or nothing on the first start after an update",
+          options: [{ value: "card", label: "What's New card" }, { value: "panel", label: "Updates panel" }, { value: "off", label: "Nothing" }],
         },
         storeToggle("whatsnewevery", "Show what's new after every update", "whatsNewEveryUpdate", () => "What's new opens by itself after every update. Off: only after a bigger update, such as 1.2 to 1.3, that brings new settings"),
         {

@@ -7,6 +7,10 @@ export interface Entry {
   version: string;
   date: string;
   body: string;
+  /** His intro to the version (`### Intro`, §3.13), shown above What's new. */
+  intro?: string;
+  /** The leads that start open (`### Start open`, §3.14); the rest start closed. */
+  open?: string[];
 }
 
 /** One version page: a minor line ("1.2") and its releases (1.2.0, 1.2.1), oldest first. The nav
