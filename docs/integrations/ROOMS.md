@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.10.0
 desk_test: passed 2026-09-19
 sources: [src/room.ts, src/room-panel.ts, src/player.ts, src/queue.ts, src-tauri/src/rooms.rs, src-tauri/src/lib.rs]
-updated: 2026-10-29
+updated: 2026-11-02
 ---
 # DeetsMusic — DeetsMusicRooms (listening rooms)
 
@@ -260,6 +260,7 @@ Every broadcast carries `serverNow`, so each app keeps a clock offset (DeetsSolu
 | **Host's connection drops** | **Grace window: 60 s.** Guests see "Waiting for the host" and keep playing on the room clock. The host's app reconnects with its host token. |
 | Host does not return in 60 s, or closes the app, or presses **End room** | The room broadcasts `ended`, closes all sockets and **deletes its storage**. The code is free. |
 | A guest's app gets `ended` | Playback stops. The guest's saved queue returns, paused. Toast: "The room ended." |
+| An app was away (asleep, offline) when the room ended | It never got `ended`, and the worker refuses its socket with a 404 the browser hides. From the second retry on, `room.ts` asks `GET /room/:code/peek` first; `{exists: false}` is the same as `ended`. A peek that fails keeps the retries going. (2026-11-02: before this, one app retried a dead room ~6,000 times in a day.) |
 | Host presses Remove on a guest | That guest gets `kicked`, then the same as `ended`. |
 
 **Why a grace window:** an app update, a Wi-Fi change or a restart would otherwise end the room for

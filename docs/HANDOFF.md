@@ -112,8 +112,8 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-**Live: 1.3.0** (2026-11-02). `main` ends at its release log; `updatez` has one commit more,
-the Rooms reconnect fix (`e0524cf`), for the next release. Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
+**Live: 1.3.0** (2026-11-02). `main` is the newest branch: it has the release log and the Rooms
+reconnect fix (`e0524cf`, merged from `updatez`), which waits for the next release. Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
 
@@ -157,8 +157,8 @@ item closes, delete it here and write the day in WORKLOG.md.
   per version the day 1.3.0 goes out; uses and reach the day after; the weekly ones (library
   size tiles, sync, AI routes) about 2026-11-09.
 - **1.3.0 is published (2026-11-02, his call).** Built from `7ccbd74` on `main`; every check in
-  RELEASE.md §0b passed. The Rooms reconnect fix (`e0524cf`) is on `updatez` only and waits for
-  the next release.
+  RELEASE.md §0b passed. The Rooms reconnect fix (`e0524cf`) is on `main` now and waits for the
+  next release.
 
 ### Live, waiting on his test or his look
 
