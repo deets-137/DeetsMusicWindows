@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 816 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 818 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -745,6 +745,8 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--lib-pill-radius` | `999px` | press, glass, cyber, metal | fully-rounded sort/view pills |
 | `--lib-pop-radius` | `var(--radius-panel)` | press, cyber, metal |  |
 | `--lib-pop-dir-size` | `26px` | — | a direction / density square in the Sort and View pops |
+| `--uc-listen-art` | `48px` | — | While You Read's cover on the update card (UPDATE-CARD.md §3.19): small, beside the buttons |
+| `--lib-refresh-status-w` | `200px` | — | the ⟳ panel's status line wraps here, so "1,200 of 4,113 songs" does not widen it |
 | `--lib-grid-gap` | `var(--space-2)` | — |  |
 | `--lib-tile-small` | `84px` | — | min tile width — small squares (denser) |
 | `--lib-tile-large` | `132px` | — | min tile width — large squares |
@@ -1188,8 +1190,8 @@ reader is a token nothing uses.
 | `--present-roll-dur` | `1.2s` | — | present.ts |
 | `--present-roll-ease` | `cubic-bezier(0.33, 1, 0.68, 1)` | — | present.ts |
 | `--present-in-delay` | `calc(var(--grow-dur) * 0.4)` | — | styles.css |
-| `--nav-dur` | `0.26s` | press, ocean, glass, cyber | collection-card.ts, handoff.ts, layout.ts, onboarding-looks.ts, onboarding.ts, styles.css, styles/onboarding.css, styles/skin.css |
-| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber | collection-card.ts, layout.ts, onboarding-looks.ts, onboarding.ts, styles.css, styles/onboarding.css, styles/skin.css |
+| `--nav-dur` | `0.26s` | press, ocean, glass, cyber | collection-card.ts, handoff.ts, layout.ts, onboarding-looks.ts, paged-card.ts, styles.css, styles/onboarding.css, styles/skin.css |
+| `--nav-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | press, ocean, glass, cyber | collection-card.ts, layout.ts, onboarding-looks.ts, paged-card.ts, styles.css, styles/onboarding.css, styles/skin.css |
 | `--drill-wait` | `0.3s` | — | card-grow.ts, collection-card.ts, layout.ts |
 | `--memory-wait` | `0.4s` | — | collection-card.ts |
 | `--reveal-cap` | `1.5s` | — | home-card.ts, reveal.ts, styles/skin.css |

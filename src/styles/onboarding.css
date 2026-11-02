@@ -469,6 +469,48 @@
    A version page: the page title and two columns (the notes, the settings) until a page has a
    preview (§3.6). Midi and Mini stack them, by the rule above. */
 .onboarding__cols--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Each column scrolls on its own under the fixed title (§3.18, his ask 2026-11-02): the grid
+   takes the height left under the title, and a column scrolls inside it. Midi and Mini stack the
+   columns, so the page scrolls as one there (the rules after). */
+.uc__page { overflow-y: hidden; }
+.uc__page .onboarding__cols { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+.uc__page .onboarding__col { min-height: 0; overflow-x: hidden; overflow-y: auto; }
+/* A column of fixed height would shrink its parts to fit (the title went to 0 px): they keep
+   their own height, and the column scrolls instead. */
+.uc__page .onboarding__col > * { flex-shrink: 0; }
+/* The right column (§3.19): the settings scroll above While You Read, which stays at the foot,
+   under a line. */
+.uc__page .uc__side { overflow: hidden; }
+.uc__side-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.uc__page .uc__side-body { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; }
+.uc__page .uc__side-body > * { flex-shrink: 0; }
+.uc__listen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.uc__listen[hidden] { display: none; }
+.uc__listen-row { display: flex; align-items: center; gap: var(--space-3); }
+.uc__listen-art {
+  width: var(--uc-listen-art);
+  height: var(--uc-listen-art);
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: var(--surface-hover);
+  color: var(--subtext);
+}
+.uc__listen-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+:is([data-surface="midi"], [data-surface="mini"]) .uc__page { overflow-y: auto; }
+:is([data-surface="midi"], [data-surface="mini"]) .uc__page .onboarding__cols { flex: 1 0 auto; grid-template-rows: none; }
+:is([data-surface="midi"], [data-surface="mini"]) .uc__page .onboarding__col { overflow-y: visible; }
+:is([data-surface="midi"], [data-surface="mini"]) .uc__page .uc__side-body { overflow-y: visible; }
+/* While You Read is Max only (his design): Midi and Mini have Now Playing beside the card. */
+:is([data-surface="midi"], [data-surface="mini"]) .uc__listen { display: none; }
 .uc__notes { display: flex; flex-direction: column; gap: var(--space-2); }
 /* His intro (§3.13): the grand opening's letter (.onboarding__letter), above What's new, with a
    gap before that title. */

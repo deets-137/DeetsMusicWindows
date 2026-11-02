@@ -81,7 +81,14 @@ speed up pulling a one or two song addition by almost 15-30 seconds in many inst
 
 ### Intro
 
-TODO: your intro to 1.3 goes here. A release build fails while this line starts with TODO.
+Welcome to 1.3 gang. There's a slew of new features and some settings that go with them. Wanted
+to highlight the settings so you don't get jump-scared by a feature you didn't know about and
+have a chance to turn it off. Hope you enjoy!
+
+PS: Continue leaving feedback! Someone had asked about lyrics, and here's the thing, if I want
+to do it right, the best option out there is 200/month but would support ~1000 users which is
+tough (still job searching moment). Y'all think it's worth it? Lmk with a suggestion or upvote
+one if it exists already!
 
 ### Start open
 

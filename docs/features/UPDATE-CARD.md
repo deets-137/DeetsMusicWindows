@@ -410,6 +410,36 @@ turn it on if it's substantial"):
 - **Unmarked patches** (1.3.1, 1.3.2, …) open nothing, as before.
 - Tests: `tests/update-rules.test.ts` (2026-11-02), `tests/release-leads.test.ts`.
 
+### 3.18 Each column scrolls on its own (built 2026-11-02)
+> **Part:** built · 2026-11-02; desk test open.
+
+His ask: each column of a version page scrolls on its own. In Max, the title (the version and its
+dates) stays put, and *What's new* and *New settings* each scroll inside the height left under it
+(`.uc__page`, onboarding.css; each column is `app-scroll`). Midi and Mini stack the columns, so
+the page scrolls as one there, as before. The notes' fit (his call 6) measures the column's own
+height when it scrolls on its own. Older and the grand opening's pages are not changed.
+
+### 3.19 While You Read (built 2026-11-02)
+> **Part:** built · 2026-11-02; desk test open.
+
+His design: a very simple, non-intrusive player at the foot of the right column, Max only, under
+a line, no larger than the space under the settings: the title *While You Read*, then one row:
+the cover, Previous, Play, Next. Something to hear while the notes are read, most of all the
+song an update restart left in the queue (queue-persist.ts restores it; Play resumes it).
+
+- `listenRow` (update-card.ts) on every version page. The buttons are the Now Playing card's own
+  (`.np__btn`, its glyphs and hints); the cover is `--uc-listen-art` (48 px). No title text on the
+  row (his design): the cover's hint names the song.
+- The settings scroll above it (`.uc__side-body`); it stays at the foot (`.uc__side`).
+- Hidden while nothing is queued; arrives through `enterRows` when a song appears. A live station
+  turns Previous and Next off, as on Now Playing. Midi and Mini: hidden.
+- **Claude's choices inside his design:** the title in the column titles' style (`panel__title`,
+  as *New settings*); the cover's size; the station's name in the hint on a station.
+
+**Desk test** (dev app, Max): open the card with a song queued: the row shows its cover; Play
+plays it and turns to Pause; Next and Previous change the cover. With *New settings* long enough
+to scroll, the row stays put. Clear the queue: the row goes. Midi: no row.
+
 ## 4. Not in scope
 - A toast for a small update (his call 3).
 - Changing a value without the user's press.

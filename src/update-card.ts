@@ -21,6 +21,10 @@ import { wireListKeys } from "./list-keys";
 import { enterRows } from "./pop";
 import * as diag from "./diag";
 import { versionAfter, leadKey, releaseLeads } from "./release-leads";
+import { onPlayerState, playPause, nextTrack, prevTrack, refreshPlayerState } from "./player";
+import * as queue from "./queue";
+import { resolveEntry, artURL, coverArtPx } from "./queue-rows";
+import { ICON_PLAY, ICON_PAUSE, GLYPH_NOTE } from "./now-playing-card";
 
 declare global {
   interface Window {
@@ -97,7 +101,9 @@ function notesColumn(col: HTMLElement, line: Line, sheet: HTMLElement): () => vo
     const head = sheet.querySelector<HTMLElement>(".onboarding__hello");
     // Everything in the column above the notes (the intro, the What's new title) takes room too.
     const above = box.getBoundingClientRect().top - col.getBoundingClientRect().top;
-    const room = sheet.clientHeight - (head?.offsetHeight ?? 0) - above;
+    // A column that scrolls on its own (§3.18) has its own height; a stacked one, the page's.
+    const own = getComputedStyle(col).overflowY !== "visible";
+    const room = own ? col.clientHeight - above : sheet.clientHeight - (head?.offsetHeight ?? 0) - above;
     const compact = box.scrollHeight > room;
     box.dataset.compact = String(compact);
     for (const b of box.querySelectorAll<HTMLButtonElement>(".uc__para:not(.uc__para--set) .uc__lead")) {
@@ -207,6 +213,69 @@ function settingsColumn(col: HTMLElement, line: Line): () => void {
   return () => stops.forEach((f) => f());
 }
 
+// ── While You Read (§3.19, his design 2026-11-02) ────────────────────────────────
+
+/** A bare player at the foot of the right column, Max only: the cover, then Previous, Play and
+ *  Next in one row, the Now Playing card's own buttons (`.np__btn`). Something to hear while the
+ *  notes are read, most of all the song an update restart left in the queue (queue-persist.ts
+ *  restores it; Play resumes it). Hidden while nothing is queued. */
+function listenRow(host: HTMLElement): () => void {
+  const box = document.createElement("div");
+  box.className = "uc__listen";
+  box.hidden = true;
+  box.innerHTML =
+    `<h2 class="panel__title">While You Read</h2>` +
+    `<div class="uc__listen-row">` +
+    `<div class="uc__listen-art"></div>` +
+    `<div class="np__controls">` +
+    `<button class="np__btn" type="button" data-way="prev" aria-label="Previous" title="Plays the song before this one"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6zM20 6 10 12 20 18z" /></svg></button>` +
+    `<button class="np__btn np__btn--play" type="button" data-way="play" aria-label="Play" title="Play">${ICON_PLAY}</button>` +
+    `<button class="np__btn" type="button" data-way="next" aria-label="Next" title="Plays the next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6 14 12 4 18zM16 6v12h2V6z" /></svg></button>` +
+    `</div></div>`;
+  host.append(box);
+  const art = box.querySelector<HTMLElement>(".uc__listen-art")!;
+  const play = box.querySelector<HTMLButtonElement>('[data-way="play"]')!;
+  const skips = [...box.querySelectorAll<HTMLButtonElement>('[data-way="prev"], [data-way="next"]')];
+  let artKey = "";
+  box.addEventListener("click", (e) => {
+    const way = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-way]")?.dataset.way;
+    if (way === "play") void playPause("updatecard");
+    else if (way === "next") void nextTrack("updatecard");
+    else if (way === "prev") void prevTrack("updatecard");
+  });
+  const off = onPlayerState((s) => {
+    const cur = queue.getCurrent();
+    const next = !s.station && cur ? resolveEntry(cur) : undefined;
+    const title = s.title ?? next?.title;
+    const shown = !!(s.station || cur || title);
+    if (shown && box.hidden) {
+      box.hidden = false;
+      enterRows([box]);
+    } else if (!shown) box.hidden = true;
+    play.innerHTML = s.playing ? ICON_PAUSE : ICON_PLAY;
+    play.setAttribute("aria-label", s.playing ? "Pause" : "Play");
+    play.title = s.playing ? "Pause" : "Play";
+    // A live station cannot skip (STATIONS.md §1), as on Now Playing.
+    for (const b of skips) b.disabled = !!s.station?.live;
+    // The cover's hint names the song: the row has no words of its own (his design).
+    const artist = s.artist ?? next?.artistName ?? s.station?.name ?? "";
+    art.title = title ? (artist ? `${title} · ${artist}` : title) : "";
+    const url = s.artworkUrl ?? s.station?.artworkUrl ?? artURL(next, coverArtPx()) ?? "";
+    if (url !== artKey) {
+      artKey = url;
+      art.replaceChildren();
+      if (url) {
+        const img = document.createElement("img");
+        img.alt = "";
+        img.src = url;
+        art.append(img);
+      } else art.innerHTML = GLYPH_NOTE;
+    }
+  });
+  refreshPlayerState(); // the first paint: state is only broadcast on a change
+  return off;
+}
+
 // ── a version page ───────────────────────────────────────────────────────────────
 
 /** One line's page: the line and its dates on top, then the notes and the settings. No previews
@@ -216,22 +285,27 @@ function mountVersion(el: HTMLElement, line: Line, back?: () => void): CardInsta
   const last = line.entries[line.entries.length - 1];
   const dates = first === last ? dateText(first.date) : `${dateText(first.date)} to ${dateText(last.date)}`;
   el.innerHTML =
-    `<div class="onboarding__sheet app-scroll">` +
+    // Each column scrolls on its own under the fixed title (§3.18, his ask 2026-11-02); Midi and
+    // Mini stack them, and the page scrolls as one there.
+    `<div class="onboarding__sheet uc__page app-scroll">` +
     `<header class="onboarding__hello">` +
     (back ? `<button class="panel__back uc__back" type="button" aria-label="Back" title="Goes back to the search"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : "") +
     `<h1 class="onboarding__hi">${esc(line.line)}</h1><p class="onboarding__sub">${esc(dates)}</p></header>` +
     `<div class="onboarding__cols onboarding__cols--two">` +
-    `<section class="onboarding__col" data-col="notes"><h2 class="panel__title">What's new</h2></section>` +
-    `<section class="onboarding__col" data-col="settings"><h2 class="panel__title">New settings</h2></section>` +
+    `<section class="onboarding__col app-scroll" data-col="notes"><h2 class="panel__title">What's new</h2></section>` +
+    // The settings scroll above While You Read, which stays at the column's foot (§3.19).
+    `<section class="onboarding__col uc__side"><div class="uc__side-body app-scroll" data-col="settings"><h2 class="panel__title">New settings</h2></div></section>` +
     `</div></div>`;
   if (back) el.querySelector(".uc__back")!.addEventListener("click", back);
   const sheet = el.querySelector<HTMLElement>(".onboarding__sheet")!;
   const stopNotes = notesColumn(el.querySelector('[data-col="notes"]')!, line, sheet);
   const stopSettings = settingsColumn(el.querySelector('[data-col="settings"]')!, line);
+  const stopListen = listenRow(el.querySelector(".uc__side")!);
   return {
     destroy() {
       stopNotes();
       stopSettings();
+      stopListen();
       el.replaceChildren();
     },
   };

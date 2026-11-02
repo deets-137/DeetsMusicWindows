@@ -23,6 +23,9 @@ updated: 2026-11-01
 - **Later the same day (his calls):** one Updates row only; the "every update" toggle is gone
   before it shipped; he marks a substantial patch with `### Show after update` (§3.17). The dev app
   runs as 1.3.0 for the panel and the card through `__updates.asVersion` (§3.16).
+- **Then:** his intro is in (TODO gone); each column of a version page scrolls on its own in Max
+  (§3.18); *While You Read*, a bare player at the right column's foot in Max (§3.19). TOKENS.md
+  regenerated (the ⟳ panel's token had missed it).
 
 ## 2026-11-01 — The Library ⟳: Quick Refresh and Full Refresh
 

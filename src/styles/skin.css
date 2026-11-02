@@ -737,6 +737,7 @@
   --lib-pill-radius:   999px;       /* fully-rounded sort/view pills */
   --lib-pop-radius:    var(--radius-panel);
   --lib-pop-dir-size:  26px;        /* a direction / density square in the Sort and View pops */
+  --uc-listen-art: 48px;            /* While You Read's cover on the update card (UPDATE-CARD.md §3.19): small, beside the buttons */
   --lib-refresh-status-w: 200px;    /* the ⟳ panel's status line wraps here, so "1,200 of 4,113 songs" does not widen it */
   --lib-grid-gap:      var(--space-2);
   --lib-tile-small:    84px;        /* min tile width — small squares (denser) */
