@@ -32,6 +32,7 @@ import { basename, dirname, join, posix } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { COPIES, render as renderCopy } from "./docs-copies.mjs";
 import { blocks as skinBlocks } from "./skin-resolve.mjs";
+import { readVersions } from "./version.mjs";
 // Node strips the types; the file has no imports of its own (check 31).
 import { LEAD_RULE_AFTER, leadFaults, openFaults, releaseEntries, versionAfter } from "../src/release-leads.ts";
 
@@ -206,15 +207,8 @@ export function check() {
   }
 
   // 5. Versions.
-  const lock = (p, name) => new RegExp(`name = "${name}"\\nversion = "([^"]+)"`).exec(read(p))?.[1];
-  const versions = {
-    "package.json": JSON.parse(read("package.json")).version,
-    "src-tauri/tauri.conf.json": JSON.parse(read("src-tauri/tauri.conf.json")).version,
-    "src-tauri/Cargo.toml": /^version\s*=\s*"([^"]+)"/m.exec(read("src-tauri/Cargo.toml"))?.[1],
-    "cli/Cargo.toml": /^version\s*=\s*"([^"]+)"/m.exec(read("cli/Cargo.toml"))?.[1],
-    "src-tauri/Cargo.lock": lock("src-tauri/Cargo.lock", "deetsmusic"),
-    "cli/Cargo.lock": lock("cli/Cargo.lock", "deetsmusic-cli"),
-  };
+  // The list of files is scripts/version.mjs, the same one the release reads (2026-11-02).
+  const versions = readVersions(ROOT);
   // The parked extension's manifest is no longer held to the app's version (2026-10-23).
   const current = versions["package.json"];
   for (const [f, v] of Object.entries(versions)) if (v !== current) fail(5, f, 0, `version ${v ?? "(none)"} — package.json says ${current}`);

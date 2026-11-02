@@ -342,7 +342,7 @@ Deterministic, fast, free. No model runs. It joins the release check
 | 2 | every mention names a real file | a doc renamed, its ~1,000 prose mentions left behind |
 | 3 | every section pointer resolves to a real heading | 178 of them; a renumbered §4a that points nowhere |
 | 4 | front matter present and valid | a new doc with no status |
-| 5 | version strings match the six version files | the release trap already in the memory index |
+| 5 | version strings match the version files (`VERSION_FILES` in scripts/version.mjs) | the release trap already in the memory index |
 | 6 | `status: designed` but a file in `sources` exists | a doc that says NOT BUILT after the code landed |
 | 7 | settings keys named in docs exist in `settings-store.ts` | a renamed key, documented under the old name |
 | 8 | a file in `sources` is newer than `updated` | the doc describes code that changed after it was written |

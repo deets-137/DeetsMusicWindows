@@ -126,9 +126,8 @@ Run both again whenever `app-icon.png` changes.
 
 ### 4.1 The commands
 
-1. Set `0.14.0-beta.1` in the version files of RELEASE.md §1, **except `extension/manifest.json`**:
-   Chrome takes only numbers and dots there, so it stays on the last full version until the
-   full release sets it. Run `cargo check` in `cli/` and `src-tauri/` so both lock files follow.
+1. `npm version 0.14.0-beta.1`: it writes the seven version files of RELEASE.md §1, the lock
+   files included (since 2026-11-02). The parked extension's manifest is not one of them.
 2. `npm run release -- --beta` → the beta CLI (`--features beta`, into `cli/target-beta`),
    `DEETSMUSIC_FLAVOR=beta`, the overlay, the signed build, `release-check --beta`, and the
    archive to `installers/beta/DeetsMusic_0.14.0-beta.1_x64-setup.exe`. The file keeps the plain

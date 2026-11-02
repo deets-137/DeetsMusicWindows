@@ -12,8 +12,9 @@
 //  1. The release exe contains no absolute path into this repo. Build output under
 //     `src-tauri\target\` is allowed: generated code carries those paths in panic
 //     locations, and they never point at secrets or sources.
-//  2. The four version files agree (the archive step checks two; this checks all four).
-//     Added 2026-09-26. The extension manifest was a fifth until 2026-10-23 (parked).
+//  2. The seven version files agree (the list is scripts/version.mjs; release.mjs checks it
+//     before the build too). Added 2026-09-26 with four; the extension manifest was a fifth
+//     until 2026-10-23 (parked); the locks and package-lock.json joined 2026-11-02.
 //  3. The pin and the updater: the product name, exe name and per-user install are unchanged
 //     (a pinned taskbar button points at them), the updater public key is set, and the
 //     installer has its signature.
@@ -43,6 +44,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { disagreements, readVersions } from "./version.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
@@ -81,16 +83,10 @@ if (!existsSync(exe)) {
 }
 
 // ── 2. Version files agree ──────────────────────────────────────────────────────────
-const versions = {
-  "package.json": JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version,
-  "src-tauri/tauri.conf.json": JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8")).version,
-  "src-tauri/Cargo.toml": /^version\s*=\s*"([^"]+)"/m.exec(readFileSync(join(root, "src-tauri", "Cargo.toml"), "utf8"))?.[1],
-  "cli/Cargo.toml": /^version\s*=\s*"([^"]+)"/m.exec(readFileSync(join(root, "cli", "Cargo.toml"), "utf8"))?.[1],
-};
+const versions = readVersions(root);
 // The browser extension's manifest left this check with the extension (2026-10-23, parked).
-if (new Set(Object.values(versions)).size !== 1) {
-  failures.push("version files disagree:\n" + Object.entries(versions).map(([f, v]) => `      ${f}: ${v}`).join("\n"));
-}
+const versionFaults = disagreements(root);
+if (versionFaults.length) failures.push("version files disagree:\n" + versionFaults.map((l) => `      ${l}`).join("\n"));
 
 // ── 3. The pin and the updater (VELOPACK.md §3, §4) ───────────────────────────────────
 // A pinned taskbar button points at %LOCALAPPDATA%\<packId>\current\<exe>. An update keeps the
@@ -423,4 +419,4 @@ if (failures.length) {
   console.error(`[release-check] FAILED\n  - ${failures.join("\n  - ")}`);
   process.exit(1);
 }
-console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all four files; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the feed is signed; the app stops processes by path only; the identity package matches its signer; the CSP is set with no inline handlers; ${docsNote}`);
+console.log(`[release-check] ok — no repo paths in the exe; no dev telemetry in the bundle; version ${versions["package.json"]} in all seven files; TOKENS.md current; Last.fm key built in; build key built in; no sync command blocks the UI thread; the feed is signed; the app stops processes by path only; the identity package matches its signer; the CSP is set with no inline handlers; ${docsNote}`);

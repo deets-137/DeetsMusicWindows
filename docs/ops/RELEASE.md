@@ -1,8 +1,8 @@
 ---
 status: sop
 desk_test: none
-sources: [scripts/sign.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/src/velo.rs, src-tauri/src/update.rs, src/updater.ts, src/update-rules.ts]
-updated: 2026-10-21
+sources: [scripts/version.mjs, scripts/sign.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/publish-update.mjs, scripts/cli-dist.mjs, src-tauri/src/velo.rs, src-tauri/src/update.rs, src/updater.ts, src/update-rules.ts]
+updated: 2026-11-02
 ---
 # Release, install, uninstall
 
@@ -41,7 +41,7 @@ updated: 2026-10-21
 
 | Step | Command | What it does | Needs |
 |---|---|---|---|
-| 1 | set the version, write the notes | the same version in the six files (§1), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. `vpk pack` puts that entry in the package; publish copies it to the update offer and the website, and refuses to run without it | — |
+| 1 | `npm version <version>`, write the notes | the same version in the seven files (§1), and a `## <version> — <date>` entry in [RELEASE-NOTES.md](RELEASE-NOTES.md) in the same commit. `vpk pack` puts that entry in the package; publish copies it to the update offer and the website, and refuses to run without it | — |
 | 1a | `node docs/ops/checks/smooth.mjs` | **The motion monitor, only when it can add something (his call, 2026-10-26; it ran before every release from 2026-10-18).** Run it when the release changes motion it watches (the motion set: card swaps, the look cover, surface switches; the full player) and that motion has not had a close hand test. Otherwise skip it and write "motion: skipped" and why in the release log's Notes. 1.1.2 skipped it, his call: its motion changes were his own, hand-tested. When it runs, Claude runs it: the motion set and the full player, every skin, each clip watched for a flash, a snap, a jitter, a teleport and a row jump ([checks/README.md](checks/README.md) §2a). Then `node docs/ops/checks/smooth.mjs --dev` (since 2026-10-19): the full player on the dev app at his window sizes (portrait, landscape Max, Midi), with no other session driving it and no edits in progress. A hit not in that section's baseline stops the release until its frames are read and it is fixed or added to the baseline with the reason. About 40 minutes on the web demo, so it can run while the build does; the dev run about 12 minutes, after the build. The result goes in the release log's Notes (§0a) | the demo run: nothing (the runner serves the demo itself, its own Vite and headless Edge); `--dev`: `npm run dev:app` running and on screen |
 | 2 | `npm run release` | `cli:build` → sign the CLI → `tauri build --no-bundle` → stage the exe and its resources → `vpk pack` (signs every exe through `sign.mjs`; writes the full package, the delta, Setup.exe and the feed) → delete the Portable.zip → sign the feed → `release-check` → copy Setup.exe to `installers/DeetsMusic_<version>_x64-setup.exe` (§1) | both secrets below, the signing tools (§6.9), `vpk` at the crate's version (`dotnet tool install -g vpk --version 1.2.161`) |
 | 3 | install + test | `installers/DeetsMusic_<version>_x64-setup.exe`, by hand. **From Claude's shell, start it through WMI** (§4) | — |
@@ -168,20 +168,35 @@ What the log taught:
 
 ## 1. Cut a build
 
-**Six files hold the version**, and all six are checked (since 2026-09-26). The browser
-extension's `extension/manifest.json` was a seventh until it left v1 (2026-10-23, EXTENSION.md,
-parked); leave it alone.
+**Set the version with one command** (since 2026-11-02, his call):
 
-| File | Checked by | If it is stale |
+```bash
+npm version 1.4.0
+```
+
+`package.json` is the one source. `npm version` writes it and `package-lock.json`, then its
+`version` hook (`scripts/version.mjs`) writes the number into the other five files. It makes
+**no commit and no tag** (`.npmrc`: `git-tag-version=false`; tags are DOCS-ORG.md §14.3
+T1–T4). Commit the seven files with the release notes. `npm run version:check` prints every
+copy and fails on a disagreement.
+
+**Seven files hold the version.** Each build tool reads only its own manifest, so the copies
+stay; the list of them is `VERSION_FILES` in `scripts/version.mjs`, and `release.mjs`,
+`release-check` and `docs:check` check 5 all read that list. `release.mjs` checks it at
+stage 0, before the slow build (until 2026-11-02 a missed copy was found only after the signed
+build). No Cargo workspace: it would make `src-tauri` and `cli` share one target folder and one
+lock (`cli/Cargo.toml` is standalone on purpose). Two files stay out on purpose:
+`extension/manifest.json` (parked since 2026-10-23, EXTENSION.md) and `mcpb/manifest.json`
+(its own version, `mcpb-pack.mjs`).
+
+| File | Written by | What reads it |
 |---|---|---|
-| `package.json` | `release-check` | `vpk pack --packVersion` reads it; caught |
-| `src-tauri/tauri.conf.json` | `release-check` | the app's own version (Settings, the update check) reads it; caught |
-| `src-tauri/Cargo.toml` | `release-check` | caught. The `start:` log line reads it |
-| `cli/Cargo.toml` | `release-check` | caught. It is what `deetsmusic --version` and the MCP server info report |
-| `src-tauri/Cargo.lock` + `cli/Cargo.lock` | `docs:check` check 5 (so `npm run check` and the pre-push hook) | cargo rewrites them during the build, so the release is fine but the tree is left dirty and the version commit is incomplete |
-
-Bump the manifest by hand, and run `cargo check` in `cli/` and in `src-tauri/` before the
-version commit, so both locks are in it rather than in the next one.
+| `package.json` | `npm version` (the source) | `vpk pack --packVersion`, `release.mjs` |
+| `package-lock.json` | `npm version` | npm only. It said 0.4.1 until 2026-11-02, because no check read it |
+| `src-tauri/tauri.conf.json` | the hook | the app's own version (Settings, the update check) and the exe's Windows file version |
+| `src-tauri/Cargo.toml` | the hook | `CARGO_PKG_VERSION`: the `start:` log line, the Apple user agent, the bridge's status |
+| `cli/Cargo.toml` | the hook | `deetsmusic --version` and the MCP server info |
+| `src-tauri/Cargo.lock` + `cli/Cargo.lock` | the hook (the crate's own `version =` line only) | cargo. Before the hook, cargo rewrote them during the build and left the tree dirty |
 
 ```bash
 npm run release     # secrets → cli:build → sign cli → tauri build --no-bundle → stage → vpk pack (signs) → sign the feed → release-check → the versioned copy

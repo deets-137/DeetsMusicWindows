@@ -30,6 +30,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { disagreements } from "./version.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const KEY_FILE =
@@ -89,6 +90,10 @@ const password = readCredential(CREDENTIAL, "RELEASE.md §6.6");
 const signEnv = { ...process.env, ...AZURE_SIGNING, AZURE_CLIENT_SECRET: readCredential(AZURE_CREDENTIAL, "RELEASE.md §6.9") };
 
 const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+// Every copy of the version agrees, here and not only in release-check after the signed build
+// (RELEASE.md §1; `npm version` writes them all).
+const versionFaults = disagreements(root);
+if (versionFaults.length) die(`the version copies disagree (run \`npm version ${version} --allow-same-version\`):\n  ${versionFaults.join("\n  ")}`);
 if (BETA !== /-beta\.\d+$/.test(version)) {
   die(BETA ? `--beta needs a beta version like 0.14.0-beta.1 (package.json has ${version}; BETA.md §4)` : `${version} is a beta version: build it with --beta`);
 }

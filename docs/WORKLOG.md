@@ -6,6 +6,23 @@ updated: 2026-11-01
 ---
 # DeetsMusic — Work log
 
+## 2026-11-02 — One source for the version
+
+- **His call:** copies a script writes (of three options: that, `tauri.conf.json` pointing at
+  `package.json`, or `package.json` only with Rust reading it at build time). Removing the
+  version from `tauri.conf.json` was dropped: in tauri-build 2.6.3 the exe then carries no
+  Windows file version (lib.rs line 632).
+- **Built:** `scripts/version.mjs` holds `VERSION_FILES` (seven files) and is `package.json`'s
+  `version` hook, so `npm version 1.4.0` writes every copy; `.npmrc` `git-tag-version=false`
+  (no commit, no tag: tags are DOCS-ORG.md §14.3). `release.mjs` checks the copies at stage 0;
+  `release-check` check 2 and `docs:check` check 5 read the same list. `npm run version:check`
+  prints them. RELEASE.md §1, BETA.md §4.1 step 1 and HANDOFF's "Ship it" line follow.
+- **Found:** `package-lock.json` said 0.4.1. No check read it. `npm version 1.3.0
+  --allow-same-version` set it (4 lines) and ran the hook: no commit, no tag.
+- **Checked:** a bump to 1.4.0 on a scratch copy of the seven files changed exactly one line in
+  each (two in package-lock.json), with no commit and no tag; `version:check` failed on the
+  stale lock before and passed after. Not run: a real release with it (the next one is the test).
+
 ## 2026-11-02 — The update card: his 1.3.0 notes, his intro, which paragraphs start open, its own open
 
 - **His 1.3.0 notes** are in RELEASE-NOTES.md, his words, typos only ("what when wrong",

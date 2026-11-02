@@ -87,11 +87,9 @@ Things that bite:
 
 - **Use `npm run release`, not `tauri build`.** Only `release` runs `cli:build` first, which
   stages `cli/dist/deetsmusic.exe`. `tauri build` alone ships the **previous** CLI, silently.
-- **The version lives in SIX files** — the list is [RELEASE.md §1](ops/RELEASE.md).
-  `release-check` compares four (`package.json`, `src-tauri/tauri.conf.json`,
-  `src-tauri/Cargo.toml`, `cli/Cargo.toml`) and fails *after* the bundle is built and signed;
-  `docs:check` check 5 covers both `Cargo.lock` files. Run `cargo check` in `cli/` before the
-  version commit. The parked extension's manifest is no longer bumped (2026-10-23).
+- **Set the version with `npm version <version>`, never by hand** (since 2026-11-02). It
+  writes all seven files ([RELEASE.md §1](ops/RELEASE.md)) and makes no commit and no tag;
+  `release` refuses to start when the copies disagree.
 - **A running `deetsmusic mcp` blocks install AND uninstall.** Windows won't touch an open
   file; uninstalling 0.1.2 removed the registry entry and then left every file on disk. The
   Velopack hooks stop our CLIs by path before an update and an uninstall (RELEASE.md §3; the
@@ -119,15 +117,15 @@ item closes, delete it here and write the day in WORKLOG.md.
 
 ### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)
 
-- **Listen Later (2026-11-01, uncommitted).** BUILT, desk test open
+- **Listen Later (2026-11-01, `e1ee482`).** BUILT, desk test open
   ([LISTEN-LATER.md](features/LISTEN-LATER.md) §5): a right-click row on songs, albums and
   picked songs, the only way into *Saved for the Right Day*; "DeetsMusic" as the owner on it,
   Replay and Rulez Playlists; Settings › Playlists › *Remove from Later list automatically*
   (on the update card at 1.3.0); the agent's `later` tool. `laterRemove` is a reported usage
-  key: the DeetsSupport copy (`src/usage-keys.js`) waits for his deploy, before 1.3.0 ships.
+  key, in the DeetsSupport copy (`src/usage-keys.js`, `7e67f4b`), deployed 2026-11-02.
   **Second round, same day (§7):** Listen Later's use counts in the day count
-  (USAGE-COUNTS.md §18; worker check passed locally; the worker and the admin page's *Feature
-  use* table not deployed, together with §17's), and the Playlists card's **DeetsMusic Lists**
+  (USAGE-COUNTS.md §18; the worker and the admin page's *Feature use* table are live, with
+  the usage server side below), and the Playlists card's **DeetsMusic Lists**
   section (Replay, the Later list, Rulez Playlists, then new webs after a divider), *Made Here*
   renamed *Created Here*, the Replay folder emptied once. Open: his desk test (§5, §7), his look
   at Claude's choices (§3), and his idea of an opt-in action in the
@@ -253,13 +251,6 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   [LIVE-MCP.md](ops/LIVE-MCP.md) §5; build and deploy on his go.
 - **S2's week of mirror dates** (apple-calls.md S2), with no code: one read-only call a day,
   from a script, so the evidence is ready when S2 is built.
-- **One source for the version** (2026-11-02, his call: "we should fix it"). Today a release
-  sets the version by hand in six files (RELEASE.md §1), and `release-check` finds a missed one
-  only after the signed build. Fix: one file holds the version, and one command writes it into
-  the other five (the two `Cargo.lock` files through cargo). How (which file is the source, a
-  script or an npm `version` hook, whether `release` runs it) is his fork; bring it to him
-  first. Not while a release build is in the tree. Then RELEASE.md §1 and the release-check
-  line change with it.
 
 ### Shipped, with leftovers
 
