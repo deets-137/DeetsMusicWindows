@@ -8,7 +8,7 @@ import { registerHooks } from "node:module";
 
 // Every heavy import of media-menu.ts goes to the stub map. `./queue`, `./row-pick` and
 // `./settings-store` are pure and load for real, as their own tests show.
-const STUBBED = /^\.\/(search|track-store|player|playlists|layout-bus|go-to|artist-credit|primary-artist|copy-link|start-station|web|library-add|favorites|suggest|sotd|pins|rewind)$/;
+const STUBBED = /^\.\/(search|track-store|player|playlists|layout-bus|go-to|artist-credit|primary-artist|copy-link|start-station|web|library-add|favorites|suggest|sotd|pins|rewind|listen-later)$/;
 const stubs = new URL("./stubs/menu-deps.ts", import.meta.url).href; // a file URL already (a Windows path must not go through pathToFileURL twice)
 registerHooks({
   resolve(spec, ctx, next) {
@@ -25,7 +25,7 @@ before(async () => {
 
 const labels = (items: { label?: string; input?: { label?: string } }[]) => items.map((i) => i.label ?? `[${i.input?.label ?? "field"}]`);
 const song = { catalogId: "c1", title: "Song", artistName: "Artist", albumName: "Album", genres: [], hasLyrics: false };
-const SONG = ["Play Now", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Go to Album", "Song Credits", "Start Station", "Start a Web", "Copy Link", "Add to Library", "Favorite", "Suggest Less", "Suggest Less of This Artist", "Suggest Less of This Album", "Mark as Song of the Day", "Pin"];
+const SONG = ["Play Now", "Play Next", "Add to Queue", "Add to Playlist", "Listen Later", "Go to Artist", "Go to Album", "Song Credits", "Start Station", "Start a Web", "Copy Link", "Add to Library", "Favorite", "Suggest Less", "Suggest Less of This Artist", "Suggest Less of This Album", "Mark as Song of the Day", "Pin"];
 
 test("a song: the §3.1 rows in the §2 order", () => {
   assert.deepEqual(labels(m.songMenu(song, { context: "t" })), SONG);
@@ -64,7 +64,7 @@ test("an unreleased song: Go to Artist alone", () => {
 });
 
 const album = { title: "Album", artistName: "Artist", known: [song] };
-const ALBUM = ["Play Now", "Shuffle", "Play Next", "Add to Queue", "Add to Playlist", "Go to Artist", "Go to Album", "Start a Web", "Copy Link", "Add to Library", "Review This Album", "Favorite", "Suggest Less of This Album", "Pin"];
+const ALBUM = ["Play Now", "Shuffle", "Play Next", "Add to Queue", "Add to Playlist", "Listen Later", "Go to Artist", "Go to Album", "Start a Web", "Copy Link", "Add to Library", "Review This Album", "Favorite", "Suggest Less of This Album", "Pin"];
 
 test("an album: the §3.2 rows, Shuffle second, no station", () => {
   assert.deepEqual(labels(m.albumMenu(album, { context: "t" })), ALBUM);
@@ -104,7 +104,12 @@ test("a station: Play Now · Add to Queue · Copy Link · Pin", () => {
   assert.deepEqual(labels(m.stationMenu(s, { context: "t" })), ["Play Now", "Add to Queue", "Copy Link", "Pin"]);
 });
 
-test("a picked set: Play N songs · Play Next · Add to Queue · Add to Playlist, then the card's Remove", () => {
+test("a picked set: Play N songs · Play Next · Add to Queue · Add to Playlist · Listen Later, then the card's Remove", () => {
   const items = m.setMenu(() => [song, song, song], 3, "song", { context: "t", away: [{ label: "Remove 3 songs", run() {} }] });
-  assert.deepEqual(labels(items), ["Play 3 songs", "Play Next", "Add to Queue", "Add to Playlist", "Remove 3 songs"]);
+  assert.deepEqual(labels(items), ["Play 3 songs", "Play Next", "Add to Queue", "Add to Playlist", "Listen Later", "Remove 3 songs"]);
+});
+
+// LISTEN-LATER.md §2.1 (2026-11-01): picked songs only, never a whole genre's list.
+test("a genre list: no Listen Later", () => {
+  assert.deepEqual(labels(m.listMenu(() => [song], { context: "t" })), ["Play Now", "Play Next", "Add to Queue", "Add to Playlist"]);
 });

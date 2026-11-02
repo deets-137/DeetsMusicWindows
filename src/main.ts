@@ -78,7 +78,7 @@ import { initRewindButton } from "./rewind-btn";
 import { initPin } from "./pin";
 import { initNetwork } from "./net";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { runWeeklyReplay } from "./replay";
+import { runWeeklyReplay, unfileReplays } from "./replay";
 import { initQuickPanel } from "./quick-panel";
 import { initRules, registerFact, registerProp, setAppleGate, holdRegistry } from "./rules";
 import { initRulesPlayback } from "./rules-playback";
@@ -638,6 +638,8 @@ window.addEventListener("DOMContentLoaded", () => {
   // The weekly Replay (replay.ts): once per week on/after the chosen day, after the
   // store has had a moment to load so the ranking can resolve titles.
   window.setTimeout(() => void runWeeklyReplay().catch((e) => console.warn("[replay] weekly", e)), 8000);
+  // Once per install: the Replays leave the old "Replay" folder for DeetsMusic Lists (replay.ts).
+  window.setTimeout(() => void unfileReplays().catch((e) => console.warn("[replay] unfile", e)), 8000);
   // Aditya's replies to the user's reports, as a toast (report-replies.ts).
   boot("initReportReplies", () => initReportReplies());
 

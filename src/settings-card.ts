@@ -237,6 +237,8 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.2.0", section: "Playback", row: "playerwheel" }, // Scroll over the Player for volume, built 2026-10-27 (WHEEL-VOLUME.md)
   { since: "1.2.1", section: "Playback", row: "clearqueuelaunch" }, // Clear the queue on launch, built 2026-10-29 (QUEUE.md § Clear Queue)
   { since: "1.3.0", section: "Updates", row: "whatsnewevery" }, // Show what's new after every update, built 2026-10-29 (UPDATE-CARD.md §3.10)
+  { since: "1.3.0", section: "Playlists", row: "laterremove" }, // Remove from Later list automatically, built 2026-11-01 (LISTEN-LATER.md)
+  { since: "1.3.0", section: "Playlists", row: "newcover" }, // New cover, from 0.14: shown again beside the Later list, which starts with it (his call 2026-11-01, LISTEN-LATER.md §2.2)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -2074,6 +2076,11 @@ function mountSettings(
           ...storeToggle("createsummonsolo", "Also when Playlists is the only card", "playlistCreateSummonSolo", () =>
             "In Mini, in Max with one card, and when Playlists fills the window, Search takes its place"),
           when: () => setting("playlistCreateSummon") !== "off",
+        },
+        {
+          kind: "choice", id: "laterremove", label: "Remove from Later list automatically", key: "laterRemove",
+          hint: "After a full play (as Rewind › Count a play at sets it) or a skip. Played from List counts only plays started from the Later list",
+          options: [{ value: "off", label: "Off" }, { value: "here", label: "Played from List" }, { value: "anywhere", label: "Played Anywhere" }],
         },
         {
           kind: "choice", id: "npcover", label: "Cover while playing", key: "nowPlayingCover",

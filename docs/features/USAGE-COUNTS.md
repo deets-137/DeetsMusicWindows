@@ -1139,3 +1139,51 @@ app from before this change sends no `listened`, and the worker before this chan
 (the day's own, `vDay`); whole minutes and the 1,440 cap; no row when the log cannot be read;
 the 90-day read; the spread's ranges, the flag's 20 % and 20 rows, and every string on the page
 (drafts for his edit).
+
+## 18. Feature use counts in the day count (2026-11-01, built; the worker not deployed)
+
+> **Part:** built · 2026-11-01
+
+**His calls (2026-11-01).** Count how often a feature is used, starting with Listen Later
+(LISTEN-LATER.md): saves by where they came from (a right-click, the Compass, an AI app), the
+songs *Remove from Later list automatically* took out, and Undo presses. Not the setting's hand
+changes: the settings report already shows the mix of values each week. **Where:** in the day
+count, beside the minutes (§17), as counters, not in the minutes row (the other options: the
+minutes row, which would make the one row per install carry more; the weekly health report,
+which gives a week where this gives a day).
+
+**The privacy rules hold.** No row per install: the worker adds each count into the existing
+`usage_counts` table per (day, channel, version, use), as the installs per range (§3.3) and a
+sum (bucket `sum`). Only names on an allow-list (`USE_COUNTS` in usage-keys.ts, copied to the
+worker by `npm run usage:keys` as `USE_KEYS`), only whole numbers. Rule 3 (§2): a count of
+uses is not a time and not a setting; a new name is his call, as a new setting is.
+
+### 18.1 As built (2026-11-01; the worker not deployed)
+
+- **The app.** A feature calls `countUse(name)` (`src/use-counts.ts`): one more on today's UTC
+  day, kept in `localStorage` (`deets-usage-uses`), only while *Send usage counts* is on, at
+  most 30 days (`addUse`, usage-rules.ts). Turning the switch off clears them (`cancelAll`).
+  The day count carries `uses: { day, v, n }` for the same day and version as `listened`
+  (`listenDay`, `vDay`), an empty `n` included, so the worker can count the installs that
+  reported. After the send, that day and the days before it go (`afterUses`). *Show what is
+  sent* shows it, with a note.
+- **Listen Later's names:** `later.save.menu`, `later.save.compass`, `later.save.agent` (a save
+  that added at least one song), `later.auto` (each song the setting took out after a full play), `later.skip` (each song it took
+  out on a skip, LISTEN-LATER.md §9), `later.undo`.
+- **The worker** (`../DeetsSupport/src/usage.js` `useCounts`, `pastDay`, `UPSERT_SUM`): the same
+  day rules as `listened` (before the report's day, inside 13 months, a good version); a name
+  off `USE_KEYS`, or a count that is not a whole number from 1 to 10,000, is dropped. It writes
+  `use.reports` once and, per use, its range and its sum. No migration: the table exists, and
+  the cron already deletes day counters older than 13 months. `GET /admin/usage` adds `uses`:
+  the last 90 days of `use.*` day counters.
+- **The admin page** (DeetsSolutions `admin.js` `renderUses`, the Growth tab, under the minutes):
+  *Feature use, the last 7 days*: per use, the installs that used it, the times, and the share of
+  the installs that sent their counts. Its strings carry no `[ph]`: the admin pages need none
+  (his call, 2026-11-01, DeetsSolutions CLAUDE.md › Copy).
+- **Checks.** `tests/usage-rules.test.ts` (one test dated 2026-11-01), `tests/usage-keys.test.ts`
+  (the worker's copy of both lists). The worker check (`docs/ops/checks/usage-worker.mjs` §4c):
+  five new cases; run 2026-11-01 on a local worker (port 8792), all passed with every older case.
+
+**Before the next release:** the worker deploy and the admin page publish go together with
+§17's, each his go. A worker before this change ignores `uses`, so the order does not matter for
+the app.

@@ -6,6 +6,57 @@ updated: 2026-11-01
 ---
 # DeetsMusic — Work log
 
+## 2026-11-01 — Listen Later: designed and built
+
+**Listen Later (`features/LISTEN-LATER.md`).** Talked through with him, then built the same
+sitting. His calls: a right-click row on songs and albums, the only way into *Saved for the
+Right Day* (renamable); "DeetsMusic" as the owner on it, on Replay and on Rulez Playlists; a
+save goes at the end; a song stays by default, and Settings › Playlists › *Remove from Later
+list automatically* (Off · Played from List · Played Anywhere) takes it out after a full play;
+the row is on the update card at 1.3.0; an AI app saves through its own `later` tool.
+
+Built: `src/listen-later.ts` (new), `stats.ts` `onPlayEnd`, the role `"later"` with `isLater`
+and `ownerOf` in playlists.ts, the menu row (songs, albums, picked sets; not a genre's list), the
+other ways in closed (the Add to Playlist flyout, drops, the Rulez add action, the Apple copy's
+Get New Songs and Match), the bridge's `later` action, the MCP tool and `deetsmusic later`, the
+Compass verb. No schema change. Checks: tsc, 439 tests (two new expectations in
+media-menu.test.ts), docs:check, vite build, both cargo checks. The desk test (§5) is his; the
+Rust and CLI parts need a dev runner restart. Nothing committed.
+
+**Second round (his calls, LISTEN-LATER.md §7).** `laterRemove` moved to the reported settings.
+Use counts (USAGE-COUNTS.md §18): `src/use-counts.ts`, the pure `addUse` / `usesOn` /
+`afterUses`, `uses` in the day count beside `listened`; the worker's `useCounts` and `UPSERT_SUM`
+on the existing `usage_counts` table, `USE_KEYS` copied by `npm run usage:keys`; the admin page's
+*Feature use, the last 7 days* table (`[ph]` strings). Worker check run on a local worker (port
+8792): all passed. The Playlists card: DeetsMusic Lists first (Replay, Later, Rulez, then webs
+with the new `role: "web"` after a divider: a line row in Lines, a vertical line before the
+first web's tile in a grid), Made Here → Created Here, `unfileReplays` once per install.
+Checks: tsc, 440 tests, docs:check, vite build. Nothing committed, nothing deployed.
+
+**Third round.** He saw DeetsMusic Lists at the bottom on the dev app: his saved section order
+did not name the new section, and rule 3A puts an unnamed section last. DeetsMusic Lists is now
+the one exception (`isRanked` in row-order.ts): first until he moves it. The admin strings lost
+`[ph]`; his call, written into DeetsSolutions CLAUDE.md › Copy and strings.js: the DeetsMusic
+admin pages need no `[ph]`.
+
+**Fourth round.** DeetsMusic Lists takes the Replay folder's place in a saved section order
+(`replaceRanked`, in the one-time Replay pass). His report, "a skip after 3 seconds took a song
+off the list", read from the log: a stale MusicKit tick from the previous song credited the new
+one a full play 3 ms after it started. Fixed in stats.ts (`play-ticks.ts` `isStaleTick`, a test
+from the log's numbers); it also fixes Rewind's full counts. LISTEN-LATER.md §8. A pause still
+removes nothing (his call). 442 tests pass.
+
+**Fifth round (his calls 1B, 2A, 3A; LISTEN-LATER.md §9).** A skip takes the song off too: any
+skip before the full mark, under the same setting, with a toast and Undo. `onPlayEnd` now says
+how a play ended (`full` · `skip` · `stop`); an app close or a restart of the same song is a stop.
+Quick skips share one toast; Undo puts each song back in its old row. A new use count,
+`later.skip`, copied to the worker and labeled on the admin page (same deploy as §18). tsc, 442
+tests, docs:check and vite build pass. His desk test §9 open.
+
+**The Later list's cover.** It starts as Letters (Settings › Playlists › New cover, the default).
+His call: keep Letters, and show *New cover* on the 1.3.0 update card with the other settings (a
+`NEW_MARKS` line at 1.3.0; LISTEN-LATER.md §2.2).
+
 ## 2026-11-01 — Cross-skin pieces written up; listening minutes in the day count
 
 **Cross-skin (an idea, `ideas/cross-skin.md`).** His calls: a borrow row in each skin's own Skin

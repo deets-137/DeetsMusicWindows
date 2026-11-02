@@ -119,6 +119,20 @@ item closes, delete it here and write the day in WORKLOG.md.
 
 ### 1.3.0 — on `updatez`, not released
 
+- **Listen Later (2026-11-01, uncommitted).** BUILT, desk test open
+  ([LISTEN-LATER.md](features/LISTEN-LATER.md) §5): a right-click row on songs, albums and
+  picked songs, the only way into *Saved for the Right Day*; "DeetsMusic" as the owner on it,
+  Replay and Rulez Playlists; Settings › Playlists › *Remove from Later list automatically*
+  (on the update card at 1.3.0); the agent's `later` tool. `laterRemove` is a reported usage
+  key: the DeetsSupport copy (`src/usage-keys.js`) waits for his deploy, before 1.3.0 ships.
+  **Second round, same day (§7):** Listen Later's use counts in the day count
+  (USAGE-COUNTS.md §18; worker check passed locally; the worker and the admin page's *Feature
+  use* table not deployed, together with §17's), and the Playlists card's **DeetsMusic Lists**
+  section (Replay, the Later list, Rulez Playlists, then new webs after a divider), *Made Here*
+  renamed *Created Here*, the Replay folder emptied once. Open: his desk test (§5, §7), his look
+  at Claude's choices (§3), and his idea of an opt-in action in the
+  Updates panel that moves a user's old webs.
+
 - **The update card + the settings change log + the Updates panel's own open (2026-10-29,
   `ef4a458`).** Desk tests passed: the change log and the panel's open 2026-10-29, the card
   2026-10-30 (his word). Open: his look at Claude's choices (features/UPDATE-CARD.md §3.11,

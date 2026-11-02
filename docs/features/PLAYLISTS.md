@@ -219,6 +219,29 @@ plus **kind auto-clusters** so the unfiled pile self-organizes. Both render as
   (create → drill in → summon Search, as before) and "Folder" (create → the empty
   section appears in place).
 
+> **Part:** built · 2026-11-01 (his calls; LISTEN-LATER.md §7)
+
+**The sections today.** The text above is the 2026-07-03 build; the clusters have changed since.
+The built-in order is now: **DeetsMusic Lists** · the folders A–Z · **Created Here** (was *Made
+Here*; the key stays `local`) · Your Apple Playlists · Apple Mixes · Apple Replays · Saved from
+Apple Music. A hold-and-drag still moves any section (MOVABLE-ROWS.md). **The one exception to
+rule 3A** (a new section starts last in a saved order): DeetsMusic Lists goes first while the
+saved order does not name it (`isRanked`, row-order.ts), his call that it is the top section;
+once the user moves it, or moves any section, its place is saved like the rest.
+- **DeetsMusic Lists** (`clusterOf` → `deets`) holds the local playlists the app makes: a Replay
+  (`role: "replay"`), the Later list (`"later"`), a Rulez Playlist (`"rulez"`), and then the webs
+  (`"web"`, given by web.ts from 2026-11-01; a web made before has no role and stays in Created
+  Here, his call). The webs come after a divider: a 1 px line row in the Lines view (`kind:
+  "divider"`, no `data-idx`, so no key, pick or menu stops on it), and in a grid a vertical line
+  in the gap before the first web's tile (`.lib-tile.pl-divide::before`), which moves with the
+  wrap. Each group keeps the section's hand order.
+- **The Replay folder is gone.** replay.ts no longer files a Replay into a "Replay" folder;
+  `unfileReplays` (once per install, `deets.replay.unfiled`, from main.ts) takes the Replays out
+  of it and deletes the folder when nothing else is in it. In the same pass DeetsMusic Lists takes
+  the Replay folder's place in a saved section order (`replaceRanked`, row-order.ts; his call,
+  2026-11-01), so a user who moved sections finds it where Replay was. A saved order with no
+  Replay folder in it gets the first-place exception above.
+
 ## 4. Building playlists
 
 Three entry points. The first two are on the `src/context-menu.ts` primitive — **both BUILT

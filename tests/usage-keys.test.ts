@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { REPORTED, NOT_REPORTED, ROOM_GUEST_CONTROLS } from "../src/usage-keys.ts";
+import { REPORTED, NOT_REPORTED, ROOM_GUEST_CONTROLS, USE_COUNTS } from "../src/usage-keys.ts";
 import { HIDEABLE_CARDS } from "../src/layout-rules.ts";
 
 const src = readFileSync(new URL("../src/agent-settings.ts", import.meta.url), "utf8");
@@ -62,6 +62,11 @@ test("the room guest controls match agent-settings.ts", () => {
 
 test("the worker's copy matches the list", { skip: !existsSync(new URL("../../DeetsSupport/src/usage-keys.js", import.meta.url)) && "no DeetsSupport checkout" }, () => {
   const have = readFileSync(new URL("../../DeetsSupport/src/usage-keys.js", import.meta.url), "utf8");
-  const keys = [...have.matchAll(/^ {2}"([^"]+)",$/gm)].map((m) => m[1]);
-  assert.deepEqual(keys, [...REPORTED].sort(), "run npm run usage:keys");
+  const list = (name: string) => {
+    const block = new RegExp(`export const ${name} = new Set\\(\\[([^\\]]*)\\]\\)`).exec(have)?.[1] ?? "";
+    return [...block.matchAll(/^ {2}"([^"]+)",$/gm)].map((m) => m[1]);
+  };
+  assert.deepEqual(list("SETTING_KEYS"), [...REPORTED].sort(), "run npm run usage:keys");
+  // 2026-11-01: the feature use names (USAGE-COUNTS.md §18) ride the same copy.
+  assert.deepEqual(list("USE_KEYS"), [...USE_COUNTS].sort(), "run npm run usage:keys");
 });

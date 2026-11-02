@@ -211,7 +211,7 @@ async function webFrom(
   if (!list.length) throw new Error("The web had no songs to pick");
   const expireDays = setting("webTempDays"); // every new web starts on Temp, as the panel does
   status("Making the playlist…");
-  const id = await playlistCreate(name, undefined, expireDays);
+  const id = await playlistCreate(name, "web",expireDays);
   await playlistAddTracks(id, list);
   diag.log("web:expiry", { arm: id, days: expireDays });
   diag.log("web:make", { kind: res.kind, seed: seedName(seed), expireDays, songs: list.length, genres: [...picked], prefer: setting("webPrefer"), from, reach });
@@ -297,7 +297,7 @@ async function webAtListEnd(e: ListEnd): Promise<boolean> {
     diag.log("web:listEnd", { skip: list.length ? "user acted" : "no songs", built: all.length });
     return false;
   }
-  const id = await playlistCreate(name, undefined, LIST_END_DAYS);
+  const id = await playlistCreate(name, "web",LIST_END_DAYS);
   await playlistAddTracks(id, list);
   diag.log("web:expiry", { arm: id, days: LIST_END_DAYS });
   diag.log("web:make", { kind: res.kind, seed: seedName(seed), expireDays: LIST_END_DAYS, songs: list.length, genres: [...picked], prefer: setting("webPrefer"), from: "listEnd", reach });
@@ -1260,7 +1260,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     let id: number;
     try {
       // Made first (local, a few ms): only a playlist that exists flies. A failure keeps the panel.
-      id = await playlistCreate(name, undefined, expireDays);
+      id = await playlistCreate(name, "web",expireDays);
       await playlistAddTracks(id, tracks);
     } catch (e) {
       console.error("[web] make", e);

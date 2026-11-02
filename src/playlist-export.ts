@@ -25,7 +25,7 @@ import { toast, noticeOff } from "./toast";
 import { requestSetting } from "./layout-bus";
 import {
   playlistExportPlan, playlistExportApple, playlistGetAppleSongs, playlistMatchPlan, playlistMatchApply, playlistMatchUndo,
-  isReplay, ownCover, names, songs, skippedLine,
+  isReplay, isLater, ownCover, names, songs, skippedLine,
   type ExportPlan, type ExportResult, type GetSongsResult, type MatchPlan, type MatchUndo,
 } from "./playlists";
 
@@ -305,7 +305,9 @@ export function appleMusicItem(p: Playlist, lists: () => Playlist[], after: () =
         : undefined;
       if (!copy) return [{ label: "Export to Apple Music", run: () => void makeNew(p, !!p.exportedAppleId, after) }];
       const items: MenuItem[] = [{ label: "Send New Songs", run: () => void sendNew(p, after) }];
-      if (!isReplay(p)) {
+      // Both pull songs in from Apple: a Replay is made from listening, and the Later list takes
+      // songs only from Listen Later (LISTEN-LATER.md §1).
+      if (!isReplay(p) && !isLater(p)) {
         items.push({ label: "Get New Songs", run: () => void getNew(p, after) });
         items.push({ label: "Match the Apple Copy", run: () => void matchApple(p, after) });
       }

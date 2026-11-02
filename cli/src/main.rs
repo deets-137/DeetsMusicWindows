@@ -188,6 +188,8 @@ enum Cmd {
     Love { id: Option<String> },
     /// Remove the ♥ from a song (the playing song by default).
     Unlove { id: Option<String> },
+    /// Listen Later: save a song or album to the Later list (the playing song by default).
+    Later { id: Option<String> },
     /// Show or edit a playlist.
     #[command(subcommand)]
     Playlist(PlaylistCmd),
@@ -821,6 +823,16 @@ fn op_library(c: &Client, action: &str, id: &str) -> Result<(String, Value), Fai
     Ok((message_line(&v), v))
 }
 
+/// Listen Later (LISTEN-LATER.md §2.5): the Later list's only way in. No playlist id: the app
+/// finds the list itself, and makes it the first time.
+fn op_later(c: &Client, id: &str) -> Result<(String, Value), Failure> {
+    let id = if id.is_empty() { "current" } else { id };
+    if id != "current" && !is_id(id) {
+        return Err(not_an_id(id));
+    }
+    op_playlist(c, json!({ "action": "later", "id": id }))
+}
+
 /// Any /playlist action. `show` prints the numbered rows.
 fn op_playlist(c: &Client, body: Value) -> Result<(String, Value), Failure> {
     let pl = s(&body, "playlist");
@@ -1048,6 +1060,9 @@ fn tools(small: bool) -> Value {
           "inputSchema": { "type": "object", "required": ["playlist", "id"], "additionalProperties": false, "properties": {
               "playlist": { "type": "string", "description": "The playlist to add to, e.g. playlist:local:3" },
               "id": { "type": "string", "description": "What to add: song:…, album:…, playlist:…, or current (the playing song)." } } } }));
+    list.push(json!({ "name": "later", "description": "Listen Later: save songs to the user's Later list (\"Saved for the Right Day\" by default; the user may rename it). DeetsMusic makes the list the first time and skips songs it holds already. This is the only way to add to that list: playlist_add refuses it.",
+          "inputSchema": { "type": "object", "required": ["id"], "additionalProperties": false, "properties": {
+              "id": { "type": "string", "description": "What to save: song:…, album:…, or current (the playing song)." } } } }));
     let update_actions: Vec<&str> =
         if small { vec!["status", "check", "install", "rollback"] } else { vec!["status", "check", "install", "rollback", "mode", "skip"] };
     let update_value = if small {
@@ -1203,6 +1218,7 @@ fn call_tool(c: &Client, name: &str, a: &Value, small: bool) -> Result<String, F
             }
             op_playlist(c, json!({ "action": "add", "playlist": str_arg("playlist"), "id": id }))?.0
         }
+        "later" => op_later(c, &str_arg("id"))?.0,
         "update" => {
             let action = str_arg("action");
             if small && (action == "mode" || action == "skip") {
@@ -1792,6 +1808,7 @@ fn main() {
         Cmd::Add { id } => op_library(&c, "add", id.as_deref().unwrap_or("")),
         Cmd::Love { id } => op_library(&c, "favorite", id.as_deref().unwrap_or("")),
         Cmd::Unlove { id } => op_library(&c, "unfavorite", id.as_deref().unwrap_or("")),
+        Cmd::Later { id } => op_later(&c, id.as_deref().unwrap_or("")),
         Cmd::Playlist(p) => op_playlist(
             &c,
             match p {

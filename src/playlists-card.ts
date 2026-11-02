@@ -14,7 +14,7 @@ import {
   playlistsCached, applePlaylistsSync, applePlaylistCounts, notifyPlaylistsChanged, playlistTracks, playlistCreate, playlistDelete, playlistKeep, expiryText,
   playlistRemoveTrack, playlistRemovePositions, playlistRename, playlistReorder, playlistSetCover, playlistImport, onPlaylistsChange,
   playlistInsertTracks, playlistCoverData,
-  foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, isRulez, ownCover, type PlaylistFolder,
+  foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, isRulez, isLater, isWeb, ownerOf, ownCover, type PlaylistFolder,
   onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest, refreshSet,
 } from "./playlists";
 import {
@@ -28,7 +28,7 @@ import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type
 import { picksText } from "./row-pick";
 import { songMenu, playlistMenu, setMenu, tileMenu } from "./media-menu";
 import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
-import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs, sectionAt } from "./row-order";
+import { sortByOrder, isRanked, moveTo, onRowOrderChange, sectionsMovable, holdMs, sectionAt } from "./row-order";
 import { musicCell, explicitBadge, heroCover } from "./library-card";
 import { addSquareHTML } from "./add-square";
 import { onGrowChange } from "./card-grow";
@@ -157,7 +157,11 @@ function pickCover(p: Playlist): void {
 type PlRow = { pos: number } & (
   | { kind: "folder"; id: number; label: string; count: number }
   | { kind: "cluster"; key: string; label: string; count: number }
-  | { kind: "playlist"; p: Playlist }
+  // `divide`: the first web in DeetsMusic Lists, in a grid view: its tile draws the vertical line.
+  | { kind: "playlist"; p: Playlist; divide?: boolean }
+  // The line between DeetsMusic Lists' two groups in the Lines view; no data-idx, so no key,
+  // pick or menu stops on it (his call 2026-11-01).
+  | { kind: "divider" }
 );
 
 /** The hover hint that teaches the gesture (ONBOARDING.md ledger); nothing while the
@@ -171,15 +175,17 @@ const sectionKey = (x: PlRow) => (x.kind === "folder" ? `folder:${x.id}` : x.kin
 const collator = new Intl.Collator(undefined, { sensitivity: "base" });
 const byName = <T extends { name: string }>(a: T, b: T) => collator.compare(a.name, b.name);
 
-// Unfiled auto-clusters, fixed order. "Made Here" are made in DeetsMusic; "Your
-// Apple Playlists" are the user's own on Apple Music — split so the two write paths never
-// look alike (PLAYLISTS.md §10.9). "Apple Mixes" is the weeklies shelf: Apple's
-// personalised mixes all end in "Mix" (New Music Mix, Favourites Mix, …); "Replays"
-// collects the yearly Replay playlists ("Replay 2024", …).
-type ClusterKey = "local" | "yours" | "mixes" | "replays" | "apple";
+// Unfiled auto-clusters, fixed order. "DeetsMusic Lists" are the ones the app makes (his call,
+// 2026-11-01, LISTEN-LATER.md §7): Replay, the Later list and Rulez Playlists, then the webs
+// after a divider. "Created Here" are the playlists you made in DeetsMusic (was "Made Here";
+// the key stays `local`, so a collapse or a drag order carries over); "Your Apple Playlists" are
+// the user's own on Apple Music — split so the two write paths never look alike (PLAYLISTS.md
+// §10.9). "Apple Mixes" is the weeklies shelf: Apple's personalised mixes all end in "Mix" (New
+// Music Mix, Favourites Mix, …); "Replays" collects the yearly Replay playlists ("Replay 2024", …).
+type ClusterKey = "deets" | "local" | "yours" | "mixes" | "replays" | "apple";
 const clusterOf = (p: Playlist): ClusterKey =>
   p.source === "local"
-    ? "local"
+    ? isReplay(p) || isLater(p) || isRulez(p) || isWeb(p) ? "deets" : "local"
     : p.kind === "user"
       ? "yours"
       : /\bmix$/i.test(p.name)
@@ -188,7 +194,8 @@ const clusterOf = (p: Playlist): ClusterKey =>
           ? "replays"
           : "apple";
 const CLUSTERS: { key: ClusterKey; label: string }[] = [
-  { key: "local", label: "Made Here" },
+  { key: "deets", label: "DeetsMusic Lists" },
+  { key: "local", label: "Created Here" },
   { key: "yours", label: "Your Apple Playlists" },
   { key: "mixes", label: "Apple Mixes" },
   { key: "replays", label: "Apple Replays" },
@@ -350,6 +357,7 @@ export const playlistsCard: CardDef = {
     const dropFor = (p: Playlist, pay: DragPayload): ((at: number | null) => void) | null => {
       if (pay.playlistId && pay.playlistId === p.libraryId) return null;
       if (pay.kind === "station") return null; // a stream has no songs to add
+      if (isLater(p)) return null; // Listen Later is its only way in (LISTEN-LATER.md §1)
       if (handMade(p)) return (at) => dropToPlaylist(p, pay, at);
       if (p.source === "apple" && p.canEdit && setting("playlistExport")) return () => dropToApplePlaylist(p, pay);
       return null;
@@ -479,7 +487,7 @@ export const playlistsCard: CardDef = {
           const ts = trackCache.get(id);
           const n = ts?.length ?? q.trackCount;
           const total = ts ? formatTotal(ts.reduce((acc, t) => acc + (t.durationMs ?? 0), 0)) : "";
-          const source = q.source === "local" ? "Yours" : q.curatorName ?? "Apple Music";
+          const source = ownerOf(q);
           const local = q.source === "local";
           // The ♥ state: asked once per install, the first time this hero draws (F1A).
           const fav = playlistFav(q);
@@ -852,26 +860,48 @@ export const playlistsCard: CardDef = {
       // name keeps its place here and falls to the end (fork 3A), which is exactly what a
       // folder made after the last drag should do.
       const blocks: { header: PlRow; members: Playlist[] }[] = [];
+      const unfiled = sorted.filter((p) => p.folderId == null);
+      const cluster = (c: (typeof CLUSTERS)[number]) => {
+        const members = unfiled.filter((p) => clusterOf(p) === c.key);
+        if (members.length) blocks.push({ header: { pos: 0, kind: "cluster", key: c.key, label: c.label, count: members.length }, members });
+      };
+      // DeetsMusic Lists is the top section in the built-in order, above the folders (his call,
+      // 2026-11-01); a hold-and-drag still moves it like any section.
+      cluster(CLUSTERS[0]);
       // Folders always render, even empty — a just-emptied folder must stay
       // reachable for rename/delete. Empty auto-clusters just hide.
       for (const f of [...folders].sort(byName)) {
         const members = sorted.filter((p) => p.folderId === f.id);
         blocks.push({ header: { pos: 0, kind: "folder", id: f.id, label: f.name, count: members.length }, members });
       }
-      const unfiled = sorted.filter((p) => p.folderId == null);
-      for (const c of CLUSTERS) {
-        const members = unfiled.filter((p) => clusterOf(p) === c.key);
-        if (!members.length) continue;
-        blocks.push({ header: { pos: 0, kind: "cluster", key: c.key, label: c.label, count: members.length }, members });
+      for (const c of CLUSTERS.slice(1)) cluster(c);
+      const grid = view?.density !== "lines";
+      const ordered = sortByOrder("playlists.sections", blocks, (x) => sectionKey(x.header));
+      // The one exception to "a new section starts at the end" (MOVABLE-ROWS.md fork 3A): his call
+      // (2026-11-01) is DeetsMusic Lists on top, so in a saved order that does not name it yet it
+      // goes first; once the user moves it, their place wins.
+      if (!isRanked("playlists.sections", "deets")) {
+        const i = ordered.findIndex((b) => sectionKey(b.header) === "deets");
+        if (i > 0) ordered.unshift(...ordered.splice(i, 1));
       }
-      for (const b of sortByOrder("playlists.sections", blocks, (x) => sectionKey(x.header))) {
+      for (const b of ordered) {
         const key = sectionKey(b.header);
         rows.push({ ...b.header, pos: pos++ } as PlRow);
         if (collapsed.has(key)) continue;
         // The playlists INSIDE the section take their own hand order (§0a): A-Z is the
         // built-in order under it, so a playlist never moved keeps the place it had.
-        for (const p of sortByOrder(`playlists.folder:${key}`, b.members, (x) => pid(x)))
-          rows.push({ pos: pos++, kind: "playlist", p });
+        let inOrder = sortByOrder(`playlists.folder:${key}`, b.members, (x) => pid(x));
+        if (key !== "deets") {
+          for (const p of inOrder) rows.push({ pos: pos++, kind: "playlist", p });
+          continue;
+        }
+        // DeetsMusic Lists: the lists that keep themselves, then the webs after a divider — a
+        // line between two rows in Lines, a vertical line before the first web's tile in a grid.
+        const webs = inOrder.filter(isWeb);
+        inOrder = inOrder.filter((p) => !isWeb(p));
+        for (const p of inOrder) rows.push({ pos: pos++, kind: "playlist", p });
+        if (webs.length && inOrder.length && !grid) rows.push({ pos: pos++, kind: "divider" });
+        webs.forEach((p, i) => rows.push({ pos: pos++, kind: "playlist", p, divide: grid && i === 0 && inOrder.length > 0 }));
       }
       return rows;
     };
@@ -931,7 +961,7 @@ export const playlistsCard: CardDef = {
           ],
           list: shelf,
           mixed: true, // shelf headers among rows — never windowed (collection-window.ts)
-          name: (x) => (x.kind === "playlist" ? x.p.name : x.label),
+          name: (x) => (x.kind === "playlist" ? x.p.name : x.kind === "divider" ? "" : x.label),
           // Headers never match — a query flattens to plain playlist hits.
           match: (x, q) =>
             x.kind === "playlist" &&
@@ -942,11 +972,14 @@ export const playlistsCard: CardDef = {
                   badge: onApple(x.p) ? APPLE_SIGIL : "",
                   mosaic: coverOf(x.p), // the derived cover when there's no artwork
                   mosaicSeed: pid(x.p),
+                  cls: x.divide ? "pl-divide" : "",
                 })
-              : shelfCell(x, idx),
+              : x.kind === "divider"
+                ? `<div class="pl-divider" aria-hidden="true"></div>`
+                : shelfCell(x, idx),
           activate: (x) => {
             if (x.kind === "playlist") card.drill(detail(x.p));
-            else toggleSection(sectionKey(x));
+            else if (x.kind !== "divider") toggleSection(sectionKey(x));
           },
           menu: (x) =>
             x.kind === "playlist" ? listMenu(x.p) : x.kind === "folder" ? folderMenu(x.id) : [],

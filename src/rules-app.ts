@@ -20,7 +20,7 @@ import { trackById, tracks } from "./track-store";
 import { isLoved, setLoved } from "./favorites";
 import { isSongMarked, setSongMark } from "./suggest";
 import { libraryAddEnabled } from "./library-add";
-import { applePlaylistAdd, onPlaylistsChange, playlistInsertTracks, playlistsCached } from "./playlists";
+import { applePlaylistAdd, isLater, onPlaylistsChange, playlistInsertTracks, playlistsCached } from "./playlists";
 import { requestDiaryAlbum } from "./layout-bus";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
@@ -34,7 +34,8 @@ const trackNow = (): Track | undefined => {
 let playlists: Playlist[] = [];
 const pidOf = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
 const refreshPlaylists = () => void playlistsCached().then((l) => (playlists = l)).catch(() => {});
-const playlistOf = (id: unknown) => playlists.find((p) => pidOf(p) === id);
+// Never the Later list: Listen Later is its only way in (LISTEN-LATER.md §1).
+const playlistOf = (id: unknown) => playlists.find((p) => pidOf(p) === id && !isLater(p));
 
 /** The keys a When row's "set" may write (your value, as a press would). */
 const SETTABLE = new Set(["theme", "skin", "soundEqPreset"]);

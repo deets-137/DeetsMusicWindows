@@ -8,7 +8,7 @@
 // The row order, the same in every menu (§2). A row that does not apply is left out; the
 // groups never change places:
 //   1 Play      Play Now · Play Next · Add to Queue
-//   2 File      Add to Playlist ▸
+//   2 File      Add to Playlist ▸ · Listen Later (songs, albums, picked songs; LISTEN-LATER.md)
 //   3 Go to     Go to Artist · Go to Album · Go to Playlist · Song Credits
 //   4 Seed      Start Station · Start a Web · Copy Link
 //   5 Keep      Add to Library · Add to Diary (albums) · Favorite · Suggest Less (and of This Artist /
@@ -30,6 +30,7 @@ import { artistDetail, catalogRelated, materializeTrack } from "./search";
 import { addTransientTracks, tracks } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, shuffledPlay } from "./player";
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
+import { listenLaterItem } from "./listen-later";
 import { requestDrillCard, requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
 import { goTo, goToArtistItem, goToAlbumItem, goToAlbumPaneItem, artistSearch, songCreditsItem, requestPlaylistPane, requestArtistPane, type LibraryWay } from "./go-to";
 import { creditIndex, goToPeople, type GoToPerson } from "./artist-credit";
@@ -204,7 +205,7 @@ export function songMenu(t: Track | undefined, w: SongWhere): MenuItem[] {
   return join(
     w.lead ?? [],
     play,
-    desk(t ? addToPlaylistItem(() => [t]) : null),
+    desk(t ? addToPlaylistItem(() => [t]) : null, t ? listenLaterItem(() => [t]) : null),
     songGoTo(t, cid, w.nav),
     [
       ...desk(startStationItem("songs", cid), startWebItem(() => (t ? { kind: "song", track: t } : null), !!t?.catalogId)),
@@ -314,7 +315,7 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
   });
   return join(
     playRows(load, w.context, { catalog: a.catalog, shuffle: true }),
-    desk(addToPlaylistItem(load)),
+    desk(addToPlaylistItem(load), listenLaterItem(load)),
     [goArtist, goAlbum],
     [
       // An album has no station of its own (Apple seeds stations from songs and artists).
@@ -549,14 +550,15 @@ export interface SetWhere extends Where {
 
 /** Several picked rows (§19): play, queue or file them all, then the card's own rows. */
 export function setMenu(load: () => Track[] | Promise<Track[]>, n: number, noun: string, w: SetWhere): MenuItem[] {
-  return listMenu(load, { ...w, label: `Play ${picksText(n, noun)}` });
+  return listMenu(load, { ...w, label: `Play ${picksText(n, noun)}`, later: true });
 }
 
 /** A list that is no one album, artist or playlist (a genre): play it, queue it, file it. */
-export function listMenu(load: () => Track[] | Promise<Track[]>, w: SetWhere & { label?: string }): MenuItem[] {
+export function listMenu(load: () => Track[] | Promise<Track[]>, w: SetWhere & { label?: string; later?: boolean }): MenuItem[] {
   return join(
     w.play ?? playRows(load, w.context, { catalog: w.catalog, label: w.label }),
-    desk(addToPlaylistItem(load, w.exclude)),
+    // Listen Later on picked songs only, not on a whole genre (LISTEN-LATER.md §2.1).
+    desk(addToPlaylistItem(load, w.exclude), w.later ? listenLaterItem(load) : null),
     w.own ?? [],
     w.away ?? [],
   );

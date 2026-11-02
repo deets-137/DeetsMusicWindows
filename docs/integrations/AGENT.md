@@ -183,7 +183,8 @@ subset a tool server needs, no SDK. Tools:
 | `control` | `action: play\|pause\|next\|previous\|shuffle\|repeat\|mute\|seek\|volume\|clear_queue`, `value?` (percent), `mode?` (repeat: off / all / one, else cycle; shuffle: on / off, else the button; clear_queue: added = only the songs added by hand, else all of Up Next) | both | |
 | `list` | `what: queue\|history\|playlists\|album\|library`, `id?`; library: `sort?`, `order?`, `limit?`, `artist?`, `genre?`, `shorter_than?`, `longer_than?` | both | `what=library` = `POST /songs` (LOCAL-DATA.md §6); CLI: `deetsmusic library --sort length -n 5`. playlists are tagged `[DeetsMusic]` / `[Apple Music, yours]` / `[Apple Music, read-only]`. `what=album` + an `album:` / `playlist:` id prints the numbered tracklist (`POST /tracks`); CLI: `deetsmusic tracks <id>` |
 | `library` | `action: add\|favorite\|unfavorite`, `id` (`current` allowed) | both | consent rules, §5 |
-| `playlist_add` | `playlist`, `id` (`current` allowed) | both | local or your own Apple playlist |
+| `playlist_add` | `playlist`, `id` (`current` allowed) | both | local or your own Apple playlist; refuses the Later list |
+| `later` | `id` (`current` allowed) | both | Listen Later: saves to the Later list, made the first time; skips songs it holds. `POST /playlist` `action: later`; CLI: `deetsmusic later [id]` ([LISTEN-LATER.md](../features/LISTEN-LATER.md) §2.5) |
 | `update` | `action: status\|check\|install\|rollback` (full: `mode`, `skip`), `value?` | both | install/rollback end in the app's Restart question |
 | `playlist_show` | `playlist` | full | numbered rows |
 | `playlist_create` | `name` | full | returns `playlist:local:N` |
@@ -344,6 +345,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   keeps its card's own rule. A song pin and a station pin always play and have no verb. The
   per-pin verb itself has no agent verb: it is the **On Click** row on the tile's right-click
   menu.
+- **Playlists › Remove from Later list automatically** (2026-11-01, LISTEN-LATER.md §2.4):
+  `laterRemove` (off | here | anywhere, default off). After a full play (`fullPlayRule`) or a
+  skip, the song leaves the Later list when the play ends: `here` only for a play started from
+  that list.
 - **Playlists › New playlist opens Search** (2026-10-16, FUTURE-SETTINGS.md §16): `playlistCreateSummon`
   (on | off, was notmini | always | off) and its follow-up **Also when Playlists is the only card**,
   `playlistCreateSummonSolo` (on | off, default off): off keeps the new playlist on screen where

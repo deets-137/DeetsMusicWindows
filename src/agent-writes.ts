@@ -23,9 +23,10 @@ import { materializeTrack } from "./search";
 import {
   playlistsCached, playlistCreate, playlistAddTracks, playlistRemoveTrack, playlistReorder, playlistRename,
   playlistDelete, playlistSetCover, playlistImport, playlistTracks, applePlaylistAdd, applePlaylistsSync,
-  addToApple, foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, songs,
+  addToApple, foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, isLater, songs,
   notifyPlaylistsChanged, APPLE_ADD_KEY,
 } from "./playlists";
+import { saveForLater } from "./listen-later";
 import { makeNew, sendNew, getNew, EXPORT_NOTICE_KEY } from "./playlist-export";
 import { libraryAddEnabled, addToLibrary, alreadyInLibrary, ADD_NOTICE_KEY } from "./library-add";
 import { setLoved } from "./favorites";
@@ -207,6 +208,16 @@ async function playlist(payload: any): Promise<Reply> {
     return done(`Created playlist:local:${id}  ${name}`, { playlist: `playlist:local:${id}` });
   }
 
+  // Listen Later (LISTEN-LATER.md §2.5): the Later list's only way in, for an agent too.
+  if (action === "later") {
+    const r = await saveForLater(tracksOf(payload), "agent");
+    const at = { playlist: `playlist:${r.list.libraryId}` };
+    if (!r.added.length) return done(`Already in “${r.list.name}”.`, at);
+    said(`An agent added ${quoted(r.added)} to “${r.list.name}”.`);
+    const skipped = r.skipped ? ` ${songs(r.skipped)} ${r.skipped === 1 ? "was" : "were"} there already.` : "";
+    return done(`Added ${quoted(r.added)} to “${r.list.name}”.${skipped}`, at);
+  }
+
   const { p, all } = await findPlaylist(payload?.playlist);
 
   switch (action) {
@@ -215,6 +226,7 @@ async function playlist(payload: any): Promise<Reply> {
       const n = localNum(p);
       if (n != null) {
         handMade(p);
+        if (isLater(p)) throw unknown(`“${p.name}” takes songs only from Listen Later; use the later tool`);
         await playlistAddTracks(n, tracks);
         said(`An agent added ${quoted(tracks)} to “${p.name}”.`);
         return done(`Added ${quoted(tracks)} to “${p.name}”.`);

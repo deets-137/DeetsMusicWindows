@@ -3415,6 +3415,22 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
 /* In grid densities a header is still a grid child — span it across the full row. */
 .lib-grid .lib-shelf { grid-column: 1 / -1; }
 
+/* Playlists card › DeetsMusic Lists (LISTEN-LATER.md §7, his call 2026-11-01): the line between
+   the lists that keep themselves and the webs. The menu divider's family: 1 px of --border,
+   inset like a label. In Lines a row of its own; in a grid, a vertical line in the gap before
+   the first web's tile, so it takes no cell (it moves with the wrap). */
+.pl-divider { height: 1px; margin: var(--space-1) var(--space-2); background: var(--border); }
+.lib-tile.pl-divide { position: relative; }
+.lib-tile.pl-divide::before {
+  content: "";
+  position: absolute;
+  inset-block: var(--space-2);
+  inset-inline-start: calc(var(--lib-grid-gap) / -2);
+  inline-size: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
+
 /* Playlists card: collapsible section headers (folders + kind clusters). Same shelf
    voice, but interactive: click toggles, the chevron flips closed, count sits right. */
 .lib-shelf--toggle { display: flex; align-items: center; gap: var(--space-1); cursor: pointer; }

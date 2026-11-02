@@ -422,6 +422,7 @@ Who can see what you play. A status line under the rows says what is shared now.
 | Refresh playlists by themselves | Re-reads a playlist when you open it, and once a day. Each playlist keeps its own setting | **on** / off |
 | New playlist opens Search | Puts the Search card beside the new playlist, so adding songs is one card away | **On** / Never |
 | Also when Playlists is the only card | Shows under *On*. In Mini, in Max with one card, and when Playlists fills the window, Search takes its place | on / **off** |
+| Remove from Later list automatically | After a full play (as Rewind › Count a play at sets it) or a skip, the song leaves the Later list (Listen Later's playlist). A skip shows a toast with Undo. Played from List counts only plays started from that list | **Off** / Played from List / Played Anywhere |
 | Cover while playing | For a song played from a playlist: the cover shown in Now Playing, in mini and in the tray panel | **Album** / Playlist |
 | New cover | How a new playlist's cover starts. Letters and Note keep the theme you made it in | **Letters** / Mosaic / Note |
 | Web reach | How far a playlist web goes. 1 reaches the artist's collaborators; each step reaches one circle further | 1 / **2** / 3 |
@@ -577,7 +578,8 @@ The Playlists card sorts everything into five fixed groups, in this order. Each 
 
 | Group | What is in it |
 |---|---|
-| **Made Here** | Playlists you made in DeetsMusic. They stay on this PC until you export one |
+| **DeetsMusic Lists** | The playlists the app makes for you: Replay, Saved for the Right Day and Rulez Playlists, then, after a line, the webs (from 2026-11-01) |
+| **Created Here** | Playlists you made in DeetsMusic. They stay on this PC until you export one |
 | **Your Apple Playlists** | Your own playlists on Apple Music |
 | **Apple Mixes** | Apple's personalised mixes — New Music Mix, Favourites Mix, and the rest |
 | **Apple Replays** | Apple's yearly Replay playlists |
@@ -621,7 +623,8 @@ Words in *italics* have their own entry.
 | **Home** | A card with three shelves of what to play next. It makes no requests to Apple | The card picker |
 | **Host** | The person who started a *room*. Only the host can end it, or set what guests may do | The Room panel |
 | **LUFS** | The unit loudness is measured in. Apple's *Sound Check* level is −16 LUFS | Sound panel › Match songs to |
-| **Made Here** | Playlists you made in DeetsMusic. They stay on this PC until you export one | Playlists card, the first group |
+| **Created Here** | Playlists you made in DeetsMusic. They stay on this PC until you export one | Playlists card, under DeetsMusic Lists |
+| **DeetsMusic Lists** | The playlists the app makes for you: Replay, Saved for the Right Day, Rulez Playlists and the webs | Playlists card, the first group |
 | **Match loudness** | Plays every song at about the same loudness, so you do not reach for the volume | Sound panel › Adaptive sound |
 | **Max** | The wide *surface*: the *stage*, the queue, and four cards | The Surface menu |
 | **Midi** | The tall *surface*: Now Playing and two cards | The Surface menu |
@@ -690,6 +693,8 @@ Words in *italics* have their own entry.
 | Send my plays to Last.fm | Settings › Last.fm |
 | Build a playlist from an artist's circle | Playlists card › the web button |
 | Change how a new playlist's cover looks | Settings › Playlists › New cover |
+| Save a song or album to hear another day | Right-click it › Listen Later |
+| Take songs out of the Later list once I've heard them | Settings › Playlists › Remove from Later list automatically |
 | Get a weekly playlist of what I played | Settings › Rewind › Weekly Replay |
 | See my listening ranked | Settings › Cards › Rewind |
 | Take a card out of the card picker | Settings › Cards, or right-click its name in the picker › Hide from picker |

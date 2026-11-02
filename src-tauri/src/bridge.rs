@@ -1007,7 +1007,8 @@ async fn write(app: &AppHandle, path: &str, r: WriteReq) -> Result<serde_json::V
             let mut payload = serde_json::json!({
                 "action": r.action, "playlist": r.playlist, "index": r.index, "to": r.to, "value": r.value,
             });
-            if r.action == "add" {
+            // `later` (LISTEN-LATER.md §2.5) carries songs like `add`, with no playlist.
+            if r.action == "add" || r.action == "later" {
                 payload = merge(payload, tracks_payload(app, r.id.as_deref()).await?);
             }
             if r.action == "cover" {

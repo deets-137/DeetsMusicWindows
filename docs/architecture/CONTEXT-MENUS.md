@@ -45,7 +45,7 @@ The same in every menu. The groups never change places.
 | # | Group | Rows |
 |---|---|---|
 | 1 | Play | Play Now · Shuffle (albums, playlists) · Play Next · Add to Queue |
-| 2 | File | Add to Playlist ▸ |
+| 2 | File | Add to Playlist ▸ · Listen Later (songs, albums, picked songs; [LISTEN-LATER.md](../features/LISTEN-LATER.md)) |
 | 3 | Go to | Go to Artist · Go to Album · Go to Playlist · Song Credits |
 | 4 | Seed | Start Station · Start a Web · Copy Link |
 | 5 | Keep | Add to Library · Review This Album (albums) · Favorite · Suggest Less (and Suggest Less of This Artist / Album; not on Home's tiles) · Mark as Song of the Day · On Click ▸ · Pin |
@@ -145,8 +145,8 @@ Library's Sort pop: the text options, and the direction arrows in a column besid
 ## 3. The menus
 
 ### 3.1 Song — `songMenu`
-Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist (▸ when several, in
-the Library) · Go to Album · Song Credits · Start Station · Start a Web · Copy Link · Add to
+Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Listen Later · Go to Artist (▸ when
+several, in the Library) · Go to Album · Song Credits · Start Station · Start a Web · Copy Link · Add to
 Library · Favorite · Suggest Less · Suggest Less of This Artist · Suggest Less of This Album ·
 Mark as Song of the Day · Pin.
 
@@ -167,8 +167,8 @@ Mark as Song of the Day · Pin.
   (`np_command`, np-bus.ts).
 
 ### 3.2 Album — `albumMenu`
-Play Now · Shuffle · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Go to Album ·
-Start a Web · Copy Link · Add to Library · Review This Album · Favorite · Suggest Less of This Album ·
+Play Now · Shuffle · Play Next · Add to Queue · Add to Playlist ▸ · Listen Later · Go to Artist ·
+Go to Album · Start a Web · Copy Link · Add to Library · Review This Album · Favorite · Suggest Less of This Album ·
 On Click ▸ · Pin.
 
 - **Shuffle** (2026-09-24, his call 3A): the hero's Shuffle button as a row, on every card. With
@@ -226,9 +226,9 @@ Play Now · Add to Queue · Copy Link · Pin. A station has no view, so no Go to
 
 ### 3.6 Lists — `listMenu`, `setMenu`
 - A **genre** tile: Play Now · Play Next · Add to Queue · Add to Playlist ▸. It is no one
-  album, so it has no link.
+  album, so it has no link, and no Listen Later (a whole genre is not a save).
 - A **picked set** (Ctrl / Shift): Play *N songs* (or albums, artists, genres, plays,
-  playlists) · Play Next · Add to Queue · Add to Playlist ▸ · the card's Remove N.
+  playlists) · Play Next · Add to Queue · Add to Playlist ▸ · Listen Later · the card's Remove N.
 - A **tile** on Home or a Pinned shelf: `tileMenu` picks the builder for the tile's kind.
 
 ## 3a. The hero menus
@@ -303,7 +303,7 @@ the Library Add toggle, as the song ♥ is ([FAVORITES.md](../features/FAVORITES
 3. Love an album in the Music app. Open its hero in DeetsMusic once: the log shows one
    `favorites: reconciled album …, loved=true`, and the menu says Unfavorite.
 4. Search › an Apple playlist › hero › Favorite; Playlists › one of your Apple playlists ›
-   Favorite. A playlist under Made Here has no Favorite row.
+   Favorite. A playlist under Created Here or DeetsMusic Lists has no Favorite row.
 5. Settings › Apple Music › turn Add to Library and ♥ off: no Favorite row anywhere.
 
 ## 4. Start a Web

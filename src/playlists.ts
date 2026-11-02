@@ -76,7 +76,7 @@ export function applePlaylistCounts(): Promise<number> {
 /** Create an empty local playlist; returns its rowid (list id = `local:{rowid}`).
  *  `role` "replay" marks one made from listening (replay.ts, PLAYLISTS.md §10.8). */
 /** `expireDays`: a temporary web playlist (PLAYLIST-WEB.md §10); absent = kept. */
-export function playlistCreate(name: string, role?: "replay" | "rulez", expireDays?: number): Promise<number> {
+export function playlistCreate(name: string, role?: "replay" | "rulez" | "later" | "web", expireDays?: number): Promise<number> {
   return invoke<number>("playlist_create", { name, description: null, role: role ?? null, expireDays: expireDays ?? null }).then(async (id) => {
     await startCover(id, name);
     emitChange(id);
@@ -133,6 +133,15 @@ export function playlistInsertTracks(p: Playlist, at: number | null, tracks: Tra
 export const isReplay = (p: Playlist): boolean => p.role === "replay";
 /** A Rulez Playlist: its songs come from a filter rule (filters.ts, features/filter-rules.md). */
 export const isRulez = (p: Playlist): boolean => p.role === "rulez";
+/** The Later list (listen-later.ts, LISTEN-LATER.md): Listen Later is its only way in, so it is
+ *  never an add target and takes no drop. You can still rename, reorder and remove by hand. */
+export const isLater = (p: Playlist): boolean => p.role === "later";
+/** A playlist web (web.ts), from 2026-11-01 on: it sits under DeetsMusic Lists. A web made before
+ *  that carries no role and stays under Created Here (his call). */
+export const isWeb = (p: Playlist): boolean => p.role === "web";
+/** Made by the app, so its header names DeetsMusic as the owner, not "Yours" (LISTEN-LATER.md §2.3). */
+export const ownerOf = (p: Playlist): string =>
+  p.source !== "local" ? p.curatorName ?? "Apple Music" : isReplay(p) || isRulez(p) || isLater(p) ? "DeetsMusic" : "Yours";
 
 /** The user's own cover, served at the app's cover link (PLAYLISTS.md §10.6) — not the
  *  artwork of its Apple copy, which can't be removed here. */
@@ -479,14 +488,15 @@ export function addToPlaylistItem(
     label: "Add to Playlist",
     sub: () =>
       playlistsCached().then((all) => {
-        // A Replay is made from listening, not by hand: never a target (§10.8).
+        // A Replay is made from listening, not by hand: never a target (§10.8). The Later list
+        // takes songs only from Listen Later (LISTEN-LATER.md §1).
         const apple = setting("playlistExport");
         const linked = new Set(all.map((p) => p.exportedAppleId).filter(Boolean));
         const targets = all.filter(
           (p) =>
             p.libraryId !== excludeLibraryId &&
             (localId(p) != null
-              ? !isReplay(p)
+              ? !isReplay(p) && !isLater(p)
               : apple && p.source === "apple" && p.canEdit && !linked.has(p.libraryId)),
         );
         const when = (p: Playlist) => Date.parse(p.dateAdded ?? "") || 0;

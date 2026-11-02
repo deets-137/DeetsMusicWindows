@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   utcDay, utcMonth, isoWeek, dayCount, afterDay, weeklyDue, settingValue, randomDelay, waited,
   movesFor, appliedReport, afterApplied, onDownloaded, reportId, clockFor, tickClock, keyFor,
-  listenDay, listenMinutes, DAY_MINUTES,
+  listenDay, listenMinutes, DAY_MINUTES, addUse, usesOn, afterUses,
 } from "../src/usage-rules.ts";
 import { compareVersions } from "../src/update-rules.ts";
 
@@ -39,6 +39,16 @@ test("2026-11-01: the minutes describe the last day that sent a day count, never
   assert.equal(listenDay({}, at("2026-11-01T10:00:00Z")), null, "nothing sent before");
   assert.equal(listenDay({ day: "2026-11-01" }, at("2026-11-01T22:00:00Z")), null, "today's count has gone");
   assert.equal(listenDay({ day: "2026-10-27" }, at("2026-11-01T00:30:00Z")), "2026-10-27", "days the app was closed are skipped");
+});
+
+test("2026-11-01: use counts add up per day; a sent day and the days before it go; a month-old day drops", () => {
+  let s = addUse({}, "2026-10-30", "later.save.menu");
+  s = addUse(s, "2026-10-30", "later.save.menu");
+  s = addUse(s, "2026-10-31", "later.auto", 3);
+  assert.deepEqual(usesOn(s, "2026-10-30"), { "later.save.menu": 2 });
+  assert.deepEqual(usesOn(s, "2026-10-29"), {}, "a day with no use is empty");
+  assert.deepEqual(Object.keys(afterUses(s, "2026-10-30")), ["2026-10-31"], "today's uses wait for their own day count");
+  assert.deepEqual(Object.keys(addUse(s, "2026-12-15", "later.undo")), ["2026-12-15"], "older than 30 days: dropped");
 });
 
 test("2026-11-01: a day's minutes are the plays that started on that UTC day, capped at 1,440", () => {

@@ -52,6 +52,8 @@ export const REPORTED: readonly string[] = [
   "playlistEagerCounts", "playlistAutoRefresh", "playlistCreateSummon", "playlistCreateSummonSolo", "nowPlayingCover",
   "newPlaylistCover", "webReach", "webSize", "webMakeMotion", "webSeedFilter", "webPrefer",
   "webTempDays", "webPlayNew", "webPlayMode", "webSkipSeed",
+  // Listen Later (his call 2026-11-01: "Yes write it up to be sent")
+  "laterRemove",
   // Cards: which cards the picker offers
   ...HIDEABLE_CARDS.map((id) => `hiddenCards.${id}`),
   // Rewind, Diary, Song of the Day
@@ -60,6 +62,16 @@ export const REPORTED: readonly string[] = [
   // Connections (on/off and the mode only), Updates
   "agentControl", "agentSettings", "agentHistory", "agentDiary", "updateMode",
 ];
+
+/** The feature uses the day count may carry (USAGE-COUNTS.md §18), as counts of one finished UTC
+ *  day. `npm run usage:keys` copies this list too; the worker drops any other name. A new name
+ *  is his call, as a new setting is. */
+export const USE_COUNTS = [
+  // Listen Later (LISTEN-LATER.md, his call 2026-11-01): saves by where they came from, the
+  // songs the setting took out after a full play, and Undo presses.
+  "later.save.menu", "later.save.compass", "later.save.agent", "later.auto", "later.skip", "later.undo",
+] as const;
+export type UseName = (typeof USE_COUNTS)[number];
 
 /** Toggle and choice specs that are NOT sent, each with its reason. */
 export const NOT_REPORTED: Readonly<Record<string, string>> = {
@@ -74,5 +86,4 @@ export const NOT_REPORTED: Readonly<Record<string, string>> = {
   pinView: "the pin panel's last tile (2026-10-26, PIN.md): his call before it is sent",
   rememberArtistFilters: "a new Playback row (2026-10-27, ARTIST-VIEW.md §12): his call before it is sent",
   clearQueueOnLaunch: "a new Playback row (2026-10-29, QUEUE.md § Clear Queue): his call before it is sent",
-  whatsNewEveryUpdate: "a new Updates row (2026-10-29, UPDATE-CARD.md §3.10): his call before it is sent",
-};
+  whatsNewEveryUpdate: "a new Updates row (2026-10-29, UPDATE-CARD.md §3.10): his call before it is sent",};

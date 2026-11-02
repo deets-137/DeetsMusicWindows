@@ -117,6 +117,26 @@ expect("listened: too old, over a day, not whole, a bad version or day, not an o
 const adminListen = sql(`SELECT day, v, minutes, COUNT(*) AS n FROM usage_listen WHERE channel = 'dev' GROUP BY day, v, minutes ORDER BY minutes`);
 expect("listened: the admin read groups the rows into counts", adminListen.map((r) => r.n), [1, 1]);
 
+// 4c. The feature uses (§18): day counters per range, a sum per use, and the reports count, all
+// filed under the uses' own day and version. Off-list names, bad counts and today are dropped.
+const useN = (metric, bucket) => n(`channel = 'dev' AND v = '1.1.2' AND period = '${lastDay}' AND metric = '${metric}' AND bucket = '${bucket}'`);
+const withUses = (uses) => ({ v: "1.2.0", channel: "dev", week: false, month: false, day: today, key: key(), uses });
+await send("day", withUses({ day: lastDay, v: "1.1.2", n: { "later.save.menu": 3, "later.undo": 1 } }));
+await send("day", withUses({ day: lastDay, v: "1.1.2", n: { "later.save.menu": 12 } }));
+await send("day", withUses({ day: lastDay, v: "1.1.2", n: {} }));
+expect("uses: three installs reported", useN("use.reports", ""), 3);
+expect("uses: menu saves, one install at 1-9 and one at 10-99, 15 in all",
+  [useN("use.later.save.menu", "1-9"), useN("use.later.save.menu", "10-99"), useN("use.later.save.menu", "sum")], [1, 1, 15]);
+expect("uses: one Undo", [useN("use.later.undo", "1-9"), useN("use.later.undo", "sum")], [1, 1]);
+const ku = key();
+await send("day", { ...withUses({ day: lastDay, v: "1.1.2", n: { "later.auto": 2 } }), key: ku });
+await send("day", { ...withUses({ day: lastDay, v: "1.1.2", n: { "later.auto": 2 } }), key: ku });
+expect("uses: a retry with the same key adds nothing", [useN("use.reports", ""), useN("use.later.auto", "sum")], [4, 2]);
+for (const bad of [{ day: lastDay, v: "1.1.2", n: { "not.a.use": 5, "later.undo": -1, "later.auto": 1.5, "later.save.agent": 20000 } },
+  { day: today, v: "1.2.0", n: { "later.undo": 1 } }, { day: lastDay, v: "x", n: { "later.undo": 1 } }, { day: lastDay, v: "1.1.2", n: [] }]) await send("day", withUses(bad));
+expect("uses: an off-list name, a bad count, today, a bad version, an array: nothing but the one report with a valid shape",
+  [useN("use.reports", ""), n(`channel = 'dev' AND metric = 'use.not.a.use'`), useN("use.later.undo", "sum"), n(`channel = 'dev' AND period = '${today}' AND metric LIKE 'use.%'`)], [5, 0, 1, 0]);
+
 // 5. The owner channel, then an applied update that moves its counts.
 await send("day", { v: "1.1.2", channel: "owner", week: true, month: true, day: today, key: key() });
 expect("owner: the channel is taken", [active("owner", "1.1.2", today), active("owner", "1.1.2", weekOf), active("owner", "1.1.2", month)], [1, 1, 1]);

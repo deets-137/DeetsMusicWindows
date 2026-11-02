@@ -2,7 +2,7 @@
 // of it. Five reports, each its own request at its own random moment (§3.4, §12):
 //   day         once per UTC day: the version, and whether this is the install's first count
 //               of the week / month, or its first ever (usage-rules.ts); and the minutes
-//               listened on the last day that sent one (§17)
+//               listened (§17) and the feature use counts (§18) of the last day that sent one
 //   settings    once per ISO week: the allow-listed settings (usage-keys.ts), as option values
 //   health      once per ISO week: the last finished week's counts, held by Rust (usage.rs)
 //   downloaded  once per update version: it reached `ready` (updater.ts's status)
@@ -35,6 +35,7 @@ import {
   type UsageKind, type UsageState,
 } from "./usage-rules";
 import { playEventsSince } from "./rewind";
+import { usesFor, usesSent, clearUses } from "./use-counts";
 
 const STATE_KEY = "deets-usage";
 const LAST_KEY = "deets-usage-last";
@@ -124,6 +125,7 @@ export function markUsageTold(why: string): void {
 function cancelAll(why: string): void {
   const dropped = Object.keys(state.open ?? {});
   setState({ ...state, open: {}, dl: undefined });
+  clearUses(); // the use counts waiting for a day count go too (§18)
   diag.log("usage:off", { dropped, why });
 }
 
@@ -188,12 +190,21 @@ async function listened(now: Date): Promise<{ listened?: { day: string; v: strin
   }
 }
 
+/** The feature uses of the same day as the minutes (§18): `{ day, v, n }`, sent whenever the
+ *  minutes' day is known, an empty `n` included, so the worker can count the installs that
+ *  reported that day. */
+function uses(now: Date): { uses?: { day: string; v: string; n: Record<string, number> } } {
+  const day = listenDay(state, now);
+  const v = state.vDay ?? version;
+  return day && v ? { uses: { day, v, n: usesFor(day) } } : {};
+}
+
 async function bodyOf(kind: UsageKind, now: Date, key: string): Promise<Record<string, unknown> | null> {
   const day = utcDay(now);
   switch (kind) {
     case "day": {
       const flags = dayCount(state, now);
-      return flags && { ...flags, ...(await listened(now)), day, key };
+      return flags && { ...flags, ...(await listened(now)), ...uses(now), day, key };
     }
     case "settings":
       return { settings: await reportedSettings(REPORTED), day, key };
@@ -244,6 +255,8 @@ async function send(kind: UsageKind): Promise<void> {
       failedAt.set(kind, performance.now());
       return void diag.log("usage:skip", { kind, why: "no worker for this build" });
     }
+    // The day the use counts described is sent: it, and every day before it, go (§18).
+    if (kind === "day" && body.uses) usesSent((body.uses as { day: string }).day);
     const next = afterSent(kind, now);
     const keys = { ...next.keys };
     const open = { ...next.open };
@@ -317,8 +330,8 @@ export async function whatIsSent(): Promise<Sent[]> {
       kind: "day",
       title: "Once a day",
       last: last.day,
-      next: { v, channel: health.channel, ...flags, ...(await listened(now)), day, key: KEY_SHOWN },
-      note: "listened: the minutes of music played on the last day this was sent (UTC), and that day's version.",
+      next: { v, channel: health.channel, ...flags, ...(await listened(now)), ...uses(now), day, key: KEY_SHOWN },
+      note: "listened: the minutes of music played on the last day this was sent (UTC), and that day's version. uses: how many times some features were used that day (Listen Later), as numbers only.",
     },
     {
       kind: "settings",

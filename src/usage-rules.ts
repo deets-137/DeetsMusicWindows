@@ -51,6 +51,34 @@ export function listenMinutes(events: readonly { startedTs: number; msListened: 
   return Math.min(DAY_MINUTES, Math.round(ms / 60_000));
 }
 
+/** Feature use counts (§18, his call 2026-11-01): how many times each use (usage-keys.ts
+ *  `USE_COUNTS`) happened on each UTC day, `{ day: { name: n } }`. Kept on the PC; the day count
+ *  carries one finished day's, as it carries that day's minutes. */
+export type UseStore = Record<string, Record<string, number>>;
+/** A day's counts are kept this many days at most: an install that never sends drops them. */
+export const USE_KEEP_DAYS = 30;
+
+/** One more use of `name` on `day`. Days older than `USE_KEEP_DAYS` before it go. */
+export function addUse(store: UseStore, day: string, name: string, n = 1): UseStore {
+  const cut = utcDay(new Date(utcDayBounds(day)[0] - USE_KEEP_DAYS * 86_400_000));
+  const out: UseStore = {};
+  for (const [d, counts] of Object.entries(store)) if (d >= cut) out[d] = counts;
+  const today = { ...out[day] };
+  today[name] = (today[name] ?? 0) + n;
+  out[day] = today;
+  return out;
+}
+
+/** The counts of one day: `{}` when nothing was used. */
+export const usesOn = (store: UseStore, day: string): Record<string, number> => ({ ...store[day] });
+
+/** After the day count that carried `day`: that day and every earlier one are done. */
+export function afterUses(store: UseStore, day: string): UseStore {
+  const out: UseStore = {};
+  for (const [d, counts] of Object.entries(store)) if (d > day) out[d] = counts;
+  return out;
+}
+
 /** The open-time clock of one report (§12.9 A1): `id` names the report it waits for (a day, a
  *  week, an update), `at` the random moment drawn for it, `ms` the time the app has been open
  *  since. It is kept across launches, so a short session adds to it instead of starting again. */

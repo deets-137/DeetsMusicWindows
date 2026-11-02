@@ -1,7 +1,7 @@
 // Weekly Replay (NEXT-VERSION §4) — a generator over the Rewind ranking, nothing more.
 //
 // Two entry points: `makeReplayPlaylist` (the Rewind card's button — any window, a
-// dated playlist filed under Replay) and `runWeeklyReplay` (the automatic run at boot:
+// dated playlist under the Playlists card's DeetsMusic Lists) and `runWeeklyReplay` (the automatic run at boot:
 // once per week on/after the chosen day, top 25 songs of the past 7 days by minutes
 // listened, repeats allowed). Rolling by default (one "Replay" playlist, replaced);
 // `replayKeep` makes each week its own dated playlist instead. All local SQLite —
@@ -11,12 +11,13 @@ import { setting } from "./settings-store";
 import { topBy, WINDOW_LABELS, type RewindRow, type RewindWindow } from "./rewind";
 import {
   playlistsCached, playlistCreate, playlistDelete, playlistAddTracks, playlistTracks, playlistRemovePositions, localId,
-  foldersList, folderCreate, folderAssign,
+  foldersList, folderAssign, folderDelete,
 } from "./playlists";
 import type { Track } from "./library";
 import type { Playlist } from "./search";
 import * as diag from "./diag";
 import { cancelled, registerEvent } from "./rules";
+import { replaceRanked, rowOrderReady, onRowOrderChange } from "./row-order";
 import { toast } from "./toast";
 
 export const REPLAY_SIZE = 25;
@@ -28,6 +29,7 @@ const REPLAY_MIN = 5; // a quieter week than this skips (the button never skips)
 const FOLDER = "Replay";
 const ROLLING_NAME = "Replay";
 const LAST_RUN_KEY = "deets.replay.lastRun";
+const UNFILED_KEY = "deets.replay.unfiled";
 
 const DAY_INDEX: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
 
@@ -50,26 +52,43 @@ const tracksOf = (rows: RewindRow[], n: number): Track[] => {
   return out;
 };
 
-async function replayFolderId(): Promise<number> {
-  const folders = await foldersList();
+/** Before 2026-11-01 every Replay was filed in a "Replay" folder. Now the Playlists card shows
+ *  them under DeetsMusic Lists (his call, LISTEN-LATER.md §7), so a new one is filed nowhere,
+ *  and once per install the old ones leave the folder. The folder goes when nothing else is in
+ *  it; a playlist the user filed there keeps it. */
+export async function unfileReplays(): Promise<void> {
+  try {
+    if (localStorage.getItem(UNFILED_KEY)) return;
+  } catch {
+    return; // storage blocked: try again next launch rather than every boot
+  }
+  const [folders, all] = await Promise.all([foldersList(), playlistsCached()]);
   const f = folders.find((x) => x.name === FOLDER);
-  return f ? f.id : folderCreate(FOLDER);
+  if (f) {
+    // DeetsMusic Lists takes the Replay folder's place in the user's section order (his call,
+    // 2026-11-01), so a user who moved sections finds it where Replay was, not at the end.
+    if (!rowOrderReady()) await new Promise<void>((done) => { const off = onRowOrderChange(() => { off(); done(); }); });
+    await replaceRanked("playlists.sections", `folder:${f.id}`, "deets");
+    const inside = all.filter((p) => p.folderId === f.id);
+    const replays = inside.filter((p) => p.role === "replay");
+    for (const p of replays) await folderAssign(p, null);
+    if (replays.length === inside.length) await folderDelete(f.id);
+    diag.log("replay", `unfiled ${replays.length} from the Replay folder${replays.length === inside.length ? ", folder deleted" : ""}`);
+  }
+  try {
+    localStorage.setItem(UNFILED_KEY, "1");
+  } catch {
+    // Storage blocked: the pass runs again next launch and finds nothing to do.
+  }
 }
 
-async function fileUnderReplay(rowid: number): Promise<void> {
-  const [fid, all] = await Promise.all([replayFolderId(), playlistsCached()]);
-  const p = all.find((x) => x.libraryId === `local:${rowid}`);
-  if (p) await folderAssign(p, fid);
-}
-
-/** Create a dated local playlist from `tracks`, filed under Replay. Returns its rowid. All or
- *  nothing: when adding the songs or filing it fails, the half-made playlist is deleted and the
- *  error goes on to the caller (DEETS-REWIND.md §8, F7). */
+/** Create a dated local playlist from `tracks`. Returns its rowid. All or nothing: when adding
+ *  the songs fails, the half-made playlist is deleted and the error goes on to the caller
+ *  (DEETS-REWIND.md §8, F7). */
 async function createReplay(name: string, tracks: Track[]): Promise<number> {
   const id = await playlistCreate(name, "replay");
   try {
     await playlistAddTracks(id, tracks);
-    await fileUnderReplay(id);
   } catch (e) {
     await playlistDelete({ libraryId: `local:${id}`, name } as Playlist).catch((e2) =>
       diag.log("replay", `could not undo the half-made "${name}": ${String(e2)}`),
@@ -95,8 +114,7 @@ export async function makeReplayPlaylist(window: RewindWindow): Promise<number> 
 
 /**
  * Rewind › Picks' own Make playlist (DeetsOTD.md §8.7): the window's Songs of the Day,
- * OLDEST first — a pick list reads as a timeline, not a ranking — filed under Replay like
- * the others. Zero Apple calls: every song is the pick's own stored copy.
+ * OLDEST first — a pick list reads as a timeline, not a ranking — a Replay like the others. Zero Apple calls: every song is the pick's own stored copy.
  */
 export async function makePicksPlaylist(window: RewindWindow): Promise<number> {
   const rows = await topBy("picks", window);
@@ -110,7 +128,7 @@ export async function makePicksPlaylist(window: RewindWindow): Promise<number> {
 
 /**
  * Make playlist with rows picked on the Rewind card (his call K1, 2026-10-18): the picked rows'
- * songs in the order shown, each song once, filed under Replay like the others. The window is
+ * songs in the order shown, each song once, a Replay like the others. The window is
  * in the name so the list says where the picks came from.
  */
 export async function makePickedPlaylist(window: RewindWindow, picked: Track[]): Promise<number> {

@@ -79,6 +79,31 @@ export const hasRowOrder = (scope: OrderScope): boolean => (ranks.get(scope)?.si
 /** Every scope that holds an order — Settings › Reset asks this before it offers. */
 export const orderedScopes = (): string[] => [...ranks.keys()].filter((s) => (ranks.get(s)?.size ?? 0) > 0);
 
+/** Does the user's order for `scope` name `id`? (A section that must open first until the user
+ *  moves it asks this: the Playlists card's DeetsMusic Lists.) */
+export const isRanked = (scope: OrderScope, id: string): boolean => ranks.get(scope)?.has(id) ?? false;
+
+/** One id takes another's place in the user's order (a section renamed by the app: the Replay
+ *  folder became DeetsMusic Lists, 2026-11-01). Nothing when the order does not name `from`;
+ *  an older place of `to` is dropped. Resolves to whether it changed anything. */
+export async function replaceRanked(scope: OrderScope, from: string, to: string): Promise<boolean> {
+  const m = ranks.get(scope);
+  if (!m?.has(from)) return false;
+  const ids = [...m.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id)
+    .filter((id) => id !== to).map((id) => (id === from ? to : id));
+  const next = new Map<string, number>();
+  ids.forEach((x, i) => next.set(x, i));
+  ranks.set(scope, next);
+  emit();
+  diag.log("order:replace", { scope, from, to, at: ids.indexOf(to) });
+  try {
+    await invoke("row_order_set", { scope, ids });
+  } catch (e) {
+    console.error("[row-order] replace", e);
+  }
+  return true;
+}
+
 const RANK_MAX = Number.MAX_SAFE_INTEGER;
 const rankOf = (scope: OrderScope, id: string): number => ranks.get(scope)?.get(id) ?? RANK_MAX;
 

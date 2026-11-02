@@ -229,6 +229,9 @@ Two terms are commands, drawn as the first row:
 - **`add [song]`** (`add to library`): the song into your library, or the current song with
   no name; only a song not in the library yet (a station's, a catalog play's), found in the
   current song, Up Next and this session's plays. The same gate. A REAL Apple write.
+- **`listen later [song]`** (`later`, `save for later`; 2026-11-01, LISTEN-LATER.md): the song
+  into the Later list, or the playing song with no name, found as `favorite` finds it. Local
+  only, so no gate. The toast offers Undo.
 - **`queue [song|album|playlist] <name> [N | next | end]`**: the best library match goes into
   Up Next: at position N (counted from 1), next (the default), or at the end. `queue Fancy 3`,
   `queue album Do Well end`, `queue playlist Web Samara next`. Logged as `compass:queue`.

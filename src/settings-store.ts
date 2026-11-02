@@ -396,6 +396,8 @@ export interface Settings {
   playlistCreateSummon: "on" | "off";
   /** …also when Playlists is the only card on screen, where Search takes its place (§16). */
   playlistCreateSummonSolo: boolean;
+  /** Take a song out of the Later list after a full play or a skip: never, from the list, or from anywhere (LISTEN-LATER.md). */
+  laterRemove: "off" | "here" | "anywhere";
   /** Offer Export ▸ Apple Music on local playlists (PLAYLISTS.md §6). Default on. */
   playlistExport: boolean;
   /** What Get New Songs and the refresh offer bring from a local playlist's Apple copy
@@ -704,6 +706,7 @@ export const DEFAULTS: Settings = {
   playlistEagerCounts: true,
   playlistCreateSummon: "on",
   playlistCreateSummonSolo: false, // user's call 2026-10-16: where Playlists is the only card, Search would replace the playlist you just made
+  laterRemove: "off", // his call 2026-11-01: a saved song stays until you take it out
   playlistExport: true, // user's call 2026-09-14: on, like Add to Library
   playlistGetNew: "missing", // user's call 2026-09-29: today's behavior stays the default — for some users the Apple copy is the source of truth
   addSquareOwned: false, // user's call 2026-09-17: most playlist and History songs are yours, so a ✓ on each hover says nothing

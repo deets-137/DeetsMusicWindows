@@ -45,6 +45,7 @@ import { presetOptions, selectPreset } from "./sound";
 import { getUpcoming, getRecentlyPlayed, getCurrent, upcomingCounts } from "./queue";
 import { isLoved, setLoved, favoriteOffered } from "./favorites";
 import { addTrackToLibrary, alreadyInLibrary, libraryAddEnabled } from "./library-add";
+import { listenLater } from "./listen-later";
 import { trackById } from "./track-store";
 import { resolveEntry } from "./queue-rows";
 import { isPinned, songKey, togglePin } from "./pins";
@@ -783,6 +784,19 @@ function addRow(term: string): Row[] {
   }];
 }
 
+/** "listen later [song]" (later, save for later): the song into the Later list, or the current
+ *  song with no name (LISTEN-LATER.md). Local only, so no gate. */
+function laterRow(term: string): Row[] {
+  const m = /^(?:listen\s+later|save\s+for\s+later|later)(?:\s+(.+))?$/i.exec(term.trim());
+  if (!m) return [];
+  const t = songFor(m[1]?.trim() ?? "", nearbySongs(true));
+  if (!t) return m[1] ? [] : [{ group: "Actions", title: "Listen Later", sub: "Nothing is playing", disabled: true, run: () => false }];
+  return [{
+    group: "Actions", title: `Listen Later “${t.title}”`, sub: `${songSub(t)} · saves it for the right day`,
+    run: () => void listenLater(() => [t], "compass"),
+  }];
+}
+
 /** "volume 40" / "vol 40": one row that sets the level. */
 function volumeRow(term: string): Row[] {
   const m = /^vol(?:ume)?\s+(\d{1,3})\s*%?$/i.exec(term.trim());
@@ -1110,7 +1124,7 @@ function query(termRaw: string, kind: Group | null): Result {
   const words = term.split(/\s+/);
   const lib = libraryRows();
   preloadStations();
-  const rows: Row[] = [...mathRow(termRaw), ...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...shuffleRow(termRaw), ...favoriteRow(termRaw), ...suggestRow(termRaw), ...addRow(termRaw)];
+  const rows: Row[] = [...mathRow(termRaw), ...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...shuffleRow(termRaw), ...favoriteRow(termRaw), ...suggestRow(termRaw), ...addRow(termRaw), ...laterRow(termRaw)];
   // Each group is a block with its best score; the blocks come in that order, ties in the
   // default order — so an exact playlist name ("Replay") sits above the Settings rows that
   // only contain the word. The library block (its chips ride with it) is one block.

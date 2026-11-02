@@ -178,12 +178,12 @@ function rowHTML(idx: number, title: string, sub: string, thumb?: string, select
     title,
   )}</span><span class="lib-row__artist">${esc(sub)}</span></div>${badge}</div>`;
 }
-function tileHTML(idx: number, cover: string, primary: string | undefined, sub: string | undefined, selected = false, badge = ""): string {
+function tileHTML(idx: number, cover: string, primary: string | undefined, sub: string | undefined, selected = false, badge = "", cls = ""): string {
   const p = primary ? `<span class="lib-tile__name">${esc(primary)}</span>` : "";
   const subText = sub != null ? `<span class="lib-tile__sub">${esc(sub)}</span>` : "";
   // With a badge, the sub shares a flex row with it (count left, sigil right).
   const s = sub != null && badge ? `<div class="lib-tile__subrow">${subText}${badge}</div>` : subText;
-  return `<div class="lib-tile${selected ? " is-selected" : ""}" data-idx="${idx}">${cover}<div class="lib-tile__meta">${p}${s}</div></div>`;
+  return `<div class="lib-tile${selected ? " is-selected" : ""}${cls ? ` ${cls}` : ""}" data-idx="${idx}">${cover}<div class="lib-tile__meta">${p}${s}</div></div>`;
 }
 
 /**
@@ -192,6 +192,7 @@ function tileHTML(idx: number, cover: string, primary: string | undefined, sub: 
  * fallback label; `sub` is the secondary line (artist, count, …). Options: `round` cover
  * (artists), `hideCover` (album detail — every track shares the cover), `selected`, and
  * `badge` — raw trailing HTML (e.g. a source sigil) right-aligned on the sub line/row.
+ * `cls` — one more class on a grid tile (the Playlists card's `pl-divide`).
  *
  * This is the single shared cell across collection cards (Library, Playlists): the
  * row-vs-tile + density choice lives here, so it can't drift per-card.
@@ -202,14 +203,14 @@ export function musicCell(
   art: Artwork | undefined,
   primary: string,
   sub: string,
-  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[]; mosaicSeed?: string; num?: number; cid?: string } = {},
+  opts: { round?: boolean; hideCover?: boolean; selected?: boolean; badge?: string; mosaic?: string[]; mosaicSeed?: string; num?: number; cid?: string; cls?: string } = {},
 ): string {
-  const { round = false, hideCover = false, selected = false, badge = "", mosaic, mosaicSeed, num, cid = "" } = opts;
+  const { round = false, hideCover = false, selected = false, badge = "", mosaic, mosaicSeed, num, cid = "", cls = "" } = opts;
   // `num` (an album's track number) takes the cover's slot on a line row.
   const slot = num !== undefined ? `<span class="lib-row__num">${num}</span>` : hideCover ? undefined : rowThumb(art, round, primary, mosaic, mosaicSeed);
   return density === "lines"
     ? rowHTML(idx, primary, sub, slot, selected, badge, cid)
-    : tileHTML(idx, tileCover(art, px(density), round, primary, mosaic, mosaicSeed), primary, sub, selected, badge);
+    : tileHTML(idx, tileCover(art, px(density), round, primary, mosaic, mosaicSeed), primary, sub, selected, badge, cls);
 }
 
 // ── sort specs (per grouping) ────────────────────────────────────────────────────

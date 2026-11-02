@@ -15,6 +15,7 @@ import type { TrackHandle } from "./queue";
 import * as diag from "./diag";
 import { toast } from "./toast";
 import { songStarted, songListened } from "./page-counts";
+import { isStaleTick } from "./play-ticks";
 
 /** Fraction of a track that must play for it to count as a "full" listen under the
  *  default rule. The rule itself is a setting (SETTINGS.md / FUTURE-SETTINGS §7). */
@@ -116,6 +117,8 @@ function record(cur: TrackHandle, kind: "partial" | "full"): void {
 // deltas only, so seeks don't count as listening. Counters above are unchanged.
 
 interface OpenEvent {
+  song: TrackHandle; // the song and the context it was played from
+  startedAt: number; // performance.now() at the start: a stale tick is told by it
   id: Promise<number | null>; // the row id, once the start write lands
   msListened: number; // accumulated real listen time
   lastTickSec?: number; // previous progress tick's position
@@ -177,6 +180,18 @@ export function onPlayEvent(cb: () => void): () => void {
 }
 const emitLog = () => logSubs.forEach((cb) => cb());
 
+// One play ended, and how: "full" (it crossed the full mark), "skip" (another song started
+// before the mark), "stop" (the app closed, or the same song started over). The Later list's
+// removal listens here (listen-later.ts).
+export type PlayEndHow = "full" | "skip" | "stop";
+type PlayEnd = (song: TrackHandle, how: PlayEndHow) => void;
+const endSubs = new Set<PlayEnd>();
+/** Called once per play, when it ends. Returns the unsubscribe. */
+export function onPlayEnd(cb: PlayEnd): () => void {
+  endSubs.add(cb);
+  return () => endSubs.delete(cb);
+}
+
 // One listen's start and its settled progress ticks, for other listeners (sound-loudness.ts
 // measures a song over the same play this log counts). Same guards as the log: a restart is a
 // new listen; a tick arrives only while the model's current is the song MusicKit plays.
@@ -194,7 +209,7 @@ export function onListen(start: ListenStart, tick: ListenTick): () => void {
 }
 
 function startEvent(cur: TrackHandle): void {
-  finalizeEvent(); // the outgoing song's row, if any
+  finalizeEvent(cur); // the outgoing song's row, if any
   listenStarts.forEach((cb) => cb(cur));
   const id = invoke<number>("record_event_start", {
     catalogId: cur.catalogId,
@@ -210,12 +225,13 @@ function startEvent(cur: TrackHandle): void {
       diag.log("stats:err", { kind: "event-start", e: String(e) });
       return null;
     });
-  openEvent = { id, msListened: 0, completed: false, lastfm: false, savedMs: 0, savedAt: performance.now() };
+  openEvent = { song: { catalogId: cur.catalogId, libraryId: cur.libraryId, context: cur.context }, startedAt: performance.now(), id, msListened: 0, completed: false, lastfm: false, savedMs: 0, savedAt: performance.now() };
   songStarted(); // the page sample, in telemetry builds (page-sample.ts)
 }
 
-/** Finalize the open event row (next-song-starts / app-close). Safe to call bare. */
-export function finalizeEvent(): void {
+/** Finalize the open event row (next-song-starts / app-close). Safe to call bare. `next` is the
+ *  song starting now, if one is: a different song before the full mark makes the end a skip. */
+export function finalizeEvent(next?: TrackHandle): void {
   const ev = openEvent;
   openEvent = null;
   window.clearTimeout(quietTimer);
@@ -223,6 +239,8 @@ export function finalizeEvent(): void {
   const msListened = Math.round(ev.msListened);
   songListened(msListened);
   const completed = ev.completed;
+  const how: PlayEndHow = completed ? "full" : next && playId(next) !== playId(ev.song) ? "skip" : "stop";
+  endSubs.forEach((cb) => cb(ev.song, how));
   void ev.id.then((id) => {
     if (id === null) return; // the start write failed — nothing to finalize
     invoke("record_event_end", { eventId: id, msListened, completed })
@@ -236,7 +254,7 @@ export function finalizeEvent(): void {
 
 // Best-effort finalize for the session's last song (fire-and-forget on close). The 30 s
 // checkpoints above are what keep its minutes when this write does not land.
-window.addEventListener("beforeunload", finalizeEvent);
+window.addEventListener("beforeunload", () => finalizeEvent());
 // The window hides (minimize, tray): save now, since a close often follows.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden" && openEvent) checkpoint(openEvent);
@@ -286,6 +304,13 @@ export function recordProgress(cur: TrackHandle | null, progress: number, curren
   if (!cur) return;
   const id = playId(cur);
   if (!id) return;
+
+  // The last song's tick, arriving after this play began (play-ticks.ts, 2026-11-01): it would
+  // credit this song a full play it never had. Dropped whole: not listening, not a full.
+  if (openEvent && typeof currentTime === "number" && isStaleTick(performance.now() - openEvent.startedAt, currentTime)) {
+    diag.log("stats:stale", { id, at: Math.round(currentTime) });
+    return;
+  }
 
   // A start of the song already playing (F3): a jump back to near the start is a new listen,
   // with its own play; a rebuild carries on from where it was, and the listen goes on.

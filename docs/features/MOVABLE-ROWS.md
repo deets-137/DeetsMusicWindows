@@ -572,7 +572,7 @@ his own shapes, not one of my options.
 
 | # | Question | I recommended | **His answer (2026-09-20)** |
 |---|---|---|---|
-| 3 | Where does a NEW section go? | 3A | **3A — last, in built-in order.** The hint says so in words |
+| 3 | Where does a NEW section go? | 3A | **3A — last, in built-in order.** The hint says so in words. One exception (his call, 2026-11-01): the Playlists card's DeetsMusic Lists opens first until moved ([PLAYLISTS.md](PLAYLISTS.md) §3a) |
 | 4 | Where does the order live? | 4A | **4C — one SQLite table, `row_order`, for all of it** (schema v13). Pins included, so there is no `pins.rank` column |
 | 5 | How does a section move? | 5A | **5A — it folds shut as it lifts, and opens again on the drop** |
 | 6 | The gesture? | 6C | **His own shape: the HEADER ITSELF is the grip when it is HELD** (a click still folds it), with a Settings row to turn it off. No Arrange mode, no header grip. A hold of **400 ms**, the row **on** by default |

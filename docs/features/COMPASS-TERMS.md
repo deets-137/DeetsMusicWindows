@@ -117,6 +117,7 @@ The last row is always **Search Apple Music for …**: the Search card opens wit
 | **favorite** | fav, love, heart, like; unfavorite, unlove | a song's name, or nothing for the playing song | ♥ on Apple Music (Unfavorite when it is loved) |
 | **suggest less** | dislike, less, thumbs down | `[artist\|album] <name>`, a song's name, or nothing for the playing song | Marks it Suggest Less (Undo Suggest Less when it is marked); a song's −1 goes to Apple Music with Add to Library and ♥ on (SUGGEST-LESS.md §9a, 2026-10-16) |
 | **add** | add to library | a song's name, or nothing for the playing song | Adds it to your library. Only a song not in it yet (a station's, a catalog play's) |
+| **listen later** | later, save for later | a song's name, or nothing for the playing song | Saves it to the Later list (LISTEN-LATER.md, 2026-11-01) |
 | **queue** | — | `[song\|album\|playlist] <name> [N \| next \| end]` | Puts it in Up Next: at position N, next (the default), or at the end |
 | **shuffle** | — | `[album\|playlist] <name>` | Plays that library album or playlist shuffled (the menus' Shuffle row). With no name, **shuffle** is the Shuffle button |
 | **web** | — | `[song\|album\|artist] <seed> [1\|2\|3] [genre, genre]` | Makes a playlist web from the seed at that reach with those genres, and opens it. Reach, size and style you leave out come from Settings › Playlists |

@@ -270,6 +270,11 @@ designed 2026-09-28, never built; scratched 2026-10-30 (his call: the grand open
 - `GRAND-OPENING.md` — a project (2026-10-22, branch `grand-opening`), designed with him piece
   by piece: the startup screen, one large card over every card on first launch
   (`src/onboarding.ts`). Built: the frame (§1), the nav bar with Settings in it and the Compass row (§2), pages 2–3 and the glide (§4), page 1's welcome with the sign-ins (§5, `src/onboarding-welcome.ts`), the Happy skin's pair in front (§6), page 2's layout picks (§7, `src/onboarding-looks.ts`; the place API `setStartCards` in layout.ts), page 3 Fashion: skin and theme tiles in their own look, and the preview player with his three songs on the real record, drum and sea (§8, §8b, `src/onboarding-preview.ts`); Next / Let's Boogie (the launch's reveal, `revealApp`) and the warm-up after sign-in (§9); the walk waits for it to close.
+- `LISTEN-LATER.md` — BUILT 2026-11-01, desk test open (§5): a *Listen Later* row on song,
+  album and picked-song menus, the only way into *Saved for the Right Day* (`role: "later"`,
+  renamable; `src/listen-later.ts`); "DeetsMusic" as the owner on it, Replay and Rulez
+  Playlists (`ownerOf`); *Remove from Later list automatically* (Off · Played from List · Played
+  Anywhere, on `stats.ts` `onPlayEnd`); the agent's `later` tool. §6 is the as-built record.
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
@@ -389,6 +394,17 @@ the open questions (§3); no recommendation.
 another (Ocean's sea or album light, Press's record or plate). His calls §1: a row in each
 skin's own Skin settings; a borrowed piece is redrawn in the borrower's look (his example: the
 Press plate in the album's color, not the sea). §3 the pieces; §4–§5 the questions.
+`DeetsPod.md` — an idea (2026-11-01), talked through with him: a pocket device on his two
+Waveshare ESP32-S3 pucks (the knob, the AMOLED), with the home PC as the licensed player and the
+puck a far-away speaker with a screen (the AirPlay tap → Opus → a sealed socket → a relay). **§1
+is what he said and is fixed; everything after it is Claude's proposal and may shift.** §3 why the
+puck can never play Apple Music on its own (settled); §6 the terms read; §9 the connectivity
+routes C1–C6 and the phone's battery; forks T, S, L open.
+
+**`docs/legal/`** — the agreements we run under, saved as read. `APPLE-DPLA.md` — the Apple
+Developer Program License Agreement (English UK, effective 2026-10-01, PDF and text beside it),
+§7.6 and §3.3.6 D quoted in full with the 2026-11-01 reading. Save a new edition beside the old
+one, never over it.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

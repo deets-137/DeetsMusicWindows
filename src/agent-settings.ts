@@ -368,6 +368,7 @@ const SPECS: Spec[] = [
   storeToggle("Playlists", "playlistAutoRefresh", "Refresh playlists by themselves"),
   storeChoice("Playlists", "playlistCreateSummon", "New playlist opens Search", [{ value: "on", label: "On" }, { value: "off", label: "Never" }]),
   storeToggle("Playlists", "playlistCreateSummonSolo", "Also when Playlists is the only card"),
+  storeChoice("Playlists", "laterRemove", "Remove from Later list automatically", [{ value: "off", label: "Off" }, { value: "here", label: "Played from List" }, { value: "anywhere", label: "Played Anywhere" }]),
   storeChoice("Playlists", "nowPlayingCover", "Show cover", [{ value: "album", label: "Album" }, { value: "playlist", label: "Playlist" }]),
   storeChoice("Playlists", "newPlaylistCover", "New cover", [{ value: "letters", label: "Letters" }, { value: "mosaic", label: "Mosaic" }, { value: "note", label: "Note" }]),
   storeChoice("Playlists", "webReach", "Web reach", [1, 2, 3].map((n) => ({ value: String(n), label: String(n) })), {

@@ -147,7 +147,8 @@ export const rulezCard: CardDef = {
       .then((ps) => {
         playlistChoices = ps.map((p) => ({ value: p.libraryId ?? p.catalogId ?? p.name, label: p.name }));
         editableChoices = ps
-          .filter((p) => (p.source === "local" && p.role !== "replay") || (p.source === "apple" && p.canEdit))
+          // Not a Replay, and not the Later list: Listen Later is its only way in (LISTEN-LATER.md §1).
+          .filter((p) => (p.source === "local" && p.role !== "replay" && p.role !== "later") || (p.source === "apple" && p.canEdit))
           .map((p) => ({ value: p.libraryId ?? p.catalogId ?? p.name, label: p.name }));
       })
       .catch(() => {});
