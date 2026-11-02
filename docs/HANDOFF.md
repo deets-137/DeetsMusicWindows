@@ -144,30 +144,19 @@ item closes, delete it here and write the day in WORKLOG.md.
   version `5a38985e`, rollback `0dfc4b0d`) and the admin page's Error kinds is published.
   Claude's run on the dev app passed. Open: his hand test of [Report]. The first fingerprints
   arrive the week after 1.3.0 installs. USAGE-COUNTS.md §15–§16.
-- **Listening minutes in the day count (2026-11-01, uncommitted in all three repos).** His calls
-  (USAGE-COUNTS.md §17.2): exact minutes, one row per report, the last UTC day that sent a day
-  count. Built: the app (`usage.ts` `listened`, usage-rules.ts), the worker (`usage_listen`,
-  NOT deployed; the migration applied locally only) and the admin page's minutes chart, spread,
-  by-version table and 0-minute flag (DeetsSolutions, not published). The worker check passed
-  on a local worker. The usage row's hint says "Anonymous counts and stats" (his words). Open:
-  his look at the page's drafts (§17.3).
-- **Library size in the health and applied reports (2026-11-01, uncommitted in all three
-  repos).** BUILT (USAGE-COUNTS.md §19): the library's song count rounded up to 100 by the app;
-  the worker (NOT deployed; the check passed locally) and the Stats tab's *Library size*
-  (DeetsSolutions, not published). Deploy and publish ride with §17's, his go. **Same batch
-  (2026-11-02), §20:** the library sync times in the health report and the Stats tab's
-  *Library sync* tiles; the worker now writes a report before it answers, and answers 503 when
-  the write failed. Not seen: a real sync on the dev app, the admin page in a browser.
-- **Feature reach (2026-11-02, uncommitted in all three repos).** BUILT (USAGE-COUNTS.md §21):
-  35 panel opens and feature uses on the §18 path, a first-this-week / first-this-month flag,
-  AI-app routes in the health report, and the Growth tab's *Feature reach* (0 rows included).
-  Worker not deployed (rides with §17's); admin page not published. Open: his look at the
-  choices in §21.4.
-- **To release 1.3.0** (RELEASE.md §0): **first, before the build (his call, 2026-11-01), the
-  minutes' worker side goes live, in this order, each his go:** the live migration
-  (`npx wrangler d1 execute deets-support --remote --file=migrations/2026-11-01-usage-listen.sql`
-  in `../DeetsSupport`), the worker deploy, the admin page publish (USAGE-COUNTS.md §17.3). A
-  1.3.0 app against a worker with no table fails every day count that carries minutes. Then the version in the six files (RELEASE.md §1); the
+- **The usage server side is LIVE (2026-11-02, his go: "let's run through steps 1-3").** For the
+  minutes (USAGE-COUNTS.md §17), the use counts (§18), the library size (§19), the sync times and
+  the reply that means stored (§20), feature reach (§21) and where a setting was last changed
+  (§22): the live migration (`usage_listen`; `--file` failed with a token scope error, code
+  10000, so the two `CREATE … IF NOT EXISTS` statements ran with `--command`), the DeetsSupport
+  worker deploy (version `3cb23124`, rollback `5a38985e`; the updater, the token mint, the
+  usage and admin routes answered as expected after it), and the admin page (DeetsSolutions
+  `5f31156` pushed; Pages). The app side ships in 1.3.0. Not seen: a real sync or a real
+  feature use on the dev app, the admin page's new sections in a browser. Open: his look at
+  the minutes' drafts (§17.3) and Claude's choices in §21.4. The first numbers: the library size
+  per version the day 1.3.0 goes out; uses and reach the day after; the weekly ones (library
+  size tiles, sync, AI routes) about 2026-11-09.
+- **To release 1.3.0** (RELEASE.md §0): the worker side is live (above). Then the version in the six files (RELEASE.md §1); the
   1.3.0 entry in RELEASE-NOTES.md, each paragraph with its bold lead (the update card shows the
   notes); the new rows' `since` already says 1.3.0; merge `updatez` into `main` (his call);
   `npm run release`. **Publish only after his hand test:** this release changes every error
