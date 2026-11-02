@@ -158,7 +158,7 @@ one sentence.
 
 | | Click | Right-click |
 |---|---|---|
-| Song / album / artist | Plays the list from the top | The shared Library `trackMenu` (Play Now / Next / Queue, Add to playlist, Go to…, copy link, ♥) + **Hide** |
+| Song / album / artist | Plays the list from the top | The media menu from `media-menu.ts` (Play Now / Next / Queue, Add to playlist, Go to…, copy link, ♥; was the Library's `trackMenu` until 2026-09-23, CONTEXT-MENUS.md) + **Hide** |
 | Playlist | Plays its songs | Play Now / Next / Queue, Add to playlist, **Open in Playlists**, **Hide** |
 | Station | Starts the station | Play Now, Add to Queue, Copy link, **Hide** |
 

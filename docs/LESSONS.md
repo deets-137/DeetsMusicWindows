@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/room-panel.ts]
-updated: 2026-10-01
+updated: 2026-11-01
 ---
 # LESSONS — what the owner tends to want in DeetsMusic
 
@@ -199,6 +199,41 @@ no control cut off by the text beside it.
   padding and alignment it brings with it. Measure the edges and the gaps with a probe, not by
   eye, and look at the picture too. Bring him the remaining pixel (here, 9 against 8) with its
   cause, not a rounded "it lines up".
+
+### 4.15 A setting before a custom rule
+When a behavior should change, reach for the setting (its value or its default) before a
+custom Rulez rule. A setting is visible, plain and shared by every user; a custom rule hides in
+one profile.
+- *Evidence:* on 2026-10-01 Claude offered a cancel-event rule on his live app, to keep a grown
+  Playlists card open when he pressed the Queue. He stopped it: "always pref settings over
+  custom rules". The answer was *Collapse on outside click* (`cardGrowOutside`) set Off, and its
+  default changed to Off. His dev-profile rule for the same case had already been lost, and live
+  never had it.
+- *Apply:* when a fix could be "make a rule", first look for a settings key (or a new row) that
+  covers it, and bring the default question with it. Offer a rule only when no setting can
+  express the condition.
+
+### 4.16 Anything that moves gets a fault hunt, not a score
+A design score from reviewers does not test what a user's real presses do.
+- *Evidence:* on 2026-10-20 the Metal cover change passed seven independent reviews. The
+  break-it pass (DESK-TESTS.md §6.5) and the motion monitor existed, and Claude skipped both.
+  He found four faults in minutes: a stall, a flash, doubled layers, jumps on rapid presses. He
+  asked why the documented step was not used.
+- *Apply:* when a motion feature is "done", the next move is DESK-TESTS.md §6.6: the three-lens
+  break-it pass, the cold, reverse, rapid and same-content cases, the timing gate. Run it before
+  any review, and say so.
+
+### 4.17 The app's pattern first
+Before you design a control or gesture, find how the app already does that kind of thing,
+build on it, and name the precedent in the design you show him. This holds when his word is
+general ("a handle", "a button", "a strip").
+- *Evidence:* on 2026-10-26 he asked for "a handle on the Queue's right border" in the full
+  player. Claude designed a grip pill button with a caret. He: "why did you not follow
+  precedent for how we've designed all our handles across the app?" The app's handles are the
+  edge strips (`.grow-zone`: a bar on a card's edge, in the gap, on hover; card-grow.ts and
+  full-player.ts). He stopped the build to ask for it again.
+- *Apply:* grep for the existing primitive before the design, and show it as the base. Ask only
+  when no pattern exists, or two fit. CLAUDE.md's build list, item 00.
 
 ## 5. Tie-breakers
 

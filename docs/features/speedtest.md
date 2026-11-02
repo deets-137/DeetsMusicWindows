@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.31.0
 desk_test: passed 2026-10-19
 sources: [src/net.ts, src/net-rules.ts, src/net-feed.ts, src/fetch-wrap.ts, src/styles/net.css, src-tauri/src/net.rs, src-tauri/src/airplay.rs, src-tauri/src/apple_calls.rs, src/airplay.ts, src/player.ts, src/room.ts, src/friends.ts, src/perf.ts, src/compass.ts, src/apple-health.ts, index.html, tests/net-rules.test.ts, docs/ops/checks/fetch-wrap.mjs, ../DeetsSupport/src/index.js]
-updated: 2026-10-19
+updated: 2026-11-01
 ---
 # Speed test — a race car button and a panel for the network's health
 

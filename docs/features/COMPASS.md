@@ -401,7 +401,7 @@ Diary tile keeps its own `tabindex="0"` (each tile stays a Tab stop, as built 20
 | `src/styles/skin.css` | `--compass-max-h`, `--compass-row-h`, `--compass-field-h` in the base block. |
 | `index.html` | The panel host under the title bar; the compass button right of the cog (shown in Max only, `styles/compass.css`). |
 | `src/main.ts` | `initCompass()`; Space for play / pause. |
-| `src/layout-bus.ts` | `requestLibraryDrill` (an artist by name or an album by a track) and `requestPlaylistOpen` (by id), held until the card takes them, like `requestSetting`. |
+| `src/layout-bus.ts` | `requestLibraryDrill` (an artist by name or an album by a track) held until the card takes them, like `requestSetting`. A playlist by id opens through `requestOpenPlaylist` (`src/playlists.ts`); a song, album, artist or playlist page through `requestSongPane` / `requestAlbumPane` / `requestArtistPane` / `requestPlaylistPane` (`src/go-to.ts`). |
 | `src/library-card.ts`, `src/playlists-card.ts` | Take those requests on mount and while on screen. |
 | `src/settings-card.ts` | `settingsRows()`: the sections built inert. `key` on store toggles. A Tips entry. |
 | `src/search-card.ts` | `requestSearchTerm`; Enter / Space on rows. |

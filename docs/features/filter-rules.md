@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.29.0
 desk_test: passed 2026-10-17
 sources: [src/filter-eval.ts, src/filters.ts, src/filter-panel.ts, src/cond-editor.ts, src/rules-eval.ts, src/rulez-words.ts, src/rulez-card.ts, src/library-card.ts, src/collection-card.ts, src/playlists-card.ts, src/compass.ts, src/suggest.ts, src/rewind.ts, src/playlist-refresh.ts, src-tauri/src/filter.rs, src-tauri/src/playlists.rs, src-tauri/src/query.rs, tests/filter-eval.test.ts]
-updated: 2026-10-17
+updated: 2026-11-01
 ---
 # Filter rules — a rule that picks songs
 

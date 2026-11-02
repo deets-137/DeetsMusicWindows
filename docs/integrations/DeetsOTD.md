@@ -563,7 +563,7 @@ What we need from the user: **the address of their server** (for example `mastod
 - A server that refuses app registration → "This server does not allow new apps".
 
 ### 8.5 Marking
-- `trackMenu` (shared by every card) gains one item for one song with a catalog id:
+- `trackMenu` (shared by every card; since 2026-09-23 the builder in `media-menu.ts`) gains one item for one song with a catalog id:
   **Mark as Song of the Day** · at the limit: **Replace Today's Pick** · already today's
   pick: **Unmark Song of the Day**. ☑ A song with no catalog id gets no item (nothing to post).
 - ☑ **The note** is a menu field (the playlist Rename field, `MenuItem.input`) on the shelf

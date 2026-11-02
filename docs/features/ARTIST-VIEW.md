@@ -184,6 +184,12 @@ tracks and similar artists, the next two reads, are an idea he designs: ideas/La
 
 > **Part:** built · 2026-10-13 · desk test passed 2026-10-13 (his) — the design below; as built §10.2, §10.4
 
+> **2026-11-01 note:** the unify work below is built. Since 2026-10-13 one module,
+> `media-levels.ts`, builds every album, artist, playlist, song (`songLevel`) and writer
+> (`writerLevel`) level for Lib, Full and Search; `library-full.ts` and Search's own panes
+> (`fillArtist`, `fillCollection`, `pushPane`) are gone. The paragraph below is the state it
+> started from.
+
 There are three artist views. Library › Lib (`library-card.ts`) and Library › Full
 (`library-full.ts`) are collection-card engine levels. The Search artist pane (`search-card.ts`
 `fillArtist`) is its own HTML, and it reads the **same** `artistDetail(id)` as Full. The Search

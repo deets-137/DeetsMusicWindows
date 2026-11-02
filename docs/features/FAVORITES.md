@@ -108,7 +108,7 @@ be one-click without risking accidental account writes, given there's **no remov
   A failed hop falls back to adding the songs themselves. It returns `null` when the toggle is off,
   when no song carries a catalog id, or when **every** song is already in the library — that last
   rule is what keeps the row off every album tile on the Library card, where the answer is always
-  "you have it". It rides `trackMenu` (library-card.ts), so one line reached Home, the Pinned
+  "you have it". It rode `trackMenu` (library-card.ts; since 2026-09-23 the builder in `media-menu.ts`), so one line reached Home, the Pinned
   shelves, Playlists, Queue, History and Rewind at once. A **song's** add stays per-card: each card
   wires `addSongToLibraryItem` itself, and a second copy in the shared menu would show it twice.
 - **Shared builder.** `addSongToLibraryItem(t)` / `addAlbumToLibraryItem(id, getTracks)` (siblings of

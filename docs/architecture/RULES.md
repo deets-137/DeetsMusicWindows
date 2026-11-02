@@ -285,7 +285,7 @@ Only `rules.ts` knows rules exist.
 
 | Event | Where it fires | Not fired by |
 |---|---|---|
-| `album.open`, `artist.open` | `drill()` in collection-card.ts when the new level's key starts `album:` / `artist:`; `pushPane()` in search-card.ts for an album or artist pane | a card-memory restore; `replace()` (the Lib \| Full chips); a drill that swaps into a grown place |
+| `album.open`, `artist.open` | `drill()` in collection-card.ts when the new level's key starts `album:` / `artist:`; Search's pages are engine levels too since 2026-10-13 (`media-levels.ts`), so the same `drill()` (search-card.ts's `pushPane()` is gone) | a card-memory restore; `replace()` (the Lib \| Full chips); a drill that swaps into a grown place |
 | `diary.open` | diary-card.ts where it grows today (`showEntry`) | reopening the same entry |
 | `cog` | quick-panel.ts, in place of `expandCard` | the cog's second press (a collapse, as today) |
 | `playlist.create` | playlists-card.ts, where it summons Search today | — |

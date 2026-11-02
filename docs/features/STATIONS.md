@@ -159,7 +159,8 @@ catalog id, callers `.filter(Boolean)`; its own module because `player.ts` impor
 so a `playStation` call inside radio.ts would cycle) → `playStation`.
 
 **Where it's offered** (every *song* surface + catalog artists):
-- the shared `trackMenu` (`library-card.ts`) — Library songs / album-detail / artist-detail,
+- the shared song menu (`trackMenu` in `library-card.ts` then; since 2026-09-23 the builder in
+  `media-menu.ts`, CONTEXT-MENUS.md) — Library songs / album-detail / artist-detail,
   **Playlists** detail rows, **Rewind** song rows, all for free. Gated `items.length === 1`:
   a 1-track list is a song; a longer one is an album, and **albums have no station
   relationship** (no album tiles).

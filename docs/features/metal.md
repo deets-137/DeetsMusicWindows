@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.31.0
 desk_test: passed 2026-10-20
 sources: [src/styles/skin.css, src/styles/themes.css, src/styles.css, src/look-ids.ts, src/metal.ts, src/skin-settings.ts, src/vinyl.ts, src/settings-card.ts, src/full-player.ts, src/full-player-layout.ts, src/drum.ts]
-updated: 2026-10-21
+updated: 2026-11-01
 ---
 # Metal — a brushed-metal skin, and the token cleanup it needs
 

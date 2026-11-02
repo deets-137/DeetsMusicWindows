@@ -693,7 +693,7 @@ removed after the run.
 - **Agent look and surface changes under a slower cover** — planned 2026-09-15, forks settled
   the same day (1A agents only, 2A one `--agent-motion` scale, 3A no label), BUILT the same day:
   [UX-COVERUPS.md §6b](../architecture/UX-COVERUPS.md).
-- Installer PATH entry (NSIS hook).
+- Installer PATH entry (since 0.28.0 it would be a Velopack hook in `velo.rs`; NSIS is gone).
 - **Connect AI apps for the user** — `deetsmusic mcp install` + a Settings panel over one shared
   crate: [MCP-INSTALL.md](MCP-INSTALL.md). BUILT, shipped in 0.26.0, desk test passed 2026-10-13.
 - A small-model test of `mcp --small` (LM Studio / Ollama) with the AGENT-SETUP §3 phrases.

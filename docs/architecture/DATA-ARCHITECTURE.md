@@ -98,7 +98,8 @@ head; `npm run icons` makes them, 2026-10-23), made by **`npm run signin:assets`
 side is `apple.rs` (`begin_hosted`, `handle_link`, `accept_token`, `link_scheme`) and
 `lib.rs` (the single-instance callback hands a `<scheme>://…` argv to `handle_link`; a debug
 build registers `deetsmusic-dev://` on every launch; the release scheme comes from
-`plugins.deep-link` in `tauri.conf.json`, which the NSIS installer writes). Differences
+`plugins.deep-link` in `tauri.conf.json`, and since Velopack (0.28.0) a release build registers
+it with `register_all()` on every start; up to 0.27 the NSIS installer wrote it). Differences
 from the plan below, each for a reason found while building:
 - The page does not fetch `/token`: that route refuses any User-Agent that is not
   `DeetsMusic/…`. The Worker embeds the shared token in the page instead — one request,
@@ -176,7 +177,8 @@ from the plan below, each for a reason found while building:
   today and must parse the URL. Add `tauri-plugin-deep-link` with the scheme under
   `plugins.deep-link.desktop.schemes`: `deetsmusic` in `tauri.conf.json`, `deetsmusic-dev`
   in `tauri.dev.conf.json`. The dev build registers its scheme at runtime.
-- Tauri's NSIS installer writes and removes the scheme's registry entry. `nsis/hooks.nsh`
+- *(Up to 0.27; since 0.28.0 the release build registers the scheme on every start,
+  `register_all()` in lib.rs.)* Tauri's NSIS installer writes and removes the scheme's registry entry. `nsis/hooks.nsh`
   needs no change.
 - `TOKEN_ORIGINS` (when it is turned on) = `http://tauri.localhost`,
   `https://music-api.deets.solutions`, and the three loopback ports until old installs are gone.

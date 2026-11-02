@@ -387,7 +387,8 @@ uncommitted).
 He closed every fork on 2026-10-11 (§1 and below).
 
 1. **Hop in** — closed 2026-10-11: no. The Cruisin preset does not set the layout. A separate
-   onboarding route will offer it (not designed).
+   onboarding route will offer it (not designed). *Done since:* the grand opening's page 2
+   offers *Layout for Max* (`onboarding-looks.ts`, GRAND-OPENING.md §7).
 2. **The surface menu hint** — closed 2026-10-11: it names the count ("Dynamic naming works").
    *The wide window: the stage, the queue, and four cards* / *two cards* / *one card*.
 3. **The card you pick the layout from** — closed 2026-10-11: Settings stays on screen (found

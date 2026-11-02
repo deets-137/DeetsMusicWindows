@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 1.2.1
 desk_test: open
 sources: [src/home.ts, src/home-card.ts, src/friends.ts, src/friends-log.ts, tests/friends-log.test.ts, ../DeetsMusicFriends/src/friends.js, ../DeetsMusicFriends/src/sanitize.js]
-updated: 2026-10-29
+updated: 2026-11-01
 ---
 # Friends are listening to: a Home shelf of your friends' albums
 

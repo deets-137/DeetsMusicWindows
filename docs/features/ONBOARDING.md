@@ -189,7 +189,7 @@ nothing about authoring changed when the box did.
 | Now Playing | ♥ · + | Favorite / Unfavorite · Add to Library / In your library (follow state) | now-playing-card.ts |
 | Now Playing | Mute · AirPlay (stage row) | as the title bar | now-playing-card.ts |
 | Card headers | Back | Goes back one step | library-, playlists-, radio-card.ts; search-card.ts (its card header since 2026-09-17) |
-| Card headers | Back, on a level a grown card's drill opened | Goes back to *<card>* | collection-card.ts `setHeader`, search-card.ts `pushPane` (CARD-GROW.md §14.4) |
+| Card headers | Back, on a level a grown card's drill opened | Goes back to *<card>* | collection-card.ts `setHeader`, for Search too: its pages are engine levels since 2026-10-13 (`media-levels.ts`; CARD-GROW.md §14.4) |
 | Settings › Window | Keep view when grown | A card that grows keeps the view you are in; the tile size still follows the card's size | settings-card.ts |
 | Settings › Window | Grow on album or artist | An album or artist opens with more room: taller in Max, wider in Midi. Back returns it | settings-card.ts |
 | Settings › Cards (2026-10-10) | one toggle per card | Home: Your shelves of recent and new music · Library: Your songs, albums and artists · Playlists: Your playlists and Apple's · Search: Find anything in Apple Music · History: What you played, day by day · Rewind: Shows after 50 plays → Your listening, ranked · Radio: Apple's stations · Album Reviews: Your notes and scores on albums, song by song · Rulez: Your own rules (Max only). A locked toggle: Keep three cards in the picker | settings-card.ts `CARD_ROWS` (HIDE-CARDS.md §5) |
@@ -593,6 +593,9 @@ sentences take the Tips voice (§3): the habit and why it is safe, not the list 
   its own copy (HANDOFF.md, the Account row). **One exception (his call, 2026-09-28,
   designed):** a single welcome screen that asks Cruisin or Pro comes before sign-in
   ([HOP-IN.md](../archive/HOP-IN.md)). Still no multi-page screen.
+  *Superseded (2026-11-01 note):* Hop in was scratched on 2026-10-30. The first launch now shows
+  the grand opening, a multi-page startup card with the sign-ins on page 1, his design
+  ([GRAND-OPENING.md](GRAND-OPENING.md)); the walk waits for it to close.
 - No tips on a timer, and no "Did you know" toasts after the walk (TOASTS.md §4: a toast that
   interrupts must be about what the user just did).
 

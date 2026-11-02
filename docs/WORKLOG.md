@@ -6,6 +6,35 @@ updated: 2026-11-01
 ---
 # DeetsMusic — Work log
 
+## 2026-11-01 — Docs: DESIGN.md archived, CLAUDE.md trimmed, a staleness pass
+
+- **DESIGN.md archived (his call):** `docs-move.mjs DESIGN=archive`, status `archived`; its
+  backlog was all built. Its lines left the README and AGENTS.md.
+- **CLAUDE.md trimmed (his call 1A: "as long as no functional / useful information is lost"):**
+  61.7 KB → about 44 KB. The doc list is one line per doc again (DOCS-ORG.md §6.1): what it
+  covers, the main source file, and any rule a builder needs (the `web/handlers.ts` line, the
+  bold leads, `motionReduced()`, the WMI install, `.lnk`, "HE designs the picture"); no state.
+  Ten docs that had no line got one. Build-list item 1 said "add your own
+  `prefers-reduced-motion` rule", which docs:check 32 now fails; it names `motionReduced()` and
+  `[data-motion="reduced"]`. Item 5a gained `since` and `DEFAULT_CHANGES`; item 17 the
+  `web/handlers.ts` line; Run gained `dev:fresh`.
+- **AGENTS.md (his call 2A):** rewritten to point at CLAUDE.md and repeat only the costliest rules.
+- **README:** Velopack, not NSIS; 7 skins, not 4; the cards; the update feed's signature; the
+  Privacy section now names Last.fm, the two *Share activity* rows and rooms (it said no
+  listening history leaves the PC).
+- **HANDOFF:** Hop in out of "Designed, not built"; Velopack's hooks, not NSIS; the file map's
+  `nsis/hooks.nsh` (gone) → `velo.rs`; the Library artist photos item (the `artist_catalog`
+  table exists; the overview still draws initials).
+- **LESSONS:** §4.15 a setting before a custom rule, §4.16 a fault hunt for motion, §4.17 the
+  app's pattern first (from memory and CLAUDE.md; they had no LESSONS entry).
+- **Second level:** 12 docs `built` → `shipped` with the release that first carried them
+  (RELEASE-NOTES.md). The friends shelf's two-app test stays open (the 2026-10-30 entry); the CSP
+  test stays open (live has enforced since 1.0.0 with no `csp:blocked` line, but the injection
+  and relaxation steps have no record). Hop in notes in ONBOARDING, RULEZ §16, HIDE-CARDS §6.2,
+  MAX-CARDS, USAGE-COUNTS, BACKUP (where a restore is offered is open again).
+  DATA-ARCHITECTURE and two code comments (apple.rs, lib.rs) said the installer writes
+  `deetsmusic://`; since Velopack a release build registers it with `register_all()` at each start.
+
 ## 2026-11-01 — Glass text investigated; the update card's choices looked at
 
 - **Glass looks low DPI (his report).** Probes on the dev app: text on see-through layers gets

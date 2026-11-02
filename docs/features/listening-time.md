@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.31.0
 desk_test: passed 2026-10-19
 sources: [src/rewind-btn.ts, src/styles/rewind-top.css, src/rewind.ts, src/rewind-window.ts, src/rewind-card.ts, src/stats.ts, src/updates-btn.ts, index.html, tests/rewind-window.test.ts]
-updated: 2026-10-23
+updated: 2026-11-01
 ---
 # Listening time — the Rewind button in the title bar
 

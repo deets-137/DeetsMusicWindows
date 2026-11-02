@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 1.2.0
 desk_test: passed 2026-10-27
 sources: [src/wheel-step.ts, src/wheel-volume.ts, src/main.ts, src/now-playing-card.ts, src/player.ts, src/settings-store.ts, src/settings-card.ts, src/agent-settings.ts, src/usage-keys.ts, tests/wheel-step.test.ts]
-updated: 2026-10-27
+updated: 2026-11-01
 ---
 # The mouse wheel on the volume
 

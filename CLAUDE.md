@@ -15,36 +15,39 @@ front-end, Rust back-end).
 
 ## The docs
 **State lives in each doc, never in this file.** Every doc starts with front matter:
-`status` (shipped · built · designed · project · parked · idea · foundation · sop · guide),
-`shipped_in`, `desk_test`, `sources`, `updated`. A part of a doc with its own state carries a
-part marker under its heading: `> **Part:** designed · 2026-09-17`. Where a doc has an
-"as built" section, read it first: where it disagrees with the design above it, it is the code.
+`status` (shipped · built · designed · project · parked · idea · foundation · sop · guide ·
+archived), `shipped_in`, `desk_test`, `sources`, `updated`. A part of a doc with its own state
+carries a part marker under its heading: `> **Part:** designed · 2026-09-17`. Where a doc has
+an "as built" section, read it first: where it disagrees with the design above it, it is the
+code. Whether a feature is built, tested or deployed is in its doc and in HANDOFF.md › Open
+now, not here.
 - `npm run docs:check` after any doc edit: links, mentions, § pointers, front matter, versions,
-  generated copies. The release check fails on it from 2026-09-28. **Since 2026-09-27 it also
-  reads the code against its ledgers** (checks 20–26, DOCS-ORG.md §8): a settings key with no
-  agent spec, a toast site or a hover hint off its ledger, a scroller without `app-scroll`, a
-  right-click listener no doc names, a box placed by hand, a card with no list keys. Run it
-  after code too.
+  generated copies. The release check fails on it. It also reads the code against its ledgers
+  (DOCS-ORG.md §8): a settings key with no agent spec, a toast site or a hover hint off its
+  ledger, a scroller without `app-scroll`, a right-click listener no doc names, a box placed by
+  hand, a card with no list keys, a `(window as any)` handle, a thread with no ledger row, a
+  release-notes paragraph with no bold lead, a bare `prefers-reduced-motion`. Run it after
+  code too.
 - Move a doc with `node scripts/docs-move.mjs NAME=area` (it re-points every link and
   `docs/` path in the repo). Never move one by hand.
 - Generated docs — edit the source, never the output: `architecture/TOKENS.md` by
   `npm run tokens` (in the same commit as any change to palette.css / themes.css / skin.css);
   `cards/SURFACES-AND-CARDS.md` by `npm run docs:copies` from the `architecture/` one.
-- A new doc gets front matter (DOCS-ORG.md §5) and one line below.
+- A new doc gets front matter (DOCS-ORG.md §5) and one line below: its name, what it covers,
+  the main source file, and any rule a builder must keep. No state.
 
-**`docs/`** — `DESIGN.md` product intent and the v1 scope ·
-`FUTURE-SETTINGS.md` behaviors hard-coded now, to expose later. What is open now is
+**`docs/`** — `FUTURE-SETTINGS.md` behaviors hard-coded now, to expose later. What is open now is
 HANDOFF.md › Open now; there is no separate backlog doc.
 
 **`docs/archive/`** — docs no longer needed, kept as a record (`status: archived`, DOCS-ORG.md
 §5.3). Move one there with `node scripts/docs-move.mjs NAME=archive`; its open items go to
-HANDOFF first. `NEXT-VERSION.md` — the 2026-09 feature batches, all shipped.
-`RELEASE-NSIS.md` — the release runbook up to 0.27.0 (the NSIS installer and its updater), word
-for word, with RELEASE.md's section numbers. `HOP-IN.md` — the Cruisin / Pro welcome screen,
-designed 2026-09-28, never built; scratched 2026-10-30 (his call: the grand opening solves it).
+HANDOFF first. `DESIGN.md` the first design doc and the v1 backlog · `NEXT-VERSION.md` the
+2026-09 feature batches · `RELEASE-NSIS.md` the release runbook up to 0.27.0 (NSIS), with
+RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, never built.
 
 **`docs/architecture/`** — the engine
-- `UI-ARCHITECTURE.md` — the token / theme / skin tiers and the collection-card engine.
+- `UI-ARCHITECTURE.md` — the token / theme / skin tiers and the collection-card engine; §2a the
+  control families.
 - `DATA-ARCHITECTURE.md` — auth, the normalized model, the provider, the SQLite cache.
 - `SURFACES-AND-CARDS.md` — the surfaces (mini / midi / max) and the card slot system.
   **§5 is the recipe for a new card**: the eight systems a card adopts (menus, keys, picks,
@@ -59,15 +62,12 @@ designed 2026-09-28, never built; scratched 2026-10-30 (his call: the grand open
 - `UX-COVERUPS.md` — the ledger of latency and jank we cover instead of remove.
 - `LIBRARY-VIRTUALIZATION.md` — windowing for long lists.
 - `RULES.md` — the rules engine: moment and state rules, the `if` tree, the overlay on
-  settings (`effective` / `ownSetting`), the rows that make rules. Built 2026-09-26 on
-  `rules-rulez`; §18 is the as-built record. Rules sit under features, never replace one.
-  §19 is how a feature uses it. The Rulez card is `features/RULEZ.md`.
-- `CSP.md` — BUILT 2026-10-21, desk test open (§10): a Content Security Policy for the webview
-  before the official release. The policy in tauri.conf.json (§3, strict `style-src`); this
-  release is report-only through Tauri's `on_web_resource_request` hook (`csp.rs`
-  `RELEASE_MODE`), the next enforces (§6); a signed relaxation through DeetsSupport's `/config`
-  (`npm run csp:relax`) is the way back (§7, §12.2); blocks are counted per directive (C1, §9).
-  A dev page gets the policy from a Vite plugin, report-only. §12 is the as-built record.
+  settings (`effective` / `ownSetting`). Rules sit under features, never replace one. §19 is
+  how a feature uses it; §18 the as-built record. The Rulez card is `features/RULEZ.md`.
+- `CSP.md` — the webview's Content Security Policy (`tauri.conf.json`, strict `style-src`),
+  report-only or enforced by `csp.rs` `RELEASE_MODE`; a signed relaxation through
+  DeetsSupport's `/config` (`npm run csp:relax`) is the way back; a dev page gets it from a Vite
+  plugin, report-only. §12 the as-built record.
 
 **`docs/cards/`** — card behavior
 - `CARD-GROW.md` — grow a card over its neighbor, Fill in Max, the drill swap.
@@ -81,345 +81,162 @@ designed 2026-09-28, never built; scratched 2026-10-30 (his call: the grand open
 - `PLAYLIST-WEB.md` — a playlist from an artist and their collaborators; song and album seeds; temporary webs.
 - `PLAYLIST-REFRESH.md` — how often a mirrored Apple playlist re-reads its songs.
 - `HOME.md` — the Home card: the shelves, the bucket score, Hide, the New shelf.
+- `friends-shelf.md` — the Friends on DM Home shelf: albums friends play (`src/friends-log.ts`, pure).
 - `QUEUE.md` — the queue model and MusicKit windowing. Read it before queue.ts / player.ts.
 - `SEARCH.md` — the catalog Search card.
 - `SECOND-SEARCH.md` — a second Search card to compare two albums.
-- `SEARCH-FIELDS.md` — BUILT 2026-10-12, desk test passed (§9, run by Claude): `searchField()` in
-  `src/search-field.ts` for all six search boxes: the ×, Escape, Ctrl+F, the delay, ↓ to the
-  results. A new search box calls it. §8 is the as-built record. The Full | Lib pill (§6) is next.
+- `SEARCH-FIELDS.md` — `searchField()` (`src/search-field.ts`) for every search box: the ×,
+  Escape, Ctrl+F, the delay, ↓ to the results. A new search box calls it.
 - `STATIONS.md` — Apple stations and radio mode.
+- `LOCAL-RADIO.md` — web stations from Radio Browser through a Rust loopback proxy.
 - `FAVORITES.md` — Add to Library and ♥; the store of every track we touch.
+- `LISTEN-LATER.md` — the *Listen Later* menu row and *Saved for the Right Day* (`src/listen-later.ts`).
 - `PINS.md` — pinned tiles, the shelves, the On Click verbs.
 - `ARTIST-VIEW.md` — the artist hero, its shelves, the chip flight.
+- `LAYOUT.md` — the artist view's shelf order and the On / Faded / Hidden buttons, as rule targets.
 - `FULL-LIB.md` — the Library's "Full | Lib" chips: Apple's whole album or artist in place of your songs.
+- `filter-rules.md` — the Library's Filter pill and Rulez Playlists: `evalCond` over song facts
+  (`filter-eval.ts`), `filter.rs`, the condition menus shared with Rulez (`cond-editor.ts`).
 - `CREDITS.md` — writer credits from Apple's `composerName`; the song pane.
-- `SOUND.md` — the Equalizer on one Web Audio graph; DeetsAdaptiveSound hidden behind a DevTools
-  flag since 2026-09-25 (§11a).
+- `LISTENERS.md` — a song's Last.fm listener count (`src/listeners.ts`, cached a month), the song
+  facts box, the notes order (`src/notes-order.ts`).
+- `album-notes.md` — Apple's editorial notes (`notes.rs`, `album-notes.ts`, the pure parse
+  `album-notes-parse.ts`); song mentions that play the song.
+- `PresentationMode.md` — Max fills with a facts box's Listening Stats (`src/present.ts`). HE
+  designs the picture.
+- `SOUND.md` — the Equalizer on one Web Audio graph; DeetsAdaptiveSound behind a DevTools flag (§11a).
 - `AUDIO-QUALITY.md` — the sound chain from Apple's stream to the speaker.
 - `VINYL.md` — the Press record player.
-- `DEETS-REWIND.md` — listening stats and the Rewind card.
-- `DIARY.md` — the Album Reviews card (named the Diary until 2026-10-17; the code keeps `diary`):
-  an album journal, a note and a score per song, the scale rule.
+- `metal.md` — the Metal skin (`src/metal.ts`: textures, side covers, the word fade; the
+  zoetrope cover change in vinyl.ts); §6.7 the stress test.
+- `happy.md` — the Happy skin, designed with him piece by piece; the reference for every mod,
+  built on the public layer only.
+- `OCEAN.md` — the Ocean sea: the heavy swell in perspective, the glow from the deep, heave, ripples.
+- `ALBUM-COLOR.md` — the album-colored aurora and text.
+- `COVER-WALLPAPER.md` — Glass › Canvas: the album and queue covers, or your own picture, behind the cards.
+- `SKINZ.md` — the Skinz card: edit the roles of each theme slot; the Album theme (§12).
 - `LOOK-SCHEDULE.md` — the day / night look and its pre-paint in `index.html`.
+- `GRAPHICS-FALLBACK.md` — on WARP a built-in rule turns heavy effects off (`src/gpu.ts`,
+  `gpu-rules.ts`, `src-tauri/src/gpu.rs`). **Every animation asks `motionReduced()`
+  (`src/motion.ts`) and every sheet keys on `[data-motion="reduced"]`; never a bare
+  `prefers-reduced-motion`** (docs:check 32).
+- `fullscreen-player.md` — Now Playing grows so the cover is as large as the window allows;
+  the stacked open (`--player-stack-move`), held cards (`.fp-pin`), the Queue's edge strip.
+- `DEETS-REWIND.md` — listening stats and the Rewind card.
+- `listening-time.md` — the Rewind button and panel in the Max title bar (`src/rewind-btn.ts`).
+- `DIARY.md` — the Album Reviews card (the code keeps `diary`): an album journal, a note and a
+  score per song, the scale rule.
 - `COMPASS.md` — Ctrl+Space: places, settings, verbs, library items, the calculator.
 - `COMPASS-TERMS.md` — every word the bar answers to; update it with `SYNONYMS` in compass.ts.
 - `TRAY.md` — the tray icon, the tray panel, minimize to tray.
+- `PIN.md` — the pin button and panel in the title bar; its own hold on `window.onTop` (the `pinned` fact).
 - `SUGGEST-LESS.md` — Apple's −1 plus our own marks; proactive skips.
-- `ALBUM-COLOR.md` — the album-colored aurora and text.
-- `COVER-WALLPAPER.md` — Glass › Canvas: the album and queue covers, or your own picture, behind the cards.
-- `OCEAN.md` — the Ocean sea: the heavy swell in perspective, the glow from the deep, heave, ripples.
 - `MOVABLE-ROWS.md` — hold a header to move a section; the Settings search bar; Ctrl+F.
 - `ONBOARDING.md` — the hover-hint ledger (every `title`), right-click coverage, Settings ›
   Tips, the first-run walk (`npm run dev:fresh` to be a first-time user).
+- `GRAND-OPENING.md` — the startup screen, one large card on first launch (`src/onboarding*.ts`,
+  `src/paged-card.ts`), designed with him piece by piece; the walk waits for it to close.
 - `QUICK-SETTINGS.md` — the cog's quick panel and the New badges (`NEW_MARKS`).
-- `WEB-DEMO.md` — the real UI in a browser on deets.solutions/demo, with his Songs of the Day and Apple's previews (§15).
-- `RULEZ.md` — the Rulez card (Max only): make your own rules from words; the cascade guards,
-  cancel events, the ten routes (§3; all built, §7, §8, §10.2), the album color facts and Live
-  Theming (§11), one row per recipe (§14). Next: a design pass on custom rules (§15). The
-  engine is `architecture/RULES.md`.
-- `LAYOUT.md` — two Settings › Window rows: the artist view's order and hidden shelves, and
-  the On / Faded / Hidden buttons; each part is its own rule target. Designed 2026-09-27, every
-  fork his; on the docket, not built.
-- `GRAPHICS-FALLBACK.md` — BUILT 2026-10-11, desk test passed 2026-10-12 (§8): when the GPU process falls
-  back to WARP (software drawing), a built-in rule turns the heavy effects off and a toast offers
-  a restart; Settings › Motion › *If graphics fail*; the `graphics` fact (`src/gpu.ts`); the
-  WebView2 `ProcessFailed` watch (`src-tauri/src/gpu.rs`). §9 is the as-built record. §10
-  BUILT 2026-10-20, desk test and break-it pass run by Claude (§10.11), his hand test passed: the app
-  gets the card back by a quiet restart while its window is hidden (`gpu-rules.ts`), and the
-  *Reduce motion* row is the catch-all for every heavy feature. Every animation asks
-  `motionReduced()` (`src/motion.ts`), every sheet keys on `[data-motion="reduced"]`; never a
-  bare `prefers-reduced-motion` (docs:check 32).
-- `HIDE-CARDS.md` — BUILT 2026-10-10, desk test passed 2026-10-10 (§9): Settings › Cards hides any card but
-  Settings, Now Playing and Queue from the card picker (one `hiddenCards` key replaced
-  `rewindCard`); the picker only, the feature keeps working; right-click a name in the picker
-  › Hide from picker. §8 is the as-built record. It is also Hop in's Rulez gate (§6.2).
-- `USAGE-COUNTS.md` — BUILT 2026-10-13, desk test passed (§10); the worker, its D1 tables and the admin page LIVE 2026-10-14:
-  anonymous active-install counts, a weekly settings row and weekly health counts (log errors,
-  Apple calls) to DeetsSupport. No ID, no IP, an allow-list (`src/usage-keys.ts`, copied to the
-  worker by `npm run usage:keys`), real numbers, 13 months. §2 the privacy rules; §1 his calls;
-  §11 the as-built record. The owner page deets.solutions/deetsmusic/admin/ built 2026-10-14 (§6);
-  the README › Privacy paragraph and the release-note line written 2026-10-14. §12 DESIGNED
-  2026-10-27: update reports (downloaded, applied) and Setup.exe download counts; his calls §12.7;
-  §12.9 the accuracy audit of the existing counts (A1–A7). §13 BUILT the same day, desk test
-  passed (§13.1); the worker and the admin page LIVE 2026-10-27; the app side ships with 1.2.0.
-  §17 BUILT 2026-11-01, not deployed: the day count carries the exact minutes listened on the
-  last UTC day that sent one, one `usage_listen` row per report; the admin page's minutes chart.
-- `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
-  sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
-  Not built. The Album theme (colors from the cover, §12) is to be built with it; its forks are open.
-- `MAX-CARDS.md` — BUILT 2026-10-11, desk test passed 2026-10-12 (§7): Settings › Window › *Layout for Max*
-  (4 cards · 2 columns · 2 rows · 1 card), the `maxCards` key and rule key. The geometry is
-  pure in `layout-rules.ts`. §11 is the as-built record. A separate onboarding route will offer it (§9.1, not designed).
-- `fullscreen-player.md` — BUILT 2026-10-11, tested, on for everyone (the DevTools flag
-  removed): Now Playing grows so the cover is as large as the window allows, Midi and Max
-  only. §6–§7 the decisions, §9 the motion, §10 the edge zones, §13 the as-built record.
-  Mini's player view and a turning Press copy in the flight are open. §14 BUILT 2026-10-18,
-  desk test passed 2026-10-20: the stacked open and close per skin (`--player-stack-move`: fade, or slide in
-  Press and Cyber), held cards (`.fp-pin`), and the regular Max Queue's rows riding its edge.
-  §18 BUILT 2026-10-26, desk test passed: the Queue's edge strip (`.grow-zone`) beside the cover
-  moves it to the other side (a click, the side column's flip; also with no side column). §18.1
-  the same strip on the side column, desk test passed.
-- `BACKUP.md` — DESIGNED, not built (2026-10-11): one backup file (no secrets, no caches),
-  *Back up now* plus a weekly copy to a folder, restore = replace all on a fresh install (his
-  calls, §1); a `.deetsbackup` file; the rows in Settings › Updates. §8 the open forks. §9 a
-  cloud copy on Cloudflare R2 through a worker: Sign in with Apple, the worker holds the key
-  for now (his calls, §9.3). R3 to R6 open. §9.4 Apple's CloudKit private database as an option
-  beside R2 (fork R0, open; an iCloud sign-in test in WebView2 decides it).
-- `COPY-EDIT.md` — BUILT 2026-10-12, desk test passed 2026-10-13 (§5): the dev-only copy editor. A pencil in
-  the title bar (Alt+E) makes the words on screen typeable and saves each one into its `.ts`
-  source; Alt+click edits a hover hint; the reload is held so the music plays on.
-- `LISTENERS.md` — BUILT 2026-10-12 (in 0.27.0), desk test passed 2026-10-13: a song's Last.fm
-  listener count (its "rarity"); `track.getInfo` cached a month in `listen_counts`,
-  `lastfm_listeners`, `src/listeners.ts`; the badge on Now Playing (§4, his design). Genius has
-  no play data (§1). §8 BUILT 2026-10-17, desk test passed (§8.10, run by Claude): the song
-  facts box on the Song Credits page, the About cell's notes order (`src/notes-order.ts`: the
-  song, then its album; Apple, then Last.fm) and *Notes from* in Settings › Playback to pick
-  one source or none. §9 DESIGNED 2026-10-17: a library album's plays as the sum of its songs',
-  and a row per song in presentation mode (the probe §9.1; forks §9.6).
-- `friends-shelf.md` — BUILT 2026-10-29, desk test open (§5): the **Friends on DM** Home shelf
-  (his calls §2): albums friends play now, a plain line, up to 10 recent albums (the friends
-  take turns). Each presence carries the last 3 albums (`recent`); your app keeps 10 per friend
-  (`src/friends-log.ts`, pure) and deletes them on `sharing: false`. The Friends worker change
-  is built, not deployed (§2.4, his OK). §4 the as-built record; §4.1 Claude's choices.
-- `LOCAL-RADIO.md` — DESIGNED 2026-10-13, not built: web stations from Radio Browser in the
-  Radio card (a Local shelf by the user's city, search for any station), played through a Rust
-  loopback proxy so the EQ, AirPlay and ICY song titles work; the trust rules (§3), the terms
-  (§11), the probes before a build (§13), the open forks (§14).
-
-- `PresentationMode.md` — BUILT 2026-10-13, desk test passed 2026-10-13 (§9.3, his): in Max, a click on a facts
-  box's Listening Stats fills Max with the card and grows the stats over it, Last.fm's counts
-  in large type, re-read every 5 min (`src/present.ts`). His calls §7a: a party on personal
-  accounts (the café product documented only), Last.fm's number, the card grow; the goal
-  marker paused. HE designs the picture.
-- `WebRooms.md` — app side BUILT 2026-10-13, desk test passed 2026-10-17 (§10.5, his word): the rooms web port. A
-  friend on a Mac joins a room by its code and listens in a browser on deets.solutions with
-  their own Apple Music subscription (no preview tier). The app's Search, Queue, History and
-  Now Playing cards on a Tauri stand-in (`web/`, `npm run listen`), `src/platform.ts`'s
-  `WEB_ROOMS` flag, a TypeScript twin of the Rust catalog normalizers held to one fixture.
-  His calls §7.1, §9.7. Not built: the site page (part H) and the publish; the worker change
-  is not deployed (§10.6). A new `invoke()` in a shared file needs a line in `web/handlers.ts`.
-- `filter-rules.md` — BUILT 2026-10-16, desk test passed 2026-10-17 (§14.4): a rule that
-  picks songs. The Library's third pill, **Filter** (a quick filter by any song fact, or a saved
-  one), and **Rulez Playlists** made from sources (library, playlists, Rewind, Song of the Day,
-  the Diary) at Live (his default) · Daily · Weekly · Off, with Keep and Never by hand. The rules
-  engine's `evalCond` over song facts (`filter-eval.ts`); one read off the lock (`filter.rs`,
-  schema v21); the condition menus shared with Rulez (`cond-editor.ts`). His calls §13; §14 the
-  as-built record and the gate. Not built: the playlist page's own place for the rule (§13.3).
-- `UpdatesButton.md` — BUILT 2026-10-16 on `shixtheenth`, desk test passed (§8.1, run by Claude): the Max title
-  bar button right of the Compass, his two arrows (the up arrow flies off and the down arrow
-  centers when an update is offered; a thin bar while it downloads; the New dot after an
-  install). Its panel: the version row, What's new (the release notes' bold leads), Bugs and
-  suggestions. `src/updates-btn.ts`, `src/release-leads.ts`, `virtual:release-notes` in
-  vite.config.ts. **Every RELEASE-NOTES.md paragraph after 0.28.0 starts with a short bold
-  lead** (§6.3; docs:check 31). §7 is the as-built record.
-- `album-notes.md` — BUILT 2026-10-17, desk test passed (§8.3, run by Claude): Apple's editorial
-  notes. The album box's About shows Apple's short note (Apple, then Last.fm); a click opens the
-  full note on every surface (Max grows it like the stats; Midi and Mini inside the card); song
-  headings and names in bold or curly quotes are mentions that play the song (his calls §3, M1
-  §5.1). `album_notes` in `notes.rs` (cached a month; 0 calls on a Full album, 1 on a library
-  album), `album-notes.ts`, the pure parse `album-notes-parse.ts`, `openNotes` in present.ts.
-  §5.1 the probes (46 % of real albums have notes, singles none); §6 a Library album's real
-  artist; §8 the as-built record, and what Claude decided (§8.2, his OK).
-- `listening-time.md` — V1 BUILT 2026-10-19 on `ideas-nineteen`, desk test passed 2026-10-19 (§9.3): the
-  Rewind button in the Max title bar (his hourglass, flips on open and close), its panel: *Today: N mins*
-  (Settings › Rewind › *Today's time in*, `rewindToday`), Top Listens (all time, most played, the
-  Library's Sort pop for Songs / Albums / Artists and ↑ ↓) and SOTD (picks, newest first).
-  `src/rewind-btn.ts`. His calls §8; §9 the as-built record and what Claude decided (§9.2). The
-  Rewind card stays until he decides (§9.4); the breakdown by genre and weekday (§4) is not built.
-- `speedtest.md` — BUILT 2026-10-19 (v1, on `net-worked`), desk test passed 2026-10-19 (§9; the fetch wrap's A/B open): the Max
-  title bar's car button (his drawing; it drives off on open and close) and its panel: "Network: Good"
-  (Good · OK · Bad), one row per link with one status word and a bar for the last hour (Internet,
-  AirPlay once a speaker played this session, Apple Music, Stream; the numbers are the word's hover
-  hint; Wi-Fi taken out, §10), the Test row (ping +
-  2 MB from DeetsSupport's `/speed`, counted and dropped). The ping (`net.rs`, `IcmpSendEcho`)
-  runs every 30 s only while music plays. The header-only fetch wrap (`src/fetch-wrap.ts`, §5.3)
-  gives the song pieces' speed; its A/B is `docs/ops/checks/fetch-wrap.mjs` (§6). His calls §7;
-  §8 the as-built record. The worker route is deployed (2026-10-19).
-- `metal.md` — BUILT 2026-10-20 on `v-thirtyone`, desk test passed 2026-10-20 (his word, DESK-TESTS.md
-  A11); the agent's stress test and an independent design review at 9/10 (§6.7): the sixth skin, Metal. Finely brushed steel or acrylic over every theme (each theme
-  names `--metal` / `--metal-floor`; gold titles on Black & Yellow), sharp corners, the thumbwheel
-  scrubber, the zoetrope cover change with the peek (`--cover-swap`, `--zoetrope-*`, vinyl.ts;
-  `src/metal.ts` draws the textures, the side covers and the word fade). Settings › Skin settings:
-  Material, Grain, Cover change, Peek. His calls §1; §6.1 every review round, his reports and the
-  break-it pass; §6.4 the as-built record (the cleanup: one shape alias, the paint hooks); §6.7 the
-  stress test, the turn rebuilt by its frames, the baked textures, Sepia as brushed brass (one
-  Metal × Sepia block in themes.css) and the readability fixes; §7 F7 font B (Bahnschrift titles,
-  SemiCondensed labels through the `--caps-*` hooks).
-- `happy.md` — an idea (2026-10-21), being designed with him piece by piece: the Happy skin,
-  named for the puppy on deets.solutions. The most complete skin and the reference for every mod:
-  built on the public layer only (mods.md §10, §11). §1 his narration; §2 the tokens and slots it
-  needs.
-- `PIN.md` — BUILT 2026-10-26 (9460b39, in 1.1.2), his hand test passed, §5.1 cases open; §8 the as-built record: the pin button in the title bar on every surface
-  (beside the short monogram in Mini) and its panel (Cover · Player · Mini · This window, then
-  Pin). The pin is its own hold on `window.onTop` (the `pinned` fact); the Keep on top row is
-  unchanged and the two hints name each other. Cover is a new view, controls on hover. The pin
-  turns horizontal on press, diagonal at rest, vertical while pinned. §2 his calls; §3.6
-  Claude's choices for his review.
-- `WHEEL-VOLUME.md` — BUILT 2026-10-27 on `onepointtwo`, desk test passed 2026-10-27 (§5): the mouse wheel on
-  the Now Playing card steps the volume (Settings › Playback › *Scroll over the Player for
-  volume*, default on), the scroll added up per notch, a trackpad's rise capped at 40 % a second
-  (`src/wheel-step.ts`, pure; `src/wheel-volume.ts`). His calls §1.
-- `UPDATE-CARD.md` — BUILT 2026-10-29 on `updatez`, desk test passed 2026-10-30 (his calls §1, §1.1): the update card, the
-  grand opening's frame (`src/paged-card.ts`, now shared) with a page per version line from 1.0,
-  oldest first: the notes (leads only when too long), the new settings (`since` on every
-  `NEW_MARKS` line), a changed default's *Use it* (only while the value is the old one;
-  `DEFAULT_CHANGES` in settings-store.ts); Older search; opened by the Updates panel's *See the
-  new settings* and *What's New* in the Compass, never by itself. The Updates panel opens by
-  itself after a 1.X update with a new setting (§3.10). The settings change log: every
-  `setSetting(key, value, source)` (§3.9). §3.11–§3.12 the as-built records.
-- `GRAND-OPENING.md` — a project (2026-10-22, branch `grand-opening`), designed with him piece
-  by piece: the startup screen, one large card over every card on first launch
-  (`src/onboarding.ts`). Built: the frame (§1), the nav bar with Settings in it and the Compass row (§2), pages 2–3 and the glide (§4), page 1's welcome with the sign-ins (§5, `src/onboarding-welcome.ts`), the Happy skin's pair in front (§6), page 2's layout picks (§7, `src/onboarding-looks.ts`; the place API `setStartCards` in layout.ts), page 3 Fashion: skin and theme tiles in their own look, and the preview player with his three songs on the real record, drum and sea (§8, §8b, `src/onboarding-preview.ts`); Next / Let's Boogie (the launch's reveal, `revealApp`) and the warm-up after sign-in (§9); the walk waits for it to close.
-- `LISTEN-LATER.md` — BUILT 2026-11-01, desk test open (§5): a *Listen Later* row on song,
-  album and picked-song menus, the only way into *Saved for the Right Day* (`role: "later"`,
-  renamable; `src/listen-later.ts`); "DeetsMusic" as the owner on it, Replay and Rulez
-  Playlists (`ownerOf`); *Remove from Later list automatically* (Off · Played from List · Played
-  Anywhere, on `stats.ts` `onPlayEnd`); the agent's `later` tool. §6 is the as-built record.
+- `UPDATE-CARD.md` — the update card, a page per version line (`src/paged-card.ts`): `since` on
+  every `NEW_MARKS` line, `DEFAULT_CHANGES` in settings-store.ts, `setSetting(key, value, source)`.
+- `UpdatesButton.md` — the Max title bar's updates button and panel (`src/updates-btn.ts`,
+  `src/release-leads.ts`, `virtual:release-notes` in vite.config.ts).
+- `speedtest.md` — the car button and the network panel (`net.rs` ping, `src/fetch-wrap.ts`).
+- `WHEEL-VOLUME.md` — the mouse wheel on Now Playing steps the volume (`src/wheel-step.ts`, pure).
+- `HIDE-CARDS.md` — Settings › Cards hides a card from the card picker (`hiddenCards`).
+- `MAX-CARDS.md` — *Layout for Max* (`maxCards`); the geometry is pure in `layout-rules.ts`.
+- `RULEZ.md` — the Rulez card (Max only): make your own rules from words; the routes, the album
+  color facts and Live Theming, one row per recipe. The engine is `architecture/RULES.md`.
+- `USAGE-COUNTS.md` — anonymous counts to DeetsSupport; §2 the privacy rules. A new reported key
+  goes in the allow-list `src/usage-keys.ts`, copied to the worker by `npm run usage:keys`.
+- `WEB-DEMO.md` — the real UI in a browser on deets.solutions/demo, with his Songs of the Day and Apple's previews.
+- `WebRooms.md` — a friend on a Mac joins a room in a browser (`web/`, `npm run listen`,
+  `src/platform.ts` `WEB_ROOMS`). **A new `invoke()` in a shared file needs a line in
+  `web/handlers.ts`.**
+- `COPY-EDIT.md` — the dev-only copy editor: Alt+E makes the words typeable and saves them into
+  their `.ts` source; Alt+click edits a hover hint.
+- `BACKUP.md` — one backup file, a weekly copy, a cloud copy (R2 or CloudKit, §9).
 
 **`docs/integrations/`** — anything that talks outside the app
 - `AGENT.md` — the agent / CLI routes on the bridge.
 - `AGENT-SETUP.md` — the user's guide to control the app from an AI app or a terminal.
 - `MCP-INSTALL.md` — `deetsmusic mcp install` and its Settings panel.
-- `EXTENSION.md` — PARKED 2026-10-23 (not on the Chrome Web Store, so not in v1): the MV3
-  extension (`extension/`, kept in the repo, out of the build, the app and the bridge). The
-  status box says what went and how to bring it back.
+- `EXTENSION.md` — the MV3 extension (`extension/`), parked: out of the build; the status box
+  says how to bring it back.
 - `LASTFM.md` — Last.fm scrobbling.
 - `AIRPLAY.md` — play on a HomePod; the shared sender crate.
 - `ROOMS.md` — listening rooms; the worker is `../DeetsMusicRooms`.
-- `FRIENDS.md` — Friends and Discord Rich Presence; the worker is `../DeetsMusicFriends`.
-  §20 is ON THE DOCKET (an idea, 2026-10-01, every fork his): friends see your Songs of the Day
-  and your Diary, a local web of picks with no algorithm. Today a friend sees only presence;
-  the Diary is private. Do not tell a user it exists.
+- `FRIENDS.md` — Friends and Discord Rich Presence; the worker is `../DeetsMusicFriends`. §20
+  (friends see your picks and Diary) is an idea: do not tell a user it exists.
 - `DeetsOTD.md` — Song of the Day and its outlets.
-- `THREADS.md` — DESIGNED, not built (2026-10-08): a Threads outlet for Song of the Day picks
-  and Diary reviews (a thread chain), the owner only as a tester; §8 the open forks.
-- `PROVIDERS.md` — Apple Music and Spotify in one library.
+- `THREADS.md` — a Threads outlet for Song of the Day picks and Diary reviews.
+- `PROVIDERS.md` — Apple Music and Spotify in one library (parked, §9 why).
 - `LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users.
 
 **`docs/ops/`** — build, ship, diagnose
 - `RELEASE.md` — the Velopack runbook: build, Authenticode signing, publish, the updater,
   install, uninstall (§0 = the commands, secrets and keys on one page; §0b how to check a
-  publish; §1b the installers folder). Rewritten for Velopack 2026-10-16 with the same section
-  numbers; the NSIS text is `archive/RELEASE-NSIS.md`.
-- `VELOPACK.md` — LIVE since 0.28.0 (2026-10-16): the design, the spike (§8a) and the beta
-  desk test (§12) of the move from NSIS and tauri-plugin-updater; `velo.rs` (hooks, the signed
-  feed), `release.mjs` runs `vpk pack`. His calls §1 (no migration path: an NSIS install moves
-  by hand, RELEASE.md §4b). Install from a WMI-started process, never from this shell; a
-  release build takes a CDP port through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (§12.4).
-- `IDENTITY.md` — BUILT 2026-10-16 on `shixtheenth`, desk test passed 2026-10-17 (§9.2, his word): package identity (a
-  signed sparse `.msix`, `scripts/identity-pack.mjs`, registered against `current\` by
-  `identity.rs` in Velopack's hooks) so the taskbar and Start draw exact-size icons, his city
-  art (`npm run icons`, `icon-template/deets-city-600.png`); `tray.ico` keeps the tray the head.
-  No `.lnk` may carry the package's app ID (§3.5); `vpk --shortcuts None`. The probes §8.1;
-  the as-built §9; release-check 12.
-- `RELEASE-NOTES.md` — the text of each release; `release:publish` copies it into the update offer.
-- `BETA.md` — DeetsMusic Beta: a second installed app beside the full one (`release -- --beta`),
-  the data copy and `deetsmusic-beta pull`. Beta-first is PAUSED since 2026-09-24: releases go
-  straight to live.
-- `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes.
-- `QUALITY-SWEEP.md` — SOP (2026-10-18): stress-test every shipped feature, one at a time, the
-  way LISTENERS.md §8.11 was: light Sonnet agents list how a user might break it (three lenses:
-  workflow and keyboard; data and timing; neighbors and load), the main session triages each
-  case against the code, scripts the real ones as guards (`checks/<feature>-sweep.json`, every
-  probe with an `expect`) and ranks the faults into HANDOFF. §1 his calls; §7 the ledger; one
-  fix at a time, never a batch.
-- `DESK-TESTS.md` — the open desk tests as one runbook for an agent in its own session: the
-  setup, the rules, the list with who can run each (agent / owner), the results table.
-- `checks/README.md` — the archive of re-runnable test scripts (his ask, 2026-10-01): a shots
-  list or a drive script written for a desk test is kept there with a description, for a
-  regression run later. `checks/drop.mjs` holds a network drop or an unplug on the dev app.
+  publish; §1b the installers folder).
+- `VELOPACK.md` — the move from NSIS (`velo.rs`, `release.mjs` runs `vpk pack`). Install from a
+  WMI-started process, never from this shell; a release build takes a CDP port through
+  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (§12.4).
+- `IDENTITY.md` — package identity (a signed sparse `.msix`, `identity.rs`) for exact-size
+  taskbar and Start icons (`npm run icons`). No `.lnk` may carry the package's app ID (§3.5);
+  `vpk --shortcuts None`.
+- `RELEASE-NOTES.md` — the text of each release; `release:publish` copies it into the update
+  offer. **Every paragraph after 0.28.0 starts with a short bold lead** (docs:check 31).
+- `BETA.md` — DeetsMusic Beta beside the full app (`release -- --beta`), the data copy and
+  `deetsmusic-beta pull`. Beta-first is paused: releases go straight to live.
+- `DEBUGGING.md` — the diagnostic tools, the telemetry, the recipes, the thread ledger.
+- `QUALITY-SWEEP.md` — the SOP to stress-test a shipped feature: agents list the breaks, the
+  main session triages and scripts them (`checks/<feature>-sweep.json`); one fix at a time.
+- `DESK-TESTS.md` — the open desk tests as one runbook: the setup, the rules (§6), who can run
+  each, the results table.
+- `checks/README.md` — the archive of re-runnable test scripts; `checks/drop.mjs` holds a
+  network drop or an unplug on the dev app; `checks/layers.mjs` lists the dev app's layers.
 - `LOGGING.md` — the rolling log file, `diag.ts`, the watchdog.
 - `DB-HEALTH.md` — is the database still writable: `Db::lock`, the canary, the counters.
-- `NET-CALLS.md` — DESIGNED 2026-10-18, not built: one counter for every outside call (Apple,
-  MusicKit, covers, Last.fm, our workers, Discord): service × group × class, timing, a day table;
-  §1 what talks to the network; §5 forks F1–F4 open.
+- `NET-CALLS.md` — one counter for every outside call (not built; §1 what talks to the network).
 - `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (`apple_calls.rs`); which
   commands are background jobs.
-
-**`docs/ideas/`** — not built; never tell a user the app does these. `SECRETS-AND-CSP.md` —
-designed 2026-09-29: a CSP for the webview; DPAPI for the Apple token and Last.fm session.
-`music-app-comp.md` — an idea (2026-10-06): metrics and methods to measure DeetsMusic against
-the Apple Music app for Windows with symmetric OS-level tools, and (2026-10-10) each release
-against the last from 0.25.4 with Apple's app as the control; §17 scopes `deetsmeter`, our own
-input + screen + sound tool (F13–F16 decided, not built); §9 the rest of the forks.
-`ClassicSkins.md` — an idea (2026-10-10): Winamp `.wsz` skins for a small player in Winamp's
-fixed layout (not a restyled Mini); a theme from a skin's colors as the cheap first step; §8
-the forks. `AtRecords.md` — an idea (2026-10-12): when Max fills his ultrawide, Cyber gives way to a
-hidden sixth skin `at-records`, a record player, set by a built-in rule (his calls: the sixth
-skin, the full-size trigger; HE designs the UI, never write that picture for him). The mechanics
-only; §9 the forks. `SupportArtist.md` — an idea (2026-10-12): a "Support" link on the artist
-view to the artist's crowdfunding page, Bandcamp and official site (his call), from MusicBrainz
-URL relationships at zero Apple calls; §4 the Apple terms read (one risk, his call); §5 the
-library probe that comes before HIS UI; §8 the forks. `SiteOceanLive.md` — an idea
-(2026-10-13): the site's Ocean glow takes the color of the song playing now (the visitor's,
-through the extension; or his, through Last.fm); §4 the forks. `whitelabel.md` — an idea
-(2026-10-14): DeetsMusic under another brand (his example: a Bandcamp player). The brand layer
-follows the Beta overlay (§2, §6); a second music service is the real work (§3); Bandcamp has
-no public fan API, local files are the clean path (§4); §9 the forks. §10 (2026-10-15, his
-calls): the rename to DeetsBeats — display name only, the identifier stays, the MCP renamed in
-full, the CLI keeps `deetsmusic` as an alias; the name check found "Beats" unsafe, so the new name
-is open (§10.3); a new `productName` is a second install, moved by hand (§10.4); his
-Deets-head icon is drawn in `icon-template/` (§10.6). (`album-notes.md` moved to
-`features/` when it was built, 2026-10-17.)
-`apple-calls.md` — an idea (2026-10-15): the ledger of every Apple call site (§2), a measured day
-(§1), the savings (§3: the explained count, mirror dates in one call, new artists from new songs),
-the Library ⟳'s silent refusal (§4), a song's primary artist from Apple at no extra call (§5,
-his calls P1 A, P2 A). The counter itself is `ops/APPLE-CALLS.md`.
-`PROFILES.md` — an idea (2026-10-18): profiles for a family or friends on one PC or TV. His
-calls §1: a subfolder per profile, settings saved on disk and applied live through the CLI's
-`setSetting` path, a shared `profiles.db` (the profile list, AirPlay, the catalog caches), no
-Discord, no lock, a switch pauses and resets the music. §4 what is shared (a draft); §8 forks
-P1–P4; §9 the probes. After the CPU floor; design it with Backup.
-`SpotifyRooms.md` — an idea (2026-10-18): a Spotify user in a room, through their OWN Spotify
-desktop app (a `spotify:` link opens each song; the Windows media session reads the position,
-seeks, pauses); no Spotify key, no Web API, no librespot (§1 why). Odesli maps the Apple song.
-The probes (§6, `ops/checks/spotify-probe.ps1`) ran 2026-10-18 (§6.3): the control works with a
-`?autoplay=true` link plus Play; Odesli's keyless API is closed, so the mapping is open; §7 the forks.
-`mods.md` — an idea (2026-10-19): skins and themes a user downloads (a `.deetsmod` file, values
-only, no code or CSS, §6), built on metal.md's primitives; his marketplace page beside Hop in for
-a first load (§1); new theme slots later (§4, his note); the DeetsRGB widget talk as a record (§7).
-§9 the Halloween test (what tokens reach today), §10 the public layer that makes a mod
-future-proof, §11 the slots (images, ornaments, icons, cursors, motion presets); the Happy skin
-is the reference (`features/happy.md`).
-(`UPDATE-CARD.md` moved to `features/` when it was built, 2026-10-29.)
-`density.md` — an idea (2026-10-26, from user feedback): a Compact | Spacious setting for every
-shelf (the gap, the label, the cover size), a pick on Grand Opening page 2 and a row in Settings ›
-Window; the scrollbar hidden until hover, its gutter always reserved (his calls §2). §1 what the
-code does today; §3.2 the thumb-fade probe; §4 forks D1–D5.
-`owner-polls.md` — an idea (2026-10-27, his ask), DESIGNED 2026-10-30 in DeetsSolutions support.md: polls and suggestions written on the admin page
-and shown in the app (his example: is anyone interested in voice control). Open ended on
-purpose (his ask): what exists (§1, the board polls, the `/config` read at launch), a sketch (§2),
-the open questions (§3); no recommendation.
-`cross-skin.md` — an idea (2026-11-01), to talk through with him: one skin borrows a piece of
-another (Ocean's sea or album light, Press's record or plate). His calls §1: a row in each
-skin's own Skin settings; a borrowed piece is redrawn in the borrower's look (his example: the
-Press plate in the album's color, not the sea). §3 the pieces; §4–§5 the questions.
-`DeetsPod.md` — an idea (2026-11-01), talked through with him: a pocket device on his two
-Waveshare ESP32-S3 pucks (the knob, the AMOLED), with the home PC as the licensed player and the
-puck a far-away speaker with a screen (the AirPlay tap → Opus → a sealed socket → a relay). **§1
-is what he said and is fixed; everything after it is Claude's proposal and may shift.** §3 why the
-puck can never play Apple Music on its own (settled); §6 the terms read; §9 the connectivity
-routes C1–C6 and the phone's battery; forks T, S, L open.
-`glass-text.md` — an idea (2026-11-01): why Glass text is soft (see-through layers lose
-ClearType; the probes §2), what Liquid Glass does (§3), his route: canvas-drawn lists first (§5,
-forks C1–C5), our own GPU renderer only if it comes to it (§6); the small pieces any route
-needs (§7). `docs/ops/checks/layers.mjs` lists the dev app's layers.
+**`docs/ideas/`** — not built; never tell a user the app does these. Where he designs the
+picture, never write it for him.
+- `SECRETS-AND-CSP.md` — DPAPI for the Apple token and Last.fm session (the CSP half is built: `architecture/CSP.md`).
+- `music-app-comp.md` — measure DeetsMusic against Apple's app and each release; §17 `deetsmeter`.
+- `ClassicSkins.md` — Winamp `.wsz` skins for a small player in Winamp's fixed layout.
+- `AtRecords.md` — a hidden record-player skin when Max fills his ultrawide. HE designs the UI.
+- `SupportArtist.md` — a "Support" link on the artist view, from MusicBrainz. HIS UI.
+- `SiteOceanLive.md` — the site's Ocean glow in the color of the song playing now.
+- `whitelabel.md` — DeetsMusic under another brand; §10 the rename (the name is open).
+- `apple-calls.md` — the ledger of every Apple call site and the savings. The counter is `ops/APPLE-CALLS.md`.
+- `PROFILES.md` — profiles for a family on one PC; design it with Backup.
+- `SpotifyRooms.md` — a Spotify user in a room through their own Spotify app (`ops/checks/spotify-probe.ps1`).
+- `mods.md` — skins and themes a user downloads (`.deetsmod`, values only); §10 the public layer.
+- `density.md` — a Compact | Spacious setting for every shelf.
+- `owner-polls.md` — his polls and suggestions shown in the app; open ended on purpose.
+- `cross-skin.md` — one skin borrows a piece of another, redrawn in the borrower's look.
+- `DeetsPod.md` — a pocket device on his ESP32-S3 pucks, the home PC plays. **§1 is what he
+  said and is fixed; the rest is Claude's proposal.**
+- `glass-text.md` — why Glass text is soft; canvas-drawn lists first.
+- `AppleData.md` — Apple endpoints and attributes we do not call yet; he has ideas for each.
+- `DeetsRecommends.md` — recommendations from the credit graph (who made the music).
+- `LastfmArtist.md` — Last.fm top tracks and similar artists on the artist view.
+- `DeetsWeather.md` · `WeatherSkin.md` — stations and a skin driven by the weather (WeatherKit).
+- `LinuxPort.md` — DeetsMusic on Linux and macOS: the blocks and the paths.
+- `MatterLights.md` — an on/off panel for Matter lights.
+- `WORKERS.md` — workers and queues in Rust; the forks are his.
+- `WorkerDeploy.md` — deploy a worker without dropping live connections.
 
 **`docs/legal/`** — the agreements we run under, saved as read. `APPLE-DPLA.md` — the Apple
-Developer Program License Agreement (English UK, effective 2026-10-01, PDF and text beside it),
-§7.6 and §3.3.6 D quoted in full with the 2026-11-01 reading. Save a new edition beside the old
-one, never over it.
-**`docs/guide/`** — the
-user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
-with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each
-feature, made by a script from the demo; for the guide and visual
-debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` beside it is the motion set: every animation in 5 skins. `LOADING-SET.md` —
-BUILT 2026-10-17, a back-pocket tool (his words): a dev-only recorder of each command's
-round trip (`src/ipc-timing.ts`, the `ipc-timing` Vite plugin → `src/ipc-core.ts`), a profile
-from his log (`npm run latency:profile` → `latency.json`), the demo replaying it plus his cover
-load times (`shots.mjs --latency p90 --cold`, `demo/latency.ts`), and `loading.json`, one clip
-per wait with its pops and settled time. L1 p90, L2 in the repo (his calls, §5); §7 the as-built
-record; how to use it: DEBUGGING.md § The loading set.
+Developer Program License Agreement, §7.6 and §3.3.6 D quoted in full. Save a new edition beside
+the old one, never over it.
+
+**`docs/guide/`** — the user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per
+card or workflow. `SHOTS.md` — the shots runner: pictures and clips of each feature, visual
+debugging (§5a–§5c), measuring a gap and A/B runs (§5f). `motion.json` — the motion set, every
+animation in every skin. `LOADING-SET.md` — a dev-only recorder of each command's round trip
+(`src/ipc-timing.ts`), replayed in the demo at his real timings; `loading.json` one clip per
+wait. How to use it: DEBUGGING.md § The loading set.
 
 ## How to verify your work
 - **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
@@ -583,8 +400,9 @@ record; how to use it: DEBUGGING.md § The loading set.
   1. **Motion:** a dropdown panel gets `.pop` (arrival) AND `enterRows` from `src/pop.ts`
      on open (`onOpen`) — the "Play on" panel is the reference, not the volume panel. Any
      part that appears later (a row a pill reveals, a button, a status line) goes through
-     `enterRows` too. Reduced motion is handled by the primitive; a custom animation adds
-     its own `prefers-reduced-motion` rule in styles.css.
+     `enterRows` too. Reduced motion is handled by the primitive; a custom animation asks
+     `motionReduced()` (`src/motion.ts`) in code and keys its sheet on
+     `[data-motion="reduced"]`, never a bare `prefers-reduced-motion` (docs:check 32).
   2. **Tokens:** geometry, type, spacing and motion are `--*` tokens in `skin.css` base
      (a skin overrides only what it changes); color is a theme role in `themes.css`. Grep
      the token name before using it (`--fs-small` did not exist; `--fs-subtext` did).
@@ -602,10 +420,12 @@ record; how to use it: DEBUGGING.md § The loading set.
   5. **Settings keys:** a new key in `settings-store.ts` gets a default with the "why", a
      spec in `agent-settings.ts` (so the agent reaches it) and a line in AGENT.md.
   5a. **New badge:** a new Settings row or section gets one line in `NEW_MARKS`
-     (settings-card.ts), so it wears the N until the pointer first rests on it, and its quick
-     panel square shows the N again (QUICK-SETTINGS.md §10, his wish 2026-09-20). Never
-     take a line out: a mark stays until that user clears it. A brand-new install starts
-     with every listed mark seen, so only settings added AFTER it installed read as new.
+     (settings-card.ts), with its `since` version, so it wears the N until the pointer first
+     rests on it, its quick panel square shows the N again (QUICK-SETTINGS.md §10, his wish
+     2026-09-20), and the update card lists it (UPDATE-CARD.md). Never take a line out: a mark
+     stays until that user clears it. A brand-new install starts with every listed mark seen,
+     so only settings added AFTER it installed read as new. A changed default is a line in
+     `DEFAULT_CHANGES` (settings-store.ts).
   6. **Log lines:** `diag.log` the arm / fire / off of anything that acts on its own.
   6a. **Scrollbars:** anything that can scroll (`overflow: auto/scroll`, a `max-height` panel)
      gets the `app-scroll` class, or it shows the grey OS bar. The bar is opt-in per element, so
@@ -655,7 +475,8 @@ record; how to use it: DEBUGGING.md § The loading set.
      thread that only waits. docs:check 30 fails a start with no row.
   17. **Loading (2026-10-17):** a new card or view that waits for data gets a clip in
      `docs/guide/loading.json` (LOADING-SET.md §3.6), so its wait can be replayed at his real
-     timings. A new command it calls needs a demo handler (`demo/handlers.ts`).
+     timings. A new command it calls needs a demo handler (`demo/handlers.ts`), and a line in
+     `web/handlers.ts` when the file is shared with the web port (WebRooms.md).
   18. **The CSP (2026-10-21):** a new outside host the PAGE talks to (a fetch, a socket, a
      picture, a script) is a source in `tauri.conf.json` › `app.security.csp`, or the policy
      blocks it once it enforces (`architecture/CSP.md` §3). Rust's calls need nothing. No
@@ -694,6 +515,7 @@ npm run tauri dev     # compiles Rust (first run slow), opens the 480×864 windo
 npm run dev:app       # same, isolated from the INSTALLED app (own identifier/data dir)
 npm run dev:perf      # dev:app with DevTools held shut (it renders in the app's own GPU process)
 npm run dev:built     # release-shaped bundle + DevTools shut — the honest graphics measurement
+npm run dev:fresh     # dev:app as a first-time user
 npm run dev:app -- --second   # a second dev app (own identity + friend code) for rooms/friends tests
 npm run dev:app -- --hidden   # no window (the app's --tray launch): drive it over CDP, nothing on screen
 npm run bench appearance -- --passes 3   # repeatable switch benchmark; refuses to run on a noisy machine

@@ -116,7 +116,8 @@ pack does not carry it.
   `--tile-badge-inset`, `--tile-badge-radius: var(--lib-tile-radius)` (skin base; a skin
   overrides only what it changes). Color: `--surface` fill, `--title` glyph. Ocean's "Draw
   card edges" and Glass frost do not touch it.
-- **Menus.** `pinMenuItem` goes into: the playlist row menu and the Home playlist tile menu,
+- **Menus.** `pinMenuItem` goes into (since 2026-09-23 the media menu adds the rows itself,
+  `pinRows` / `pinItem` / `pinActItem` from pins.ts in `media-menu.ts`): the playlist row menu and the Home playlist tile menu,
   the station row menu (both Radio roots) and the Home station tile menu, the Library album,
   artist and song row menus (root and detail levels), the Home album / artist / song tile menu,
   and the Now Playing cover menu for the playing song. The label is `Pin` or `Unpin`.
@@ -159,7 +160,7 @@ pack does not carry it.
 |---|---|
 | The table, `migrate_v9`, the four commands | [`library.rs`](../../src-tauri/src/library.rs) (`Pin`, `pins_list`, `pin_set`, `pin_clear`, `pin_play_counts`); registered in `lib.rs` |
 | The SQL export | `query.rs` — `pins` in `BUILD` and in `TABLES`; the fixture and `reads_the_exported_tables` cover it |
-| The store, the glyph, the menu rows, the shelf | [`src/pins.ts`](../../src/pins.ts) — `initPins` (main.ts, beside `initFavorites`), `isPinned`, `togglePin`, `pinItem`, `pinItemFor`, `pinnedShelfHTML`, `pinShelfItem`, `pinBadgeHTML`, `ICON_PIN` |
+| The store, the glyph, the menu rows, the shelf | [`src/pins.ts`](../../src/pins.ts) — `initPins` (main.ts, beside `initFavorites`), `isPinned`, `togglePin`, `pinItem`, `pinRows`, `pinActItem`, `pinnedShelfHTML`, `pinShelfItem`, `pinBadgeHTML`, `ICON_PIN` |
 | The engine flag | `shelvesFirst` on `Context` in `collection-card.ts`: the shelves go before the Play / Shuffle row |
 | The three roots | `rootContext` in `library-card.ts` (albums · artists · songs; an album or artist tile drills, a song plays), `playlists-card.ts` (a tile opens the playlist), `radio-card.ts` (a tile plays). Each reloads on `onPinsChange` |
 | Home | `pinnedShelf()` in `home.ts`, fifth; `home-card.ts` draws the badge on any pinned tile, drops Hide for a pin, rebuilds on `onPinsChange` |

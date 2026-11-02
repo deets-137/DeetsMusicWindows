@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.29.0
 desk_test: passed 2026-10-16
 sources: [index.html, src/updates-btn.ts, src/styles/updates.css, src/release-leads.ts, src/updater.ts, src/quick-panel.ts, src/settings-card.ts, src/compass.ts, vite.config.ts, scripts/docs-check.mjs, tests/release-leads.test.ts, docs/ops/RELEASE-NOTES.md]
-updated: 2026-10-16
+updated: 2026-11-01
 ---
 # The updates button — a Max title bar button for updates, what's new and bugs
 

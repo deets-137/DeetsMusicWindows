@@ -30,7 +30,7 @@ updated: 2026-10-11
 |---|---|
 | What a backup holds | **One backup file for everything.** It leaves out the secrets and the caches that Apple fills again. |
 | How the file gets made | **A *Back up now* button, plus an automatic copy every week to a folder the user picks.** A OneDrive folder takes it to a new PC with no server from us. |
-| What a restore does | **Replace all, on a fresh install.** The Hop in welcome screen offers *Restore from a backup*. |
+| What a restore does | **Replace all, on a fresh install.** The Hop in welcome screen offers *Restore from a backup*. (Hop in was scratched 2026-10-30; where the restore is offered on a fresh install is open again: the grand opening's page 1 is the likely place.) |
 
 **Second round (2026-10-11):**
 

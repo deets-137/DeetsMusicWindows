@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 1.0.0
 desk_test: open
 sources: [src-tauri/tauri.conf.json, src-tauri/src/csp.rs, src-tauri/src/lib.rs, src-tauri/src/velo.rs, src-tauri/src/usage.rs, index.html, src/csp-watch.ts, src/main.ts, src/tray.ts, src/dom.ts, src/settings-card.ts, src/updates-btn.ts, scripts/csp-dev-plugin.mjs, scripts/csp-relax.mjs, scripts/release-check.mjs, vite.config.ts]
-updated: 2026-10-23
+updated: 2026-11-01
 ---
 # A Content Security Policy for the webview
 

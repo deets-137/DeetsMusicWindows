@@ -3,71 +3,51 @@
 A lightweight Apple Music player for Windows 11 (Tauri v2 + WebView2, vanilla TS
 front-end, Rust back-end).
 
+**The full project guide is [`CLAUDE.md`](CLAUDE.md). Read it first; every rule in it applies
+to you.** It holds the doc map (one line per doc), how to verify your work, the build list for
+a new panel, row, button or card, and the conventions. This file repeats only the rules that
+cost the most when missed, so it cannot drift far from that one.
+
 ## Start here
-- **`docs/HANDOFF.md`** — cold-start: how to run, **Open now** (what is not finished), gotchas.
-  **`docs/WORKLOG.md`** — the record of each sitting, newest first.
-- The docs sit in folders by area: `architecture/ cards/ features/ integrations/ ops/ ideas/`.
-  Each doc's state is in its front matter (`status`, `shipped_in`, `desk_test`). Run
-  `npm run docs:check` after a doc edit; move a doc only with `scripts/docs-move.mjs`
-  (DOCS-ORG.md).
-- `docs/architecture/UI-ARCHITECTURE.md` — front-end (token/theme/skin system, collection-card engine).
-- `docs/architecture/DATA-ARCHITECTURE.md` — auth, model, provider, SQLite cache.
-- `docs/DESIGN.md` — product intent.
-- `docs/features/TRAY.md` — tray icon/panel, minimize-to-tray, window lifecycle (single instance);
-  `docs/integrations/EXTENSION.md` — browser extension + the loopback bridge (`extension/` is the MV3
-  source); `docs/integrations/AGENT.md` — the agent/CLI routes on that bridge; `docs/ops/RELEASE.md` — build,
-  install, uninstall.
-- `docs/architecture/TOASTS.md` — the transient-notice primitive (`src/toast.ts`), its tiers, and every
-  call site; `__toast.demo()` in the console shows one of each kind.
-- `docs/ops/LOGGING.md` — the rolling log file + `diag.ts`.
-- `docs/ideas/` — feature ideas that are **not built**.
+- **`docs/HANDOFF.md`** — cold start: run, ship, **Open now** (everything not finished),
+  gotchas, file map. **`docs/WORKLOG.md`** — the record of each sitting, newest first.
+- **`docs/LESSONS.md`** — what the owner tends to want. It shapes what you recommend; it never
+  closes a fork.
+- The docs sit in folders by area: `architecture/ cards/ features/ integrations/ ops/ ideas/
+  guide/ legal/ archive/`. Each doc's state is in its front matter (`status`, `shipped_in`,
+  `desk_test`). Run `npm run docs:check` after a doc or code edit; move a doc only with
+  `node scripts/docs-move.mjs NAME=area` (DOCS-ORG.md).
+- `docs/ideas/` — not built; never tell a user the app does these.
 
-## How to verify your work
-- **The user runs the app and tests your changes** (`npm run tauri dev`) and gives
-  feedback. **Do NOT build throwaway test harnesses, mock pages, or one-off tooling to
-  verify UI behavior** — it wastes time/tokens. Make the change, sanity-check it
-  compiles, then hand it to the user to try.
-- Cheap checks that ARE worth running (not harnesses): `npx tsc --noEmit` and
-  `npx vite build` to catch type/compile/bundle errors before handing off.
-- If something genuinely can't be reasoned through and the user is away, ask them to
-  test rather than scaffolding a harness.
-- Playback, frame smoothness, and heaviness can be measured from a session (dev-only
-  telemetry, `[perf]` lines in `%APPDATA%\com.deetsmusic.dev\deetsmusic.log`). Recipes:
-  `docs/ops/DEBUGGING.md`.
-
-## Working style (the user directs the architecture)
-- For non-trivial features, **design on paper / talk it through first**, surface the
-  real forks (he responds well to multiple-choice), confirm, then build.
+## The rules that cost the most when missed
+- **He decides every fork.** A default, a wording, a placement, a motion value, a new row, a
+  schema shape: bring him the choice before you build it, your recommendation first. Inside a
+  fork he chose, build the full, polished thing.
+- **Do not build throwaway test harnesses.** Run `npm run check` (tsc + tests + docs:check +
+  cargo check + cargo test), then hand the change to him to try.
 - **Everything is token-based**: never hardcode a color, px, font, or motion value in a
-  component — add/route through the palette → theme → skin tiers. Color → theme role;
-  geometry/type/spacing/motion → skin token.
-- He values polish and good stewardship (e.g. minimize Apple API calls; ask cost before
-  committing to a fetch-heavy approach).
-- **Do NOT delegate to subagents for this codebase.** It's small enough to hold in context
-  directly — explore, read, and edit files yourself so you keep the full picture while
-  building. Only exception: if he explicitly asks for one.
+  component. Color → theme role (`themes.css`); geometry, type, spacing, motion → skin token
+  (`skin.css`).
+- **A new control builds on the app's existing pattern** for that kind of control, and walks
+  the build list in CLAUDE.md › Working style (hints, toasts, settings keys, scrollbars,
+  right-click, keys, popovers, the CSP).
+- **A synchronous `#[tauri::command]` runs on the UI thread.** Never let one reach blocking
+  I/O; make it `async fn` + `spawn_blocking`.
+- Front-end only ever sees the normalized model (`Track`/`Album`/…); normalization lives in Rust.
+- Minimize Apple API calls; ask the cost before a fetch-heavy approach.
+- Commit only when the user asks. A worker deploy is always his call.
 
 ## How to explain things to me
 - Write in ASD-STE100 (Simplified Technical English): short sentences, active voice, one
   idea per sentence, plain approved words, no metaphor.
-- Name the exact control or gesture ("the tray icon", "the pinned taskbar button"). Define
-  the terms once, at the start.
-- Test each option against the code BEFORE you show it to me. Discard the options that the
-  code already rules out. Show the real forks only.
-- A question about the UI needs the front-end state, not only the Rust. Check localStorage
-  keys and the `surface`/`theme`/`skin` modules first.
+- Name the exact control or gesture. Define the terms once, at the start.
+- Test each option against the code BEFORE you show it to me. Show the real forks only.
 
 ## Run
 ```
 npm install
 npm run tauri dev     # compiles Rust (first run slow), opens the 480×864 window
 npm run dev:app       # same, isolated from the INSTALLED app (own identifier/data dir)
-npm run release       # build the installer (→ installers/; see docs/ops/RELEASE.md)
-npx tsc --noEmit      # front-end typecheck
+npm run check         # tsc + tests + docs:check + cargo check + cargo test (the pre-push hook)
+npm run release       # build + sign the installer (→ installers/; see docs/ops/RELEASE.md §0)
 ```
-Devtools auto-open in dev (`src-tauri/src/lib.rs`).
-
-## Conventions
-- Front-end only ever sees the normalized model (`Track`/`Album`/…), never raw Apple
-  shapes — normalization lives in Rust.
-- Commit only when the user asks.

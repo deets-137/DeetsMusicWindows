@@ -53,7 +53,7 @@ hides Rewind (§6).
   again.
 - **The saved layout.** `loadLayout` checks the stored layout against the pool. One card
   that is not in the pool resets **the whole layout** to the defaults
-  (`storedAssignment`, layout-rules.ts). The defaults can also name a hidden card (Home,
+  (`repairAssignment`, layout-rules.ts). The defaults can also name a hidden card (Home,
   Library, Playlists or Search). The build must:
   1. replace only the hidden slot, and not reset the layout;
   2. fill a default from the shown cards when the default card is hidden.
@@ -120,6 +120,9 @@ hides Rewind (§6).
   *Shows after 50 plays*) · Radio *Apple's stations* · Diary *Your album journal* · Rulez
   *Your own rules (Max only)*. A locked toggle: *Keep three cards in the picker*.
 ### 6.2 The Rulez gate: one mechanism (the owner, 2026-10-10)
+
+> **2026-11-01 note:** Cruisin and Pro were scratched with Hop in (2026-10-30), so no preset
+> writes `hiddenCards`. The grand opening's page 2 picks the cards (GRAND-OPENING.md §7).
 
 HOP-IN.md §2 and RULEZ.md §16.1 designed a second gate: a test on `startPick` in `poolFor`
 that took Rulez out of the picker for a Cruisin user. **His call: one mechanism.**

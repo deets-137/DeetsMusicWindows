@@ -115,9 +115,9 @@ const LINK_TTL: Duration = Duration::from_secs(300);
 
 /// The deep-link scheme this build answers to. A debug build owns its own scheme, so
 /// `dev:app` never takes `deetsmusic://` from the installed app (§2a fork 4). Windows
-/// keeps one exe per scheme (HKCU\Software\Classes\<scheme>): the release installer
-/// writes `deetsmusic`, and `lib.rs` registers `deetsmusic-dev` at every debug launch.
-/// DeetsMusic Beta owns `deetsmusic-beta` the same way; its installer writes it (BETA.md §5).
+/// keeps one exe per scheme (HKCU\Software\Classes\<scheme>): `lib.rs` registers it at
+/// every launch, `deetsmusic` from a release build (`register_all`) and `deetsmusic-dev`
+/// from a debug one. DeetsMusic Beta owns `deetsmusic-beta` the same way (BETA.md §5).
 pub fn link_scheme() -> &'static str {
     if cfg!(debug_assertions) {
         "deetsmusic-dev"

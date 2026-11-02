@@ -162,7 +162,8 @@ The slot header's **title is the menu trigger**, opening a flyout of the content
   so their title is always a picker.
 - **Hover or click**, following the existing **Hover-Menu** setting (`deets.menuMode`) — it
   reuses `makeDropdown` (dropdown.ts), exactly like the settings menu and volume flyout, and
-  registers with the same `applyMenuMode` fan-out so all menus switch together.
+  follows the same mode (`setDropdownMode` in dropdown.ts, which replaced main.ts's
+  `applyMenuMode` fan-out) so all menus switch together.
 - The flyout lists the content cards; choosing one applies the swap/replace rule above. The
   current card is marked (the same dot/selected indicator the theme flyout uses).
 

@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.30.0
 desk_test: passed 2026-10-17
 sources: [src/album-notes.ts, src/album-notes-parse.ts, src/info-box.ts, src/present.ts, src/media-levels.ts, src/collection-card.ts, src-tauri/src/notes.rs, src-tauri/src/apple.rs, src/library-model.ts, src/listeners.ts, src-tauri/src/model.rs]
-updated: 2026-10-17
+updated: 2026-11-01
 ---
 # Album notes — Apple's editorial notes in the album's facts box
 

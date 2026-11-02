@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.29.0
 desk_test: passed 2026-10-17
 sources: [src-tauri/src/identity.rs, src-tauri/src/velo.rs, src-tauri/src/media.rs, src-tauri/src/app_icon.rs, src-tauri/build.rs, src-tauri/identity/identity.json, src-tauri/identity/AppxManifest.template.xml, scripts/identity-pack.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/icons.py, docs/ops/VELOPACK.md, docs/ideas/whitelabel.md]
-updated: 2026-10-17
+updated: 2026-11-01
 ---
 # Package identity — exact-size taskbar icons for the installed app
 

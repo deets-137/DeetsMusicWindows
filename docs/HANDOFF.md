@@ -64,8 +64,8 @@ the queue restore via a restart). Recipe and limits: [DEBUGGING.md](ops/DEBUGGIN
 
 ## Ship it (installable Windows app)
 
-Full procedure — version sync, the build stages, Authenticode signing (§6.9), the NSIS hooks,
-install, uninstall, publishing and the updater (§6, shipped in 0.4.3) — is in
+Full procedure — version sync, the build stages, Authenticode signing (§6.9), Velopack's hooks,
+install, uninstall, publishing and the updater (§6) — is in
 **[RELEASE.md](ops/RELEASE.md)**; §0 is the one-page overview of commands, secrets and keys. The
 short version:
 
@@ -566,8 +566,11 @@ complete.
   derived from song artwork + initials (Search's artist drill already shows real photos). Scoped
   2026-07-03: **bigger than it looks** — the Artists overview shows hundreds at once, so lazy
   per-touch enrichment can't fill it (needs an eager one-time backfill, a deliberate exception
-  to the enrichment doctrine with a §14-style opt-out) *and* it needs new schema (artist cache
-  table), so it should bundle with the deferred schema-versioning work as one post-v1 pass.
+  to the enrichment doctrine with a §14-style opt-out). The schema half is done since: the
+  `artist_catalog` table holds every artist photo the artist view has fetched (`artist_photos`,
+  apple.rs; Home's tiles read it), and the schema is versioned. Still open (read 2026-11-01): the
+  Library's Artists overview draws initials (`library-card.ts` `initials`), and nothing fills
+  the table for artists not yet opened.
   (Start Station on artist tiles does NOT wait for this — shipped via the lazy two-hop resolve.)
 - **Play on launch** ([FUTURE-SETTINGS.md §22](FUTURE-SETTINGS.md)) — built 2026-09-27 as a Rulez
   recipe (off by default); the starred pool of what to play is not built.
@@ -576,7 +579,7 @@ complete.
   `artist:` ids for `play`, durable history as a second history source, a small-model test of
   `mcp --small`.
 - **Designed, not built:** a second
-  Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)), Hop in ([HOP-IN.md](archive/HOP-IN.md)),
+  Search card ([SECOND-SEARCH.md](features/SECOND-SEARCH.md)),
   Layout ([LAYOUT.md](features/LAYOUT.md)), Skinz ([SKINZ.md](features/SKINZ.md)), Backup
   ([BACKUP.md](features/BACKUP.md)), Local radio ([LOCAL-RADIO.md](features/LOCAL-RADIO.md)),
   Threads ([THREADS.md](integrations/THREADS.md)). Ideas with no schedule: [ideas/](ideas/README.md).
@@ -789,7 +792,7 @@ src/rust-settings.ts        RustSettings: the one front-end shape of SettingsDat
 src/settings-repair.ts      the launch toast's words when settings.json reset a field
 src-tauri/src/bridge.rs     loopback bridge: Hub state relay + agent routes (token only)
 src-tauri/src/media.rs      Windows media session (GSMTC) + master volume
-src-tauri/nsis/hooks.nsh    NSIS hooks: stop the CLI pre-(un)install, offer the extension
+src-tauri/src/velo.rs       Velopack: install / update / uninstall hooks, the signed feed
 cli/                        the `deetsmusic` binary: CLI + MCP server (AGENT.md)
 extension/                  MV3 browser extension source, PARKED: not built or shipped (EXTENSION.md)
 scripts/dev-app.mjs         generates the dev identifier config for `npm run dev:app`

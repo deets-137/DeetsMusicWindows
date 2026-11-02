@@ -138,8 +138,9 @@ Without a top-up, a long context would dead-end at the window edge (song #201 of
   `REWINDOW_LOW = 50` while the model has more, it calls `reconcileUpcoming()` — the
   matched prefix stays put, the model's missing tail is appended in **one batched
   `playLater`** (capped to `WINDOW_FWD`). `current` never moves: no `setQueue`, no
-  buffer. Hysteresis means one refill per ~150 songs, not one per track. A `toppingUp`
-  flag stops a second top-up stacking on an in-flight one; `player:topUp` is the diag
+  buffer. Hysteresis means one refill per ~150 songs, not one per track. One promise
+  chain (`reconcileChain` in `reconcileUpcoming`; the `toppingUp` flag until 2026-09-12) runs
+  the top-ups one after another, so a second never stacks on an in-flight one; `player:topUp` is the diag
   breadcrumb. Dead ids self-heal inside `reconcileUpcoming` as usual.
 - **Backward (buffered, by necessity):** MusicKit has no "play-earlier" insert, so
   Previous past the fed back-window can't be gapless. `prevTrack` detects the edge

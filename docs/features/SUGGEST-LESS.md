@@ -1,8 +1,9 @@
 ---
-status: built
+status: shipped
+shipped_in: 0.29.0
 desk_test: passed 2026-10-16
 sources: [src-tauri/src/suggest.rs, src-tauri/src/favorites.rs, src-tauri/src/library.rs, src/suggest.ts, src/suggest-match.ts, src/player.ts, src/queue-sync.ts, src/queue-rows.ts, src/qcard.ts, src/favorites.ts, src/media-menu.ts, src/compass.ts, src/web.ts, src/home.ts, src/settings-card.ts, src/rules-app.ts, tests/suggest-match.test.ts, tests/queue-sync.test.ts]
-updated: 2026-10-16
+updated: 2026-11-01
 ---
 # DeetsMusic — Suggest Less and proactive skips
 

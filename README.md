@@ -5,7 +5,7 @@ TypeScript front end, and a Rust back end, with full DRM playback and a token-dr
 theming system.
 
 **Status:** released — playback, sign-in, and library sync all work; shipping as a signed
-per-user NSIS installer that updates itself · **Platform:** Windows 11 desktop (Tauri v2)
+per-user installer (Velopack) that updates itself · **Platform:** Windows 11 desktop (Tauri v2)
 
 Not to be confused with [DeetsMusic](https://github.com/deets-137/DeetsMusic), the
 separate SwiftUI iOS app. This is the Windows port, and it shares no code with it.
@@ -20,9 +20,13 @@ separate SwiftUI iOS app. This is the Windows port, and it shares no code with i
 - **Apple Music sign-in** via a loopback browser flow — a `tiny_http` server catches
   the redirect locally
 - **Library sync** into a local SQLite cache, so browsing doesn't hit the network
-- **Feature surfaces:** Library, Search, Playlists, Queue, History, Rewind, and Radio
-  (Apple stations plus seeded right-click "Start Station")
-- **6 themes × 4 skins**, frameless custom chrome, all driven from CSS tokens
+- **Cards:** Home, Library, Search, Playlists, Queue, History, Rewind, Album Reviews, Rulez,
+  and Radio (Apple stations plus seeded right-click "Start Station"); Ctrl+Space opens the
+  Compass to reach any card, setting or library item from the keyboard
+- **Three surfaces** (Mini, Midi, Max) in one window that changes size
+- **6 themes × 7 skins** (Vanilla, Press, Ocean, Glass, Cyber, Metal, Happy), frameless custom
+  chrome, all driven from CSS tokens
+- **Rules** — make the app act on its own (a time, a surface, a speaker, a genre) from plain words
 - **Tray-first window behavior** — a tray-click flyout, minimize-to-tray, and a single
   running instance however you launch it
 - **Agent control** — a `deetsmusic` CLI and MCP server over a loopback bridge
@@ -63,7 +67,6 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 ## Documentation
 
 [docs/HANDOFF.md](docs/HANDOFF.md) — status, gotchas, next steps ·
-[docs/DESIGN.md](docs/DESIGN.md) — product design and backlog ·
 [docs/architecture/UI-ARCHITECTURE.md](docs/architecture/UI-ARCHITECTURE.md) — themes, skins, panels, chrome ·
 [docs/architecture/DATA-ARCHITECTURE.md](docs/architecture/DATA-ARCHITECTURE.md) — auth, model, provider, cache ·
 [docs/ops/RELEASE-NOTES.md](docs/ops/RELEASE-NOTES.md) — what each version brings, and how to install ·
@@ -84,9 +87,9 @@ npm run release       # build the installer → installers/DeetsMusic_<version>_
 ## Notes
 
 The roadmap is in [docs/HANDOFF.md](docs/HANDOFF.md). Releases after 0.4.3 are
-**Authenticode-signed** (publisher *Aditya Sundaram*), and since 0.4.3 the app **updates
-itself** from `music-api.deets.solutions`, with each installer checked against a signature
-compiled into the app. How builds are signed, published and updated:
+**Authenticode-signed** (publisher *Aditya Sundaram*), and the app **updates itself**. Since
+0.28.0 updates come through Velopack, and an install refuses an update feed that does not
+carry a signature from the key compiled into the app. How builds are signed, published and updated:
 [docs/ops/RELEASE.md](docs/ops/RELEASE.md) ("The release pipeline at a glance").
 
 ## Support and requests
@@ -144,7 +147,13 @@ DeetsMusic builds only ([docs/ops/RELEASE.md](docs/ops/RELEASE.md) §7a).
   welcome screen shows it on its Nitpicks page. *What is sent*, in Settings › About, shows each
   report exactly as it leaves.
   Turn the row off and nothing is sent.
-- **Nothing else.** No listening history leaves your PC.
+- **What you turn on.** Some features send what you play, and only after you turn them on.
+  Last.fm scrobbling sends each song you play to your Last.fm account. *Share activity on
+  DeetsMusic* (off by default) lets the friends you added see the song, the artist and the
+  cover while you listen. *Share activity on Discord* (off by default) shows the song on your
+  Discord profile. A listening room shares
+  the room's songs with the people in it.
+- **Nothing else.** With these off, no listening history leaves your PC.
 
 ## Trademarks
 

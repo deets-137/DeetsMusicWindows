@@ -57,7 +57,8 @@ Parts we can use again:
   motion in each skin's `--grow-*` and `--swap-*` tokens, Collapse on Escape and on a click
   outside. Today the stage column never grows and is never covered (CARD-GROW.md §2); the
   Queue can grow up over Now Playing (§16).
-- **`expandCard`** (CARD-GROW.md §17): a button that opens a card at full size.
+- **`expandCard`** (CARD-GROW.md §17): a button that opens a card at full size. Since
+  2026-09-26 the cog does it through the rules engine's grow action (`growByRule`).
 
 ## 3. The layouts, with numbers
 
@@ -564,7 +565,8 @@ for the rows, *below*, beside *beside* and *over*:
 - **Where:** the cover and the controls are one block, centered in the card ("centered for
   now, I'll debate as I test").
 - **As built:** `rowsPlace(cardW, cardH, rowsW, controlsH, gap)` in `full-player-layout.ts`
-  (tested). `placeNow` in `full-player.ts` measures the controls as they sit on the band, in
+  (tested). `placeNow` in `full-player.ts` (since 2026-10-11 `first.place`, measured in the
+  open's first pass) measures the controls as they sit on the band, in
   the same no-paint pass, at the open and on each resize, and keeps the height as
   `--fp-controls-h` (the halo centers on the cover above them). In styles.css `.np__center` is
   `display: contents` in *below*, its parts are the grid's rows, and `.np__meta` carries the

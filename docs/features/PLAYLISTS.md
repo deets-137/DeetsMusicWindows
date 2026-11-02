@@ -32,7 +32,7 @@ updated: 2026-09-29
 >   creates → drills into the empty detail ("Add songs from your Library or Search.") →
 >   summons the Search card into the other slot (`requestCard`). Escape/click-away cancels.
 > - **Add to Playlist ▸** (§4) — a JS-latched side flyout (`SubmenuItem`; the settings-menu
->   flyout grammar, side-flipped + clamped) on song/album menus (the shared `trackMenu` →
+>   flyout grammar, side-flipped + clamped) on song/album menus (the shared `trackMenu`, since 2026-09-23 `media-menu.ts` →
 >   Library + playlist detail), playlist rows (bulk add, self-excluded; mirrors work as
 >   sources = a lightweight partial import), and Search songs/albums/playlists
 >   (fetch-then-add). Targets: local playlists only, sorted recent-first

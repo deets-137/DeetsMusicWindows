@@ -190,7 +190,7 @@ the API key only, like the song call.
 | The tag chip | `.artist-info__tag` | the web panel chip's family (`.web__chip`, `--web-chip-radius`), on `--surface-hover` so it reads against the box's `--surface` |
 | The tokens | `--artist-info-*` in skin.css | the gap to the photo column, the column gap, the row gap, the pad, the radius, the tags' wrap width, the on-tour dot |
 | The gate | `showArtistInfo` (`artistInfoFor`) | Settings › Playback › *Show artist info on the artist's page*, its own row (his call, 2026-10-12); the badge's `showListeners` no longer gates it |
-| The fold | `.artist-info-wrap` › `.artist-info__toggle` + `.artist-info__fold` › `.artist-info__fold-in` › `.artist-info` | a container query on `.lib-hero--aside` (≤ 560 px, raw: a query cannot read a token). Wide: the toggle is hidden and the box always open beside the photo. Narrow: one *Artist Info* line (shelf header voice, a turning ›) over a fold that grows `0fr → 1fr` and fades in (`--artist-info-fold-dur`); closed by default; the last choice kept in `localStorage["deets.artistInfo.open"]` (`artistInfoOpen` / `toggleArtistInfo` in listeners.ts, his call). The Search holder is `display: contents` so the wrap is the flex item there too |
+| The fold | `.artist-info-wrap` › `.artist-info__toggle` + `.artist-info__fold` › `.artist-info__fold-in` › `.artist-info` | a container query on `.lib-hero--aside` (≤ 560 px, raw: a query cannot read a token). Wide: the toggle is hidden and the box always open beside the photo. Narrow: one *Artist Info* line (shelf header voice, a turning ›) over a fold that grows `0fr → 1fr` and fades in (`--artist-info-fold-dur`); closed by default; the last choice kept in `localStorage["deets.artistInfo.open"]` (`infoBoxOpen` / `toggleInfoBox` in listeners.ts, his call). The Search holder is `display: contents` so the wrap is the flex item there too |
 | Log line | `lastfm: artist info for <name>: have (N listeners, M plays, K tags[, on tour])` | one per Last.fm answer |
 
 ### 6.2 Decided inside his choices (for his review)
@@ -225,7 +225,8 @@ convenience no agent needs).
 2. Click *Last.fm ↗* under Links: the artist's Last.fm page opens in the browser. Hover a tag,
    the marker, the counts and the link: the four hints.
 3. Search › an artist: the same box beside the photo. Library › an artist › **Full**: the
-   same box (the Full level, `library-full.ts`, had none before 2026-10-12).
+   same box (the Full level, then `library-full.ts`, now `media-levels.ts`, had none before
+   2026-10-12).
 4. Midi (a narrow card): under the photo column, one *ARTIST INFO ›* line, closed. Click it:
    the box grows open under it and the caret turns; nothing is cut. Open another artist: it is
    open. Click to close, restart the app, open an artist: closed. Grow the card wide: the line
@@ -434,7 +435,7 @@ cover, the title, Details, the Writers rows. The *facts box* is the 2×2 box of 
    song's Last.fm page). A missing section leaves its cell empty. A song Last.fm does not know
    and no note for: no box.
 2. It slides in when it lands (hero-slide.ts), folds under a *Song Info* line on a narrow card,
-   and draws in the FIRST paint once its answer is known (a `listenersNow` sync read, as
+   and draws in the FIRST paint once its answer is known (a `songInfoNow` sync read, as
    `albumInfoNow`).
 3. **In Max, a click on the stats cell opens presentation mode** for the song
    (PresentationMode.md), as on albums and artists.

@@ -199,7 +199,8 @@ pub fn run() {
 
             // The deep-link scheme (DATA-ARCHITECTURE §2a). A debug build owns
             // `deetsmusic-dev://` and points it at this exe on every launch — one HKCU
-            // key, never the installed app's `deetsmusic://`, which the installer wrote.
+            // key, never the installed app's `deetsmusic://`, which a release build
+            // registers the same way on every start (`register_all`, since Velopack).
             // A link that STARTS the app has no sign-in to match: say so and move on.
             {
                 use tauri_plugin_deep_link::DeepLinkExt;

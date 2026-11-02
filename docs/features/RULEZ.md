@@ -1030,6 +1030,10 @@ The questions of §13 (same Do per case, both kinds, *otherwise*) are part of th
 ## 16. Cruisin and Pro: recipes in Settings, and a start pick (his calls, 2026-09-28)
 
 > **Part:** designed · 2026-09-28 · his calls below; the start pick's forks are HOP-IN.md §4; nothing built
+>
+> **2026-11-01 note:** the start pick (call 4) and the Cruisin / Pro row went with Hop in,
+> scratched 2026-10-30 (his call: the grand opening solves it). The Recipes section in Settings
+> (calls 2–3) was not part of that call and stays designed.
 
 **The terms** (Cruisin, Pro) are defined in [HOP-IN.md](../archive/HOP-IN.md).
 
