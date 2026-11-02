@@ -11,6 +11,7 @@
 // No Apple calls. Everything here is local time and the player's own state.
 
 import { setting, setSetting, onSettingsChange } from "./settings-store";
+import { countUse } from "./use-counts";
 import {
   getDuck, setDuck, pausePlayback, isPlayingNow, onPlayerState, onPlayerProgress, onVolumeChange,
 } from "./player";
@@ -166,6 +167,7 @@ function armClock(ms: number, scheduled: boolean): void {
   fromSchedule = scheduled;
   warned = false;
   diag.log("sleep:arm", { mode, at: new Date(ms).toISOString(), scheduled, wind: setting("sleepWind") });
+  countUse("sleep.set"); // a schedule's nightly arm too: the user set it (USAGE-COUNTS.md §21)
   ensureTicking();
   render();
 }
@@ -176,6 +178,7 @@ function armEnd(kind: "song" | "queue"): void {
   warned = false;
   songKey = currentKey;
   diag.log("sleep:arm", { mode, wind: setting("sleepWind") });
+  countUse("sleep.set");
   ensureTicking();
   render();
 }
@@ -196,6 +199,7 @@ async function fire(): Promise<void> {
   const mark = deadline;
   const scheduled = fromSchedule;
   diag.log("sleep:fire", { mode, scheduled, playing: isPlayingNow() });
+  countUse("sleep.fired");
   mode = "off";
   fromSchedule = false;
   if (scheduled) firedMark = mark;
@@ -548,7 +552,7 @@ export function initSleep(): void {
   wireDial(dial);
   panel.dataset.frames = "sleep";
   dropdown = makeDropdown({
-    root, trigger: btn, panel,
+    root, trigger: btn, panel, use: "panel.sleep",
     shouldStayOpen: () => dragging,
     // The panel arrives as .pop; its parts slide in one after another (pop.ts), the
     // "Play on" panel's idiom. Only the parts that show.

@@ -269,6 +269,7 @@ export function initQuickPanel(): void {
     root,
     trigger: cog,
     panel,
+    use: "panel.quick",
     // A row's menu (a split half's list) and the right-click menu are portaled to <body>:
     // a press in them is a press in this panel.
     alsoInside: () => [...document.querySelectorAll(".set__menu:not([hidden]), .ctx-menu")],

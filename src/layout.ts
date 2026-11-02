@@ -280,7 +280,7 @@ function makePicker<K>(
   // The right-click menu on a card name is portaled to <body>: a press in it counts as
   // inside, so the picker stays open until its row runs (the quick panel's rule).
   const dd = makeDropdown({
-    root: head, trigger: title, panel: menu, disabled: () => !atRoot, onOpen,
+    root: head, trigger: title, panel: menu, disabled: () => !atRoot, onOpen, use: "panel.cards",
     alsoInside: () => [...document.querySelectorAll<HTMLElement>(".ctx-menu")],
   });
 

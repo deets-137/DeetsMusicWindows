@@ -32,10 +32,10 @@ import { compareVersions } from "./update-rules";
 import {
   dayCount, afterDay, appliedReport, afterApplied, onDownloaded, reportId, clockFor, tickClock,
   keyFor, waited, isoWeek, utcDay, listenDay, listenMinutes, utcDayBounds,
-  type UsageKind, type UsageState,
+  type UsageKind, type UsageState, type Reach,
 } from "./usage-rules";
 import { playEventsSince } from "./rewind";
-import { usesFor, usesSent, clearUses } from "./use-counts";
+import { usesFor, usesSent, clearUses, reachFor } from "./use-counts";
 
 const STATE_KEY = "deets-usage";
 const LAST_KEY = "deets-usage-last";
@@ -193,10 +193,12 @@ async function listened(now: Date): Promise<{ listened?: { day: string; v: strin
 /** The feature uses of the same day as the minutes (§18): `{ day, v, n }`, sent whenever the
  *  minutes' day is known, an empty `n` included, so the worker can count the installs that
  *  reported that day. */
-function uses(now: Date): { uses?: { day: string; v: string; n: Record<string, number> } } {
+function uses(now: Date): { uses?: { day: string; v: string; n: Record<string, number> } & Reach } {
   const day = listenDay(state, now);
   const v = state.vDay ?? version;
-  return day && v ? { uses: { day, v, n: usesFor(day) } } : {};
+  if (!day || !v) return {};
+  const n = usesFor(day);
+  return { uses: { day, v, n, ...reachFor(day, Object.keys(n)) } };
 }
 
 async function bodyOf(kind: UsageKind, now: Date, key: string): Promise<Record<string, unknown> | null> {
@@ -244,9 +246,13 @@ async function send(kind: UsageKind): Promise<void> {
   const body = await bodyOf(kind, now, k.key);
   if (!body) return void diag.log("usage:skip", { kind, why: "not due" });
   // What the health report carries, read before the send takes it from the file.
+  // The library size is Rust's to add (§19): the applied report's record takes it from the same read.
+  const h = kind === "health" || kind === "applied"
+    ? await invoke<{ pending: object | null; library?: number | null }>("usage_health").catch(() => ({ pending: null, library: null }))
+    : null;
   const shown = kind === "health"
-    ? { ...((await invoke<{ pending: object | null }>("usage_health").catch(() => ({ pending: null }))).pending ?? {}), day: body.day, key: KEY_SHOWN }
-    : { ...body, key: KEY_SHOWN };
+    ? { ...(h?.pending ?? {}), day: body.day, key: KEY_SHOWN }
+    : { ...body, ...(kind === "applied" ? libraryField(h?.library) : {}), key: KEY_SHOWN };
   busy = true;
   lastSent = performance.now();
   try {
@@ -256,7 +262,10 @@ async function send(kind: UsageKind): Promise<void> {
       return void diag.log("usage:skip", { kind, why: "no worker for this build" });
     }
     // The day the use counts described is sent: it, and every day before it, go (§18).
-    if (kind === "day" && body.uses) usesSent((body.uses as { day: string }).day);
+    if (kind === "day" && body.uses) {
+      const u = body.uses as { day: string; n: Record<string, number> };
+      usesSent(u.day, Object.keys(u.n));
+    }
     const next = afterSent(kind, now);
     const keys = { ...next.keys };
     const open = { ...next.open };
@@ -312,12 +321,16 @@ export function initUsage(): void {
 
 type Sent = { kind: UsageKind; title: string; last?: { day: string; body: unknown }; next: unknown; note?: string };
 
+/** Rust adds the library size at the send (USAGE-COUNTS.md §19); the preview shows the same. */
+const libraryField = (n: number | null | undefined): { library?: number } => (typeof n === "number" ? { library: n } : {});
+const LIBRARY_NOTE = " library: the songs in your library, rounded up to the next 100.";
+
 /** Settings › About › *Show what is sent*: each kind's last report and the next one, as JSON. */
 export async function whatIsSent(): Promise<Sent[]> {
   const last = read<Last>(LAST_KEY, {});
   const now = new Date();
   const day = utcDay(now);
-  let health: { pending: unknown; current: unknown; channel: string; sends: boolean } = { pending: null, current: null, channel: "", sends: false };
+  let health: { pending: unknown; current: unknown; channel: string; sends: boolean; library?: number | null } = { pending: null, current: null, channel: "", sends: false };
   try {
     health = await invoke("usage_health");
   } catch (e) {
@@ -331,7 +344,7 @@ export async function whatIsSent(): Promise<Sent[]> {
       title: "Once a day",
       last: last.day,
       next: { v, channel: health.channel, ...flags, ...(await listened(now)), ...uses(now), day, key: KEY_SHOWN },
-      note: "listened: the minutes of music played on the last day this was sent (UTC), and that day's version. uses: how many times some features were used that day (Listen Later), as numbers only.",
+      note: "listened: the minutes of music played on the last day this was sent (UTC), and that day's version. uses: how many times some features were used that day (Listen Later, the panels, the sleep timer, webs and more), as numbers only; firstWeek and firstMonth name the ones used for the first time this week or month, and reportWeek and reportMonth say whether these are the first counts sent this week or month.",
     },
     {
       kind: "settings",
@@ -344,7 +357,7 @@ export async function whatIsSent(): Promise<Sent[]> {
       title: "Once a week: errors and Apple calls",
       last: last.health,
       next: { ...((health.pending ?? health.current) as object | null ?? {}), day, key: KEY_SHOWN },
-      note: health.pending ? "Last week, sent next." : "This week so far. It is sent next week.",
+      note: (health.pending ? "Last week, sent next." : "This week so far. It is sent next week.") + LIBRARY_NOTE,
     },
   ];
   // The update reports show only when one is waiting or one was sent.
@@ -354,8 +367,8 @@ export async function whatIsSent(): Promise<Sent[]> {
       kind: "applied",
       title: "On the first start after an update",
       last: last.applied,
-      next: applied ? { ...applied, to: v, channel: health.channel, day, key: KEY_SHOWN } : null,
-      note: applied ? undefined : "Nothing waiting.",
+      next: applied ? { ...applied, to: v, channel: health.channel, ...libraryField(health.library), day, key: KEY_SHOWN } : null,
+      note: applied ? LIBRARY_NOTE.trim() : "Nothing waiting.",
     });
   }
   if (state.dl || last.downloaded) {

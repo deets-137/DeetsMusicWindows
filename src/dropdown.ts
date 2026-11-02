@@ -17,6 +17,12 @@
 
 import * as frames from "./frames";
 import { mark } from "./marks";
+import { countUse } from "./use-counts";
+import type { UseName } from "./usage-keys";
+
+/** A panel counts as opened (`use`) once it has stayed open this long: a pointer passing over a
+ *  trigger in hover mode is not a use (USAGE-COUNTS.md §21). */
+const USE_DWELL_MS = 400;
 
 export type DropdownMode = "click" | "hover";
 
@@ -47,6 +53,9 @@ export interface DropdownOptions {
   disabled?: () => boolean;
   /** Runs each time the panel appears, after it is shown (a slot picker fits itself to the window). */
   onOpen?: () => void;
+  /** The feature use this panel's open counts as (USAGE-COUNTS.md §21), once it stays open
+   *  USE_DWELL_MS. */
+  use?: UseName;
 }
 
 export interface DropdownHandle {
@@ -85,7 +94,7 @@ export function keepInWindow(anchor: HTMLElement, panel: HTMLElement): void {
 
 /** Wire open/close/dismiss for a trigger+panel pair. Returns a runtime handle. */
 export function makeDropdown(opts: DropdownOptions): DropdownHandle {
-  const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, alsoInside, disabled, onOpen } = opts;
+  const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, alsoInside, disabled, onOpen, use } = opts;
   let mode: DropdownMode = opts.fixedMode ?? opts.mode ?? globalMode;
   let graceTimer: number | undefined;
   /** When the panel last appeared, on the event clock (`performance.now()`). */
@@ -114,6 +123,10 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
     if (appearing) openedAt = performance.now();
     if (appearing) mark("panel:open", panel.dataset.frames || panel.id);
     if (appearing) onOpen?.();
+    if (appearing && use) {
+      const at = openedAt;
+      window.setTimeout(() => { if (isOpen() && openedAt === at) countUse(use); }, USE_DWELL_MS);
+    }
   };
   const close = (why: CloseReason = "api") => {
     if (shouldStayOpen?.(why)) return; // e.g. don't close out from under a drag

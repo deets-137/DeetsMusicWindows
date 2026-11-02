@@ -131,12 +131,17 @@ DeetsMusic builds only ([docs/ops/RELEASE.md](docs/ops/RELEASE.md) §7a).
   reports to `support.deets.solutions`, each at its own random moment:
   - once a day, the app version, and whether this is its first count of the week or month,
     or its first ever; and how many minutes of music played on the last day it sent one,
-    as one number (never which songs, and never when in the day);
+    as one number (never which songs, and never when in the day); and, for that day, how many
+    times you opened some panels and used some features (the sleep timer, a web, a pin…), and
+    which of them were your first use that week or month, as names and numbers only;
+  - once a week, how many times an AI app or the terminal called each kind of command;
   - once a week, your on/off and choice settings (never a slider, a time, a name, or
     anything you typed);
   - once a week, how many errors the log counted, by area, and how Apple's replies went,
-    as numbers only;
-  - when an update downloads and when it applies, the two version numbers, as a count.
+    as numbers only, how many songs your library holds, rounded up to the next 100, and how
+    long its syncs took;
+  - when an update downloads and when it applies, the two version numbers, as a count; when
+    it applies, also the songs in your library, rounded up to the next 100.
 
   No report carries an ID. Each one carries the day and a random key made for that one
   report, so the server can drop a copy it already has; the server keeps the key alone for 2

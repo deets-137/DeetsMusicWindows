@@ -87,7 +87,9 @@ of them is a new fork for the owner, never a build detail.
    `report: true` (§4). A new setting is not sent until someone decides it may be. Free text,
    paths, names, IDs, times, and slider values are never on the list. **One exception (his
    call, 2026-11-01, §17):** the day count carries the whole minutes of music played on the last
-   day it was sent, as one number. Never which songs, and never when in the day.
+   day it was sent, as one number. Never which songs, and never when in the day. **A second
+   (his call, 2026-11-01, §19):** the health and applied reports carry the library's song
+   count, rounded up to the next 100. Never the exact count, never a song.
 4. **The three reports cannot be linked to each other.** They go in three separate requests, at
    three separate random moments (§3.4). Each is stored in its own table. No table shares a
    column that could join it to another. The settings row carries no version; the health report
@@ -1189,3 +1191,293 @@ uses is not a time and not a setting; a new name is his call, as a new setting i
 **Before the next release:** the worker deploy and the admin page publish go together with
 §17's, each his go. A worker before this change ignores `uses`, so the order does not matter for
 the app.
+
+## 19. Library size in the health report and the applied report (2026-11-01, built; the worker not deployed)
+
+> **Part:** built · 2026-11-01
+
+**His ask (2026-11-01).** See how large users' Apple libraries are, to know how hard they push
+the app. Send it in the weekly health report and in the first report after an update, so a
+release pushed tonight gets a read the next day, even from an install that sent its health
+report yesterday. His words on privacy: "As long as it remains truly anonymous, I'm thinking
+we're good." "The first update call" is the **applied** report (§12.2): the first start on a new
+version. It is not the update check (`GET /update/…`), which runs at every launch and carries no
+usage data.
+
+**Today (read 2026-11-01).** No report carries the size. The app keeps Apple's `meta.total` of
+library songs in the local database (`library_songs_total`, `library.rs`), written by each full
+pass and each incremental pass. The `apple.library.2xx` count in the health report cannot stand
+in for it: a full pass is about songs ÷ 100 calls, but album opens and playlist refreshes count
+in the same group, and the worker keeps only its range.
+
+### 19.1 The design
+
+- **The value:** `library`, the songs in the library **rounded up to the next 100** (his call,
+  2026-11-01): 3,895 is sent as 3900, 1 to 100 as 100, 0 as 0. Left out when no pass has stored
+  a total (a new install before its first sync, or signed out). Was, in the first draft: seven
+  ranges. His words: "not too worried about the uniqueness piece since I don't know 35/37 of
+  the users so can't do anything with that info since we store no identifier."
+- **The app rounds, and the worker checks** that the value is a whole multiple of 100 from 0 to
+  100,000 (Apple's limit). So the exact count never leaves the PC.
+- **Rust adds it at send time** (`usage_send`, the `health` and `applied` arms), read from
+  `library_songs_total`. It is the size at the send, not a week's count, so it does not go in
+  the week file. The front end does not send it. *Show what is sent* shows it in both reports.
+- **The worker.** Health: a metric `library.songs` with the rounded count as its bucket
+  (`"3900"`), under (week, channel, version), beside the others. Applied: a metric
+  `update.library`, the same bucket, under (day, channel, `to`). A value that fails the check is
+  dropped, and the rest of the report still counts. Not on `downloaded`: an install that
+  downloads and applies would count twice under one version.
+- **One install, one count per table (no ID needed).** The app, not the server, makes each
+  report count once: one health report per install per ISO week (the pending week leaves the
+  file once the worker has it), one applied report per install per version (`state.v`), and the
+  report key drops a retry (§12.9 A4). So a week's `library.songs` counters hold each install
+  that reported that week once, and a version's `update.library` counters hold each install
+  that moved to it once. Two ways to count one install twice, and how the page avoids them:
+  - Adding weeks together: the same install is in every week. The page shows one week at a
+    time, and a trend as one number per week (the median, the count over 10,000), never a sum.
+  - Adding the two tables together: one install is in both. The page shows them apart.
+- **The admin page** (DeetsSolutions, the Stats tab, under the minutes: his call, 2026-11-01):
+  *Library size*. *This week*, from the
+  health reports; *Moved to a version*, from the applied reports. Each shows the installs, the
+  median, the 90th percentile and the largest, and a histogram whose bars the page groups at
+  read time (the stored counts stay at 100 songs), so 500 values do not make 500 rows.
+- **When a read arrives.** An install that applies the update sends the applied report 20 s to
+  5 minutes after its first start on the new version (`applied` in `usage.ts`). Installs that do
+  not restart the app are not in it until they do. A new install sends no applied report; its
+  first health report comes the week after. **The release that is pushed must carry this code:**
+  an applied report is sent by the new version's app.
+
+### 19.2 The privacy rules (§2)
+
+- **Rule 1, no ID:** none added. **Rule 2, no IP:** unchanged.
+- **Rule 3, the allow-list:** an exception line beside the minutes: the health and applied
+  reports carry the library's song count rounded up to 100. Never the exact count, never a song.
+- **Rule 4, not linkable:** both are counters with no row per install. The size never goes in
+  the settings row, the one row per install, where it would make that row more unique.
+- **Rule 8:** *Show what is sent* shows the field. The README's Privacy paragraph gets one line.
+
+### 19.3 As built (2026-11-01; the worker not deployed)
+
+- **The app.** `library.rs` `library_songs_total` reads the meta. `usage.rs`: `library_rounded`
+  (up to the next 100, at most 100,000), `library_now` (the database through the `AppHandle`),
+  `with_library` (puts Rust's value on, or takes a front-end value off). `usage_send` adds it in
+  the `health` and `applied` arms, never on `downloaded`, `day` or `settings`. `usage_health`
+  returns it on both weeks and as `library`, so *Show what is sent* (`usage.ts` `whatIsSent`)
+  shows it in the health and applied previews with one note line, and the record of the last
+  applied report carries it. No new key, no setting, no toast.
+- **The worker** (`../DeetsSupport/src/usage.js` `library`): a whole multiple of 100 from 0 to
+  100,000, else dropped. `library.songs` in `healthWrites`, `update.library` in `updateWrites`
+  (applied only). `GET /admin/usage` adds `libraries` (every week's `library.songs`), and
+  `update.library` rides in `events`. The `health` read leaves out `library.songs`, so the
+  Health tab never reads a size as a trouble count. No migration: the table exists.
+- **The admin page** (DeetsSolutions `admin.js` `renderLibrary`, `libraryStats`; the Stats
+  tab, under the minutes; strings in `strings.js`, no `[ph]`): four tiles for the newest week
+  (installs, median with its change against the week before, 90th percentile, largest), each
+  with a 12-week spark; the week's spread in bars grouped at read time (0, 1–1,000, 1,001–2,500,
+  2,501–5,000, 5,001–10,000, 10,001–25,000, over 25,000); *Installs that started each version*,
+  a table of the newest versions. Not published.
+- **Not in the release notes:** the minutes (§17) and the use counts (§18) are not either; the
+  README's Privacy paragraph names it.
+- **Checks.** `cargo test` (`the_library_size_rounds_up_to_100_2026_11_01`). The worker check
+  (`docs/ops/checks/usage-worker.mjs` §6b): three new cases; run 2026-11-01 on a local worker
+  (port 8795), all passed with every older case. The admin read's `libraries` query run on the
+  local data. The admin page is not seen in a browser.
+- **Before the release:** the worker deploy and the admin page publish ride with §17 and §18's,
+  his go. A worker without this change ignores the field (`healthWrites` and `updateWrites` read
+  named fields only), so the order does not matter for the app. DeetsSupport holds no live
+  sockets.
+
+## 20. Library sync speed, and a reply that means stored (2026-11-02, built; the worker not deployed)
+
+> **Part:** built · 2026-11-02
+
+**His calls (2026-11-02).** The weekly health report carries how long the library syncs take, as
+a stat on the admin page. No "time saved" figure (his words: "just the admin page as a stat to
+be viewed, not a time saved"). The past cannot be read back: a user's older syncs were never
+sent, and the log files on their PCs roll over in days.
+
+### 20.1 The sync times
+
+- **What is timed** (`library.rs` `library_sync_run`): from the start of a sync to the songs on
+  screen (`done`), so the artist pass and the heal after it are not in it. Three kinds: *full*,
+  *quick* (the incremental pass), and *fallback* (a quick pass that could not account for
+  Apple's count, then the full pass after it, timed as one). A sync that fails is not counted.
+  The log lines name the time: `library: quick sync took … ms`, and `… ms` at the end of
+  `library: full sync done`.
+- **The health report** (`usage.rs` `Syncs`, `note_sync`): per kind, how many finished that week
+  and their average time, and the full syncs' time per 1,000 songs (`per1k`). Every time is in
+  ms, rounded up to the next 100 ms, at most 10 minutes. A kind that did not run is left out;
+  a week with no sync sends no `sync` field. The week file keeps the sums, so an older file
+  reads as no syncs.
+- **The worker** (`healthWrites`): `sync.<kind>` the count as a range (§3.3) and
+  `sync.<kind>.ms` the time as its own bucket, under (week, channel, version); `sync.per1k` only
+  with a full sync. A time that is not a multiple of 100 from 100 to 600,000 is dropped. The
+  `health` read leaves `sync.*` out; `GET /admin/usage` sends them as `syncs`.
+- **The admin page** (DeetsSolutions `renderSyncs`, the Stats tab, under the library size; no
+  `[ph]`): four tiles for the newest week, each with a 12-week spark: the median full sync, the
+  median quick sync, the median full sync per 1,000 songs, and the installs whose quick sync
+  fell back to a full one.
+- **Privacy (§2):** a duration is not a time of day (rule 3 means the clock) and not a song.
+  Counters only, no row per install.
+
+### 20.2 The answer means stored
+
+Was (Claude's design, 2026-10-13): every report answered 204 at once, and the worker wrote it
+after the answer (`ctx.waitUntil`). The app deletes a report on a 2xx, so a failed database write
+lost it with no retry. Now the worker writes first: 204 once stored, and 204 for a report it
+refuses, a malformed one, the off switch, the rate limit, and a retry whose key it already has
+(that report landed). **503 when the write failed for any other reason:** the app keeps the
+report and sends it again after its hour (`RETRY` in usage.ts), with the same key (§12.9 A4), so
+it is stored once. The reply says nothing else about why. No app change: `usage_send` already
+treats a non-2xx as not sent.
+
+### 20.3 Checks (2026-11-02)
+
+- `cargo test` (`the_sync_times_send_averages_rounded_up_2026_11_02`).
+- The worker check (`docs/ops/checks/usage-worker.mjs` §6c, §6d), on a local worker (port
+  8795): the sync metrics, five bad shapes, 204 on a stored report and on its retry, and a
+  forced write failure (the `usage_listen` table dropped, then made again from its migration):
+  503, nothing stored, not even its key, then the same report stored once.
+- Not done: a real sync timed on the dev app, and the admin page in a browser.
+
+## 21. Feature reach: which features land (2026-11-02, built; the worker not deployed)
+
+> **Part:** built · 2026-11-02 (his go: "Build this list")
+
+**His ask (2026-11-02).** "Finding out how many users interacted with sleep timers, webs, the
+other panels, etc to see what features are landing with folks and what isn't being used at
+all." Then: "Scope out the list and what the code changes would look like."
+
+**The terms.** A *use* is one count by `countUse` (§18). *Reach* is how many different installs
+used a feature at least once in a week or a month. A *panel open* counts the panel; a *feature
+use* counts the feature doing its job. Many opens and few uses: people find it and do not use
+it. Neither: people do not find it.
+
+### 21.1 Why reach needs a new field
+
+The §18 counts are per day. One install is in every day it used a feature, and no ID joins the
+days, so "installs that used it this week" cannot be added up from them. The app knows, so it
+says it, the same way the day count says `week` and `month` (§3.1): when it sends a day's uses,
+it names the features that are the first of their kind this ISO week and this month
+(`firstWeek`, `firstMonth`). The worker adds 1 to `reach.<name>` under that week and that month.
+`reach.reports` (the first uses of the week or month an install sends) is the denominator, so a
+share reads "of the installs that send uses", not of every active install (an old version sends
+none).
+
+### 21.2 The list (draft, his to edit)
+
+Panels, counted when they open, through one new option on the dropdown primitive
+(`makeDropdown({ …, use: "panel.sleep" })`, counted in `dropdown.ts` on open):
+
+| Name | The panel | File |
+|---|---|---|
+| `panel.sleep` | Sleep timer | `sleep.ts` (makeDropdown) |
+| `panel.sound` | Sound / EQ | `sound-panel.ts` |
+| `panel.playon` | Play on (AirPlay) | `airplay.ts` |
+| `panel.room` | Room | `room-panel.ts` |
+| `panel.pin` | Pin | `pin.ts` |
+| `panel.updates` | Updates | `updates-btn.ts` |
+| `panel.rewind` | Rewind | `rewind-btn.ts` (the title-bar panel) |
+| `panel.net` | The car button's network panel | `net.ts` |
+| `panel.quick` | The cog's quick panel | `quick-panel.ts` |
+| `panel.web` | The title bar's Playlist web | `web.ts` (`initTitleWeb`'s dropdown) |
+| `panel.cards` | The card picker on a card's title (was `panel.layout`: `layout.ts`'s dropdown is the picker, not a Layout panel) | `layout.ts` |
+| `compass.open` | The Compass (Ctrl+Space) | `compass.ts` |
+| `panel.tray` | The tray panel | `tray.ts` (its own window, its own open) |
+
+Features, counted where they do their job:
+
+| Name | When | Where |
+|---|---|---|
+| `sleep.set` | A timer set (a time, end of song, end of queue) | `sleep.ts` `sleepIn`, `sleepAtEnd` |
+| `sleep.fired` | A timer ran to the end | `sleep.ts` `fire` |
+| `web.made.artist` · `.song` · `.album` | A web made, by its start | `web.ts` `webQuick` (before `web_build`) |
+| `rule.made` | A Rulez rule saved for the first time | `rules.ts` `saveUserRules` (a new id) |
+| `rulezPlaylist.made` | A Rulez Playlist made | `filters.ts` `makeRulezPlaylist` |
+| `filter.used` | The Library's Filter pill applied | `filter-panel.ts` |
+| `review.saved` | An album review saved | `diary.ts` (`diary_update`) |
+| `pin.added` · `pin.played` | A pin made; a pinned tile played | `pins.ts` `setPin`, `pinActivate` |
+| `station.apple` | An Apple station started | `player.ts` `playStation` |
+| `room.made` · `room.joined` | A room started; a room joined | `room.ts` `startRoom`, `joinRoom` |
+| `sotd.picked` | A Song of the Day picked | `sotd.ts` `mark` |
+| `present.open` | Presentation mode opened | `present.ts` `openPresent` |
+| `notes.open` | Album notes opened | `present.ts` `openNotes` |
+| `fullplayer.open` | The full-screen player, by hand | `full-player.ts` `openFullPlayer` (hand causes only) |
+| `grow.hand` | Grow or Fill a card, by hand | `card-grow.ts` `growCard`, `fillCard` (not `growByRule`) |
+| `drag.drop` | A drag between cards that lands | `drop-actions.ts` (its five `dropTo…`) |
+| `fulllib.chip` | The Library's Full \| Lib chip | `library-card.ts` / `collection-card.ts` (FULL-LIB.md) |
+| `credits.open` | The song pane's writer credits | `credits.ts` (CREDITS.md) |
+
+AI apps and the terminal: counted in **Rust**, by route (`bridge.rs`), because many routes never
+reach the window. They go in the weekly health report as `agent: { <route>: n }`, the route
+names on a fixed list as the log areas are (§3.3). The health report is one per install per
+week, so the installs per range are already the week's reach. The Health tab's read leaves
+`agent.*` out (as `library.songs` and `sync.*`, §19, §20), and the admin page reads them as
+their own list.
+
+Left off: web radio (`station.web`, dropped at the build: LOCAL-RADIO.md is designed, not
+built), Second Search (designed, not built, SECOND-SEARCH.md), the backup (it runs on its own
+each week, so a count says nothing about a choice), Listen Later (already counted, §18), and
+skins, surfaces and every toggle (the settings report shows them, §3.2).
+
+### 21.3 The code changes
+
+- **The app.** `usage-keys.ts` `USE_COUNTS`: the names above (one line each, with the reason, as
+  Listen Later's). `dropdown.ts`: `use?: UseName` on `DropdownOptions`, `countUse(use)` where it
+  opens. One `countUse` line at each feature site; a site that has a cause (`openFullPlayer`,
+  `growCard`) counts only hand causes. `usage-rules.ts` (pure, tests dated): a reach store
+  (`{ week, month, weekNames, monthNames }`), `firstOf(store, day, names)` and `afterReach`, so
+  a name counts once per week and once per month even across launches; the store resets with the
+  §18 store when *Send usage counts* goes off. `usage.ts` `uses()`: `firstWeek`, `firstMonth`
+  and `reportWeek` / `reportMonth` (true on the install's first uses of that period) beside `n`;
+  the preview note says what they are. No new setting, no toast, no UI.
+- **Rust.** `usage.rs` `Counts.agent` (a route map, from a fixed list), `note_agent(route)`, the
+  `agent` field in the report; `bridge.rs` calls it once per route it serves. A unit test dated.
+- **The worker.** `npm run usage:keys` copies the names. `dayWrites`: per name in `firstWeek` /
+  `firstMonth` (on `USE_KEYS` only), 1 more to `reach.<name>` under the uses' day's week and
+  month, and `reach.reports` when the flag says so. `healthWrites`: `agent.<route>` as a range.
+  `GET /admin/usage`: `reach` (the weeks and months) and `agents`. New cases in
+  `docs/ops/checks/usage-worker.mjs`, run on a local worker. No migration.
+- **The admin page** (DeetsSolutions, the Growth tab, beside *Feature use*): *Feature reach*, one
+  row per name on the list, **0 rows included**, so a feature nobody used shows as 0: this
+  week's installs and share, this month's, and the last 7 days' times from §18. Sorted by the
+  share, lowest last. Then *AI apps and the terminal*: per route, the installs this week.
+- **Docs.** This section's as-built record; ONBOARDING.md is not touched (no hint, no menu).
+- **Privacy (§2).** Unchanged: names on an allow-list, counts only, counters with no row per
+  install, nothing about the songs. A feature name says which part of the app was used, never
+  what was played in it.
+
+### 21.4 As built (2026-11-02; the worker not deployed, the admin page not published)
+
+- **The names:** 35 in `usage-keys.ts` `USE_COUNTS` (41 with Listen Later's), copied to the
+  worker by `npm run usage:keys`.
+- **Panels:** `makeDropdown`'s `use` option counts once the panel has stayed open 400 ms
+  (`USE_DWELL_MS`), so a pointer passing over a trigger in hover mode is not a use. The tray
+  panel counts on `panel-shown` (`tray.ts`); its window shares the main window's storage.
+- **Choices made at the build, inside his go:**
+  - `sleep.set` counts a schedule's nightly arm too (the user set the schedule).
+  - `review.saved` counts a review once per session, not each save as you type.
+  - `filter.used` counts each change in the Filter panel.
+  - `fullplayer.open` and `grow.hand` count only hand causes: the full player's not `rule`;
+    a grow's `menu`, `zone`, `button`, `compass` or `agent` (`HAND_GROW`).
+  - `credits.open` counts the *Song Credits* menu row.
+  - `pin.added` counts each pin set, a re-pin included.
+  - The web at a list's end is not `web.made`: the app makes it on its own.
+- **Reach:** `usage-rules.ts` `reachOf` / `afterReach` (tests dated 2026-11-02), kept in
+  `localStorage` `deets-usage-reach` (`use-counts.ts`), cleared with the uses when the switch
+  goes off. The day count's `uses` carries `firstWeek`, `firstMonth`, `reportWeek` and
+  `reportMonth`. The store moves on only after a send that reached the worker.
+- **AI apps:** `bridge.rs` calls `usage::note_agent` for a paired call that the Agent control
+  switch lets through (the `AGENT_ROUTES` and `/search`). `usage.rs` `AGENT_NAMES` is the list,
+  and the report's `agent` map holds them (test dated 2026-11-02).
+- **The worker:** `useCounts` keeps a first name only if that day counted it and it is on
+  `USE_KEYS`. `dayWrites` writes `reach.*` under the uses' day's week and month;
+  `healthWrites` writes `agent.<route>` as ranges. `GET /admin/usage` adds `reach` and
+  `agents`; the Health read leaves `agent.*` and `reach.*` out. The comment in `schema.sql`
+  names the new metric families. No migration.
+- **The admin page** (DeetsSolutions, the Growth tab, under *Feature use*): *Feature reach*, one
+  row per `use.` label in `strings.js` (Listen Later's are in *Feature use*), 0 included, sorted
+  by the week's share; *AI apps and the terminal*, the newest week's installs per route. No
+  `[ph]`.
+- **Checks:** `npm test`, `cargo test`, and the worker check §4d (reach) and §6e (routes) on a
+  local worker. Not done: a real use on the dev app, and the admin page in a browser.

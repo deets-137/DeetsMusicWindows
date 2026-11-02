@@ -22,6 +22,7 @@ import { coverArtPx } from "./queue-rows";
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 import { installLicenseWatch, licenseTrace, inFlightNow } from "./license-watch";
 import { errorFields, compactEvent } from "./license-reply";
 import { cancelled } from "./rules";
@@ -2404,6 +2405,7 @@ async function setStationQueue(m: any, s: Station): Promise<void> {
  */
 export async function playStation(s: Station): Promise<void> {
   if (roomBridge && !roomBridge.station(s)) return;
+  countUse("station.apple"); // USAGE-COUNTS.md §21
   playIntent();
   await requireSignIn();
   const m = await initPlayer();

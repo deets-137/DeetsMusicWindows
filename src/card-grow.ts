@@ -27,6 +27,7 @@ import { tokenMs } from "./boot-cover";
 import { whenSwapSettled } from "./card-swap";
 import * as frames from "./frames";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 import { TELEMETRY } from "./telemetry-on";
 import { cancelled, registerAction, registerEvent, registerFact } from "./rules";
 import { maxBeyond, maxCanFill, maxNeighbors, type MaxCards, type MaxSlot } from "./layout-rules";
@@ -579,11 +580,15 @@ function closeRun(
 
 /** Grow `slot` in `dir`. Another card grown hands over to this one: it closes while this one
  *  opens, as one motion (fork 3A). The same card in a new shape moves from its shape now. */
+/** The causes of a grow by hand, for the feature count (a rule's grow is `rule:…`). */
+const HAND_GROW = new Set(["menu", "zone", "button", "compass", "agent"]);
+
 export function growCard(slot: Slot, dir: GrowDir, cause: string): void {
   if (!enabled() || animating || !opts) return;
   const panel = opts.hosts[slot];
   if (!panel || !isLive(slot)) return;
   if (dir === "full" && (!canFill() || isStage(slot))) return; // the stage column never fills
+  if (HAND_GROW.has(cause)) countUse("grow.hand"); // USAGE-COUNTS.md §21
   if (dir !== "full" && !growDirs(slot).includes(dir)) return;
   if (state && state.slot === slot && state.dir === dir) return;
   const m = motion();

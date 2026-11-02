@@ -806,6 +806,12 @@ const META_FULL_SYNC_AT: &str = "full_sync_at";
 /// are one row here, so the row count can sit below Apple's for ever.
 const META_LIBRARY_TOTAL: &str = "library_songs_total";
 
+/// Apple's count of library songs at the last pass; None before the first and after a sign-out.
+/// The usage reports send it rounded (USAGE-COUNTS.md §19).
+pub(crate) fn library_songs_total(conn: &Connection) -> Option<u64> {
+    meta_get(conn, META_LIBRARY_TOTAL).and_then(|v| v.parse().ok())
+}
+
 pub(crate) fn meta_get(conn: &Connection, key: &str) -> Option<String> {
     conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |r| r.get(0)).ok()
 }
@@ -1274,6 +1280,10 @@ async fn library_sync_run(
         return Err("library sync already in progress".into());
     }
     let guard = SyncFlagGuard(app.clone());
+    // The sync's time, from here to the songs on screen (`done`), for the health report
+    // (USAGE-COUNTS.md §20). The artist pass and the heal after `done` are not in it.
+    let started = std::time::Instant::now();
+    let mut fell_back = false;
 
     let dev = apple::developer_token()?;
     let user = apple_state
@@ -1363,6 +1373,9 @@ async fn library_sync_run(
     if why.is_empty() {
         match sync_incremental(&app, provider.clone(), &db, age.unwrap_or(0), changed, explain).await? {
             Incremental::Done(n) => {
+                let ms = started.elapsed().as_millis() as u64;
+                crate::log::info(&format!("library: quick sync took {ms} ms"));
+                crate::usage::note_sync(crate::usage::SyncKind::Quick, ms, 0);
                 // The songs are on screen: the lock goes, the tail follows (see SYNC_TAIL).
                 drop(guard);
                 let _tail = SYNC_TAIL.lock().await;
@@ -1377,6 +1390,7 @@ async fn library_sync_run(
             // reload (the full pass finds them already written).
             Incremental::Unexplained { found, changed: c } => {
                 changed += c;
+                fell_back = true;
                 why = format!("not explained: Apple counts +{}, the incremental pass found {found} new", explain.unwrap_or(0));
             }
         }
@@ -1474,7 +1488,10 @@ async fn library_sync_run(
             crate::log::warn(&format!("library: song count not written: {e}"));
         }
     }
-    crate::log::info(&format!("library: full sync done, {} of {total} song(s), {changed} row(s) changed", all.len()));
+    let ms = started.elapsed().as_millis() as u64;
+    crate::log::info(&format!("library: full sync done, {} of {total} song(s), {changed} row(s) changed, {ms} ms", all.len()));
+    let kind = if fell_back { crate::usage::SyncKind::Fallback } else { crate::usage::SyncKind::Full };
+    crate::usage::note_sync(kind, ms, total);
     // `done` before the artist pass (2026-10-23): on a first sign-in the cards waited 24 s
     // for it, about half of that the artist pages. `artists: true` says the pass follows.
     app.emit(

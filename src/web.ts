@@ -42,6 +42,7 @@ import { APPLE_SIGIL } from "./apple-sigil";
 import { checkWeb, webKeep } from "./suggest";
 import { ROW_PX } from "./art-size";
 import { motionReduced } from "./motion";
+import { countUse } from "./use-counts";
 
 interface WebSong {
   track: Track;
@@ -212,6 +213,7 @@ async function webFrom(
   const expireDays = setting("webTempDays"); // every new web starts on Temp, as the panel does
   status("Making the playlist…");
   const id = await playlistCreate(name, "web",expireDays);
+  countUse(`web.made.${seed.kind}`); // USAGE-COUNTS.md §21
   await playlistAddTracks(id, list);
   diag.log("web:expiry", { arm: id, days: expireDays });
   diag.log("web:make", { kind: res.kind, seed: seedName(seed), expireDays, songs: list.length, genres: [...picked], prefer: setting("webPrefer"), from, reach });
@@ -1261,6 +1263,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     try {
       // Made first (local, a few ms): only a playlist that exists flies. A failure keeps the panel.
       id = await playlistCreate(name, "web",expireDays);
+      countUse(`web.made.${seed.kind}`);
       await playlistAddTracks(id, tracks);
     } catch (e) {
       console.error("[web] make", e);
@@ -1451,6 +1454,7 @@ export function mountWeb(btn: HTMLElement, heading = "Playlist web"): { open: ()
     root: btn, // the panel lives on <body>, so it is its own hover region
     trigger: btn,
     panel,
+    use: "panel.web",
     // While the playlist is being made, a click away or the pointer leaving does not close it.
     shouldStayOpen: (why) => making && (why === "away" || why === "leave" || why === "toggle"),
     onOpen: () => {

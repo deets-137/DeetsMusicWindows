@@ -26,6 +26,7 @@ import { tokenMs } from "./boot-cover";
 import { bezierAt, parseBezier } from "./stepped-ease";
 import * as frames from "./frames";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 import { motionReduced } from "./motion";
 
 export const PRESENT_HINTS = {
@@ -178,6 +179,7 @@ function dropStale(): void {
 export async function openPresent(cell: HTMLElement): Promise<void> {
   dropStale();
   if (open || closing || currentSurface() !== "max") return;
+  countUse("present.open"); // USAGE-COUNTS.md §21
   const wrap = cell.closest<HTMLElement>("[data-info-box]");
   const slot = slotHolding(cell);
   const host = slot ? hostOf(slot) : null;
@@ -405,6 +407,7 @@ function notesTop(host: HTMLElement, cell: HTMLElement): number {
 export async function openNotes(cell: HTMLElement, data: NotesViewData | undefined, still = false): Promise<void> {
   dropStale();
   if (open || closing || !data) return;
+  countUse("notes.open");
   const albumId = cell.dataset.notes;
   const notes = albumId ? notesByAlbum(albumId) : undefined;
   const wrap = cell.closest<HTMLElement>("[data-info-box]");

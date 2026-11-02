@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "./toast";
+import { countUse } from "./use-counts";
 import { catalogRelated } from "./search";
 import type { Track } from "./library";
 import type { Album } from "./search";
@@ -145,8 +146,17 @@ export interface EntryPatch {
   reviewDate?: string | null;
   scaleMax?: number;
 }
+/** The reviews counted this session (USAGE-COUNTS.md §21): a review saves as you type, so one
+ *  review is one use, not one per save. */
+const reviewed = new Set<number>();
 export const diaryUpdate = (id: number, patch: EntryPatch): Promise<void> =>
-  invoke<void>("diary_update", { id, patch }).then(changed);
+  invoke<void>("diary_update", { id, patch }).then(() => {
+    if (!reviewed.has(id)) {
+      reviewed.add(id);
+      countUse("review.saved");
+    }
+    changed(undefined);
+  });
 
 export interface SongPatch {
   score?: number | null;

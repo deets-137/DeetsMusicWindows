@@ -21,6 +21,7 @@ import {
 } from "./rules-eval";
 import { recipeRules } from "./rules-recipes";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 
 // ── the registry (RULES.md §6) ───────────────────────────────────
 
@@ -151,6 +152,8 @@ export function userRules(): Rule[] {
 
 /** Save your rules (Rulez). A row change rebuilds through the store's listener. */
 export function saveUserRules(rules: Rule[]): void {
+  const had = new Set(userRules().map((r) => r.id));
+  for (const r of rules) if (!had.has(r.id)) countUse("rule.made"); // USAGE-COUNTS.md §21
   setSetting("rules", { ...(allSettings().rules ?? EMPTY), v: 1, rules }, "rule");
 }
 

@@ -79,6 +79,43 @@ export function afterUses(store: UseStore, day: string): UseStore {
   return out;
 }
 
+/** Feature reach (§21, his call 2026-11-02): which uses this install already reported in the
+ *  ISO week and the month of its last sent uses. Kept on the PC, never sent. */
+export interface ReachStore { week?: string; month?: string; weekNames?: string[]; monthNames?: string[] }
+/** What the day count adds beside a day's uses: the names that are the first of their kind in
+ *  that day's week and month, and whether these are the install's first uses sent in each. */
+export interface Reach { firstWeek: string[]; firstMonth: string[]; reportWeek: boolean; reportMonth: boolean }
+
+const periodsOf = (day: string): { week: string; month: string } => {
+  const d = new Date(utcDayBounds(day)[0]);
+  return { week: isoWeek(d), month: utcMonth(d) };
+};
+
+/** The reach of `day`'s uses `names`. */
+export function reachOf(store: ReachStore, day: string, names: readonly string[]): Reach {
+  const { week, month } = periodsOf(day);
+  const seenW = store.week === week ? store.weekNames ?? [] : [];
+  const seenM = store.month === month ? store.monthNames ?? [] : [];
+  return {
+    firstWeek: names.filter((n) => !seenW.includes(n)),
+    firstMonth: names.filter((n) => !seenM.includes(n)),
+    reportWeek: store.week !== week,
+    reportMonth: store.month !== month,
+  };
+}
+
+/** After the day count that carried `day`'s uses `names` reached the worker. */
+export function afterReach(store: ReachStore, day: string, names: readonly string[]): ReachStore {
+  const { week, month } = periodsOf(day);
+  const join = (seen: string[] | undefined, same: boolean) => [...new Set([...(same ? seen ?? [] : []), ...names])];
+  return {
+    week,
+    month,
+    weekNames: join(store.weekNames, store.week === week),
+    monthNames: join(store.monthNames, store.month === month),
+  };
+}
+
 /** The open-time clock of one report (§12.9 A1): `id` names the report it waits for (a day, a
  *  week, an update), `at` the random moment drawn for it, `ms` the time the app has been open
  *  since. It is kept across launches, so a short session adds to it instead of starting again. */

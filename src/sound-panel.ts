@@ -157,6 +157,7 @@ export function initSoundPanel(): void {
     root,
     trigger: btn,
     panel,
+    use: "panel.sound",
     // Turning the volume (the title bar pill, the Now Playing row) is part of listening to the
     // effect (Fuller at low volume follows it): a click there, or a hover-mode move onto it,
     // keeps the panel open.

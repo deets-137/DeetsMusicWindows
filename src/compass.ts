@@ -1458,6 +1458,7 @@ export function initCompass(): void {
     root: panel,
     trigger,
     panel,
+    use: "compass.open",
     // Settings › Window › Compass closes on outside click (default on).
     shouldStayOpen: (why) => why === "away" && !setting("compassCloseAway"),
     onOpen: () => {

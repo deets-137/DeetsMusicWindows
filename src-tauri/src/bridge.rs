@@ -636,6 +636,10 @@ async fn handle(app: AppHandle, mut req: Request) {
     // read; `GET /airplay` only says which speaker we hold, like /now-playing.
     let agent_route = AGENT_ROUTES.contains(&path.as_str()) || (method == Method::Post && path == "/airplay");
     let agent_off = !settings.agent_control && agent_route;
+    // Feature reach (USAGE-COUNTS.md §21): a paired call an AI app or the terminal made, by route.
+    if paired && !agent_off && (agent_route || path == "/search") {
+        crate::usage::note_agent(&path);
+    }
 
     let mut body = String::new();
     if method == Method::Post {

@@ -29,6 +29,7 @@ import { enterRows } from "./pop";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 import { TELEMETRY } from "./telemetry-on";
 import { registerAction, registerFact } from "./rules";
 import { refreshPlayerState } from "./player";
@@ -932,6 +933,7 @@ function emit(): void {
 // ── open ────────────────────────────────────────────────────────────────────────
 export async function openFullPlayer(cause: string): Promise<void> {
   if (full || busy || !fullPlayerAvailable()) return;
+  if (cause !== "rule") countUse("fullplayer.open"); // by hand only (USAGE-COUNTS.md §21)
   const surface = surfaceNow();
   const panel = npHost();
   const art = panel ? artOf(panel) : null;

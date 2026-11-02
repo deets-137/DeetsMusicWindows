@@ -30,6 +30,7 @@ import { menuCard, type MenuItem } from "./context-menu";
 import { decided } from "./rules";
 import * as diag from "./diag";
 import type { Artwork, Track } from "./library";
+import { countUse } from "./use-counts";
 
 /** A Go to's Library way: `run` opens it in the Library card; `inPlace` = the menu is the
  *  Library's own, so the Library is where it fits when no rule speaks. */
@@ -271,5 +272,5 @@ export function requestSongPane(intent: SongPaneIntent): void {
  */
 export function songCreditsItem(track?: Track | null): MenuItem | null {
   if (!track?.catalogId) return null;
-  return { label: "Song Credits", run: () => requestSongPane({ track }) };
+  return { label: "Song Credits", run: () => { countUse("credits.open"); requestSongPane({ track }); } };
 }

@@ -260,6 +260,7 @@ export function initPin(): void {
     root,
     trigger: btn,
     panel,
+    use: "panel.pin",
     disabled: () => state.on,
     onOpen: () => {
       paintPanel();

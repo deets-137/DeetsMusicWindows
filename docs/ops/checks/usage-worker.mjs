@@ -137,6 +137,21 @@ for (const bad of [{ day: lastDay, v: "1.1.2", n: { "not.a.use": 5, "later.undo"
 expect("uses: an off-list name, a bad count, today, a bad version, an array: nothing but the one report with a valid shape",
   [useN("use.reports", ""), n(`channel = 'dev' AND metric = 'use.not.a.use'`), useN("use.later.undo", "sum"), n(`channel = 'dev' AND period = '${today}' AND metric LIKE 'use.%'`)], [5, 0, 1, 0]);
 
+// 4d. Feature reach (§21): the first uses of a week and a month, under that day's week and month.
+// 2026-10-30 is in 2026-W44 and 2026-10; the names must be counted that day and on USE_KEYS.
+const rDay = lastDay, rMonth = lastDay.slice(0, 7);
+const reachN = (period, metric) => n(`channel = 'dev' AND v = '1.1.2' AND period = '${period}' AND metric = '${metric}'`);
+const withReach = (r) => withUses({ day: rDay, v: "1.1.2", n: { "sleep.set": 2, "panel.sleep": 1 }, ...r });
+await send("day", withReach({ firstWeek: ["sleep.set", "panel.sleep"], firstMonth: ["sleep.set", "panel.sleep"], reportWeek: true, reportMonth: true }));
+await send("day", withReach({ firstWeek: ["sleep.set"], firstMonth: [], reportWeek: true, reportMonth: false }));
+await send("day", withReach({ firstWeek: ["not.a.use", "pin.added", "sleep.set", "sleep.set"], firstMonth: "sleep.set", reportWeek: "yes" }));
+const lwk = sql(`SELECT DISTINCT period FROM usage_counts WHERE channel = 'dev' AND metric LIKE 'reach.%' AND length(period) = 8`).map((r) => r.period);
+expect("reach: filed under the uses' own week only", lwk.length, 1);
+expect("reach: the week counts each first once; off-list, not used that day, a repeat, a bad flag: dropped",
+  [reachN(lwk[0], "reach.sleep.set"), reachN(lwk[0], "reach.panel.sleep"), reachN(lwk[0], "reach.reports"), reachN(lwk[0], "reach.pin.added"), n(`channel = 'dev' AND metric = 'reach.not.a.use'`)],
+  [3, 1, 2, 0, 0]);
+expect("reach: the month", [reachN(rMonth, "reach.sleep.set"), reachN(rMonth, "reach.panel.sleep"), reachN(rMonth, "reach.reports")], [1, 1, 1]);
+
 // 5. The owner channel, then an applied update that moves its counts.
 await send("day", { v: "1.1.2", channel: "owner", week: true, month: true, day: today, key: key() });
 expect("owner: the channel is taken", [active("owner", "1.1.2", today), active("owner", "1.1.2", weekOf), active("owner", "1.1.2", month)], [1, 1, 1]);
@@ -161,6 +176,59 @@ await send("settings", { channel: "dev", settings: { skin: "glass" }, day: today
 expect("settings: a retry with the same key stores one row", sql("SELECT COUNT(*) AS n FROM usage_settings WHERE channel = 'dev'")[0].n, 1);
 await send("health", { v: "1.2.0", channel: "dev", week: weekOf, panics: 2, day: today, key: key() });
 expect("health: filed under the week it covers", n(`channel = 'dev' AND period = '${weekOf}' AND metric = 'reports'`), 1);
+
+// 6b. The library size (§19): the health and applied reports, a multiple of 100 from 0 to 100,000,
+// the number itself as the bucket. A bad value is dropped and the rest of the report still counts.
+const libN = (metric, bucket) => n(`channel = 'dev' AND metric = '${metric}' AND bucket = '${bucket}'`);
+const health = (library) => ({ v: "1.2.0", channel: "dev", week: weekOf, panics: 1, day: today, key: key(), library });
+await send("health", health(3900));
+await send("health", health(3900));
+await send("health", health(0));
+expect("library: two installs at 3900 and one empty library, under the week", [libN("library.songs", "3900"), libN("library.songs", "0"),
+  n(`channel = 'dev' AND period = '${weekOf}' AND metric = 'library.songs'`)], [2, 1, 3]);
+for (const bad of [3895, -100, 100100, 3900.5, "3900"]) await send("health", health(bad));
+expect("library: not rounded, below 0, over the limit, not whole, a string: no size, the reports still count",
+  [n(`channel = 'dev' AND metric = 'library.songs'`), n(`channel = 'dev' AND period = '${weekOf}' AND metric = 'reports'`)], [3, 9]);
+const appliedDev = { event: "applied", channel: "dev", from: "1.1.2", to: "1.2.0", rollback: false, day: today };
+await send("update", { ...appliedDev, library: 12000, key: key() });
+await send("update", { ...appliedDev, library: 3895, key: key() });
+await send("update", { event: "downloaded", channel: "dev", from: "1.2.0", to: "1.2.1", rollback: false, day: today, library: 12000, key: key() });
+expect("library: an applied report counts its size under the new version and day; a bad one and a download do not",
+  [n(`channel = 'dev' AND v = '1.2.0' AND period = '${today}' AND metric = 'update.library' AND bucket = '12000'`),
+    n(`channel = 'dev' AND metric = 'update.library'`), n(`channel = 'dev' AND v = '1.2.0' AND metric = 'update.applied'`)], [1, 1, 2]);
+
+// 6c. The library syncs (§20): per kind, how many as a range and the average time as itself.
+const syncN = (metric, bucket) => n(`channel = 'dev' AND period = '${weekOf}' AND metric = '${metric}' AND bucket = '${bucket}'`);
+await send("health", { ...health(4100), sync: { full: { n: 2, ms: 13300 }, quick: { n: 5, ms: 1200 }, fallback: { n: 1, ms: 14100 }, per1k: 3300 } });
+expect("sync: each kind's range and time, and the time per 1,000 songs",
+  [syncN("sync.full", "1-9"), syncN("sync.full.ms", "13300"), syncN("sync.quick", "1-9"), syncN("sync.quick.ms", "1200"),
+    syncN("sync.fallback", "1-9"), syncN("sync.fallback.ms", "14100"), syncN("sync.per1k", "3300")], [1, 1, 1, 1, 1, 1, 1]);
+await send("health", { ...health(4100), sync: { full: { n: 2, ms: 13350 }, quick: { n: 0, ms: 1200 }, fallback: { n: 1, ms: 700000 }, per1k: 3300 } });
+await send("health", { ...health(4100), sync: { quick: { n: 3, ms: 800 }, per1k: 3300 } });
+await send("health", { ...health(4100), sync: [1, 2] });
+expect("sync: not rounded, no count, over 10 minutes, per1k with no full sync, an array: dropped; the reports still count",
+  [n(`channel = 'dev' AND metric LIKE 'sync.%.ms'`), n(`channel = 'dev' AND metric = 'sync.per1k'`), n(`channel = 'dev' AND metric = 'sync.quick'`),
+    n(`channel = 'dev' AND period = '${weekOf}' AND metric = 'reports'`)], [4, 1, 2, 13]);
+
+// 6e. The AI-app and terminal routes (§21): ranges per route in the health report.
+await send("health", { ...health(4100), agent: { play: 3, "queue-edit": 12, "Bad Route": 5, search: 0 } });
+expect("agent: each route as a range; a bad name and a 0 dropped",
+  [syncN("agent.play", "1-9"), syncN("agent.queue-edit", "10-99"), n(`channel = 'dev' AND metric LIKE 'agent.%'`)], [1, 1, 2]);
+
+// 6d. The answer (§20.2): 204 once stored and on a retry of a stored report; 503 when the
+// database write fails, and the same report sent again after the fix is stored once.
+const k6 = key();
+const r1 = await send("day", { ...withMin({ day: lastDay, v: "1.1.2", min: 42 }), key: k6 });
+const r2 = await send("day", { ...withMin({ day: lastDay, v: "1.1.2", min: 42 }), key: k6 });
+expect("answer: 204 stored, 204 on its retry", [r1, r2], [204, 204]);
+sql("DROP TABLE usage_listen");
+const k7 = key();
+const failed503 = await send("day", { ...withMin({ day: lastDay, v: "1.1.2", min: 43 }), key: k7 });
+sql(readFileSync(join(support, "migrations", "2026-11-01-usage-listen.sql"), "utf8").split("\n").filter((l) => !l.startsWith("--")).join("\n"));
+expect("answer: a failed write is 503, and nothing of it is stored (not its key)",
+  [failed503, sql(`SELECT COUNT(*) AS n FROM usage_seen WHERE key = '${k7}'`)[0].n], [503, 0]);
+const again = await send("day", { ...withMin({ day: lastDay, v: "1.1.2", min: 43 }), key: k7 });
+expect("answer: the same report sent again is stored once", [again, listenRows("AND minutes = 43").length], [204, 1]);
 
 // 7. The Setup.exe count. A local R2 object of 40 MB (bigger than the socket buffers, so a cut
 // download is cut before the worker has handed every byte on), then every source.

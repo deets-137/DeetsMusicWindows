@@ -23,6 +23,7 @@ import { applyVinylAttrs, isVinylKey } from "./skin-settings";
 import { paintSkin, type SkinName } from "./skin";
 import { initMetalMaterial } from "./metal-material";
 import { onSettingsChange, setSettingsVersion, onSettingChanged } from "./settings-store";
+import { countUse } from "./use-counts";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { initHints } from "./hint";
 import { watchCsp } from "./csp-watch";
@@ -422,6 +423,8 @@ window.addEventListener("DOMContentLoaded", () => {
     visible = true;
     vinyl.suspend(false);
     log("tray:shown");
+    // The same store as the main window (one origin), sent by its day count (USAGE-COUNTS.md §21).
+    countUse("panel.tray");
     render(); // at once, from the state kept current while hidden: no stale frame on open
     invoke<NpState>("np_snapshot").then((s) => {
       deets = s;

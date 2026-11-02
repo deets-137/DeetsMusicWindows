@@ -30,6 +30,7 @@ import { requestOpenPlaylist } from "./playlists";
 import { requestLibraryDrill } from "./layout-bus";
 import { mosaicHTML } from "./mosaic";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 import { TILE_PX } from "./art-size";
 
 export type PinKind = HomeKind;
@@ -110,6 +111,7 @@ export async function setPin(key: string, kind: PinKind, data?: unknown): Promis
   const row = await invoke<Pin>("pin_set", { key, kind, data: data == null ? null : JSON.stringify(data), act });
   pins.set(row.key, row);
   diag.log("pin:set", { key, act: row.act ?? null });
+  countUse("pin.added");
   emit();
 }
 
@@ -165,6 +167,7 @@ export interface PinNav {
 /** A click on a pinned tile, everywhere. This is the one rule: it replaced four
  *  hand-written shelf bodies that had drifted into two different answers (§8.1). */
 export function pinActivate(it: HomeItem, at: string, nav?: PinNav): void {
+  countUse("pin.played");
   const act = pinAct(it.key, it.kind);
   // The click trail (LOGGING.md §The click trail): a complaint about this is read, not
   // guessed — which tile, and which verb it ran.

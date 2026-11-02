@@ -23,6 +23,7 @@ import { playlistsCached } from "./playlists";
 import { esc } from "./dom";
 import { toast } from "./toast";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 import {
   deleteFilter, filterRow, filterRows, makeRulezPlaylist, newFilterId, refreshNow, saveFilter, setLists, setRefresh,
 } from "./filters";
@@ -240,6 +241,7 @@ function onClick(e: MouseEvent, host: PanelHost): void {
   const setCond = (fn: (root: Block) => Block, why: string) => {
     rule.if = toCond(fn(rootOf(rule.if)));
     diag.log("ui:act", { do: "filter", what: why });
+    countUse("filter.used"); // USAGE-COUNTS.md §21
     host.apply(rule, s.savedId);
   };
   const setLeaf = (l: Leaf | null) =>

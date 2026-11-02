@@ -32,6 +32,7 @@ import {
   type FilterRow, type FilterRule, type Refresh, type Song, type SourceId, type Window,
 } from "./filter-eval";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 
 // ── the store ──────────────────────────────────────────────────
 
@@ -97,6 +98,7 @@ export async function makeRulezPlaylist(rule: FilterRule, name: string): Promise
   const pid = await playlistCreate(name, "rulez");
   await invoke<void>("filter_attach", { id: named.id, playlistId: pid, refresh: DEFAULT_REFRESH });
   diag.log("ui:act", { do: "filter", what: "rulezPlaylist", id: named.id, playlist: pid });
+  countUse("rulezPlaylist.made");
   await load();
   await runNow([named.id], "made");
   return pid;

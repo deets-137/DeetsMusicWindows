@@ -537,6 +537,7 @@ export function initRewindButton(): void {
     root,
     trigger: btn,
     panel,
+    use: "panel.rewind",
     // The right-click menu is portaled to <body>.
     alsoInside: () => [...document.querySelectorAll(".ctx-menu")],
     onOpen: () => {

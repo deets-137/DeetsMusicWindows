@@ -48,6 +48,7 @@ import { applyChange, clearTail, editTail, gather, tailOf, topUpOf } from "./roo
 import { toast } from "./toast";
 import { busy, busyOver, causeOf } from "./busy";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 import { plainError } from "./plain-error";
 import { WEB_ROOMS } from "./platform";
 import { netNote } from "./net-feed";
@@ -693,6 +694,7 @@ export function setRoomName(name: string): void {
  */
 export async function startRoom(controls?: GuestControls, opts?: { keepPlaying?: boolean }): Promise<void> {
   if (inRoom()) return;
+  countUse("room.made");
   // Listen Along's room (FRIENDS.md §16.2, his call 2026-09-26): "you are not interrupted".
   // Read BEFORE anything changes: whether you play, and where you are in the song.
   const keep = !!opts?.keepPlaying;
@@ -762,6 +764,7 @@ export async function joinRoom(rawCode: string): Promise<void> {
   if (inRoom()) leaveRoom();
   hostToken = "";
   state = { ...OFF, phase: "joining", code };
+  countUse("room.joined"); // USAGE-COUNTS.md §21
   emit();
   try {
     await connect(code, false);

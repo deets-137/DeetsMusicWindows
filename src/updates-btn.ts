@@ -418,6 +418,7 @@ export function initUpdatesButton(): void {
     root,
     trigger: btn,
     panel,
+    use: "panel.updates",
     // A Bugs row's menu (What went wrong) and the right-click menu are portaled to <body>.
     alsoInside: () => [...document.querySelectorAll(".set__menu:not([hidden]), .ctx-menu")],
     onOpen: () => {

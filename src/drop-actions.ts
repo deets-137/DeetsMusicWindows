@@ -13,6 +13,7 @@ import * as queue from "./queue";
 import { playlistInsertTracks, addToApple, names, songs } from "./playlists";
 import { addDroppedToLibrary } from "./library-add";
 import { toast } from "./toast";
+import { countUse } from "./use-counts";
 
 /** “Song” for one, “12 songs” for more. */
 const what = (ts: Track[]) => (ts.length === 1 ? names([ts[0].title]) : songs(ts.length));
@@ -23,6 +24,7 @@ const resolve = (p: DragPayload): Promise<Track[]> => Promise.resolve(p.tracks()
  *  A station (2026-09-15) has no place among the songs: wherever it lands it becomes the
  *  station return and plays once the queue runs dry (player.ts queueStationAfter). */
 export function dropToQueue(p: DragPayload, at: number): void {
+  countUse("drag.drop"); // USAGE-COUNTS.md §21
   const wasPlaying = !!queue.getCurrent();
   if (p.kind === "station") {
     const s = p.station;
@@ -51,6 +53,7 @@ export function dropToQueue(p: DragPayload, at: number): void {
 /** The Now Playing card: play at once. Settings › Playback › Dragging a Song into Now Playing behavior decides Up
  *  Next: kept after the dropped songs (default), or replaced as Play Now does. */
 export function dropToPlay(p: DragPayload): void {
+  countUse("drag.drop"); // USAGE-COUNTS.md §21
   const keep = setting("dropPlayQueue") === "keep";
   const play = (ts: Track[]) => (keep ? playTracksKeepQueue(ts, p.context) : playTracks(ts, 0, p.context));
   const go = p.play ?? (() => resolve(p).then((ts) => (ts.length ? play(ts) : undefined)));
@@ -59,6 +62,7 @@ export function dropToPlay(p: DragPayload): void {
 
 /** A local playlist: at authored position `at`, or the end when null. */
 export function dropToPlaylist(pl: Playlist, p: DragPayload, at: number | null): void {
+  countUse("drag.drop"); // USAGE-COUNTS.md §21
   resolve(p)
     .then((ts) => {
       if (!ts.length) return;
@@ -74,11 +78,13 @@ export function dropToPlaylist(pl: Playlist, p: DragPayload, at: number | null):
 
 /** The user's own Apple playlist: at the end, through the menu's question (§10.9). */
 export function dropToApplePlaylist(pl: Playlist, p: DragPayload): void {
+  countUse("drag.drop"); // USAGE-COUNTS.md §21
   addToApple(pl, () => resolve(p));
 }
 
 /** The Library card: Add to Library, the menu's behavior. */
 export function dropToLibrary(p: DragPayload): void {
+  countUse("drag.drop"); // USAGE-COUNTS.md §21
   resolve(p)
     .then((ts) => addDroppedToLibrary(ts, p.albumId))
     .then((added) => {

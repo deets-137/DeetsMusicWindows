@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   utcDay, utcMonth, isoWeek, dayCount, afterDay, weeklyDue, settingValue, randomDelay, waited,
   movesFor, appliedReport, afterApplied, onDownloaded, reportId, clockFor, tickClock, keyFor,
-  listenDay, listenMinutes, DAY_MINUTES, addUse, usesOn, afterUses,
+  listenDay, listenMinutes, DAY_MINUTES, addUse, usesOn, afterUses, reachOf, afterReach,
 } from "../src/usage-rules.ts";
 import { compareVersions } from "../src/update-rules.ts";
 
@@ -49,6 +49,21 @@ test("2026-11-01: use counts add up per day; a sent day and the days before it g
   assert.deepEqual(usesOn(s, "2026-10-29"), {}, "a day with no use is empty");
   assert.deepEqual(Object.keys(afterUses(s, "2026-10-30")), ["2026-10-31"], "today's uses wait for their own day count");
   assert.deepEqual(Object.keys(addUse(s, "2026-12-15", "later.undo")), ["2026-12-15"], "older than 30 days: dropped");
+});
+
+test("2026-11-02: reach names a use once per ISO week and once per month, across sends", () => {
+  // 2026-10-30 is a Friday of 2026-W44; 2026-11-02 a Monday of W45, in another month.
+  const first = reachOf({}, "2026-10-30", ["sleep.set", "panel.sleep"]);
+  assert.deepEqual(first, { firstWeek: ["sleep.set", "panel.sleep"], firstMonth: ["sleep.set", "panel.sleep"], reportWeek: true, reportMonth: true });
+  let s = afterReach({}, "2026-10-30", ["sleep.set", "panel.sleep"]);
+  assert.deepEqual(reachOf(s, "2026-10-31", ["sleep.set", "pin.added"]),
+    { firstWeek: ["pin.added"], firstMonth: ["pin.added"], reportWeek: false, reportMonth: false }, "the same week and month: only the new name");
+  s = afterReach(s, "2026-10-31", ["sleep.set", "pin.added"]);
+  assert.deepEqual(reachOf(s, "2026-11-02", ["sleep.set"]),
+    { firstWeek: ["sleep.set"], firstMonth: ["sleep.set"], reportWeek: true, reportMonth: true }, "a new week and month start again");
+  assert.deepEqual(reachOf(s, "2026-10-31", []), { firstWeek: [], firstMonth: [], reportWeek: false, reportMonth: false }, "no uses: nothing first");
+  const w45 = afterReach(afterReach({}, "2026-11-02", ["a"]), "2026-11-09", ["b"]);
+  assert.deepEqual([w45.weekNames, w45.monthNames], [["b"], ["a", "b"]], "a new week in the same month keeps the month's names");
 });
 
 test("2026-11-01: a day's minutes are the plays that started on that UTC day, capped at 1,440", () => {

@@ -62,6 +62,7 @@ import { requestPlaylistPane } from "./go-to";
 import { requestOpenPlaylist, playlistTracks } from "./playlists";
 import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey, fmtClock } from "./library-model";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 
 /** The two chips, Full first (the owner's words, 2026-09-24). */
 export const FULL_LIB: ViewOption[] = [
@@ -767,6 +768,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         active: "lib",
         to: (k) => {
           if (k !== "full") return null;
+          countUse("fulllib.chip"); // USAGE-COUNTS.md §21
           const ts = list();
           return fullAlbumLevel({
             libKey: a.key,
@@ -827,7 +829,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       views: {
         options: FULL_LIB,
         active: "lib",
-        to: (k) => (k === "full" ? fullArtistLevel({ name, id: info?.catalogId, artwork: info?.artwork }) : null),
+        to: (k) => (k === "full" ? (countUse("fulllib.chip"), fullArtistLevel({ name, id: info?.catalogId, artwork: info?.artwork })) : null),
       },
       load: () =>
         libraryArtistInfo(name, sub().map((t) => t.catalogId))

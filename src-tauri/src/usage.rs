@@ -12,8 +12,11 @@
 //! - **The send** (`usage_send`): from Rust, so no browser header or cookie rides along (§2
 //!   rule 12). Rust sets `channel` and `v` itself. A debug build sends only to a local worker
 //!   (`DEETS_USAGE_BASE`, a `wrangler dev` session) and to nothing without one (§1.7).
+//! - **The library size** (§19): the health and applied reports carry the library's song count,
+//!   rounded up to 100 here, so the exact count never leaves the PC.
 
 use crate::lock::LockExt;
+use tauri::Manager;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -26,6 +29,30 @@ const SEND_TIMEOUT: Duration = Duration::from_secs(15);
 /// A report body from the front end is a few kB at most (the settings report); the worker
 /// takes 16 kB.
 const BODY_MAX: usize = 12 * 1024;
+/// Apple's limit of songs in a library; the worker takes nothing above it.
+const LIBRARY_MAX: u64 = 100_000;
+
+/// The library's song count rounded up to the next 100 (his call, 2026-11-01): 3,895 → 3900.
+fn library_rounded(n: u64) -> u64 {
+    n.div_ceil(100).saturating_mul(100).min(LIBRARY_MAX)
+}
+
+/// The rounded count from the database, or None before the first library pass. Blocking.
+fn library_now(app: &tauri::AppHandle) -> Option<u64> {
+    let db = app.try_state::<crate::library::Db>()?;
+    let total = crate::library::library_songs_total(&db.lock());
+    total.map(library_rounded)
+}
+
+/// Put the library field on a report, or take it off: the size is Rust's to say.
+fn with_library(v: &mut serde_json::Value, library: Option<u64>) {
+    if let serde_json::Value::Object(map) = v {
+        match library {
+            Some(n) => map.insert("library".into(), n.into()),
+            None => map.remove("library"),
+        };
+    }
+}
 
 /// The log areas sent by name: the word before the first `:` of a WARN or ERROR line, as the
 /// code writes them on 2026-10-13. Any other area is counted as `other`. The worker takes any
@@ -73,6 +100,104 @@ struct Counts {
     apple: Vec<Vec<u64>>,
     /// ERROR lines by fingerprint (§16): the window's `fp` field, or a panic's file and line.
     errors: BTreeMap<String, u64>,
+    /// The library syncs (§20).
+    sync: Syncs,
+    /// The bridge calls an AI app or the terminal made, by route (§21): "queue-edit".
+    agent: BTreeMap<String, u64>,
+}
+
+/// The bridge routes counted by name (bridge.rs `AGENT_ROUTES` and `/search`); the worker takes
+/// the same words.
+const AGENT_NAMES: &[&str] = &[
+    "airplay", "command", "diag", "diary", "folder", "go", "grow", "history", "library", "picks", "play",
+    "playlist", "playlists", "query", "queue", "queue-edit", "rules", "search", "settings", "songs",
+    "stations", "tracks", "update",
+];
+
+/// One bridge call from an AI app or the terminal (bridge.rs, §21). A route off the list is not counted.
+pub fn note_agent(path: &str) {
+    let name = path.trim_start_matches('/').replace('/', "-");
+    if AGENT_NAMES.contains(&name.as_str()) {
+        with_now(|c| *c.agent.entry(name).or_default() += 1);
+    }
+}
+
+/// The library syncs of a stretch (USAGE-COUNTS.md §20): how many of each kind finished, and
+/// their time from the start to the songs on screen. A sync that failed is not here.
+#[derive(Default, Clone, Serialize, Deserialize)]
+#[serde(default)]
+struct Syncs {
+    full: u64,
+    full_ms: u64,
+    /// The songs of the full syncs, for the time per 1,000 songs.
+    full_songs: u64,
+    quick: u64,
+    quick_ms: u64,
+    /// A quick sync that could not account for Apple's count, then the full sync after it.
+    fallback: u64,
+    fallback_ms: u64,
+}
+
+/// Which library sync finished (library.rs `library_sync_run`).
+pub enum SyncKind {
+    Full,
+    Quick,
+    Fallback,
+}
+
+/// The longest sync time sent; a longer one is sent as this.
+const SYNC_MS_MAX: u64 = 600_000;
+
+/// A time in ms rounded up to the next 100 ms, at most SYNC_MS_MAX: 13,283 → 13,300.
+fn ms_rounded(ms: u64) -> u64 {
+    ms.div_ceil(100).saturating_mul(100).min(SYNC_MS_MAX)
+}
+
+impl Syncs {
+    fn add(&mut self, o: &Syncs) {
+        self.full += o.full;
+        self.full_ms += o.full_ms;
+        self.full_songs += o.full_songs;
+        self.quick += o.quick;
+        self.quick_ms += o.quick_ms;
+        self.fallback += o.fallback;
+        self.fallback_ms += o.fallback_ms;
+    }
+
+    /// Each kind's count and average time, and the full syncs' time per 1,000 songs; None when
+    /// no sync finished. Times rounded up to 100 ms.
+    fn report(&self) -> Option<serde_json::Value> {
+        let kind = |n: u64, ms: u64| (n > 0).then(|| serde_json::json!({ "n": n, "ms": ms_rounded(ms / n) }));
+        let mut out = serde_json::Map::new();
+        for (name, v) in [("full", kind(self.full, self.full_ms)), ("quick", kind(self.quick, self.quick_ms)), ("fallback", kind(self.fallback, self.fallback_ms))] {
+            if let Some(v) = v {
+                out.insert(name.into(), v);
+            }
+        }
+        if self.full_songs > 0 {
+            out.insert("per1k".into(), ms_rounded(self.full_ms.saturating_mul(1000) / self.full_songs).into());
+        }
+        (!out.is_empty()).then_some(serde_json::Value::Object(out))
+    }
+}
+
+/// A library sync finished, its songs on screen (§20). `songs`: Apple's count, for a full sync.
+pub fn note_sync(kind: SyncKind, ms: u64, songs: u32) {
+    with_now(|c| match kind {
+        SyncKind::Full => {
+            c.sync.full += 1;
+            c.sync.full_ms += ms;
+            c.sync.full_songs += songs as u64;
+        }
+        SyncKind::Quick => {
+            c.sync.quick += 1;
+            c.sync.quick_ms += ms;
+        }
+        SyncKind::Fallback => {
+            c.sync.fallback += 1;
+            c.sync.fallback_ms += ms;
+        }
+    });
 }
 
 impl Counts {
@@ -90,6 +215,10 @@ impl Counts {
         self.freezes += o.freezes;
         self.db_write_fails += o.db_write_fails;
         self.backoff_arms += o.backoff_arms;
+        self.sync.add(&o.sync);
+        for (k, v) in &o.agent {
+            *self.agent.entry(k.clone()).or_default() += v;
+        }
         self.apple_table();
         for (g, row) in o.apple.iter().enumerate().take(GROUPS.len()) {
             for (c, v) in row.iter().enumerate().take(CLASSES.len()) {
@@ -120,7 +249,7 @@ impl Counts {
                 apple.insert(GROUPS[g].into(), classes.into());
             }
         }
-        serde_json::json!({
+        let mut out = serde_json::json!({
             "v": env!("CARGO_PKG_VERSION"),
             "week": week,
             "log": { "error": self.error, "warn": self.warn },
@@ -130,7 +259,14 @@ impl Counts {
             "apple": apple,
             "backoffArms": self.backoff_arms,
             "errors": self.errors,
-        })
+        });
+        if let Some(sync) = self.sync.report() {
+            out["sync"] = sync;
+        }
+        if !self.agent.is_empty() {
+            out["agent"] = serde_json::json!(self.agent);
+        }
+        out
     }
 }
 
@@ -337,12 +473,14 @@ fn base() -> Option<String> {
 /// What the health report holds: the last finished week (sent next), and this week so far.
 /// Settings › About › *Show what is sent* shows both.
 #[tauri::command]
-pub async fn usage_health() -> Result<serde_json::Value, String> {
-    tauri::async_runtime::spawn_blocking(|| {
+pub async fn usage_health(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
         fold();
         let file = path().map(|p| read(&p)).unwrap_or_default();
+        let library = library_now(&app);
         let with_channel = |mut v: serde_json::Value| {
             v["channel"] = channel().into();
+            with_library(&mut v, library);
             v
         };
         serde_json::json!({
@@ -350,6 +488,7 @@ pub async fn usage_health() -> Result<serde_json::Value, String> {
             "current": with_channel(file.counts.report(&file.week)),
             "channel": channel(),
             "sends": base().is_some(),
+            "library": library,
         })
     })
     .await
@@ -363,7 +502,7 @@ pub async fn usage_health() -> Result<serde_json::Value, String> {
 /// two update kinds go to `/usage/update` (USAGE-COUNTS.md §12.2). `Ok(false)`: nothing to
 /// send, or no worker for this build.
 #[tauri::command]
-pub async fn usage_send(kind: String, body: Option<serde_json::Value>) -> Result<bool, String> {
+pub async fn usage_send(kind: String, body: Option<serde_json::Value>, app: tauri::AppHandle) -> Result<bool, String> {
     let Some(base) = base() else {
         crate::log::info(&format!("usage: {kind} not sent: a dev build sends only to DEETS_USAGE_BASE"));
         return Ok(false);
@@ -385,17 +524,27 @@ pub async fn usage_send(kind: String, body: Option<serde_json::Value>) -> Result
             let mut v = object(body)?;
             v["event"] = kind.as_str().into();
             v[if kind == "downloaded" { "from" } else { "to" }] = running.into();
+            // The applied report carries the size; the downloaded report never (§19).
+            let library = if kind == "applied" {
+                let app = app.clone();
+                tauri::async_runtime::spawn_blocking(move || library_now(&app)).await.map_err(|e| e.to_string())?
+            } else {
+                None
+            };
+            with_library(&mut v, library);
             (v, None, "update")
         }
         "health" => {
-            let pending = tauri::async_runtime::spawn_blocking(|| {
+            let app = app.clone();
+            let (pending, library) = tauri::async_runtime::spawn_blocking(move || {
                 fold();
-                path().map(|p| read(&p)).and_then(|f| f.pending)
+                (path().map(|p| read(&p)).and_then(|f| f.pending), library_now(&app))
             })
             .await
             .map_err(|e| e.to_string())?;
             let Some((week, counts)) = pending else { return Ok(false) };
             let mut report = counts.report(&week);
+            with_library(&mut report, library);
             // The front end's day and key (§12.9 A3, A4); nothing else of its body is taken.
             if let Some(serde_json::Value::Object(extra)) = body {
                 for name in ["day", "key"] {
@@ -507,6 +656,51 @@ mod tests {
         let mut c = Counts::default();
         c.errors.insert("window.Error@main.js:1:1".into(), 2);
         assert_eq!(c.report("2026-W44")["errors"]["window.Error@main.js:1:1"], 2);
+    }
+
+    #[test]
+    fn the_library_size_rounds_up_to_100_2026_11_01() {
+        assert_eq!(library_rounded(0), 0);
+        assert_eq!(library_rounded(1), 100);
+        assert_eq!(library_rounded(100), 100);
+        assert_eq!(library_rounded(101), 200);
+        assert_eq!(library_rounded(3895), 3900);
+        assert_eq!(library_rounded(250_000), LIBRARY_MAX);
+        let mut v = serde_json::json!({ "event": "applied", "library": 3895 });
+        with_library(&mut v, None);
+        assert!(v.get("library").is_none(), "a size from the front end is never sent");
+        with_library(&mut v, Some(3900));
+        assert_eq!(v["library"], 3900);
+    }
+
+    #[test]
+    fn the_sync_times_send_averages_rounded_up_2026_11_02() {
+        let mut s = Syncs::default();
+        assert!(s.report().is_none(), "no sync, no field");
+        let a = Syncs { full: 2, full_ms: 24_350, full_songs: 8_200, quick: 1, quick_ms: 2_401, ..Default::default() };
+        s.add(&a);
+        s.add(&Syncs { fallback: 1, fallback_ms: 14_001, ..Default::default() });
+        let r = s.report().unwrap();
+        assert_eq!(r["full"], serde_json::json!({ "n": 2, "ms": 12_200 }));
+        assert_eq!(r["quick"], serde_json::json!({ "n": 1, "ms": 2_500 }));
+        assert_eq!(r["fallback"], serde_json::json!({ "n": 1, "ms": 14_100 }));
+        assert_eq!(r["per1k"], 3_000); // 24,350 ms over 8,200 songs is 2,969 ms per 1,000
+        assert_eq!(ms_rounded(10_000_000), SYNC_MS_MAX);
+        let q = Syncs { quick: 3, quick_ms: 900, ..Default::default() }.report().unwrap();
+        assert!(q.get("full").is_none() && q.get("per1k").is_none(), "only the kinds that ran");
+    }
+
+    #[test]
+    fn agent_calls_count_by_route_off_the_list_never_2026_11_02() {
+        let mut a = Counts::default();
+        *a.agent.entry("queue-edit".into()).or_default() += 2;
+        let mut b = Counts::default();
+        b.add(&a);
+        b.add(&a);
+        let r = b.report("2026-W45");
+        assert_eq!(r["agent"], serde_json::json!({ "queue-edit": 4 }));
+        assert!(Counts::default().report("2026-W45").get("agent").is_none(), "no call, no field");
+        assert!(AGENT_NAMES.iter().all(|n| n.len() <= 16 && n.chars().all(|c| c.is_ascii_lowercase() || c == '-')), "the worker's word shape");
     }
 
     #[test]

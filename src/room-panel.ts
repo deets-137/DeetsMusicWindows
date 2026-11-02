@@ -130,6 +130,7 @@ export function initRoomPanel(): void {
     root,
     trigger: btn,
     panel,
+    use: "panel.room",
     onOpen: () => {
       // Opening the panel is the moment Friends is wanted, so it is one of the three doors
       // that mints a friend code (FRIENDS.md §16.5). It writes one small file and makes no

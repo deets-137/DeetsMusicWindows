@@ -151,6 +151,18 @@ item closes, delete it here and write the day in WORKLOG.md.
   by-version table and 0-minute flag (DeetsSolutions, not published). The worker check passed
   on a local worker. The usage row's hint says "Anonymous counts and stats" (his words). Open:
   his look at the page's drafts (§17.3).
+- **Library size in the health and applied reports (2026-11-01, uncommitted in all three
+  repos).** BUILT (USAGE-COUNTS.md §19): the library's song count rounded up to 100 by the app;
+  the worker (NOT deployed; the check passed locally) and the Stats tab's *Library size*
+  (DeetsSolutions, not published). Deploy and publish ride with §17's, his go. **Same batch
+  (2026-11-02), §20:** the library sync times in the health report and the Stats tab's
+  *Library sync* tiles; the worker now writes a report before it answers, and answers 503 when
+  the write failed. Not seen: a real sync on the dev app, the admin page in a browser.
+- **Feature reach (2026-11-02, uncommitted in all three repos).** BUILT (USAGE-COUNTS.md §21):
+  35 panel opens and feature uses on the §18 path, a first-this-week / first-this-month flag,
+  AI-app routes in the health report, and the Growth tab's *Feature reach* (0 rows included).
+  Worker not deployed (rides with §17's); admin page not published. Open: his look at the
+  choices in §21.4.
 - **To release 1.3.0** (RELEASE.md §0): **first, before the build (his call, 2026-11-01), the
   minutes' worker side goes live, in this order, each his go:** the live migration
   (`npx wrangler d1 execute deets-support --remote --file=migrations/2026-11-01-usage-listen.sql`

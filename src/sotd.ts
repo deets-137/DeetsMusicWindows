@@ -20,6 +20,7 @@ import { trackById } from "./track-store";
 import { setting } from "./settings-store";
 import { toast } from "./toast";
 import * as diag from "./diag";
+import { countUse } from "./use-counts";
 
 export interface PickPost {
   outlet: string;
@@ -216,6 +217,7 @@ export async function mark(t: Track, opts?: { replace?: boolean; note?: string }
       replace: opts?.replace ?? false,
     });
     diag.log("sotd:mark", { day: r.pick.day });
+    countUse("sotd.picked");
     await reloadSotd();
     // A replaced pick had already gone out: offer to take the posts down too (9d).
     if (r.orphans.length) {

@@ -529,6 +529,7 @@ export function initNetwork(): void {
     root,
     trigger: btn,
     panel,
+    use: "panel.net",
     onOpen: () => {
       shape = "";
       paint();

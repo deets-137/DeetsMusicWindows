@@ -550,6 +550,7 @@ export function mountAirplay(square: HTMLElement): AirplayMount {
     root,
     trigger: square,
     panel,
+    use: "panel.playon",
     shouldStayOpen: () => busy || !!askFirewall,
   });
   // The dropdown primitive owns open/close; watch the panel to run the scan and the poll.
