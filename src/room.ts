@@ -900,6 +900,9 @@ function onClose(code: string): void {
   if (socket && socket.readyState === WebSocket.OPEN) return;
   socket = null;
   if (closing || state.phase === "off") return;
+  // One drop arrives twice: the socket's close listener, then the rejected `connect()`'s
+  // catch. The second must not count as another attempt — it doubled the backoff step.
+  if (reconnectTimer !== undefined) return;
   // The host's app reconnects with its host token; a guest simply comes back (§7).
   // The host held the list: once back in, it takes it from whoever fed it meanwhile (§21.4).
   if (state.isHost && isKeeper() && !state.station) reclaim = true;
@@ -912,10 +915,36 @@ function onClose(code: string): void {
   // Not on the first retry — a flaky second is not a busy service — and never per retry
   // after that, because `busy` has its own ten-minute floor (FRIENDS.md §5.2, rule 1).
   if (attempt === 3) busy(SERVICE, "gone");
-  window.clearTimeout(reconnectTimer);
-  reconnectTimer = window.setTimeout(() => {
+  reconnectTimer = window.setTimeout(async () => {
+    reconnectTimer = undefined;
+    // A retry that failed may be a room that ended while this app was away (asleep, offline):
+    // it never got `ended`. The worker refuses that socket with a 404 the browser hides, so
+    // the close looks like any drop and the backoff ran for ever — one app retried a dead
+    // room ~6,000 times in a day (2026-11-02). Ask the room itself before each retry after
+    // the first. A peek that fails says nothing: keep retrying, the network may be down.
+    if (attempt > 1 && (await roomGone(code))) {
+      if (state.phase !== "reconnecting" || state.code !== code) return; // left meanwhile
+      diag.log("room:gone", { code, attempt });
+      closing = true;
+      toast({ kind: "info", text: "The room ended." });
+      teardown("ended");
+      return;
+    }
+    if (state.phase !== "reconnecting" || state.code !== code) return;
     connect(code, state.isHost).catch(() => onClose(code));
   }, wait);
+}
+
+/** True only when the worker says the room does not exist (`{exists: false}`). */
+async function roomGone(code: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${baseUrl()}/room/${code}/peek`);
+    if (!response.ok) return false;
+    const body = (await response.json()) as { exists?: unknown };
+    return body.exists === false;
+  } catch {
+    return false;
+  }
 }
 
 function onMessage(raw: string): void {
