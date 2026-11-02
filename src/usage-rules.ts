@@ -27,6 +27,30 @@ export function isoWeek(d: Date): string {
   return `${y}-W${pad(w)}`;
 }
 
+/** The UTC day's bounds, ms: [its 00:00, the next day's 00:00). */
+export function utcDayBounds(day: string): [number, number] {
+  const lo = Date.parse(`${day}T00:00:00Z`);
+  return [lo, lo + 86_400_000];
+}
+
+/** A day has 1,440 minutes: a sum over it can never be more (a play that runs past midnight
+ *  counts to the day it started on, so the cap holds the edge). */
+export const DAY_MINUTES = 1440;
+
+/** The day the day count's minutes describe (§17, his call 2026-11-01): the last day that sent a
+ *  day count, now over. null: nothing sent before, or the last count was today. */
+export function listenDay(state: UsageState, now: Date): string | null {
+  return state.day && state.day !== utcDay(now) ? state.day : null;
+}
+
+/** The whole minutes listened on one UTC day: every play that started on it (Rewind's rule,
+ *  rewind.ts `listenedToday`), capped at the day's length. */
+export function listenMinutes(events: readonly { startedTs: number; msListened: number | null }[], day: string): number {
+  const [lo, hi] = utcDayBounds(day);
+  const ms = events.reduce((sum, e) => (e.startedTs >= lo && e.startedTs < hi ? sum + (e.msListened ?? 0) : sum), 0);
+  return Math.min(DAY_MINUTES, Math.round(ms / 60_000));
+}
+
 /** The open-time clock of one report (§12.9 A1): `id` names the report it waits for (a day, a
  *  week, an update), `at` the random moment drawn for it, `ms` the time the app has been open
  *  since. It is kept across launches, so a short session adds to it instead of starting again. */

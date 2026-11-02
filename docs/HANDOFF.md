@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 # DeetsMusic — Handoff
 
@@ -135,7 +135,18 @@ item closes, delete it here and write the day in WORKLOG.md.
   version `5a38985e`, rollback `0dfc4b0d`) and the admin page's Error kinds is published.
   Claude's run on the dev app passed. Open: his hand test of [Report]. The first fingerprints
   arrive the week after 1.3.0 installs. USAGE-COUNTS.md §15–§16.
-- **To release 1.3.0** (RELEASE.md §0): the version in the six files (RELEASE.md §1); the
+- **Listening minutes in the day count (2026-11-01, uncommitted in all three repos).** His calls
+  (USAGE-COUNTS.md §17.2): exact minutes, one row per report, the last UTC day that sent a day
+  count. Built: the app (`usage.ts` `listened`, usage-rules.ts), the worker (`usage_listen`,
+  NOT deployed; the migration applied locally only) and the admin page's minutes chart, spread,
+  by-version table and 0-minute flag (DeetsSolutions, not published). The worker check passed
+  on a local worker. The usage row's hint says "Anonymous counts and stats" (his words). Open:
+  his look at the page's drafts (§17.3).
+- **To release 1.3.0** (RELEASE.md §0): **first, before the build (his call, 2026-11-01), the
+  minutes' worker side goes live, in this order, each his go:** the live migration
+  (`npx wrangler d1 execute deets-support --remote --file=migrations/2026-11-01-usage-listen.sql`
+  in `../DeetsSupport`), the worker deploy, the admin page publish (USAGE-COUNTS.md §17.3). A
+  1.3.0 app against a worker with no table fails every day count that carries minutes. Then the version in the six files (RELEASE.md §1); the
   1.3.0 entry in RELEASE-NOTES.md, each paragraph with its bold lead (the update card shows the
   notes); the new rows' `since` already says 1.3.0; merge `updatez` into `main` (his call);
   `npm run release`. **Publish only after his hand test:** this release changes every error

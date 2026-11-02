@@ -184,7 +184,7 @@ nothing about authoring changed when the box did.
 | Settings › Playback (2026-10-13; the words 2026-10-17, album notes) | Show album info on the album's page | The album's page shows Last.fm's tags, plays and listeners, a few words about it from Apple Music or Last.fm, and a link. Off: neither is asked | settings-card.ts |
 | Settings › Playback (2026-10-17) | Show song info on the song's page | Song Credits shows Last.fm's tags, plays and listeners, a few words about the song or its album, and a link | settings-card.ts |
 | Settings › Playback (2026-10-17) | Notes from | Where the About words on a song's or an album's page come from. Both: Apple first, then Last.fm | settings-card.ts |
-| Settings › About (2026-10-13) | Send usage counts · What is sent | Anonymous counts, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no place · The last report of each kind and the next one, exactly as they leave | settings-card.ts |
+| Settings › About (2026-10-13) | Send usage counts · What is sent | Anonymous counts and stats, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no place · The last report of each kind and the next one, exactly as they leave | settings-card.ts |
 | Now Playing | Previous · Play/Pause · Next | Plays the song before this one · Play / Pause (follows state) · Plays the next song | now-playing-card.ts |
 | Now Playing | ♥ · + | Favorite / Unfavorite · Add to Library / In your library (follow state) | now-playing-card.ts |
 | Now Playing | Mute · AirPlay (stage row) | as the title bar | now-playing-card.ts |

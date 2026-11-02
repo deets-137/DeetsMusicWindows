@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
-sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, scripts/usage-r2.mjs, docs/ops/checks/usage-worker.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md, src/error-fp.ts, src/diag.ts, src-tauri/src/gpu.rs, src/license-watch.ts, scripts/errors-where.mjs, vite.config.ts, src/report-draft.ts]
-updated: 2026-10-30
+sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, scripts/usage-r2.mjs, docs/ops/checks/usage-worker.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md, src/error-fp.ts, src/diag.ts, src-tauri/src/gpu.rs, src/license-watch.ts, scripts/errors-where.mjs, vite.config.ts, src/report-draft.ts, src/stats.ts, src/rewind.ts]
+updated: 2026-11-01
 ---
 # DeetsMusic — Usage counts: how many people use the app, and how
 
@@ -84,7 +84,9 @@ of them is a new fork for the owner, never a build detail.
    ASN, no user agent, no request time finer than the UTC day or the ISO week.
 3. **An allow-list, never a block-list.** A setting is sent only when its spec says
    `report: true` (§4). A new setting is not sent until someone decides it may be. Free text,
-   paths, names, IDs, times, and slider values are never on the list.
+   paths, names, IDs, times, and slider values are never on the list. **One exception (his
+   call, 2026-11-01, §17):** the day count carries the whole minutes of music played on the last
+   day it was sent, as one number. Never which songs, and never when in the day.
 4. **The three reports cannot be linked to each other.** They go in three separate requests, at
    three separate random moments (§3.4). Each is stored in its own table. No table shares a
    column that could join it to another. The settings row carries no version; the health report
@@ -1051,3 +1053,89 @@ Bugs filled in (`report-draft.ts`). Uncaught errors with no toast are seen only 
 - The maps live in `installers/` (local, gitignored), not in the repo or on R2.
 - The Report button's draft wording and that it keeps text the user already typed.
 - "new" means not seen in the 8 weeks the tab reads; the flag fires from 1 install.
+
+## 17. Listening minutes in the day count (2026-11-01, built; the worker not deployed)
+
+> **Part:** built · 2026-11-01
+
+**His call (2026-11-01): the day count (§3.1) carries the minutes listened on the day before.**
+The other option was buckets in the weekly health report. He would send the exact number, not
+a bucket: the app sends no log of what a user listens to, only a total. The minutes are also a
+health signal: an install that opens every day and plays 0 minutes points to broken playback.
+
+**What it changes.** Rule 3 (§2) says no times are sent; this is a duration, and it needs a
+named exception there. The grand opening's page 4 hint ("Nothing about you"), the README's
+Privacy paragraph and *Show what is sent* each get a line.
+
+### 17.1 How exact the number is (read 2026-11-01, not measured)
+
+- **What counts.** stats.ts `recordProgress` adds each forward step of the song's position under
+  2 s between two progress ticks. A pause, a stall or a seek adds nothing. So the number is
+  audio that played, not time the app was open.
+- **What is saved.** The open play's minutes are written every 30 s while it plays, 2 s after
+  the ticks stop, when the window hides, and at the song's end (`checkpoint`, `finalizeEvent`).
+  A crash or a hard close loses at most about 30 s.
+- **The day.** `listenedToday` (rewind.ts) sums the plays that *started* since local midnight.
+  A song that starts at 23:58 counts all of its minutes to that day, so a day can move by up to
+  one song.
+- **Not checked yet.** Muted or volume 0 still counts. A gap of 2 s or more between ticks (if a
+  hidden window slows them) is lost, so any error is an undercount. Stations and rooms go through
+  the same ticks, but that is not checked. No one has held the number against a stopwatch.
+
+### 17.2 Open
+
+1. **Closed (his call, 2026-11-01): one row per report**, `(day, v, minutes)` with no ID, for
+   the exact spread and median. It is the first row per install in the day count, so it gets
+   §2's row rules (rule 5: a random server key, no arrival order; rule 7: 13 months). Was also
+   offered: a sum and a count per `(day, v)` plus fine buckets.
+2. **Closed (2026-11-01): the UTC day**, the one option that lines up with the admin page (it
+   followed from call 3; the local day was the other). Read 2026-11-01: the worker files every report under the app's UTC day
+   (§12.9 A3), and the admin page shows every day in UTC (`fmtDay`, `dayAgo` in admin.js), so
+   only the UTC day lines up with the page's days.
+3. **Closed (his call, 2026-11-01): the last day that sent a day count** (the usage state's
+   `day`), filed under that day. Was also offered: yesterday, with a 0 for a day the app was
+   closed. The day count leaves on the first hour the app is open on a new UTC day, so a user
+   who skips days would send "yesterday = 0" for a day the app was closed. The last day that
+   sent a count is complete, because that day is over.
+
+### 17.3 As built (2026-11-01; the worker not deployed)
+
+- **The app.** The day count carries `listened: { day, v, min }` (`usage.ts` `listened`):
+  `day` is `listenDay` (usage-rules.ts: the state's `day`, never today), `v` the version that
+  day sits under (`vDay`), `min` the whole minutes of the plays that started on that UTC day,
+  capped at 1,440 (`listenMinutes`, from `play_events_since`). No earlier day, or the play log
+  could not be read: the day count goes without `listened`, so no false 0 is stored. Rust passes
+  the field through (`usage_send`). *Show what is sent* shows it, with a note.
+- **The worker** (`../DeetsSupport/src/usage.js` `listenRow`): one row in `usage_listen`
+  (random id, `day`, `channel`, `v`, `minutes`; WITHOUT ROWID) in the same batch as the day
+  counter, so the report key drops a retry of both. Refused, and the day count still counts:
+  a day that is not before the report's day or is older than 13 months, minutes that are not a
+  whole number from 0 to 1,440, a bad version. The cron deletes rows older than 13 months.
+  `GET /admin/usage` adds `listen`: the last 90 days as `(day, v, minutes, n)`, never a row id.
+  The table: `migrations/2026-11-01-usage-listen.sql`, applied to the local database only.
+- **The admin page** (DeetsSolutions `admin.js`, the Growth tab, under Active installs):
+  *Minutes listened per day* (the median as the line, the average dashed; a hover reads the
+  day's median, average, installs and installs at 0), the spread of one day over 0 · 1–29 ·
+  30–119 · 120–299 · 300+ (the newest day with rows; a click on the chart picks another), and
+  *By version, the last 7 days* (installs, median, average, share at 0). A flag: the newest
+  version with 20 or more rows in the last 7 days, and more than 20 % of them at 0 minutes
+  (`FLAG.silent`, `FLAG.silentMin`).
+- **The words.** Rule 3 (§2) names the exception. The usage row's hint (Settings › About and
+  the grand opening's page 4 share it) says "Anonymous counts and stats" (his words,
+  2026-11-01: "and stats" covers the minutes). The README's Privacy list adds the minutes to the
+  day count's line.
+- **Checks.** `tests/usage-rules.test.ts`: two tests dated 2026-11-01. The worker check
+  (`docs/ops/checks/usage-worker.mjs`, §4b): five new cases on a local worker, all passed
+  2026-11-01 with every older case.
+
+**Before the next release (his call, 2026-11-01): the worker side goes live first.** In this
+order, each his go: apply the migration to the live database
+(`npx wrangler d1 execute deets-support --remote --file=migrations/2026-11-01-usage-listen.sql`),
+deploy the worker, publish the admin page, then release the app. A worker without the table
+fails the whole batch of a day count that carries `listened`, so the table comes first; an
+app from before this change sends no `listened`, and the worker before this change ignores it.
+
+**What Claude decided inside his calls:** the field's name and shape; the version a row carries
+(the day's own, `vDay`); whole minutes and the 1,440 cap; no row when the log cannot be read;
+the 90-day read; the spread's ranges, the flag's 20 % and 20 rows, and every string on the page
+(drafts for his edit).

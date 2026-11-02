@@ -142,6 +142,8 @@ designed 2026-09-28, never built; scratched 2026-10-30 (his call: the grand open
   2026-10-27: update reports (downloaded, applied) and Setup.exe download counts; his calls §12.7;
   §12.9 the accuracy audit of the existing counts (A1–A7). §13 BUILT the same day, desk test
   passed (§13.1); the worker and the admin page LIVE 2026-10-27; the app side ships with 1.2.0.
+  §17 BUILT 2026-11-01, not deployed: the day count carries the exact minutes listened on the
+  last UTC day that sent one, one `usage_listen` row per report; the admin page's minutes chart.
 - `SKINZ.md` — the Skinz card (Max only): edit the 12 roles of each of the 6 theme slots; edits
   sit on the built-in, rules pick the slot. The skin controls are parked (theme first, §11).
   Not built. The Album theme (colors from the cover, §12) is to be built with it; its forks are open.
@@ -383,6 +385,10 @@ code does today; §3.2 the thumb-fade probe; §4 forks D1–D5.
 and shown in the app (his example: is anyone interested in voice control). Open ended on
 purpose (his ask): what exists (§1, the board polls, the `/config` read at launch), a sketch (§2),
 the open questions (§3); no recommendation.
+`cross-skin.md` — an idea (2026-11-01), to talk through with him: one skin borrows a piece of
+another (Ocean's sea or album light, Press's record or plate). His calls §1: a row in each
+skin's own Skin settings; a borrowed piece is redrawn in the borrower's look (his example: the
+Press plate in the album's color, not the sea). §3 the pieces; §4–§5 the questions.
 **`docs/guide/`** — the
 user guide for deets.solutions (DOCS-ORG.md §13): a wiki, one page per card or workflow, each
 with a walkthrough video, the steps and FAQs linked to open issues (§13.10, 2026-10-01). `SHOTS.md` — the pictures and clips of each

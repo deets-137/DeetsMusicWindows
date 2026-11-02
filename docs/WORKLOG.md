@@ -2,9 +2,24 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 # DeetsMusic — Work log
+
+## 2026-11-01 — Cross-skin pieces written up; listening minutes in the day count
+
+**Cross-skin (an idea, `ideas/cross-skin.md`).** His calls: a borrow row in each skin's own Skin
+settings; a borrowed piece is redrawn in the borrower's look (his example: Press's plate glows
+in the album's color, not the sea). The code read: the sea and the record already run on hooks
+(`--hook-sea`, `--hook-record`); Press's record rows are scoped to Press. To talk through next.
+
+**Listening minutes (USAGE-COUNTS.md §17).** His calls: the day count, not the health report;
+the exact number; one row per report; the last UTC day that sent a day count (not
+"yesterday", which would send false zeros for days the app was closed). The accuracy read
+(§17.1): the minutes are audio that played (forward position steps under 2 s), saved every
+30 s; any error is an undercount; not held against a stopwatch. Built in the app, the worker and
+the admin page (§17.3). `npm test` 438 pass; the worker check all passed on a local worker
+(port 8791). Not deployed, not published, not committed.
 
 ## 2026-10-30 — The admin page's Health tab; errors users never report; HANDOFF pruned
 

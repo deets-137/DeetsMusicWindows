@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   utcDay, utcMonth, isoWeek, dayCount, afterDay, weeklyDue, settingValue, randomDelay, waited,
   movesFor, appliedReport, afterApplied, onDownloaded, reportId, clockFor, tickClock, keyFor,
+  listenDay, listenMinutes, DAY_MINUTES,
 } from "../src/usage-rules.ts";
 import { compareVersions } from "../src/update-rules.ts";
 
@@ -32,6 +33,26 @@ test("one day count per UTC day", () => {
   const s = afterDay({}, at("2026-10-13T10:00:00Z"), "1.2.0");
   assert.equal(dayCount(s, at("2026-10-13T23:59:00Z")), null);
   assert.deepEqual(dayCount(s, at("2026-10-14T00:01:00Z")), { week: false, month: false, new: false });
+});
+
+test("2026-11-01: the minutes describe the last day that sent a day count, never today", () => {
+  assert.equal(listenDay({}, at("2026-11-01T10:00:00Z")), null, "nothing sent before");
+  assert.equal(listenDay({ day: "2026-11-01" }, at("2026-11-01T22:00:00Z")), null, "today's count has gone");
+  assert.equal(listenDay({ day: "2026-10-27" }, at("2026-11-01T00:30:00Z")), "2026-10-27", "days the app was closed are skipped");
+});
+
+test("2026-11-01: a day's minutes are the plays that started on that UTC day, capped at 1,440", () => {
+  const t = (s: string) => Date.parse(s);
+  const events = [
+    { startedTs: t("2026-10-30T23:59:00Z"), msListened: 600_000 }, // the day before
+    { startedTs: t("2026-10-31T00:00:00Z"), msListened: 90_000 },
+    { startedTs: t("2026-10-31T12:00:00Z"), msListened: null }, // never finalized
+    { startedTs: t("2026-10-31T23:58:00Z"), msListened: 240_000 }, // runs past midnight: still this day
+    { startedTs: t("2026-11-01T00:00:00Z"), msListened: 600_000 }, // the next day
+  ];
+  assert.equal(listenMinutes(events, "2026-10-31"), 6); // 5.5 min rounds up
+  assert.equal(listenMinutes([], "2026-10-31"), 0);
+  assert.equal(listenMinutes([{ startedTs: t("2026-10-31T01:00:00Z"), msListened: 2 * 86_400_000 }], "2026-10-31"), DAY_MINUTES);
 });
 
 test("a new week or a new month sets its flag", () => {

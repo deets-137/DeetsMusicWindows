@@ -2528,7 +2528,7 @@ function mountSettings(
       rows: [
         // Usage counts (USAGE-COUNTS.md): the switch, and the exact JSON of each report (§2 rule 8).
         // The hint's promise is his (2026-10-23): anonymous, nothing about you or your Apple ID.
-        storeToggle("usage", "Send usage counts", "usageReports", () => "Anonymous counts, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no place."),
+        storeToggle("usage", "Send usage counts", "usageReports", () => "Anonymous counts and stats, once a day and once a week. Nothing about you or your Apple ID: no ID, no songs, no place."),
         {
           kind: "split", id: "usagesent", label: "What is sent",
           hint: () => "The last report of each kind and the next one, exactly as they leave",

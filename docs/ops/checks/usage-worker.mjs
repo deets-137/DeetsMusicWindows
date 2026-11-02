@@ -66,6 +66,7 @@ async function send(kind, body) {
 sql("DELETE FROM usage_counts WHERE channel IN ('dev', 'owner') OR v = '9.9.9'");
 sql("DELETE FROM usage_seen");
 sql("DELETE FROM usage_settings WHERE channel IN ('dev', 'owner')");
+sql("DELETE FROM usage_listen WHERE channel IN ('dev', 'owner')");
 const active = (ch, v, period) => n(`channel = '${ch}' AND v = '${v}' AND metric = 'active' AND period = '${period}'`);
 
 // 1. A day count with the app's day and a key; the first ever.
@@ -95,6 +96,26 @@ expect("a malformed key drops the report", active("dev", "1.1.2", today), 2);
 const yesterday = dayOf(new Date(now.getTime() - 86400000));
 await send("day", { v: "1.1.2", channel: "dev", week: false, month: false, day: yesterday, key: key() });
 expect("yesterday (a send across midnight) is filed under yesterday", active("dev", "1.1.2", yesterday), 1);
+
+// 4b. The minutes listened (§17): one row for the last day that sent a count, filed under it.
+const listenRows = (where) => sql(`SELECT day, v, minutes FROM usage_listen WHERE channel = 'dev' ${where} ORDER BY day, minutes`);
+const lastDay = dayOf(new Date(now.getTime() - 4 * 86400000));
+const withMin = (listened) => ({ v: "1.2.0", channel: "dev", week: false, month: false, day: today, key: key(), listened });
+await send("day", withMin({ day: lastDay, v: "1.1.2", min: 137 }));
+expect("listened: one row under its own day and version", listenRows(""), [{ day: lastDay, v: "1.1.2", minutes: 137 }]);
+const kl = key();
+await send("day", { ...withMin({ day: lastDay, v: "1.1.2", min: 0 }), key: kl });
+await send("day", { ...withMin({ day: lastDay, v: "1.1.2", min: 0 }), key: kl });
+expect("listened: 0 is stored, and a retry adds no second row", listenRows("AND minutes = 0").length, 1);
+const dayBefore = active("dev", "1.2.0", today);
+await send("day", withMin({ day: today, v: "1.2.0", min: 10 }));
+expect("listened: today is refused, the day count still counts", [listenRows(`AND day = '${today}'`).length, active("dev", "1.2.0", today)], [0, dayBefore + 1]);
+const old = dayOf(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 14, 1)));
+for (const bad of [{ day: old, v: "1.1.2", min: 5 }, { day: lastDay, v: "1.1.2", min: 1441 }, { day: lastDay, v: "1.1.2", min: 2.5 },
+  { day: lastDay, v: "x", min: 5 }, { day: "2026-02-30", v: "1.1.2", min: 5 }, "137"]) await send("day", withMin(bad));
+expect("listened: too old, over a day, not whole, a bad version or day, not an object: no row", listenRows("").length, 2);
+const adminListen = sql(`SELECT day, v, minutes, COUNT(*) AS n FROM usage_listen WHERE channel = 'dev' GROUP BY day, v, minutes ORDER BY minutes`);
+expect("listened: the admin read groups the rows into counts", adminListen.map((r) => r.n), [1, 1]);
 
 // 5. The owner channel, then an applied update that moves its counts.
 await send("day", { v: "1.1.2", channel: "owner", week: true, month: true, day: today, key: key() });
