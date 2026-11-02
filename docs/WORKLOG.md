@@ -6,6 +6,23 @@ updated: 2026-11-02
 ---
 # DeetsMusic — Work log
 
+## 2026-11-02 — The mouse's back button; the paged card's motion; Glass's frost under a transform
+
+- **The mouse's back button (a user's ask, his call 1A).** The card under the pointer takes its
+  Back step (Escape's), through `backIn` in list-keys.ts; `browser-defaults.ts` stops Chromium's
+  own history step on `mouseup` (button 3 and 4) and takes the Browser Back key too. 1.3.1's note
+  in his words. DRAG-DROP.md §6a; desk test open.
+- **The update card and the grand opening open and close in the skin's own motion (his asks).**
+  The card comes up from below and leaves upward on the in-card nav tokens; the cards behind fade
+  out on the look change's cover fade and come back in the launch's rise (his call after Press's
+  nav-timed return felt too hard). Recorded on the dev app in Glass (`paged-card-motion.json`).
+- **Glass's dark band (his report).** A transform on a Glass card slips its window-pinned frost by
+  the title bar's height; snaps proved it (a 0.01 px transform shows the band, opacity does not).
+  It was in every Glass card motion. A fade-only fix came first; his call kept the slide, so
+  `src/paint-pin.ts` holds a moving card's frost in place (the `--pin-*` values, re-resolved on
+  each card): the paged card, the launch and look-change rise, the card swap. Recorded before and
+  after (`glass-rise.json`); his hand test of the swap: "looks good". GRAND-OPENING.md §12.
+
 ## 2026-11-02 — Two Max settings: the stage's side, the Queue's side in the full player
 
 His asks: a Settings row for the Queue's side in the full player (only the strip and the picker

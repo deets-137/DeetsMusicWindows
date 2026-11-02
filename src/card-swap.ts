@@ -10,6 +10,7 @@ import { effective } from "./settings-store";
 import { tokenMs } from "./boot-cover";
 import * as frames from "./frames";
 import { motionReduced } from "./motion";
+import { holdPaint } from "./paint-pin";
 
 /** One panel to animate. `from` is the slot its card left; none = a replace (it rises in). */
 export interface SwapMove {
@@ -21,6 +22,12 @@ const CLASSES = ["swap-out", "swap-in", "swap-top", "swap-rise"];
 const MOVING = ".bento .panel.swap-out, .bento .panel.swap-in, .bento .panel.swap-rise";
 const LAST = new Set(["card-swap-shape", "card-swap-rise"]); // the animation that ends a panel's in step
 const handlers = new WeakMap<HTMLElement, (e: AnimationEvent) => void>();
+/** A moving card holds a window-pinned paint in place (paint-pin.ts): Glass's frost under its title. */
+const paints = new WeakMap<HTMLElement, () => void>();
+const hold = (el: HTMLElement): void => {
+  paints.get(el)?.();
+  paints.set(el, holdPaint(el));
+};
 let closeWin: (() => void) | null = null;
 let pending: { run: () => void; els: HTMLElement[]; timer: number } | null = null;
 
@@ -45,6 +52,8 @@ function clear(el: HTMLElement): void {
   const h = handlers.get(el);
   if (h) el.removeEventListener("animationend", h);
   handlers.delete(el);
+  paints.get(el)?.();
+  paints.delete(el);
 }
 
 function openWin(detail: string): void {
@@ -83,6 +92,7 @@ export function playOut(els: HTMLElement[], run: () => void, detail: string): vo
   void els[0].offsetWidth;
   let running = els.length;
   els.forEach((el) => {
+    hold(el);
     el.classList.add("swap-out");
     const done = (e: AnimationEvent) => {
       if (e.target !== el || e.animationName !== "card-swap-out") return;
@@ -125,6 +135,7 @@ export function playSwap(moves: SwapMove[], detail: string): void {
   moves.forEach((m, i) => {
     const el = m.el;
     const { at, from } = rects[i];
+    hold(el); // before a class lands: the hold reads the card's resting place
     if (from) {
       el.style.setProperty("--swap-dx", `${Math.round(from.left - at.left)}px`);
       el.style.setProperty("--swap-dy", `${Math.round(from.top - at.top)}px`);

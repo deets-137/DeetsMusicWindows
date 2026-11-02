@@ -11,13 +11,16 @@
 // The motion (§4): the picked mark glides along the bar to the button pressed, and the page
 // slides the same way — a button lower in the bar brings its page up from below. Both ride the
 // in-card nav tokens (--nav-dur, --nav-ease, --nav-off-opacity); the page's two positions
-// are --ob-page-above / --ob-page-below (skin.css).
+// are --ob-page-above / --ob-page-below (skin.css). The close is the same motion for the whole
+// card: it comes up from below as a new page does on Next while the cards behind fade out (the
+// look change's cover fade), and leaves upward as an old page does while they rise back in.
 
 import * as diag from "./diag";
 import * as frames from "./frames";
 import type { CardInstance } from "./cards";
-import { tokenMs } from "./boot-cover";
+import { liftDelay, tokenMs } from "./boot-cover";
 import { motionReduced } from "./motion";
+import { holdPaint } from "./paint-pin";
 import "./styles/onboarding.css";
 
 const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>';
@@ -60,6 +63,8 @@ export interface PagedHandle {
 }
 
 let open: { name: string; close: () => void } | null = null;
+/** A closed card still on screen while its close motion runs; `finish` ends it at once. */
+let closing: { card: HTMLElement; finish: () => void } | null = null;
 /** The paged card on screen now, if any: its name. */
 export const pagedOpen = (): string | null => open?.name ?? null;
 
@@ -84,6 +89,8 @@ export function openPagedCard(spec: PagedSpec): PagedHandle | null {
   const host = document.querySelector<HTMLElement>(".app-body");
   if (!host) return null;
   open?.close();
+  // A card still leaving goes at once: never two on screen (a reopen right after a close).
+  closing?.finish();
 
   const pages = spec.pages;
   const byId = (id: string) => pages.find((p) => p.id === id);
@@ -228,15 +235,109 @@ export function openPagedCard(spec: PagedSpec): PagedHandle | null {
     closed = true;
     sizeWatch.disconnect();
     for (const p of [...leaving]) dropPage(p);
-    if (current) dropPage(current);
+    const last = current;
     current = null;
-    card.remove();
     if (open?.close === close) open = null;
-    announce(false);
     document.removeEventListener("keydown", onKey);
-    diag.log(`${spec.name}:close`);
+    arriving?.(); // a close during the open: the cards behind stop fading out
+    // The close leaves the way an old page does in this skin (his call, 2026-11-02): up and out
+    // on the in-card nav tokens, as a page leaves on Next, while the cards behind come back in
+    // the skin's own entrance, the launch's rise (his call, the same day: Press's nav motion
+    // made the cards arrive too hard). The card is closed at once (onClosed, done); only its
+    // picture stays until the motion ends. Reduced motion, a skin with no nav motion, or a
+    // reveal under the launch cover (Let's Boogie, `revealApp`): it goes at once.
+    const m = cardMotion();
+    const drop = () => {
+      if (last) dropPage(last);
+      card.remove();
+      if (closing?.card === card) closing = null;
+    };
+    if (m) {
+      card.inert = true;
+      card.style.setProperty("pointer-events", "none"); // a press lands on the cards behind it
+      const end = frames.begin(`${spec.name}-close`, m.behindHidden ? "behind" : "");
+      // Each moving card holds a window-pinned paint in place (paint-pin.ts): no band in Glass.
+      const letGo = holdPaint(card);
+      const anim = card.animate([{ transform: m.center, opacity: 1 }, { transform: m.above, opacity: m.off }], { duration: m.dur, easing: m.ease, fill: "forwards" });
+      anim.oncancel = letGo;
+      if (m.behindHidden) {
+        // Each card from the launch's rise start, in its slot's turn (styles.css, data-boot
+        // "lift"); Happy's edge clouds fade with the first card.
+        const rise = { duration: m.riseDur, easing: m.riseEase, fill: "backwards" as const };
+        for (const el of document.querySelectorAll<HTMLElement>(".bento .panel")) {
+          const release = holdPaint(el);
+          const a = el.animate([{ opacity: 0, transform: m.rise }, { opacity: 1, transform: "none" }], { ...rise, delay: liftDelay(el) });
+          a.onfinish = release;
+          a.oncancel = release;
+        }
+        for (const el of document.querySelectorAll<HTMLElement>(".scene__cloud--edge")) el.animate([{ opacity: 0 }, { opacity: 1 }], rise);
+      }
+      closing = { card, finish: () => { anim.cancel(); end(); drop(); } };
+      anim.onfinish = () => { end(); letGo(); drop(); };
+    } else {
+      drop();
+    }
+    announce(false);
+    diag.log(`${spec.name}:close`, { motion: !!m });
     spec.onClosed?.();
     resolve();
+  }
+  /** The open's and the close's motion from the card's own tokens, or null for none. Read while
+   *  the cards behind are hidden: `--ob-cards-behind` says whether they are (a mod may show them). */
+  function cardMotion(): {
+    dur: number; ease: string; center: string; above: string; below: string; off: number; behindHidden: boolean;
+    riseDur: number; riseEase: string; rise: string; coverDur: number; coverEase: string;
+  } | null {
+    const dur = tokenMs("--nav-dur");
+    if (dur <= 0 || motionReduced() || document.documentElement.dataset.boot !== undefined) return null;
+    const css = getComputedStyle(card);
+    const tok = (n: string, d: string) => css.getPropertyValue(n).trim() || d;
+    return {
+      dur,
+      ease: tok("--nav-ease", "ease"),
+      center: tok("--nav-at-center", "none"),
+      above: tok("--ob-page-above", "none"),
+      below: tok("--ob-page-below", "none"),
+      off: Number(tok("--nav-off-opacity", "1")),
+      behindHidden: tok("--ob-cards-behind", "hidden") === "hidden",
+      riseDur: tokenMs("--boot-dur"),
+      riseEase: tok("--boot-ease", "ease"),
+      rise: tok("--boot-rise", "none"),
+      coverDur: tokenMs("--cover-in-dur"),
+      coverEase: tok("--cover-in-ease", "ease"),
+    };
+  }
+
+  /** The open's end for the cards behind (they fade out, then hide), or null when none runs. */
+  let arriving: (() => void) | null = null;
+  /** The open, the close's mirror (his OK, 2026-11-02): the card comes up from below as a new page
+   *  does on Next, on the same nav tokens, while the cards behind go the way a look change takes
+   *  them, the launch cover's fade in (--cover-in-dur / --cover-in-ease, appearance.ts's veil),
+   *  then hide (`data-ob-arriving` holds them visible until then). */
+  function arrive(): void {
+    const m = cardMotion();
+    diag.log(`${spec.name}:open`, { motion: !!m });
+    if (!m) return;
+    const end = frames.begin(`${spec.name}-open`, m.behindHidden ? "behind" : "");
+    const letGo = holdPaint(card);
+    const anim = card.animate([{ transform: m.below, opacity: m.off }, { transform: m.center, opacity: 1 }], { duration: m.dur, easing: m.ease });
+    anim.onfinish = () => { end(); letGo(); };
+    anim.oncancel = letGo;
+    if (!m.behindHidden || m.coverDur <= 0) return;
+    const root = document.documentElement;
+    root.dataset.obArriving = "";
+    const fades = [...document.querySelectorAll<HTMLElement>(".bento .panel, .scene__cloud--edge")].map((el) =>
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: m.coverDur, easing: m.coverEase, fill: "forwards" }),
+    );
+    let ended = false;
+    arriving = () => {
+      if (ended) return;
+      ended = true;
+      arriving = null;
+      delete root.dataset.obArriving;
+      fades.forEach((a) => a.cancel());
+    };
+    void Promise.all(fades.map((a) => a.finished)).then(() => arriving?.(), () => {});
   }
 
   card.querySelector(".onboarding__close")!.addEventListener("click", () => close());
@@ -249,6 +350,6 @@ export function openPagedCard(spec: PagedSpec): PagedHandle | null {
   showPage(spec.start && byId(spec.start) ? spec.start : pages[0].id);
   sizeWatch.observe(card.querySelector(".onboarding__nav")!);
   card.querySelector<HTMLElement>(".onboarding__close")!.focus({ preventScroll: true });
-  diag.log(`${spec.name}:open`);
+  arrive();
   return { close, show: showPage, done };
 }

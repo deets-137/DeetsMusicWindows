@@ -304,7 +304,12 @@ function setSoft(url: string | null): void {
 
 function placeSoft(): void {
   const box = document.querySelector<HTMLElement>(".app-body")?.getBoundingClientRect();
-  if (box) root.style.setProperty("--wallpaper-at", `${box.left}px ${box.top}px / ${box.width}px ${box.height}px`);
+  if (!box) return;
+  // Four parts, so a moving card can offset the copy by its own place (skin.css, paint-pin.ts).
+  root.style.setProperty("--wallpaper-x", `${box.left}px`);
+  root.style.setProperty("--wallpaper-y", `${box.top}px`);
+  root.style.setProperty("--wallpaper-w", `${box.width}px`);
+  root.style.setProperty("--wallpaper-h", `${box.height}px`);
 }
 
 async function bakeSoft(w: number, h: number): Promise<void> {

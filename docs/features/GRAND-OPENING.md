@@ -2,7 +2,7 @@
 status: project
 desk_test: passed 2026-10-23
 sources: [src/onboarding.ts, src/paged-card.ts, src/boot-cover.ts, src/onboarding-welcome.ts, src/onboarding-looks.ts, src/onboarding-fashion.ts, src/onboarding-preview.ts, src/onboarding-nitpicks.ts, src/onboarding-letter.ts, src/ocean.ts, src/metal.ts, src/vinyl.ts, src/album-color.ts, src/styles/onboarding.css, src/main.ts, src/compass.ts, src/styles/skin.css, src/pet.ts, index.html]
-updated: 2026-10-29
+updated: 2026-11-02
 ---
 # Grand opening — the startup screen
 
@@ -572,3 +572,72 @@ smaller grey of page 1's paragraphs); the signature in the title face.
 
 **Desk test:** Next from page 4 slides page 5 in; the nav bar shows five numbers and the cog;
 the letter reads in one column and scrolls in Midi and Mini; *Let's Boogie* runs the reveal (§9).
+
+## 12. The open's and the close's motion (built 2026-11-02)
+> **Part:** built · 2026-11-02 · desk test passed 2026-11-02 (his word, after the Glass card swap: "looks good")
+
+**His asks (2026-11-02):** close the update card gently, "use the motion the skin is already
+using", for the grand opening's close and the update card's close. Then, after a shots clip in
+Glass showed the open landing in one frame: the open as the close's mirror ("reuse tokens where
+possible and keep with precedent").
+
+**As built (`paged-card.ts` `close`):** the card leaves the way an old page leaves on Next in
+that skin: up and out (`--nav-at-center` → `--ob-page-above`) on `--nav-dur` / `--nav-ease`, to
+`--nav-off-opacity` (Press slides with no fade; Ocean and Cyber fade as they go). The cards
+behind (`.bento .panel`), when `--ob-cards-behind` hid them, come back in the skin's own
+entrance, the launch's rise: from `--boot-rise` and nothing, over `--boot-dur` on `--boot-ease`,
+one slot after the next by `--boot-stagger` (`liftDelay`, boot-cover.ts); Happy's edge clouds
+fade in on the same time. His call, the same day: the first build brought the cards in on the
+card's nav motion, and in Press that arrived too hard. `.app-body` clips the card at the title bar. The card is closed at
+once: Escape, `onClosed` and `done` run at the press (the walk starts on time); only its picture
+stays, inert and with no pointer, until the motion ends, and then its page unmounts. A card
+opened during the close ends that close at once. Reduced motion, or a skin with no nav time:
+it goes in one frame, as before. Under the launch cover (*Let's Boogie* runs the close
+inside `revealApp`, §9): no close motion, so the reveal's own rise is the only one. `frames` times it as `<name>-close`; the close log line says
+`motion`.
+
+**The open (`arrive`):** the card comes up from below (`--ob-page-below` → `--nav-at-center`) on
+the same nav tokens, from `--nav-off-opacity`, as a new page does on Next. The cards behind fade
+out the way a look change takes them, the launch cover's fade in (`--cover-in-dur` /
+`--cover-in-ease`, appearance.ts's veil), and then hide: `data-ob-arriving` on the root keeps them
+visible until the fade ends (onboarding.css). A close during the open ends the fade at once.
+The same rules: none under reduced motion, a skin with no nav time, or the launch cover.
+`frames` times it as `<name>-open`; the open log line says `motion`. The recorded check is
+[paged-card-motion.json](../ops/checks/paged-card-motion.json) (Glass: the card lands at
++473 ms; the page's mount is a 112 ms long task before the motion starts, as it was before).
+
+**A window-pinned paint (2026-11-02, his report: "the title bars are darkening" in Glass).**
+Glass paints its frost as a copy of the canvas pinned to the window (`background-attachment:
+fixed`). Any transform on a card, even 0.01 px, makes the card the box that copy is drawn
+against: it slips by the title bar's height, and the card's top shows a dark band (the
+`glass-band` snaps: rest, a tiny transform, half opacity; only the transform shows it). It was in
+every Glass card motion: this open and close, the launch and look-change rise, and the card swap.
+A first fix moved Glass by fade alone; his call: "I like the slide ... can we use the slide
+instead of a simple fade?" So the slide stays, and the moving card holds its copy in place
+instead (`src/paint-pin.ts` `holdPaint`):
+- Glass's frost layers take five values from the base layer: `--pin-attach` (fixed), `--pin-x`,
+  `--pin-y` (0px), `--pin-w`, `--pin-h` (100%). They are declared on `<html>` and again on each
+  `.panel` and `.grow-shell__fill`, so each card resolves them with its own values. The
+  wallpaper's soft copy takes its box as four values too (`--wallpaper-x/-y/-w/-h`, wallpaper.ts).
+- While a card moves, `holdPaint` sets them on it: attached to the card (`scroll`), offset by its
+  resting padding box in the window, sized to the window. At the resting place that draws the
+  same pixels as the pinned copy; during the motion the copy moves with the card. The release
+  takes them off. A skin opts in with `--paint-pinned: 1` (Glass with Fancy Glass off); for any
+  other skin a hold does nothing.
+- The callers: this card's open and close, the cards' rise on the close, the launch rise and
+  *Let's Boogie* (`holdRise`, boot-cover.ts), the look change's rise (appearance.ts), and the
+  card swap's out and in steps (card-swap.ts, released in `clear`). The grow shell still moves by
+  opacity (its own rule).
+- Recorded after: [paged-card-motion.json](../ops/checks/paged-card-motion.json) and
+  [glass-rise.json](../ops/checks/glass-rise.json) (`--tag held`): the slide and the settle, no
+  band. The card swap is not recorded (no script drives a swap yet): his hand test.
+
+**What Claude decided inside his call:** upward (the way Next sends a page) rather than
+downward; the cards' rise starts with the card's leave (not after it); the page unmounts after
+the motion, not before; no close motion under the launch cover.
+
+**Desk test (his):** in Glass, swap two cards with a slot's card picker: no dark band under either
+title while they move. In each skin, open the update card (Updates panel › *See the new
+settings*): it rises from below while the cards fade out. Close it with the ×, then with Escape: the card leaves upward in that skin's page
+motion, and the cards come in under it. Run `npm run dev:fresh` and press *Let's Boogie*: the
+same. Close and reopen fast: one card, no flash. Reduce motion on: it closes in one frame.

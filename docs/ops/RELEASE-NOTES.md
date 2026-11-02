@@ -55,6 +55,10 @@ new settings rows. Now Playing and Queue in Max chooses which side the playing c
 appear while you have 1/2/4 other cards on screen. Queue in the full player sets which side of
 the player the queue falls in while the player is expanded to be fullscreen.
 
+**Mouse back button support.** The back button on your mouse can now be used to go back one step
+in the card your pointer is over, like leaving an album you opened for details. It’s the same
+step as Escape or the card’s Back arrow.
+
 **Fixes.** The app no longer keeps trying to reconnect to a listening room that ended while it
 was closed, asleep or offline.
 

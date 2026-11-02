@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 818 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 824 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -544,7 +544,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 
 | Token | Base | Overridden by | Note |
 |---|---|---|---|
-| `--panel-paint` | `var(--panel)` | glass | .panel paints --panel-paint. A skin with sand edges sets it transparent and shows --panel on .panel::before instead, broken into grains over and shows --panel on .panel::before instead, broken into grains over --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --panel itself opaque: album-color.ts reads it for the contrast guard. |
+| `--panel-paint` | `var(--panel)` | — | .panel paints --panel-paint. A skin with sand edges sets it transparent and shows --panel on .panel::before instead, broken into grains over and shows --panel on .panel::before instead, broken into grains over --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --sand-reach, with --sand-ink specks on .panel::after (styles.css). Keep --panel itself opaque: album-color.ts reads it for the contrast guard. |
 | `--panel-blend` | `normal` | metal | Paint hooks (docs/features/metal.md §4.2, Step 2): off in every skin but Metal. --panel-blend: the card paint's layers blend (a texture over its fill). --app-canvas-color / -blend: a color under the page's canvas pattern, and the blend. --control-paint (+ -size, -blend, --control-shadow): a texture and an edge light on the control family (icon squares, Library pills and buttons), over its own fill. --accent-sheen: a polished face over the accent fills (Library Play, the scrubber's fill). |
 | `--app-canvas-color` | `transparent` | metal |  |
 | `--app-canvas-blend` | `normal` | metal |  |
@@ -812,6 +812,12 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--ob-page-below` | `translateY(100%)` | — |  |
 | `--ob-hi-size` | `calc(var(--fs-title) * 2.4)` | — | page 1's "Hi": the card title's face, large |
 | `--ob-cards-behind` | `hidden` | — | the cards under the open card: hidden in every skin (his call, 2026-10-22), so only the canvas shows; a skin or mod may set `visible` |
+| `--paint-pinned` | `0` | glass | 1 = the card's paint is pinned to the window (`background-attachment: fixed`: Glass's painted frost). A transform on a card makes the card the box that paint is drawn against, so the copy slips by the title bar's height and the card's top shows a dark band (2026-11-02, his report). While such a card moves, src/paint-pin.ts holds its copy in place: it sets the --pin-* below on the card (attached to the card, offset by where the card rests, the window's size), so the copy draws the same pixels and moves with the card. At rest they are these defaults: the copy is pinned to the window. GRAND-OPENING.md §12. |
+| `--pin-attach` | `fixed` | — |  |
+| `--pin-x` | `0px` | — |  |
+| `--pin-y` | `0px` | — |  |
+| `--pin-w` | `100%` | — |  |
+| `--pin-h` | `100%` | — |  |
 | `--ob-thumb-h` | `88px` | — | page 2's drawings of a window and its cards (§7): their height, the gap between the boxes, and the boxes' corners — a share of the skin's own card corner, so Press stays square |
 | `--ob-thumb-gap` | `var(--space-half)` | — |  |
 | `--ob-thumb-radius` | `calc(var(--panel-radius) * 0.3)` | — |  |
@@ -1206,19 +1212,19 @@ reader is a token nothing uses.
 | `--grow-body-fade` | `0.09s` | — | full-player.ts, styles.css |
 | `--grow-collapse-dur` | `0.24s` | — | card-grow.ts, present.ts, styles.css, styles/skin.css |
 | `--grow-rows-stagger` | `0.012s` | — | card-grow.ts, styles.css, styles/skin.css |
-| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | full-player.ts, styles/skin.css |
-| `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber | full-player.ts |
+| `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | full-player.ts, layout.ts, styles/skin.css |
+| `--player-ease` | `var(--grow-ease)` | press, ocean, glass, cyber | full-player.ts, layout.ts |
 | `--player-collapse-dur` | `var(--grow-collapse-dur)` | press, ocean, glass, cyber | full-player.ts |
 | `--player-art-wait` | `0.25s` | — | full-player.ts, styles/skin.css |
 | `--fly-dur` | `0.42s` | press, ocean | handoff.ts, styles.css, styles/skin.css |
 | `--fly-ease` | `var(--nav-ease)` | press, ocean, cyber | styles.css, styles/skin.css |
-| `--boot-dur` | `0.8s` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css, styles/skin.css |
+| `--boot-dur` | `0.8s` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, paged-card.ts, styles.css, styles/skin.css |
 | `--boot-cover-out` | `var(--boot-dur)` | cyber | styles.css |
-| `--boot-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | press, ocean, glass, cyber | styles.css |
+| `--boot-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | press, ocean, glass, cyber | paged-card.ts, styles.css |
 | `--boot-stagger` | `70ms` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css |
 | `--boot-safety` | `4s` | — | boot-cover.ts, styles.css, styles/skin.css |
-| `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, styles.css |
-| `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | styles.css |
+| `--cover-in-dur` | `0.22s` | press, ocean, glass, cyber | appearance.ts, boot-cover.ts, paged-card.ts, styles.css |
+| `--cover-in-ease` | `cubic-bezier(0.4, 0, 1, 1)` | ocean | paged-card.ts, styles.css |
 | `--theme-morph-dur` | `500ms` | metal | appearance.ts, styles.css |
 | `--theme-morph-ease` | `ease-in-out` | — | styles.css |
 | `--theme-morph-hand-ease` | `ease-out` | — | appearance.ts, styles.css |

@@ -1,0 +1,50 @@
+{
+  "about": "Glass's look change on the dev app: a skin change into Glass plays the launch cover's veil, then Glass's own rise. Its rise moves Glass's cards with a transform; before 2026-11-02 that slipped the window-pinned frost and drew a dark band under each title, and now each moving card holds its frost in place (paint-pin.ts, GRAND-OPENING.md §12). The skin and theme are set for the shot and put back.",
+  "desk_test": "features/GRAND-OPENING.md §12",
+  "made": "2026-11-02",
+  "pass": "Each probe's expect holds. In the strip: the cards come in under the lifting cover with no dark band under any title, and nothing jumps at the end.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/glass-rise.json   (needs `npm run dev:app` running, its window on screen)",
+  "shots": [
+    {
+      "id": "glass-look-change",
+      "covers": "features/GRAND-OPENING.md",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 6,
+      "settings": {
+        "skin": "press",
+        "theme": "black-red",
+        "glassFancy": false,
+        "appearanceMotion": true
+      },
+      "steps": [
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify({ skin: document.documentElement.dataset.skin })",
+          "expect": {
+            "skin": "press"
+          },
+          "name": "rest"
+        },
+        {
+          "eval": "window.__store.set('skin', 'glass')",
+          "frames": 90,
+          "name": "switch"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "probe": "JSON.stringify({ skin: document.documentElement.dataset.skin, boot: document.documentElement.dataset.boot ?? null })",
+          "expect": {
+            "skin": "glass",
+            "boot": null
+          },
+          "name": "landed"
+        }
+      ]
+    }
+  ]
+}

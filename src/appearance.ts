@@ -21,7 +21,7 @@
 import { effective } from "./settings-store";
 import * as frames from "./frames";
 import { mark } from "./marks";
-import { tokenMs, nextFrame, liftSteps } from "./boot-cover";
+import { tokenMs, nextFrame, liftSteps, holdRise } from "./boot-cover";
 import type { SkinName } from "./skin";
 import { motionReduced } from "./motion";
 
@@ -48,6 +48,7 @@ interface Job {
 let phase: "veil" | "wait" | "lift" | null = null;
 let jobs: Job[] = [];
 let timer = 0;
+let letGoRise: (() => void) | null = null; // the rising cards hold Glass's frost (paint-pin.ts)
 let endFrames: (() => void) | null = null;
 let frameDetail = ""; // the open window's detail, repeated on its lift-only line
 
@@ -82,6 +83,8 @@ export function withAppearanceTransition(
   if (opts.by === "agent") root.dataset.bootBy = "agent"; // …unless an agent change is in it
   if (joining) return; // joins the cover already coming in
   window.clearTimeout(timer);
+  letGoRise?.(); // a new cover over a lift: the cards stop moving under it
+  letGoRise = null;
   // Name the skin that TIMES the lift: the incoming one on a skin change, else the one
   // already on (a theme or surface change rises on the current skin's --boot-* tokens).
   // Without it every line read "skin" and a slow switch could not be pinned on a skin.
@@ -205,6 +208,7 @@ async function swap(): Promise<void> {
   if (jobs.length) return swap(); // a change arrived while the fonts loaded or the window resized
 
   phase = "lift";
+  letGoRise = holdRise();
   root.dataset.boot = "lift";
   const slots = liftSteps() + 1;
   const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * liftSteps();
@@ -213,6 +217,8 @@ async function swap(): Promise<void> {
   frames.during("appearance-lift", total, `${frameDetail} slots=${slots}`);
   timer = window.setTimeout(() => {
     phase = null;
+    letGoRise?.();
+    letGoRise = null;
     if (root.dataset.boot === "lift") {
       delete root.dataset.boot;
       delete root.dataset.bootBy;

@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-14
-sources: [src/row-drag.ts, src/row-pick.ts]
-updated: 2026-10-14
+sources: [src/row-drag.ts, src/row-pick.ts, src/browser-defaults.ts, src/list-keys.ts]
+updated: 2026-11-02
 ---
 # DeetsMusic — Drag and drop between cards
 
@@ -155,6 +155,43 @@ target until the drop, `frames.begin("drag", label)` telemetry (label `cross` fo
   F7 caret browsing, Alt+Left back): WebView2 `AreBrowserAcceleratorKeysEnabled = false` on
   the main window (Rust, `with_webview`). Release only, so F12 devtools stay in dev. The
   app's own Ctrl shortcuts (`main.ts`) are page listeners and keep working.
+
+### 6a. The mouse's back button (built 2026-11-02)
+> **Part:** built · 2026-11-02 · desk test open
+
+**A user's ask (2026-11-02, through him):** the mouse's back button goes back from a drill in a
+card, or in a one-card layout. **His call (1A):** the card under the pointer takes the step.
+
+**What Windows and WebView2 give:** the back button is XButton1 (`WM_XBUTTONDOWN` / `UP`); left
+to Windows, it becomes `WM_APPCOMMAND` "browser back". WebView2 passes the press to the page as
+`pointerdown`, `mousedown`, `mouseup` and `auxclick` with `button === 3` (forward: 4). Chromium
+runs its own history step as `mouseup`'s default action, so a `preventDefault()` on `mouseup`
+stops it (one on `auxclick` does not). A mouse program (Logitech Options and others) can send
+the keyboard's Browser Back key instead (`keydown`, `key === "BrowserBack"`). No Rust is needed.
+
+**As built (`browser-defaults.ts`):**
+- `mouseup` with button 3 or 4: `preventDefault()` always (the page has no history; a step there
+  must never reach the webview). Button 3: one Back step in the `.panel` under the pointer.
+  Button 4 does nothing (no forward step exists).
+- The step is the card's own: Escape's step from `wireListKeys` (`backIn` in list-keys.ts, a
+  registry of each list's `back`; the collection card closes its search first, then goes back
+  one drill; Rulez folds the open rule; the Album Reviews card leaves its entry). A card with no
+  list step: its visible Back button (`.panel__back[aria-label="Back"]`), so the update card's
+  Older page goes back to its search too. Nothing to go back to: nothing happens.
+- The Browser Back key: the same step, in the card under the pointer's last place.
+- `ui:back` logs each press: `how` (mouse | key), the card's slot, `took`.
+
+**What Claude decided inside his call:** the forward button is stopped and does nothing; the
+Browser Back key does the same as the button; a card's list step comes before its Back button.
+
+**Desk test (his):**
+1. Library: open an album (a drill). Point at the Library and press the mouse's back button:
+   the album closes, the Library shows its list.
+2. Two drills deep (an album, then its artist): two presses, two steps.
+3. A search open in the Library: the first press closes the search, as Escape does.
+4. Point at another card with no drill and press: nothing happens; the Library's drill stays.
+5. Max with one card: the same as step 1.
+6. Press the forward button anywhere: nothing happens, and the page does not reload.
 
 ---
 

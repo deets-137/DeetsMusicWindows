@@ -809,6 +809,19 @@
   --ob-page-below:   translateY(100%);
   --ob-hi-size:      calc(var(--fs-title) * 2.4);   /* page 1's "Hi": the card title's face, large */
   --ob-cards-behind: hidden;        /* the cards under the open card: hidden in every skin (his call, 2026-10-22), so only the canvas shows; a skin or mod may set `visible` */
+  /* 1 = the card's paint is pinned to the window (`background-attachment: fixed`: Glass's painted
+     frost). A transform on a card makes the card the box that paint is drawn against, so the
+     copy slips by the title bar's height and the card's top shows a dark band (2026-11-02, his
+     report). While such a card moves, src/paint-pin.ts holds its copy in place: it sets the
+     --pin-* below on the card (attached to the card, offset by where the card rests, the
+     window's size), so the copy draws the same pixels and moves with the card. At rest they are
+     these defaults: the copy is pinned to the window. GRAND-OPENING.md §12. */
+  --paint-pinned:    0;
+  --pin-attach:      fixed;
+  --pin-x:           0px;
+  --pin-y:           0px;
+  --pin-w:           100%;
+  --pin-h:           100%;
   /* page 2's drawings of a window and its cards (§7): their height, the gap between the boxes,
      and the boxes' corners — a share of the skin's own card corner, so Press stays square */
   --ob-thumb-h:      88px;
@@ -1550,35 +1563,14 @@
      · ON (the block after this one): the LIVE backdrop-filter. */
   --panel-backdrop:     none;
   --panel-isolation:    isolate;
+  --paint-pinned:       1;            /* the painted frost is window-pinned: a moving card holds it (--paint-pinned) */
   --aurora-drift:       none;
-  --glass-frost-layer:  calc(-1 * var(--aurora-slack)) calc(var(--titlebar-h) - var(--aurora-slack)) /
-                        calc(100% + 2 * var(--aurora-slack)) calc(100% - var(--titlebar-h) + 2 * var(--aurora-slack))
-                        no-repeat fixed;
   /* the aurora's colors: the theme's go / stop / pause, or the album's (or the chosen picture's)
      while the wallpaper shows (wallpaper.ts sets --canvas-go/-stop/-pause on <html>) */
   --canvas-go:    var(--go);
   --canvas-stop:  var(--stop);
   --canvas-pause: var(--pause);
-  /* the frost's layers: the aurora copy, then the wallpaper's soft copy (a transparent stand-in
-     when there is none, so the layer count never changes and a change can crossfade), then the
-     ground. --wallpaper-at is the canvas box, set by wallpaper.ts. */
-  --glass-frost-paint: var(--glass-frost-glow),
-    var(--wallpaper-soft, linear-gradient(transparent, transparent)) var(--wallpaper-at, 0 0 / 100% 100%) no-repeat fixed,
-    var(--glass-frost-ground);
   --glass-frost-ground: oklch(from var(--canvas) l calc(c * var(--glass-frost-sat)) h);
-  --glass-frost-glow:
-    radial-gradient(42% 52% at 16% 10%,
-      color-mix(in srgb, var(--glass-frost-go) min(100%, 50% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--glass-frost-go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%)
-      var(--glass-frost-layer),
-    radial-gradient(46% 56% at 86% 22%,
-      color-mix(in srgb, var(--glass-frost-stop) min(100%, 44% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--glass-frost-stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%)
-      var(--glass-frost-layer),
-    radial-gradient(52% 52% at 60% 96%,
-      color-mix(in srgb, var(--glass-frost-pause) min(100%, 38% * var(--glass-glow)), transparent),
-      color-mix(in srgb, var(--glass-frost-pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%)
-      var(--glass-frost-layer);
   /* the aurora's own hues, saturated the way the live frost's saturate() does (keep the three
      gradients above in step with --aurora-1..3 below) */
   --glass-frost-go:    oklch(from var(--canvas-go) l calc(c * var(--glass-frost-sat)) h);
@@ -1596,7 +1588,6 @@
       color-mix(in srgb, var(--go) calc(60% * var(--glass-light)), transparent),
       color-mix(in srgb, var(--stop) calc(40% * var(--glass-light)), transparent) 55%,
       color-mix(in srgb, var(--pause) calc(30% * var(--glass-light)), transparent));
-  --panel-paint: var(--glass-backlight-paint), var(--glass-frost-paint);
 
   /* 4. tint — an alpha of --surface, laid OVER the backlight as a full-size inset
      shadow (the last --shadow-card entry: a box paints its background, then its inset
@@ -1647,7 +1638,8 @@
   /* album-colored NP text — the aurora sits under the text only here */
   --np-album-text: 1;
 
-  /* launch + look change — panes settle forward into place: soft and slow, a slight scale */
+  /* launch + look change — panes settle forward into place: soft and slow, a slight scale
+     (the moving cards hold their frost: --paint-pinned) */
   --boot-dur:     0.9s;
   --boot-ease:    cubic-bezier(0.4, 0, 0.2, 1);
   --boot-rise:    translateY(6px) scale(0.985);
@@ -1709,6 +1701,40 @@
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z' fill='%23000'/%3E%3C/svg%3E");
 }
 
+/* Glass's frost layers, pinned to the window (the painted form). Declared on <html> and again on
+   each card, so each card resolves them with its own --pin-* (base block): a moving card holds
+   its copy in place (src/paint-pin.ts, GRAND-OPENING.md §12). The layers: the aurora copy, then
+   the wallpaper's soft copy (a transparent stand-in when there is none, so the layer count never
+   changes and a change can crossfade; its box --wallpaper-x/-y/-w/-h is the canvas box, set by
+   wallpaper.ts), then the ground. */
+[data-skin="glass"],
+[data-skin="glass"] :is(.panel, .grow-shell__fill) {
+  --glass-frost-layer:  calc(-1 * var(--aurora-slack) - var(--pin-x)) calc(var(--titlebar-h) - var(--aurora-slack) - var(--pin-y)) /
+                        calc(var(--pin-w) + 2 * var(--aurora-slack)) calc(var(--pin-h) - var(--titlebar-h) + 2 * var(--aurora-slack))
+                        no-repeat var(--pin-attach);
+  --glass-frost-paint: var(--glass-frost-glow),
+    var(--wallpaper-soft, linear-gradient(transparent, transparent))
+      calc(var(--wallpaper-x, 0px) - var(--pin-x)) calc(var(--wallpaper-y, 0px) - var(--pin-y)) /
+      var(--wallpaper-w, var(--pin-w)) var(--wallpaper-h, var(--pin-h)) no-repeat var(--pin-attach),
+    var(--glass-frost-ground);
+  --glass-frost-glow:
+    radial-gradient(42% 52% at 16% 10%,
+      color-mix(in srgb, var(--glass-frost-go) min(100%, 50% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-go) min(100%, 20% * var(--glass-glow)), transparent) 45%, transparent 80%)
+      var(--glass-frost-layer),
+    radial-gradient(46% 56% at 86% 22%,
+      color-mix(in srgb, var(--glass-frost-stop) min(100%, 44% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-stop) min(100%, 18% * var(--glass-glow)), transparent) 45%, transparent 80%)
+      var(--glass-frost-layer),
+    radial-gradient(52% 52% at 60% 96%,
+      color-mix(in srgb, var(--glass-frost-pause) min(100%, 38% * var(--glass-glow)), transparent),
+      color-mix(in srgb, var(--glass-frost-pause) min(100%, 15% * var(--glass-glow)), transparent) 45%, transparent 82%)
+      var(--glass-frost-layer);
+  --panel-paint: var(--glass-backlight-paint), var(--glass-frost-paint);
+}
+/* Fancy Glass's paint on each card too: the rule above would otherwise win there. */
+[data-skin="glass"][data-glass-fancy="on"] :is(.panel, .grow-shell__fill) { --panel-paint: var(--glass-backlight-paint); }
+
 /* Fancy Glass on: the live frost. A real blur of whatever is behind the card; its
    brightness() undoes the canvas dim (1 / (1 − dim)), so only the gaps get darker. The
    aurora drifts again. The cost: DEBUGGING.md §Fancy Glass. */
@@ -1717,6 +1743,7 @@
   --panel-isolation: auto;
   --aurora-drift:    aurora-drift;
   --panel-paint:     var(--glass-backlight-paint);
+  --paint-pinned:    0;               /* the live frost pins nothing: transforms are safe */
 }
 
 /* Glass with a wallpaper (COVER-WALLPAPER.md row 7): a picture is louder than the aurora, so

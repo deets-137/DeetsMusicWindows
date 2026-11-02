@@ -440,6 +440,12 @@ song an update restart left in the queue (queue-persist.ts restores it; Play res
 plays it and turns to Pause; Next and Previous change the cover. With *New settings* long enough
 to scroll, the row stays put. Clear the queue: the row goes. Midi: no row.
 
+### 3.20 The open's and the close's motion (built 2026-11-02)
+> **Part:** built · 2026-11-02; desk test passed 2026-11-02 (his word: "looks good").
+
+The card opens and closes in the skin's own page motion, the same for the grand opening:
+[GRAND-OPENING.md](GRAND-OPENING.md) §12.
+
 ## 4. Not in scope
 - A toast for a small update (his call 3).
 - Changing a value without the user's press.

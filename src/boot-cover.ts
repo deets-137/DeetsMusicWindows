@@ -19,6 +19,7 @@ import * as frames from "./frames";
 import * as diag from "./diag";
 import { launchMark } from "./launch-perf";
 import { motionReduced } from "./motion";
+import { holdPaints } from "./paint-pin";
 
 const CAP_MS = 2500;
 
@@ -52,6 +53,14 @@ export const nextFrame = (): Promise<void> => new Promise((r) => requestAnimatio
 
 // Each panel's step in the lift's stagger (styles.css, html[data-boot="lift"]).
 const STAGGER_STEP: Record<string, number> = { np: 0, left: 1, right: 2, queue: 3, c: 4, d: 5 };
+/** One panel's delay in the lift's stagger, in ms: the paged card's close brings the cards back
+ *  in the skin's own rise (GRAND-OPENING.md §12). */
+export const liftDelay = (p: HTMLElement): number => (STAGGER_STEP[p.dataset.slot ?? ""] ?? 0) * tokenMs("--boot-stagger");
+
+/** The cards about to rise hold a window-pinned paint in place for the lift (paint-pin.ts): Glass's
+ *  rise moves its cards, and its frost would slip under each title. Call in `wait`, before `lift`. */
+export const holdRise = (): (() => void) => holdPaints(document.querySelectorAll<HTMLElement>(".bento .panel"));
+
 /** The last stagger step among the panels on screen: the lift ends that many steps after the
  *  first. A hidden slot (Midi's c and d, Layout for Max's unused slots) does not count, and a
  *  count of panels was wrong for one-card Max, whose Queue is step 3 with three panels shown. */
@@ -85,10 +94,12 @@ export async function revealApp(swap: () => void): Promise<void> {
   await nextFrame();
   await nextFrame();
   const end = frames.begin("boot", "reveal");
+  const letGo = holdRise();
   root.dataset.boot = "lift";
   diag.log("boot:reveal");
   await wait(tokenMs("--boot-dur") + tokenMs("--boot-stagger") * liftSteps() + 50);
   end();
+  letGo();
   if (root.dataset.boot === "lift") delete root.dataset.boot;
 }
 
@@ -127,10 +138,12 @@ export function runBootCover(restored: Promise<unknown>, ready: Promise<unknown>
     await nextFrame();
     await nextFrame();
     const end = frames.begin("boot");
+    const letGo = holdRise();
     root.dataset.boot = "lift";
     const total = tokenMs("--boot-dur") + tokenMs("--boot-stagger") * liftSteps();
     window.setTimeout(() => {
       end();
+      letGo();
       if (root.dataset.boot === "lift") delete root.dataset.boot;
       done();
     }, total + 50);

@@ -170,6 +170,15 @@ item closes, delete it here and write the day in WORKLOG.md.
   [MAX-CARDS.md](features/MAX-CARDS.md) §13, [fullscreen-player.md](features/fullscreen-player.md)
   §18.2. The DeetsSupport copy of the usage allow-list (`src/usage-keys.js`) is committed, not
   deployed: until it is, the worker drops the two keys from reports.
+- **The mouse's back button (2026-11-02).** A user's ask, his call 1A: the card
+  under the pointer goes back one step (`browser-defaults.ts`, `backIn` in list-keys.ts). BUILT,
+  desk test open: [DRAG-DROP.md](architecture/DRAG-DROP.md) §6a. Its 1.3.1 note is written.
+- **The update card and the grand opening open and close in the skin's page motion (2026-11-02).**
+  His ask. BUILT; his test passed ("looks good"): [GRAND-OPENING.md](features/GRAND-OPENING.md) §12.
+  In Glass a transform drew a dark band under each title (the window-pinned frost); every moving
+  card now holds its frost in place (`src/paint-pin.ts`): this card, the launch and look-change
+  rise, the card swap (his hand test of the swap passed). Neither has a release note: they are
+  polish inside 1.3.1's other changes unless he wants one.
 
 ### Live, waiting on his test or his look
 

@@ -21,6 +21,8 @@
    token; `visible` shows them again), so the card sits on the canvas alone (Happy's sky and grass). A cloud that sits on
    a card's edge goes with the cards. */
 :root[data-onboarding="open"] :is(.bento, .scene__cloud--edge) { visibility: var(--ob-cards-behind); }
+/* The card's open (paged-card.ts `arrive`): the cards stay shown while they fade out, then hide. */
+:root[data-onboarding="open"][data-ob-arriving] :is(.bento, .scene__cloud--edge) { visibility: visible; }
 
 /* The nav bar (GRAND-OPENING.md §2, §3): a twentieth of the card on the left, a line on its
    right edge. Its buttons are icon squares as wide as the bar: the pages from the top, the

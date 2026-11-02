@@ -1,0 +1,62 @@
+{
+  "about": "The paged card's open and close (the update card; the grand opening uses the same code) on the dev app in Glass, the heaviest skin to draw. The open: the card comes up from below in the skin's page motion while the cards behind fade out. The close: it leaves upward while the cards rise back in their launch stagger. The skin is set for the shot and put back.",
+  "desk_test": "features/GRAND-OPENING.md §12",
+  "made": "2026-11-02",
+  "pass": "Each probe's expect holds. In the strips: the open's first frame still shows the cards, the card rises from the bottom edge, and nothing jumps at its landing; the close's card leaves upward, and the cards come in one slot after the next. In the console file: the updatecard-open and updatecard-close frames lines.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/paged-card-motion.json   (needs `npm run dev:app` running, its window on screen)",
+  "shots": [
+    {
+      "id": "updatecard-glass",
+      "kind": "clip",
+      "source": "dev",
+      "seconds": 8,
+      "settings": {
+        "skin": "glass"
+      },
+      "steps": [
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify({ skin: document.documentElement.dataset.skin, open: !!document.querySelector('.onboarding') })",
+          "expect": {
+            "skin": "glass",
+            "open": false
+          },
+          "name": "rest"
+        },
+        {
+          "eval": "void window.__updateCard.open()",
+          "frames": 40,
+          "name": "open"
+        },
+        {
+          "wait": 2000
+        },
+        {
+          "probe": "JSON.stringify({ open: !!document.querySelector('.onboarding--updatecard') })",
+          "expect": {
+            "open": true
+          },
+          "name": "opened"
+        },
+        {
+          "eval": "document.querySelector('.onboarding--updatecard .onboarding__close').click()",
+          "frames": 40,
+          "name": "close"
+        },
+        {
+          "wait": 1500
+        },
+        {
+          "probe": "JSON.stringify({ left: document.querySelectorAll('.onboarding').length })",
+          "expect": {
+            "left": 0
+          },
+          "name": "closed"
+        }
+      ],
+      "covers": "features/GRAND-OPENING.md"
+    }
+  ]
+}

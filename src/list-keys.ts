@@ -9,7 +9,8 @@
 //   PageDown/Up    ten rows
 //   Enter Space    what a click does (a real button inside a row keeps its own keys)
 //   Menu, Shift+F10  what a right-click does, at the row
-//   Escape         back one step (the card's Back button), when there is one
+//   Escape         back one step (the card's Back button), when there is one; the mouse's back
+//                  button and the Browser Back key take the same step (`backIn`, browser-defaults.ts)
 //
 // Rows carry `tabindex="-1"` only once they take the focus, so a re-render costs nothing and
 // the tab order stays one stop per list. The focus ring is the theme's (styles.css §List keys).
@@ -32,6 +33,17 @@ export interface ListKeysOptions {
   revealIndex?: (index: number) => HTMLElement | null;
   /** A windowed list: how many rows there are (for End). */
   count?: () => number;
+}
+
+/** Each wired list's Back step, so the mouse's back button can take it in the card under the
+ *  pointer (`backIn`). */
+const backs = new Map<HTMLElement, () => boolean>();
+
+/** Take one Back step in `panel` (a card): the first of its lists that has one to take. True
+ *  when a step was taken. */
+export function backIn(panel: Element): boolean {
+  for (const [el, back] of backs) if (el.isConnected && panel.contains(el) && back()) return true;
+  return false;
 }
 
 const KEYS = new Set(["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End", "PageDown", "PageUp", "Enter", " ", "ContextMenu", "F10", "Escape"]);
@@ -277,7 +289,9 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
   document.addEventListener("focusin", onElsewhere, true);
   document.addEventListener("keydown", onElsewhere, true);
   document.addEventListener("keydown", onParkedKey, true);
+  if (o.back) backs.set(container, o.back);
   return () => {
+    backs.delete(container);
     disarm();
     container.removeEventListener("keydown", onKey);
     container.removeEventListener("keydown", onAnyKey, true);
