@@ -68,6 +68,7 @@ const PLACERS = {
   "src/pet.ts": "a sprite's speech bubble over its head on the scene layer (happy.md §2.1a), not a popover",
   "src/context-menu.ts": "the menu itself",
   "src/collection-card.ts": "placePop: the Sort / View pop's panel, on makeDropdown",
+  "src/library-card.ts": "placeRefreshPop: the ⟳'s Quick / Full Refresh panel, placePop's shape hung from the right edge, on makeDropdown (DATA-ARCHITECTURE.md §5e)",
   "src/settings-card.ts": "the Settings menus' panels, on makeDropdown",
   "src/airplay.ts": "the Play on panel, portaled out of the volume flyout, on makeDropdown",
   "src/web.ts": "the web panel's artist results, on makeDropdown",

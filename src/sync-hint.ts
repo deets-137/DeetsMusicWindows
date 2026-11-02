@@ -13,8 +13,9 @@ export interface SyncStatus {
   total?: number;
 }
 
-/** The ⟳'s hint when no sync runs. */
-export const IDLE_HINT = "Reads your library from Apple Music again";
+/** The ⟳'s hint when no sync runs. A click is the Quick Refresh (2026-11-01); hover opens the
+ *  panel with Full Refresh. */
+export const IDLE_HINT = "Reads the songs you added in Apple Music since the last refresh";
 
 const fmt = (n: number) => n.toLocaleString();
 

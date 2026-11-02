@@ -771,10 +771,14 @@ pub async fn added_at_map(app: tauri::AppHandle) -> Result<Vec<(String, i64)>, S
 // One sync at a time. Overlapping invocations (double-triggered refresh, a card
 // re-mount racing the startup sync) would double the Apple traffic and interleave
 // progress events. The guard's Drop releases the flag on every exit path, and says
-// `{phase:"idle"}`: the Library ⟳ spins from the lock to its release, not from `start` to
-// `done`, because the artist pass and the heal run after `done` and still hold the lock
-// (2026-10-15: the ⟳ stood still while his clicks were refused).
+// `{phase:"idle"}`: the Library ⟳ spins from the lock to its release.
+// Since 2026-11-01 the lock covers the songs only: it is released right after `done`, so the
+// ⟳ stops when the songs are on screen and a click is taken again (before, the ⟳ spun ~11 s
+// longer while the artist pass read every artist). The tail (the artist pass, the heal, the
+// guests) runs after the release under `SYNC_TAIL`, so two tails never overlap: a second
+// sync's tail waits for the first one's.
 static SYNC_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
+static SYNC_TAIL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 struct SyncFlagGuard(AppHandle);
 impl Drop for SyncFlagGuard {
@@ -1230,17 +1234,26 @@ fn emit_sync_error(app: &AppHandle, message: &str, counts: Option<(usize, u32)>)
 /// it got, emits `{phase:"error"}`, and fails. `done` carries `changed`: how many rows really
 /// changed, so the front end can skip its reload when nothing did.
 ///
+/// `quick: true` (a click on the Library ⟳, or its Quick Refresh row, 2026-11-01) picks the
+/// pass by the launch's rule above, but it is the user's: it goes out like the full ⟳ does.
+/// Before, every ⟳ ran the full pass: 42 pages and every artist for 2 new songs (24 s).
+///
 /// The startup pass (`full` not true) is a background job (APPLE-CALLS.md §3): it skips its
 /// turn while Apple's back-off holds. The ⟳ and the sign-in pass are the user's and go out.
 #[tauri::command]
 pub async fn library_sync(
     full: Option<bool>,
     signin: Option<bool>,
+    quick: Option<bool>,
     app: AppHandle,
     apple_state: State<'_, AppleState>,
     db: State<'_, Db>,
 ) -> Result<u32, String> {
     let signin = signin.unwrap_or(false);
+    if quick.unwrap_or(false) && !signin {
+        crate::log::info("library: quick refresh (asked)");
+        return library_sync_run(Some(false), false, app, apple_state, db).await;
+    }
     if full.unwrap_or(false) || signin {
         return library_sync_run(full, signin, app, apple_state, db).await;
     }
@@ -1260,7 +1273,7 @@ async fn library_sync_run(
     if SYNC_IN_FLIGHT.swap(true, Ordering::SeqCst) {
         return Err("library sync already in progress".into());
     }
-    let _guard = SyncFlagGuard(app.clone());
+    let guard = SyncFlagGuard(app.clone());
 
     let dev = apple::developer_token()?;
     let user = apple_state
@@ -1350,6 +1363,9 @@ async fn library_sync_run(
     if why.is_empty() {
         match sync_incremental(&app, provider.clone(), &db, age.unwrap_or(0), changed, explain).await? {
             Incremental::Done(n) => {
+                // The songs are on screen: the lock goes, the tail follows (see SYNC_TAIL).
+                drop(guard);
+                let _tail = SYNC_TAIL.lock().await;
                 // S3: an artist count that moved is filled from the new songs first.
                 artist_catalog_pass(&app, &dev, &user, &db, false, true).await;
                 crate::heal::pass(&app, &dev, &user, &db).await; // songs Apple sent with no play id
@@ -1466,6 +1482,9 @@ async fn library_sync_run(
         serde_json::json!({ "phase": "done", "count": all.len(), "total": total, "changed": changed, "artists": true }),
     )
     .ok();
+    // The songs are on screen: the lock goes, the tail follows (see SYNC_TAIL).
+    drop(guard);
+    let _tail = SYNC_TAIL.lock().await;
     // The artist pass rides the sync (HOME.md §10.3). Only the weekly pass re-pages every
     // artist without asking (so an artist swapped for another one heals within a week);
     // the other passes ask Apple's artist count first, one `limit=1` call.

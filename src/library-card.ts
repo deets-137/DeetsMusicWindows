@@ -13,7 +13,9 @@
 // under every credited artist instead of fragmenting into one tile per credit.
 
 import { librarySync, onSyncBusy, onSyncEvent, onSyncStatus, syncBusy, syncStatus, type Track, type Artwork } from "./library";
-import { syncHint } from "./sync-hint";
+import { syncHint, IDLE_HINT } from "./sync-hint";
+import { makeDropdown } from "./dropdown";
+import { enterRows } from "./pop";
 import { showHintNow } from "./hint";
 import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange, noCatalogCopy, addTransientTracks, tracksLoaded } from "./track-store";
@@ -557,6 +559,29 @@ function artistsTracks(as: ArtistGroup[], list: () => Track[]): Track[] {
   return as.flatMap((a) => artistOrder(idx.tracksFor(a.name)));
 }
 
+// ── the refresh (2026-11-01, his design) ─────────────────────────────────────────
+// A click on the ⟳ is the Quick Refresh: the launch's pick (DATA-ARCHITECTURE.md §5a), the
+// newest songs only unless the count fell or the new songs do not explain the rise. Hover
+// opens a panel under it with Quick Refresh and Full Refresh. Before, every ⟳ was the full
+// pass: 42 pages and every artist for 2 new songs.
+export type RefreshKind = "quick" | "full";
+
+/** Run a refresh the user asked for (the ⟳, its panel, the Compass). False while a sync
+ *  runs: Rust would refuse it. The ⟳ also marks every saved featured-playlist list as old
+ *  (ARTIST-VIEW.md §4). */
+export function refreshLibrary(kind: RefreshKind): boolean {
+  if (syncBusy()) return false;
+  diag.log("library:refresh", { kind });
+  expireArtistInfo();
+  librarySync(kind === "full", false, kind === "quick").catch((e) => console.error("[sync]", e));
+  return true;
+}
+
+const REFRESH_ROWS: { kind: RefreshKind; label: string; hint: string }[] = [
+  { kind: "quick", label: "Quick Refresh", hint: "Reads only the songs you added since the last refresh; a click on the button does this too" },
+  { kind: "full", label: "Full Refresh", hint: "Reads your whole library again and removes the songs you deleted on other devices" },
+];
+
 // ── the card ────────────────────────────────────────────────────────────────────
 // The card owns its header markup (back chevron + title + refresh) and the engine's
 // .coll-body mount point, so it can be mounted into any slot.
@@ -567,7 +592,7 @@ const HEAD = `
     </button>
     <h2 class="panel__title">Library</h2>
     <div class="coll-views" data-coll-views hidden></div>
-    <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library" title="Reads your library from Apple Music again">
+    <button class="panel__action" id="library-refresh" type="button" aria-label="Refresh library" aria-haspopup="menu" data-hint-above title="${IDLE_HINT}">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"></polyline>
         <polyline points="1 20 1 14 7 14"></polyline>
@@ -845,9 +870,12 @@ export const libraryCard: CardDef = {
     // while the box is up, so the count moves under a resting pointer.
     // The empty card shows the same words (rootContext's emptyText), so it redraws with them.
     let emptyWords = "";
+    // The ⟳ panel's painter, set once the panel is made below (the first call is at once).
+    let paintPop: ((words: string) => void) | null = null;
     const unsubStatus = onSyncStatus((s) => {
       const words = syncHint(s);
       if (refreshBtn && refreshBtn.dataset.hint !== words) refreshBtn.title = words;
+      paintPop?.(s ? words : "");
       const shown = !tracks().length && s ? words : "";
       if (shown !== emptyWords) {
         emptyWords = shown;
@@ -868,15 +896,17 @@ export const libraryCard: CardDef = {
         libraryAddEnabled() && p.source !== "library" && p.kind !== "station" ? { highlight: host, drop: () => dropToLibrary(p) } : null,
     });
 
-    const triggerSync = () => librarySync().catch((e) => console.error("[sync]", e));
-    // The ⟳ also marks every saved featured-playlist list as old (ARTIST-VIEW.md §4).
-    refreshBtn?.addEventListener("click", () => {
-      // A sync runs (the ⟳ spins): Rust would refuse the click, so it does not go out
-      // (ideas/apple-calls.md §4). Logged, not a console error: the refusal is expected.
-      // The click shows the hint at once and the ⟳ dips once: the answer sits on the control.
-      if (syncBusy()) {
-        diag.log("library:refreshBusy", syncStatus());
-        if (refreshBtn) {
+    // The ⟳'s click is the Quick Refresh. Capture, with the dropdown's own click stopped, so a
+    // click never toggles the panel (the Pin button's pattern, pin.ts); hover opens it.
+    refreshBtn?.addEventListener(
+      "click",
+      (e) => {
+        e.stopImmediatePropagation();
+        // A sync runs (the ⟳ spins): Rust would refuse the click, so it does not go out
+        // (ideas/apple-calls.md §4). Logged, not a console error: the refusal is expected.
+        // The click shows the hint at once and the ⟳ dips once: the answer sits on the control.
+        if (!refreshLibrary("quick")) {
+          diag.log("library:refreshBusy", syncStatus());
           showHintNow(refreshBtn);
           refreshBtn.classList.remove("is-nudged");
           void refreshBtn.offsetWidth; // a second click while it dips starts the dip again
@@ -888,11 +918,100 @@ export const libraryCard: CardDef = {
           };
           refreshBtn.addEventListener("animationend", off);
         }
-        return;
-      }
-      expireArtistInfo();
-      void triggerSync();
+      },
+      { capture: true },
+    );
+
+    // The panel: the Library's own pop shell (.lib-pop, the Sort / View panels), portaled to
+    // <body> so the card's clip does not cut it, hung from the ⟳'s right edge. Its hover never
+    // follows the Hover-Menu setting (`fixedMode`, his call 2026-11-01).
+    const refreshPop = document.createElement("div");
+    refreshPop.className = "lib-pop lib-pop--end pop";
+    refreshPop.hidden = true;
+    refreshPop.dataset.frames = "lib-refresh-pop";
+    refreshPop.setAttribute("role", "menu");
+    refreshPop.setAttribute("aria-label", "Refresh library");
+    refreshPop.innerHTML = `
+      <div class="lib-pop__col" role="group">${REFRESH_ROWS.map(
+        (r) => `<button class="lib-pop__opt" type="button" role="menuitem" data-refresh="${r.kind}" title="${r.hint}">${r.label}</button>`,
+      ).join("")}</div>
+      <div class="lib-pop__status" data-refresh-status hidden></div>`;
+    document.body.appendChild(refreshPop);
+    const refreshRows = () => [...refreshPop.querySelectorAll<HTMLButtonElement>("[data-refresh]")];
+    const refreshStatus = refreshPop.querySelector<HTMLElement>("[data-refresh-status]")!;
+    /** While a sync runs the rows are off and the status line says how far it is (the ⟳'s
+     *  own hint words); the line enters when it appears under an open panel. */
+    function paintRefreshPop(words: string): void {
+      for (const b of refreshRows()) b.disabled = !!words;
+      const appearing = !!words && refreshStatus.hidden;
+      refreshStatus.textContent = words;
+      refreshStatus.hidden = !words;
+      if (appearing && !refreshPop.hidden) enterRows([refreshStatus]);
+    }
+    paintPop = paintRefreshPop;
+    paintRefreshPop(syncBusy() ? syncHint(syncStatus()) : "");
+    /** Under the ⟳, its right edge on the ⟳'s, clamped to the window; above it when there is
+     *  no room below. Layout, not the rect, so the .pop arrival's scale does not skew it. */
+    const placeRefreshPop = () => {
+      if (!refreshBtn) return;
+      const r = refreshBtn.getBoundingClientRect();
+      const cs = getComputedStyle(refreshPop);
+      const gap = parseFloat(cs.marginTop) || 0;
+      const pad = parseFloat(cs.getPropertyValue("--panel-edge-gap")) || 0;
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      const w = refreshPop.offsetWidth;
+      const h = refreshPop.offsetHeight;
+      refreshPop.style.left = `${Math.max(pad, Math.min(r.right - w, vw - w - pad))}px`;
+      const above = r.bottom + gap + h + pad > vh;
+      refreshPop.toggleAttribute("data-above", above);
+      refreshPop.style.top = `${above ? Math.max(pad, r.top - h - 2 * gap) : r.bottom}px`;
+    };
+    const refreshDrop = refreshBtn
+      ? makeDropdown({
+          root: refreshBtn,
+          trigger: refreshBtn,
+          panel: refreshPop,
+          fixedMode: "hover",
+          onOpen: () => {
+            placeRefreshPop();
+            enterRows(refreshPop.querySelectorAll(".lib-pop__opt, .lib-pop__status:not([hidden])"));
+          },
+        })
+      : null;
+    refreshPop.addEventListener("click", (e) => {
+      const row = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-refresh]");
+      if (!row || row.disabled) return;
+      refreshLibrary(row.dataset.refresh as RefreshKind);
+      refreshDrop?.close();
+      refreshBtn?.focus({ preventScroll: true });
     });
+    // The keyboard: ↓ on the ⟳ opens the panel on its first row; ↑ / ↓ move; Escape (the
+    // dropdown's) closes it and the focus goes back to the ⟳.
+    refreshBtn?.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowDown") return;
+      e.preventDefault();
+      refreshDrop?.open();
+      refreshRows().find((b) => !b.disabled)?.focus();
+    });
+    refreshPop.addEventListener("keydown", (e) => {
+      const rows = refreshRows().filter((b) => !b.disabled);
+      const i = rows.indexOf(document.activeElement as HTMLButtonElement);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        rows[(i + (e.key === "ArrowDown" ? 1 : rows.length - 1)) % rows.length]?.focus();
+      } else if (e.key === "Escape") {
+        refreshBtn?.focus({ preventScroll: true });
+      }
+    });
+    // Fixed-positioned, so a scroll or a resize would leave it mis-anchored: it closes.
+    const onRefreshAway = (e?: Event) => {
+      if (refreshPop.hidden) return;
+      if (e?.target instanceof Node && refreshPop.contains(e.target)) return;
+      refreshDrop?.close();
+    };
+    document.addEventListener("scroll", onRefreshAway, true);
+    window.addEventListener("resize", onRefreshAway);
     // (The startup stale-while-revalidate sync lives in initTrackStore now — once per
     // session, so remounting this card on a slot swap never re-triggers a full sync.)
 
@@ -910,6 +1029,10 @@ export const libraryCard: CardDef = {
         syncUnlisten.then((un) => un()).catch(() => {});
         unsubBusy();
         unsubStatus();
+        refreshDrop?.destroy();
+        refreshPop.remove();
+        document.removeEventListener("scroll", onRefreshAway, true);
+        window.removeEventListener("resize", onRefreshAway);
         card.destroy();
         host.innerHTML = "";
       },

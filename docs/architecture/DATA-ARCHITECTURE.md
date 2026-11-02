@@ -1,8 +1,8 @@
 ---
 status: foundation
 desk_test: none
-sources: [src/stats.ts, src-tauri/src/heal.rs, src-tauri/src/library.rs, src/track-store.ts]
-updated: 2026-10-23
+sources: [src/stats.ts, src-tauri/src/heal.rs, src-tauri/src/library.rs, src/track-store.ts, src/library-card.ts]
+updated: 2026-11-01
 ---
 # DeetsMusic — Data Architecture
 
@@ -432,7 +432,8 @@ pass (~40–60 Apple calls, ~20 s, a rewrite of every row). Now (`library_sync_r
 
 | Trigger | Pass |
 |---|---|
-| The Library ⟳ (`full: true`) | full |
+| The ⟳ panel's **Full Refresh** (`full: true`; before 2026-11-01, every ⟳ click) | full |
+| A click on the ⟳, or its **Quick Refresh** (`quick: true`, §5e) | the rows below, as at launch, but the user's (it goes out under Apple's back-off) |
 | No full pass on record, or the last one is **7 days** old or more | full — the **weekly** pass |
 | Otherwise | ONE `limit=1` call reads Apple's song count. It differs from `meta.library_songs_total` (Apple's count at the last complete full pass) → full. The same → incremental |
 
@@ -488,6 +489,48 @@ The sign-in pass (`library_sync { signin: true }`) reads the full pass's own fir
    `another Apple account signed in`; the Library empties and fills with the new account's songs;
    Rewind still names the old songs you played; your local playlists and Diary are unchanged.
 
+### 5e. The Library ⟳: Quick Refresh and Full Refresh (built 2026-11-01)
+> **Part:** built · 2026-11-01
+
+His report (2026-11-01): he added 2 songs on the phone, pressed the ⟳ on live, and it took a long
+time. The live log: `full sync start (asked)` 17:55:05, `full sync done, 4113 of 4113` 17:55:18
+(42 pages), then the artist pass read all 1,455 artists (17:55:29). The ⟳ spun ~24 s; the 2 songs
+needed 1 page. Every ⟳ click was the full pass. His design:
+
+- **A click on the ⟳** is the **Quick Refresh**: `library_sync { quick: true }` picks the pass by
+  the §5a rows (count call → incremental; the full pass only when the count fell, the new songs do
+  not explain the rise, or the last full pass is 7 days old). It is the user's pass, not a
+  background job. Log: `library: quick refresh (asked)`.
+- **Hover on the ⟳** opens a panel under it (library-card.ts): **Quick Refresh** and **Full
+  Refresh**. It opens on hover whatever *Open menus on hover* says (`makeDropdown`'s `fixedMode`,
+  his call): a click is the refresh, so in click mode nothing else could open it. The click is
+  stopped in capture, as on the Pin button (pin.ts). The shell is the Sort / View pop's
+  (`.lib-pop`, portaled), hung from the ⟳'s right edge. While a sync runs, the rows are off and a
+  status line under them says how far it is (the ⟳ hint's words, sync-hint.ts). ↓ on the ⟳ opens
+  it on its first row; ↑ / ↓ move; Escape closes it. Compass: *Quick refresh library*, *Full
+  refresh library*.
+- **The ⟳ stops when the songs are on screen.** The lock (`SYNC_IN_FLIGHT`) is released right after
+  `done`; the artist pass, the heal and the guests pass follow under `SYNC_TAIL` (a tokio mutex),
+  so a second sync's tail waits for the first one's. A click during a tail is taken.
+- A removal on another device hides from Quick Refresh when the count does not fall (one song
+  added and one deleted): Full Refresh, or the weekly pass, brings it in.
+
+**Desk test** (dev app; restart the runner: new Rust): **passed 2026-11-01 (his word: "desk
+tested and good to go")**, with the ⟳'s hint moved above it (`data-hint-above`, ONBOARDING.md §1a).
+In the 1.3.0 release notes.
+1. Add 2 songs on the phone. Click the ⟳. The log: `library: quick refresh (asked)`, one count
+   call, `library: incremental explains +2 (2 new)`, `incremental sync done, 2 new in 1 page(s)`.
+   The 2 songs show and the ⟳ stops within ~2 s.
+2. Rest the pointer on the ⟳: the panel opens under it, its right edge on the ⟳'s. Turn *Open
+   menus on hover* off and on: it still opens on hover. A click on the ⟳ never opens or closes it.
+3. Full Refresh: the log says `full sync start (asked)`; the panel's rows go off and the status
+   line counts *Reading your library… N of 4,113 songs*; the ⟳ stops at `done`, before
+   `library: artist catalog …`.
+4. Delete 1 song on the phone, then Quick Refresh: the log says `full sync start (Apple counts …)`
+   and the song leaves the Library.
+5. Keyboard: Tab to the ⟳, ↓ opens the panel on Quick Refresh, ↓ to Full Refresh, Escape closes
+   it and the focus is on the ⟳ again.
+
 ### 5d. A first sign-in: what fills, and in what order (built 2026-10-23)
 > **Part:** built · 2026-10-23
 
@@ -521,7 +564,8 @@ The flow is the same from the grand opening's page 1 and from the title menu ›
    in bulk) and the New shelf (it looks releases up by the pass's catalog ids, and an empty
    answer would hold its floor for a day). On `artists`, a Home that held anything builds again.
    An ordinary launch held nothing, so it asks Apple nothing more.
-5. The catalog heal, the song guests pass, then `idle` (the lock's release; the ⟳ stops).
+5. The catalog heal, the song guests pass. Since 2026-11-01 (§5e) `idle` (the lock's release;
+   the ⟳ stops) goes out right after `done`, before step 4, and steps 4–5 run under `SYNC_TAIL`.
 
 The incremental pass does the same: its `done` says `artists: true` and the caller's artist pass
 sends `artists`. The grand opening's own warm-up now only logs `onboarding:warm`.
@@ -559,7 +603,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | `apple_connection_status` | apple.rs | is a MUT present? |
 | `apple_disconnect` | apple.rs | clear MUT (memory + file) |
 | `apple_dump_library` | apple.rs | **dev**: write raw API samples to `dev-dumps/` |
-| `library_sync(full?, signin?)` | library.rs | songs sync → cache (emits events); which pass: §5a; `signin` = the account check, §5b |
+| `library_sync(full?, signin?, quick?)` | library.rs | songs sync → cache (emits events); which pass: §5a; `signin` = the account check, §5b; `quick` = the ⟳ click, §5e |
 | `apple_developer_token_retry` | apple.rs | one late mint try when a launch had no developer token (the webview's `online` event; 30 s cooldown); emits `developer-token-changed` on success |
 | `library_tracks(offset, limit)` | library.rs | paged read from cache (synced rows only) |
 | `seen_tracks` | library.rs | all materialized (`source='seen'`) rows — ingested as track-store transients so historical plays resolve cross-session |

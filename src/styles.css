@@ -2501,6 +2501,23 @@ html[data-boot="lift"] .panel::after  { --sand-speck: linear-gradient(transparen
 /* A shelf choice's count (the artist page's Albums filter, ARTIST-VIEW.md §12), at the row's end. */
 .lib-pop__opt:has(.lib-pop__count) { display: flex; justify-content: space-between; gap: var(--space-3); }
 .lib-pop__count { color: var(--subtext); font-weight: normal; font-variant-numeric: tabular-nums; }
+/* The Library ⟳'s panel (library-card.ts, 2026-11-01): it hangs from the ⟳'s right edge, so it
+   grows from its right corner. While a sync runs its rows are off and a status line says how
+   far the sync is, in the ⟳ hint's words. */
+.lib-pop--end { --pop-origin: top right; }
+.lib-pop--end[data-above] { --pop-origin: bottom right; }
+.lib-pop__opt[disabled] { opacity: 0.6; cursor: default; background: transparent; }
+.lib-pop__status {
+  max-width: var(--lib-refresh-status-w);
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2) 0;
+  border-top: 1px solid var(--border);
+  color: var(--subtext);
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  font-variant-numeric: tabular-nums;
+}
+.lib-pop__status[hidden] { display: none; }
 
 .lib-pop__dir {
   display: grid;

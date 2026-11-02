@@ -34,6 +34,9 @@ export interface DropdownOptions {
   panel: HTMLElement;
   /** Initial trigger mode (defaults to the current global menu mode). */
   mode?: DropdownMode;
+  /** A mode the Hover-Menu setting never changes. The Library ⟳ (2026-11-01, his call): its
+   *  click refreshes, so in click mode nothing could open its panel; it opens on hover always. */
+  fixedMode?: DropdownMode;
   /** Close delay after the cursor leaves, in hover mode (default 150ms). */
   hoverGraceMs?: number;
   /** Veto closing while true (e.g. a slider mid-drag inside the panel). */
@@ -83,7 +86,7 @@ export function keepInWindow(anchor: HTMLElement, panel: HTMLElement): void {
 /** Wire open/close/dismiss for a trigger+panel pair. Returns a runtime handle. */
 export function makeDropdown(opts: DropdownOptions): DropdownHandle {
   const { root, trigger, panel, hoverGraceMs = 150, shouldStayOpen, alsoInside, disabled, onOpen } = opts;
-  let mode: DropdownMode = opts.mode ?? globalMode;
+  let mode: DropdownMode = opts.fixedMode ?? opts.mode ?? globalMode;
   let graceTimer: number | undefined;
   /** When the panel last appeared, on the event clock (`performance.now()`). */
   let openedAt = -Infinity;
@@ -166,7 +169,7 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
   const handle: DropdownHandle = {
     open,
     close: () => close("api"),
-    setMode(m: DropdownMode) { mode = m; },
+    setMode(m: DropdownMode) { mode = opts.fixedMode ?? m; },
     destroy() {
       live.delete(handle);
       regions.delete(handle);

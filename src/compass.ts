@@ -27,7 +27,7 @@ import { setting, effective, adaptiveUnhidden } from "./settings-store";
 import { settingsRows, type SettingEntry } from "./settings-card";
 import { tracks } from "./track-store";
 import { creditIndex } from "./artist-credit";
-import { albumKey, albumOrder, artistOrder } from "./library-card";
+import { albumKey, albumOrder, artistOrder, refreshLibrary } from "./library-card";
 import { esc } from "./collection-card";
 import { playlistsCached, playlistTracks, requestOpenPlaylist } from "./playlists";
 import { radioRecents, radioLivePeek, radioSpecialPeek, radioGenresPeek, radioGenreStationsPeek, radioGenreStations, radioLive, radioMyStation, radioDiscovery, radioGenres, type Station } from "./radio";
@@ -557,6 +557,22 @@ function actions(all: boolean): Row[] {
     sub: "Re-reads the playlists that are due",
     aliases: ["refresh", "stale", "update playlists", "re-read playlists"],
     run: () => void checkPlaylistRefreshNow().catch((e) => console.error("[compass] refresh", e)),
+  });
+  // The Library ⟳'s two refreshes (DATA-ARCHITECTURE.md §5a, 2026-11-01): the same rows as
+  // its hover panel.
+  rows.push({
+    group: "Actions",
+    title: "Quick refresh library",
+    sub: "Reads only the songs you added since the last refresh",
+    aliases: ["refresh library", "sync library", "new songs", "library refresh"],
+    run: () => void refreshLibrary("quick"),
+  });
+  rows.push({
+    group: "Actions",
+    title: "Full refresh library",
+    sub: "Reads your whole library again and removes deleted songs",
+    aliases: ["refresh library", "sync library", "full sync", "reload library", "re-read library"],
+    run: () => void refreshLibrary("full"),
   });
   // Movable rows (MOVABLE-ROWS.md §4.4, COMPASS.md §9): the way back to the built-in
   // order, offered only when there is an order to drop. The confirm and the Undo are the

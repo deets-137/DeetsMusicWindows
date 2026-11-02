@@ -197,7 +197,8 @@ nothing about authoring changed when the box did.
 | Settings › Window | Card on drill | A drill opens in the card you are reading, and Back returns it; or it is summoned into another slot | settings-card.ts |
 | Settings › Window | Bring a card already open | A drill whose card is already on screen: bring it to the card you are reading, or open it where it sits | settings-card.ts |
 | Settings › Window | Keep card places on restart | Opens each card where you left it, also after you restart DeetsMusic | settings-card.ts |
-| Library | Refresh | Reads your library from Apple Music again · while a sync runs (2026-10-17, ideas/apple-calls.md §4): *Reading your library…* / *Reading your library… 1,200 of 4,042 songs* (a full pass) / *Checking for new songs…* (*… 3 new*, an incremental pass) / *Finishing up your library…* (the artist pass, the heal). A click while it spins shows the hint at once | library-card.ts, sync-hint.ts |
+| Library | Refresh | Reads the songs you added in Apple Music since the last refresh (2026-11-01: a click is the Quick Refresh, DATA-ARCHITECTURE.md §5e) · while a sync runs (2026-10-17, ideas/apple-calls.md §4): *Reading your library…* / *Reading your library… 1,200 of 4,042 songs* (a full pass) / *Checking for new songs…* (*… 3 new*, an incremental pass) / *Finishing up your library…* (between the last page and `done`). A click while it spins shows the hint at once | library-card.ts, sync-hint.ts |
+| Library ⟳ panel (2026-11-01, opens on hover) | Quick Refresh · Full Refresh | Reads only the songs you added since the last refresh; a click on the button does this too · Reads your whole library again and removes the songs you deleted on other devices. While a sync runs, a status line under the rows says the ⟳ hint's words | library-card.ts `REFRESH_ROWS` |
 | Library album or artist level (2026-09-24, FULL-LIB.md) | Full · Lib chips | Shows the whole album or artist from Apple Music · Shows only the songs in your library · when Lib cannot be picked: *None of these songs are in your library* (album) / *No songs by this artist are in your library* (artist) / *Loading…* | collection-card.ts (`paintViews`), media-levels.ts |
 | Library Full view rows (2026-09-24) | the Add-to-Library square | Add to Library · *In your library* (the ✓ shows at rest here, whatever Show ✓ on songs you have says) · an unreleased row: the release hint, as in Search | add-square.ts (`mark`) |
 | A grown album's mark column (2026-10-01, CARD-GROW.md §9b), Lib and Full views | the ♥ square | Add to Favorites (hollow) · Remove from Favorites (filled; in the Full view only while the song is in your library and loved) | add-square.ts (`markCellHTML`) |
@@ -312,6 +313,10 @@ drill pane's song list; missing until 2026-09-17), `.search__tile`,
 covers Library, Search, Queue, Rewind, History, Home, the Artist shelves, Now Playing and Rulez.
 **Add a new row shape to that table, not a new listener.** The deeper element wins: the Add
 button inside a song row still says *Add to Library*.
+
+**Where the box goes.** Under the control, or above it when there is no room below. A control
+whose own panel opens under it on hover carries `data-hint-above`: its hint goes above, or under
+it only when there is no room above (the Library ⟳, 2026-11-01: its panel covered the hint).
 
 **The third line — a song's writers** (2026-09-17, CREDITS.md §7.3). A row that carries
 `data-cid` (its catalog id) shows Apple's `composerName` under a blank line. The read is

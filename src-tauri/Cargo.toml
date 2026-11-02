@@ -42,7 +42,8 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 # a background job's Apple calls; httpdate reads a 429's Retry-After when it is a date.
 # `time`: the AirPlay stall watch's interval (airplay.rs, AIRPLAY.md §13.2b); Tauri's tree
 # already turns it on, named here so the watch does not lean on that.
-tokio = { version = "1", default-features = false, features = ["rt", "time"] }
+# `sync`: the library sync's tail lock (library.rs SYNC_TAIL); Tauri's tree turns it on too.
+tokio = { version = "1", default-features = false, features = ["rt", "time", "sync"] }
 httpdate = "1"
 
 # The AirPlay 2 sender (AIRPLAY.md), shared with the DeetsAirplay tray app, pinned to

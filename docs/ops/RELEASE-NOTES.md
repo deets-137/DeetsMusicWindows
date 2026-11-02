@@ -69,6 +69,12 @@ out. You read it before you send it.
 **Resolved reports fold away.** In Settings › Bugs › My reports, closed, fixed and won't-fix
 reports move into a *Resolved* fold, so the open ones stay on top.
 
+**Quick Refresh | Full Refresh on the Library.** A click on the Library's refresh button now
+reads only the songs you added since the last refresh: two new songs show in about a second,
+not half a minute. Rest the pointer on the button for both choices. *Full Refresh* reads your
+whole library again and removes the songs you deleted on another device. The button now stops
+turning as soon as your songs are on screen.
+
 ## 1.2.1 — 2026-10-29
 
 **Friends on DM, a new shelf on Home.** When you have friends in DeetsMusic, Home shows the

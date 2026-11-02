@@ -87,12 +87,13 @@ export function seenTracks(): Promise<Track[]> {
 }
 
 /** Trigger a background sync of library songs into the cache. `full: true` (the
- *  refresh button) is the complete pass; `false` (startup) lets Rust pick — the cheap
+ *  ⟳ panel's Full Refresh) is the complete pass; `false` (startup) lets Rust pick — the cheap
  *  newest-first pass when Apple's song count is unchanged and the last full pass is under
  *  seven days old (DATA-ARCHITECTURE.md §5a). `signin` (after a sign-in) also checks whether
- *  another Apple account signed in, and forgets the old library if so (§5b). */
-export function librarySync(full = true, signin = false): Promise<number> {
-  return invoke<number>("library_sync", { full, signin });
+ *  another Apple account signed in, and forgets the old library if so (§5b). `quick` (a click
+ *  on the ⟳, or Quick Refresh, 2026-11-01) is the startup's pick, sent as the user's own. */
+export function librarySync(full = true, signin = false, quick = false): Promise<number> {
+  return invoke<number>("library_sync", { full, signin, quick });
 }
 
 /** Subscribe to sync progress. Returns an unlisten fn. */

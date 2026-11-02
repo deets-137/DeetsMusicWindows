@@ -6,6 +6,28 @@ updated: 2026-11-01
 ---
 # DeetsMusic — Work log
 
+## 2026-11-01 — The Library ⟳: Quick Refresh and Full Refresh
+
+- **His report:** 2 songs added on the phone, the ⟳ on live took a long time. The live log: the ⟳
+  was always the full pass (42 pages, 13 s), then every artist again (11 s); it spun ~24 s.
+- **Built (his design; his call: the panel opens on hover always):** a click is the Quick Refresh
+  (the launch's pick, the user's pass); hover opens Quick Refresh / Full Refresh; the ⟳ stops at
+  `done`, the artist pass and the heal follow under `SYNC_TAIL`. [DATA-ARCHITECTURE.md
+  §5e](architecture/DATA-ARCHITECTURE.md) has the as-built and the desk test.
+- **His hand test:** the panel covered the ⟳'s hint; the hint now goes above (`data-hint-above`,
+  hint.ts). Then "desk tested and good to go": passed. A paragraph in the 1.3.0 release notes.
+  Uncommitted.
+
+## 2026-11-01 — Live errors read; the live MCP designed
+
+- **Read the live D1 (read only):** no posts since 2026-10-30, no panics. W44 (mostly 1.2.1):
+  `log.error.fe` on 17 of 22 health reports, `log.error.library` on 1; W43 (mostly 1.0.0): `fe`
+  on 13 of 14. The `fe` share is the same on both versions. Fingerprints arrive with 1.3.0.
+- **A stray file:** a `>` in a `wrangler --command` became a `cmd` redirect and wrote
+  `strftime('%s'` (wrangler's help text) into `../DeetsSupport`; deleted.
+- **The live MCP designed (his calls L1–L3):** [LIVE-MCP.md](ops/LIVE-MCP.md). Not built; the
+  read-only token probe (§5) comes first.
+
 ## 2026-11-01 — Docs: DESIGN.md archived, CLAUDE.md trimmed, a staleness pass
 
 - **DESIGN.md archived (his call):** `docs-move.mjs DESIGN=archive`, status `archived`; its

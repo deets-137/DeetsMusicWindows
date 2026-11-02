@@ -221,8 +221,13 @@ function place(el: HTMLElement, px: number): void {
   // Follow the pointer across the row, so a wide row's hint sits where you are looking.
   const centre = Number.isFinite(px) ? px : r.left + r.width / 2;
   const left = Math.max(edge, Math.min(Math.round(centre - bw / 2), window.innerWidth - bw - edge));
-  let top = Math.round(r.bottom + gap);
-  if (top + bh > window.innerHeight - edge) top = Math.round(r.top - gap - bh); // no room below: flip above
+  // `data-hint-above`: a control whose own panel opens under it (the Library ⟳, 2026-11-01)
+  // takes its hint above, or the panel covers it; under it only when there is no room above.
+  const below = Math.round(r.bottom + gap);
+  const over = Math.round(r.top - gap - bh);
+  let top: number;
+  if (el.hasAttribute("data-hint-above")) top = over >= edge ? over : below;
+  else top = below + bh > window.innerHeight - edge ? over : below; // no room below: flip above
   b.style.left = `${left}px`;
   b.style.top = `${Math.max(edge, top)}px`;
 }
