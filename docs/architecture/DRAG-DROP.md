@@ -157,7 +157,7 @@ target until the drop, `frames.begin("drag", label)` telemetry (label `cross` fo
   app's own Ctrl shortcuts (`main.ts`) are page listeners and keep working.
 
 ### 6a. The mouse's back button (built 2026-11-02)
-> **Part:** built · 2026-11-02 · desk test open
+> **Part:** built · 2026-11-02 · desk test passed 2026-11-02 (his word: "desk tested and good to go")
 
 **A user's ask (2026-11-02, through him):** the mouse's back button goes back from a drill in a
 card, or in a one-card layout. **His call (1A):** the card under the pointer takes the step.
