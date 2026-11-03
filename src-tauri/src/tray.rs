@@ -181,18 +181,8 @@ pub fn main_minimize(app: AppHandle) {
 /// resize after it is the size a drag keeps. True when the window was snapped.
 #[tauri::command]
 pub fn main_unsnap(app: AppHandle) -> bool {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{IsWindowArranged, ShowWindow, SW_RESTORE};
     let Some(w) = app.get_webview_window(MAIN) else { return false };
-    let Ok(h) = w.hwnd() else { return false };
-    let hwnd = HWND(h.0 as _);
-    unsafe {
-        if !IsWindowArranged(hwnd).as_bool() {
-            return false;
-        }
-        let _ = ShowWindow(hwnd, SW_RESTORE);
-    }
-    true
+    crate::os::window::unsnap(&w)
 }
 
 /// A `--tray` launch: the window never shows; the tray icon opens it.
@@ -235,13 +225,7 @@ pub fn tray_launch() -> bool {
 /// Show the window minimized, without taking the focus: the quiet restart of a window that was
 /// minimized comes back on the taskbar only.
 fn show_minimized(w: &tauri::WebviewWindow) {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWMINNOACTIVE};
-    if let Ok(h) = w.hwnd() {
-        unsafe {
-            let _ = ShowWindow(HWND(h.0 as _), SW_SHOWMINNOACTIVE);
-        }
-    }
+    crate::os::window::show_minimized(w);
 }
 
 /// The first show of a normal launch, in place (setup applied `windowPos`) and focused.
@@ -534,7 +518,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     app.manage(TrayState(Mutex::new(Inner::default())));
     restore_window_pos(app);
     TrayIconBuilder::with_id("main")
-        .icon(crate::app_icon::tray_image().unwrap_or_else(|| app.default_window_icon().expect("window icon").clone()))
+        .icon(crate::os::app_icon::tray_image().unwrap_or_else(|| app.default_window_icon().expect("window icon").clone()))
         .tooltip("DeetsMusic")
         .show_menu_on_left_click(false)
         .on_menu_event(|app, ev| match ev.id().as_ref() {
@@ -604,7 +588,7 @@ pub fn on_window_event(win: &tauri::Window, ev: &WindowEvent) {
             }
         }
         // A move to a monitor at another scale: reload the icon frames for it.
-        (_, WindowEvent::ScaleFactorChanged { .. }) => crate::app_icon::set_window(win),
+        (_, WindowEvent::ScaleFactorChanged { .. }) => crate::os::app_icon::set_window(win),
         _ => {}
     }
 }

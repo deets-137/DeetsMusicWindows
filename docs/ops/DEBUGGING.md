@@ -1986,7 +1986,7 @@ into the song, could not be explained). Now every time MusicKit leaves `playing`
 | `button` | the Now Playing / mini play button |
 | `space` · `compass` | the Space key · the Ctrl+Space bar |
 | `tray` | the tray panel |
-| `windows` | the Windows media session: a media key, a headset or Bluetooth button, the volume flyout (smtc.rs) |
+| `windows` | the Windows media session: a media key, a headset or Bluetooth button, the volume flyout (os/windows/media_session.rs) |
 | `airplay` | the HomePod: its touch surface, Siri, the Home app (airplay.rs) |
 | `airplay:lost` | the speaker dropped the session; airplay.ts `recover` pauses while it reconnects (AIRPLAY.md §13.3, 2026-09-25). The play after a good reconnect is `airplay:reconnected` |
 | `agent` | the MCP / CLI / bridge |
@@ -2040,8 +2040,8 @@ of them is a real stop.
    (the ring order stays by time). Only a pause with none of these stays `outside`. The
    `presence` pause-arm is not changed.
 2. **Name what `outside` still holds.** The Windows media session is already `windows`
-   (smtc.rs). What stays in `outside`: MusicKit by itself, and WebView2's own media-key
-   handling, which never reaches smtc.rs. If `outside` still shows real lines after fix 1, the
+   (os/windows/media_session.rs). What stays in `outside`: MusicKit by itself, and WebView2's own media-key
+   handling, which never reaches os/windows/media_session.rs. If `outside` still shows real lines after fix 1, the
    next step is to find out if WebView2's media-key handling can be switched off or seen.
 3. **A stall line.** `player:stall {after, s, mode, output}` when a song ends (`songEnd`) and no
    next song is `playing` within 3 s, while the list or the station has a next song. `after` is

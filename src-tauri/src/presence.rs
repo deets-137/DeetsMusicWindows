@@ -41,15 +41,8 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
-use windows::core::PCWSTR;
-use windows::Win32::Foundation::{CloseHandle, ERROR_IO_PENDING, HANDLE, WAIT_OBJECT_0};
-use windows::Win32::Storage::FileSystem::{
-    CreateFileW, ReadFile, WriteFile, FILE_FLAG_OVERLAPPED, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
-    FILE_SHARE_MODE, OPEN_EXISTING,
-};
-use windows::Win32::System::Pipes::WaitNamedPipeW;
-use windows::Win32::System::Threading::{CreateEventW, ResetEvent, WaitForSingleObject};
-use windows::Win32::System::IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED};
+
+use crate::os::{DiscordIpc, DiscordPipe};
 
 /// The owner's Discord application. Its NAME is what the card's headline reads
 /// ("Listening to DeetsMusic", §8.4a), so it is not interchangeable with any other id.
@@ -87,59 +80,17 @@ fn frame(op: i32, payload: &Value) -> Vec<u8> {
 
 // ── the pipe: overlapped, and every call has a deadline ───────────────────────
 
-/// An overlapped handle on `\\.\pipe\discord-ipc-N`, plus the event its calls wait on.
-/// Both handles close with the struct, so a dropped `Pipe` leaves nothing behind — and
-/// dropping it is exactly what takes the card off Discord.
+/// The open socket to Discord (`os::DiscordPipe`: the named pipe on Windows). Every call has a
+/// deadline. Dropping it closes it — and dropping it is exactly what takes the card off Discord.
 ///
 /// It never crosses a thread. One thread makes it, uses it and drops it (§8.11 fault 3).
-struct Pipe {
-    file: HANDLE,
-    event: HANDLE,
-}
-
-impl Drop for Pipe {
-    fn drop(&mut self) {
-        unsafe {
-            // Anything still in flight is cancelled before the handle goes, or the kernel
-            // could write into an OVERLAPPED whose stack frame has gone.
-            let _ = CancelIoEx(self.file, None);
-            let _ = CloseHandle(self.file);
-            let _ = CloseHandle(self.event);
-        }
-    }
-}
+struct Pipe(DiscordPipe);
 
 impl Pipe {
-    /// Wait for one overlapped operation. `Ok(None)` = it ran out of time and was cancelled.
-    ///
-    /// The cancel is then WAITED FOR. `CancelIoEx` only asks; until the kernel answers, the
-    /// operation may still write into `ov`, which lives on the caller's stack.
-    fn finish(&self, ov: *mut OVERLAPPED, started: windows::core::Result<()>, ms: u32) -> Result<Option<u32>, String> {
-        if let Err(e) = started {
-            if e.code() != ERROR_IO_PENDING.to_hresult() {
-                return Err(e.message());
-            }
-        }
-        if unsafe { WaitForSingleObject(self.event, ms) } != WAIT_OBJECT_0 {
-            unsafe {
-                let _ = CancelIoEx(self.file, Some(ov));
-                let mut n = 0u32;
-                let _ = GetOverlappedResult(self.file, ov, &mut n, true);
-            }
-            return Ok(None);
-        }
-        let mut n = 0u32;
-        unsafe { GetOverlappedResult(self.file, ov, &mut n, false) }.map_err(|e| e.message())?;
-        Ok(Some(n))
-    }
-
     fn write(&self, bytes: &[u8]) -> Result<(), String> {
-        let mut ov = OVERLAPPED { hEvent: self.event, ..Default::default() };
-        unsafe { ResetEvent(self.event) }.map_err(|e| e.message())?;
-        let started = unsafe { WriteFile(self.file, Some(bytes), None, Some(&mut ov)) };
-        match self.finish(&mut ov, started, IO_TIMEOUT_MS)? {
+        match self.0.write(bytes, IO_TIMEOUT_MS)? {
             None => Err(format!("discord did not take the frame in {IO_TIMEOUT_MS} ms")),
-            Some(n) if n as usize != bytes.len() => Err(format!("short write, {n} of {}", bytes.len())),
+            Some(n) if n != bytes.len() => Err(format!("short write, {n} of {}", bytes.len())),
             Some(_) => Ok(()),
         }
     }
@@ -151,14 +102,11 @@ impl Pipe {
         let mut got = 0usize;
         while got < buf.len() {
             let ms = if got == 0 { first_ms } else { IO_TIMEOUT_MS };
-            let mut ov = OVERLAPPED { hEvent: self.event, ..Default::default() };
-            unsafe { ResetEvent(self.event) }.map_err(|e| e.message())?;
-            let started = unsafe { ReadFile(self.file, Some(&mut buf[got..]), None, Some(&mut ov)) };
-            match self.finish(&mut ov, started, ms)? {
+            match self.0.read(&mut buf[got..], ms)? {
                 None if got == 0 => return Ok(None),
                 None => return Err("discord stopped part way through a reply".into()),
                 Some(0) => return Err("discord closed the pipe".into()),
-                Some(n) => got += n as usize,
+                Some(n) => got += n,
             }
         }
         Ok(Some(()))
@@ -238,39 +186,19 @@ fn refused(v: &Value) -> bool {
 /// Open the pipe and shake hands. Discord takes the first free number, so a second client
 /// — or one left over from a crash — moves it along; nine is Discord's own ceiling.
 ///
-/// `WaitNamedPipeW` runs first so a BUSY pipe waits here, with a deadline, instead of
-/// inside `CreateFileW`, which would wait for as long as it took.
+/// `os::DiscordPipe::open` waits for a BUSY pipe there, with a deadline.
 fn connect() -> Result<Pipe, String> {
     let mut last = String::from("no discord-ipc pipe answered");
     for n in 0..10 {
-        let wide: Vec<u16> = format!(r"\\.\pipe\discord-ipc-{n}").encode_utf16().chain(std::iter::once(0)).collect();
-        let name = PCWSTR(wide.as_ptr());
-        unsafe { let _ = WaitNamedPipeW(name, CONNECT_WAIT_MS); }
-        let file = match unsafe {
-            CreateFileW(
-                name,
-                (FILE_GENERIC_READ | FILE_GENERIC_WRITE).0,
-                FILE_SHARE_MODE(0),
-                None,
-                OPEN_EXISTING,
-                FILE_FLAG_OVERLAPPED,
-                None,
-            )
-        } {
-            Ok(h) => h,
+        let pipe = match DiscordPipe::open(n, CONNECT_WAIT_MS) {
+            Ok(p) => Pipe(p),
+            // No wait event is a fault of this process, not of that pipe: stop (as before the split).
+            Err(e) if e.starts_with("event: ") => return Err(e),
             Err(e) => {
-                last = format!("discord-ipc-{n}: {}", e.message());
+                last = format!("discord-ipc-{n}: {e}");
                 continue;
             }
         };
-        let event = match unsafe { CreateEventW(None, true, false, PCWSTR::null()) } {
-            Ok(h) => h,
-            Err(e) => {
-                unsafe { let _ = CloseHandle(file); }
-                return Err(format!("event: {}", e.message()));
-            }
-        };
-        let pipe = Pipe { file, event };
         let hello = frame(OP_HANDSHAKE, &json!({ "v": 1, "client_id": APP_ID }));
         if let Err(e) = pipe.write(&hello).and_then(|()| pipe.drain()) {
             last = format!("handshake on discord-ipc-{n}: {e}");

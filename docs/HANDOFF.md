@@ -115,6 +115,14 @@ extension's icons are LANCZOS resizes of the same file.
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
 
+### On `macos-support` (not on `main`)
+
+- **The OS layer split (2026-11-03).** Steps 1–3 of 9 done, uncommitted: the inventory, the
+  `os/` shape, and every Windows call moved into `src-tauri/src/os/windows/`
+  ([OS-LAYER.md](architecture/OS-LAYER.md) §11.4). Checked for Windows on the Mac with
+  `cargo xwin check` (§11.3); not run. Next: step 4, the Windows crates to
+  `[target.'cfg(windows)'.dependencies]`.
+
 ### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)
 
 - **Listen Later (2026-11-01, `e1ee482`).** BUILT, desk test open

@@ -1,5 +1,4 @@
 mod airplay;
-mod app_icon;
 mod audio_out;
 mod apple;
 mod apple_calls;
@@ -18,7 +17,6 @@ mod filter;
 mod friends;
 mod gpu;
 mod heal;
-mod identity;
 mod lastfm;
 mod library;
 mod lock;
@@ -30,6 +28,7 @@ mod net;
 mod model;
 mod media;
 mod notes;
+mod os;
 mod playlists;
 mod presence;
 mod provider;
@@ -39,7 +38,6 @@ mod settings;
 mod rooms;
 mod roworder;
 mod safe_file;
-mod smtc;
 mod sotd;
 mod suggest;
 mod tray;
@@ -319,12 +317,12 @@ pub fn run() {
             // Sound (SOUND.md §2.2): the Windows output, its form factor and volume.
             audio_out::setup(app.handle());
             tray::setup(app.handle())?;
-            app_icon::set_all(app.handle());
-            app_icon::watch_scale(app.handle());
+            os::app_icon::set_all(app.handle());
+            os::app_icon::watch_scale(app.handle());
             // Package identity (IDENTITY.md §3.4): an installed release build checks its
             // registration and its Start shortcut. COM and deployment calls block, so off the
             // main thread; a dev build returns at once.
-            tauri::async_runtime::spawn_blocking(identity::on_start);
+            tauri::async_runtime::spawn_blocking(os::identity::on_start);
 
             // A quiet graphics restart (GRAPHICS-FALLBACK.md §10.5) comes back hidden or
             // minimized, as its window was.
@@ -355,7 +353,7 @@ pub fn run() {
 
             // Our Windows media session (overlay + media keys) on the main HWND.
             if let Some(win) = app.get_webview_window("main") {
-                if let Err(e) = smtc::init(app.handle().clone(), &win) {
+                if let Err(e) = os::media_session::init(app.handle().clone(), &win) {
                     log::warn(&format!("smtc: init failed: {e}"));
                 }
                 // Tell the page when the GPU process exits (GRAPHICS-FALLBACK.md §4.2).
@@ -368,19 +366,7 @@ pub fn run() {
             // only, so F12 devtools stay in dev.
             #[cfg(not(debug_assertions))]
             if let Some(win) = app.get_webview_window("main") {
-                let _ = win.with_webview(|wv| {
-                    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
-                    use windows::core::Interface;
-                    let off = || -> windows::core::Result<()> {
-                        unsafe {
-                            let settings = wv.controller().CoreWebView2()?.Settings()?;
-                            settings.cast::<ICoreWebView2Settings3>()?.SetAreBrowserAcceleratorKeysEnabled(false)
-                        }
-                    };
-                    if let Err(e) = off() {
-                        log::warn(&format!("webview: browser keys stay on: {e}"));
-                    }
-                });
+                os::window::browser_keys_off(&win);
             }
 
             // Auto-open devtools in dev so the webview console is visible. DEETS_NO_DEVTOOLS=1

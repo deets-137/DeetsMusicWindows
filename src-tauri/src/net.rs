@@ -55,36 +55,9 @@ fn host_v4() -> Result<Ipv4Addr, String> {
 
 /// `n` echoes, one after the other. Blocking: call it inside `spawn_blocking`.
 fn ping_blocking(n: u32) -> Result<Ping, String> {
-    use windows::Win32::NetworkManagement::IpHelper::{IcmpCloseHandle, IcmpCreateFile, IcmpSendEcho, ICMP_ECHO_REPLY};
-
     let ip = host_v4()?;
     let n = n.clamp(1, ECHO_MAX);
-    let handle = unsafe { IcmpCreateFile() }.map_err(|e| format!("net: IcmpCreateFile: {e}"))?;
-    let payload = [0x44u8; 32];
-    // The reply holds the header, our payload, and 8 bytes for an ICMP error (the API's rule).
-    let mut reply = vec![0u8; std::mem::size_of::<ICMP_ECHO_REPLY>() + payload.len() + 8];
-    let mut rtts = Vec::new();
-    for _ in 0..n {
-        let got = unsafe {
-            IcmpSendEcho(
-                handle,
-                u32::from_ne_bytes(ip.octets()),
-                payload.as_ptr().cast(),
-                payload.len() as u16,
-                None,
-                reply.as_mut_ptr().cast(),
-                reply.len() as u32,
-                ECHO_TIMEOUT_MS,
-            )
-        };
-        if got > 0 {
-            let r: ICMP_ECHO_REPLY = unsafe { std::ptr::read_unaligned(reply.as_ptr().cast()) };
-            if r.Status == 0 {
-                rtts.push(r.RoundTripTime);
-            }
-        }
-    }
-    let _ = unsafe { IcmpCloseHandle(handle) };
+    let rtts = crate::os::net::ping(ip, n, ECHO_TIMEOUT_MS)?;
     Ok(Ping { sent: n, rtts })
 }
 

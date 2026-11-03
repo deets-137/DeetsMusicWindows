@@ -86,7 +86,7 @@ pub fn before_start() {
         // first and exits the old one after, so wait for it: until it is gone, its db is open
         // and its single-instance lock would turn this process away.
         if let Some(pid) = std::fs::read_to_string(&mark).ok().and_then(|s| s.trim().parse::<u32>().ok()) {
-            wait_for_exit(pid, Duration::from_secs(10));
+            crate::os::process::wait_for_exit(pid, Duration::from_secs(10));
         }
     }
     let why = if pull { "pull" } else { "first start" };
@@ -198,18 +198,6 @@ fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-fn wait_for_exit(pid: u32, limit: Duration) {
-    use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Threading::{OpenProcess, WaitForSingleObject, PROCESS_SYNCHRONIZE};
-    // SAFETY: a handle we open, wait on and close here; a gone process fails OpenProcess.
-    unsafe {
-        if let Ok(h) = OpenProcess(PROCESS_SYNCHRONIZE, false, pid) {
-            WaitForSingleObject(h, limit.as_millis() as u32);
-            CloseHandle(h).ok();
-        }
-    }
 }
 
 /// `POST /beta/pull` (bridge.rs): mark the pull with this process's id, then restart. The new

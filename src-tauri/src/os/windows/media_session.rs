@@ -1,3 +1,5 @@
+//! The OS layer, Windows (OS-LAYER.md §11.1; moved from src/smtc.rs 2026-11-03).
+//!
 //! Our own Windows media session (System Media Transport Controls).
 //!
 //! WebView2 handles the hardware media keys on its own but never registers a

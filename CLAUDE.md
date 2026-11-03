@@ -186,7 +186,7 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
 - `VELOPACK.md` — the move from NSIS (`velo.rs`, `release.mjs` runs `vpk pack`). Install from a
   WMI-started process, never from this shell; a release build takes a CDP port through
   `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (§12.4).
-- `IDENTITY.md` — package identity (a signed sparse `.msix`, `identity.rs`) for exact-size
+- `IDENTITY.md` — package identity (a signed sparse `.msix`, `os/windows/identity.rs`) for exact-size
   taskbar and Start icons (`npm run icons`). No `.lnk` may carry the package's app ID (§3.5);
   `vpk --shortcuts None`.
 - `RELEASE-NOTES.md` — the text of each release; `release:publish` copies it into the update

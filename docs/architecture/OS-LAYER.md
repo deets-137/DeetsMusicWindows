@@ -1,7 +1,7 @@
 ---
 status: designed
 desk_test: none
-sources: [tools/mac-probe/run.mjs, tools/mac-probe/page/index.html, tools/mac-probe/page/glass.html, tools/mac-probe/src-tauri/src/glass.rs, tools/mac-probe/src-tauri/src/main.rs, src/player.ts, src/sound.ts, src/platform.ts, src-tauri/Cargo.toml, src-tauri/src/smtc.rs, src-tauri/src/media.rs, src-tauri/src/tray.rs, src-tauri/src/airplay.rs, src-tauri/src/presence.rs, src-tauri/src/velo.rs, src-tauri/src/gpu.rs]
+sources: [src-tauri/src/os/mod.rs, src-tauri/src/os/windows.rs, tools/mac-probe/run.mjs, tools/mac-probe/page/index.html, tools/mac-probe/page/glass.html, tools/mac-probe/src-tauri/src/glass.rs, tools/mac-probe/src-tauri/src/main.rs, src/player.ts, src/sound.ts, src/platform.ts, src-tauri/Cargo.toml, src-tauri/src/os/windows/media_session.rs, src-tauri/src/os/windows/system_media.rs, src-tauri/src/tray.rs, src-tauri/src/airplay.rs, src-tauri/src/presence.rs, src-tauri/src/velo.rs, src-tauri/src/gpu.rs]
 updated: 2026-11-03
 ---
 # The OS layer — Windows, macOS, then Linux
@@ -403,3 +403,156 @@ assets/ ?                       app-icon*.png, art-template/, icon-template/, st
 ### 10.2 Open
 - **S2 — The menu setting (§6.5):** its name, its place in Settings, its wording.
 - **S3 — Tauri 3:** when the app moves (after the Mac ships on Tauri 2 is the working assumption).
+
+## 11. The split — as built
+
+> **Part:** built · 2026-11-03 · steps 1–3 of 9 done (§11.4); not committed; desk test open (step 8)
+
+The first step of the OS layer, on `macos-support`. It moves the app's Windows-only code behind
+`src-tauri/src/os/`, so that a Mac file and a Linux file can be added later. Windows users see no
+change. The steps, in the order he approved (2026-11-03):
+
+1. Read the callers and write the inventory (§11.1). **Done.**
+2. Make the shape: `os/mod.rs`, `os/windows.rs` (§11.2). **Done.**
+3. Move the Windows calls, one caller at a time, small to large (§11.4). **Done.**
+4. Move the Windows crates to `[target.'cfg(windows)'.dependencies]`.
+5. Add `os/macos.rs` and `os/linux.rs` as stubs.
+6. Add the check: no Windows code in `src-tauri/src` outside `os/` (DOCS-ORG.md §8).
+7. Verify: `npm run check`; `cargo check` for the Windows and Mac targets.
+8. This section's desk test; a WORKLOG.md entry.
+9. Commit on the branch; ask him before a push.
+
+**His calls on this step (2026-11-03):** `airplay.rs` and `lib.rs` also call Windows; both move
+into the OS layer too (they were not in §4). The page's `os_caps` command waits until page code
+reads it.
+
+### 11.1 The inventory (read 2026-11-03)
+
+Every Windows call in `src-tauri/src` outside `os/`, and where it goes. "Logic stays" means the
+caller keeps the app's own rules and calls the `os::` function. "All of it" means the file has no
+logic of its own: the whole file moves, and its callers call `os::` directly.
+
+| Caller | The Windows calls | Goes to | What stays in the caller |
+|---|---|---|---|
+| `db_open.rs` | `MessageBoxW` (one function, already `cfg`-gated) | `os::dialog::fatal(text)` | the message text, the exit |
+| `display.rs` | `MonitorFromWindow`, `GetMonitorInfoW`, `EnumDisplaySettingsW`; `window.hwnd()` | `os::display::{monitor_of, hz_of}` (take a `tauri::Window`) | the per-window memory, the event, the command |
+| `net.rs` | `IcmpCreateFile` / `IcmpSendEcho` (the ping) | `os::net::ping(ip, n, timeout)` | the host lookup, the speed test, the commands |
+| `settings.rs` | `reg.exe` with `CREATE_NO_WINDOW` (`reg()`): the Run key | `os::autostart::{enabled, write, command}` | the commands, the `--tray` argument |
+| `log.rs` | `windows_build()` through `settings::reg` | `os::version()` | the start line |
+| `velo.rs` | `CreateToolhelp32Snapshot` (`processes()`), `TerminateProcess` (`kill()`); reads the Run key | `os::process::{list, kill}`; `os::autostart::command` | the updater hooks, the feed |
+| `beta.rs` | `OpenProcess` + `WaitForSingleObject` (`wait_for_exit()`) | `os::process::wait_for_exit(pid, limit)` | the pull, the copy |
+| `airplay.rs` | `powershell` + `netsh` with `CREATE_NO_WINDOW` (the firewall prompt) | `os::firewall::allow_inbound_udp()` | the sender, the session |
+| `lib.rs` | `ICoreWebView2Settings3` — the browser keys off (release only) | `os::window::browser_keys_off(win)` | the setup order |
+| `tray.rs` | `IsWindowArranged`, `ShowWindow(SW_RESTORE)`, `ShowWindow(SW_SHOWMINNOACTIVE)` | `os::window::{unsnap, show_minimized}` | the tray, the panel, the launch show |
+| `sotd/outlet.rs`, `friends.rs` | DPAPI `CryptProtectData` / `CryptUnprotectData` — two copies of the same two functions | `os::secrets::{protect, unprotect}` (one copy) | each file, its lock, its format |
+| `presence.rs` | the overlapped named pipe `\\.\pipe\discord-ipc-N` | `os::discord::Pipe` (state: a trait, §11.2) | the frames, the handshake, the job thread, the commands |
+| `app_icon.rs` | icon frames per DPI, the window subclass | all of it: `os::app_icon` | — |
+| `identity.rs` | the sparse `.msix`, `PackageManager`, the `.lnk` app ID, `ie4uinit.exe` | all of it: `os::identity` | — (velo.rs and lib.rs call `os::identity`) |
+| `gpu.rs` | WebView2 `ProcessFailed`; D3D11 / DXGI card test; the adapter watch | `os::gpu::{watch_process, card_ready, watch_adapters}` | the log line rule, the restart intent, the commands |
+| `audio_out.rs` | `IMMNotificationClient`, `IAudioEndpointVolumeCallback` (the output and its notices) | `os::audio_out::{current, watch}` | `AudioOutput`, the event, the command |
+| `media.rs` | other apps' session (`GlobalSystemMediaTransportControlsSessionManager`); the master volume | `os::system_media::{now_playing, transport, seek, volume, set_volume, set_mute}` | the shared types, the commands |
+| `smtc.rs` | our own media session (`SystemMediaTransportControls`, the overlay) | `os::media_session::{init, update}` | — (bridge.rs and lib.rs call it) |
+| `main.rs` | `windows_subsystem = "windows"` | stays: the attribute does nothing on another OS | — |
+
+**Windows-shaped but builds anywhere** (left for the Mac step, not this one): `%LOCALAPPDATA%`
+paths in `beta.rs` and `settings.rs` `cli_path`, and `.exe` names. They compile on every OS and
+are wrong only at run time on a Mac.
+
+**The Tauri calls that exist on Windows only** are edges too: `WebviewWindow::hwnd()` and
+`with_webview(|wv| wv.controller())`. They move with the code that uses them.
+
+### 11.2 The shape
+
+```
+src-tauri/src/os/
+  mod.rs          picks one OS file; OsCaps and caps(); the shared types; the traits
+  windows.rs      the Windows file: its CAPS and its sub-modules
+  windows/        one file per edge (§11.1 "Goes to"), filled in step 3
+  macos.rs        step 5: the same signatures, stub bodies
+  linux.rs        step 5
+```
+
+- **Free functions** (his call F2). Each OS file has the same function names and signatures, so a
+  missing function fails that OS's build.
+- **A trait only where there is state.** One is needed: the Discord pipe, a handle that lives
+  across calls (`os::DiscordPipe`). The media session and the audio watch keep their state inside
+  the OS file (a `static`), as they do today, so they stay free functions.
+- **Shared types live in `os/mod.rs`**, so each OS returns the same shape: `AudioOutput`,
+  `SystemVolume`, `WinNowPlaying`, `Transport`. Their names and fields do not change: the page
+  reads them as JSON. (`CardAnswer` stays in gpu.rs: the OS returns a plain tuple.)
+- **The module is named `windows`**, the same name as the `windows` crate. Inside `os/mod.rs` it
+  is always `self::windows`, so the two never mix.
+- **`os::caps()`** returns `OsCaps`: one `bool` per edge. Windows: all true. A stub: all false.
+  Nothing reads it yet; the page's `os_caps` command comes with the first page code that needs it.
+
+### 11.3 Checking the Windows build from a Mac (set up 2026-11-03, his call)
+
+The work runs on his Mac, and the app ships for Windows. So each move in step 3 is checked for
+the Windows target on the Mac with `cargo-xwin`, for the same target that ships
+(`x86_64-pc-windows-msvc`). It checks the code; it does not run the app or the tests. The tests
+and the desk test still run on Windows.
+
+```bash
+cd src-tauri && XWIN_ACCEPT_LICENSE=1 cargo xwin check --target x86_64-pc-windows-msvc
+```
+
+`XWIN_ACCEPT_LICENSE=1` accepts Microsoft's license for the CRT and SDK headers that `cargo-xwin`
+downloads once (to `~/Library/Caches/cargo-xwin`). He approved that on 2026-11-03.
+
+**The one-time setup on a Mac.** The order is the order of the errors; each line fixed the error
+before it.
+
+| Need | Why | How |
+|---|---|---|
+| `rustup target add x86_64-pc-windows-msvc` | the Windows standard library | rustup |
+| `cargo install --locked cargo-xwin` | the Windows headers for C code (`ring`'s `assert.h`) | crates.io |
+| `llvm-lib` on `PATH` | the archive tool for C code | `rustup component add llvm-tools`; a link `~/.cargo/bin/llvm-lib` → the toolchain's `llvm-ar` |
+| `lld-link` on `PATH` | the linker, for the CLI build below | a link `~/.cargo/bin/lld-link` → the toolchain's `rust-lld` |
+| `llvm-rc` on `PATH` | the resource compiler (the exe's icon and manifest, `tauri-winres`) | `brew install llvm` (1.8 GB on disk); a link `~/.cargo/bin/llvm-rc` → `$(brew --prefix llvm)/bin/llvm-rc` |
+| `cli/dist/deetsmusic.exe` | `tauri.conf.json` ships it as a resource; a missing resource fails `build.rs` | `cd cli && XWIN_ACCEPT_LICENSE=1 cargo xwin build --release --target x86_64-pc-windows-msvc`, then copy the exe to `cli/dist/` |
+| `mcpb/dist/deetsmusic.mcpb` | the same rule | `scripts/mcpb-pack.mjs` calls Windows' `tar.exe`; on a Mac, run its command with `/usr/bin/tar` (the same bsdtar) |
+
+The two staged files are git-ignored. Make them again only when `cli/` or `mcpb/` changes.
+
+**First result (2026-11-03, steps 1–2 in the tree):** the whole app checks for Windows, with no
+warning from our code.
+
+### 11.4 Step 3, the moves — as built (2026-11-03)
+
+Where this table and §11.1's "Goes to" column differ, this table is the code. Each row passed
+`cargo xwin check` (§11.3) before the next one started; at the end, the dev and the release
+profiles and `--tests` all check with no warning from our code.
+
+| Caller | Calls now | In `os/windows/` | Notes |
+|---|---|---|---|
+| `db_open.rs` | `os::dialog::fatal(title, text)` | `dialog.rs` | its `cfg(windows)` / `cfg(not(windows))` pair is gone |
+| `display.rs` | `os::display::{monitor, hz}` (a `tauri::Window`) | `display.rs` | the command turns its `WebviewWindow` into a `Window` |
+| `net.rs` | `os::net::ping(ip, n, timeout_ms)` → the round trips | `net.rs` | |
+| `settings.rs` | `os::autostart::{command, set}` | `autostart.rs` | `settings::reg` is gone; `reg()` is private to `os/windows.rs` |
+| `velo.rs` | `os::autostart::command`; `os::process::{list, kill}`; `os::identity::on_*` | `process.rs` | |
+| `beta.rs` | `os::process::wait_for_exit` | `process.rs` | |
+| `log.rs` | `os::system::version()` | `system.rs` | the start line reads the same: the word "Windows" moved into `version()` |
+| `airplay.rs` | `os::firewall::allow_inbound_udp()` (release only) | `firewall.rs` | the dev build's log-only path stays in airplay.rs |
+| `tray.rs` | `os::window::{unsnap, show_minimized}`; `os::app_icon::*` | `window.rs` | |
+| `lib.rs` | `os::window::browser_keys_off` (release only); `os::app_icon::*`; `os::identity::on_start`; `os::media_session::init` | `window.rs` | `mod app_icon`, `mod identity`, `mod smtc` are gone from lib.rs |
+| `sotd/outlet.rs`, `friends.rs` | `os::secrets::{protect, unprotect}` | `secrets.rs` | one copy now; the two files keep their own locks and formats |
+| `presence.rs` | `os::DiscordPipe` through the trait `os::DiscordIpc` (`open`, `write`, `read`, each with a deadline) | `discord.rs` | the frames, the handshake, the reply rules and the thread stay |
+| `gpu.rs` | `os::gpu::{watch_process, card_test, watch_adapters}` | `gpu.rs` | the log-line rule, the events, the commands, the restart intent stay |
+| `audio_out.rs` | `os::audio_out::watch(on_read)` | `audio_out.rs` | the stored value, the change log line, the event, the command stay |
+| `media.rs` | `os::system_media::*` | `system_media.rs` (was media.rs, `git mv`) | media.rs keeps only its six commands |
+| `bridge.rs`, `lib.rs` | `os::media_session::{init, update}` | `media_session.rs` (was smtc.rs, `git mv`) | the whole file |
+| — | `os::app_icon::*`, `os::identity::*` | `app_icon.rs`, `identity.rs` (`git mv`) | the whole files; their `include_bytes!` paths are one level deeper |
+
+**The sweep.** No `windows::`, `webview2_com`, `cfg(windows)`, `target_os`, `std::os::windows`,
+`.hwnd()`, `.controller()` or `creation_flags` is left in `src-tauri/src` outside `os/`. Step 6
+makes that a check.
+
+**Behavior I kept on purpose** (each is "Windows users see no change"):
+- The Discord connect still stops at once when its wait event cannot be made, and does not try
+  the next pipe number. The OS file marks that error with `event: `, and `presence.rs` stops on it.
+- The Run key is now read as a command (`os::autostart::command`), not as raw `reg.exe` output.
+  "Is it on" and "does it point into this install" ask the same thing as before.
+
+**Not run on this Mac:** the app, `cargo test`, `npx tsc --noEmit` and `npm test` (no
+`node_modules` here, and his rule for this sitting forbids the download). Nothing in `src/`
+changed.

@@ -1,3 +1,5 @@
+//! The OS layer, Windows (OS-LAYER.md §11.1; moved from src/app_icon.rs 2026-11-03).
+//!
 //! Each place gets its own hand-drawn frame (whitelabel.md §10.6, IDENTITY.md §3.3).
 //!
 //! Tauri gives a window ONE picture, the first frame of the `.ico`, and Windows scales it to
@@ -39,7 +41,7 @@ const TASKBAR_AT_96: u32 = 24;
 const TRAY_ID: &str = "main";
 
 /// The tray's and the small window icon's frames (`npm run icons` writes it).
-static TRAY_ICO: &[u8] = include_bytes!("../icons/tray.ico");
+static TRAY_ICO: &[u8] = include_bytes!("../../../icons/tray.ico");
 /// The tray frame's size now, so a broadcast that changed nothing does nothing.
 static TRAY_SIZE: AtomicU32 = AtomicU32::new(0);
 static APP: OnceLock<AppHandle> = OnceLock::new();

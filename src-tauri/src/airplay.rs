@@ -853,20 +853,7 @@ fn send_artwork(app: &AppHandle, art: Art) {
 /// a dev exe gets its rule by hand (AIRPLAY.md §4).
 #[cfg(not(debug_assertions))]
 fn firewall_add_rule() -> Result<(), String> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-    let args = format!(
-        "advfirewall firewall add rule name=\"DeetsMusic\" dir=in action=allow protocol=udp enable=yes program=\"{}\"",
-        exe.display()
-    );
-    let cmd = format!("Start-Process -FilePath netsh -Verb RunAs -WindowStyle Hidden -ArgumentList '{}'", args.replace('\'', "''"));
-    std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", &cmd])
-        .creation_flags(CREATE_NO_WINDOW)
-        .status()
-        .map_err(|e| format!("powershell: {e}"))?;
-    Ok(())
+    crate::os::firewall::allow_inbound_udp()
 }
 
 #[cfg(debug_assertions)]

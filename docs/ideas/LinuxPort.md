@@ -129,7 +129,7 @@ and state between them.
 
 | Part | Where | Linux replacement | macOS replacement |
 |---|---|---|---|
-| Media keys + media overlay | `smtc.rs` (~190 lines) | MPRIS over D-Bus | MPNowPlayingInfoCenter + MPRemoteCommandCenter |
+| Media keys + media overlay | `os/windows/media_session.rs` (~190 lines) | MPRIS over D-Bus | MPNowPlayingInfoCenter + MPRemoteCommandCenter |
 | Tray fallback: other apps' media + system volume | `media.rs` (~300 lines) | MPRIS client + PipeWire/Pulse volume, or drop | Drop (no public API for other apps' media) |
 | Start with Windows (`reg.exe` Run key) | `settings.rs:196` | XDG autostart `.desktop` file | Login item |
 | Browser shortcut keys off (WebView2 API) | `lib.rs:228` | Per runtime (CEF/Electron have their own) | Check WKWebView |
@@ -142,7 +142,7 @@ and state between them.
 
 For media keys on all three systems: `souvlaki` wraps SMTC, MPRIS and MPNowPlayingInfoCenter,
 but it is unmaintained (pinned to `windows` 0.44). `tauri-plugin-media` is a newer candidate,
-not evaluated. Our own `smtc.rs` stays on Windows either way.
+not evaluated. Our own `os/windows/media_session.rs` stays on Windows either way.
 
 ## 5. Suggested order (when the Linux work starts)
 
@@ -710,11 +710,11 @@ ECS does not decide macOS, and does not make it much easier on its own.
    Electron on Linux and look at it. No DRM, no adapter, no playback. It answers the owner's
    first constraint in an afternoon. Check Glass frost, Ocean sand and grain, the lift, the
    swap, the scroll.
-2. **`navigator.mediaSession`.** `smtc.rs` exists because WebView2 handles media keys but never
+2. **`navigator.mediaSession`.** `os/windows/media_session.rs` exists because WebView2 handles media keys but never
    registers a session with metadata, so the Win11 overlay stayed blank (its own header note,
    2026-09-10). We call `navigator.mediaSession` nowhere — 0 hits in `src/`. Full Chromium
    does drive MPRIS on Linux and the macOS now-playing centre from it. **If that holds under
-   ECS, MPRIS and the macOS overlay both collapse** from "port `smtc.rs` twice" to "set
+   ECS, MPRIS and the macOS overlay both collapse** from "port `os/windows/media_session.rs` twice" to "set
    metadata in the player page". That is the largest line in the §4 table, on two systems.
    Not confirmed for ECS. A one-hour test.
 3. Do the Tauri plugins we rely on have Electron answers? single-instance, deep-link, updater,

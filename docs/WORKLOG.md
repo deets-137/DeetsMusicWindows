@@ -6,6 +6,38 @@ updated: 2026-11-03
 ---
 # DeetsMusic — Work log
 
+## 2026-11-03 — The OS layer split, steps 1–3: the inventory, the shape, the moves
+
+- **His ask.** Move the Windows-only Rust code behind `src-tauri/src/os/`, so a Mac file and a
+  Linux file can come later; Windows users see no change. He approved a 9-step plan, said "go
+  ahead with steps 1 and 2 then get back to me", and asked for the docs to be written as the work
+  goes. His calls: `airplay.rs` (the firewall prompt) and `lib.rs` (the browser keys off) move
+  into the OS layer too; the page's `os_caps` command waits for its first page user.
+- **Step 1, the inventory.** 18 files outside `os/` call Windows. Each one, its calls, its `os::`
+  target and what stays in the caller: OS-LAYER.md §11.1. Found on the way: `log.rs` reads the
+  Windows version through `settings::reg`; `velo.rs` reads the Run key the same way; the DPAPI
+  pair is two copies of the same code (`friends.rs`, `sotd/outlet.rs`); Tauri's `hwnd()` and
+  `with_webview` controller are edges too.
+- **Step 2, the shape.** `os/mod.rs` (picks the OS file by `cfg`; `OsCaps`, `caps()`) and
+  `os/windows.rs` (`CAPS`, all true); `mod os;` in lib.rs. Nothing calls it yet, so the app
+  behaves as before. OS-LAYER.md §11.2.
+- **Checked.** `npm run docs:check` passes. The `os` module type-checks alone for
+  `x86_64-pc-windows-msvc` with no warnings (a scratch crate). The whole app does NOT check for
+  the Windows target on his Mac: `ring`'s C code needs Windows headers (`assert.h` not found).
+  He chose `cargo-xwin` on the Mac. After the setup (OS-LAYER.md §11.3: the Windows target,
+  `cargo-xwin`, `llvm-tools`, Homebrew `llvm` for `llvm-rc`, a Windows CLI build and the `.mcpb`
+  staged), the whole app checks for `x86_64-pc-windows-msvc` with no warning from our code.
+  He stopped the `llvm` install, but it had already finished (1.8 GB); it stays until he says.
+- **His rule for the rest of the sitting:** guest Wi-Fi, so no installs and no download over 5 MB.
+- **Step 3, the moves.** Every Windows call in `src-tauri/src` now sits in `os/windows/`, in 16
+  files; the callers call `os::`. smtc.rs, media.rs (its body), app_icon.rs and identity.rs moved
+  with `git mv`. One trait, `os::DiscordIpc`, for the Discord pipe. Each move passed
+  `cargo xwin check`; at the end the dev and release profiles and `--tests` check with no warning
+  from our code. The table and the behavior kept on purpose: OS-LAYER.md §11.4. The docs that named
+  the moved files point at the new paths.
+- **Not run here:** the app, `cargo test`, `tsc`, `npm test` (no `node_modules` on the Mac).
+- **Not done.** Steps 4–9 (OS-LAYER.md §11). Nothing committed.
+
 ## 2026-11-03 — A Mac build: the probe, Liquid Glass, the OS layer (a design)
 
 - **His ask.** How close is a Mac version, how would the repo change, and is a monorepo still

@@ -1,3 +1,5 @@
+//! The OS layer, Windows (OS-LAYER.md §11.1; moved from src/identity.rs 2026-11-03).
+//!
 //! Package identity (docs/ops/IDENTITY.md): a small signed `.msix` registered against the
 //! install's `current\` folder, so the taskbar, Start and the media flyout draw the app from the
 //! package's exact-size logos instead of shrinking the exe's 32 px frame (whitelabel.md §10.6).
@@ -30,7 +32,7 @@ use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, IPersistFile
 use windows::Win32::UI::Shell::PropertiesSystem::IPropertyStore;
 use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
 
-const JSON: &str = include_str!("../identity/identity.json");
+const JSON: &str = include_str!("../../../identity/identity.json");
 /// The signed identity package, shipped in `current\` by `release.mjs`.
 pub const MSIX: &str = "DeetsMusic.identity.msix";
 
@@ -113,9 +115,7 @@ fn unregister(id: &Id) -> Result<(), String> {
 
 /// The shell caches the icon it chose per app ID; a stale one stays until this (§8.1 "cache").
 fn refresh_icons() {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let _ = std::process::Command::new("ie4uinit.exe").arg("-show").creation_flags(CREATE_NO_WINDOW).status();
+    let _ = super::hidden(&mut std::process::Command::new("ie4uinit.exe")).arg("-show").status();
 }
 
 // ── the Start shortcut ──

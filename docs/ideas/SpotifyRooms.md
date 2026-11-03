@@ -1,7 +1,7 @@
 ---
 status: idea
 desk_test: none
-sources: [src/room.ts, src-tauri/src/smtc.rs, docs/ops/checks/spotify-probe.ps1]
+sources: [src/room.ts, src-tauri/src/os/windows/media_session.rs, docs/ops/checks/spotify-probe.ps1]
 updated: 2026-10-18
 ---
 # Spotify in rooms — the user's own Spotify app plays the room
@@ -18,7 +18,7 @@ updated: 2026-10-18
 - **A media session** is what an app registers with Windows to show in the media flyout and
   answer the media keys. Another app can read and control it through `Windows.Media.Control`
   (the *Global System Media Transport Controls* API). DeetsMusic already *publishes* one
-  (`src-tauri/src/smtc.rs`); this idea *controls* Spotify's.
+  (`src-tauri/src/os/windows/media_session.rs`); this idea *controls* Spotify's.
 - **A link** is a `spotify:track:<id>` URI. Windows gives it to the Spotify app.
 - **Odesli** (song.link) is a free web service that maps a song link on one service to the same
   song on others.

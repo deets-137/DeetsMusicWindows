@@ -37,8 +37,8 @@ pub fn startup() {
     VelopackApp::build()
         // Package identity (identity.rs, IDENTITY.md §3.4): register at install, again on an
         // update only when the identity version rose, remove at uninstall.
-        .on_after_install_fast_callback(|_| crate::identity::on_install())
-        .on_after_update_fast_callback(|_| crate::identity::on_updated())
+        .on_after_install_fast_callback(|_| crate::os::identity::on_install())
+        .on_after_update_fast_callback(|_| crate::os::identity::on_updated())
         .on_before_update_fast_callback(|_| {
             stop_clis();
         })
@@ -59,8 +59,8 @@ pub fn stop_clis() -> usize {
     let Some(dir) = cli_dir() else { return 0 };
     let prefix = dir.to_string_lossy().trim_start_matches(r"\\?\").to_lowercase() + "\\";
     let mut n = 0;
-    for (pid, path) in processes() {
-        if path.to_lowercase().starts_with(&prefix) && kill(pid) {
+    for (pid, path) in crate::os::process::list() {
+        if path.to_lowercase().starts_with(&prefix) && crate::os::process::kill(pid) {
             n += 1;
         }
     }
@@ -74,7 +74,7 @@ pub fn stop_clis() -> usize {
 /// deleted exe, MCP-INSTALL.md fork 6A), stop the CLIs, and remove the start-with-Windows value
 /// when it points into this install. Velopack then deletes the folder; the data folder stays.
 fn before_uninstall() {
-    crate::identity::on_uninstall();
+    crate::os::identity::on_uninstall();
     if let Some(dir) = cli_dir() {
         let exe = dir.join(format!("{}.exe", crate::settings::cli_name()));
         if exe.is_file() {
@@ -83,47 +83,11 @@ fn before_uninstall() {
     }
     stop_clis();
     if let Some(root) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_string_lossy().to_lowercase())) {
-        if let Ok(out) = crate::settings::reg(&["query", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", "/v", crate::beta::app_name()]) {
-            if out.to_lowercase().contains(&root) {
+        if let Some(cmd) = crate::os::autostart::command(crate::beta::app_name()) {
+            if cmd.to_lowercase().contains(&root) {
                 let _ = crate::settings::autostart_write(false);
             }
         }
-    }
-}
-
-fn processes() -> Vec<(u32, String)> {
-    use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
-    use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
-    let mut out = Vec::new();
-    unsafe {
-        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return out };
-        let mut e = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
-        let mut ok = Process32FirstW(snap, &mut e).is_ok();
-        while ok {
-            if let Ok(h) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, e.th32ProcessID) {
-                let mut buf = [0u16; 1024];
-                let mut len = buf.len() as u32;
-                if QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, windows::core::PWSTR(buf.as_mut_ptr()), &mut len).is_ok() {
-                    out.push((e.th32ProcessID, String::from_utf16_lossy(&buf[..len as usize])));
-                }
-                let _ = CloseHandle(h);
-            }
-            ok = Process32NextW(snap, &mut e).is_ok();
-        }
-        let _ = CloseHandle(snap);
-    }
-    out
-}
-
-fn kill(pid: u32) -> bool {
-    use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
-    unsafe {
-        let Ok(h) = OpenProcess(PROCESS_TERMINATE, false, pid) else { return false };
-        let ok = TerminateProcess(h, 0).is_ok();
-        let _ = CloseHandle(h);
-        ok
     }
 }
 

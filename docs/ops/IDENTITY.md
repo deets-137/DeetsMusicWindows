@@ -2,7 +2,7 @@
 status: shipped
 shipped_in: 0.29.0
 desk_test: passed 2026-10-17
-sources: [src-tauri/src/identity.rs, src-tauri/src/velo.rs, src-tauri/src/media.rs, src-tauri/src/app_icon.rs, src-tauri/build.rs, src-tauri/identity/identity.json, src-tauri/identity/AppxManifest.template.xml, scripts/identity-pack.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/icons.py, docs/ops/VELOPACK.md, docs/ideas/whitelabel.md]
+sources: [src-tauri/src/os/windows/identity.rs, src-tauri/src/velo.rs, src-tauri/src/os/windows/system_media.rs, src-tauri/src/os/windows/app_icon.rs, src-tauri/build.rs, src-tauri/identity/identity.json, src-tauri/identity/AppxManifest.template.xml, scripts/identity-pack.mjs, scripts/release.mjs, scripts/release-check.mjs, scripts/icons.py, docs/ops/VELOPACK.md, docs/ideas/whitelabel.md]
 updated: 2026-11-02
 ---
 # Package identity — exact-size taskbar icons for the installed app
@@ -59,7 +59,7 @@ updated: 2026-11-02
   Common-Controls dependency (`tauri_build::WindowsAttributes::app_manifest`). The Beta build
   names `DeetsMusicBeta`.
 - A debug build (`tauri dev`, `dev:app`) gets no element: the dev app keeps no identity, and its
-  taskbar button keeps `app_icon.rs`'s exact frames (crisp today).
+  taskbar button keeps `os/windows/app_icon.rs`'s exact frames (crisp today).
 - With the element but no registered package, the exe runs as an ordinary app (§8 P6).
 
 ### 3.3 The icons
@@ -270,12 +270,12 @@ the worktree (uncommitted) for the build.
     extension's toolbar icons stay the head.
   - `src-tauri/icons/signin/` (2026-10-23): the hosted sign-in page's mark, the city at 48 CSS
     px per screen density (48 … 144 px), and its tab icon, the head (DATA-ARCHITECTURE.md §2a).
-- **`app_icon.rs`**: the tray and a window's SMALL icon (Alt+Tab) read `tray.ico`
+- **`os/windows/app_icon.rs`**: the tray and a window's SMALL icon (Alt+Tab) read `tray.ico`
   (`CreateIconFromResourceEx` on the frame's own bytes); the BIG icon (the taskbar button of a
   window without identity: the dev app, or a failed registration) stays the exe's `icon.ico`,
   now the city.
 - **`src-tauri/identity/identity.json`**: the identity version (1.0.0.0), the publisher, the
-  live and Beta names. One source for `build.rs`, `identity-pack.mjs`, `identity.rs` and
+  live and Beta names. One source for `build.rs`, `identity-pack.mjs`, `os/windows/identity.rs` and
   release-check 12.
 - **`build.rs` `identity_manifest()`**: a release profile build embeds Tauri's manifest plus
   `<msix publisher packageName applicationId>` (`WindowsAttributes::app_manifest`); the Beta
@@ -289,7 +289,7 @@ the worktree (uncommitted) for the build.
   the manifest's names right.
 - **`release.mjs`**: runs `identity-pack.mjs` after the stage is filled; `vpk pack
   --shortcuts None`.
-- **`identity.rs`** (new): `on_install`, `on_updated`, `on_uninstall` (wired in `velo.rs`'s
+- **`os/windows/identity.rs`** (new): `on_install`, `on_updated`, `on_uninstall` (wired in `velo.rs`'s
   builder and `before_uninstall`) and `on_start` (lib.rs setup, on `spawn_blocking`). Only an
   installed release build acts (`current\` beside `..\Update.exe`, with the `.msix` in it).
   Registration through `PackageManager.AddPackageByUriAsync` with `ExternalLocationUri`, then
@@ -342,7 +342,7 @@ the worktree (uncommitted) for the build.
 - The pin is the package's own pin, with no `.lnk` (P4). So Windows shows no Properties ›
   Change Icon for it either.
 - Places the app CAN give a user's picture today, with no shortcut: the title bar and Alt+Tab
-  (`app_icon.rs`, the small icon), the tray (`tray.set_icon`, as `refresh_tray()` does), and
+  (`os/windows/app_icon.rs`, the small icon), the tray (`tray.set_icon`, as `refresh_tray()` does), and
   a 16 px badge on the corner of the taskbar button (`ITaskbarList3::SetOverlayIcon`, not
   used yet). The badge is the only one of these on the live taskbar, and it sits on the city.
 - Rejected: write the user's picture over the package logos in `current\`. Windows does not

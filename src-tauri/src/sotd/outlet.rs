@@ -53,42 +53,12 @@ fn path() -> Option<&'static PathBuf> {
     PATH.get()
 }
 
-// ── DPAPI ────────────────────────────────────────────────────────────────────
-
-/// Encrypt for the current Windows user (`CryptProtectData`). The file is plain JSON inside,
-/// so a decrypt that fails is a file from another account — never a crash.
-fn protect(data: &[u8]) -> Result<Vec<u8>, String> {
-    use windows::Win32::Foundation::{HLOCAL, LocalFree};
-    use windows::Win32::Security::Cryptography::{CryptProtectData, CRYPT_INTEGER_BLOB};
-    unsafe {
-        let input = CRYPT_INTEGER_BLOB { cbData: data.len() as u32, pbData: data.as_ptr() as *mut u8 };
-        let mut out = CRYPT_INTEGER_BLOB::default();
-        CryptProtectData(&input, None, None, None, None, 0, &mut out).map_err(|e| e.to_string())?;
-        let v = std::slice::from_raw_parts(out.pbData, out.cbData as usize).to_vec();
-        let _ = LocalFree(Some(HLOCAL(out.pbData as *mut _)));
-        Ok(v)
-    }
-}
-
-fn unprotect(data: &[u8]) -> Result<Vec<u8>, String> {
-    use windows::Win32::Foundation::{HLOCAL, LocalFree};
-    use windows::Win32::Security::Cryptography::{CryptUnprotectData, CRYPT_INTEGER_BLOB};
-    unsafe {
-        let input = CRYPT_INTEGER_BLOB { cbData: data.len() as u32, pbData: data.as_ptr() as *mut u8 };
-        let mut out = CRYPT_INTEGER_BLOB::default();
-        CryptUnprotectData(&input, None, None, None, None, 0, &mut out).map_err(|e| e.to_string())?;
-        let v = std::slice::from_raw_parts(out.pbData, out.cbData as usize).to_vec();
-        let _ = LocalFree(Some(HLOCAL(out.pbData as *mut _)));
-        Ok(v)
-    }
-}
-
 // ── the file ─────────────────────────────────────────────────────────────────
 
 fn load() -> Store {
     let Some(p) = path() else { return Store::default() };
     let Ok(raw) = std::fs::read(p) else { return Store::default() };
-    let plain = match unprotect(&raw) {
+    let plain = match crate::os::secrets::unprotect(&raw) {
         Ok(v) => v,
         Err(e) => {
             // Another account's file, or a copy from another PC. Not connected, one warn,
@@ -114,7 +84,7 @@ fn load() -> Store {
 fn save(store: &Store) {
     let Some(p) = path() else { return };
     let Ok(json) = serde_json::to_vec(store) else { return };
-    match protect(&json) {
+    match crate::os::secrets::protect(&json) {
         Ok(blob) => {
             // Write beside, then rename over: a cut-off write must not lose the webhooks.
             if let Err(e) = crate::safe_file::write_atomic(p, &blob) {

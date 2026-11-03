@@ -394,7 +394,7 @@ His plan: the icon ships with a later release, after other build items. Left:
    installer may need to refresh the shell (`SHChangeNotify`).
 6. **Not needed for live:** `icons-beta/` (Beta-first is paused; its look is open), the
    `Square*Logo` set (the Store, unused by NSIS), `icon.icns` (macOS).
-- **Why `app_icon.rs` (2026-10-15):** Tauri gives a window ONE picture, the first `.ico`
+- **Why `os/windows/app_icon.rs` (2026-10-15):** Tauri gives a window ONE picture, the first `.ico`
   frame, and Windows scaled his 16 up to the 24 px taskbar button: a blur. Now each window
   loads the exe's icon resource (id 32512) at the exact size per scale (small = SM_CXSMICON,
   big = 24 px × scale, the taskbar's size) and sends `WM_SETICON`, again on a scale change;
@@ -417,7 +417,7 @@ His plan: the icon ships with a later release, after other build items. Left:
   shortcut's app ID gets the SHORTCUT's icon on the taskbar, pinned or not: Explorer takes the
   exe's 32 frame and shrinks it to 24. Measured on his screenshot at 100 %: live head 14×11 and
   soft (the 18×15 head × 0.75), dev head 18×14 and crisp (dev has no shortcut, so
-  `app_icon.rs`'s 24 frame shows). The head ×2 does not fit 32, so no whole-number scale helps.
+  `os/windows/app_icon.rs`'s 24 frame shows). The head ×2 does not fit 32, so no whole-number scale helps.
 - **His call (2026-10-16): a city behind the head** (option C), from his Discord badge
   (`deetsmusic-discord-icon.png`: the head on the Skyline1 city, `src-tauri/nsis/art/skyline.png`).
   In the 32 frame: the head ×4/3 (24×20, nearest-neighbor, bottom-centered) on a city. The

@@ -597,7 +597,7 @@ Two Settings rows in the Playlists section:
 - A mosaic playlist has no saved cover, so it keeps the album cover.
 - "From a playlist" = the queue entry's context tag: `playlist:<pid>` (Playlists card,
   Rewind) or `search-playlists:<catalogId>` (Search, when the playlist is in the cached list).
-- Not changed: the album tint (`album-color.ts`), the Windows media overlay (`smtc.rs`),
+- Not changed: the album tint (`album-color.ts`), the Windows media overlay (`os/windows/media_session.rs`),
   AirPlay, the queue card. The tray gets the cover as `NpState.coverUrl`.
 - Code: `playlist-cover.ts` (context → playlist map from `playlistsCached`, zero Apple
   calls), `now-playing-card.ts`, `np-bus.ts` → `bridge.rs` → `tray.ts`.

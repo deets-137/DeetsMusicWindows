@@ -378,23 +378,15 @@ pub async fn settings_set_lastfm_now_playing(on: bool, app: tauri::AppHandle) ->
     set(app, move |d| d.lastfm_now_playing = on).await
 }
 
-// ── start with Windows (HKCU Run key via reg.exe; DeetsAirplay / DeetsRGB pattern) ──
+// ── start with Windows (`os::autostart`: the Run key on Windows) ──
 
-const RUN_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
 /// The Run value's name: "DeetsMusic", or "DeetsMusic Beta" so the two apps never share one (BETA.md).
 fn run_value() -> &'static str {
     crate::beta::app_name()
 }
 
-pub(crate) fn reg(args: &[&str]) -> Result<String, String> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let out = std::process::Command::new("reg").args(args).creation_flags(CREATE_NO_WINDOW).output().map_err(|e| format!("reg.exe: {e}"))?;
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
-}
-
 pub fn autostart_enabled() -> bool {
-    reg(&["query", RUN_KEY, "/v", run_value()]).map(|s| s.contains(run_value())).unwrap_or(false)
+    crate::os::autostart::command(run_value()).is_some()
 }
 
 /// Registers `"<exe>" --tray`: a login launch starts in the tray, not on screen.
@@ -402,11 +394,10 @@ pub fn autostart_write(on: bool) -> Result<(), String> {
     if on {
         let exe = std::env::current_exe().map_err(|e| e.to_string())?;
         let cmd = format!("\"{}\" --tray", exe.display());
-        reg(&["add", RUN_KEY, "/v", run_value(), "/t", "REG_SZ", "/d", &cmd, "/f"])?;
+        crate::os::autostart::set(run_value(), Some(&cmd))
     } else {
-        reg(&["delete", RUN_KEY, "/v", run_value(), "/f"])?;
+        crate::os::autostart::set(run_value(), None)
     }
-    Ok(())
 }
 
 // Both of these SPAWN `reg.exe` and wait for it to exit. A sync command runs on the UI

@@ -6,7 +6,7 @@
 //! `catch_unwind`, and a failure lands here: one native Windows message box that names the
 //! file and its backups in plain words, a log line, and a clean exit.
 //!
-//! No new dependency: `MessageBoxW` is a feature of the `windows` crate the app already has.
+//! The box itself is `os::dialog::fatal` (OS-LAYER.md §11.1).
 
 use std::path::{Path, PathBuf};
 
@@ -71,21 +71,8 @@ pub fn fail(dir: &Path, db_path: &Path, why: &str) -> ! {
     std::process::exit(1);
 }
 
-#[cfg(windows)]
 fn show(text: &str) {
-    use windows::core::PCWSTR;
-    use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK, MB_SETFOREGROUND};
-    let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
-    let body = wide(text);
-    let title = wide("DeetsMusic can't start");
-    unsafe {
-        MessageBoxW(None, PCWSTR(body.as_ptr()), PCWSTR(title.as_ptr()), MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
-    }
-}
-
-#[cfg(not(windows))]
-fn show(text: &str) {
-    eprintln!("{text}");
+    crate::os::dialog::fatal("DeetsMusic can't start", text);
 }
 
 #[cfg(test)]
