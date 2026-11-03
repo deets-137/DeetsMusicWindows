@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mac playback probe</title>
+<style>
+  /* A probe page, not app UI: plain system styles, no tokens. */
+  :root { color-scheme: light dark; }
+  body { font: 13px/1.45 -apple-system, system-ui, sans-serif; margin: 16px; }
+  h1 { font-size: 17px; margin: 0 0 8px; }
+  #verdict { font-weight: 600; padding: 8px 10px; border-radius: 6px; margin: 8px 0 12px; background: #8882; }
+  #verdict.pass { background: #2a73; }
+  #verdict.fail { background: #c333; }
+  button { font: inherit; padding: 6px 12px; margin-bottom: 10px; }
+  pre { white-space: pre-wrap; font: 12px/1.4 ui-monospace, Menlo, monospace; margin: 0; }
+</style>
+</head>
+<body>
+<h1>DeetsMusic on WKWebView: can a full Apple song play?</h1>
+<div id="verdict">Running…</div>
+<button id="play" hidden>Play (click needed)</button>
+<pre id="log"></pre>
+<script>
+const P = window.__PROBE || {};
+const logEl = document.getElementById("log");
+const verdictEl = document.getElementById("verdict");
+const playBtn = document.getElementById("play");
+
+function send(line) {
+  logEl.textContent += line + "\n";
+  try { window.__TAURI__.core.invoke("report", { line }); } catch (e) { /* no bridge: page only */ }
+}
+function verdict(ok, text) {
+  verdictEl.textContent = text;
+  verdictEl.className = ok ? "pass" : "fail";
+  send("VERDICT: " + (ok ? "PASS " : "FAIL ") + text);
+}
+const errText = (e) => String((e && (e.errorCode || e.name || e.message)) || e) +
+  (e && e.message && e.name ? " (" + e.message + ")" : "");
+
+// ── 1. What the engine offers, with no token at all ─────────────────────────
+async function engineChecks() {
+  send("UA: " + navigator.userAgent);
+  send("origin: " + location.origin + "  secure context: " + window.isSecureContext);
+  const aac = 'audio/mp4; codecs="mp4a.40.2"';
+  send("MediaSource: " + ("MediaSource" in window) +
+    (window.MediaSource ? "  AAC: " + MediaSource.isTypeSupported(aac) : ""));
+  send("ManagedMediaSource: " + ("ManagedMediaSource" in window));
+  send("WebKitMediaKeys (old FairPlay API): " + ("WebKitMediaKeys" in window) +
+    (window.WebKitMediaKeys ? "  fps.1_0 + audio/mp4: " +
+      WebKitMediaKeys.isTypeSupported("com.apple.fps.1_0", "audio/mp4") : ""));
+  send("requestMediaKeySystemAccess: " + ("requestMediaKeySystemAccess" in navigator));
+  if (!navigator.requestMediaKeySystemAccess) return;
+  const systems = ["com.apple.fps", "com.apple.fps.1_0", "com.apple.fps.2_0", "com.apple.fps.3_0",
+                   "com.widevine.alpha", "org.w3.clearkey"];
+  for (const ks of systems) {
+    try {
+      const a = await navigator.requestMediaKeySystemAccess(ks, [{
+        initDataTypes: ["sinf", "skd", "cenc"],
+        audioCapabilities: [{ contentType: aac }],
+      }]);
+      const c = a.getConfiguration();
+      send("EME " + ks + ": YES  initDataTypes=" + (c.initDataTypes || []).join(","));
+    } catch (e) {
+      send("EME " + ks + ": no (" + errText(e) + ")");
+    }
+  }
+}
+
+// ── 2. MusicKit: configure, sign in, play one song past 30 s ───────────────
+function loadMusicKit() {
+  return new Promise((resolve, reject) => {
+    document.addEventListener("musickitloaded", resolve, { once: true });
+    const s = document.createElement("script");
+    s.src = "https://js-cdn.music.apple.com/musickit/v3/musickit.js";
+    s.async = true;
+    s.onerror = () => reject(new Error("musickit.js did not load"));
+    document.head.appendChild(s);
+    setTimeout(() => reject(new Error("musickit.js: no musickitloaded in 20 s")), 20000);
+  });
+}
+
+async function playOne() {
+  if (!P.devToken) { verdict(false, "no developer token (run.mjs gives one)"); return; }
+  await loadMusicKit();
+  send("MusicKit loaded: " + (window.MusicKit && MusicKit.version));
+  await MusicKit.configure({
+    developerToken: P.devToken,
+    app: { name: "DeetsMusic Mac probe", build: "0.1.0" },
+    suppressErrorDialog: true,
+  });
+  const music = MusicKit.getInstance();
+  send("configured. storefront: " + music.storefrontId);
+
+  // The app's own path (player.ts injectUserToken): set the captured MUT, no authorize().
+  if (P.mut) {
+    try { music.musicUserToken = P.mut; } catch (e) { send("musicUserToken not settable: " + errText(e)); }
+  }
+  send("isAuthorized: " + music.isAuthorized + "  previewOnly: " + music.previewOnly);
+  if (!music.isAuthorized) {
+    send("no user token took; trying authorize() in WKWebView (its popup may be blocked)");
+    try { await music.authorize(); send("authorize(): ok"); }
+    catch (e) { send("authorize(): " + errText(e)); }
+  }
+
+  music.addEventListener("mediaPlaybackError", (e) => send("mediaPlaybackError: " + errText(e)));
+  music.addEventListener("playbackStateDidChange", (e) =>
+    send("state: " + (MusicKit.PlaybackStates ? Object.keys(MusicKit.PlaybackStates)
+      .find((k) => MusicKit.PlaybackStates[k] === e.state) : e.state)));
+
+  const term = P.song || "Bohemian Rhapsody Queen";
+  const res = await music.api.music("/v1/catalog/{{storefrontId}}/search",
+    { term, types: "songs", limit: 1 });
+  const song = res && res.data && res.data.results && res.data.results.songs &&
+    res.data.results.songs.data[0];
+  if (!song) { verdict(false, "catalog search found no song for: " + term); return; }
+  const fullMs = song.attributes.durationInMillis;
+  send("song: " + song.attributes.name + " — " + song.attributes.artistName +
+    "  (" + song.id + ", " + Math.round(fullMs / 1000) + " s)");
+
+  await music.setQueue({ song: song.id, startPlaying: false });
+  try {
+    await music.play();
+    send("play(): started with no click");
+  } catch (e) {
+    send("play() without a click: " + errText(e) + " — click Play");
+    playBtn.hidden = false;
+    await new Promise((r) => (playBtn.onclick = r));
+    playBtn.hidden = true;
+    await music.play();
+  }
+  watch(music, fullMs);
+}
+
+function watch(music, fullMs) {
+  const started = Date.now();
+  let last = -1;
+  const t = setInterval(() => {
+    const pos = music.currentPlaybackTime || 0;
+    const dur = music.currentPlaybackDuration || 0;
+    if (Math.floor(pos / 5) !== Math.floor(last / 5)) send("at " + pos.toFixed(1) + " s of " + dur.toFixed(0) + " s");
+    last = pos;
+    if (pos >= 35) {
+      clearInterval(t);
+      verdict(true, "a full song played in WKWebView: " + pos.toFixed(1) + " s, past the 30 s preview" +
+        " (duration " + dur.toFixed(0) + " s of " + Math.round(fullMs / 1000) + " s)");
+      webAudioCheck().catch((e) => send("WEBAUDIO: FAIL " + errText(e)));
+    } else if (Date.now() - started > 75000) {
+      clearInterval(t);
+      const preview = dur > 0 && dur <= 31;
+      verdict(false, preview
+        ? "only the 30 s preview played (duration " + dur.toFixed(0) + " s): DRM or sign-in did not take"
+        : "playback did not reach 35 s in 75 s (at " + pos.toFixed(1) + " s, duration " + dur.toFixed(0) + " s)");
+    }
+  }, 1000);
+}
+
+// ── 3. Does DRM audio reach Web Audio? ─────────────────────────────────────
+// The app's EQ, level meter, Adaptive sound and AirPlay tap all route MusicKit's <audio> through
+// createMediaElementSource (sound.ts). Chromium passes Widevine audio through. WebKit may give
+// zeros for FairPlay audio. Run after the PASS, because routing can make the song go silent.
+async function webAudioCheck() {
+  const els = [...document.querySelectorAll("audio")];
+  const el = els.find((a) => !a.paused) || document.getElementById("apple-music-player");
+  if (!el) { send("WEBAUDIO: FAIL no playing <audio> element found (" + els.length + " elements)"); return; }
+  const ctx = new AudioContext();
+  await ctx.resume();
+  const src = ctx.createMediaElementSource(el);
+  const an = ctx.createAnalyser();
+  an.fftSize = 2048;
+  src.connect(an);
+  an.connect(ctx.destination);
+  const buf = new Float32Array(an.fftSize);
+  let peak = 0, sum = 0, n = 0;
+  const end = Date.now() + 4000;
+  while (Date.now() < end) {
+    await new Promise((r) => setTimeout(r, 100));
+    an.getFloatTimeDomainData(buf);
+    let s = 0;
+    for (const v of buf) { s += v * v; peak = Math.max(peak, Math.abs(v)); }
+    sum += Math.sqrt(s / buf.length); n++;
+  }
+  const rms = sum / n;
+  send("WEBAUDIO: " + (peak > 0.001 ? "PASS DRM audio reaches Web Audio" :
+    "FAIL Web Audio gets silence from the DRM audio (the EQ, meter and AirPlay tap would not work)") +
+    "  rms=" + rms.toFixed(4) + " peak=" + peak.toFixed(4) + " ctx=" + ctx.sampleRate + " Hz");
+}
+
+(async () => {
+  try { await engineChecks(); } catch (e) { send("engine checks failed: " + errText(e)); }
+  try { await playOne(); } catch (e) { verdict(false, "MusicKit: " + errText(e)); }
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src/usage.ts, src/usage-rules.ts, src/usage-keys.ts, src-tauri/src/usage.rs, scripts/usage-keys.mjs, scripts/usage-r2.mjs, docs/ops/checks/usage-worker.mjs, src/settings-store.ts, src/agent-settings.ts, src/settings-card.ts, src/updater.ts, src-tauri/src/apple_calls.rs, src-tauri/src/log.rs, src-tauri/src/watchdog.rs, src-tauri/src/dbhealth.rs, src-tauri/src/apple.rs, README.md, src/error-fp.ts, src/diag.ts, src-tauri/src/gpu.rs, src/license-watch.ts, scripts/errors-where.mjs, vite.config.ts, src/report-draft.ts, src/stats.ts, src/rewind.ts]
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 # DeetsMusic — Usage counts: how many people use the app, and how
 
@@ -296,7 +296,11 @@ inline on the boards). Owner mode on the DeetsMusic page links to it. The worker
 page"). Pickers for channel and week; the four headline counts; 60 days of daily installs;
 the week's version mix; one setting's shares; the cross-check of two settings over the chosen
 week (one row per install); and **every** health metric (his call, 2026-10-14), per version or
-all. His strings (approved 2026-10-14). `?mock` shows it with made-up counts.
+all. His strings (approved 2026-10-14). `?mock` shows it with made-up counts. **2026-11-03 (his call: "add all data we receive", "clean, neat and organized"):** the
+Stats tab shows every stream of `GET /admin/usage` as it arrives, one *as received* block each
+(columns per day or week, a lighter column while a period fills in, every line in a closed
+table). The minutes tiles no longer wait 2 days, and the library tiles read the newest version's
+first starts until a health week arrives. DeetsSolutions `docs/support.md`, the Stats tab.
 
 ## 7. How the user is told
 

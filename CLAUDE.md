@@ -51,6 +51,10 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
 - `DATA-ARCHITECTURE.md` — auth, the normalized model, the provider, the SQLite cache.
 - `PROVIDER-CRATES.md` — Apple's data calls in `crates/apple-music` over a shared
   `crates/music-core` (model, trait, `Host`); a later service is a sibling crate. Playback stays out.
+- `OS-LAYER.md` — DESIGNED 2026-11-03 on `macos-support`, not built: the OS edges in
+  `src-tauri/src/os/` (windows / macos / linux), a Mac build (Apple Silicon, his calls §1), Liquid
+  Glass behind the window and as native card fills (§6), the bridge in place of CDP (§7), the
+  Linux spec for a cloud agent (§8). The probe is `tools/mac-probe/` (§2). §10 the open forks.
 - `SURFACES-AND-CARDS.md` — the surfaces (mini / midi / max) and the card slot system.
   **§5 is the recipe for a new card**: the eight systems a card adopts (menus, keys, picks,
   drags, hint shapes, memory, popovers) and which cards adopt which today.

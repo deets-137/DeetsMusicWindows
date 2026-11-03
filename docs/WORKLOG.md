@@ -2,9 +2,28 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 # DeetsMusic — Work log
+
+## 2026-11-03 — A Mac build: the probe, Liquid Glass, the OS layer (a design)
+
+- **His ask.** How close is a Mac version, how would the repo change, and is a monorepo still
+  right. Then: set up the playback test; branch `macos-support` for the work; size, RAM and speed;
+  Liquid Glass; Linux as a third module, as a spec for a cloud agent.
+- **Built.** `tools/mac-probe/`: a small Tauri crate (not the app). `run.mjs` plays one song in
+  WKWebView (token from a local `.p8` or the mint with the build key; the user token through the
+  app's loopback sign-in), then checks whether Web Audio hears the DRM audio. `--glass` runs four
+  Liquid Glass scenes (`src/glass.rs`, `page/glass.html`).
+- **Ran on his Mac (macOS 27).** FairPlay through EME: yes, all four key systems; Widevine: no.
+  The full song and Web Audio: not run, because the Mac has no build key. Glass: window glass
+  works; glass behind the page bends only native layers; glass over the page bends our content;
+  a moving card's glass followed at 60 updates/s, 2 ms p50. The full-screen screenshots raised a
+  macOS screen-access prompt; they were deleted after reading.
+- **His calls.** Apple Silicon only; the EQ may go on a Mac; AirPlay through Apple's route picker;
+  rebuild the tools and put them in crates; Liquid Glass behind the window and in menus, native
+  glass cards investigated; Linux third, not a priority.
+- **Designed.** New doc `architecture/OS-LAYER.md`. The forks F1–F7 (§10) are open. Not committed.
 
 ## 2026-11-03 — Apple's data calls in their own crate (a design only)
 

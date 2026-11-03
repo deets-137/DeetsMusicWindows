@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquid Glass test</title>
+<style>
+  /* A probe page, not app UI: plain values, no tokens. The page is transparent, so the
+     native views behind the web view (src/glass.rs) show through wherever nothing is drawn. */
+  html, body { background: transparent; margin: 0; height: 100%; }
+  body { font: 13px/1.4 -apple-system, system-ui, sans-serif; color: #fff; overflow: hidden;
+         -webkit-user-select: none; user-select: none; }
+  body.busy { background:
+      repeating-linear-gradient(45deg, #e8504a 0 24px, #f2b134 24px 48px, #3aa0e8 48px 72px, #6dd36d 72px 96px); }
+  .bar { position: absolute; top: 10px; left: 84px; right: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .bar button { font: inherit; padding: 4px 10px; border-radius: 7px; border: 1px solid #fff5;
+                background: #0005; color: #fff; }
+  .bar button.on { background: #fff; color: #000; }
+  #scene { position: absolute; top: 44px; left: 16px; font-weight: 600; text-shadow: 0 1px 2px #000a; }
+  .card { position: absolute; top: 80px; width: 250px; height: 300px; border-radius: 22px;
+          padding: 16px; box-sizing: border-box; }
+  .card h2 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; opacity: .85; }
+  /* Glass skin cards: no fill of their own, the native glass is the fill. */
+  .card.glass { border: 1px solid #fff4; }
+  /* The CSS-only version beside it: does backdrop-filter see the native layer? */
+  .card.css { background: #ffffff1a; -webkit-backdrop-filter: blur(24px) saturate(1.6);
+              backdrop-filter: blur(24px) saturate(1.6); border: 1px solid #fff4; }
+  /* Cyber does not want glass: an opaque card. */
+  .card.cyber { background: #0b0f1a; border: 1px solid #22d3ee; color: #67e8f9;
+                font-family: ui-monospace, Menlo, monospace; }
+  #a { left: 16px; } #b { left: 282px; } #c { left: 548px; } #d { left: 16px; top: 400px; height: 120px; width: 516px; }
+  #log { position: absolute; bottom: 8px; left: 16px; right: 16px; font: 11px ui-monospace, Menlo, monospace;
+         text-shadow: 0 1px 2px #000; white-space: pre-wrap; max-height: 90px; overflow: hidden; }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div id="scene"></div>
+<div class="card glass" id="a"><h2>Glass card</h2><p>Native NSGlassEffectView behind a transparent card.</p></div>
+<div class="card css" id="b"><h2>CSS glass</h2><p>backdrop-filter only. Does it blur the native layer behind the web view?</p></div>
+<div class="card cyber" id="c"><h2>CYBER</h2><p>// opaque. no glass. the skin opts out.</p></div>
+<div class="card glass" id="d"><h2>Second glass card</h2><p>Near card A: the container may merge them when they touch.</p></div>
+<pre id="log"></pre>
+<script>
+const invoke = (c, a) => window.__TAURI__.core.invoke(c, a);
+const logEl = document.getElementById("log");
+function send(line) {
+  logEl.textContent = (line + "\n" + logEl.textContent).slice(0, 2000);
+  invoke("report", { line }).catch(() => {});
+}
+const rectOf = (el) => {
+  const r = el.getBoundingClientRect();
+  return { x: r.left, y: r.top, w: r.width, h: r.height, r: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 };
+};
+const glassCards = () => [...document.querySelectorAll(".card.glass")].map(rectOf);
+
+let clear = false, moving = null;
+const SCENES = {
+  "Window glass": () => ({ window: true, wallpaper: false, cards: [], over: null }),
+  "Cards on a native wallpaper": () => ({ window: false, wallpaper: true, cards: glassCards(), over: null }),
+  "Wallpaper + window glass + cards": () => ({ window: true, wallpaper: true, cards: glassCards(), over: null }),
+  "Glass over the page": () => ({ window: false, wallpaper: false, cards: [],
+    over: { x: 120, y: 300, w: 640, h: 90, r: 45 } }),
+};
+
+async function show(name, opts = {}) {
+  stopMoving();
+  document.body.classList.toggle("busy", name === "Glass over the page");
+  document.getElementById("scene").textContent = name + (clear ? " (clear)" : " (regular)");
+  for (const b of document.querySelectorAll(".bar button")) b.classList.toggle("on", b.textContent === name);
+  await invoke("glass_scene", { scene: { ...SCENES[name](), clear } });
+  send("scene: " + name);
+  if (opts.move) startMoving();
+}
+
+// The moving-card test: card A slides; its glass follows through one invoke per frame.
+function startMoving() {
+  const a = document.getElementById("a");
+  const trips = [];
+  const t0 = performance.now();
+  let inFlight = false;
+  const step = async (now) => {
+    if (!moving) return;
+    a.style.transform = `translateX(${Math.sin((now - t0) / 500) * 140}px)`;
+    if (!inFlight) {
+      inFlight = true;
+      const s = performance.now();
+      await invoke("glass_scene", { scene: { window: false, wallpaper: true, cards: glassCards(), over: null, clear } });
+      trips.push(performance.now() - s);
+      inFlight = false;
+    }
+    if (now - t0 > 5000 && trips.length && !moving.reported) {
+      moving.reported = true;
+      const sorted = [...trips].sort((x, y) => x - y);
+      const q = (p) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))].toFixed(1);
+      send(`moving card: ${trips.length} updates in 5 s (${(trips.length / 5).toFixed(0)}/s), ` +
+           `round trip p50 ${q(0.5)} ms, p95 ${q(0.95)} ms`);
+    }
+    moving.raf = requestAnimationFrame(step);
+  };
+  moving = { raf: requestAnimationFrame(step), reported: false };
+}
+function stopMoving() {
+  if (moving) cancelAnimationFrame(moving.raf);
+  moving = null;
+  document.getElementById("a").style.transform = "";
+}
+
+const bar = document.getElementById("bar");
+for (const name of Object.keys(SCENES)) {
+  const b = document.createElement("button");
+  b.textContent = name;
+  b.onclick = () => show(name);
+  bar.appendChild(b);
+}
+const mv = document.createElement("button");
+mv.textContent = "Moving card";
+mv.onclick = () => show("Cards on a native wallpaper", { move: true });
+bar.appendChild(mv);
+const cl = document.createElement("button");
+cl.textContent = "Regular / Clear";
+cl.onclick = () => { clear = !clear; show(document.querySelector(".bar button.on")?.textContent || "Window glass"); };
+bar.appendChild(cl);
+
+// Run each scene once by itself (5 s each), then stay on the buttons.
+(async () => {
+  send("UA: " + navigator.userAgent);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (const name of Object.keys(SCENES)) { await show(name); await wait(5000); }
+  await show("Cards on a native wallpaper", { move: true });
+  await wait(6000);
+  stopMoving();
+  await show("Window glass");
+  send("DONE: the scenes ran. Use the buttons to look again; close the window to end.");
+})().catch((e) => send("FAIL " + e));
+</script>
+</body>
+</html>

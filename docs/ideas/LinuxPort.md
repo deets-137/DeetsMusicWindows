@@ -2,7 +2,7 @@
 status: idea
 desk_test: none
 sources: []
-updated: 2026-09-17
+updated: 2026-11-03
 ---
 # DeetsMusic on Linux (and macOS)
 
@@ -10,7 +10,10 @@ Written 2026-09-16. Not built. The user wants a stable Linux release at some poi
 lists what blocks it, what the research found, and the paths around it. macOS is in §6
 because most of the work is shared.
 
-**§13 (2026-09-17) is the decision: castLabs ECS is the Linux shell, and Linux ships as beta.**
+**2026-11-03: his new call replaces §13's shell: Linux runs on Tauri 3 with our own CEF build
+(architecture/OS-LAYER.md §8).** Linux still ships as beta (§13.5).
+
+**§13 (2026-09-17) was the decision: castLabs ECS is the Linux shell, and Linux ships as beta.**
 §2–§12 are the research that led there. Where an earlier section names a different
 favourite, §13.2 says why it lost. Read §13 first.
 
@@ -162,6 +165,9 @@ not evaluated. Our own `smtc.rs` stays on Windows either way.
   first:** one Tauri window on a Mac that plays one song. `warmDrm` in `player.ts` asks for
   Widevine only. It fails without harm (it is inside `try`), but it should ask for
   `com.apple.fps` on macOS.
+  **The probe is built (2026-11-03, `macos-support`):** `node tools/mac-probe/run.mjs` on a
+  Mac. It checks each DRM key system, then plays one song and reports PASS past 35 s
+  (tools/mac-probe/README.md). The plan is architecture/OS-LAYER.md.
 - **Estimate** if the test passes: 2–4 weeks. §4 has the list. AirPlay capture is optional,
   because macOS has AirPlay built in.
 - **Needs:** a Mac or a macOS CI runner, an Apple Developer ID ($99/year) and notarization.

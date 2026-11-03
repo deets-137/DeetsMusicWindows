@@ -72,3 +72,8 @@ shots/
 src-tauri/.tauri.dev2.gen.json
 src-tauri/target-second/
 crates/mcp-install/Cargo.lock
+
+# The Mac playback probe (tools/mac-probe/README.md): its build and the saved user token.
+tools/mac-probe/src-tauri/target/
+tools/mac-probe/src-tauri/gen/
+tools/mac-probe/.probe/

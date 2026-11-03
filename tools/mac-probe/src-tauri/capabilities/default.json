@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The probe window: core only. The probe's own `report` command needs no permission.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

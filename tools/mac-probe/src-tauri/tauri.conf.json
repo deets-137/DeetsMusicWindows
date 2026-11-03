@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DeetsMacProbe",
+  "version": "0.1.0",
+  "identifier": "com.deetsmusic.macprobe",
+  "build": {
+    "frontendDist": "../page"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null
+    },
+    "macOSPrivateApi": true
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "../../../src-tauri/icons/128x128.png"
+    ]
+  }
+}
