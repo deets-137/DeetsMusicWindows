@@ -23,7 +23,16 @@ updated: 2026-11-03
 - **His calls.** Apple Silicon only; the EQ may go on a Mac; AirPlay through Apple's route picker;
   rebuild the tools and put them in crates; Liquid Glass behind the window and in menus, native
   glass cards investigated; Linux third, not a priority.
-- **Designed.** New doc `architecture/OS-LAYER.md`. The forks F1–F7 (§10) are open. Not committed.
+- **Designed.** New doc `architecture/OS-LAYER.md`.
+- **The forks, his calls (§10.1).** Linux on Tauri 3 with our own CEF build (Tauri's CEF runtime is
+  in the 3.0 alpha only; it replaces the 2026-09-17 ECS call), built now on Tauri 2 + WebKitGTK
+  except the sound; `src-tauri/src/os/` as a module with free functions; the split in its own
+  session; bridge `eval` on every OS; the CLI in the first Mac release with `crates/app-paths`; all
+  four root moves; glass on Glass, Happy and Ocean (cards and menus), their scenes native as a
+  Mac-only follower held by code (a display list, a generated contract crate, tokens, pixel
+  parity, a tripwire: §6.4a); native glass cards after window glass; native right-click menus
+  with the web menus as a setting. Tauri 3's effect on the app is §8a. Open: S2 (the menu
+  setting's words), S3 (when the app moves to Tauri 3).
 
 ## 2026-11-03 — Apple's data calls in their own crate (a design only)
 

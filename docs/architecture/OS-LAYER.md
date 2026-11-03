@@ -224,6 +224,46 @@ What it means, read against the code on 2026-11-03:
 - **What stays the same either way:** the skin tokens, the settings (Sky, Album light), the rules
   that read them, and the cards themselves.
 
+### 6.4a S1 decided: a Mac-only follower, held by code, not by docs (2026-11-03)
+His call: the web scene stays the source of truth; the Mac draws a follower copy. His ask: a
+maintenance system that does not rely on docs to stop drift. The design (forks D1–D3 in §10.2):
+
+1. **The page computes, each OS paints (a display list).** `ocean.ts`, `scene.ts` and `pet.ts`
+   split into a *compute* half (pure TS: the band rows of `ocean-texture.ts`, the sky phase of
+   `sky-phase.ts`, the sun, cloud and floor places from the card boxes, the pets' paths) and a
+   *paint* half. The compute half returns a `SceneFrame`: a short typed list of layers (an
+   image, a gradient band, a sprite, a ring) with their animations (keyframes and durations).
+   The web painter draws it with the DOM and canvas, as today; the Mac painter draws the same list
+   with Core Animation layers. A change to the math reaches the Mac with no Mac code.
+2. **One contract, generated to Rust.** The layer kinds, the animation kinds and the scene events
+   (ripple, heave, a cover swap, a pet action, the part of day) are one TS file,
+   `src/scene-contract.ts`. `npm run scene:contract` writes `crates/scene-contract` (Rust enums),
+   like `usage:keys`. The Mac painter matches every enum without a catch-all, so a new kind on
+   the web **fails the Mac build** until the Mac paints it.
+3. **Every number is a token.** Speeds, sizes, timings and colors of the scenes are `--ocean-*` /
+   `--scene-*` skin tokens. The page sends their computed values in the frame; the Mac painter has
+   no numbers of its own. A check fails a number literal in the Mac painter (as check 28 does for CSS).
+   A token change moves both with no code change.
+4. **Pixel parity, in the check.** Fixed inputs (a frozen clock, fixed card boxes, each theme): the
+   web painter renders in headless Edge (the shots runner), the Mac painter renders offscreen
+   (`CALayer.render(in:)` in a test binary). A perceptual diff over a threshold fails
+   `npm run check` on a Mac, and the macOS CI job.
+5. **A tripwire on the painters.** `scenes.lock` holds a hash of each web painter file. When one
+   changes and the Mac painter does not, the check fails until the Mac side changes or
+   `npm run scenes:ack` records that the change does not apply.
+
+**Why a display list, and why the crate (asked 2026-11-03).** The list is data, not drawing: the
+layers to show and how each one moves ("sway every 9 s by 6 px"). Each OS runs the animation
+itself, so a new list goes over only on a change (a theme, a resize, a card move, an album);
+events (a ripple, a heave hop every 100 ms) are small messages. The Mac painter is Rust and gets
+the list as JSON, so it needs Rust types for it: `crates/scene-contract`, generated from the TS
+file, used by the app's Mac painter and by the pixel-parity binary (hence a crate, not a module).
+The other option, the scene math in a Rust crate compiled to WASM, was not taken: a WASM build in
+Vite, the demo and WebRooms, and a rewrite of the math, for no gain (the page is always there).
+
+What it costs: step 1 refactors the web scenes first, on Windows, with no visible change. The
+motion set (`docs/guide/motion.json`) A/B before and after is its gate.
+
 ### 6.5 Right-click menus on a Mac (his call)
 - The default on a Mac: a native `NSMenu`, built from `media-menu.ts`'s row list (one builder, two
   renderers). macOS draws it as Liquid Glass over what is under it.
@@ -263,8 +303,26 @@ point Tauri at it with `CEF_PATH`.
 every OS: Windows and the Mac stay on wry (the system web views); only the Linux build selects
 `tauri-runtime-cef`. Moving the app to Tauri 3 is its own load-bearing step (§10 S3).
 
+**His call (2026-11-03): Linux waits for Tauri 3, but everything except the sound is built now.**
+Tauri 2 already runs on Linux with WebKitGTK. WebKitGTK cannot play Apple's DRM songs, but
+every edge can be built and tested on it (§8.1). When Tauri 3 is stable, the runtime changes to
+CEF and only the sound is new.
+
+### 8.1 Now, on Tauri 2 + WebKitGTK (no playback)
+- `os/linux.rs`: MPRIS (driven by a fake "now playing" from the page), the Secret Service, the
+  audio output list, the Discord socket, the tray (and its click limit, LinuxPort.md §2.5), the
+  ping, the refresh rate, the message box, the CLI paths in `crates/app-paths`.
+- The AirPlay sender crate on Linux (it is ours and has no DRM in it).
+- Packaging: an AppImage from the Tauri 2 bundler; the update feed shape.
+- CI: a Linux job that builds and runs the unit tests.
+- **Do not tune visuals on WebKitGTK.** The final Linux engine is CEF (Chromium, like WebView2),
+  so it will look like Windows. WebKitGTK is only for function.
+- Sign-in works (the loopback browser flow); MusicKit configures; playback stops at DRM. A
+  30-second preview may play through GStreamer, which is enough to drive the media keys.
+
+### 8.2 At Tauri 3 stable
 The work:
-1. **`os/linux.rs`** — the right-hand column of §4.
+1. **`os/linux.rs`** — the right-hand column of §4 (from §8.1).
 2. **Our CEF build** — a reproducible script, its output cached for CI; a CEF update is a
    release step. The download is ~1 GB per platform the first time.
 3. **The runtime pick** — `tauri-runtime-cef` for the Linux target only, and
@@ -275,6 +333,30 @@ The work:
 
 **Done means:** an AppImage that signs in, plays a song past 30 s, takes media keys (MPRIS),
 and updates; Linux ships as beta (LinuxPort.md §13.5).
+
+## 8a. What Tauri 3 means for the rest of the app (read 2026-11-03)
+
+Sources: v3.tauri.app/start/migrate/from-tauri-2, the 3.0 alpha release notes. The migration page
+itself says to keep production apps on 2.x until stable, and that `tauri migrate` does not yet
+automate the move.
+
+| Tauri 3 change | Where it touches us |
+|---|---|
+| `Builder::runtime(..)` is required; `tauri::Wry` is gone (`DynRuntime` by default) | `lib.rs`: one line. We never name `Wry`. |
+| Runtime APIs move to extension traits (`WebviewWryExt::with_wry_webview`) | 2 calls: `lib.rs` (the WebView2 settings) and `gpu.rs` (the GPU watch) |
+| `devtools`, `macos-private-api`, `unstable` move to `tauri-runtime-wry` | Cargo.toml (the Mac glass needs `macos-private-api`; multi-webview would need `unstable`) |
+| Official plugins become `3.0.0-alpha.x`; a 2.x plugin cannot register | Ours are all official: opener, single-instance, deep-link (and `@tauri-apps/plugin-opener`) |
+| `@tauri-apps/api@next`; the page lists no other JS change | 78 `src/` files import it; no edit expected |
+| Capability files unchanged; app manifests list commands | `capabilities/default.json` unchanged |
+| `bundle > resources` no longer copied into `target/` in dev | `mcp_install.rs` reads `resource_dir()`; only the installed app has the files, so dev is unchanged |
+| The test runtime's origin is `tauri://localhost` everywhere | Tests only. Check at the move that Windows still serves `http://tauri.localhost` (`APPLE_ORIGIN` in apple.rs and the token's origin claim depend on it) |
+| Rust 1.95 or newer | This Mac has 1.97.1 |
+| Linux tray: ksni by default | Good for Linux (no appindicator library) |
+
+**In short:** for Windows and the Mac, Tauri 3 is a dependency bump with about ten edits, then a
+full desk test, because it is the shell under everything (startup, tray, deep links, single
+instance, the updater's hooks). It is one load-bearing step on its own, never mixed with feature
+work. CEF matters only to the Linux build.
 
 ## 9. The repo
 
@@ -312,9 +394,12 @@ assets/ ?                       app-icon*.png, art-template/, icon-template/, st
 | F7 Tooling | Bridge `eval` on every OS (§7) |
 | CLI | In the first Mac release, with `crates/app-paths` |
 | Menus | Native on the Mac, web menus as a setting (§6.5) |
+| S1 Native scenes | A Mac-only follower, held by code (§6.4a) |
+| Linux timing | On hold for the sound; everything else built now on Tauri 2 + WebKitGTK (§8.1) |
+| D1 Shared scene part | A display list computed in the page; `crates/scene-contract` generated from `src/scene-contract.ts` (§6.4a) |
+| D2 Pixel parity | In `npm run check` on a Mac and in macOS CI |
+| D3 Tripwire | On (`scenes.lock`, `npm run scenes:ack`) |
 
 ### 10.2 Open
-- **S1 — The native scenes (§6.4):** a Mac-only follower (Windows untouched), or one native
-  renderer for every OS.
 - **S2 — The menu setting (§6.5):** its name, its place in Settings, its wording.
 - **S3 — Tauri 3:** when the app moves (after the Mac ships on Tauri 2 is the working assumption).
