@@ -6,6 +6,41 @@ updated: 2026-11-02
 ---
 # DeetsMusic — Work log
 
+## 2026-11-03 — Apple's data calls in their own crate (a design only)
+
+- **His ask.** Map the Apple calls in the front end, and see if a separate crate would make
+  providers easy to add, remove or change. Then: design the Rust crate as if a Spotify or
+  SoundCloud crate comes later.
+- **Read.** The page makes no Apple data calls; it calls 37 Apple-named commands from 16 files,
+  and MusicKit (playback) sits in about 35 files. In Rust every Apple request already goes
+  through apple.rs's `api_get` / `api_post` / `api_send`, so the counter sees all of them. The
+  URLs and the JSON reading are spread over seven more modules.
+- **Designed.** New doc `architecture/PROVIDER-CRATES.md`: `crates/music-core` (model, trait,
+  `Caps`, `ProviderError`, `Host`) and `crates/apple-music`; the cache, the commands and the
+  sign-in screens stay in the app. His calls: F1 = A (default `Unsupported` bodies + `caps()`),
+  F2 = A (no front-end change in this move). No playback interface: it waits for a second
+  service that makes sound (local radio is designed, not built).
+- **One app per service (his direction).** A second service ships as a separate app on the
+  website, a flavor like the Beta, for the provider pitch. PROVIDER-CRATES.md §10: no id prefix,
+  no mixed Queue, the service picked at build time, a smaller player seam, four needs the Beta does
+  not solve (bridge port, rooms and friends, DeetsSupport's `app` key, signing). PROVIDERS-PITCH.md
+  §4 (private) points at it.
+- **Not built**, by his word: "this is just a design for now". No code changed.
+
+## 2026-11-02 — USAGE-COUNTS.md's deploy state, read against the live worker
+
+- **His catch.** Claude said feature use (§18) was not deployed, from the doc's headings. He
+  saw it on the admin page. The headings of §14 and §16–§22 still said "the worker not
+  deployed"; HANDOFF.md had the deploys right.
+- **Read on live (the Cloudflare connector, reads only).** `usage_counts` holds `use.*` rows
+  from 2026-11-02 and `reach.*` rows for 2026-11 and 2026-W45; `usage_listen` exists. The live
+  worker's code has §14's `Content-Range` / `If-Range`, §16's fingerprints and §22's `.src`
+  keys. It does NOT have `maxStageSide` or `fpQueueSide` (DeetsSupport `ac28af9`), as
+  HANDOFF.md › 1.3.1 says.
+- **Changed.** USAGE-COUNTS.md: §14's part marker LIVE; the headings of §16–§22 say the worker is
+  live (§16 2026-10-30, the rest 2026-11-02); §15 shipped in 1.3.0; §11's worker line, §13's and
+  §19's admin page lines. No code changed.
+
 ## 2026-11-02 — The mouse's back button; the paged card's motion; Glass's frost under a transform
 
 - **The mouse's back button (a user's ask, his call 1A).** The card under the pointer takes its

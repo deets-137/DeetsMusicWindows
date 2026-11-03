@@ -49,6 +49,8 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
 - `UI-ARCHITECTURE.md` — the token / theme / skin tiers and the collection-card engine; §2a the
   control families.
 - `DATA-ARCHITECTURE.md` — auth, the normalized model, the provider, the SQLite cache.
+- `PROVIDER-CRATES.md` — Apple's data calls in `crates/apple-music` over a shared
+  `crates/music-core` (model, trait, `Host`); a later service is a sibling crate. Playback stays out.
 - `SURFACES-AND-CARDS.md` — the surfaces (mini / midi / max) and the card slot system.
   **§5 is the recipe for a new card**: the eight systems a card adopts (menus, keys, picks,
   drags, hint shapes, memory, popovers) and which cards adopt which today.

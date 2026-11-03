@@ -394,7 +394,7 @@ The dev app sends only to a local worker, so the whole chain runs on this PC.
 
 Where this record and the design above disagree, this record is the code.
 
-**The worker** (`../DeetsSupport`, not deployed; the deploy and the D1 migration are his call):
+**The worker** (`../DeetsSupport`; written not deployed, LIVE since 2026-10-14, §6):
 - `src/usage.js`: the three `POST /usage/*` routes (always 204), `GET /admin/usage` behind the
   owner check, and `expireUsage` in the 5-minute cron, which acts only in the run between 00:00
   and 00:04 UTC. `migrations/2026-10-13-usage.sql` adds the two tables (also in `schema.sql`),
@@ -823,7 +823,7 @@ nothing about him is sent that is not sent today. The worker accepts `owner` (`C
   "(a random key for this one report; not kept)": the last bodies kept for the panel never hold
   the real key.
 
-**The admin page** (DeetsSolutions, not published): the Owner channel; "Today so far"; the
+**The admin page** (DeetsSolutions; published 2026-10-27, `d9f81cf`): the Owner channel; "Today so far"; the
 lag note under the version mix (a week holding a version before 1.2.0); **Updates** and
 **Downloads and first starts**, from `events`. The new strings are drafts for his edit
 (`strings.js`, under "Updates, first starts and Setup.exe downloads"). `?mock` shows them.
@@ -880,8 +880,9 @@ the time.
 
 ## 14. Byte ranges on the Velopack folder (2026-10-30)
 
-> **Part:** built · 2026-10-30 (DeetsSupport `src/update.js`, uncommitted, NOT deployed; the
-> worker check passed, §14.4). The deploy is his call (§14.5).
+> **Part:** LIVE · 2026-11-02 (DeetsSupport `src/update.js`, `f08916b`; the worker check passed,
+> §14.4). Read on the live worker's code 2026-11-02: it answers `Content-Range` and reads
+> `If-Range`. Written 2026-10-30 as built, not deployed.
 
 **Why.** On 2026-10-30 the admin page's flag said 26–28 % of the site and Store Setup.exe
 downloads in 7 days did not finish (38 starts, 28 finishes). The zone's request log (bytes per
@@ -972,7 +973,7 @@ One D1 update on the live `usage_counts`, channel `live`, from the zone log abov
 After it: 30 starts and 30 finishes in the 7 days, so the flag clears. Until the deploy, a new
 download in parts can add a false start again.
 
-## 15. The log areas read on live data (2026-10-30, built, not released)
+## 15. The log areas read on live data (2026-10-30, built; shipped in 1.3.0)
 
 His ask, 2026-10-30, after the admin page's Health tab showed week 2026-W43 (14 reports): look
 into the logged errors and warnings. The three loudest areas, read against every log on his PC
@@ -998,7 +999,7 @@ Tests: `a_front_end_line_counts_by_its_family_2026_10_30` (usage.rs) and
 `only_the_processes_that_matter_warn_2026_10_30` (gpu.rs). It reaches users with the next
 release; the first week of reports after it names the window's errors by family.
 
-## 16. Errors users never report (2026-10-30, built; the worker not deployed)
+## 16. Errors users never report (2026-10-30, built; the worker live 2026-10-30)
 
 His worry, 2026-10-30: a user meets an error, does not report it, calls the app clunky and
 stops using it. His calls the same day, of two forks: **1A**, automatic error fingerprints in
@@ -1030,7 +1031,8 @@ installs per range, per version, under the week the report covers. A fingerprint
 `FP` is dropped (checked on a local worker 2026-10-30: a place holding a Windows path was
 dropped, `<` and `other` were kept). A report from an app before this change has no `errors`,
 and the worker before this change ignores the field, so the app and the worker can ship in
-either order. **Built in `../DeetsSupport/src/usage.js`, not deployed: the deploy is his call.**
+either order. **Built in `../DeetsSupport/src/usage.js`; deployed 2026-10-30 (version
+`5a38985e`, HANDOFF.md).**
 
 ### 16.3 Reading a place
 
@@ -1063,7 +1065,7 @@ Bugs filled in (`report-draft.ts`). Uncaught errors with no toast are seen only 
 - The Report button's draft wording and that it keeps text the user already typed.
 - "new" means not seen in the 8 weeks the tab reads; the flag fires from 1 install.
 
-## 17. Listening minutes in the day count (2026-11-01, built; the worker not deployed)
+## 17. Listening minutes in the day count (2026-11-01, built; the worker live 2026-11-02)
 
 > **Part:** built · 2026-11-01
 
@@ -1107,7 +1109,7 @@ Privacy paragraph and *Show what is sent* each get a line.
    who skips days would send "yesterday = 0" for a day the app was closed. The last day that
    sent a count is complete, because that day is over.
 
-### 17.3 As built (2026-11-01; the worker not deployed)
+### 17.3 As built (2026-11-01; the worker live 2026-11-02)
 
 - **The app.** The day count carries `listened: { day, v, min }` (`usage.ts` `listened`):
   `day` is `listenDay` (usage-rules.ts: the state's `day`, never today), `v` the version that
@@ -1150,7 +1152,7 @@ app from before this change sends no `listened`, and the worker before this chan
 the 90-day read; the spread's ranges, the flag's 20 % and 20 rows, and every string on the page
 (drafts for his edit).
 
-## 18. Feature use counts in the day count (2026-11-01, built; the worker not deployed)
+## 18. Feature use counts in the day count (2026-11-01, built; the worker live 2026-11-02)
 
 > **Part:** built · 2026-11-01
 
@@ -1168,7 +1170,7 @@ sum (bucket `sum`). Only names on an allow-list (`USE_COUNTS` in usage-keys.ts, 
 worker by `npm run usage:keys` as `USE_KEYS`), only whole numbers. Rule 3 (§2): a count of
 uses is not a time and not a setting; a new name is his call, as a new setting is.
 
-### 18.1 As built (2026-11-01; the worker not deployed)
+### 18.1 As built (2026-11-01; the worker live 2026-11-02)
 
 - **The app.** A feature calls `countUse(name)` (`src/use-counts.ts`): one more on today's UTC
   day, kept in `localStorage` (`deets-usage-uses`), only while *Send usage counts* is on, at
@@ -1198,7 +1200,7 @@ uses is not a time and not a setting; a new name is his call, as a new setting i
 §17's, each his go. A worker before this change ignores `uses`, so the order does not matter for
 the app.
 
-## 19. Library size in the health report and the applied report (2026-11-01, built; the worker not deployed)
+## 19. Library size in the health report and the applied report (2026-11-01, built; the worker live 2026-11-02)
 
 > **Part:** built · 2026-11-01
 
@@ -1262,7 +1264,7 @@ in the same group, and the worker keeps only its range.
   the settings row, the one row per install, where it would make that row more unique.
 - **Rule 8:** *Show what is sent* shows the field. The README's Privacy paragraph gets one line.
 
-### 19.3 As built (2026-11-01; the worker not deployed)
+### 19.3 As built (2026-11-01; the worker live 2026-11-02)
 
 - **The app.** `library.rs` `library_songs_total` reads the meta. `usage.rs`: `library_rounded`
   (up to the next 100, at most 100,000), `library_now` (the database through the `AppHandle`),
@@ -1281,7 +1283,7 @@ in the same group, and the worker keeps only its range.
   (installs, median with its change against the week before, 90th percentile, largest), each
   with a 12-week spark; the week's spread in bars grouped at read time (0, 1–1,000, 1,001–2,500,
   2,501–5,000, 5,001–10,000, 10,001–25,000, over 25,000); *Installs that started each version*,
-  a table of the newest versions. Not published.
+  a table of the newest versions. Published 2026-11-02 (DeetsSolutions `5f31156`, HANDOFF.md).
 - **Not in the release notes:** the minutes (§17) and the use counts (§18) are not either; the
   README's Privacy paragraph names it.
 - **Checks.** `cargo test` (`the_library_size_rounds_up_to_100_2026_11_01`). The worker check
@@ -1293,7 +1295,7 @@ in the same group, and the worker keeps only its range.
   named fields only), so the order does not matter for the app. DeetsSupport holds no live
   sockets.
 
-## 20. Library sync speed, and a reply that means stored (2026-11-02, built; the worker not deployed)
+## 20. Library sync speed, and a reply that means stored (2026-11-02, built; the worker live 2026-11-02)
 
 > **Part:** built · 2026-11-02
 
@@ -1346,7 +1348,7 @@ treats a non-2xx as not sent.
   503, nothing stored, not even its key, then the same report stored once.
 - Not done: a real sync timed on the dev app, and the admin page in a browser.
 
-## 21. Feature reach: which features land (2026-11-02, built; the worker not deployed)
+## 21. Feature reach: which features land (2026-11-02, built; the worker live 2026-11-02)
 
 > **Part:** built · 2026-11-02 (his go: "Build this list")
 
@@ -1453,7 +1455,7 @@ skins, surfaces and every toggle (the settings report shows them, §3.2).
   install, nothing about the songs. A feature name says which part of the app was used, never
   what was played in it.
 
-### 21.4 As built (2026-11-02; the worker not deployed, the admin page not published)
+### 21.4 As built (2026-11-02; the worker live and the admin page published 2026-11-02)
 
 - **The names:** 35 in `usage-keys.ts` `USE_COUNTS` (41 with Listen Later's), copied to the
   worker by `npm run usage:keys`.
@@ -1488,7 +1490,7 @@ skins, surfaces and every toggle (the settings report shows them, §3.2).
 - **Checks:** `npm test`, `cargo test`, and the worker check §4d (reach) and §6e (routes) on a
   local worker. Not done: a real use on the dev app, and the admin page in a browser.
 
-## 22. Where a setting was last changed (2026-11-02, built; the worker not deployed)
+## 22. Where a setting was last changed (2026-11-02, built; the worker live 2026-11-02)
 
 > **Part:** built · 2026-11-02 (his calls: "1 works", then "Yes, line per change")
 
