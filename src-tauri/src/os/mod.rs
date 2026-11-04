@@ -9,15 +9,35 @@
 //! The module is named `windows`, like the `windows` crate. Here it is always `self::windows`,
 //! so the two never mix.
 //!
-//! macOS and Linux arrive as stubs in step 5 (§11).
+//! macOS and Linux are stubs (step 5): `macos.rs` and `linux.rs` re-export `stub.rs`, one edge
+//! at a time until each is built.
+//!
+//! The OS is picked by `os_windows` / `os_macos` / `os_linux`, not by `cfg(windows)`: build.rs
+//! sets the one for the target, and `DEETS_STUB_OS=macos` (or `linux`) sets that one instead on
+//! any machine, so `cargo check` on Windows builds the whole app against the Mac's file
+//! (`npm run check:os`). The Windows crates are still in that build; nothing calls them.
 
-#[cfg(windows)]
+#[cfg(os_windows)]
 mod windows;
-#[cfg(windows)]
+#[cfg(os_windows)]
 use self::windows as imp;
+
+#[cfg(any(os_macos, os_linux))]
+mod stub;
+#[cfg(os_macos)]
+mod macos;
+#[cfg(os_macos)]
+use self::macos as imp;
+#[cfg(os_linux)]
+mod linux;
+#[cfg(os_linux)]
+use self::linux as imp;
 
 /// The edges, one module each (§11.1). Every OS file has each one, with the same signatures.
 pub use imp::{app_icon, audio_out, autostart, dialog, display, gpu, identity, media_session, net, process, secrets, system, system_media, window};
+/// Play on a speaker (§11.7): the AirPlay sender's state, its hooks and its commands on Windows;
+/// the same names, with no sender, on a stub.
+pub use imp::speaker;
 pub use imp::discord::DiscordPipe;
 #[allow(unused_imports)] // a release build only (airplay.rs)
 pub use imp::firewall;
@@ -125,6 +145,11 @@ pub struct OsCaps {
     pub gpu: bool,
     /// The monitor's refresh rate (`display`).
     pub display_hz: bool,
+    /// Our own AirPlay sender plays on a speaker (`speaker`; Windows, later Linux).
+    pub airplay_sender: bool,
+    /// The OS's own speaker picker plays on a speaker (`speaker`; the Mac's `AVRoutePickerView`,
+    /// his call §1.3, not built yet).
+    pub route_picker: bool,
 }
 
 /// What this OS can do.

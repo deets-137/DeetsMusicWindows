@@ -1,3 +1,6 @@
+// The AirPlay sender: built only where it is the way to play on a speaker (OS-LAYER.md §11.7).
+// The one `cfg` outside `os/`; every caller goes through `os::speaker`.
+#[cfg(os_windows)]
 mod airplay;
 mod audio_out;
 mod apple;
@@ -98,7 +101,7 @@ pub fn run() {
         .manage(apple::AppleState::default())
         .manage(update::UpdateState::default())
         .manage(bridge::Hub::default())
-        .manage(airplay::AirplayState::default())
+        .manage(os::speaker::State::default())
         // A local playlist's own cover, served as a link (`http://cover.localhost/<id>`)
         // instead of a data URL inside every playlists_cached reply (PLAYLISTS.md §10.6).
         // Off the webview thread: the read takes the db lock.
@@ -313,7 +316,7 @@ pub fn run() {
             // Friends (docs/integrations/FRIENDS.md §2): the key file, if this PC already has one. It
             // mints nothing here — a first key waits for the first ask.
             friends::setup(dir.clone());
-            airplay::setup(&dir);
+            os::speaker::setup(&dir);
             // Sound (SOUND.md §2.2): the Windows output, its form factor and volume.
             audio_out::setup(app.handle());
             tray::setup(app.handle())?;
@@ -606,13 +609,13 @@ pub fn run() {
             loudness::loudness_all,
             loudness::loudness_save,
             loudness::loudness_forget,
-            airplay::airplay_scan,
-            airplay::airplay_connect,
-            airplay::airplay_disconnect,
-            airplay::airplay_status,
-            airplay::airplay_volume,
-            airplay::airplay_tap,
-            airplay::airplay_firewall_prompt,
+            os::speaker::airplay_scan,
+            os::speaker::airplay_connect,
+            os::speaker::airplay_disconnect,
+            os::speaker::airplay_status,
+            os::speaker::airplay_volume,
+            os::speaker::airplay_tap,
+            os::speaker::airplay_firewall_prompt,
             bridge::np_publish,
             bridge::np_snapshot,
             bridge::np_command,

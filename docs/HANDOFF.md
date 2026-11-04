@@ -117,13 +117,14 @@ item closes, delete it here and write the day in WORKLOG.md.
 
 ### On `macos-support` (not on `main`)
 
-- **The OS layer split (2026-11-03).** Steps 1–4 of 9 done: the inventory, the `os/` shape,
-  every Windows call moved into `src-tauri/src/os/windows/` (committed, `a0e0c9e`), and the
-  Windows crates in a `cfg(windows)` table (not committed)
-  ([OS-LAYER.md](architecture/OS-LAYER.md) §11.4, §11.5). The first run on Windows built,
-  started and passed `npm run check` (§11.6). Found: the AirPlay sender crate brings `windows`
-  to a Mac build; it goes Windows-only with step 5. Next: step 5, the macOS and Linux stubs.
-  This branch does not have `main`'s `d53a751` (Let go after a pause) yet.
+- **The OS layer split (2026-11-03).** Steps 1–5 of 9 done: the inventory, the `os/` shape,
+  every Windows call moved into `src-tauri/src/os/windows/` (`a0e0c9e`), the Windows crates in a
+  `cfg(windows)` table (`8adc43d`), and the macOS and Linux stubs with the speaker edge, AirPlay
+  behind `os::speaker` (the commit after `8adc43d`) ([OS-LAYER.md](architecture/OS-LAYER.md)
+  §11.4–§11.7). `npm run check:os` builds the whole app against each stub on Windows; his call
+  (2026-11-03): run it on its own after an OS-layer change, not in the pre-push check until the
+  Mac file holds real code. Next: step 6, the check that keeps Windows code inside `os/`. This
+  branch does not have `main`'s `d53a751` (Let go after a pause) yet.
 
 ### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)
 

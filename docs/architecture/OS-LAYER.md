@@ -1,7 +1,7 @@
 ---
 status: designed
 desk_test: none
-sources: [src-tauri/src/os/mod.rs, src-tauri/src/os/windows.rs, tools/mac-probe/run.mjs, tools/mac-probe/page/index.html, tools/mac-probe/page/glass.html, tools/mac-probe/src-tauri/src/glass.rs, tools/mac-probe/src-tauri/src/main.rs, src/player.ts, src/sound.ts, src/platform.ts, src-tauri/Cargo.toml, src-tauri/src/os/windows/media_session.rs, src-tauri/src/os/windows/system_media.rs, src-tauri/src/tray.rs, src-tauri/src/airplay.rs, src-tauri/src/presence.rs, src-tauri/src/velo.rs, src-tauri/src/gpu.rs]
+sources: [src-tauri/src/os/mod.rs, src-tauri/src/os/windows.rs, src-tauri/src/os/stub.rs, src-tauri/src/os/macos.rs, src-tauri/src/os/linux.rs, src-tauri/src/os/windows/speaker.rs, src-tauri/build.rs, scripts/check-os.mjs, tools/mac-probe/run.mjs, tools/mac-probe/page/index.html, tools/mac-probe/page/glass.html, tools/mac-probe/src-tauri/src/glass.rs, tools/mac-probe/src-tauri/src/main.rs, src/player.ts, src/sound.ts, src/platform.ts, src-tauri/Cargo.toml, src-tauri/src/os/windows/media_session.rs, src-tauri/src/os/windows/system_media.rs, src-tauri/src/tray.rs, src-tauri/src/airplay.rs, src-tauri/src/presence.rs, src-tauri/src/velo.rs, src-tauri/src/gpu.rs]
 updated: 2026-11-03
 ---
 # The OS layer — Windows, macOS, then Linux
@@ -312,7 +312,9 @@ CEF and only the sound is new.
 - `os/linux.rs`: MPRIS (driven by a fake "now playing" from the page), the Secret Service, the
   audio output list, the Discord socket, the tray (and its click limit, LinuxPort.md §2.5), the
   ping, the refresh rate, the message box, the CLI paths in `crates/app-paths`.
-- The AirPlay sender crate on Linux (it is ours and has no DRM in it).
+- The AirPlay sender crate on Linux (it is ours and has no DRM in it). First the crate gates its
+  own `windows` dependency and gets a Linux capture; then `mod airplay` and `os/linux.rs` take it
+  (§11.7).
 - Packaging: an AppImage from the Tauri 2 bundler; the update feed shape.
 - CI: a Linux job that builds and runs the unit tests.
 - **Do not tune visuals on WebKitGTK.** The final Linux engine is CEF (Chromium, like WebView2),
@@ -399,6 +401,8 @@ assets/ ?                       app-icon*.png, art-template/, icon-template/, st
 | D1 Shared scene part | A display list computed in the page; `crates/scene-contract` generated from `src/scene-contract.ts` (§6.4a) |
 | D2 Pixel parity | In `npm run check` on a Mac and in macOS CI |
 | D3 Tripwire | On (`scenes.lock`, `npm run scenes:ack`) |
+| AirPlay on each OS | The way to play on a speaker behind the OS layer (`os::speaker`), not the sender code; in step 5 (§11.7) |
+| `check:os` in the pre-push check | Not yet: run on its own after an OS-layer change; it joins `npm run check` once the Mac file holds real code (§11.7) |
 
 ### 10.2 Open
 - **S2 — The menu setting (§6.5):** its name, its place in Settings, its wording.
@@ -406,8 +410,9 @@ assets/ ?                       app-icon*.png, art-template/, icon-template/, st
 
 ## 11. The split — as built
 
-> **Part:** built · 2026-11-03 · steps 1–4 of 9 done (§11.4, §11.5); steps 1–3 committed (`a0e0c9e`),
-> step 4 not committed; first run on Windows passed (§11.6); desk test open (step 8)
+> **Part:** built · 2026-11-03 · steps 1–5 of 9 done and committed (§11.4, §11.5, §11.7: steps 1–3
+> `a0e0c9e`, step 4 `8adc43d`, step 5 the commit after it); first run on Windows passed (§11.6);
+> desk test open (step 8)
 
 The first step of the OS layer, on `macos-support`. It moves the app's Windows-only code behind
 `src-tauri/src/os/`, so that a Mac file and a Linux file can be added later. Windows users see no
@@ -417,9 +422,11 @@ change. The steps, in the order he approved (2026-11-03):
 2. Make the shape: `os/mod.rs`, `os/windows.rs` (§11.2). **Done.**
 3. Move the Windows calls, one caller at a time, small to large (§11.4). **Done.**
 4. Move the Windows crates to `[target.'cfg(windows)'.dependencies]` (§11.5). **Done.**
-5. Add `os/macos.rs` and `os/linux.rs` as stubs.
-6. Add the check: no Windows code in `src-tauri/src` outside `os/` (DOCS-ORG.md §8).
-7. Verify: `npm run check`; `cargo check` for the Windows and Mac targets.
+5. Add `os/macos.rs` and `os/linux.rs` as stubs; the speaker edge (§11.7). **Done.**
+6. Add the check: no Windows code in `src-tauri/src` outside `os/` (DOCS-ORG.md §8). Its one
+   allowed exception: `#[cfg(os_windows)] mod airplay;` in `lib.rs` (§11.7).
+7. Verify: `npm run check`; `npm run check:os` (the Mac and Linux stubs, on Windows); `cargo check`
+   for the Mac target on his Mac (§11.3).
 8. This section's desk test; a WORKLOG.md entry.
 9. Commit on the branch; ask him before a push.
 
@@ -587,3 +594,62 @@ output (`audio-out: Speakers (Yeti Classic)`), the display rate (`display: tray 
 the GPU line logged as before. `npm run check` passed: 450 front-end tests, 114 + 10 Rust tests,
 docs:check. Not yet run: §11's desk test (step 8): the media overlay, the media keys, the tray,
 Discord, the secrets, the ping, the updater.
+
+### 11.7 Step 5, the stubs and the speaker edge — as built (2026-11-03, on Windows)
+
+**His call (2026-11-03):** put the way to play on a speaker behind the OS layer, not the sender
+code, and do it in step 5.
+
+**The stubs.** `os/stub.rs` has every edge with the Windows signatures and bodies that never
+pretend: a secret is refused (never stored in the clear), a ping never answers, a speaker never
+connects, the Discord socket fails with `event: ` (so `presence.rs` does not try sockets 1 to 9),
+`process::wait_for_exit` waits the whole limit (the Beta pull must never copy while the other app
+may run), `window::show_minimized` uses Tauri's own minimize, `system::version()` says `macOS` or
+`Linux`. Its `CAPS` is all false. `os/macos.rs` and `os/linux.rs` re-export it, each with its own
+`CAPS`; an edge moves into its OS file as it is built.
+
+**The OS pick.** `os/mod.rs` picks the file by `os_windows` / `os_macos` / `os_linux`, which
+`build.rs` (`os_cfg`) sets from the target. `DEETS_STUB_OS=macos` (or `linux`) sets that one
+instead, on any machine, so **`npm run check:os`** (`scripts/check-os.mjs`) builds the whole app
+against each stub on Windows: a stub whose signature drifts from `os/windows/` fails there. Proved
+with `cargo check -v` (`--cfg os_macos` reached `rustc`) and with a wrong value, which the build
+script refuses. Never set it for a build that runs.
+
+**When it runs (his call, 2026-11-03): on its own, not in `npm run check`.** Measured: 36 s for
+both stubs, then 16 s for the next plain check to catch up, about 50 s a push. A stub drifts only
+when an `os/windows/` signature changes, which is rare. So:
+- **Run `npm run check:os` after any change in `src-tauri/src/os/`, `src-tauri/build.rs`, or a
+  caller's use of an `os::` function**, before the commit. The commit message says it ran.
+- **It joins `npm run check` (the pre-push hook) once the Mac file holds real code** (the first
+  edge built in `os/macos/`), because from then a Mac edit can break the Windows build and the
+  other way round. Bring it to him then; do not add it on your own.
+
+**The speaker edge.** `os::speaker` holds the sender's state type (`State`), its hooks (`setup`,
+`held_speaker`, `release`, `prefs_changed`, `shutdown`, `on_np_state`) and its 7 commands
+(`airplay_scan` … `airplay_firewall_prompt`), with the same names on every OS.
+- **Windows:** `os/windows/speaker.rs` re-exports `airplay.rs`'s items. A Tauri command needs its
+  two hidden names re-exported too (`__cmd__…`, `__tauri_command_name_…`), or `generate_handler!`
+  cannot find it. `airplay.rs` stays where it is: it is app logic, not an edge.
+- **The stub:** no state, the hooks do nothing, the commands answer "not built for macos yet"
+  (`airplay_disconnect` and `airplay_tap` answer Ok: nothing to drop).
+- **The callers:** `lib.rs` (the state, the setup, the commands), `bridge.rs`, `settings.rs` and
+  `update.rs` call `os::speaker::…`. The one `cfg` outside `os/` is `#[cfg(os_windows)] mod
+  airplay;` in `lib.rs`; step 6's check names it as its only exception. Linux widens it (§8).
+- **`OsCaps`** gets `airplay_sender` (Windows true) and `route_picker` (the Mac's
+  `AVRoutePickerView`, false until it is built). The page reads them once `os_caps` exists.
+- **`deets-airplay`** is in the Windows-only table of `Cargo.toml`.
+
+**Checked:** `cargo check` dev and release for Windows, and against both stubs (dev and release
+for the Mac), with no warning; `npm run check` passes; `Cargo.lock` did not change;
+`cargo tree --target aarch64-apple-darwin` and `--target x86_64-unknown-linux-gnu` list neither
+`deets-airplay` nor `windows`. On the dev app: `airplay_status` answered with the full Windows
+status, and `airplay_scan` found both speakers on the network (no connect: it would play aloud).
+
+**For Linux (§8.1):** the sender crate builds on Linux only after the DeetsAirplay repo puts its
+`windows` dependency behind `cfg(windows)` (its capture, mixer and probe; `session.rs`'s timer call;
+`crypto/random.rs`, which can use `getrandom`), and Linux brings its own capture. Then the gate on
+`mod airplay` widens to `any(os_windows, os_linux)` and `os/linux.rs` hands the sender on as
+Windows does.
+
+**Still the Mac's to build:** the route picker behind `os::speaker` (his to design: how *Play on*
+looks on a Mac), and the rooms' timing over the Mac's AirPlay delay.

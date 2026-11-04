@@ -28,6 +28,7 @@
     "docs:copies": "node scripts/docs-copies.mjs",
     "test": "node --import ./tests/setup.mjs --test \"tests/*.test.ts\"",
     "check": "tsc --noEmit && npm test && npm run docs:check && cargo check --manifest-path src-tauri/Cargo.toml && cargo test --quiet --manifest-path src-tauri/Cargo.toml && cargo test --quiet --manifest-path crates/mcp-install/Cargo.toml && node scripts/storage.mjs --check",
+    "check:os": "node scripts/check-os.mjs",
     "storage": "node scripts/storage.mjs",
     "prepare": "git config core.hooksPath .githooks",
     "icons": "python scripts/icons.py",

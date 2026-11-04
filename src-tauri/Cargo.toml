@@ -45,13 +45,6 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 # `sync`: the library sync's tail lock (library.rs SYNC_TAIL); Tauri's tree turns it on too.
 tokio = { version = "1", default-features = false, features = ["rt", "time", "sync"] }
 httpdate = "1"
-
-# The AirPlay 2 sender (AIRPLAY.md), shared with the DeetsAirplay tray app, pinned to
-# a commit of that public repo so a clone of this one builds alone. To change the crate:
-# commit + push DeetsAirplay, then bump `rev` here. (For a long local iteration, a
-# gitignored src-tauri/.cargo/config.toml `[patch]` to ../../DeetsAirplay/crates/airplay
-# works, but it churns Cargo.lock — prefer push + bump.)
-deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "44ac6bb364ed46d6227c03cebeb384083c74e8ba" }
 # Set up DeetsMusic in the AI apps on this PC; the CLI uses the same crate (MCP-INSTALL.md fork 1A).
 mcp-install = { path = "../crates/mcp-install" }
 tauri-plugin-deep-link = "2"
@@ -80,9 +73,18 @@ ed25519-dalek = { version = "2", default-features = false, features = ["std", "f
 sha2 = "0.10"
 
 # ── Windows only (OS-LAYER.md §11, step 4) ──────────────────────────────────────────
-# Every crate below is used only inside src/os/windows/, so a Mac or Linux build does not
-# compile or download it. A new Windows-only crate goes here, not in [dependencies].
+# Every crate below is used only inside src/os/windows/ (and airplay.rs, the sender behind
+# os::speaker), so a Mac or Linux build does not compile or download it. A new Windows-only
+# crate goes here, not in [dependencies].
 [target.'cfg(windows)'.dependencies]
+# The AirPlay 2 sender (AIRPLAY.md), shared with the DeetsAirplay tray app, pinned to
+# a commit of that public repo so a clone of this one builds alone. To change the crate:
+# commit + push DeetsAirplay, then bump `rev` here. (For a long local iteration, a
+# gitignored src-tauri/.cargo/config.toml `[patch]` to ../../DeetsAirplay/crates/airplay
+# works, but it churns Cargo.lock — prefer push + bump.) Windows only: a Mac plays on a
+# speaker through Apple's route picker (OS-LAYER.md §1.3, §11.7); Linux gets it with §8, once
+# the crate gates its own `windows` dependency.
+deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "44ac6bb364ed46d6227c03cebeb384083c74e8ba" }
 # The WebView2 settings interface that turns off browser keys (DRAG-DROP.md §6;
 # os/windows/window.rs). The version Tauri's wry already uses, so no new crate download.
 webview2-com = "0.38"

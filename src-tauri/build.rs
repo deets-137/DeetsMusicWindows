@@ -1,4 +1,5 @@
 fn main() {
+    os_cfg();
     lastfm_key();
     build_key();
     icons();
@@ -7,6 +8,31 @@ fn main() {
         windows = windows.app_manifest(manifest);
     }
     tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows)).expect("tauri-build");
+}
+
+/// Which OS file of the OS layer the app builds against (docs/architecture/OS-LAYER.md §11.7):
+/// `os_windows`, `os_macos` or `os_linux`, from the target. `DEETS_STUB_OS=macos` (or `linux`)
+/// picks that file instead, on any machine, so `cargo check` on Windows proves the Mac's and
+/// Linux's files match the Windows signatures (`npm run check:os`). Never set it for a build
+/// that runs: such an app has no media keys, no secrets and no speaker.
+fn os_cfg() {
+    println!("cargo:rerun-if-env-changed=DEETS_STUB_OS");
+    for os in ["os_windows", "os_macos", "os_linux"] {
+        println!("cargo:rustc-check-cfg=cfg({os})");
+    }
+    let target = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let os = match std::env::var("DEETS_STUB_OS").ok().as_deref() {
+        Some("macos") => "macos",
+        Some("linux") => "linux",
+        Some(other) if !other.is_empty() => panic!("DEETS_STUB_OS must be macos or linux, not {other}"),
+        _ => target.as_str(),
+    };
+    match os {
+        "windows" => println!("cargo:rustc-cfg=os_windows"),
+        "macos" => println!("cargo:rustc-cfg=os_macos"),
+        "linux" => println!("cargo:rustc-cfg=os_linux"),
+        other => panic!("no OS file for target {other} (OS-LAYER.md §3)"),
+    }
 }
 
 /// A release build's side-by-side manifest: Tauri's own (the Common-Controls dependency) plus

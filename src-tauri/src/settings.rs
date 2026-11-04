@@ -478,7 +478,7 @@ pub async fn settings_rotate_bridge_token(app: tauri::AppHandle) -> Result<Setti
 pub async fn settings_set_airplay_capture(v: AirplayCapture, app: tauri::AppHandle) -> Result<SettingsData, String> {
     off_ui(app, move |app| {
         let out = app.state::<Settings>().update(|d| d.airplay_capture = v)?;
-        crate::airplay::prefs_changed(app);
+        crate::os::speaker::prefs_changed(app);
         Ok(out)
     })
     .await

@@ -251,7 +251,7 @@ pub(crate) fn airplay_shutdown_bounded(app: &AppHandle) {
     let (tx, rx) = std::sync::mpsc::channel();
     let a = app.clone();
     std::thread::spawn(move || {
-        crate::airplay::shutdown(&a);
+        crate::os::speaker::shutdown(&a);
         let _ = tx.send(());
     });
     if rx.recv_timeout(AIRPLAY_STOP_LIMIT).is_err() {

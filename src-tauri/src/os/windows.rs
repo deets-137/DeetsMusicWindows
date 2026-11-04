@@ -17,6 +17,7 @@ pub mod media_session;
 pub mod net;
 pub mod process;
 pub mod secrets;
+pub mod speaker;
 pub mod system;
 pub mod system_media;
 pub mod window;
@@ -37,6 +38,8 @@ pub const CAPS: OsCaps = OsCaps {
     app_icon: true,
     gpu: true,
     display_hz: true,
+    airplay_sender: true,
+    route_picker: false,
 };
 
 /// A child process with no console window (`CREATE_NO_WINDOW`).

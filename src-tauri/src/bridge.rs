@@ -151,7 +151,7 @@ pub fn np_publish(state: NpState, app: AppHandle, hub: tauri::State<'_, Hub>) {
     *hub.np.lock_or_recover() = state.clone();
     crate::os::media_session::update(&state);
     crate::tray::update_tooltip(&app, &state); // the icon's hover text (TRAY.md §7)
-    crate::airplay::on_np_state(&app, &state);
+    crate::os::speaker::on_np_state(&app, &state);
     let _ = app.emit_to("tray", "np", state);
 }
 
@@ -662,7 +662,7 @@ async fn handle(app: AppHandle, mut req: Request) {
             // attributed (DEBUGGING.md §2026-09-17 review, item 1); a title or an artist
             // would make an unauthenticated route leak the listening, so none is here.
             let playing = app.state::<Hub>().np.lock_or_recover().playing;
-            let air = match crate::airplay::held_speaker(&app) {
+            let air = match crate::os::speaker::held_speaker(&app) {
                 None => "off",
                 Some(_) => match settings.airplay_capture {
                     crate::settings::AirplayCapture::App => "tap",
@@ -709,7 +709,7 @@ async fn handle(app: AppHandle, mut req: Request) {
         // Write: let it go, so its panel can offer a hand-over. Both are inert
         // when nothing else is installed, which is the usual case.
         (Method::Get, "/airplay") => {
-            let held = crate::airplay::held_speaker(&app);
+            let held = crate::os::speaker::held_speaker(&app);
             json(
                 req,
                 200,
@@ -731,7 +731,7 @@ async fn handle(app: AppHandle, mut req: Request) {
             }
             // A TEARDOWN plus a thread join; never on the runtime's thread.
             let handle = app.clone();
-            tauri::async_runtime::spawn_blocking(move || crate::airplay::release(&handle)).await.ok();
+            tauri::async_runtime::spawn_blocking(move || crate::os::speaker::release(&handle)).await.ok();
             json(req, 200, serde_json::json!({ "ok": true }))
         }
         (Method::Get, "/log") => respond(req, 200, log_text(), "text/plain; charset=utf-8"),

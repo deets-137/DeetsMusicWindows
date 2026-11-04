@@ -532,6 +532,10 @@ npm run release:publish   # after testing the install: put it on the update chan
 npx tsc --noEmit      # front-end typecheck
 npm test              # the unit tests (tests/*.test.ts, Node's own runner)
 npm run check         # tsc + tests + docs:check + cargo check + cargo test (the pre-push hook)
+npm run check:os      # cargo check of the whole app against the Mac and Linux stubs of src-tauri/src/os/,
+                      # on any machine (DEETS_STUB_OS; OS-LAYER.md §11.7). Never run such a build.
+                      # Run it after any change in src-tauri/src/os/, build.rs or an os:: call. Not in
+                      # `check` (his call 2026-11-03) until the Mac file holds real code; ask him then.
 npm run storage       # where the repo's disk goes; `-- --prune` deletes Rust incremental folders
                       # unused for 24 h. `check` warns in one line when the build folders pass 40 GB.
 ```

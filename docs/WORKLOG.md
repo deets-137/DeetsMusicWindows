@@ -6,6 +6,31 @@ updated: 2026-11-03
 ---
 # DeetsMusic — Work log
 
+## 2026-11-03 — The OS layer split, step 5: the stubs, AirPlay behind `os::speaker`
+
+- **His ask.** Is AirPlay for the OS layer, since a Mac has its own way? His call on the
+  recommendation: the way to play on a speaker goes behind the OS layer, the sender code does not,
+  in step 5.
+- **Built.** `os/stub.rs` (every edge, the Windows signatures, bodies that never pretend; `CAPS`
+  all false), `os/macos.rs` and `os/linux.rs` re-export it. The edge `os::speaker`: the sender's
+  state, hooks and 7 commands; `os/windows/speaker.rs` hands `airplay.rs`'s on (a command needs its
+  two hidden names re-exported too); the stub answers "not built". `lib.rs`, `bridge.rs`,
+  `settings.rs`, `update.rs` call `os::speaker`; `#[cfg(os_windows)] mod airplay;` is the one
+  `cfg` outside `os/`. `OsCaps` gets `airplay_sender` and `route_picker`. `deets-airplay` is
+  Windows-only. `build.rs` sets `os_windows` / `os_macos` / `os_linux`, and `DEETS_STUB_OS` picks a
+  stub on any machine: `npm run check:os` (`scripts/check-os.mjs`). OS-LAYER.md §11.7, §8.1.
+- **Checked.** `cargo check` Windows dev and release, both stubs (Mac dev and release): no
+  warning. `--cfg os_macos` seen in `cargo check -v`; a wrong `DEETS_STUB_OS` is refused.
+  `npm run check` passes; `Cargo.lock` unchanged; `cargo tree` for the Mac and Linux targets lists
+  neither `deets-airplay` nor `windows`. Dev app: `airplay_status` answered, `airplay_scan` found
+  both speakers (no connect).
+- **His call on `check:os`.** Measured 36 s for both stubs, then 16 s for the next plain check.
+  Kept on its own: run after any change in `src-tauri/src/os/`, `build.rs` or an `os::` call; it
+  joins `npm run check` once the Mac file holds real code (ask him then). OS-LAYER.md §11.7,
+  §10.1; CLAUDE.md › Run.
+- **Still his, later:** how *Play on* looks on a Mac (with the route picker).
+- **Committed** on `macos-support`; not pushed.
+
 ## 2026-11-03 — The OS layer split, step 4 and the first run on Windows
 
 - **His ask.** Switch to `macos-support` (from `main`, after the pause fix was pushed), a rundown,
