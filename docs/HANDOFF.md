@@ -117,11 +117,13 @@ item closes, delete it here and write the day in WORKLOG.md.
 
 ### On `macos-support` (not on `main`)
 
-- **The OS layer split (2026-11-03).** Steps 1–3 of 9 done, uncommitted: the inventory, the
-  `os/` shape, and every Windows call moved into `src-tauri/src/os/windows/`
-  ([OS-LAYER.md](architecture/OS-LAYER.md) §11.4). Checked for Windows on the Mac with
-  `cargo xwin check` (§11.3); not run. Next: step 4, the Windows crates to
-  `[target.'cfg(windows)'.dependencies]`.
+- **The OS layer split (2026-11-03).** Steps 1–4 of 9 done: the inventory, the `os/` shape,
+  every Windows call moved into `src-tauri/src/os/windows/` (committed, `a0e0c9e`), and the
+  Windows crates in a `cfg(windows)` table (not committed)
+  ([OS-LAYER.md](architecture/OS-LAYER.md) §11.4, §11.5). The first run on Windows built,
+  started and passed `npm run check` (§11.6). Found: the AirPlay sender crate brings `windows`
+  to a Mac build; it goes Windows-only with step 5. Next: step 5, the macOS and Linux stubs.
+  This branch does not have `main`'s `d53a751` (Let go after a pause) yet.
 
 ### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)
 

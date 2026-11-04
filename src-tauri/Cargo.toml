@@ -59,9 +59,6 @@ url = "2"
 # Decodes a playlist cover's data URL for the cover:// link (PLAYLISTS.md §10.6).
 # Already in the tree transitively, so no new crate download.
 base64 = "0.22"
-# The WebView2 settings interface that turns off browser keys (DRAG-DROP.md §6). The version
-# Tauri's wry already uses, so no new crate download.
-webview2-com = "0.38"
 # Install, update, uninstall (docs/ops/VELOPACK.md, velo.rs). Pinned to the `vpk` tool's
 # version: the two must match (release.mjs checks). `public-utils` exposes the crate's own HTTP
 # fetch for the signed feed; `file-logging` writes %LOCALAPPDATA%\velopack\velopack_<id>.log.
@@ -81,20 +78,28 @@ ed25519-dalek = { version = "2", default-features = false, features = ["std", "f
 # The friend code is SHA-256(public key) in Crockford base32. Already in the tree through
 # the digest family; naming it here makes it a direct dependency rather than a lucky one.
 sha2 = "0.10"
-# The tray's frame of icons/icon.ico (app_icon.rs). Already in the tree through Tauri's build;
-# no new download.
+
+# ── Windows only (OS-LAYER.md §11, step 4) ──────────────────────────────────────────
+# Every crate below is used only inside src/os/windows/, so a Mac or Linux build does not
+# compile or download it. A new Windows-only crate goes here, not in [dependencies].
+[target.'cfg(windows)'.dependencies]
+# The WebView2 settings interface that turns off browser keys (DRAG-DROP.md §6;
+# os/windows/window.rs). The version Tauri's wry already uses, so no new crate download.
+webview2-com = "0.38"
+# The tray's frame of icons/icon.ico (os/windows/app_icon.rs). Already in the tree through
+# Tauri's build; no new download.
 ico = "0.5"
 
 # OS bindings for the tray panel's Windows-media fallback (TRAY.md §3): the
 # Global System Media Transport Controls session + the master volume endpoint;
-# and our own media session (smtc.rs: `Media`). Already in the dependency tree
-# transitively (Tauri), so no new crate downloads.
-# `#[implement]` (audio_out.rs: the Windows audio notices) names this crate at its root.
-# Already in the tree through `windows`; no new download.
-[dependencies.windows-core]
+# and our own media session (os/windows/media_session.rs, was smtc.rs). Already in the
+# dependency tree transitively (Tauri), so no new crate downloads.
+# `#[implement]` (os/windows/audio_out.rs: the Windows audio notices) names this crate at its
+# root. Already in the tree through `windows`; no new download.
+[target.'cfg(windows)'.dependencies.windows-core]
 version = "0.61"
 
-[dependencies.windows]
+[target.'cfg(windows)'.dependencies.windows]
 version = "0.61"
 features = [
   "Foundation",

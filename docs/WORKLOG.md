@@ -6,6 +6,24 @@ updated: 2026-11-03
 ---
 # DeetsMusic — Work log
 
+## 2026-11-03 — The OS layer split, step 4 and the first run on Windows
+
+- **His ask.** Switch to `macos-support` (from `main`, after the pause fix was pushed), a rundown,
+  then step 4.
+- **The first run on Windows.** The dev app was running, so the switch rebuilt steps 1–3 at
+  once: no error, no warning from our code, and the app started (the start line, the audio
+  output, the display rate and the GPU line logged as before). `npm run check` passed.
+  OS-LAYER.md §11.6.
+- **Step 4.** `windows`, `windows-core`, `webview2-com` and `ico` (its only user is
+  `os/windows/app_icon.rs`) are in `[target.'cfg(windows)'.dependencies]`. `cargo check` dev and
+  release, no warning; `npm run check` passes; `Cargo.lock` unchanged. OS-LAYER.md §11.5.
+- **Found.** `cargo tree --target aarch64-apple-darwin`: the AirPlay sender crate
+  (`deets-airplay`) lists `windows` as a plain dependency, so a Mac build still compiles it. By
+  his call §1.3 the Mac has no use for the sender: it goes Windows-only with step 5.
+- **The stale lines.** The steps 1–3 entry below and HANDOFF said "nothing committed"; `a0e0c9e`
+  committed them. HANDOFF and OS-LAYER.md §11 now say so (this entry does not change the old one).
+- **Not committed:** step 4 and these docs.
+
 ## 2026-11-03 — The OS layer split, steps 1–3: the inventory, the shape, the moves
 
 - **His ask.** Move the Windows-only Rust code behind `src-tauri/src/os/`, so a Mac file and a

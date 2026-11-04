@@ -406,7 +406,8 @@ assets/ ?                       app-icon*.png, art-template/, icon-template/, st
 
 ## 11. The split — as built
 
-> **Part:** built · 2026-11-03 · steps 1–3 of 9 done (§11.4); not committed; desk test open (step 8)
+> **Part:** built · 2026-11-03 · steps 1–4 of 9 done (§11.4, §11.5); steps 1–3 committed (`a0e0c9e`),
+> step 4 not committed; first run on Windows passed (§11.6); desk test open (step 8)
 
 The first step of the OS layer, on `macos-support`. It moves the app's Windows-only code behind
 `src-tauri/src/os/`, so that a Mac file and a Linux file can be added later. Windows users see no
@@ -415,7 +416,7 @@ change. The steps, in the order he approved (2026-11-03):
 1. Read the callers and write the inventory (§11.1). **Done.**
 2. Make the shape: `os/mod.rs`, `os/windows.rs` (§11.2). **Done.**
 3. Move the Windows calls, one caller at a time, small to large (§11.4). **Done.**
-4. Move the Windows crates to `[target.'cfg(windows)'.dependencies]`.
+4. Move the Windows crates to `[target.'cfg(windows)'.dependencies]` (§11.5). **Done.**
 5. Add `os/macos.rs` and `os/linux.rs` as stubs.
 6. Add the check: no Windows code in `src-tauri/src` outside `os/` (DOCS-ORG.md §8).
 7. Verify: `npm run check`; `cargo check` for the Windows and Mac targets.
@@ -555,4 +556,34 @@ makes that a check.
 
 **Not run on this Mac:** the app, `cargo test`, `npx tsc --noEmit` and `npm test` (no
 `node_modules` here, and his rule for this sitting forbids the download). Nothing in `src/`
-changed.
+changed. (Run later on Windows: §11.6.)
+
+### 11.5 Step 4, the crates — as built (2026-11-03, on Windows)
+
+`src-tauri/Cargo.toml` has a `[target.'cfg(windows)'.dependencies]` table. It holds the four
+crates that only `src/os/windows/` uses: `windows`, `windows-core`, `webview2-com` and `ico`.
+`ico` was not named in step 4, but its one user is `os/windows/app_icon.rs`, so it moved with
+the others. The comments name the new file paths. A new Windows-only crate goes in that table.
+
+- **Checked:** `cargo check` (dev and release) with no warning; `npm run check` passes (450
+  tests, 114 + 10 Rust tests, docs:check). `Cargo.lock` did not change.
+- **What a Mac build pulls in now** (`cargo tree --target aarch64-apple-darwin`, which needs no
+  Mac standard library): none of the four is a direct dependency. `ico` still comes in through
+  `tauri-codegen`, at build time only (Tauri's, not ours).
+- **Found: the AirPlay sender crate brings `windows` to every OS.** `deets-airplay` (the
+  DeetsAirplay repo, pinned by `rev`) lists `windows` and `windows-core` as plain dependencies,
+  for its process-loopback capture. So a Mac build still compiles `windows` 0.61 through it, and
+  `airplay.rs` calls the crate on every OS. His call §1.3 (AirPlay on a Mac is Apple's route
+  picker) means the app does not need the sender crate on a Mac. The work goes with step 5:
+  `deets-airplay` into the Windows-only table, and `airplay.rs`'s commands behind the OS layer,
+  with a Mac stub that says no sender. Not done yet.
+
+### 11.6 The first run on Windows (2026-11-03)
+
+The branch was switched in on his Windows PC with the dev app running, so the dev runner built
+steps 1–3 at once. It built with no error and no warning from our code, and the app started:
+the start line read `Windows 11 25H2 build 26200.9711` (`os::system::version()`), and the audio
+output (`audio-out: Speakers (Yeti Classic)`), the display rate (`display: tray on 240 Hz`) and
+the GPU line logged as before. `npm run check` passed: 450 front-end tests, 114 + 10 Rust tests,
+docs:check. Not yet run: §11's desk test (step 8): the media overlay, the media keys, the tray,
+Discord, the secrets, the ping, the updater.
