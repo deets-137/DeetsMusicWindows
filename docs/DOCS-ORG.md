@@ -362,13 +362,14 @@ Deterministic, fast, free. No model runs. It joins the release check
 | 29 | no `(window as any)` or `window as unknown as` in `src/`: a handle is declared in `declare global { interface Window }` in the module that sets it (`// window-cast: why` marks a cast that must stay) | two modules on one handle name: `__player` from player.ts and full-player.ts, the later one winning (2026-10-11). Typed, the second declaration fails tsc (TS2717) |
 | 30 | every thread start (`thread::spawn` / `thread::Builder` in `src-tauri/src/`, `new Worker` / `audioWorklet.addModule` in `src/`) is a row in the thread ledger, DEBUGGING.md § Threads, keyed `file.rs:function` or `file.ts:module.ts`; a row with no site fails too | a thread nobody listed: the `np_publish` freeze (2026-10-12) asked "what threads do we have", and the answer had to be read from 23 sites by hand (2026-10-13) |
 | 31 | every paragraph of a RELEASE-NOTES.md entry after `LEAD_RULE_AFTER` (`src/release-leads.ts`, 0.28.0) starts with a bold lead of 2 to 10 words; "Fixes" only as the last paragraph | the lead is the bullet the updates panel's What's new shows (UpdatesButton.md §6.3): a category word ("Lists.") or a lead cut before its verb read as nothing there (2026-10-16) |
+| 34 | no Rust file in `src-tauri/src/` outside `os/` names a Windows crate (`windows::`, `windows_core::`, `webview2_com`), an OS-only part of std (`std::os::…`), a gate or test on the OS (`cfg(windows)`, `target_os`, `os_windows`, `cfg!(…)`), `.hwnd()`, `.controller()` or `creation_flags`; nor the AirPlay sender crate outside `airplay.rs`. Comments and strings do not count. One exception: `#[cfg(os_windows)]` right before `mod airplay;` in `lib.rs` | the OS layer (OS-LAYER.md §11, step 6): such a line builds on Windows and breaks the Mac build, and nothing else says so before a Mac build (2026-11-03) |
 
 Checks 20–28 (2026-09-27) read the CODE against its ledgers: each one is a grep the
 consistency survey ran by hand that evening, five of whose seven findings were partly wrong
 for reading the wrong scope. The right scope lives in the script now, with the allowlists
 (`PLACERS`, `NO_LIST_CARDS`) that carry a reason per line.
 
-**Written and running (2026-09-27):** 1, 2, 3, 4, 5, 7, 11, 18, 19 and 20–28; 29 from 2026-10-11; 30 from 2026-10-13. All of them are
+**Written and running (2026-09-27):** 1, 2, 3, 4, 5, 7, 11, 18, 19 and 20–28; 29 from 2026-10-11; 30 from 2026-10-13; 34 from 2026-11-03. All of them are
 **facts**: they fail the build. Check 7 reads the code names SETTINGS.md and AGENT.md put in
 backticks (its first run found two renamed functions). **Planned, not written:** 6, 8, 9, 10
 and 17 — the rows stay in the table as the design, and this line says the script does not

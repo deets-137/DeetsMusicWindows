@@ -3,8 +3,8 @@
 //!
 //! One file per OS, picked here by `cfg`. Each OS file has the same free functions with the same
 //! signatures (his call F2), so a function one OS lacks fails that OS's build. A trait only where
-//! there is state. The callers call `os::…` and hold no `cfg` of their own; the check in
-//! `scripts/docs-check.mjs` fails Windows code anywhere else in `src-tauri/src`.
+//! there is state. The callers call `os::…` and hold no `cfg` of their own; docs:check 34 in
+//! `scripts/docs-check.mjs` fails OS code anywhere else in `src-tauri/src` (one exception: lib.rs `mod airplay`).
 //!
 //! The module is named `windows`, like the `windows` crate. Here it is always `self::windows`,
 //! so the two never mix.

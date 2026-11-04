@@ -1,7 +1,7 @@
 ---
 status: designed
 desk_test: none
-sources: [src-tauri/src/os/mod.rs, src-tauri/src/os/windows.rs, src-tauri/src/os/stub.rs, src-tauri/src/os/macos.rs, src-tauri/src/os/linux.rs, src-tauri/src/os/windows/speaker.rs, src-tauri/build.rs, scripts/check-os.mjs, tools/mac-probe/run.mjs, tools/mac-probe/page/index.html, tools/mac-probe/page/glass.html, tools/mac-probe/src-tauri/src/glass.rs, tools/mac-probe/src-tauri/src/main.rs, src/player.ts, src/sound.ts, src/platform.ts, src-tauri/Cargo.toml, src-tauri/src/os/windows/media_session.rs, src-tauri/src/os/windows/system_media.rs, src-tauri/src/tray.rs, src-tauri/src/airplay.rs, src-tauri/src/presence.rs, src-tauri/src/velo.rs, src-tauri/src/gpu.rs]
+sources: [src-tauri/src/os/mod.rs, src-tauri/src/os/windows.rs, src-tauri/src/os/stub.rs, src-tauri/src/os/macos.rs, src-tauri/src/os/linux.rs, src-tauri/src/os/windows/speaker.rs, src-tauri/build.rs, scripts/check-os.mjs, scripts/docs-check.mjs, tools/mac-probe/run.mjs, tools/mac-probe/page/index.html, tools/mac-probe/page/glass.html, tools/mac-probe/src-tauri/src/glass.rs, tools/mac-probe/src-tauri/src/main.rs, src/player.ts, src/sound.ts, src/platform.ts, src-tauri/Cargo.toml, src-tauri/src/os/windows/media_session.rs, src-tauri/src/os/windows/system_media.rs, src-tauri/src/tray.rs, src-tauri/src/airplay.rs, src-tauri/src/presence.rs, src-tauri/src/velo.rs, src-tauri/src/gpu.rs]
 updated: 2026-11-03
 ---
 # The OS layer — Windows, macOS, then Linux
@@ -410,9 +410,9 @@ assets/ ?                       app-icon*.png, art-template/, icon-template/, st
 
 ## 11. The split — as built
 
-> **Part:** built · 2026-11-03 · steps 1–5 of 9 done and committed (§11.4, §11.5, §11.7: steps 1–3
-> `a0e0c9e`, step 4 `8adc43d`, step 5 the commit after it); first run on Windows passed (§11.6);
-> desk test open (step 8)
+> **Part:** built · 2026-11-03 · steps 1–6 of 9 done (§11.4, §11.5, §11.7, §11.8); committed: steps
+> 1–3 `a0e0c9e`, step 4 `8adc43d`, step 5 `943783c`; step 6 the commit after it; first run on Windows
+> passed (§11.6); desk test open (step 8)
 
 The first step of the OS layer, on `macos-support`. It moves the app's Windows-only code behind
 `src-tauri/src/os/`, so that a Mac file and a Linux file can be added later. Windows users see no
@@ -424,7 +424,8 @@ change. The steps, in the order he approved (2026-11-03):
 4. Move the Windows crates to `[target.'cfg(windows)'.dependencies]` (§11.5). **Done.**
 5. Add `os/macos.rs` and `os/linux.rs` as stubs; the speaker edge (§11.7). **Done.**
 6. Add the check: no Windows code in `src-tauri/src` outside `os/` (DOCS-ORG.md §8). Its one
-   allowed exception: `#[cfg(os_windows)] mod airplay;` in `lib.rs` (§11.7).
+   allowed exception: `#[cfg(os_windows)] mod airplay;` in `lib.rs` (§11.7). **Done** (docs:check
+   34, §11.8).
 7. Verify: `npm run check`; `npm run check:os` (the Mac and Linux stubs, on Windows); `cargo check`
    for the Mac target on his Mac (§11.3).
 8. This section's desk test; a WORKLOG.md entry.
@@ -653,3 +654,29 @@ Windows does.
 
 **Still the Mac's to build:** the route picker behind `os::speaker` (his to design: how *Play on*
 looks on a Mac), and the rooms' timing over the Mac's AirPlay delay.
+
+### 11.8 Step 6, the check — as built (2026-11-03)
+
+**docs:check 34** (`scripts/docs-check.mjs`; DOCS-ORG.md §8) reads every tracked Rust file in
+`src-tauri/src/` outside `os/`, with comments and strings blanked, and fails a line that names:
+- an OS-only part of std (`std::os::windows`, `unix`, `macos`, `linux`);
+- a Windows crate (`windows::`, `windows_core::`, `webview2_com`);
+- a gate or a test on the OS (`cfg(…)`, `cfg_attr(…)`, `cfg!(…)` on `windows`, `unix`,
+  `target_os`, `target_family`, `os_windows`, `os_macos`, `os_linux`, also inside `not`, `any`,
+  `all`);
+- `.hwnd()`, `.controller()` or `creation_flags(`;
+- the AirPlay sender crate (`deets_airplay::`) in any file but `airplay.rs`.
+
+One report a line, the first kind that matches. **The one exception** is `#[cfg(os_windows)]` on
+its own line in `lib.rs`, right before `mod airplay;` (§11.7). A second gate in `lib.rs` fails.
+`src-tauri/build.rs` sets the OS cfg and is outside `src/`, so it is not read. `main.rs`'s
+`windows_subsystem` attribute names no API and passes.
+
+**Proved (2026-11-03):** the clean tree passes. Ten planted lines in `net.rs` and a second
+`#[cfg(os_windows)]` in `lib.rs` all failed, and a comment and a string that named `windows::` and
+`cfg(windows)` did not. The two files were restored from git. Because docs:check runs inside
+`npm run check`, the pre-push hook now catches OS code outside the layer on every push (unlike
+`check:os`, his call §11.7).
+
+**A new file:** the check reads tracked files only (`git ls-files`), like checks 20–33, so a new
+Rust file is read once it is added to git.

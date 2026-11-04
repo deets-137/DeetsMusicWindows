@@ -26,7 +26,7 @@ now, not here.
   (DOCS-ORG.md §8): a settings key with no agent spec, a toast site or a hover hint off its
   ledger, a scroller without `app-scroll`, a right-click listener no doc names, a box placed by
   hand, a card with no list keys, a `(window as any)` handle, a thread with no ledger row, a
-  release-notes paragraph with no bold lead, a bare `prefers-reduced-motion`. Run it after
+  release-notes paragraph with no bold lead, a bare `prefers-reduced-motion`, OS code outside `src-tauri/src/os/`. Run it after
   code too.
 - Move a doc with `node scripts/docs-move.mjs NAME=area` (it re-points every link and
   `docs/` path in the repo). Never move one by hand.

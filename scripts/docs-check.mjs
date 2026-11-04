@@ -448,6 +448,39 @@ export function check() {
     });
   }
 
+  // 34. OS code lives in the OS layer (OS-LAYER.md §11, step 6; 2026-11-03). Every call into the
+  //     operating system sits in src-tauri/src/os/, one file per OS, and the callers call `os::`.
+  //     So no Rust file outside os/ names a Windows crate or API, gates on an OS, or picks one:
+  //     each of those would build on Windows and break the Mac (or the other way round), and
+  //     nothing else would say so before a Mac build. Comments and strings do not count. The one
+  //     exception is the AirPlay sender's gate in lib.rs, `#[cfg(os_windows)]` right before
+  //     `mod airplay;` (§11.7), and the sender crate inside airplay.rs, the file it gates.
+  {
+    const OS_CODE = [
+      [/\bstd::os::(?:windows|unix|macos|linux)\b/, "an OS-only part of std"],
+      [/\bwindows(?:_core)?::/, "the `windows` crate"],
+      [/\bwebview2_com\b/, "the `webview2-com` crate"],
+      [/\bcfg(?:_attr)?\s*\(\s*(?:not\s*\(\s*)?(?:any|all)?\s*\(?\s*(?:windows|unix|target_os|target_family|os_windows|os_macos|os_linux)\b/, "a gate on the OS"],
+      [/\bcfg!\s*\(\s*(?:not\s*\(\s*)?(?:windows|unix|target_os|target_family|os_windows|os_macos|os_linux)\b/, "a test of the OS"],
+      [/\.hwnd\s*\(\s*\)/, "a Windows window handle (`hwnd()`)"],
+      [/\.controller\s*\(\s*\)/, "the WebView2 controller (`controller()`)"],
+      [/\bcreation_flags\s*\(/, "a Windows process flag (`creation_flags`)"],
+    ];
+    const blankRs = (s) => s.replace(/\/\/[^\n]*|"(?:[^"\\\n]|\\.)*"/g, (m) => " ".repeat(m.length));
+    for (const f of files.filter((f) => /^src-tauri\/src\/.+\.rs$/.test(f) && !f.startsWith("src-tauri/src/os/"))) {
+      const lines = blankRs(read(f)).split("\n");
+      lines.forEach((line, i) => {
+        // The AirPlay sender's gate (§11.7): `#[cfg(os_windows)]` with `mod airplay;` next.
+        if (f === "src-tauri/src/lib.rs" && /^\s*#\[cfg\(os_windows\)\]\s*$/.test(line) && /^\s*mod airplay;/.test(lines[i + 1] ?? "")) return;
+        // One report a line: the first kind that matches (std::os::windows is not also "the crate").
+        const hit = OS_CODE.find(([re]) => re.test(line));
+        if (hit) fail(34, f, i + 1, `${hit[1]} outside the OS layer — move it into src-tauri/src/os/ (each OS file, the same signature) and call \`os::…\` (OS-LAYER.md §11)`);
+        if (/\bdeets_airplay::/.test(line) && f !== "src-tauri/src/airplay.rs")
+          fail(34, f, i + 1, "the AirPlay sender crate outside airplay.rs — call `os::speaker::…` (OS-LAYER.md §11.7)");
+      });
+    }
+  }
+
   // 30. Every place the code starts a thread is a row in the thread ledger (DEBUGGING.md
   //     § Threads, 2026-10-13), and every row still has its site. A function has no thread of
   //     its own; only these calls make one, so the ledger is the whole list. A Rust site is
@@ -566,7 +599,7 @@ export function report({ facts, docs }) {
   const names = {
     1: "links", 2: "mentions", 3: "section pointers", 4: "front matter", 5: "versions", 11: "ideas/", 18: "generated copies", 19: "shipped links",
     20: "settings keys", 21: "toast sites", 22: "hover hints", 23: "scrollers", 24: "right-click ledger", 25: "popover placers", 26: "list keys",
-    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger", 31: "release leads", 32: "reduced motion", 33: "public layer",
+    7: "doc names in code", 27: "sheet redeclares", 28: "raw values", 29: "window handles", 30: "thread ledger", 31: "release leads", 32: "reduced motion", 33: "public layer", 34: "OS layer",
   };
   for (const n of Object.keys(names).map(Number)) {
     const mine = facts.filter((f) => f.n === n);

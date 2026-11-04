@@ -6,6 +6,19 @@ updated: 2026-11-03
 ---
 # DeetsMusic — Work log
 
+## 2026-11-03 — The OS layer split, step 6: docs:check 34
+
+- **Built.** docs:check 34 (`scripts/docs-check.mjs`): no Rust file in `src-tauri/src/` outside
+  `os/` names `std::os::…`, a Windows crate, a gate or test on the OS (`cfg`, `cfg_attr`, `cfg!`
+  on `windows` / `unix` / `target_os` / `target_family` / `os_*`), `.hwnd()`, `.controller()` or
+  `creation_flags`; nor `deets_airplay::` outside `airplay.rs`. Comments and strings are blanked.
+  One exception: `#[cfg(os_windows)]` before `mod airplay;` in `lib.rs`. A row in DOCS-ORG.md §8,
+  the CLAUDE.md list, OS-LAYER.md §11.8, the `os/mod.rs` note.
+- **Proved.** The clean tree passes. Ten planted lines in `net.rs` and a second gate in `lib.rs`
+  failed; a comment and a string did not; restored from git. The first run reported
+  `std::os::windows::` twice (it also matches `windows::`): now one report a line.
+- **Committed** on `macos-support`; not pushed.
+
 ## 2026-11-03 — The OS layer split, step 5: the stubs, AirPlay behind `os::speaker`
 
 - **His ask.** Is AirPlay for the OS layer, since a Mac has its own way? His call on the
