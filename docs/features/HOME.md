@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.3
 desk_test: passed 2026-09-19
 sources: [src/home.ts, src-tauri/src/library.rs, src-tauri/src/apple.rs, src/home-card.ts]
-updated: 2026-09-20
+updated: 2026-11-03
 ---
 # DeetsMusic — the Home card
 
@@ -566,3 +566,59 @@ preference, it is what keeps the row off every album tile on the Library card.
 6. A **New** tile that is out: Add to Library adds the whole album. Watch the log — the add
    names the album id, with no `songs → albums` hop before it.
 7. Turn **Library Add** off. Every row above disappears, on every card.
+
+## 11. Click to open, double-click to play (idea for 1.4, 2026-11-03)
+
+> **Part:** idea · 2026-11-03 — not designed, not built. The forks in §11.3 are his.
+
+**The idea (user feedback, brought by the owner 2026-11-03):** *"Might be nice to have a
+setting that controls when clicking a song/album from the home screen to go to the album —
+double clicking would play it."*
+
+### 11.1 What a click does today (read from the code, 2026-11-03)
+
+| Tile | One click | Code |
+|---|---|---|
+| Song, album, artist (not pinned) | **Plays** the list from the top. An album off the library plays whole (`it.whole`). | `activate`, `src/home-card.ts` |
+| Playlist (not pinned) | **Plays** its songs | same |
+| Station | **Starts** the station | same |
+| Any **pinned** tile | Runs the pin's own **On Click** verb (Play · Shuffle · Open). A pin never set opens an album, a playlist or an artist, and plays a song or a station. An album the library does not hold has no view, so it **plays**. | `pinActivate`, `src/pins.ts` (PINS.md §8) |
+
+A double-click today is two clicks: it starts the same list twice. Enter and Space act as a
+click. The right-click menu already has **Go to Album** on every song and album tile.
+
+### 11.2 What the code gives the idea
+
+- **Open = Go to Album.** The menu's Go to Album (`src/go-to.ts`) already opens an album the
+  library holds in the Library card and an album it does not hold in the Search card, by
+  *Settings › Go to opens* and the `goto.album` rule. The click reuses that path, so an
+  unowned album opens too (the pin's Open plays it instead, see §11.1).
+- **The precedent for a click verb** is the pin's On Click (PINS.md §8): Play · Shuffle · Open,
+  and a Settings row for the start value. The precedents for a double-click are the Diary's
+  song rows and the Sound panel's handle (`dblclick` in `diary-card.ts`, `sound-panel.ts`).
+- **The default stays Play**, so nothing changes for a user who never opens the row (the rule
+  PINS.md §8.2a used).
+- **Pinned tiles keep their own On Click verb.** He chose a per-pin verb on 2026-09-19 (PINS.md
+  §8.2 fork 1); a Home-wide row must not overwrite it.
+- **The row sits in Settings › Home**, beside *Hiding lasts*. It needs a `NEW_MARKS` line
+  (`since: "1.4.0"`), a settings key with an agent spec, a hint in the ONBOARDING.md ledger and a
+  release note.
+
+### 11.3 Open forks (his)
+
+1. **Which tiles follow it.** His words name song and album tiles. Do artist tiles (open the
+   artist view) and playlist tiles (open the playlist) follow it too? A station always plays: it
+   has no view.
+2. **How the double-click is read.** The first click of a double-click opens the album, and the
+   Home tile can be gone (the card swaps in Mini) before the second click lands. Either:
+   - **Open at once**, and a second press within the Windows double-click time plays the item
+     that was just opened (we time the presses, not the browser's `dblclick`). Open feels
+     instant.
+   - **Wait** the double-click time (about 0.5 s) before an open, so a double-click never
+     opens. Every open lags by that time.
+3. **The row's wording.** Draft: **Click a Home tile** — `Play` · `Open` (a double-click plays).
+   With Play, does a double-click still restart the list, or is the second click ignored?
+
+### 11.4 Desk test
+
+Written when §11.3 is closed and the row is built.

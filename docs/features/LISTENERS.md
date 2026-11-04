@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts, src/media-levels.ts, src/present.ts, src/notes-order.ts, src/info-box-menu.ts]
-updated: 2026-10-17
+updated: 2026-11-03
 ---
 # Listeners — how rare a song is, from Last.fm
 
@@ -818,3 +818,56 @@ Both scripts go in `docs/ops/checks/` (his ask, 2026-10-01), beside the probe of
   job) · also a plays column in the album's song list in the Library.
 - **F6. A click on a row.** Plays that song with the album after it (as a note's mention does,
   album-notes.md) · nothing (a TV view to watch, not to drive).
+
+## 10. A listen count on each song row of an album (idea for 1.4, 2026-11-03)
+
+> **Part:** idea · 2026-11-03 — not designed, not built. The forks in §10.3 are his.
+
+**His ask (2026-11-03):** *"get the number of listens per song in the song row itself when the
+card is grown / has space to show it. So within an album, a user can get a feel for
+popularity."* This is the second option of §9.6 F5 (a plays column in the album's song list),
+made its own feature. It does not need presentation mode or §9's summed album number.
+
+### 10.1 What the code gives the idea (read 2026-11-03)
+
+- **The count already exists per song.** `listenersFor` (`src/listeners.ts`) makes one
+  `track.getInfo` per song and keeps it a month in `listen_counts`. The Now Playing badge (§4) and
+  the song facts box (§8) use it. A song you played or opened costs 0 calls.
+- **The rows.** An album's song list is `songRows` in `albumLevel` (`src/media-levels.ts`), in
+  the Library card and in the Search card (Lib and Full levels). One change there reaches both.
+- **"Has space" has a precedent.** The Library toolbar reads its own width with a container
+  query (`.lib-toolbar`, `@container (max-width: 300px)` in `styles.css`), and hides what does
+  not fit. The count column can show the same way when the row is wide: in a grown card (CARD-GROW.md),
+  in Max, or in a wide Midi window. A width test fits better than a test for "grown", because a
+  card can be wide without being grown.
+- **The setting.** *Settings › Playback › Show song info on the song's page* (`showSongInfo`) already
+  gates the song's Last.fm call. The column can ride it, with no new row.
+- **The cost.** An album never opened, with no songs cached, costs one call per song, once a
+  month: 23 calls for a 23-song album, about 6 s at 4 a second (§9.2). Apple: 0 calls. Last.fm's
+  limit is per user's own IP address.
+- **The name problem applies.** A song whose Apple name misses its Last.fm page reads a tiny
+  number (§9.1 item 4: *Essex Honey*, 8 of 14 songs at 45–79 listeners). On a row next to its
+  siblings, that looks like a deep cut and is not one. §9.6 F3 (the name form) decides this too.
+
+### 10.2 What follows from his words (not forks)
+
+- **Album song lists only.** He said "within an album". Playlists, the Songs view and the Queue
+  are later work, if he asks.
+- **Shown only when the row has space.** A Mini or a narrow card shows the rows as they are now.
+
+### 10.3 Open forks (his)
+
+1. **Which number.** Listeners (how many people; the probe's *THREAD 27* falls 4,094 → 100) ·
+   plays (how many times) · either one, with a bar against the album's top song (the §9.3 row
+   shape) · the bar only, with the number in the row's hover hint.
+2. **When the calls go out.** When the album opens wide (every row fills in a few seconds, then
+   is cached a month) · only the counts already cached (0 new calls; an album you never played
+   shows gaps).
+3. **The width where the column shows.** Set by a picture of a real album at Midi, grown and
+   Max; he picks the width from the pictures.
+4. **The name form.** §9.6 F3 and §8.11 must close first, or a mismatched song shows a false
+   low number. Or ship with a guard: a row under 1 % of the top song's count shows no number.
+
+### 10.4 Desk test
+
+Written when §10.3 is closed and the column is built.

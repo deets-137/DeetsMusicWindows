@@ -191,6 +191,20 @@ the New mark, so the row is in column 2 of the update card's 1.4 page (`__update
 shows it on the dev app). Whether the weekly report sends the key is his call (`usage-keys.ts`
 NOT_REPORTED).
 
+### Idea for 1.4: click a Home tile to open it (2026-11-03)
+
+User feedback: a setting so a click on a Home song or album tile opens the album, and a
+double-click plays it. Today every unpinned tile plays on one click. Not designed; three forks
+open (which tiles, how the double-click is read, the wording):
+[HOME.md](features/HOME.md) §11.
+
+### Idea for 1.4: a listen count on each album song row (2026-11-03)
+
+His ask: when an album's song list has the width, each row shows the song's Last.fm count, so
+a user sees which songs are popular. It reuses the song's cached `track.getInfo`. Not designed;
+four forks open (which number, when the calls go out, the width, the name form):
+[LISTENERS.md](features/LISTENERS.md) §10.
+
 ### Live, waiting on his test or his look
 
 Verified 2026-10-30 against his logs (the installed log reaches back only to 2026-10-27), the
