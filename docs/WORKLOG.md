@@ -2,9 +2,30 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 # DeetsMusic — Work log
+
+## 2026-11-03 — Let go of Apple after a pause
+
+- **The report.** A user without a Family plan: DeetsMusic, open and paused, stopped the music on
+  their iPhone. His installed log showed the cause: a paused song's key session renews its license
+  every 780 s (nine renewals in one pause of about 1 h 45 min). A renewal is the call Apple's
+  one-stream limit counts.
+- **His calls.** Let go after 10 minutes, as a setting; release before any renewal (at the minutes,
+  or 30 s before the next renewal). He asked first to read the `macos-support` branch: it changes
+  no `src/` file. The Mac changes are a fallback when FairPlay names no renewal time, and a note
+  for the Mac media session.
+- **Built.** `src/idle-release.ts` (pure, 8 tests), license-watch.ts (open sessions, last
+  `renew-after`, `onRenewal`), player.ts § Let go after a pause, the rule key `releaseAfterPause`,
+  the Settings row, the agent spec, the New mark (1.4.0), the 1.4.0 release note, SETTINGS.md, SETTINGS-INVENTORY.md,
+  AGENT.md, QUEUE.md § Let go after a pause.
+- **Desk test by Claude, dev app.** Before the build, by hand: `stop()` alone closed the key
+  session (`released`, `closed`); `clearQueue()` emptied MusicKit; Play reloaded the song. After
+  the build: paused at 1:07, `player:releaseArmed` `inS: 600`, `renewalInS: 770`;
+  `player:released` at `pausedS: 600`, `late: false`; key session closed; Now Playing kept 1:07;
+  Play resumed at 1:07. A value set through `import()` reached a second module copy and was saved
+  as 1 in `deets.settings`. It was put back to 10.
 
 ## 2026-11-03 — Apple's data calls in their own crate (a design only)
 

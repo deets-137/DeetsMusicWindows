@@ -57,6 +57,29 @@ function push(e: Omit<LicenseEvent, "t">): LicenseEvent {
   return ev;
 }
 
+// ── Renewals (2026-11-03, QUEUE.md § Let go after a pause) ───────────────────────────
+// A paused song's key session keeps renewing, and Apple counts a renewal as a stream. The
+// release in player.ts must fire before the next one, so each open session's last license
+// message is kept (wall clock, so a PC sleep counts), with the last `renew-after` Apple named.
+const openSessions = new Map<number, number>();
+let renewAfterS: number | null = null;
+const renewalListeners = new Set<() => void>();
+
+/** Each open key session's last license message, Date.now() ms. */
+export function openLicenseTimes(): number[] {
+  return [...openSessions.values()];
+}
+/** The last `renew-after` Apple named, in s; null before any (or on a Mac, where FairPlay may
+ *  name none). */
+export function lastRenewAfter(): number | null {
+  return renewAfterS;
+}
+/** Call `fn` on each license renewal. Returns the off switch. */
+export function onRenewal(fn: () => void): () => void {
+  renewalListeners.add(fn);
+  return () => renewalListeners.delete(fn);
+}
+
 /** The last RING events, oldest first. */
 export function licenseTrace(): LicenseEvent[] {
   return ring.slice();
@@ -194,6 +217,7 @@ function readReply(p: Promise<Response>): void {
           const reply = parseLicenseReply(body);
           const refused = isRefusal(r.status, reply);
           const { hasLicense: _drop, ...numbers } = reply;
+          if (typeof numbers.renewAfter === "number" && numbers.renewAfter > 0) renewAfterS = numbers.renewAfter;
           const ev = push({ kind: "req", http: r.status, ms, refused, ...numbers });
           if (refused) diag.warn("license:refused", ev);
         })
@@ -220,21 +244,37 @@ function watchSessions(): void {
       push({ kind: "session", id, type: args[0] ?? "temporary" });
       s.addEventListener("message", (e) => {
         const ev = push({ kind: "msg", id, type: (e as MediaKeyMessageEvent).messageType });
+        openSessions.set(id, Date.now()); // the renewal clock starts again here
         // A renewal is rare (renew-after was 780 s on 2026-10-18): log it when it happens.
         if (ev.type !== "license-request") diag.info("license:message", ev);
+        if (ev.type === "license-renewal") {
+          for (const fn of renewalListeners) {
+            try {
+              fn();
+            } catch (err) {
+              console.warn("[license-watch] renewal listener", err);
+            }
+          }
+        }
       });
       s.addEventListener("keystatuseschange", () => {
         const keys: string[] = [];
         s.keyStatuses.forEach((v) => keys.push(String(v)));
         const exp = s.expiration;
         const ev = push({ kind: "keys", id, keys, expiresIn: Number.isFinite(exp) ? Math.round((exp - Date.now()) / 1000) : null });
+        if (keys.length && keys.every((k) => k === "released")) openSessions.delete(id);
         // "released" is a session MusicKit closed after its song: the normal end, once per song.
         // As a warning it filled the log (222 lines in 4 days, so the 512 KB file kept 3 days)
         // and counted on 12 of 14 installs' weekly reports (2026-10-30). The ring still has it.
         if (keys.some((k) => k !== "usable" && k !== "released")) diag.warn("license:keys", ev);
         else if (keys.some((k) => k !== "usable")) diag.log("license:keys", ev);
       });
-      s.closed.then(() => push({ kind: "closed", id })).catch(() => {});
+      s.closed
+        .then(() => {
+          openSessions.delete(id);
+          push({ kind: "closed", id });
+        })
+        .catch(() => {});
     } catch (e) {
       diag.log("license:watchSkipped", { err: String(e) });
     }

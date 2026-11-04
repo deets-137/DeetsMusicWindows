@@ -8,7 +8,7 @@
 // without calling `authorize()` (whose OAuth popup can't open in WebView2 — the
 // reason auth runs through the loopback browser flow). See `injectUserToken`.
 
-import { setting, setSetting, onSettingsChange, type SettingSource } from "./settings-store";
+import { setting, setSetting, effective, onSettingsChange, type SettingSource } from "./settings-store";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
@@ -23,7 +23,8 @@ import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
 import * as diag from "./diag";
 import { countUse } from "./use-counts";
-import { installLicenseWatch, licenseTrace, inFlightNow } from "./license-watch";
+import { installLicenseWatch, licenseTrace, inFlightNow, openLicenseTimes, lastRenewAfter, onRenewal } from "./license-watch";
+import { nextRenewalAt, releaseAt } from "./idle-release";
 import { errorFields, compactEvent } from "./license-reply";
 import { cancelled } from "./rules";
 import { outputKind } from "./sound";
@@ -1222,6 +1223,7 @@ function onPlaybackStateChange(): void {
   maybeFinishQueue();
   emit();
   maybeResumeStation();
+  syncRelease(); // a pause arms the let-go, a play disarms it (§ Let go after a pause)
 }
 
 let wired = false;
@@ -2276,6 +2278,7 @@ export async function playContext(handles: TrackHandle[], startIndex: number): P
   }
 
   resumeStation = null; // a deliberate new context ends any queued station return
+  releasedStation = null; // a release's station return ends with any new context (§ Let go after a pause)
   perf.span("setContext", () => queue.setContext(handles, startIndex, isShuffleOn())); // shuffle mode: the rest shuffled
   perf.target(playId(queue.getCurrent() ?? {}));
   await loadFromModel(m);
@@ -2414,6 +2417,7 @@ export async function playStation(s: Station): Promise<void> {
   mode = "radio";
   radioStation = s;
   resumeStation = null;
+  releasedStation = null; // a release's station return ends with any new context (§ Let go after a pause)
   pendingBreakout = false;
   applyRepeatToMusicKit(); // a station never repeats
   isLoading = true;
@@ -2479,6 +2483,7 @@ export async function stopStation(): Promise<void> {
   diag.log("player:stopStation", { id: radioStation?.id });
   exitRadio();
   resumeStation = null;
+  releasedStation = null; // a release's station return ends with any new context (§ Let go after a pause)
   try {
     notePause("station-stop");
     if (m.isPlaying && typeof m.pause === "function") await m.pause();
@@ -2933,6 +2938,7 @@ export async function roomEnter(): Promise<void> {
   cancelGrow();
   mode = "room";
   resumeStation = null;
+  releasedStation = null; // a release's station return ends with any new context (§ Let go after a pause)
   diag.log("player:roomEnter", {});
   emit();
 }
@@ -3204,9 +3210,159 @@ function logPress(what: "playPause" | "next" | "prev", from: string): void {
   });
 }
 
+// ── Let go after a pause (QUEUE.md § Let go after a pause; his calls 2026-11-03) ─────
+// A paused song keeps its DRM key session open, and the browser renews the license every
+// `renew-after` s (780). Apple counts a renewal as a stream: a paused DeetsMusic stopped a
+// user's iPhone (no Family plan). So after `releaseAfterPause` minutes, or just before the next
+// renewal if that is sooner (idle-release.ts), MusicKit stops and its queue is cleared: that
+// closes the key session (tested on the dev app 2026-11-03: `released`, then `closed`). The model
+// keeps the song, and the spot goes to `resumeAt`. MusicKit then holds no song, the state a
+// restored launch has, so Play loads at the spot (`loadAndResumeAt`), Next and Previous move the
+// model (`skipWhileIdle`), and Now Playing shows the song at its spot. A station tunes in again
+// on Play; a room reloads through its own play (`roomResumeAt` re-feeds an empty MusicKit). A
+// room on a station is left alone: its feeder's MusicKit holds the station queue (ROOMS.md §21.8).
+// A timer alone is not enough: WebView2 slows the timers of a hidden window, and a Mac's App Nap
+// does the same, so the due time is checked again when the window shows, and a renewal seen
+// while armed releases at once.
+let releaseTimer = 0;
+let releaseDue: number | null = null; // Date.now() ms
+let releasePausedAt = 0;
+let releasing: Promise<void> | null = null;
+/** The station a release let go of: Play tunes it in again. Any new context clears it. */
+let releasedStation: Station | null = null;
+
+/** Paused with a song in MusicKit, and nothing else under way: a release may wait. */
+function releasable(): boolean {
+  const S = window.MusicKit?.PlaybackStates;
+  if (!music || !S || !music.nowPlayingItem || music.isPlaying) return false;
+  if (music.playbackState !== S.paused) return false;
+  if (isLoading || loadingContext || releasing || heldSpot() !== null) return false;
+  if (mode === "room" && roomStationOn) return false;
+  return true;
+}
+
+function disarmRelease(why: string): void {
+  if (releaseDue === null) return;
+  window.clearTimeout(releaseTimer);
+  releaseDue = null;
+  diag.log("player:releaseOff", { why });
+}
+
+/** Arm, re-arm or disarm after a state change. Idempotent. */
+function syncRelease(): void {
+  if (!releasable()) {
+    if (music?.isPlaying || isLoading) disarmRelease(music?.isPlaying ? "playing" : "loading");
+    return;
+  }
+  if (releaseDue !== null) return; // armed for this pause
+  releasePausedAt = Date.now();
+  scheduleRelease("pause");
+}
+
+/** Work out the due time from now and set the timer; Never disarms. */
+function scheduleRelease(why: string): void {
+  window.clearTimeout(releaseTimer);
+  const now = Date.now();
+  const minutes = effective("releaseAfterPause");
+  const renewalAt = nextRenewalAt(openLicenseTimes(), lastRenewAfter(), now);
+  const due = releaseAt({ pausedAt: releasePausedAt, minutes, renewalAt });
+  if (due === null) {
+    if (releaseDue !== null) disarmRelease("never");
+    return;
+  }
+  // One line per new due time: a wake (each focus) or a timer that finds the same time logs nothing.
+  const changed = releaseDue === null || Math.abs(due - releaseDue) > 1000;
+  releaseDue = due;
+  if (changed) {
+    diag.log("player:releaseArmed", {
+      why,
+      inS: Math.round((due - now) / 1000),
+      minutes,
+      renewalInS: renewalAt === null ? null : Math.round((renewalAt - now) / 1000),
+    });
+  }
+  releaseTimer = window.setTimeout(checkRelease, Math.max(0, due - now), "timer");
+}
+
+/** The timer fired, the window woke or a setting changed: release if due, else wait again. */
+function checkRelease(why: string): void {
+  if (releaseDue === null) return;
+  if (!releasable()) {
+    disarmRelease("notPaused");
+    return;
+  }
+  // The setting or a rule may have changed since the arm: work the due time out again.
+  scheduleRelease(why);
+  if (releaseDue !== null && Date.now() >= releaseDue) void releaseNow(why);
+}
+
+async function releaseNow(why: string): Promise<void> {
+  const m = music;
+  if (!m || !releasable()) return;
+  window.clearTimeout(releaseTimer);
+  const due = releaseDue;
+  releaseDue = null;
+  const at = m.currentPlaybackTime ?? 0;
+  const cur = mode === "queue" ? queue.getCurrent() : undefined;
+  const id = cur ? (cur.catalogId ?? cur.libraryId) : undefined;
+  const pausedS = Math.round((Date.now() - releasePausedAt) / 1000);
+  releasing = (async () => {
+    loadingContext = true; // MusicKit's song change to none is ours, not a song end
+    try {
+      if (id && at > 3) setResumeAt(at, id);
+      if (mode === "radio") releasedStation = radioStation;
+      await m.stop();
+      if (typeof m.clearQueue === "function") await m.clearQueue();
+      diag.log("player:released", {
+        why,
+        mode,
+        id: id ?? m.nowPlayingItem?.id ?? null,
+        at: Math.round(at),
+        pausedS,
+        // Late = a timer that should have fired already. A setting changed to a time already
+        // past is not late (2026-11-03: 10 → 5 min after 6 min paused logged `late: true`).
+        late: why !== "setting" && due !== null && Date.now() - due > 5000,
+      });
+    } catch (e) {
+      diag.warn("player:releaseFailed", { e: String(e) });
+    } finally {
+      // MusicKit's events for the stop arrive after the awaits: let them pass first.
+      await new Promise((r) => window.setTimeout(r, 0));
+      loadingContext = false;
+      releasing = null;
+    }
+  })();
+  await releasing;
+  refreshPlayerState(); // Now Playing reads the model's song (and the spot) once MusicKit holds none
+}
+
+window.addEventListener("focus", () => checkRelease("wake"));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkRelease("wake");
+});
+// A renewal while armed means the timer came late (a hidden window, a PC sleep): release now.
+onRenewal(() => {
+  if (releaseDue === null || !releasable()) return;
+  diag.warn("player:renewWhilePaused", { pausedS: Math.round((Date.now() - releasePausedAt) / 1000) });
+  void releaseNow("renewal");
+});
+onSettingsChange((k) => {
+  if (k !== "releaseAfterPause") return;
+  if (releaseDue !== null) checkRelease("setting");
+  else syncRelease(); // from Never to a time while paused
+});
+
 /** Toggle play/pause. With nothing queued, starts the cached library from the top. */
 export async function playPause(why = "button"): Promise<void> {
   logPress("playPause", why);
+  if (releasing) await releasing; // a Play during the release waits for it, then reloads
+  // A station the release let go of: Play tunes it in again (a live stream has no spot).
+  if (releasedStation && mode === "radio" && !music?.nowPlayingItem && !roomBridge) {
+    const s = releasedStation;
+    releasedStation = null;
+    diag.log("player:releasedStationPlay", { id: s.id });
+    return playStation(s);
+  }
   // A heal hold shows the song as playing, so this press means Pause: stop the heal (it reads
   // lastUserPauseAt) and leave the song paused at its spot.
   if (heldSpot() !== null) {

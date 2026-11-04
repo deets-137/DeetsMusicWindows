@@ -241,6 +241,7 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.3.1", section: "Window", row: "maxstageside" }, // Now Playing and Queue in Max, built 2026-11-02 (MAX-CARDS.md §13)
   { since: "1.3.1", section: "Window", row: "fpqueueside" }, // Queue in the full player, built 2026-11-02 (fullscreen-player.md §18.2)
   { since: "1.3.0", section: "Playlists", row: "newcover" }, // New cover, from 0.14: shown again beside the Later list, which starts with it (his call 2026-11-01, LISTEN-LATER.md §2.2)
+  { since: "1.4.0", section: "Playback", row: "releasepause" }, // Let go of Apple after a pause, built 2026-11-03 (QUEUE.md § Let go after a pause)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -514,7 +515,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, the sides of Now Playing and the Queue in Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "maxStageSide", "fpQueueSide", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "releaseAfterPause", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1710,6 +1711,14 @@ function mountSettings(
         },
         // Clear Queue (QUEUE.md § Clear Queue; his call 2026-10-29, default off).
         storeToggle("clearqueuelaunch", "Clear the queue on launch", "clearQueueOnLaunch", () => "Up Next starts empty each time the app opens. The last song still comes back as Restore on launch says"),
+        // Let go after a pause (QUEUE.md § Let go after a pause; his calls 2026-11-03).
+        {
+          kind: "choice", id: "releasepause", label: "Let go of Apple after a pause", key: "releaseAfterPause",
+          hint: "After a pause this long, other devices on your Apple ID can play. The next Play takes a moment longer",
+          get: () => String(ownSetting("releaseAfterPause")),
+          set: (v) => setSetting("releaseAfterPause", Number(v)),
+          options: [5, 10, 30, 0].map((m) => ({ value: String(m), label: m ? `${m} min` : "Never" })),
+        },
         // The end of a list (QUEUE.md §The end of a list, PLAYLIST-WEB.md §12; 2026-09-29).
         storeToggle("listendweb", "Play a web when a list ends", "listEndWeb", () => "A web of songs like the album or song that ended plays next, and is deleted after 1 day. Off: the list waits at its first song"),
         {

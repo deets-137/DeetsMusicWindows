@@ -179,6 +179,18 @@ item closes, delete it here and write the day in WORKLOG.md.
   rise, the card swap (his hand test of the swap passed). Neither has a release note: they are
   polish inside 1.3.1's other changes unless he wants one.
 
+### Built, not released: Let go after a pause (2026-11-03)
+
+A paused app renewed its license every 13 min and stopped a user's iPhone. MusicKit now lets go
+after Settings › Playback › *Let go of Apple after a pause* (10 min), or before the next renewal
+([QUEUE.md § Let go after a pause](features/QUEUE.md)). Claude ran desk-test steps 1, 3 and 4 on
+the dev app; step 2 passed when he allowed 5 min (released at once, 370 s into the pause). A
+resume after a release took 0.95 s from the press to sound at the spot. Open: steps 5 (Next after
+a release), 6 (a station), 7 (Never) and 8 (his iPhone). For 1.4.0: its release note (dated 2026-11-03; set the real date at release) and
+the New mark, so the row is in column 2 of the update card's 1.4 page (`__updates.asVersion("1.4.0")`
+shows it on the dev app). Whether the weekly report sends the key is his call (`usage-keys.ts`
+NOT_REPORTED).
+
 ### Live, waiting on his test or his look
 
 Verified 2026-10-30 against his logs (the installed log reaches back only to 2026-10-27), the

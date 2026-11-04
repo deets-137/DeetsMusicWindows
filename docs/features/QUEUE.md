@@ -1,8 +1,8 @@
 ---
 status: foundation
 desk_test: passed 2026-10-30
-sources: [src/player.ts, src/idle-skip.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts, src/license-watch.ts, src/license-reply.ts, docs/ops/checks/license-fail.mjs]
-updated: 2026-10-30
+sources: [src/player.ts, src/idle-skip.ts, src/idle-release.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts, src/license-watch.ts, src/license-reply.ts, docs/ops/checks/license-fail.mjs]
+updated: 2026-11-03
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -794,6 +794,60 @@ the seek's looks at 20 ms (the drop resume gets them too).
 **Desk test.** Run by Claude on the dev app with license-fail.mjs (the table). Left for live: on
 the next real refusal, `deetsmusic diag --tag license:` and the `player:licenseTrace` line give
 Apple's reason; the song must go on with no toast.
+
+### Let go after a pause (2026-11-03)
+> **Part:** built · 2026-11-03
+
+**The report.** A user without a Family plan said that DeetsMusic, open and paused, stopped the
+music on their iPhone. The installed app's log showed the cause: while a song is paused, its DRM
+key session stays open, and the browser renews the license every `renew-after` s (780). One run
+held a pause for about 1 h 45 min with nine `license:message … license-renewal` lines, 780 s apart.
+A renewal is a request to `acquireWebPlaybackLicense`, the call Apple's one-stream limit counts.
+A plain launch with nothing played opens no key session (`warmPlayer` makes an empty
+`MediaKeys` only), so it sends no renewal.
+
+**His calls (2026-11-03):** let go after 10 minutes, as a setting; and release before ANY renewal:
+at the setting's minutes, or 30 s before the next renewal if that comes first.
+
+**As built** (player.ts § Let go after a pause; the rule `releaseAt` / `nextRenewalAt` in
+`src/idle-release.ts`, tested; license-watch.ts keeps each open session's last license message
+and the last `renew-after`):
+- **The release** is MusicKit's `stop()`, then `clearQueue()`. On the dev app (2026-11-03) the
+  stop alone closed the key session (`keys: released`, then `closed`). The model keeps the song;
+  the spot goes to `resumeAt` (over 3 s in). MusicKit then holds no song, the state a restored
+  launch has: Play loads at the spot (`loadAndResumeAt`, silent until it gets there), Next and
+  Previous move the model (`skipWhileIdle`), and Now Playing shows the song at its spot. The
+  release holds `loadingContext`, so the end-of-list handlers do not read the stop as a song end.
+- **A station** is tuned in again on Play (`releasedStation`; any new context clears it). **A
+  room** reloads through its own play: `roomResumeAt` re-feeds an empty MusicKit. A room on a
+  station is left alone, because the feeder's MusicKit holds the station queue (ROOMS.md §21.8).
+- **Late timers.** WebView2 slows a hidden window's timers, and a Mac's App Nap does the same. So
+  the due time is checked again on `focus` and `visibilitychange`, and a renewal seen while armed
+  releases at once (`player:renewWhilePaused`, a warning: the timer came late).
+- **A Mac.** FairPlay (the OS layer design, §2, on the `macos-support` branch) may name no `renew-after`; then the
+  minutes alone decide. The Mac media session must keep the song through a release, which favors
+  `MPNowPlayingInfoCenter` over WKWebView's own session. On Windows the overlay and the media keys
+  come from our state (`smtc.rs`, on `macos-support` `os/windows/media_session.rs`), so a release
+  does not touch them.
+- **The setting:** Settings › Playback › *Let go of Apple after a pause*, 5 / **10** / 30 min /
+  Never (`releaseAfterPause`, minutes, 0 = Never). A rule key, so a rule can set it (for
+  example Never while AirPlay plays).
+- **Log lines:** `player:releaseArmed` (`inS`, `minutes`, `renewalInS`), `player:released` (`why`:
+  timer, wake, renewal or setting; `mode`, `at`, `pausedS`, `late`), `player:releaseOff`,
+  `player:releaseFailed`, `player:releasedStationPlay`.
+
+**Desk test.**
+1. Play a song, pause it at about 1:00. `player:releaseArmed` shows `inS` under 600 and a
+   `renewalInS` about 30 s above it.
+2. Set the row to 5 min while paused: a new `player:releaseArmed` (`why: "setting"`).
+3. After the release: `player:released`, and `__license.trace()` ends with `keys released` and
+   `closed`. No `license-renewal` follows. Now Playing still shows the song, paused, at its spot.
+4. Play: the song plays from the spot, not from 0:00.
+5. Release again, then press Next: the next song shows, paused, and Play starts it.
+6. A station: pause, release, Play: the station plays again.
+7. Never: pause for 15 min; no `player:releaseArmed`, and a `license-renewal` comes as before.
+8. His test: pause on the PC, play on an iPhone on the same Apple ID (not a Family member's ID),
+   wait 13 min. The iPhone plays on.
 
 ### End stall (2026-10-18)
 > **Part:** built · 2026-10-18

@@ -373,6 +373,10 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - **Playback › Clear the queue on launch** (2026-10-29, QUEUE.md § Clear Queue):
   `clearQueueOnLaunch` (On | Off, default Off). On: Up Next starts empty at each launch; the
   last song still follows Restore on launch.
+- **Playback › Let go of Apple after a pause** (2026-11-03, QUEUE.md § Let go after a pause):
+  `releaseAfterPause` (5 | 10 | 30 | 0 = Never, default 10). After a pause this long, or just
+  before the license would renew, MusicKit stops so other devices on the Apple ID can play; the
+  next Play reloads the song at its spot. A rule key.
 - **Playback › Scroll over the Player for volume** (2026-10-27, WHEEL-VOLUME.md):
   `playerWheelVolume` (On | Off, default On). On: the mouse wheel on Now Playing steps the
   volume 5 % per notch; a trackpad rises at most 40 % a second. Off: the wheel passes through.

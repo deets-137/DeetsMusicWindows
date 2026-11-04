@@ -319,6 +319,7 @@ under Cyber the whole section is gone.
 | Previous behavior for mid-list songs | What Previous may go back into | **The list** / only Played songs |
 | Restore on launch | What comes back when the app opens | **Last song** (paused, with its queue) / Up Next only / Nothing |
 | Clear the queue on launch | Up Next starts empty each time the app opens. The last song still comes back as Restore on launch says | On / **Off** |
+| Let go of Apple after a pause | After a pause this long, other devices on your Apple ID can play. The next Play takes a moment longer. It lets go sooner when Apple's license would renew first | 5 min / **10 min** / 30 min / Never |
 | Play a web when a list ends | A list that ends with Repeat off: a temporary web (1 day) from the album, or from the last song of any other list, plays next. Off: the list is loaded again at its first song, paused. Nothing in a room, after a station break-out, or while the sleep timer waits for an end | **On** / Off |
 | Shuffle button stays on | The Shuffle button turns shuffle on until you press it again. Off: it shuffles Up Next once | **on** / off |
 | Shuffle off plays | Press Shuffle off: the list goes on in its own order from the song playing. As shuffled: Up Next stays as it is | **In order** / As shuffled |

@@ -94,4 +94,5 @@ export const NOT_REPORTED: Readonly<Record<string, string>> = {
   pinView: "the pin panel's last tile (2026-10-26, PIN.md): his call before it is sent",
   rememberArtistFilters: "a new Playback row (2026-10-27, ARTIST-VIEW.md §12): his call before it is sent",
   clearQueueOnLaunch: "a new Playback row (2026-10-29, QUEUE.md § Clear Queue): his call before it is sent",
+  releaseAfterPause: "a new Playback row (2026-11-03, QUEUE.md § Let go after a pause): his call before it is sent",
   afterUpdateShow: "a new Updates row (2026-11-02, UPDATE-CARD.md §3.15): his call before it is sent",};

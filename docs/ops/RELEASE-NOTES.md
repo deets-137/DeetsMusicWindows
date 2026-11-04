@@ -48,6 +48,15 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.4.0 — 2026-11-03
+
+**Paused music lets your other devices play.** While a song is paused, Apple Music still counts
+this PC as playing, so a paused DeetsMusic could stop the music on an iPhone signed in to the same
+Apple ID. Now DeetsMusic lets go of Apple after 10 minutes of pause, or a little sooner when Apple
+would check in again first. Your song stays in Now Playing at the same spot, and Play starts it
+there, about a second slower than usual. Change the wait, or choose Never, in Settings > Playback >
+Let go of Apple after a pause.
+
 ## 1.3.1 — 2026-11-02
 
 **Flip flip (the side of the Queue and Now Playing).** In Settings > Window, there now exists two

@@ -353,6 +353,9 @@ export interface Settings {
   /** At launch: empty Up Next (QUEUE.md § Clear Queue). The last song still follows
    *  `restoreQueue`. An update or graphics restart keeps the queue. */
   clearQueueOnLaunch: boolean;
+  /** Minutes after a pause before MusicKit lets go of the song (QUEUE.md § Let go after a
+   *  pause), or sooner, just before the license would renew. 0 = never. A rule key. */
+  releaseAfterPause: number;
   /** When a list ends with Repeat off: play a temporary web from it (on), or load the list
    *  again at its first song, paused (off). QUEUE.md §The end of a list. */
   listEndWeb: boolean;
@@ -697,6 +700,7 @@ export const DEFAULTS: Settings = {
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
   clearQueueOnLaunch: false, // his call 2026-10-29: off; the queue comes back as Restore on launch says
+  releaseAfterPause: 10, // his call 2026-11-03: a paused app renewed its license and stopped a user's iPhone
   listEndWeb: true, // user's call 2026-09-29: an ended album goes on like autoplay, with a web of songs like it
   suggestSkipStations: true, // his call 2026-10-16 (SUGGEST-LESS.md F1, changed): a mark you made acts everywhere by default
   suggestSkipWebs: true, // his call 2026-10-12, kept 2026-10-16: a mark you made reads as "keep it out of new webs"
@@ -952,7 +956,9 @@ export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDis
   // Metal's cover change (docs/features/metal.md §6.7): the graphics fallback turns the 3D turn off.
   "metalCoverChange",
   // Reduce motion (GRAPHICS-FALLBACK.md §10.4): the graphics rule holds it on in software.
-  "reduceMotion"] as const;
+  "reduceMotion",
+  // Let go after a pause (QUEUE.md § Let go after a pause, 2026-11-03): e.g. Never while AirPlay plays.
+  "releaseAfterPause"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 
