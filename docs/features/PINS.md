@@ -478,7 +478,7 @@ off every slot, click the tile on Home: the playlist opens, and Back goes to Hom
 type a playlist's name, Enter: it opens.
 
 ### 8.10 On Double Click (built 2026-11-04)
-> **Part:** built · 2026-11-04; desk test open (HOME.md §11.4). Schema v23 adds `pins.dbl`.
+> **Part:** built · 2026-11-04; desk test passed 2026-11-04 (HOME.md §11.4, his word). Schema v23 adds `pins.dbl`.
 
 A second verb on each pin, beside On Click: the same three verbs, a right-click row under On
 Click, and a Settings row for what a new pin starts with. It defaults to **Play**. His calls and

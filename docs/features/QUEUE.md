@@ -849,6 +849,8 @@ and the last `renew-after`):
 8. His test: pause on the PC, play on an iPhone on the same Apple ID (not a Family member's ID),
    wait 13 min. The iPhone plays on.
 
+Passed 2026-11-04 (his word; steps 1 to 4 ran 2026-11-03).
+
 ### End stall (2026-10-18)
 > **Part:** built · 2026-10-18
 

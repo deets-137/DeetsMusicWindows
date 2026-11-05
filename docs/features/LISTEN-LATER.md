@@ -1,8 +1,9 @@
 ---
-status: built
-desk_test: open
+status: shipped
+shipped_in: 1.3.0
+desk_test: passed 2026-11-04
 sources: [src/listen-later.ts, src/media-menu.ts, src/playlists.ts, src/playlists-card.ts, src/playlist-export.ts, src/stats.ts, src/rules-app.ts, src/rulez-card.ts, src/agent-writes.ts, src/compass.ts, src/settings-card.ts, src-tauri/src/bridge.rs, cli/src/main.rs]
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 # Listen later: Saved for the Right Day
 

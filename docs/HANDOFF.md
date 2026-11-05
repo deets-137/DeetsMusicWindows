@@ -117,7 +117,7 @@ item closes, delete it here and write the day in WORKLOG.md.
 
 ### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)
 
-- **Listen Later (2026-11-01, `e1ee482`).** BUILT, desk test open
+- **Listen Later (2026-11-01, `e1ee482`).** SHIPPED in 1.3.0, desk test passed 2026-11-04 (his word)
   ([LISTEN-LATER.md](features/LISTEN-LATER.md) §5): a right-click row on songs, albums and
   picked songs, the only way into *Saved for the Right Day*; "DeetsMusic" as the owner on it,
   Replay and Rulez Playlists; Settings › Playlists › *Remove from Later list automatically*
@@ -127,12 +127,8 @@ item closes, delete it here and write the day in WORKLOG.md.
   (USAGE-COUNTS.md §18; the worker and the admin page's *Feature use* table are live, with
   the usage server side below), and the Playlists card's **DeetsMusic Lists**
   section (Replay, the Later list, Rulez Playlists, then new webs after a divider), *Made Here*
-  renamed *Created Here*, the Replay folder emptied once. Open: his desk test (§5, §7), his look
-  at Claude's choices (§3), and his idea of an opt-in action in the
-  Updates panel that moves a user's old webs. Read 2026-11-02: his own use on the dev app on
-  2026-11-01 covered §5 step 1 (the dev list was made 16:44, 14 songs) and step 9, and found the
-  3-second skip (§8, fixed); the dev log of that evening has rolled over, so the other steps
-  have no record. The live app has no Later list yet.
+  renamed *Created Here*, the Replay folder emptied once. Open: his idea of an opt-in action in the
+  Updates panel that moves a user's old webs.
 
 - **My reports' Resolved fold, and a local support worker (2026-10-30, `9ae4e80`).** Built from
   his own test through it. The fold ships with 1.3.0; the local worker is debug builds only
@@ -185,8 +181,8 @@ A paused app renewed its license every 13 min and stopped a user's iPhone. Music
 after Settings › Playback › *Let go of Apple after a pause* (10 min), or before the next renewal
 ([QUEUE.md § Let go after a pause](features/QUEUE.md)). Claude ran desk-test steps 1, 3 and 4 on
 the dev app; step 2 passed when he allowed 5 min (released at once, 370 s into the pause). A
-resume after a release took 0.95 s from the press to sound at the spot. Open: steps 5 (Next after
-a release), 6 (a station), 7 (Never) and 8 (his iPhone). For 1.4.0: its release note (dated 2026-11-03; set the real date at release) and
+resume after a release took 0.95 s from the press to sound at the spot. Desk test passed 2026-11-04
+(his word). For 1.4.0: its release note (dated 2026-11-03; set the real date at release) and
 the New mark, so the row is in column 2 of the update card's 1.4 page (`__updates.asVersion("1.4.0")`
 shows it on the dev app). Whether the weekly report sends the key is his call (`usage-keys.ts`
 NOT_REPORTED).
@@ -198,8 +194,8 @@ double-click plays it. His calls 2026-11-04: a 250 ms wait with a setting, On Do
 every pin and defaulting to Play, one build for any collection of songs, and existing pins listed
 in the update card's right column. Built, schema v23; his desk test: tentatively good, 2026-11-04.
 **Built after that:** the same click and double-click on every collection, Open at once, a per-type
-rule and a guide page (`docs/guide/clicks-by-type.md`, outline). Open: his desk test of §11.5 and
-his review of the choices made at build time: [HOME.md](features/HOME.md) §11.3b, §11.5.
+rule and a guide page (`docs/guide/clicks-by-type.md`, outline). Desk test passed 2026-11-04 (his
+word): [HOME.md](features/HOME.md) §11.3b, §11.5.
 
 ### Built, not released: a playlist remembers its sort (2026-11-04)
 
@@ -215,10 +211,15 @@ His hand test passed 2026-11-04. Open: the motion checks not run, and `aria-curr
 
 ### Built, not released: Match loudness alone (2026-11-04)
 
-A section under the Equalizer, on its own off-by-default switch (`soundMatch`). Open: the desk
-test, and the §7.3 heaviness check before it ships: [SOUND.md](features/SOUND.md) § 11a-1. The
-usage list dropped `soundLoudness`, so DeetsSupport's `src/usage-keys.js` has a local change; no
-deploy is needed for the app to work.
+A section under the Equalizer, on its own off-by-default switch (`soundMatch`). The usage list
+dropped `soundLoudness`, so DeetsSupport's `src/usage-keys.js` has a local change; no deploy is
+needed for the app to work.
+
+**Next: build the cap (his call 2026-11-04, the next sitting).** A song with no measurement is held
+by a slow cap, and a fixed gain takes over once it has a row. Measuring stays, with no progress on
+screen. The spec is ready: [SOUND.md](features/SOUND.md) § 11a-2, steps 1 to 4, then his ear test,
+then step 5. It also fixes album gain, which misses albums played from Search. Open before it ships:
+the ear test, the desk test, and the §7.3 heaviness check.
 
 ### Built, not released: Unshuffled from the top (2026-11-04)
 
@@ -228,15 +229,15 @@ dev log, 2026-11-04 (DESK-TESTS.md §5, A18): [RULEZ.md](features/RULEZ.md) §10
 ### Built, dev only: the Donate button (2026-11-04)
 
 A dollar sign in the Max title bar and a Donate panel, behind `import.meta.env.DEV`, so the release
-bundle has none of it. Open: his hand test ([donate.md](features/donate.md) §5), the PayPal page, the
-panel's words, and the questions in [ideas/donations.md](ideas/donations.md) §3. Before the flag
+bundle has none of it. Desk test passed 2026-11-04 (his word, [donate.md](features/donate.md) §5).
+Open: the PayPal page, the panel's words, and the questions in [ideas/donations.md](ideas/donations.md) §3. Before the flag
 comes off: donate.md §4.
 
 ### Built, not part of the app: Fontpack (2026-11-04)
 
-`scripts/fontpack.py` makes a font from sheets drawn in Krita. Open: his desk test with a real Krita
-export and a FontForge file ([FONTPACK.md](ops/FONTPACK.md) §7), and whether the first font is a
-title font or a title and body pair.
+`scripts/fontpack.py` makes a font from sheets drawn in Krita. Marked desk tested 2026-11-04 (his
+call: not a priority now). A real Krita export and a FontForge file are tested when the first font
+starts ([FONTPACK.md](ops/FONTPACK.md) §7). Open then: a title font, or a title and body pair.
 
 ### Idea for 1.4: a listen count on each album song row (2026-11-03)
 

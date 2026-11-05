@@ -797,6 +797,146 @@ fits at 409 px under its 620 px limit. Turning it on logged `sound:measureOn`, `
 5. Quit and start the app: it stays on, and the measurements are kept.
 6. With it on, an AirPlay speaker hears the matched level.
 
+## 11a-2. Cap until measured (designed 2026-11-04)
+
+> **Part:** designed · 2026-11-04. Not built. This replaces the wait for a measurement in § 11a-1.
+
+**His call (2026-11-04):** a song with no measurement is held by a slow cap that only cuts. Once
+the song has a row, a fixed gain takes over and the cap is off, so the song keeps its dynamics. A
+setting for the cap comes only if users find value in it.
+
+**His goal:** an album stays even as one piece, and music is not spiky. Night is an example of why
+a cap is needed, not a feature of its own (his word, 2026-11-04); when the cap acts is configurable.
+
+**How others do it (read 2026-11-04).** Music players measure first and apply one fixed gain:
+Spotify at upload, with one gain across an album; ReplayGain as stored track and album tags; Apple's
+Sound Check from a stored analysis. Real-time compressors serve TV and radio: Windows Loudness
+Equalization, Sonos Night Sound, Apple TV's Reduce Loud Sounds, Optimod's slow gain riding. We
+cannot scan ahead, so we measure during the first play, and the cap covers that gap.
+
+**Measured for this design.**
+- Audio reaches the page only as it plays, so nothing can look ahead (the stream is protected).
+- A running loudness on 58 preview clips: at 5 s, 90 % within 3.7 dB; at 15 s, 1.4 dB; at 20 s,
+  0.8 dB. Early readings run quiet, so an early boost is unsafe. The clips are mid-song.
+- His library's median as the guess: 90 % within 2.2 dB of 58 songs' full measure. A preview: 1.7 dB.
+  Previews are out: Apple allows them only to promote store content, and DPLA §3.3.6.D bars downloads.
+- No loudness value in MusicKit's item or in `musickit.js`.
+
+**Found in the code.** `decide()` in `sound-loudness.ts` applies album gain only when the context is
+`album:<key>`. An album played from Search has `search-albums:<id>`, so it gets no album gain: on
+the dev data, 439 plays against 48.
+
+**His calls so far.**
+- Cap until measured. Night is an example, and when the cap acts is configurable.
+- **Measuring stays, and a user does not see it:** the panel's *Measuring: N %* and *Measured.* go.
+- The cap is built behind a dev flag first, and he decides its level, its speed and cap-only against
+  cap-then-fixed by ear.
+
+**Who has measured so far (read 2026-11-04).** No live app records. In 1.3.1, `main.ts` starts
+`initLoudness()` only with `adaptiveUnhidden()`, so without the flag the module never runs, and
+`sound.ts` sets `measure` from `adaptiveOn()`. The flag is `deets.dev.adaptiveSound` in localStorage,
+and a release build has no DevTools to set it: the `devtools` feature is not in `Cargo.toml`. His live
+log's one `sound:meterOn` is the Equalizer's meter (§11a), with `routed: 0`. Rows live only in each
+install's database, and no build has sent one. His 464 rows run from 2026-09-16 to 2026-09-25, from
+the build to the hide (`e016b30`). The usage reports cannot show who used it in those days: they
+began in 2026-10 and do not carry `soundAdaptive`.
+
+### Build spec (for the next sitting)
+
+**No Rust and no schema change.** The `loudness` table and the worklet stay as they are. No runner
+restart is needed.
+
+**Where the cap runs (changed from the first draft).** On the page, not in the worklet. The page
+already gets a 100 ms hop with MusicKit's volume divided out (`onHop`), and the element node already
+ramps a gain (`setMatchGain(db, rampMs)`). The cap is a slow control, so 100 ms costs nothing, and
+the worklet would need the volume sent to it. The total gain is `match + cap` through the one
+`setMatchGain` call. The meter reads before that gain, so the cap cannot disturb a measurement. If
+the ear test wants a faster cap, it moves to the worklet then.
+
+**Step 1: the pure rule, `src/sound-cap.ts`, with `tests/sound-cap.test.ts`.** No DOM, no imports
+from `sound.ts`. It takes a hop and returns the cap in dB.
+- Level: K-weighted mean square over the last 30 hops (3 s), read as LUFS. A hop under −70 is left
+  out, as `integratedLufs` does, and a pause sends none, so the cap holds.
+- A cut goes at any time, at the attack rate. A cut lifts at the release rate.
+- **A raise waits.** The song starts at the start guess. A cut-only cap would leave a quiet song
+  under the target for its whole first play, so from `settleAtS` on the gain may rise, slowly, and
+  never past the running estimate. Before `settleAtS` an early reading runs quiet, so no raise.
+
+| Value | Starting point | Why |
+|---|---|---|
+| `windowS` | 3 s | BS.1770 short-term |
+| `level` | target + 2 dB | Leaves a chorus some room over the target |
+| `attackDbS` | 3 dB/s | Slow enough not to pump |
+| `releaseDbS` | 1 dB/s | Slower than the attack |
+| `settleAtS` | 20 s | 90 % of clips within 0.8 dB by then |
+| `startDb` | −5 dB | His median −9.1 against −14; `median()` replaces it once there are rows |
+| `albumStepDb` | 1.5 dB | The most an album's gain moves between two songs |
+
+These are starting points for the ear test, not decisions.
+
+**Step 2: wire it in `src/sound-loudness.ts`.**
+- `decide()` gains `{ kind: "capped" }` where `median` and `none` stand today: a song with no row.
+- `onHop` feeds the rule while the source is `capped`, and calls `setMatchGain`. A song with a row
+  never reaches the rule, so it keeps its dynamics. `finish()` does not change: a row saves as today.
+- Log: `sound:capOn`, `sound:capOff`, and one `sound:cap { db }` a song at its deepest. Never per hop.
+
+**Step 3: album gain.**
+- **The bug:** a pure `isAlbumPlay(context, key)` takes `album:<key>` and `search-albums:<id>`, with a
+  dated test. `decide()` uses it.
+- **Check first:** `album()` scans `tracks()`, the library plus transient tracks. Confirm a Search
+  album's songs are there. If not, read the album's songs from the queue.
+- **First play:** one gain for the album. Song 1 may settle as a song does. From song 2 the gain moves
+  only at a song start, from all the album's audio heard so far plus its rows, by at most
+  `albumStepDb`. The per-song cap stays off during an album played in order.
+
+**Step 4: the dev flag.** `__cap` behind `import.meta.env.DEV`, declared in `declare global` (docs:check
+29). `__cap.set({ level, attackDbS, … })`, `__cap.mode("until" | "always" | "off")`, `__cap.state()`.
+No Settings row yet. Stop here for the ear test.
+
+**The ear test (his).** Three kinds of album: a loud modern master, a quiet acoustic one, and one with
+an interlude. A playlist that jumps between them. Compare `until` with `always`, with Forget
+measurements first so songs have no row. He picks the values, and cap-only against cap-then-fixed.
+
+**Step 5: after the ear test.**
+- **The panel:** `loudLine()` loses `heard`, and the *(N of M songs measured)* text.
+  `renderLoudStatus()` no longer needs the progress tick. New line for `capped`. Off line and the fold's
+  text say nothing of progress. *Clear measurements* stays: it is a control, not progress. Ask him.
+- **The row (a draft for his edit):** *Cap the level*: Until measured (default) · Always · At set
+  hours · Off. It replaces *Songs not measured get*.
+- **The key:** a new key, with the why in `settings-store.ts`, added to `RULE_KEYS` and read with
+  `effective`. `soundLoudUnmeasured` goes: it never shipped visible to a user since the hide.
+- **Always and At set hours work with Match loudness off.** They need a `config.cap` in `wanted()`
+  (`sound.ts`), so the song is routed. A change during a song waits for the next, as `late` does.
+- **At set hours** copies the look schedule's pattern (`sun` or `clock`, LOOK-SCHEDULE.md).
+- **Labels:** the −14 default reads *Louder*; the hint "measured the first time you hear it" is wrong.
+- **The checklist:** agent spec and AGENT.md; `NEW_MARKS` with `since: 1.4.0`; ONBOARDING.md hints;
+  SETTINGS-INVENTORY.md; `usage-keys.ts` (his call, as for `soundMatch`); a release note; a line in
+  `web/handlers.ts` only if a new `invoke()` lands in a shared file. The Compass row is automatic.
+- **Before it ships:** the §7.3 heaviness check, on against off.
+
+**Desk test (after step 5).**
+1. Clear measurements. Play a loud song with no row: it settles near the target with no audible pump.
+2. Play a quiet song with no row: it stays down for 20 s, then rises slowly to the target.
+3. Finish a song and play it again: a fixed gain from the first sample, no cap (`sound:match`).
+4. A first play of an album from Search: no gain change during songs 2 onward; a quiet song stays quiet.
+5. The same album again: one fixed gain. From Search and from the Library alike.
+6. Skip a song at 30 s, and seek forward: the cap holds with no jump, and no row saves.
+7. Pause for a minute and resume: the cap holds its value.
+8. No panel line shows progress.
+9. Always, with Match loudness off: songs route from the next song, and the cap acts on a song with a row.
+10. A `sound:measured` during a capped play reads the same level as with the cap off.
+11. An AirPlay speaker hears the capped level.
+
+**Sharing measurements through a worker: not now (nothing designed).** What would travel is one
+number per song, not audio. Reading is safe: an app can download a whole table, so the server learns
+nothing about what a user plays. Writing is the problem: an upload says a song was played, which
+breaks USAGE-COUNTS.md §2's "never which songs" unless he changes that rule, and DPLA §3.3.6.D limits
+user metadata to a clearly disclosed function. It would need an opt-in, a new route and table, and a
+guard against false numbers. It only spares a first play, and only of songs someone else has heard.
+
+**Open for him:** the cap's values and cap-only against cap-then-fixed (the ear test); the row's
+words; whether *Clear measurements* stays; whether `soundMatch` and the new key are reported.
+
 ## 11b. The Sound panel's lower box removed (2026-10-19)
 
 > **Part:** built · desk test open

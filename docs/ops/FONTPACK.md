@@ -1,6 +1,6 @@
 ---
 status: built
-desk_test: open
+desk_test: passed 2026-11-04
 sources: [scripts/fontpack.py]
 updated: 2026-11-04
 ---
@@ -141,3 +141,6 @@ yet: that is `ideas/mods.md` §6.3.
 The script passed a full run on 2026-11-04 on sheets filled from Liberation Serif: 144 drawn
 glyphs, 169 composed letters, RGBA and 16-bit gray exports, a speck, a stroke over a cell edge
 and `pull` from its own TTF. A real Krita export and a FontForge file have not been tried.
+
+Marked desk tested 2026-11-04 (his call: not a priority now). Steps 1 to 5 run on real sheets when
+the first font starts.

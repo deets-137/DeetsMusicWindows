@@ -1,7 +1,7 @@
 ---
 status: built
-desk_test: open
-sources: [src/donate-btn.ts, src/styles/donate.css, src/styles/skin.css, src/main.ts]
+desk_test: passed 2026-11-04
+sources: [src/donate-btn.ts, src/donate-rules.ts, src/styles/donate.css, src/styles/skin.css, src/main.ts, src/dropdown.ts]
 updated: 2026-11-04
 ---
 # The Donate button — a dollar sign in the Max title bar

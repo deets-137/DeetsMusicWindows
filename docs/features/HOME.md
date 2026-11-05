@@ -690,7 +690,7 @@ Needs a dev runner restart (Rust changed; the `pins.dbl` column).
    ends with your pins. Pick a verb: the pin keeps it.
 
 ### 11.5 Beyond Home and pins (built 2026-11-04)
-> **Part:** built · 2026-11-04; desk test open. The design below; "As built" at the end is the code.
+> **Part:** built · 2026-11-04; desk test passed 2026-11-04 (his word). The design below; "As built" at the end is the code.
 
 **His ask:** the same click and double-click on albums, playlists and artists across the app,
 set in Settings, with no right-click row. Pins keep their own rows.

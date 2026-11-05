@@ -447,7 +447,7 @@ The card opens and closes in the skin's own page motion, the same for the grand 
 [GRAND-OPENING.md](GRAND-OPENING.md) §12.
 
 ### 3.21 Double-click on your pins (built 2026-11-04)
-> **Part:** built · 2026-11-04; desk test open (HOME.md §11.4 step 8).
+> **Part:** built · 2026-11-04; desk test passed 2026-11-04 (HOME.md §11.4 step 8, his word).
 
 His ask: the right column of the 1.4 page shows the user's existing pins, with the option to change
 each one. `pinsList` (update-card.ts) adds a *Double-click on your pins* head after the new

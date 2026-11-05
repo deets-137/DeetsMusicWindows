@@ -6,6 +6,29 @@ updated: 2026-11-04
 ---
 # DeetsMusic — Work log
 
+## 2026-11-04 — Match loudness: cap until measured, designed for the next sitting
+
+- **His calls.** Cap until measured. Night is an example of why, and when the cap acts is
+  configurable. Measuring stays, with no progress on screen. Build behind a dev flag and decide by ear.
+- **Read.** How other players do it: they measure first and use one fixed gain, and real-time
+  compressors serve TV and radio. No live app records: 1.3.1 starts `initLoudness()` only with a flag
+  a release build cannot set. Sharing through a worker is not now.
+- **Found.** Album gain misses albums played from Search (439 plays against 48 on the dev data).
+- **Changed from the first draft.** The cap runs on the page through `setMatchGain`, not in the worklet.
+- **Open.** The build: SOUND.md § 11a-2. Nothing is built.
+
+## 2026-11-04 — Desk tests closed by his word; Match loudness read again
+
+- **His word.** Tested: A13 Donate, A15 Let go, A16 clicks, Listen Later (shipped in 1.3.0). A14
+  Fontpack is marked tested and not a priority. A17 Match loudness stays open: he wants to rethink
+  measure-first (SOUND.md § 11a-1).
+- **Read for that talk (research, nothing built).** 58 of his 464 measured songs against Apple's
+  30 s previews: the preview's error is median 0.5 dB, p90 1.7, max 5.3. His library's median as the
+  guess: 0.7, 2.2, 4.1. A running loudness on those clips: at 5 s p90 3.7, at 15 s p90 1.4, at
+  20 s p90 0.8. The clips are mid-song, so a real intro reads worse. No loudness value in MusicKit's
+  item or in `musickit.js`. The downloaded clips are deleted.
+- **Open.** His calls on the first play and on measuring while Match is off.
+
 ## 2026-11-04 — The open desk tests read against the logs
 
 - **The ask.** List the desk tests, check the logs, and say which are not finished.
