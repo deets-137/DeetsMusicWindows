@@ -1881,11 +1881,11 @@ function mountSettings(
         storeToggle("eqperoutput", "Remember each output", "soundEqPerOutput", () => "On: headphones, speakers and AirPlay speakers each remember their own preset"),
         // Match loudness came back on its own (his call 2026-11-04, SOUND.md § 11a-1).
         headRow("g-loudness", "Match loudness"),
-        storeToggle("soundmatch", "Match loudness", "soundMatch", () => "Plays every song at about the same loudness. A song is measured the first time you hear most of it"),
+        storeToggle("soundmatch", "Match loudness", "soundMatch", () => "Plays every song at about the same loudness"),
         {
-          kind: "choice", id: "loudtarget", label: "Match songs to", key: "soundLoudTarget",
+          kind: "choice", id: "loudtarget", label: "Play songs at", key: "soundLoudTarget",
           hint: "How loud songs are made. Standard is Apple's Sound Check level (−16 LUFS), Louder is −14, Quieter is −18",
-          get: () => String(setting("soundLoudTarget")),
+          get: () => String(ownSetting("soundLoudTarget")),
           set: (v) => setSetting("soundLoudTarget", Number(v)),
           options: [{ value: "-16", label: "Standard" }, { value: "-14", label: "Louder" }, { value: "-18", label: "Quieter" }],
         },

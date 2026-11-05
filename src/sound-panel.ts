@@ -531,13 +531,13 @@ function build(panel: HTMLElement): void {
   const loudEnd = el("div", "sound__row-end");
   loudEnd.append(loud.btn);
   eqView.append(partRow("Match loudness", loudStatus, loudEnd));
-  eqView.append(foldButton("How Match loudness decides", "Shows how it works and the settings that change it", () => loudFoldBody));
+  eqView.append(foldButton("How Match loudness works", "Shows how it works and the settings that change it", () => loudFoldBody));
   loudFoldBody = el("div", "sound__fold");
   loudWhy = el("div", "sound__why");
   const target = cyclePill("soundLoudTarget", [-16, -14, -18], ["Standard", "Louder", "Quieter"], "How loud songs are made: Standard is Apple's Sound Check level (−16 LUFS), Louder is −14 LUFS, Quieter is −18 LUFS");
   const album = cyclePill("soundLoudAlbum", [true, false], ["On", "Off"], "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet");
   syncs.push(target.sync, album.sync);
-  loudFoldBody.append(row("Match songs to", target.btn), row("Keep albums together", album.btn), loudWhy);
+  loudFoldBody.append(row("Play songs at", target.btn), row("Keep albums together", album.btn), loudWhy);
   loudFoldBody.hidden = true;
   eqView.append(loudFoldBody);
 
@@ -1152,22 +1152,20 @@ function renderBandRow(): void {
 /** Match loudness, one line: what this song's gain is now. */
 function loudLine(): string {
   const { source: s } = loudness.loudnessState();
-  const moved = (g: number) => (g < -0.05 ? `turned down ${db(-g)}` : g > 0.05 ? `turned up ${db(g)}` : "left as it is");
-  const cap = (x: { cappedFrom?: number }) => (x.cappedFrom !== undefined ? ", less than it needs so its loudest moments stay clean" : "");
+  // His words, 2026-11-05: the amount alone. "This song" and "for now" are implied.
+  const moved = (g: number) => (g < -0.05 ? `${(-g).toFixed(1)} dB quieter` : g > 0.05 ? `${g.toFixed(1)} dB louder` : "No change");
   switch (s.kind) {
     case "off":
       return "Off.";
     case "idle":
       return "Starts with the next song.";
     case "song":
-      return `This song is ${moved(s.gainDb)}${cap(s)}.`;
     case "album":
-      return `This album is ${moved(s.gainDb)} as one${cap(s)}.`;
     case "median":
     case "capped":
-      return `This song is ${moved(s.gainDb)} for now.`;
+      return moved(s.gainDb);
     case "none":
-      return "This song is left as it is for now.";
+      return "No change";
   }
 }
 
@@ -1207,7 +1205,7 @@ function renderStatus(): void {
   const xf = sound.crossfeedState();
   setText(xfStatus, !adaptive ? offLine : xf.why);
   setWhy(loudWhy, [
-    `Songs are made at very different loudness. DeetsMusic listens as a song plays, holds a loud one down, and remembers what it heard, so the song starts at the right level next time.${setting("soundLoudAlbum") ? " An album played in order moves as one, so its quiet songs stay quiet." : ""} A song never moves more than 12 dB.`,
+    `Songs differ in loudness. The first time a song plays, DeetsMusic adjusts its level and measures it. After that, the song plays at one fixed level.${setting("soundLoudAlbum") ? " An album played in order stays together: every song changes by the same amount." : ""} No song changes by more than 12 dB.`,
   ]);
   setWhy(adaptWhy, [
     `Fuller at low volume: when music is quiet, the ear hears the deep and the high sounds less than the middle, so the music sounds thin. "Fuller" means this part adds back bass (around 100 Hz) and a little treble (around 10 kHz) as the volume goes down, by the amounts the standard equal-loudness curves give. At full volume it adds nothing. Gentle adds half of Full. It follows ${both ? "the DeetsMusic volume and the Windows volume together" : "the DeetsMusic volume only"}.`,

@@ -629,8 +629,8 @@ export const DEFAULTS: Settings = {
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
   oceanCardOpacity: 80, // his call 2026-10-11 (was 100, solid): the swell shows a little through the cards
   oceanLight: 80, // his call 2026-10-11 (was 0, opt-in): the album's neon on the crests out of the box
-  pressLight: 0, // his call 2026-11-05: off until the 1.4 polish; a user turns it up
-  cyberLight: 0, // his call 2026-11-05: as Press
+  pressLight: 80, // his call 2026-11-05 at the 1.4 polish: 80 %, as Ocean's
+  cyberLight: 80, // his call 2026-11-05: as Press
   albumWave: true, // his call 2026-11-05: the turn is the way the color arrives
   glassFancy: false, // user's call 2026-09-16: the painted frost; the live blur failed on software drawing (DEBUGGING.md)
   glassTint: 65, // user's call 2026-09-16: GLASS_LOCKED, the look Glass holds with Fancy Glass off
@@ -982,6 +982,8 @@ export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDis
   "maxCards",
   // The two sides in Max (MAX-CARDS.md §13, fullscreen-player.md §18.2, 2026-11-02).
   "maxStageSide", "fpQueueSide",
+  // Match loudness's level: the Quieter after sunset recipe (SOUND.md § 11a-2, 2026-11-05).
+  "soundLoudTarget",
   // Metal's cover change (docs/features/metal.md §6.7): the graphics fallback turns the 3D turn off.
   "metalCoverChange",
   // Reduce motion (GRAPHICS-FALLBACK.md §10.4): the graphics rule holds it on in software.

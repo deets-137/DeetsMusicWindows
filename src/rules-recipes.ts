@@ -138,6 +138,20 @@ export const RECIPES: Recipe[] = [
       },
     ],
   },
+  {
+    // His ask, 2026-11-05, in place of a cap row (SOUND.md § 11a-2). `daylight` follows the sun with
+    // the look schedule off. When the rule ends, your own pick comes back at sunrise.
+    id: "sunset",
+    name: "Quieter after sunset",
+    desc: "With Match loudness on, songs play at Quieter from sunset to sunrise.",
+    rules: [
+      {
+        id: "recipe:sunset:0", kind: "state", source: src("sunset"), on: true, name: "Quieter after sunset",
+        while: { fact: "daylight", is: false },
+        set: [{ target: { key: "soundLoudTarget" }, value: -18 }], onHand: "next",
+      },
+    ],
+  },
 ];
 
 // Live Theming (RULEZ.md §11.1, his ask 2026-09-27): the theme follows the playing song's cover.

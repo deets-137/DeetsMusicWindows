@@ -43,6 +43,7 @@ const TARGETS: Record<string, string> = {
   "key:webSkipSeed": "Skip the song you just heard", "key:webSkipSeedAt": "the skip point of the song you just heard",
   "key:maxCards": "Layout for Max",
   "key:maxStageSide": "Now Playing and Queue in Max", "key:fpQueueSide": "Queue in the full player",
+  "key:soundLoudTarget": "Play songs at",
 };
 const targetWords = (t: unknown) => TARGETS[String(t)] ?? String(t);
 

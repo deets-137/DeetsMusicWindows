@@ -799,7 +799,16 @@ fits at 409 px under its 620 px limit. Turning it on logged `sound:measureOn`, `
 
 ## 11a-2. Cap until measured (designed 2026-11-04)
 
-> **Part:** built · 2026-11-05, steps 1 to 4, dev only; the ear test is next. This replaces the wait for a measurement in § 11a-1.
+> **Part:** built · 2026-11-05, in every build; ear test passed; the heaviness check is open. This replaces the wait for a measurement in § 11a-1.
+
+**Closed 2026-11-05 (his calls, after the ear test: "Ear test is good").** The default values stay.
+**No *Cap the level* row in 1.4**: the mode is `until` in every build, and Always and At set hours
+are not built, so step 5's row, key and desk step 9 below are dropped. For quiet nights, the recipe
+**Quieter after sunset** holds `soundLoudTarget` at −18 from sunset to sunrise (RULEZ.md, route 9);
+`soundLoudTarget` is a rule key, and `daylight` follows the sun with the look schedule off. **The
+panel's line is the amount alone** ("7.0 dB quieter", "2.0 dB louder", "No change"): "this song" and
+"for now" are implied. So the line no longer says when the peak limit holds a song back, or that an
+album moves as one. The rows read *Play songs at*, and the fold *How Match loudness works*.
 
 **His call (2026-11-04):** a song with no measurement is held by a slow cap that only cuts. Once
 the song has a row, a fixed gain takes over and the cap is off, so the song keeps its dynamics. A

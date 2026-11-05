@@ -2,7 +2,27 @@
 // (LISTENERS.md §7; probed live 2026-10-12).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { albumForms, mainArtist, noteText, pillCount, songForms, stripReleaseSuffix, wikiSentences, wikiText } from "../src/lastfm-names.ts";
+import { albumForms, mainArtist, noteText, pillCount, songForms, stripReleaseSuffix, titleKey, topByTitle, wikiSentences, wikiText } from "../src/lastfm-names.ts";
+
+test("2026-11-05: an artist's list matches a title by the words songForms cuts", () => {
+  assert.equal(titleKey("Love (feat. IshDARR)"), "love");
+  assert.equal(titleKey("Don’t Stop [Remastered 2011]"), "don't stop");
+  assert.equal(titleKey("Heat - Remastered 2011"), "heat");
+  // a remix or a live take is another recording, so it never meets the plain song
+  assert.notEqual(titleKey("Heat (Live)"), titleKey("Heat"));
+  assert.notEqual(titleKey("Heat (Flume Remix)"), titleKey("Heat"));
+});
+
+test("2026-11-05: the largest row of a title wins, in any order", () => {
+  const rows = [
+    { name: "Superlove", playcount: 1503, listeners: 90 },
+    { name: "Superlove (feat. Oh Wonder)", playcount: 528214, listeners: 4000 },
+    { name: "SUPERLOVE", playcount: 12, listeners: 1 },
+  ];
+  assert.equal(topByTitle(rows).get("superlove")?.playcount, 528214);
+  assert.equal(topByTitle([...rows].reverse()).get("superlove")?.playcount, 528214);
+  assert.equal(topByTitle([]).size, 0);
+});
 
 test("Apple's release suffix comes off", () => {
   assert.equal(stripReleaseSuffix("THREAD 27 - EP"), "THREAD 27");

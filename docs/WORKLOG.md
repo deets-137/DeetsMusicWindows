@@ -6,6 +6,43 @@ updated: 2026-11-05
 ---
 # DeetsMusic — Work log
 
+## 2026-11-05 — The cap in every build; the short panel line; Quieter after sunset
+
+- **His calls.** The panel's line is "7.0 dB quieter", with no "this song" or "for now". No cap row.
+  A recipe sets Quieter after sunset and his own level after sunrise.
+- **Built.** `capMode` is `until` in a release. `soundLoudTarget` is a rule key, read with `effective`.
+  The recipe `sunset`. The rows and fold renamed, the fold text and the 1.4.0 note rewritten; the note
+  also gains the listen pill and the album columns.
+- **Found.** `daylight` had no value with the look schedule off, so the recipe would never hold; it
+  now follows the sun. A level is a number and a Rulez choice is text: the sentence read "-18" until a
+  test caught it (`labelOf`, `doWordOf`).
+- **His word, after that.** The pills look good. The album light's default is 80 % (the code had 0
+  on Press and Cyber; 80 is Ocean's). Demo login and the deploy wait for 1.4 installed here.
+- **Tested.** `sound-cap.mjs` 16 ok on the dev app; no release build was run.
+  `daylight` read true on the dev app with the schedule off. **Not run:** the recipe across a real
+  sunset; the §7.3 heaviness check.
+
+## 2026-11-05 — His looks for 1.4; the ear test starts; one call for an artist's plays
+
+- **His word.** An album's columns in a grown Search card look good. The album light looks good, and
+  is fine at scale and on hanging edges. Its default stays open.
+- **Every new song sat 7 dB down: as designed, read from the ring.** His target is −16, so the start
+  guess is −16 − (−9) = −7 (`sound:capOn {"startDb":-7}`). No raise comes before 20 s. The cap cuts
+  under that only when a 3 s level passes −7 LUFS (−14 less the −7 of gain). One song reached −7.9.
+  The first finished song measured −10.3 and took −5.7. The ring's `sound:measurements {"songs":0}`
+  at launch was not explained.
+- **The pills are slow (his report).** A song whose names differ takes 3 `track.getInfo` calls, so
+  750 ms a song by the pace; the log shows 0.7 to 2 s a song. Last.fm has no batch for
+  `track.getInfo`, and `album.getInfo`'s songs carry no plays. **`artist.getTopTracks` with
+  `limit=1000` does:** 283 to 526 ms, 410 to 782 KB, and *Get Lucky* and *Motherboard* read the same
+  as `track.getInfo`.
+- **His ear test passed ("Ear test is good").** No values changed. Step 5 is next.
+- **Built: one call for an artist (LISTENERS.md §10.5).** Against 58 kept rows of 19 artists: 57
+  matched, 0 lower, 4 higher. On the dev app *AM*, nothing kept: one call, 12 songs, no
+  `track.getInfo`. `listen-pill.mjs` passes. **Found and fixed:** `FORMS_SINCE_MS` was tonight's
+  midnight, so every multi-form song was asked again on each run (*Clarity* twice in ten seconds).
+  Not run: a failed list call, a mixed playlist.
+
 ## 2026-11-05 — The PayPal link in the Donate panel
 
 - **His ask.** He sent the PayPal donate address.

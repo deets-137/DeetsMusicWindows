@@ -32,7 +32,7 @@ export interface ListenCount {
 }
 
 /** *Count a song's plays by* › Exact title (`listenCount`, LISTENERS.md §10.2). */
-const exactCount = (): boolean => setting("listenCount") === "exact";
+export const exactCount = (): boolean => setting("listenCount") === "exact";
 
 /** The same key `play_stats` and the Plays column use: catalog first, then library. An exact
  *  count is another answer for the same song, so it is kept under its own key. */

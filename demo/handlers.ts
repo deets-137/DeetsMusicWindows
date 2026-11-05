@@ -592,6 +592,8 @@ const H: Record<string, Handler> = {
   play_counts: () => Object.entries(store.plays).map(([id, p]) => ({ id, ...p })),
   lastfm_heard: () => false,
   lastfm_listen_counts: () => ({}),
+  lastfm_artist_top: () => [],
+  lastfm_keep_counts: () => undefined,
 
   // Credits
   credits_for: (a) => {

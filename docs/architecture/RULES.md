@@ -155,7 +155,7 @@ event names the facts it supplies. A fact never calls Apple: it reads what the a
 | `cause` | hand · compass · agent | the event's context | (later) |
 | `from` | the card a drill came from | the event's context | (later) |
 | `entry.new` | true · false | diary-card.ts (`created` from `diary_open`) | the Diary |
-| `daylight` | true · false | look-schedule.ts `plan()` | the look schedule |
+| `daylight` | true · false | look-schedule.ts `plan()`; the sun with the schedule off (2026-11-05) | the look schedule; the recipe Quieter after sunset |
 | `lookMode` | off · sun · clock · windows | the store | the look schedule |
 | `output` | an output key | sound.ts `getOutput()` | EQ for each output |
 | `now` | epoch ms | the clock | the sharing pause |

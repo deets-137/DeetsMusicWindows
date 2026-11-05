@@ -27,7 +27,7 @@ import { integratedLufs } from "./sound-dsp";
 import { CAP_DEFAULTS, albumStep, capHop, isAlbumPlay, newCap, type Cap, type CapValues } from "./sound-cap";
 import { trackById, tracks, onTracksChange } from "./track-store";
 import { albumKey } from "./rewind";
-import { setting, onSettingsChange } from "./settings-store";
+import { effective, setting, onSettingsChange } from "./settings-store";
 import { getCurrent, getHistory, getPlan, getUpcoming, type TrackHandle } from "./queue";
 import type { Track } from "./library";
 import * as diag from "./diag";
@@ -66,8 +66,8 @@ interface Measured {
 }
 const measured = new Map<string, Measured>();
 
-/** The cap stays out of a release until his ear test and step 5 (SOUND.md § 11a-2). */
-let capMode: CapMode = import.meta.env.DEV ? "until" : "off";
+/** Until measured, in every build since his ear test (SOUND.md § 11a-2). `__cap` changes it in dev only. */
+let capMode: CapMode = "until";
 const capValues: CapValues = { ...CAP_DEFAULTS };
 
 /** One album played in order that is not fully measured: its gain, and what was heard of it. */
@@ -132,7 +132,7 @@ function median(): { gainDb: number; songs: number } | null {
   const lufs = [...measured.values()].map((m) => m.lufs).sort((a, b) => a - b);
   const mid = lufs.length >> 1;
   const m = lufs.length % 2 ? lufs[mid] : (lufs[mid - 1] + lufs[mid]) / 2;
-  medianCache = { gainDb: setting("soundLoudTarget") - m, songs: lufs.length };
+  medianCache = { gainDb: effective("soundLoudTarget") - m, songs: lufs.length };
   return medianCache;
 }
 
@@ -200,7 +200,7 @@ function albumGain(h: TrackHandle, key: string, target: number): GainSource | nu
 function decide(h: TrackHandle, track: Track | undefined): GainSource {
   if (!setting("soundMatch")) return { kind: "off" };
   if (listen?.late) return { kind: "idle" };
-  const target = setting("soundLoudTarget");
+  const target = effective("soundLoudTarget");
   const key = track && setting("soundLoudAlbum") && !isShuffleOn() ? albumKey(track) : undefined;
   if (key !== undefined && isAlbumPlay(h.context, key)) {
     const s = albumGain(h, key, target);
@@ -230,7 +230,7 @@ function withCap(l: Listen, s: GainSource): GainSource {
     return s;
   }
   if (!l.cap) {
-    l.cap = newCap("gainDb" in s ? s.gainDb : startGuess(setting("soundLoudTarget")));
+    l.cap = newCap("gainDb" in s ? s.gainDb : startGuess(effective("soundLoudTarget")));
     diag.log("sound:capOn", { startDb: +l.cap.startDb.toFixed(1), mode: capMode });
   }
   return { kind: "capped", gainDb: l.cap.gainDb };
@@ -318,7 +318,7 @@ function onHop(ms: number, peak: number): void {
   if (l.cap) {
     const room = l.peak > 0 ? sound.getSound().ceilingDb + LIMITER_SHARE_DB - toDb(l.peak) : MAX_GAIN_DB;
     const was = l.cap.gainDb;
-    const db = capHop(l.cap, ms / (g * g), { target: setting("soundLoudTarget"), minDb: -MAX_GAIN_DB, maxDb: Math.min(MAX_GAIN_DB, room) }, capValues);
+    const db = capHop(l.cap, ms / (g * g), { target: effective("soundLoudTarget"), minDb: -MAX_GAIN_DB, maxDb: Math.min(MAX_GAIN_DB, room) }, capValues);
     if (db !== was) {
       l.source = { kind: "capped", gainDb: db };
       sound.setMatchGain(db, CAP_RAMP_MS);

@@ -287,6 +287,7 @@ const keyWord = (key: string, section: Section, label: string, choices: Choice[]
   id: key, section, label, input: "choice", choices,
   state: (v) => [{ target: { key: key as never }, value: choices === ON_OFF ? v === true : v }],
 });
+const LOUD_LEVELS: Choice[] = [{ value: "-16", label: "Standard" }, { value: "-14", label: "Louder" }, { value: "-18", label: "Quieter" }];
 const AXES: Choice[] = [{ value: "full", label: "To Fill" }, { value: "vertical", label: "Taller" }, { value: "horizontal", label: "Wider" }];
 
 export const DOS: DoWord[] = [
@@ -374,6 +375,11 @@ export const DOS: DoWord[] = [
   // The two sides in Max (MAX-CARDS.md §13, fullscreen-player.md §18.2, 2026-11-02).
   keyWord("maxStageSide", "Window", "Now Playing and Queue in Max", LEFT_RIGHT),
   keyWord("fpQueueSide", "Window", "Queue in the full player", LEFT_RIGHT),
+  // The level is a number, so it is not a `keyWord`, whose choice stays text.
+  {
+    id: "soundLoudTarget", section: "Sound", label: "Play songs at", input: "choice", choices: LOUD_LEVELS,
+    state: (v) => [{ target: { key: "soundLoudTarget" }, value: Number(v) }],
+  },
   // Play a web from the song playing (PLAYLIST-WEB.md §11, 2026-09-28): the mode and the skip
   // point have no Settings row; these words are how a pro user sets them.
   keyWord("webPlayNew", "Playback", "Play a web from the song playing", ON_OFF),
@@ -422,7 +428,7 @@ export function formatTime(minute: number): string {
 
 // ── reading a rule back as words ─────────────────────────────────
 
-const labelOf = (choices: Choice[], v: unknown): string => choices.find((c) => c.value === v)?.label ?? String(v);
+const labelOf = (choices: Choice[], v: unknown): string => choices.find((c) => String(c.value) === String(v))?.label ?? String(v);
 
 export function valueText(w: FactWord | undefined, v: Value, lists: Lists): string {
   if (!w) return String(v);
@@ -642,7 +648,8 @@ export function doWordOf(r: Rule): { word: DoWord; value: Value } | null {
     ? t.key === "soundEqPreset" ? "preset" : t.key === "cardGrowOutside" ? "growOutside" : t.key === "glassPictureId" || (t.key === "glassCanvas" && first.value === "picture") ? "picture" : (SHARING as readonly string[]).includes(t.key) ? "sharePause" : t.key
     : t.prop === "window.onTop" ? "onTop" : t.prop.startsWith("tone.") ? t.prop.slice(5) : t.prop;
   const w = doWord(id);
-  return w ? { word: w, value: first.value as Value } : null;
+  // A choice's values are text; a level is kept as a number.
+  return w ? { word: w, value: (w.input === "choice" && typeof first.value === "number" ? String(first.value) : first.value) as Value } : null;
 }
 
 // ── the sentence (RULEZ.md §6.3, §6.5): DeetsMusic is the actor ────
@@ -671,6 +678,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   webSkipSeed: { keep: "keeps skipping the song you just heard" }, webSkipSeedAt: { keep: "skips the song you just heard past" },
   maxCards: { keep: "keeps Max at" },
   maxStageSide: { keep: "keeps Now Playing and the Queue in Max on the" }, fpQueueSide: { keep: "keeps the Queue in the full player on the" },
+  soundLoudTarget: { keep: "plays songs at" },
   glassCanvas: { keep: "keeps the Glass canvas on" },
 };
 /** Every Do word has its own SAYS phrase (tests/rulez-words.test.ts checks it); the label is only

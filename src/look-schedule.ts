@@ -207,7 +207,9 @@ function tick(): void {
       night: [setting("nightTheme"), setting("nightSkin")],
     },
   );
-  if (p?.next != null) timer = window.setTimeout(tick, Math.min(Math.max(p.next - now, 0) + 1000, RECHECK_MS));
+  // With the schedule off, the sun's next edge: `daylight` still follows it for rules.
+  const next = p ? p.next : planSun(now).next;
+  if (next != null) timer = window.setTimeout(tick, Math.min(Math.max(next - now, 0) + 1000, RECHECK_MS));
   recheck("daylight"); // the engine reads `daylight` again: a new period lays the other look
   listeners.forEach((cb) => cb());
 }
@@ -281,7 +283,9 @@ export function initLookSchedule(): void {
   // A hand pick ends at the time its chip shows (LOOK-SCHEDULE.md §5a, his call 2026-09-29):
   // the next change as planned now. Windows mode has none.
   registerHoldEnd("lookSchedule", () => plan(Date.now())?.next ?? null);
-  registerFact("daylight", () => (lastPlan ? lastPlan.period === "day" : undefined));
+  // The schedule's period, or the sun with the schedule off, so a rule on the dark needs no look
+  // schedule (the Quieter after sunset recipe, 2026-11-05).
+  registerFact("daylight", () => (lastPlan ?? planSun(Date.now())).period === "day");
   registerFact("lookMode", () => setting("lookSchedule"));
   registerChipText("lookSchedule", {
     name: "The look schedule",
@@ -316,7 +320,7 @@ export function initLookSchedule(): void {
   }
   // Back from sleep or the tray: check again at once.
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && setting("lookSchedule") !== "off") tick();
+    if (!document.hidden) tick();
   });
 }
 

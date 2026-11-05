@@ -612,6 +612,8 @@ pub fn run() {
             lastfm::lastfm_heard,
             lastfm::lastfm_listeners,
             lastfm::lastfm_listen_counts,
+            lastfm::lastfm_artist_top,
+            lastfm::lastfm_keep_counts,
             lastfm::lastfm_artist_info,
             lastfm::lastfm_album_info,
             settings::autostart_get,

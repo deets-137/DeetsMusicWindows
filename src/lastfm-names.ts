@@ -65,6 +65,30 @@ export function songForms(artist: string, title: string, exact = false): SongFor
   return main === a && plain === b ? [[a, b, true]] : [[main, plain, false], [main, plain, true], [a, b, true]];
 }
 
+/** A row of `artist.getTopTracks` (LISTENERS.md §10.5). */
+export interface TopTrack {
+  name: string;
+  playcount: number;
+  listeners: number;
+  url?: string;
+}
+
+/** A title as an artist's list matches it: the same words `songForms` cuts, in one spelling. */
+export const titleKey = (title: string): string =>
+  (title.replace(TITLE_EXTRA, "").trim() || title).normalize("NFC").toLowerCase().replace(/[’`]/g, "'").trim();
+
+/** An artist's list by title. Last.fm counts each title text apart, so the largest row wins, as
+ *  the largest of a song's forms does. */
+export function topByTitle(rows: TopTrack[]): Map<string, TopTrack> {
+  const top = new Map<string, TopTrack>();
+  for (const row of rows) {
+    const key = titleKey(row.name);
+    const had = top.get(key);
+    if (!had || row.playcount > had.playcount) top.set(key, row);
+  }
+  return top;
+}
+
 /** A count for a song row's pill (his form, 2026-11-05): 4976, 80.4k, 210.4k, 6M. Exact under
  *  10,000; above, one decimal with ".0" dropped. A count that rounds up takes the next unit. */
 export function pillCount(n: number): string {

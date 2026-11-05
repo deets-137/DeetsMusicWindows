@@ -64,8 +64,15 @@ pay for, and a link to PayPal.
 From the left, the order is now the cog, updates, Donate, Network, the Compass, Rewind and the pin.
 
 **Match loudness in the Sound panel.** A song can be much louder than the one before it. Turn on
-Match loudness, under the Equalizer, and DeetsMusic measures each song the first time you hear most
-of it, then plays it at about the same level as the rest. It is off until you turn it on.
+Match loudness, under the Equalizer. The first time a song plays, DeetsMusic adjusts its level and
+measures it. After that, the song plays at one fixed level. It is off until you turn it on. To
+play quieter at night, turn on the Quieter after sunset recipe in Rulez.
+
+**Play counts on song rows.** Album and playlist song rows now show each song's Last.fm plays in a
+small pill. In a grown card, the album's columns show them under Stats. Turn them off in
+Settings > Playback > Show play counts from Last.FM.
+
+**Album columns in Search.** An album in a grown Search card now shows its songs in columns.
 
 **Double-click to play.** A click on an album, playlist or artist opens it, and a double-click now
 plays it, in the Library, Playlists, Search and artist pages. Change either in Settings > Playback >
@@ -84,12 +91,12 @@ Playlists card, Home and your pins.
 **A mark on the playing song.** In an album or playlist you play from, a small chevron beside the
 song slides down to the next one. Any other list that holds the song shows a short line.
 
-**Album colors on Press and Cyber.** Your card edges can now light up in the colors of the album
-you are playing. On Press, the plate and the thin card edges glow in the album's main color. On
-Cyber, the thin edges take that color and the lightning takes the album's second color. When a new
-album starts, its color turns in around each card. It is off until you turn it on: raise Album
-light in Settings > Skin settings. To change the color at once, with no turn, switch off Spin in
-new colors.
+**Album colors on Press and Cyber.** Your card edges now light up in the colors of the album you
+are playing. On Press, the plate and the thin card edges glow in the album's main color. On Cyber,
+the thin edges take that color and the lightning takes the album's second color. When a new album
+starts, its color turns in around each card. Change the strength, or set it to 0, with Album light
+in Settings > Skin settings. To change the color at once, with no turn, switch off Spin in new
+colors.
 
 **Truer album colors on Ocean and Glass.** A color error gave these album colors a slight pink
 tint. Ocean's glow and neon waves, and Glass's Now Playing text, now show the true color.

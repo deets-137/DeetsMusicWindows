@@ -213,8 +213,8 @@ const SPECS: Spec[] = [
   storeToggle("Sound", "soundEqPerOutput", "Remember each output"),
   // Match loudness: back on its own (SOUND.md § 11a-1). Off only, as the Equalizer's switch.
   storeToggle("Sound", "soundMatch", "Match loudness", { offOnly: true }),
-  storeChoice("Sound", "soundLoudTarget", "Match songs to", [[-16, "Standard"], [-14, "Louder"], [-18, "Quieter"]].map(([v, l]) => ({ value: String(v), label: `${l} (${v} LUFS)` })), {
-    get: () => String(setting("soundLoudTarget")),
+  storeChoice("Sound", "soundLoudTarget", "Play songs at", [[-16, "Standard"], [-14, "Louder"], [-18, "Quieter"]].map(([v, l]) => ({ value: String(v), label: `${l} (${v} LUFS)` })), {
+    get: () => String(effective("soundLoudTarget")),
     set: (v) => setSetting("soundLoudTarget", Number(v), "agent"),
   }),
   storeToggle("Sound", "soundLoudAlbum", "Keep albums together"),

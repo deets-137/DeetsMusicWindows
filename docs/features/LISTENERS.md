@@ -912,8 +912,38 @@ An exact count is kept under `exact:<id>`, so a flip does not mix the two. The a
 2. Grow the card wide, then Fill: the Stats column, last, holds the same pills. Search and Library.
 3. A playlist: hover a row. The + grows in and the pill and the title's end move left. Leave: back.
 4. The Full view with some ✓ and some +: the pills stay in line, the + only fades in.
-5. A new album: the pills fill in within seconds, nothing moves. Log: `lastfm: listeners for …`, about 4 a second at most. Reopen it: no new line.
+5. A new album: the pills fill in about a second, nothing moves. Log: one `lastfm: artist top: N songs`, then a `lastfm: listeners for …` only for a song the list does not hold, about 4 a second at most. Reopen it: no new line.
 6. A list under 300 px wide: no pills. Settings › Playback › *Show play counts from Last.FM* off: pills and Stats go at once, no call.
 7. *RAINING SUN* (Leven Kali & Alissia) reads about 6.6k, not 62.
 
 Script: `node docs/ops/checks/listen-pill.mjs` (dev app; a playlist open for the slide).
+
+### 10.5 One call for an artist (built 2026-11-05)
+
+**His report (2026-11-05):** the pills are very slow to fill in. A song whose names differ takes up
+to 3 `track.getInfo` calls, so 750 ms a song at the pace; the log showed 0.7 to 2 s a song.
+
+**What Last.fm offers.** `track.getInfo` has no batch, and the songs in `album.getInfo` carry no
+plays. `artist.getTopTracks` with `limit=1000` gives each song's plays and listeners: 283 to 526 ms,
+410 to 782 KB. Measured against 58 kept rows of 19 artists: 57 matched, 0 read lower, 4 read higher
+(the list holds a title form the three forms miss), 1 kept as unknown had a count.
+
+**As built.**
+- `pump` in `src/listen-pill.ts` runs `fillByArtist` first. Two or more waiting songs of one main
+  artist make one `lastfm_artist_top` call. A lone song keeps `track.getInfo`, so a playlist of many
+  artists costs no large downloads and gains little.
+- A title matches by `titleKey` (`lastfm-names.ts`): `songForms`' cuts in one spelling, and a remix
+  or a live take stays apart. `topByTitle` keeps the largest row of a title.
+- The list fills every drawn song of that artist, off screen too, and stays in memory for the
+  session (30 artists at most), so a later scroll or a second album costs no call.
+- `lastfm_keep_counts` saves the rows. It keeps a row's tags and wiki, and never lowers a fresh row.
+  A row with no tags is asked once by the song facts box, as before.
+- A song the list does not hold, or an artist's failed call, goes on to `track.getInfo`.
+- *Exact title* never reads a list: it asks Apple's names alone.
+
+**A fault found here.** `FORMS_SINCE_MS` was midnight at the end of the day it was written, in the
+future. Until that moment no row of a multi-form song counted as kept, so each song was asked again
+on every run. It is now a moment in the past. Keep it there.
+
+**Tested 2026-11-05, dev app.** *AM* by Arctic Monkeys, nothing kept: one call, 12 songs filled, no
+`track.getInfo`; `listen-pill.mjs` passes. Not run: a failed list call, and a mixed playlist.

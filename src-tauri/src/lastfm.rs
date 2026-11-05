@@ -738,8 +738,9 @@ async fn run_flush(app: &AppHandle) {
 /// How long a cached count stands before the next read asks Last.fm again. Listener counts
 /// move slowly; a month keeps a library of a few thousand songs at a few calls a day.
 const LISTENERS_TTL_MS: i64 = 30 * 24 * 60 * 60 * 1000;
-/// 2026-11-06 00:00 UTC: a song's count from before this was asked under Apple's names alone.
-const FORMS_SINCE_MS: i64 = 1_793_923_200_000;
+/// 2026-11-05 18:00 UTC: a song's count from before this was asked under Apple's names alone. It
+/// must stay in the past: a later moment makes every row stale, so a song is asked on each read.
+const FORMS_SINCE_MS: i64 = 1_793_901_600_000;
 /// The shortest age a caller may ask for (`max_age_ms`): presentation mode re-reads the counts
 /// while it is open (PresentationMode.md), and this floor keeps a bug from asking Last.fm in a
 /// loop.
@@ -987,6 +988,87 @@ pub async fn lastfm_listen_counts(ids: Vec<String>, two_forms: Vec<String>, app:
             }
         }
         Ok(out)
+    })
+    .await
+}
+
+/// One row of `artist.getTopTracks`.
+#[derive(Serialize)]
+pub struct TopTrack {
+    name: String,
+    playcount: i64,
+    listeners: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    url: Option<String>,
+}
+
+/// An artist's songs with their plays, up to 1,000 in one call (LISTENERS.md §10.5). `track.getInfo`
+/// has no batch, and `album.getInfo`'s songs carry no plays. An artist Last.fm does not know is an
+/// empty list. A network failure is an `Err`: the songs then take `lastfm_listeners`.
+#[tauri::command]
+pub async fn lastfm_artist_top(artist: String) -> Result<Vec<TopTrack>, String> {
+    let artist = artist.trim().to_string();
+    if API_KEY.is_none() || artist.is_empty() {
+        return Ok(vec![]);
+    }
+    let params = vec![("artist".into(), artist), ("limit".into(), "1000".into()), ("autocorrect".into(), "1".into())];
+    let json = match call("artist.getTopTracks", params).await {
+        Ok(json) => json,
+        Err(CallError::Api(6, _)) => return Ok(vec![]),
+        Err(e) => {
+            crate::log::warn(&format!("lastfm: artist top failed ({e})"));
+            return Err(e.to_string());
+        }
+    };
+    // Last.fm sends one song as an object, not a list of one.
+    let found = &json["toptracks"]["track"];
+    let rows: Vec<&serde_json::Value> = found.as_array().map(|a| a.iter().collect()).unwrap_or_else(|| if found.is_object() { vec![found] } else { vec![] });
+    let top: Vec<TopTrack> = rows
+        .into_iter()
+        .filter_map(|t| {
+            Some(TopTrack {
+                name: t.get("name")?.as_str()?.to_string(),
+                playcount: t.get("playcount").and_then(as_int).unwrap_or(0),
+                listeners: t.get("listeners").and_then(as_int).unwrap_or(0),
+                url: t.get("url").and_then(|u| u.as_str()).map(str::to_string),
+            })
+        })
+        .collect();
+    crate::log::info(&format!("lastfm: artist top: {} songs", top.len()));
+    Ok(top)
+}
+
+/// One song's counts from `lastfm_artist_top`, matched by the page.
+#[derive(Deserialize)]
+pub struct KeepCount {
+    id: String,
+    listeners: i64,
+    playcount: i64,
+    url: Option<String>,
+}
+
+/// Keeps counts read from an artist's list. A row's tags and wiki stay. A row inside its month that
+/// already reads as many plays stays as it is, so this path never lowers a song's number.
+#[tauri::command]
+pub async fn lastfm_keep_counts(rows: Vec<KeepCount>, app: AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let now = now_ms();
+        for row in rows {
+            let old = cached_count(&conn, &row.id);
+            if let Some(o) = &old {
+                if o.state == "have" && o.playcount >= row.playcount && now - o.fetched_at < LISTENERS_TTL_MS && o.fetched_at >= FORMS_SINCE_MS {
+                    continue;
+                }
+            }
+            let (tags, wiki) = old.map(|o| (o.tags, o.wiki)).unwrap_or((None, None));
+            store_count(
+                &conn,
+                &row.id,
+                &ListenCount { state: "have", listeners: row.listeners, playcount: row.playcount, url: row.url, tags, wiki, fetched_at: now },
+            );
+        }
+        Ok(())
     })
     .await
 }

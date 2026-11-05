@@ -214,11 +214,13 @@ A section under the Equalizer, on its own off-by-default switch (`soundMatch`). 
 dropped `soundLoudness`, so DeetsSupport's `src/usage-keys.js` has a local change; no deploy is
 needed for the app to work.
 
-**The cap: steps 1 to 4 built 2026-11-05, dev only (1.4 waits for it, his call).** A song with no
+**The cap: on in every build since 2026-11-05 (1.4 waits for it, his call).** A song with no
 measurement is held by a slow cap, and a fixed gain takes over once it has a row. It also fixes album
-gain for albums played from Search. **Next: his ear test** ([SOUND.md](features/SOUND.md) § 11a-2),
-then step 5. Open before it ships: step 5, the desk test, the §7.3 heaviness check, and the 1.4.0
-note, which still describes measure-first.
+gain for albums played from Search. **His ear test passed 2026-11-05** ([SOUND.md](features/SOUND.md)
+§ 11a-2); no cap row, and the recipe Quieter after sunset in its place. Open before it ships: his
+look at the short panel line, his call on the §7.3 heaviness check (never run), and the 1.4.0
+note's real date. Demo login's hand test and the DeetsSupport deploy wait for 1.4 installed here
+(his call, 2026-11-05).
 
 ### Built, not released: Unshuffled from the top (2026-11-04)
 
@@ -246,16 +248,17 @@ Press lights its plate and card edges in the album's neon; Cyber's thin edges ta
 color and its bolts the secondary; a new color turns in around each card. Settings › Skin settings:
 *Album light* on each skin, *Spin in new colors*. `albumWave` is a reported key: the DeetsSupport
 copy needs `npm run usage:keys` with the other 1.4 keys, and a deploy is his call. His first look:
-"looks pretty good". **Off by default** (both sliders 0) until the 1.4 polish; he revisits it
-there. Stress test done 2026-11-05 (WORKLOG). Open: 125 % and 150 % display scale; a menu that
-overhangs a card edge during a turn; his look at Ocean and the Glass text after the `fromOKLCH` fix. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.
+"looks pretty good". **80 % by default** on both skins (his call, 2026-11-05). Stress test done
+2026-11-05 (WORKLOG). His look passed 2026-11-05 ("album light looks good", fine at scale and
+hanging edges). Open: his look at Ocean and the Glass text after the `fromOKLCH` fix. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.
 
 ### For 1.4: a listen count on each song row (2026-11-03, designed 2026-11-05)
 
 His ask: a pill with the song's Last.fm plays at the end of an album or playlist song row, and in
 a Stats column after Year in an album's columns. It reuses the song's cached `track.getInfo`. In
-1.4 (his call, 2026-11-05). Built; desk test open (§10.4). Open: the number form,
-the slide time: [LISTENERS.md](features/LISTENERS.md) §10.3.
+1.4 (his call, 2026-11-05). Built; his look passed 2026-11-05 ("pills look good"), so the number
+form and the slide time stay as drafted: [LISTENERS.md](features/LISTENERS.md) §10.3. One
+`artist.getTopTracks` call fills an artist's songs (§10.5). An album's columns in a grown Search card: his look passed 2026-11-05 ("look good").
 
 ### Live, waiting on his test or his look
 
@@ -273,8 +276,8 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   user variable is `1`, and the live log reads `usage: health sent (owner)`.
 - **The Microsoft Store test (failed 2026-11-04, at Apple's sign-in window):** *Demo login* is
   built for 1.4 (WEB-DEMO.md §17), committed (`ba5684c`), hand test open. The worker
-  (`../DeetsSupport/src/signin.js`, `41dc442`, not pushed) needs his deploy; it also carries the
-  usage allow-list. Then the Notes for certification.
+  (`../DeetsSupport/src/signin.js`, `41dc442`, pushed; live is still `3cb23124`) needs his deploy;
+  it also carries the usage allow-list (`705b938`). Then the Notes for certification.
 - **The admin page's *Needs a look* thresholds** (`FLAG` in DeetsSolutions `admin.js`) are
   drafts for his edit (support.md, "The Health tab").
 - **The Rewind card:** keep it or let the Rewind button replace it (listening-time.md §9.4, his

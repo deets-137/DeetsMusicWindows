@@ -103,7 +103,7 @@ Settings › Sound, except the curve, the presets and the two Clear actions.
 | Lower the song by | The amount for *By hand*, in dB | −24…+6, **0** |
 | Remember each output | Headphones, speakers and AirPlay speakers each keep their own preset | **On** / Off |
 | Match loudness | Under the Equalizer (SOUND.md § 11a-1). Plays every song at about the same loudness. A song is measured the first time you hear most of it | on / **off** |
-| Match songs to | In *How Match loudness decides*. How loud songs are made. Standard is Apple's Sound Check level | Standard / **Louder** / Quieter |
+| Play songs at | In *How Match loudness works*. How loud songs are made. Standard is Apple's Sound Check level | Standard / **Louder** / Quieter |
 | Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
 
 **Adaptive sound tab** — hidden since 2026-09-25 (SOUND.md §11a): only a DevTools flag shows it.
@@ -281,7 +281,7 @@ Each group shows only while its skin is the one you are using.
 
 | Control | What it does | Choices |
 |---|---|---|
-| Album light | Press: how strongly the album's color lights the plate and the card edges. Cyber: how strongly its colors light the card edges and the lightning. 0 is the theme's own color. Each skin keeps its own value | 0–100%, **0** |
+| Album light | Press: how strongly the album's color lights the plate and the card edges. Cyber: how strongly its colors light the card edges and the lightning. 0 is the theme's own color. Each skin keeps its own value | 0–100%, **80** |
 | Spin in new colors | A new album's color turns in around each card, clockwise. Off: it changes at once | **On** / Off |
 
 **Press only**
@@ -360,7 +360,7 @@ are not listening — and because Ctrl+Space can only reach a setting the card h
 | Control | What it does | Choices |
 |---|---|---|
 | Match loudness | Plays every song at about the same loudness. A song is measured the first time you hear most of it | on / **off** |
-| Match songs to | How loud songs are made. Standard is Apple's Sound Check level | Standard / **Louder** / Quieter |
+| Play songs at | How loud songs are made. Standard is Apple's Sound Check level | Standard / **Louder** / Quieter |
 | Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
 
 **Adaptive sound** — hidden since 2026-09-25 (SOUND.md §11a): only a DevTools flag shows these rows.
@@ -641,7 +641,7 @@ Words in *italics* have their own entry.
 | **Hint** (hover hint) | The small themed box that appears when the pointer rests on a control | Everywhere; Settings › Menus, hints and notices |
 | **Home** | A card with three shelves of what to play next. It makes no requests to Apple | The card picker |
 | **Host** | The person who started a *room*. Only the host can end it, or set what guests may do | The Room panel |
-| **LUFS** | The unit loudness is measured in. Apple's *Sound Check* level is −16 LUFS | Sound panel › Match songs to |
+| **LUFS** | The unit loudness is measured in. Apple's *Sound Check* level is −16 LUFS | Sound panel › Play songs at |
 | **Created Here** | Playlists you made in DeetsMusic. They stay on this PC until you export one | Playlists card, under DeetsMusic Lists |
 | **DeetsMusic Lists** | The playlists the app makes for you: Replay, Saved for the Right Day, Rulez Playlists and the webs | Playlists card, the first group |
 | **Match loudness** | Plays every song at about the same loudness, so you do not reach for the volume | Sound panel › Adaptive sound |

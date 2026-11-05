@@ -7,8 +7,8 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
-import { askForms, listenersFor, songInfoKey } from "./listeners";
-import { pillCount } from "./lastfm-names";
+import { askForms, exactCount, listenersFor, songInfoKey } from "./listeners";
+import { mainArtist, pillCount, titleKey, topByTitle, type TopTrack } from "./lastfm-names";
 import { setting } from "./settings-store";
 import { WEB_ROOMS } from "./platform";
 import * as diag from "./diag";
@@ -25,7 +25,13 @@ const REST_MS = 300;
 const ASK_GAP_MS = 250;
 /** A song Last.fm could not answer is asked again after this long. */
 const RETRY_MS = 5 * 60 * 1000;
+/** Empty pills of one artist on screen that make their list worth its call: a list is 400 to
+ *  800 KB, so a lone song keeps `track.getInfo` (LISTENERS.md §10.5). */
+const ARTIST_MIN_SONGS = 2;
+/** The artists' lists held in memory; the oldest goes first. */
+const ARTISTS_HELD = 30;
 
+const tops = new Map<string, Map<string, TopTrack>>(); // the artist, lower case → the list by title
 const known = new Map<string, Known | null>(); // key → the counts; null: Last.fm has no plays
 const tracks = new Map<string, Track>();
 const missed = new Map<string, number>();
@@ -123,12 +129,66 @@ async function scan(): Promise<void> {
   void pump();
 }
 
+const artistOf = (t: Track): string => mainArtist(t.artistName ?? "").toLowerCase();
+
+/** One call for the artist's list, held for the session. A failure holds nothing. */
+async function topOf(artist: string, name: string): Promise<Map<string, TopTrack> | null> {
+  const [rows] = await Promise.all([
+    invoke<TopTrack[]>("lastfm_artist_top", { artist: name }).catch(() => null),
+    new Promise((r) => window.setTimeout(r, ASK_GAP_MS)),
+  ]);
+  if (!rows) return null;
+  const top = topByTitle(rows);
+  tops.set(artist, top);
+  if (tops.size > ARTISTS_HELD) tops.delete(tops.keys().next().value!);
+  return top;
+}
+
+/** Every song drawn by this artist that its list knows: the rows off screen too, so a scroll down
+ *  the album finds them filled. What the list does not hold stays for `track.getInfo`. */
+async function fillFrom(artist: string, top: Map<string, TopTrack>): Promise<void> {
+  const rows: Array<{ id: string; listeners: number; playcount: number; url?: string }> = [];
+  for (const [key, t] of tracks) {
+    if (known.has(key) || artistOf(t) !== artist) continue;
+    const hit = top.get(titleKey(t.title));
+    if (hit && hit.playcount > 0) rows.push({ id: key, listeners: hit.listeners, playcount: hit.playcount, url: hit.url });
+  }
+  if (!rows.length) return;
+  await invoke("lastfm_keep_counts", { rows }).catch(() => undefined);
+  for (const row of rows) {
+    waiting.delete(row.id);
+    land(row.id, { playcount: row.playcount, listeners: row.listeners });
+  }
+  diag.log("listen:artist", { filled: rows.length });
+}
+
+/** The waiting songs by artist: an artist's list first, in place of a call for each song. An exact
+ *  count asks Apple's names alone, so it never reads a list. */
+async function fillByArtist(): Promise<void> {
+  if (exactCount()) return;
+  const byArtist = new Map<string, { name: string; songs: number }>();
+  for (const key of waiting) {
+    const t = tracks.get(key);
+    if (!t?.artistName) continue;
+    const artist = artistOf(t);
+    const had = byArtist.get(artist);
+    byArtist.set(artist, { name: mainArtist(t.artistName), songs: (had?.songs ?? 0) + 1 });
+  }
+  for (const [artist, { name, songs }] of byArtist) {
+    if (!listenPillsOn()) return;
+    if (!tops.has(artist) && songs < ARTIST_MIN_SONGS) continue;
+    const top = tops.get(artist) ?? (await topOf(artist, name));
+    if (top) await fillFrom(artist, top);
+  }
+}
+
 /** Asks start one gap apart and do not wait for the answer before them: a song's round trip
  *  (200 to 400 ms a call) is not added to the gap. A song with two name forms is two calls, so it
  *  takes two gaps. A song scrolled away by its turn waits for the next look. */
 async function pump(): Promise<void> {
   if (pumping) return;
   pumping = true;
+  await fillByArtist();
   let asked = 0;
   for (const key of [...waiting]) {
     waiting.delete(key);

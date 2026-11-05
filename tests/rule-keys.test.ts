@@ -24,6 +24,17 @@ test("2026-11-04 Unshuffled from the top turns shuffle off only when an album st
   assert.equal(sentenceText(rules[0], NO_LISTS), "When you start an album from the top, DeetsMusic turns shuffle off, only if shuffle is on.");
 });
 
+test("2026-11-05 Quieter after sunset holds the level at -18, a number, only in the dark", () => {
+  const rules = recipe("sunset").rules;
+  const words: Known = { ...known, facts: new Set(["daylight"]) };
+  for (const r of rules) assert.equal(validate(r, words), null);
+  assert.equal(resolveState(rules, { daylight: false }, []).set.get("key:soundLoudTarget")?.value, -18);
+  assert.equal(resolveState(rules, { daylight: true }, []).set.has("key:soundLoudTarget"), false);
+  assert.equal(doWordOf(rules[0])?.word.id, "soundLoudTarget");
+  assert.deepEqual(doWordOf(rules[0])?.word.state?.("-18"), [{ target: { key: "soundLoudTarget" }, value: -18 }]);
+  assert.match(sentenceText(rules[0], NO_LISTS), /plays songs at Quieter/);
+});
+
 test("Battery saver (2026-09-27) holds only while the PC reports not charging", () => {
   const rules = recipe("battery").rules;
   for (const r of rules) assert.equal(validate(r, known), null);

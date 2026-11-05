@@ -232,7 +232,7 @@ nothing pops. A same-color cover changes nothing.
 carries no player). The grand opening's preview player uses `watchAlbumLight(box, source)`.
 
 **Settings** (Skin settings): *Album light* on Press (`pressLight`) and on Cyber (`cyberLight`),
-0–100, **0: off by default** (his call, 2026-11-05, until the 1.4 polish); each skin keeps its own value. *Spin in new colors* (`albumWave`), on, shows on both
+0–100, **80 by default** (his call, 2026-11-05, at the 1.4 polish, as Ocean's); each skin keeps its own value. *Spin in new colors* (`albumWave`), on, shows on both
 while the slider is above 0. The toggle is a reported usage key. Skin settings now shows under
 Cyber.
 
@@ -241,8 +241,8 @@ late, off; `cards`, `ms`). Frames: `album-wave`. Mark: `albumLight:wave`.
 
 **Desk test.** No restart for the front end. The agent part ran on the dev app 2026-11-05
 (WORKLOG.md, `docs/ops/checks/album-wave-probe.mjs`, `album-wave-cases.mjs`). He tried it the same
-day: "looks pretty good". Stress test done the same day (WORKLOG.md). Open: the polish, 125 % and
-150 % display scale, a menu that overhangs a card edge during a turn.
+day: "looks pretty good". Stress test done the same day (WORKLOG.md). His look at 125 % and 150 %
+display scale and at a menu over a card edge passed 2026-11-05. Open: the polish.
 1. Press, dark theme, a song plays, Album light up. The plate and thin line show the album's neon on every card,
    and the gaps stay plain.
 2. Press Next to another album. The new color turns in around each card, clockwise, in 1.2 s.
