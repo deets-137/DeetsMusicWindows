@@ -43,6 +43,7 @@ import { patchHTML, keyRow } from "./keyed";
 import { reveal, revealOf, readyIn } from "./reveal";
 import { mark } from "./marks";
 import { motionReduced } from "./motion";
+import { sortItems } from "./sort-items";
 
 export type Density = "lines" | "small" | "large";
 export type SortDir = "asc" | "desc";
@@ -250,6 +251,9 @@ export interface Context {
    *  card draws again (`reload`) when the data lands. */
   loading?: () => boolean;
   defaults?: { grouping?: string; density?: Density; sortKey?: string; sortDir?: SortDir };
+  /** A level below the root that keeps its own sort (PLAYLISTS.md §13): told of each change, and
+   *  it gives the kept sort back through `defaults`. Card memory then leaves the sort alone. */
+  onSort?: (sortKey: string, sortDir: SortDir) => void;
   emptyText?: string; // shown when the (unfiltered) list is empty, e.g. a fresh playlist's invite
   /** The pane takes dropped songs (an open playlist, DRAG-DROP.md §3). The action gets the
    *  insertion index while the grouping's reorder order shows, else null (the end). Null
@@ -463,27 +467,6 @@ export function shelfPillHTML(label: string, title: string): string {
     `<svg class="lib-pill__caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg>` +
     `</button></span>`
   );
-}
-
-// One collator, built once. `a.localeCompare(b, undefined, {…})` builds one per CALL: the
-// library's 3,895 rows make ~100,000 of them in a single sort, which measured 204 ms against
-// 3.5 ms for the cached collator (2026-09-17). Same locale, same options, same order — this
-// is only where the object is made. It is why picking a sort key took ~280 ms to paint.
-const collator = new Intl.Collator(undefined, { sensitivity: "base" });
-const cmpStr = (a: string, b: string) => collator.compare(a, b);
-
-function sortItems<T>(items: T[], spec: SortSpec<T>, dir: SortDir, nameOf: (x: T) => string): T[] {
-  const sign = dir === "asc" ? 1 : -1;
-  const byName = (a: T, b: T) => cmpStr(nameOf(a), nameOf(b));
-  return [...items].sort((a, b) => {
-    const va = spec.get(a);
-    const vb = spec.get(b);
-    if (va == null && vb == null) return byName(a, b);
-    if (va == null) return 1; // missing always last, either direction
-    if (vb == null) return -1;
-    const c = spec.type === "num" ? (va as number) - (vb as number) : cmpStr(String(va), String(vb));
-    return sign * c || byName(a, b);
-  });
 }
 
 // ── controller ──────────────────────────────────────────────────────────────────
@@ -710,8 +693,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   };
 
   const persist = () => {
-    if (stack.length !== 1) return; // only the top level persists
-    const { grouping, density, sortKey, sortDir } = cur();
+    const { grouping, density, sortKey, sortDir, ctx } = cur();
+    if (stack.length !== 1) {
+      ctx.onSort?.(sortKey, sortDir); // only the top level persists here; a level keeps its own
+      return;
+    }
     try {
       localStorage.setItem(modeKey(), JSON.stringify({ grouping, density, sortKey, sortDir }));
     } catch {
@@ -1763,8 +1749,10 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       const l = deeper[k];
       const f = frameFor(ctx, false);
       if (ctx.groupings.some((x) => x.key === l.grouping)) f.grouping = l.grouping!;
-      if (groupingOf(f).sorts.some((x) => x.key === l.sortKey)) f.sortKey = l.sortKey!;
-      if (l.sortDir === "asc" || l.sortDir === "desc") f.sortDir = l.sortDir;
+      if (!ctx.onSort) {
+        if (groupingOf(f).sorts.some((x) => x.key === l.sortKey)) f.sortKey = l.sortKey!;
+        if (l.sortDir === "asc" || l.sortDir === "desc") f.sortDir = l.sortDir;
+      }
       if (ctx.density && (l.density === "lines" || l.density === "small" || l.density === "large")) f.density = l.density;
       f.query = typeof l.query === "string" ? l.query : "";
       f.searchOpen = !!f.query;

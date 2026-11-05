@@ -14,7 +14,7 @@ import {
 } from "./player";
 import { getCurrent, getUpcoming } from "./queue";
 import { trackById } from "./track-store";
-import { playlistsCached, playlistTracks } from "./playlists";
+import { playlistsCached, playlistInOrder } from "./playlists";
 import { radioDiscovery, radioLivePeek, radioRecents, radioSpecialPeek, type Station } from "./radio";
 import type { Playlist } from "./search";
 import { emit, recheck, registerAction, registerEvent, registerFact, registerProp } from "./rules";
@@ -108,7 +108,7 @@ export function initRulesPlayback(): void {
       const list = await refreshPlaylists();
       const p = list.find((x) => pidOf(x) === id);
       if (!p) return;
-      const tracks = await playlistTracks(p);
+      const tracks = await playlistInOrder(p);
       if (tracks.length) await playTracks(tracks, 0, `playlist:${id}`);
     },
   });

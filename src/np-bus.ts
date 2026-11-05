@@ -42,6 +42,7 @@ import type { Station } from "./radio";
 import { log, events as diagEvents, flush as diagFlush } from "./diag";
 import { onToast, type ToastKind } from "./toast";
 import { playlistCoverFor, onPlaylistCoverChange } from "./playlist-cover";
+import { inSavedOrder } from "./playlists";
 import { onSettingsChange } from "./settings-store";
 
 export interface NpState {
@@ -269,9 +270,11 @@ async function runAgent(kind: string, payload: any): Promise<unknown> {
     }
     case "play":
     case "queue": {
-      const tracks = (payload?.tracks ?? []) as Track[];
-      if (!tracks.length) throw new Error("nothing to play");
-      tracks.forEach(materializeTrack);
+      const given = (payload?.tracks ?? []) as Track[];
+      if (!given.length) throw new Error("nothing to play");
+      given.forEach(materializeTrack);
+      // An agent's Play follows a playlist's saved sort too (PLAYLISTS.md §13).
+      const tracks = payload?.playlist ? await inSavedOrder(String(payload.playlist), given) : given;
       const at = Number(payload?.at);
       if (kind === "play") await (payload?.keepQueue ? playTracksKeepQueue(tracks, "agent") : playTracks(tracks, 0, "agent"));
       else if (Number.isInteger(at) && at >= 1) await queueTracksAt(at - 1, tracks, "agent"); // 1 = top of Up Next

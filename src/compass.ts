@@ -29,7 +29,7 @@ import { tracks } from "./track-store";
 import { creditIndex } from "./artist-credit";
 import { albumKey, albumOrder, artistOrder, refreshLibrary } from "./library-card";
 import { esc } from "./collection-card";
-import { playlistsCached, playlistTracks, requestOpenPlaylist } from "./playlists";
+import { playlistsCached, playlistInOrder, requestOpenPlaylist } from "./playlists";
 import { radioRecents, radioLivePeek, radioSpecialPeek, radioGenresPeek, radioGenreStationsPeek, radioGenreStations, radioLive, radioMyStation, radioDiscovery, radioGenres, type Station } from "./radio";
 import type { Playlist } from "./search";
 import type { Track } from "./library";
@@ -1070,8 +1070,8 @@ function playlistRows(): Row[] {
     .map((p): Row => ({
       group: "Playlists", title: p.name, sub: p.source === "local" ? "Your playlist" : p.curatorName || "Apple Music playlist",
       run: () => requestOpenPlaylist(p.libraryId!),
-      alt: { label: "Play", run: () => void playlistTracks(p).then(play).catch((e) => console.error("[compass] playlist", e)) },
-      tracks: () => playlistTracks(p),
+      alt: { label: "Play", run: () => void playlistInOrder(p).then(play).catch((e) => console.error("[compass] playlist", e)) },
+      tracks: () => playlistInOrder(p),
     }));
 }
 

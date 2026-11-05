@@ -71,6 +71,10 @@ on this new recipe in Rulez, and pressing Play or clicking the first song turns 
 album plays in order from its first song. Shuffle stays off until you turn it on again. To make
 your own rule, use the new When, You start an album from the top.
 
+**Playlists remember their sort.** A playlist now keeps the sort you choose, each playlist its own,
+after you leave it and after a restart. Play follows that sort everywhere: from the playlist, the
+Playlists card, Home and your pins.
+
 **Compilations on artist pages.** The Full artist page now shows an artist's compilations, and the
 filter on the Albums shelf has a Compilations choice.
 

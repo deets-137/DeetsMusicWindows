@@ -93,6 +93,8 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
 - `LOCAL-RADIO.md` — web stations from Radio Browser through a Rust loopback proxy.
 - `FAVORITES.md` — Add to Library and ♥; the store of every track we touch.
 - `LISTEN-LATER.md` — the *Listen Later* menu row and *Saved for the Right Day* (`src/listen-later.ts`).
+- `NOW-MARK.md` — the playing song's mark in a song list: a chevron in the source list, a line in
+  any other (`--now-mark`). One element placed by index, never a part of a row.
 - `PINS.md` — pinned tiles, the shelves, the On Click verbs.
 - `ARTIST-VIEW.md` — the artist hero, its shelves, the chip flight.
 - `LAYOUT.md` — the artist view's shelf order and the On / Faded / Hidden buttons, as rule targets.
@@ -144,6 +146,8 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
 - `UpdatesButton.md` — the Max title bar's updates button and panel (`src/updates-btn.ts`,
   `src/release-leads.ts`, `virtual:release-notes` in vite.config.ts).
 - `speedtest.md` — the car button and the network panel (`net.rs` ping, `src/fetch-wrap.ts`).
+- `donate.md` — the dollar sign button and the Donate panel (`src/donate-btn.ts`), behind
+  `import.meta.env.DEV` in main.ts; §4 what to do when the flag comes off.
 - `WHEEL-VOLUME.md` — the mouse wheel on Now Playing steps the volume (`src/wheel-step.ts`, pure).
 - `HIDE-CARDS.md` — Settings › Cards hides a card from the card picker (`hiddenCards`).
 - `MAX-CARDS.md` — *Layout for Max* (`maxCards`); the geometry is pure in `layout-rules.ts`.
@@ -203,6 +207,8 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
   reads the live support D1 with fixed queries; no tool returns a post's `code`, `uid` or `meta`.
 - `APPLE-CALLS.md` — the Apple call counter and the 429 back-off (`apple_calls.rs`); which
   commands are background jobs.
+- `FONTPACK.md` — a font from sheets drawn in Krita (`scripts/fontpack.py`): sheets, build,
+  `spacing.json`, `pull` from FontForge. Not part of the app.
 **`docs/ideas/`** — not built; never tell a user the app does these. Where he designs the
 picture, never write it for him.
 - `SECRETS-AND-CSP.md` — DPAPI for the Apple token and Last.fm session (the CSP half is built: `architecture/CSP.md`).
@@ -223,6 +229,8 @@ picture, never write it for him.
   said and is fixed; the rest is Claude's proposal.**
 - `glass-text.md` — why Glass text is soft; canvas-drawn lists first.
 - `AppleData.md` — Apple endpoints and attributes we do not call yet; he has ideas for each.
+- `donations.md` — what donations pay for, the top-to-bottom fill, how money arrives. **§1 is what
+  he said and is fixed.** The panel is `features/donate.md`.
 - `DeetsRecommends.md` — recommendations from the credit graph (who made the music).
 - `LastfmArtist.md` — Last.fm top tracks and similar artists on the artist view.
 - `DeetsWeather.md` · `WeatherSkin.md` — stations and a skin driven by the weather (WeatherKit).

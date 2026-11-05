@@ -627,6 +627,9 @@ window.addEventListener("DOMContentLoaded", () => {
   later.push(["initUpdatesButton", () => initUpdatesButton()]); // the Max title bar's updates button (docs/features/UpdatesButton.md)
   later.push(["initRewindButton", () => initRewindButton()]); // the Max title bar's Rewind button (docs/features/listening-time.md)
   later.push(["initNetwork", () => initNetwork()]); // the Max title bar's Network button (docs/features/speedtest.md)
+  // The Donate button (docs/features/donate.md): dev only until it is ready, so the release bundle
+  // drops the import. It also makes the title bar's new order.
+  if (import.meta.env.DEV) later.push(["initDonateButton", () => void import("./donate-btn").then((m) => m.initDonateButton())]);
   // Warm MusicKit + the DRM module under the launch cover, as the window shows, so the
   // session's first click pays neither (player.ts warmPlayer; measured ~1 s + ~0.6–1.3 s on the
   // click before this). It waited a fixed 1.5 s after the handler until 2026-09-29.

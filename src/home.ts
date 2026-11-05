@@ -25,7 +25,7 @@ import { recheckRecent } from "./suggest";
 import { invoke } from "@tauri-apps/api/core";
 import { artistPassPending, onArtistPass, type Artwork, type Track } from "./library";
 import { tracks as allTracks, trackById, addTransientTracks } from "./track-store";
-import { playlistsCached, playlistTracks } from "./playlists";
+import { playlistsCached, playlistInOrder } from "./playlists";
 import { collectionTracks, catalogRelated, materializeTrack, type Album, type Playlist } from "./search";
 import { comingMark, releaseAt } from "./release";
 import { radioRecents, type Station } from "./radio";
@@ -301,7 +301,7 @@ export function playlistItem(p: Playlist): HomeItem {
     mosaicSeed: p.libraryId ?? p.name,
     context: `playlist:${pid(p)}`,
     playlist: p,
-    tracks: () => playlistTracks(p),
+    tracks: () => playlistInOrder(p), // the order its page shows (PLAYLISTS.md §13)
     count: p.trackCount,
   };
 }

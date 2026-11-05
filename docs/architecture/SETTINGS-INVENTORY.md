@@ -306,8 +306,8 @@ under Cyber the whole section is gone.
 | Control | What it does | Choices |
 |---|---|---|
 | Click a Home tile | What one click does on an album, playlist, artist or song tile | **Play** / Shuffle / Open |
-| Double-click a Home tile | What a double-click does on the same tiles. When it differs from the click, a click waits for a second press | **Play** / Shuffle / Open |
-| Double-click wait | How long a click on a Home or pinned tile waits for a second press | 150 ms / **250 ms** / 350 ms / 500 ms |
+| Double-click a Home tile | What a double-click does on the same tiles. An Open happens at once, and a second press then does this | **Play** / Shuffle / Open |
+| Double-click wait | How long a click that plays or shuffles waits for a second press, when the double-click does something else. An Open never waits | 150 ms / **250 ms** / 350 ms / 500 ms |
 | Hiding lasts | Right-click a Home tile › Hide takes it off the card | **Until cleared** / This session |
 | Hidden tiles | **Clear** puts every hidden tile back. Playing one again also brings it back | — |
 

@@ -1664,12 +1664,12 @@ function mountSettings(
         },
         {
           kind: "choice", id: "tiledouble", label: "Double-click a Home tile", key: "tileDouble",
-          hint: "What a double-click does on the same tiles. When it differs from the click, a click waits for a second press",
+          hint: "What a double-click does on the same tiles. An Open happens at once, and a second press then does this",
           options: [{ value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }, { value: "open", label: "Open" }],
         },
         {
           kind: "choice", id: "tilewait", label: "Double-click wait", key: "tilePressWait",
-          hint: "How long a click on a Home or pinned tile waits for a second press. Longer suits a slower double-click; shorter, a quicker click",
+          hint: "How long a click that plays or shuffles waits for a second press, when the double-click does something else. An Open never waits",
           get: () => String(setting("tilePressWait")),
           set: (v) => setSetting("tilePressWait", Number(v)),
           options: [{ value: "150", label: "150 ms" }, { value: "250", label: "250 ms" }, { value: "350", label: "350 ms" }, { value: "500", label: "500 ms" }],

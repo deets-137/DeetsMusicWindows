@@ -76,7 +76,7 @@ copies and to send to a cloud folder every week.
 
 **Kept (the user's own data):** `local_playlists`, `local_playlist_tracks`,
 `playlist_folders`, `playlist_folder_members`, `playlist_apple_baseline`, `playlist_refresh`,
-`play_stats`, `play_events`, `favorites`, `added_at`, `pins`, `row_order`, `diary_entries`,
+`playlist_view`, `play_stats`, `play_events`, `favorites`, `added_at`, `pins`, `row_order`, `diary_entries`,
 `diary_songs`, `diary_folders`, `picks`, `pick_posts`, `loudness`, `meta` (less
 `full_sync_at`, so the first start makes a full sync).
 

@@ -12,6 +12,59 @@ import { setting } from "./settings-store";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { drawCover } from "./cover-art";
 import { requestDrillCard } from "./layout-bus";
+import { cleanSort, isDefaultSort, orderPlaylist, playlistKey, type SavedSort } from "./playlist-sort";
+
+// ── a playlist's saved sort (PLAYLISTS.md §13) ─────────────────────────────────
+// Held here so the page and every Play outside it read one answer. `playlist_view` is the
+// truth across restarts; a playlist with no row is on the default.
+const savedSorts = new Map<string, SavedSort>();
+let sortsRead: Promise<void> | null = null;
+
+/** Read the saved sorts once. A failed read leaves the defaults and tries again next time. */
+export function loadPlaylistSorts(): Promise<void> {
+  sortsRead ??= invoke<{ key: string; sortKey: string; sortDir: string }[]>("playlist_view_rows")
+    .then((rows) => {
+      for (const r of rows) {
+        const s = cleanSort(r.sortKey, r.sortDir);
+        if (s && !savedSorts.has(r.key)) savedSorts.set(r.key, s);
+      }
+    })
+    .catch((e) => {
+      sortsRead = null;
+      console.error("[playlists] saved sorts", e);
+    });
+  return sortsRead;
+}
+
+/** The sort a playlist's page opens on; null means the default. */
+export const savedPlaylistSort = (key: string): SavedSort | null => savedSorts.get(key) ?? null;
+
+/** The user changed a playlist's sort. The default clears the row. */
+export function savePlaylistSort(key: string, sortKey: string, sortDir: string): void {
+  const next = cleanSort(sortKey, sortDir);
+  if (!next) return;
+  const was = savedSorts.get(key);
+  if (isDefaultSort(next)) {
+    if (!was) return;
+    savedSorts.delete(key);
+    void invoke("playlist_view_set", { key, sortKey: null, sortDir: null }).catch((e) => console.error("[playlists] clear sort", e));
+    return;
+  }
+  if (was?.sortKey === next.sortKey && was.sortDir === next.sortDir) return;
+  savedSorts.set(key, next);
+  void invoke("playlist_view_set", { key, ...next }).catch((e) => console.error("[playlists] save sort", e));
+}
+
+/** These songs of a playlist, in its saved sort. */
+export async function inSavedOrder(key: string, tracks: Track[]): Promise<Track[]> {
+  await loadPlaylistSorts();
+  return orderPlaylist(tracks, savedPlaylistSort(key));
+}
+
+/** A playlist's songs as its page shows them: what a Play outside the page plays. An edit or a
+ *  row number needs the authored order, `playlistTracks`. */
+export const playlistInOrder = (p: Playlist): Promise<Track[]> =>
+  playlistTracks(p).then((ts) => inSavedOrder(playlistKey(p), ts));
 
 // ── change bus (same subscribe idiom as layout-bus / onPlayerState) ────────────
 // Fires after any LOCAL-store mutation (create / add tracks / delete), with the

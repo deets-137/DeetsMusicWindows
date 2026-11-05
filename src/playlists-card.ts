@@ -16,7 +16,9 @@ import {
   playlistInsertTracks, playlistCoverData,
   foldersList, folderCreate, folderRename, folderDelete, folderAssign, isReplay, isRulez, isLater, isWeb, ownerOf, ownCover, type PlaylistFolder,
   onOpenPlaylistRequest, takeOpenPlaylistRequest, type OpenPlaylistRequest, refreshSet,
+  loadPlaylistSorts, savedPlaylistSort, savePlaylistSort, inSavedOrder,
 } from "./playlists";
+import { playlistKey as pid, playlistSorts } from "./playlist-sort";
 import {
   covered, choiceOf, choiceLabel, reloadRefreshRows, refreshOnOpen, WEEKDAYS, type RefreshMode,
 } from "./playlist-refresh";
@@ -24,7 +26,7 @@ import type { Playlist } from "./search";
 import type { Track } from "./library";
 import { playTracks, shuffledStart } from "./player";
 import { initFavorites, reconcile, reconcilePlaylist, playlistFav } from "./favorites";
-import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
+import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type ViewState } from "./collection-card";
 import { picksText } from "./row-pick";
 import { songMenu, playlistMenu, setMenu, tileMenu } from "./media-menu";
 import { collectionPress } from "./collection-press";
@@ -50,7 +52,6 @@ import { refreshNow, rulezRowOf } from "./filters";
 import { refreshItems, refreshLabel } from "./filter-panel";
 import { requestLibraryFilter } from "./layout-bus";
 
-const pid = (p: Playlist) => p.libraryId ?? p.catalogId ?? p.name;
 /** A local playlist edited by hand: a Replay is made from listening (PLAYLISTS.md §10.8). */
 const handMade = (p: Playlist) => p.source === "local" && !isReplay(p);
 
@@ -273,7 +274,10 @@ export const playlistsCard: CardDef = {
 
     /** The songs of several picked playlist rows, each playlist's own order, back to back. */
     const pickedTracks = (xs: PlRow[]): Promise<Track[]> =>
-      Promise.all(xs.map((x) => (x.kind === "playlist" ? tracksOf(x.p) : Promise.resolve([] as Track[])))).then((a) => a.flat());
+      Promise.all(xs.map((x) => (x.kind === "playlist" ? playOrder(x.p) : Promise.resolve([] as Track[])))).then((a) => a.flat());
+
+    /** A playlist's songs as its page shows them: a Play from the list follows the saved sort. */
+    const playOrder = (p: Playlist): Promise<Track[]> => tracksOf(p).then((ts) => inSavedOrder(pid(p), ts));
 
     const tracksOf = (p: Playlist): Promise<Track[]> => {
       const id = pid(p);
@@ -370,11 +374,7 @@ export const playlistsCard: CardDef = {
       ensureTracks(p);
       const id = pid(p);
       const ctxTag = `playlist:${id}`;
-      const sorts: SortSpec<Track>[] = [
-        { key: "order", label: "Playlist Order", type: "num", get: (t) => posOf.get(t) },
-        { key: "az", label: "A–Z", type: "str", get: (t) => t.title },
-        { key: "artist", label: "Artist", type: "str", get: (t) => t.artistName },
-      ];
+      const sorts = playlistSorts((t) => posOf.get(t));
       const grouping: Grouping<Track> = {
         key: "tracks",
         label: "Songs",
@@ -517,7 +517,8 @@ export const playlistsCard: CardDef = {
         density: true,
         groupings: [grouping],
         dropInto: (pay) => dropFor(p, pay),
-        defaults: { density: "lines", sortKey: "order" },
+        defaults: { density: "lines", sortKey: "order", ...savedPlaylistSort(id) },
+        onSort: (sortKey, sortDir) => savePlaylistSort(id, sortKey, sortDir), // PLAYLISTS.md §13
         // The songs on their way (UX-COVERUPS.md §7.1): the drill's reveal holds for them, so they
         // arrive with the hero in one wave, never after it (desk test, 2026-10-17).
         loading: () => pending.has(id),
@@ -820,7 +821,7 @@ export const playlistsCard: CardDef = {
       // The change bus (below) handles the cache eviction + list reload.
       const local = p.source === "local";
       if (local) own.push(...coverItems(p, ownCover(p) ? "Change Cover…" : "Set Cover…", false, !hero));
-      return playlistMenu(p, () => tracksOf(p), {
+      return playlistMenu(p, () => playOrder(p), {
         context: `playlist:${pid(p)}`,
         lead: handMade(p) ? [renameItem(p)] : [],
         open: () => card.drill(detail(p)),
@@ -982,7 +983,7 @@ export const playlistsCard: CardDef = {
             if (x.kind === "playlist") {
               const p = x.p;
               const open = () => card.drill(detail(p));
-              if (e) collectionPress(e, { kind: "playlist", key: `playlist:${pid(p)}`, context: `playlist:${pid(p)}`, open, tracks: () => tracksOf(p) });
+              if (e) collectionPress(e, { kind: "playlist", key: `playlist:${pid(p)}`, context: `playlist:${pid(p)}`, open, tracks: () => playOrder(p) });
               else open(); // the head's own action, with no press to read
             } else if (x.kind !== "divider") toggleSection(sectionKey(x));
           },
@@ -996,7 +997,7 @@ export const playlistsCard: CardDef = {
                   source: "playlists",
                   kind: "playlist",
                   count: trackCache.get(pid(x.p))?.length ?? x.p.trackCount,
-                  tracks: () => tracksOf(x.p),
+                  tracks: () => playOrder(x.p),
                   context: `playlist:${pid(x.p)}`,
                   playlistId: x.p.libraryId,
                 }
@@ -1165,7 +1166,7 @@ export const playlistsCard: CardDef = {
 
     // ── load + sync (stale-while-revalidate, like songs) ──
     const load = () =>
-      Promise.all([playlistsCached(), foldersList()])
+      Promise.all([playlistsCached(), foldersList(), loadPlaylistSorts()])
         .then(([ps, fs]) => {
           lists = ps;
           folders = fs;

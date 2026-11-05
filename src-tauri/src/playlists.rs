@@ -1498,6 +1498,72 @@ pub fn migrate_v11(conn: &Connection) -> Result<(), String> {
     crate::library::meta_set(conn, "schema_version", "11")
 }
 
+/// v24 (2026-11-04): `playlist_view`, the sort a playlist's page keeps (PLAYLISTS.md §13). Its
+/// own table for the reason `playlist_refresh` is: a sync rebuilds `apple_playlists` whole. A
+/// row for a playlist Apple leaves out of one read stays, as folder and refresh rows do. NO ROW
+/// means the default, Playlist Order, ascending. Additive, idempotent.
+pub fn migrate_v24(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS playlist_view (
+            playlist_key TEXT PRIMARY KEY,
+            sort_key     TEXT NOT NULL,
+            sort_dir     TEXT NOT NULL
+        );",
+    )
+    .map_err(|e| format!("create playlist_view: {e}"))?;
+    crate::library::meta_set(conn, "schema_version", "24")
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewRow {
+    /// A mirror's libraryId, or `local:<id>`.
+    key: String,
+    sort_key: String,
+    sort_dir: String,
+}
+
+fn view_rows(conn: &Connection) -> Result<Vec<ViewRow>, String> {
+    let mut stmt = conn
+        .prepare_cached("SELECT playlist_key, sort_key, sort_dir FROM playlist_view")
+        .map_err(err)?;
+    let rows = stmt
+        .query_map([], |r| Ok(ViewRow { key: r.get(0)?, sort_key: r.get(1)?, sort_dir: r.get(2)? }))
+        .map_err(err)?;
+    rows.collect::<Result<_, _>>().map_err(err)
+}
+
+/// Keep one playlist's sort. No sort key: the row goes, and the playlist is on the default.
+fn view_set(conn: &Connection, key: &str, sort_key: Option<&str>, sort_dir: Option<&str>) -> Result<(), String> {
+    let Some(sort_key) = sort_key else {
+        conn.execute("DELETE FROM playlist_view WHERE playlist_key = ?1", [key]).map_err(err)?;
+        return Ok(());
+    };
+    let sort_dir = sort_dir.unwrap_or("asc");
+    if !matches!(sort_dir, "asc" | "desc") {
+        return Err(format!("unknown sort direction: {sort_dir}"));
+    }
+    conn.execute(
+        "INSERT INTO playlist_view(playlist_key, sort_key, sort_dir) VALUES(?1, ?2, ?3)
+         ON CONFLICT(playlist_key) DO UPDATE SET sort_key = ?2, sort_dir = ?3",
+        rusqlite::params![key, sort_key, sort_dir],
+    )
+    .map_err(err)?;
+    Ok(())
+}
+
+/// Every kept sort, read once when the Playlists card loads.
+#[tauri::command]
+pub async fn playlist_view_rows(app: tauri::AppHandle) -> Result<Vec<ViewRow>, String> {
+    crate::db_thread::run(&app, move |db| view_rows(&db.lock())).await
+}
+
+/// Keep a playlist's sort, or clear it with no `sort_key`.
+#[tauri::command]
+pub async fn playlist_view_set(key: String, sort_key: Option<String>, sort_dir: Option<String>, app: tauri::AppHandle) -> Result<(), String> {
+    crate::db_thread::run(&app, move |db| view_set(&db.lock(), &key, sort_key.as_deref(), sort_dir.as_deref())).await
+}
+
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RefreshRow {
@@ -2338,5 +2404,23 @@ mod tests {
         assert_eq!(baseline_get(&conn, 7, "p.new"), None, "a baseline from an older copy is not read");
         baseline_set(&conn, 7, "p.new", &strs(&["c"])).unwrap();
         assert_eq!(baseline_raw(&conn, 7), Some(("p.new".to_string(), strs(&["c"]))));
+    }
+
+    #[test]
+    fn view_keeps_one_sort_a_playlist_and_clears_to_the_default() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);").unwrap();
+        migrate_v24(&conn).unwrap();
+        migrate_v24(&conn).unwrap(); // idempotent
+        view_set(&conn, "p.a", Some("order"), Some("desc")).unwrap();
+        view_set(&conn, "local:3", Some("az"), Some("asc")).unwrap();
+        view_set(&conn, "p.a", Some("artist"), Some("desc")).unwrap();
+        let rows = view_rows(&conn).unwrap();
+        assert_eq!(rows.len(), 2, "a second sort replaces the first");
+        let a = rows.iter().find(|r| r.key == "p.a").unwrap();
+        assert_eq!((a.sort_key.as_str(), a.sort_dir.as_str()), ("artist", "desc"));
+        assert!(view_set(&conn, "p.a", Some("az"), Some("up")).is_err());
+        view_set(&conn, "p.a", None, None).unwrap();
+        assert_eq!(view_rows(&conn).unwrap().len(), 1, "the default keeps no row");
     }
 }

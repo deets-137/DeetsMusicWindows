@@ -188,6 +188,15 @@
   --rewind-top-chip-w:       88px;                   /* Top Listens and SOTD at one width; the view chip fits "Artists" and its caret */
   --rewind-top-today-fs:     var(--fs-title);        /* the Today number: the panel's one large line */
   --rewind-top-list-max-h:   320px;                  /* a list scrolls past this; the panel stays under the window */
+  /* The Donate button and panel (docs/features/donate.md): the updates button's family. */
+  --donate-btn-size:         var(--traffic-size);
+  --donate-turn:             0.72s cubic-bezier(0.34, 1.26, 0.64, 1); /* a press: the line leaves, the S pulls straight, a new stroke curls into the S */
+  --donate-travel:           var(--updates-roll-y);  /* how far a stroke travels: out of the glyph's box */
+  --donate-panel-w:          var(--quick-panel-w);   /* the cog's panel family: one width */
+  --donate-panel-pad:        var(--quick-panel-pad);
+  --donate-goal-gap:         var(--space-1);         /* a goal's name, bar and lines */
+  --donate-tick-h:           10px;                   /* a mark on the bar: taller than the track */
+  --donate-bar-margin:       var(--space-1);         /* room for the marks above and below the track */
   /* The Network button and panel (docs/features/speedtest.md): the updates button's family. */
   --net-btn-size:            var(--traffic-size);
   --net-drive:               var(--updates-roll);    /* the car leaves and the next one arrives: the updates arrows' roll */

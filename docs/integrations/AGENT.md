@@ -77,7 +77,7 @@ answer (15 s; 90 s for `export`, `new_copy`, `get_songs`, `import`). An add goes
 |---|---|
 | `GET /now-playing` | `{active, playing, title, artist, album, artworkUrl, catalogId, inLibrary, live, progress, currentTime, duration, volume, muted, repeat, shuffle}` (`repeat` = off / all / one; `shuffle` = the mode is on) |
 | `POST /command` | `{kind, value?}` — `play-pause` · `play` · `pause` · `next` · `previous` · `seek` (0..1) · `volume` (0..1) · `mute` · `shuffle` (the button: the mode, or once) · `shuffle-on` / `shuffle-off` (off is a press: Up Next follows Settings › Playback › *Shuffle off plays* — in order, or as shuffled) · `repeat` (cycle) · `repeat-off` / `repeat-all` / `repeat-one` · `clear` (drops Up Next; the current song plays on) · `clear-added` (only the songs added by hand; QUEUE.md § Clear Queue) → the snapshot after |
-| `POST /play` | `{id}` \| `{term}` \| `{track}` \| `{tracks:[…]}`, `keepQueue?` → `{ok, tracks}` or `{ok, station}` |
+| `POST /play` | `{id}` \| `{term}` \| `{track}` \| `{tracks:[…]}`, `keepQueue?` → `{ok, tracks}` or `{ok, station}`. A `playlist:` id plays in the sort its page keeps (PLAYLISTS.md §13), and so does `/queue`. |
 | `POST /queue` | same + `{mode: "next" \| "later"}` or `{at: N}` (row of Up Next, 1 = top) → `{ok, tracks}` (a station → `400`) |
 | `POST /tracks` | same body as `/play` → `{tracks:[Track…]}`. A **read**: it resolves the id and hands back the songs without touching playback. Use it to see inside an album or playlist (a station → `400`, it has no fixed list). Added 2026-09-16, so reading a tracklist no longer means writing one to a playlist first. |
 | `GET /queue` | `{current, upcoming:[Track…], history:[Track…]}` |

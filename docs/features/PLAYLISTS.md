@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: none
 sources: [src/context-menu.ts, src-tauri/src/playlists.rs, src/playlists-card.ts, src/playlists.ts, src-tauri/src/model.rs, src/collection-card.ts, src/playlist-export.ts]
-updated: 2026-09-29
+updated: 2026-11-04
 ---
 # DeetsMusic — Playlists
 
@@ -161,8 +161,7 @@ one cell, one density system, no per-card drift.
   the non-empty delete UX.
 
 **Detail (drill-in)** — the playlist's tracks, authored order:
-- **Default sort = "Playlist order"** (a position-based `SortSpec`); A–Z / Artist / Added
-  are opt-in.
+- **Default sort = "Playlist order"** (a position-based `SortSpec`); A–Z / Artist are opt-in.
 - **Local:** rows are **drag-to-reorder** (reuse the Up-Next `reconcileUpcoming` drag
   primitive — writes new positions; active only in Playlist-order sort). Row menu: Play Now /
   Next / Queue · **Remove from Playlist**. Header: Play + overflow (Rename · Add Songs ·
@@ -744,6 +743,64 @@ playlists, or Export one). A to E use the default, **All missing**, first.
     back in their places.
 11. `query` over `playlist_apple_baseline`: one row per synced playlist; its `apple_id` is the
     live copy's id; `meta.schema_version` is 17.
+
+---
+
+## 13. A playlist remembers its sort
+> **Part:** built · 2026-11-04
+
+A user's post ("Remember playlist sorting order"), and his test: the sort resets. Only a card's
+top level saves its sort (`persist()` in `collection-card.ts`). A playlist page is one level down,
+so `frameFor` opens it on its defaults. Card memory keeps the sort through a card swap, but Back
+and reopen lose it.
+
+**His calls (2026-11-04):**
+- The sort is remembered per playlist.
+- **Every Play follows the saved sort,** not only Play on the page. A Play from the Playlists
+  list, a Home tile, a pin, Compass, a rule or an agent plays the order the page shows.
+
+**The data (schema v24):** a new table, `playlist_view`.
+
+| Column | Holds |
+|---|---|
+| `playlist_key` | Primary key: `pid(p)`, Apple's id or `local:<id>` |
+| `sort_key` | `order`, `az` or `artist` |
+| `sort_dir` | `asc` or `desc` |
+
+- **No row means the default:** Playlist Order, ascending. A return to the default deletes the row.
+- **Not on `apple_playlists`:** a sync deletes and rebuilds that table (the reason for
+  `playlist_refresh`, v11). A row for a playlist Apple left out of one read stays, as folder and
+  refresh rows do.
+- **Not in localStorage:** the backup design carries `library.db`.
+- **Reads and writes:** one read of all rows when the card loads, so the page opens already sorted.
+  One small command each time the sort changes, column headers included. Each new command needs
+  a demo handler, and a line in `web/handlers.ts` where the file is shared.
+
+**What follows:**
+- Playlists only. Album and artist pages still reset. The View pill stays as it is; it can join
+  the table later as one column.
+- A saved sort other than Playlist Order, ascending leaves drag-to-reorder off on that page, as
+  that sort does today.
+- The page has no Added Date sort. A user's "newest first" is Playlist Order, descending.
+
+**As built (2026-11-04):**
+- `src/playlist-sort.ts` is the pure rule: the page's sorts, `cleanSort`, `orderPlaylist`
+  (`tests/playlist-sort.test.ts`). `src/sort-items.ts` holds the engine's `sortItems`, moved out of
+  `collection-card.ts` so the rule can use it without the DOM.
+- `playlists.ts` holds the store: `loadPlaylistSorts`, `savedPlaylistSort`, `savePlaylistSort`,
+  `inSavedOrder`, `playlistInOrder`. **A Play uses `playlistInOrder`. An edit or a row number uses
+  `playlistTracks`,** the authored order: an agent's `remove` and `move` count on it, and so does
+  the Search hand-off that seeds the page's cache.
+- The engine's `Context.onSort` tells a level of each change, from `persist()`. The saved sort
+  comes back through `defaults`. Card memory leaves the sort of such a level alone, so an old
+  snapshot cannot disagree with a Play.
+- `/play` and `/queue` send the playlist's key with the songs, and `np-bus.ts` orders them. `/tracks`
+  stays in authored order.
+
+**Desk test:** `docs/ops/checks/playlist-sort.mjs` on the dev app: 14 cases, all ok, 2026-11-04.
+An agent's `play` on a 5-song playlist with Playlist Order, descending, started on the last song,
+and Up Next ran in reverse. Open: his hand test, and Play from a real press on a Home tile or a pin
+(the check reads those tiles' songs, it does not press them).
 
 ---
 

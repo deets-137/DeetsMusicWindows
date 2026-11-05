@@ -6,6 +6,18 @@ updated: 2026-11-04
 ---
 # DeetsMusic — Work log
 
+## 2026-11-04 — A playlist remembers its sort: built
+
+- **The ask.** "Start now", on the design in the entry "Two board asks designed" below.
+- **Built.** Schema v24 (`playlist_view`), `src/playlist-sort.ts`, the store in `playlists.ts`, and
+  `Context.onSort` in the engine. Every Play follows the saved sort, an agent's too (PLAYLISTS.md §13).
+- **Tested.** `docs/ops/checks/playlist-sort.mjs` on the dev app, 14 cases ok, and an agent's `play`.
+  Two failures on the way were the check's own: a key event on `document`, and a module address
+  lost after a reload. A runner rebuild and a page reload also stopped runs.
+- **Slip.** The agent `play` ran with sound for about 2 seconds at 45%, because the mute call
+  landed during a reload. His dev queue is back as it was. The play log may hold that start.
+- **Open.** His hand test. The now mark is not built.
+
 ## 2026-11-04 — The Store test failed at Apple's window; Demo login for 1.4
 
 - **The report.** Microsoft's Store test failed: "Unusable Feature: Failed to login with Apple
@@ -25,6 +37,28 @@ updated: 2026-11-04
 - **Checked.** §17.2's desk test, on the second dev app; `npm run check` exits 0.
 - **Open.** His hand test; the commit; the worker deploy; the Notes for certification;
   `src/usage-keys.js` in DeetsSupport has an uncommitted change that a deploy would carry.
+
+## 2026-11-04 — Two board asks designed: the playlist sort and the now mark
+
+- **The ask.** He asked which suggestions wait on him, then for an investigation of the playlist
+  sort, and he brought a chevron idea for the playing song.
+- **Waiting on him (read from the live D1).** Remember playlist sorting order, Show current song on
+  album, and Microsoft Store (the poster's "Great! Thanks!").
+- **The sort.** Only a card's top level saves its sort, so a playlist page resets. His calls: per
+  playlist, and every Play follows it (PLAYLISTS.md §13).
+- **The now mark.** A chevron in the source list, a line in any other, slide for a short move and
+  fade for a long one, one alias for the color (NOW-MARK.md).
+- **Open.** Nothing is built. The tree holds another session's work in the same files, so the build
+  waits for his go. The Live MCP talk is also open: LIVE-MCP.md is not changed yet.
+
+## 2026-11-04 — The Donate button, dev only
+
+- **The ask.** A Donate panel in the title bar, with the updates and Network buttons moved left of
+  the Compass, and a dollar sign that turns over on a click. The panel's content comes later.
+- **Built.** `src/donate-btn.ts`, `src/styles/donate.css`, behind `import.meta.env.DEV` in
+  `main.ts`. The release bundle has none of it, and its title bar keeps the old order
+  (features/donate.md).
+- **Checked.** `docs/ops/checks/donate-turn.mjs` on the dev app, and frames read at eight times.
 
 ## 2026-11-04 — A rule event for an album started from the top
 
@@ -59,6 +93,16 @@ updated: 2026-11-04
   nothing after an Open. All fixed.
 - **Open.** The song mark on a row waits for his design (HANDOFF). Double-click and Match loudness
   wait on his desk test; the heaviness check runs before Match ships.
+
+## 2026-11-04 — Fontpack: a font from Krita sheets
+
+- **The ask.** He wants to draw a font pack with Krita and a drawing tablet, for the app and in
+  general. He chose a script for the tracing, with FontForge for spacing.
+- **Built.** `scripts/fontpack.py` (`new`, `sheets`, `build`, `pull`) and `ops/FONTPACK.md`. The
+  app did not change.
+- **Tested.** A full run on sheets filled from Liberation Serif (FONTPACK.md §7). A real Krita
+  export and a FontForge file are not tested. The desk test is open.
+- **Open.** He has not said whether the first font is a title font or a title and body pair.
 
 ## 2026-11-03 — Let go of Apple after a pause
 

@@ -612,6 +612,7 @@ values the frontend passes to `apple_begin_auth`. So the page reskins with the a
 | `record_play(catalogId?, libraryId?, kind)` | library.rs | bump a track's `partial`/`full` play tally |
 | `play_events_since(sinceTs)` | library.rs | windowed read of the play-event log (the Rewind card) |
 | `playlist_names()` | playlists.rs | the kept name of each playlist plays came from, by key (schema v22; Rewind names a deleted playlist with it) |
+| `playlist_view_rows()` / `playlist_view_set(key, sortKey?, sortDir?)` | playlists.rs | the sort each playlist's page keeps (schema v24, PLAYLISTS.md §13); no `sortKey` clears the row |
 | `added_at_map` | library.rs | every add time this app has stamped (the Home card's Recently Added) |
 | `artist_photos` | apple.rs | every artist photo already in `artist_catalog`; read-only, never calls Apple (Home's artist tiles) |
 | `catalog_heals` | heal.rs | the heal map: healed (library id, catalog id) pairs and the no-copy library ids |

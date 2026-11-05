@@ -59,7 +59,7 @@ import { reconcileAlbum, reconcilePlaylist, type AlbumFav } from "./favorites";
 import { albumMenu, artistMenu, playlistMenu, songMenu, type ArtistSubject } from "./media-menu";
 import { handOff } from "./handoff";
 import { requestPlaylistPane } from "./go-to";
-import { requestOpenPlaylist, playlistTracks } from "./playlists";
+import { requestOpenPlaylist, playlistTracks, playlistInOrder } from "./playlists";
 import { collectionPress, catalogTracks } from "./collection-press";
 import { pid } from "./rewind";
 import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey, fmtClock } from "./library-model";
@@ -665,7 +665,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
             collectionPress(e, {
               kind: "playlist", key: `playlist:${lid}`, context: `playlist:${pid(p)}`,
               open: () => handOff(el, "playlists", () => playlistTracks(p), (ts) => requestOpenPlaylist(lid, ts), p.trackCount),
-              tracks: () => playlistTracks(p),
+              tracks: () => playlistInOrder(p),
             });
           }
         } else if (kind === "check" && yours && !checking) {
@@ -692,7 +692,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
           return p && id ? playlistMenu(p, () => collectionTracks("playlists", id), { context: `search-playlists:${id}`, catalog: true }) : [];
         }
         const p = kind === "yours" ? yours?.hits[i]?.p : undefined;
-        return p ? playlistMenu(p, () => playlistTracks(p), { context: `playlist:${p.libraryId}` }) : [];
+        return p ? playlistMenu(p, () => playlistInOrder(p), { context: `playlist:${p.libraryId}` }) : [];
       },
       get groupings() {
         return [group()];

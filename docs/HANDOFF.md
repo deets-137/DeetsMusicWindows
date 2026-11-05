@@ -201,6 +201,11 @@ in the update card's right column. Built, schema v23; his desk test: tentatively
 rule and a guide page (`docs/guide/clicks-by-type.md`, outline). Open: his desk test of §11.5 and
 his review of the choices made at build time: [HOME.md](features/HOME.md) §11.3b, §11.5.
 
+### Built, not released: a playlist remembers its sort (2026-11-04)
+
+User feedback (the board, "Remember playlist sorting order"). Per playlist, in a new table (schema
+v24), and every Play follows it. Open: his hand test: [PLAYLISTS.md](features/PLAYLISTS.md) §13.
+
 ### Built, not released: Match loudness alone (2026-11-04)
 
 A section under the Equalizer, on its own off-by-default switch (`soundMatch`). Open: the desk
@@ -219,14 +224,6 @@ His ask: when an album's song list has the width, each row shows the song's Last
 a user sees which songs are popular. It reuses the song's cached `track.getInfo`. Not designed;
 four forks open (which number, when the calls go out, the width, the name form):
 [LISTENERS.md](features/LISTENERS.md) §10.
-
-### To design: show the playing song on its row (2026-11-04)
-
-User feedback (the board, "Show current song on album"): when an album plays, its current song
-stands out on the album's list, in bold or with a small animation. No song row has a mark
-today. The data is there (`getCurrent()`, `onPlayerState`). **He has an idea for the look, so
-he designs it. Do not design or build it first.** Whether it covers every song list or only
-album pages is part of that design.
 
 ### Live, waiting on his test or his look
 
@@ -322,6 +319,9 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   behind Cloudflare Access, for his phone, claude.ai and sessions; fixed queries, a combined
   `live_check`, a daily email on a flag, no week-over-week yet. The build-time checks are
   [LIVE-MCP.md](ops/LIVE-MCP.md) §5; build and deploy on his go.
+- **The now mark** (2026-11-04, his calls N1–N4): a chevron in the margin that slides to the next
+  song in the list the song plays from, and a vertical line in any other list.
+  [NOW-MARK.md](features/NOW-MARK.md). Build on his go, after the sort.
 - **S2's week of mirror dates** (apple-calls.md S2), with no code: one read-only call a day,
   from a script, so the evidence is ready when S2 is built.
 

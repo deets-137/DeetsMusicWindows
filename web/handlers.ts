@@ -175,6 +175,7 @@ const H: Record<string, Handler> = {
   playlists_song_index: () => ({ lists: [], unchecked: [] }),
   playlist_folders_list: () => [],
   playlist_refresh_rows: () => [],
+  playlist_view_rows: () => [],
   playlists_expire: () => [],
   queue_state_get: () => null,
   queue_state_set: () => null,
@@ -225,7 +226,7 @@ export const NULL_ON_PURPOSE = new Set([
   "playlist_folder_assign", "playlist_folder_create", "playlist_folder_delete", "playlist_folder_rename", "playlist_get_apple_songs",
   "playlist_import", "playlist_insert_tracks", "playlist_keep", "playlist_match_apply", "playlist_match_plan", "playlist_match_undo",
   "playlist_refetch", "playlist_refresh_set", "playlist_refresh_stamp", "playlist_remove_positions", "playlist_remove_track",
-  "playlist_rename", "playlist_reorder", "playlist_set_cover",
+  "playlist_rename", "playlist_reorder", "playlist_set_cover", "playlist_view_set",
   // ♥, pins, row order, credits
   "favorite_collection_reconcile", "favorite_collection_set", "favorite_set", "favorites_reconcile",
   "suggest_set", "suggest_clear", "suggest_restore", "suggest_push",

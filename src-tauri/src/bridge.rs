@@ -792,10 +792,13 @@ async fn handle(app: AppHandle, mut req: Request) {
             let mode = r.mode.clone().unwrap_or_else(|| "next".into());
             let (at, keep_queue) = (r.at, r.keep_queue.unwrap_or(false));
             let kind = if path == "/play" { "play" } else { "queue" };
+            // The page puts a playlist in its saved sort (PLAYLISTS.md §13). Only here: /tracks
+            // and the row numbers of /playlist stay in authored order.
+            let playlist = r.id.as_deref().and_then(|s| s.trim().strip_prefix("playlist:")).map(str::to_string);
             let res = match resolve_target(&app, r).await {
                 Ok(Target::Tracks(tracks)) if tracks.is_empty() => Err("nothing to play: empty collection".into()),
                 Ok(Target::Tracks(tracks)) => {
-                    ask(&app, kind, serde_json::json!({ "tracks": tracks, "mode": mode, "at": at, "keepQueue": keep_queue })).await
+                    ask(&app, kind, serde_json::json!({ "tracks": tracks, "mode": mode, "at": at, "keepQueue": keep_queue, "playlist": playlist })).await
                 }
                 Ok(Target::Station(s)) if kind == "play" => ask(&app, "play-station", serde_json::json!({ "station": s })).await,
                 Ok(Target::Station(_)) => Err("unknown: a station can't be queued, only played".into()),

@@ -291,6 +291,7 @@ pub fn run() {
             filter::migrate_v21(&conn).expect("v21 migration failed");
             playlists::migrate_v22(&conn).expect("v22 migration failed");
             library::migrate_v23(&conn).expect("v23 migration failed");
+            playlists::migrate_v24(&conn).expect("v24 migration failed");
             conn
             }));
             let conn = match opened {
@@ -543,6 +544,8 @@ pub fn run() {
             playlists::playlist_match_plan,
             playlists::playlist_match_apply,
             playlists::playlist_match_undo,
+            playlists::playlist_view_rows,
+            playlists::playlist_view_set,
             playlists::playlist_refresh_rows,
             playlists::playlist_refresh_set,
             playlists::playlist_refresh_stamp,

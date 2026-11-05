@@ -131,8 +131,12 @@ export function makeDropdown(opts: DropdownOptions): DropdownHandle {
   const close = (why: CloseReason = "api") => {
     if (shouldStayOpen?.(why)) return; // e.g. don't close out from under a drag
     window.clearTimeout(graceTimer);
-    if (!panel.hidden) mark("panel:close", `${panel.dataset.frames || panel.id} ${why}`);
-    panel.hidden = true;
+    // A shut panel stays untouched: setting `hidden` again still wakes a MutationObserver, and
+    // every Escape reaches every dropdown, so a shut button's glyph played its close (donate.md §2).
+    if (!panel.hidden) {
+      mark("panel:close", `${panel.dataset.frames || panel.id} ${why}`);
+      panel.hidden = true;
+    }
     trigger.setAttribute("aria-expanded", "false");
   };
   const scheduleClose = () => {
