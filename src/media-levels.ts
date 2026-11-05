@@ -1081,6 +1081,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       context,
       nav: fullNav,
       mark: true,
+      listen: true,
       extraSorts: [order],
       actionTitles: { play: "Play the playlist in order", shuffle: "Shuffle the playlist" },
     }));

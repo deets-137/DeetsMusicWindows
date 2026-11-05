@@ -5324,6 +5324,50 @@ button.lib-cols__cell:hover, .lib-cols__cell.is-active { color: var(--title); }
 /* An album's mark column (CARD-GROW.md §9b): one square at rest, never cut by the title. Lib:
    the ♥ square, filled when loved. Full: the + / ✓ square, or the filled ♥ in its place while
    the song is in your library and loved. */
+/* The listen pill (LISTENERS.md §10): the Now Playing badge's family at one fixed width, so the
+   pills and the E line up, and a count that lands late moves nothing. At a plain row's end; on
+   the hover the + grows in and the pill and the title's end move left with it (in the row's
+   layout: a transform alone would lay the pill over a long title). A list that shows ✓ at rest
+   keeps the square's room, so its pills stay in line and the + only fades in. */
+.lib-list { container-type: inline-size; }
+.listen-pill {
+  flex: 0 0 auto; box-sizing: border-box;
+  display: inline-grid; place-items: center;
+  width: var(--listen-pill-w); height: var(--listen-pill-h);
+  font-family: var(--font-body); font-size: var(--fs-subtext); line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--np-listen-sub);
+  background: color-mix(in srgb, var(--np-listen-fill) var(--np-listen-strength), transparent);
+  border: 1px solid var(--np-listen-edge);
+  border-radius: var(--np-listen-radius);
+  transition: opacity var(--dur-med) var(--ease-ui);
+}
+.listen-pill:empty { opacity: 0; }
+.lib-row > .listen-pill { margin-left: auto; }
+.lib-row > .lib-src-badge ~ .listen-pill { margin-left: 0; }
+.lib-row__stats { overflow: visible; display: flex; justify-content: flex-end; }
+.lib-row > .listen-pill ~ .add-square:not(.add-square--mark):not([hidden]) {
+  display: grid; margin-left: 0; overflow: hidden;
+  transition: width var(--listen-slide) var(--ease-ui), margin-left var(--listen-slide) var(--ease-ui),
+    border-width var(--listen-slide) var(--ease-ui), opacity var(--listen-slide) var(--ease-ui);
+}
+.lib-row:not(:hover):not(:focus-visible) > .listen-pill ~ .add-square:not(.add-square--mark):not(.is-busy):not(:focus-visible):not([hidden]) {
+  width: 0; margin-left: calc(-1 * var(--space-2)); border-width: 0; opacity: 0;
+}
+.lib-row > .listen-pill ~ .add-square--mark:not([hidden]) {
+  display: grid; margin-left: 0;
+  transition: opacity var(--listen-slide) var(--ease-ui);
+}
+.lib-row:not(:hover):not(:focus-visible) > .listen-pill ~ .add-square--mark:not(.is-in):not(.is-busy):not(:focus-visible):not([hidden]) { opacity: 0; }
+:root[data-motion="reduced"] .listen-pill,
+:root[data-motion="reduced"] .lib-row > .listen-pill ~ .add-square { transition: none; }
+/* A narrow list has no room for the pill: the row is as it was, the square at its end. */
+@container (max-width: 300px) { /* raw: a container query cannot read a custom property */
+  .listen-pill { display: none; }
+  .lib-list .lib-row > .listen-pill ~ .add-square:not([hidden]) { margin-left: auto; transition: none; }
+  .lib-list .lib-row:not(:hover):not(:focus-visible) > .listen-pill ~ .add-square--mark:not(.is-in):not(.is-busy):not(:focus-visible):not([hidden]) { display: none; }
+  .lib-list .lib-row > .lib-src-badge ~ .listen-pill ~ .add-square:not([hidden]) { margin-left: 0; }
+}
 .lib-row__mark { display: grid; place-items: center; }
 .lib-row__mark > .add-square--cell:not([hidden]) { display: grid; }
 .lib-row__mark > .love-square:not([hidden]) ~ .add-square { display: none; }

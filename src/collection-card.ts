@@ -2562,6 +2562,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   // has none parked, so it asks now. *Notes from*: the About is drawn again from the answers in
   // hand. Off is hero-slide's alone. A tick later, so hero-slide's own move goes first.
   const offBoxRows = onSettingsChange((key) => {
+    if (key === "showListeners" || key === "listenCount") return reload(); // the pills and the Stats column (LISTENERS.md §10)
     if (key !== "showArtistInfo" && key !== "showAlbumInfo" && key !== "showSongInfo" && key !== "notesSource") return;
     if (key !== "notesSource" && !setting(key)) return;
     window.setTimeout(() => {

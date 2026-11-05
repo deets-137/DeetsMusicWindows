@@ -57,6 +57,11 @@ updated: 2026-11-04
   `NOT_REPORTED` keeps only `sunShift` and `usageReports`.
 - **The listen pill, designed.** His design and calls are LISTENERS.md §10.2: a pill at the row's
   end, a Stats column after Year, one pill column where ✓ can rest, the E before the pill. Not built.
+- **The pills pace by start time** (the round trip was added to the gap: about 0.65 s a song, RAM took about 9 s). **The Match loudness pill** is the Equalizer's 44 px one.
+- **His calls after the pill.** The wider song name rule, largest number, and a line for the exact
+  title (`listenCount`, LISTENERS.md §10.3). *Songs not measured get* and *Clear measurements* are gone,
+  and the Match loudness text is trimmed: SOUND.md § 11a-2. KISS, with the depth a click away.
+- **The listen pill, built** (`src/listen-pill.ts`, LISTENERS.md §10). `songForms`: both name forms asked, more plays wins (the probe: 57 of 120 songs read over 10× too low). `listen-pill.mjs` passes on the dev app. The break-it pass (three Sonnet agents) found: a cached single-form song paced as a call, offline pills never retried, the setting off during a fill, a narrow card keeping a hidden square's room, the drag ghost; all fixed. Left: the demo shows an empty Stats column; the pill's hint replaces the writers hint on the pill itself.
 - **An album in a grown Search card takes the columns** (his call; `grownRows`, CARD-GROW.md §9b).
   Not run on the dev app: another session was driving it. The desk test is his.
 - **An album's mark at the right end: tried and put back** (his eye: smushed; CARD-GROW.md §9b). Full |

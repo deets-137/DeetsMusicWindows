@@ -218,7 +218,6 @@ const SPECS: Spec[] = [
     set: (v) => setSetting("soundLoudTarget", Number(v), "agent"),
   }),
   storeToggle("Sound", "soundLoudAlbum", "Keep albums together"),
-  storeChoice("Sound", "soundLoudUnmeasured", "Songs not measured get", [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }]),
   // Adaptive sound is hidden (SOUND.md §11a, his call 2026-09-25: DevTools only). An agent sees
   // these specs only when the DevTools flag is set in this window.
   ...(adaptiveUnhidden()
@@ -346,6 +345,7 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "shuffleManual", "Shuffle keeps picks", [{ value: "top", label: "First" }, { value: "hold", label: "In place" }, { value: "mix", label: "Mixed" }]),
   storeToggle("Playback", "historyShowDay", "Show the day in History"),
   storeToggle("Playback", "showListeners", "Show play counts from Last.FM"),
+  storeChoice("Playback", "listenCount", "Count a song's plays by", [{ value: "largest", label: "Largest version" }, { value: "exact", label: "Exact title" }]),
   storeToggle("Playback", "showArtistInfo", "Show artist info on the artist's page"),
   storeToggle("Playback", "rememberArtistFilters", "Remember Artist filters"),
   storeToggle("Playback", "showAlbumInfo", "Show album info on the album's page"),

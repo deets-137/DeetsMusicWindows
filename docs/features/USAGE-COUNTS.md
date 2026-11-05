@@ -418,7 +418,7 @@ Where this record and the design above disagree, this record is the code.
   the admin queries and the cross-check ran on the stored rows.
 
 **The app:**
-- `src/usage-keys.ts`: `REPORTED` (168 keys with the card and room lists expanded, 2026-11-05) and
+- `src/usage-keys.ts`: `REPORTED` (169 keys with the card and room lists expanded, 2026-11-05) and
   `NOT_REPORTED` (`sunShift` and `usageReports`).
   `tests/usage-keys.test.ts` fails while a toggle
   or choice spec is on neither list, when a slider, time or size is on `REPORTED`, and when the

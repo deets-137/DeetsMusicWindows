@@ -42,6 +42,7 @@ import { expireArtistInfo, playCounts, type PlayCount } from "./artist-view";
 import { collectionPress } from "./collection-press";
 import { pinPress, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 import { addSquareHTML, markCellHTML } from "./add-square";
+import { listenPillHTML, listenPillsOn } from "./listen-pill";
 import { unreleasedHint } from "./release";
 import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey, fmtClock } from "./library-model";
 import { mediaLevels } from "./media-levels";
@@ -304,6 +305,8 @@ export interface SongOpts {
   /** A catalog list (the Full view, FULL-LIB.md): each line row ends in the Add square with
    *  the ✓ mark on a song you have, and an unreleased song is dimmed as in Search. */
   mark?: boolean;
+  /** Line rows show the song's Last.fm plays (LISTENERS.md §10). An album's always do. */
+  listen?: boolean;
 }
 
 // ── the columns of a grown card (CARD-GROW.md §9a) ──────────────────────────────
@@ -340,6 +343,7 @@ function songColumns(cols: ColumnMode, o: SongOpts, list: () => Track[]): Column
     );
     if (o.plays) specs.push({ key: "plays", label: "Plays", sortKey: "plays", width: "var(--grow-col-plays)", cls: END });
   }
+  if (o.numbered && listenPillsOn()) specs.push({ key: "stats", label: "Stats", width: "var(--grow-col-stats)", cls: END });
   return specs;
 }
 function songColsHTML(t: Track, idx: number, cols: ColumnMode, o: SongOpts): string {
@@ -364,6 +368,7 @@ function songColsHTML(t: Track, idx: number, cols: ColumnMode, o: SongOpts): str
       cells.push(`<span class="lib-row__cell lib-row__cell--end lib-row__plays">${n === undefined ? "" : n}</span>`);
     }
   }
+  if (o.numbered && listenPillsOn()) cells.push(`<span class="lib-row__cell lib-row__cell--end lib-row__stats">${listenPillHTML(t)}</span>`);
   const selected = !!o.selectedId && trackId(t) === o.selectedId;
   return dimUnreleased(`<div class="lib-row lib-row--art lib-row--cols${selected ? " is-selected" : ""}" data-idx="${idx}">${cells.join("")}</div>`, t, !!o.mark);
 }
@@ -406,7 +411,7 @@ export function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<T
               hideCover: o.hideCover,
               num: o.numbered && density === "lines" ? (t.trackNumber ?? idx + 1) : undefined,
               selected: !!o.selectedId && trackId(t) === o.selectedId,
-              badge: explicitBadge(t) + (o.mark && density === "lines" ? markSquare(t) : ""),
+              badge: explicitBadge(t) + (density !== "lines" ? "" : ((o.numbered || o.listen) ? listenPillHTML(t) : "") + (o.mark ? markSquare(t) : "")),
               cid: t.catalogId ?? "",
             }),
             t,

@@ -572,6 +572,10 @@
   --np-listen-edge:     color-mix(in srgb, var(--np-listen-ink) 18%, transparent); /* a faint rim: the chip holds its edge on a busy cover or the band */
   --np-listen-inset:    var(--space-2);  /* off the cover's bottom-right corner (Max) */
   --np-listen-gap:      var(--space-3);  /* the title block ↔ the badge (the full player) */
+  /* A song row's pill (LISTENERS.md §10): six characters, 210.4k, at the row's square height. */
+  --listen-pill-w:      calc(var(--fs-subtext) * 4.4);
+  --listen-pill-h:      var(--icon-lg);
+  --listen-slide:       calc(var(--dur-med) * 1.5); /* the + growing in and the pill moving aside */
   /* A cut-off title slides to its end while the pointer rests on it, at this many px a second. */
   --np-title-scroll-rate:  40;
   --np-title-scroll-delay: 350ms;
@@ -931,6 +935,7 @@
   --grow-col-heart:  2em;
   --grow-col-mark:   var(--icon-lg);   /* an album's mark column: one add-square (CARD-GROW.md §9b) */
   --grow-col-num-digit: 1ch;           /* an album's # column: one digit; the column is as many as its widest number */
+  --grow-col-stats:  var(--listen-pill-w); /* an album's Stats column: one pill */
   --grow-col-year:   3.4em;
   --grow-col-plays:  3.6em;
 

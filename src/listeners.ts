@@ -11,7 +11,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
 import { setting } from "./settings-store";
-import { albumForms } from "./lastfm-names";
+import { albumForms, songForms } from "./lastfm-names";
 
 export interface ListenCount {
   /** "have" — Last.fm knows the song. "none" — it does not. */
@@ -31,8 +31,18 @@ export interface ListenCount {
   fetchedAt: number;
 }
 
-/** The same key `play_stats` and the Plays column use: catalog first, then library. */
-const keyOf = (t: Track) => t.catalogId ?? t.libraryId ?? "";
+/** *Count a song's plays by* › Exact title (`listenCount`, LISTENERS.md §10.2). */
+const exactCount = (): boolean => setting("listenCount") === "exact";
+
+/** The same key `play_stats` and the Plays column use: catalog first, then library. An exact
+ *  count is another answer for the same song, so it is kept under its own key. */
+const keyOf = (t: Track) => {
+  const key = t.catalogId ?? t.libraryId ?? "";
+  return key && exactCount() ? `exact:${key}` : key;
+};
+
+/** The name forms to ask for a song, as the setting says. */
+export const askForms = (artist: string, title: string) => songForms(artist, title, exactCount());
 
 const held = new Map<string, Promise<ListenCount | null>>();
 
@@ -46,7 +56,7 @@ export function listenersFor(t: Track): Promise<ListenCount | null> {
   if (!key) return Promise.resolve(null);
   let p = held.get(key);
   if (!p) {
-    p = invoke<ListenCount | null>("lastfm_listeners", { trackId: key, artist: t.artistName ?? "", title: t.title })
+    p = invoke<ListenCount | null>("lastfm_listeners", { trackId: key, artist: t.artistName ?? "", title: t.title, forms: askForms(t.artistName ?? "", t.title) })
       .catch(() => {
         held.delete(key); // a miss is not an answer: ask again next time
         return null;
@@ -197,7 +207,7 @@ export function songInfoFor(t: Track): Promise<ListenCount | null> {
   const key = keyOf(t);
   if (!key || !setting("showSongInfo")) return Promise.resolve(null);
   return songs.ask(key, () =>
-    invoke<ListenCount | null>("lastfm_listeners", { trackId: key, artist: t.artistName ?? "", title: t.title, facts: true }),
+    invoke<ListenCount | null>("lastfm_listeners", { trackId: key, artist: t.artistName ?? "", title: t.title, facts: true, forms: askForms(t.artistName ?? "", t.title) }),
   );
 }
 
@@ -212,7 +222,7 @@ export function songInfoNow(t: Track): ListenCount | null | undefined {
  *  carries (`data-song`, `data-artist`, `data-title`), since the view holds no Track. */
 export async function songInfoFresh(key: string, artist: string, title: string, maxAgeMs: number): Promise<ListenCount | null> {
   if (!key || !setting("showSongInfo")) return null;
-  const v = await invoke<ListenCount | null>("lastfm_listeners", { trackId: key, artist, title, maxAgeMs, facts: true }).catch(() => null);
+  const v = await invoke<ListenCount | null>("lastfm_listeners", { trackId: key, artist, title, maxAgeMs, facts: true, forms: askForms(artist, title) }).catch(() => null);
   if (v) songs.keep(key, v);
   return v;
 }

@@ -252,7 +252,7 @@ overhangs a card edge during a turn; his look at Ocean and the Glass text after 
 
 His ask: a pill with the song's Last.fm plays at the end of an album or playlist song row, and in
 a Stats column after Year in an album's columns. It reuses the song's cached `track.getInfo`. In
-1.4 (his call, 2026-11-05). Designed, not built. Open: the number form,
+1.4 (his call, 2026-11-05). Built; desk test open (§10.4). Open: the number form,
 the slide time: [LISTENERS.md](features/LISTENERS.md) §10.3.
 
 ### Live, waiting on his test or his look

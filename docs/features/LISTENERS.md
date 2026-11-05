@@ -2,7 +2,7 @@
 status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
-sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts, src/media-levels.ts, src/present.ts, src/notes-order.ts, src/info-box-menu.ts]
+sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src/listen-pill.ts, src/lastfm-names.ts, docs/ops/checks/listen-pill.mjs, docs/ops/checks/song-forms-probe.mjs, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts, src/media-levels.ts, src/present.ts, src/notes-order.ts, src/info-box-menu.ts]
 updated: 2026-11-05
 ---
 # Listeners — how rare a song is, from Last.fm
@@ -821,7 +821,7 @@ Both scripts go in `docs/ops/checks/` (his ask, 2026-10-01), beside the probe of
 
 ## 10. A listen count on each song row of an album (idea for 1.4, 2026-11-03)
 
-> **Part:** designed · 2026-11-05 — not built. §10.2 is his design; §10.3 is what is still open.
+> **Part:** built · 2026-11-05 · desk test open (§10.4). §10.2 is his design; §10.3 is what is still open.
 
 **His ask (2026-11-03):** *"get the number of listens per song in the song row itself when the
 card is grown / has space to show it. So within an album, a user can get a feel for
@@ -887,12 +887,33 @@ same pill.
 An album's mark is closed: as it was, first column in the columns, right end in the plain row (his
 call 2026-11-05, after the right end looked smushed; CARD-GROW.md §9b). Stats is the last column.
 
-**Read 2026-11-05, live against Last.fm, for the name form.** Apple's artist text costs a song most
-of its count: *RAINING SUN* is 62 plays as *Leven Kali & Alissia*, 6,592 as *Leven Kali*; *pain for
-fun (feat. St. Vincent)* is 17,632, *pain for fun* 140,107. A plain form can also land on another
-song: *home* as *WILLOW* reads 109,571 from another album, 12,503 as *WILLOW & Jon Batiste*. So
-the rule needs more than "take the larger page".
+**The name form, closed by the probe (2026-11-05, `song-forms-probe.mjs`).** 778 of his 2,726
+played songs have Apple names that differ from the plain form. Of 120 asked: the plain page over
+10× larger 57, larger 31, smaller 29, only plain found 2, plain not found 1. Neither form wins alone:
+*Whethan / Superlove (feat. Oh Wonder)* is 528,214 and the plain page 1,503, while *Conor Albert &
+Max Pope / Sunflower* is 380 and the plain page 28,855. So Rust asks both, and the page with more
+plays wins (`songForms`, `lastfm_listeners`): two calls on such a song, once a month. A row kept
+before the forms is asked once more (`FORMS_SINCE_MS`). The cost left: a same-named song of the
+main artist can win (*home* as *WILLOW* reads 109,571 from another album).
+
+**The wider rule and the setting (his call, 2026-11-05).** "Add the wider song name rule and pick the
+largest number", with a line for who wants it exact. `songForms` also cuts an edition's words (remaster,
+deluxe, bonus track, album version, anniversary, explicit) and keeps a recording's (remix, mix, live, edit).
+A name that differs is asked three ways: plain with autocorrect off, plain with it on, Apple's. Up to 3
+calls on such a song, once a month, and the pill's pace counts them. *Count a song's plays by*
+(`listenCount`): **Largest version** / Exact title, which asks Apple's exact name with no correction.
+An exact count is kept under `exact:<id>`, so a flip does not mix the two. The album box keeps its own rule.
+
+**Versions, read live 2026-11-05.** A song page is its artist and title text, and the album is no part of it. Each title text is its own count: *Bohemian Rhapsody* 16.9M, *- Remastered 2011* 14.1M, *(Remastered 2011)* 199K. `autocorrect` can move a title to a smaller page: *Get Lucky* is 4.9M with it off, 1.8M with it on (*feat. Pharrell Williams*). An album page is its name: *Nevermind* 61.9M, *(Remastered)* 104.8M, *(Deluxe Edition)* 16.3M. Last.fm documents autocorrect and `track.getCorrection`, and nothing on versions.
 
 ### 10.4 Desk test
 
-Written when §10.3 is closed and the column is built.
+1. Open an album, normal size: each row ends in a pill of plays, in one straight line, the E before it.
+2. Grow the card wide, then Fill: the Stats column, last, holds the same pills. Search and Library.
+3. A playlist: hover a row. The + grows in and the pill and the title's end move left. Leave: back.
+4. The Full view with some ✓ and some +: the pills stay in line, the + only fades in.
+5. A new album: the pills fill in within seconds, nothing moves. Log: `lastfm: listeners for …`, about 4 a second at most. Reopen it: no new line.
+6. A list under 300 px wide: no pills. Settings › Playback › *Show play counts from Last.FM* off: pills and Stats go at once, no call.
+7. *RAINING SUN* (Leven Kali & Alissia) reads about 6.6k, not 62.
+
+Script: `node docs/ops/checks/listen-pill.mjs` (dev app; a playlist open for the slide).

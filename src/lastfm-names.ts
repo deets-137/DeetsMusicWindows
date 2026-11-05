@@ -35,6 +35,46 @@ export function albumForms(artist: string, album: string): Array<[string, string
   return spotify[0] === apple[0] && spotify[1] === apple[1] ? [apple] : [spotify, apple];
 }
 
+/** What Apple adds to a title that a scrobble may not carry: a featured artist, and the words of
+ *  an edition. A remix, a live take or an edit is another recording, so its tag stays. */
+const EDITION = String.raw`\b(?:remaster(?:ed)?|deluxe|bonus track|album version|anniversary|explicit)\b`;
+const KEEP = String.raw`\b(?:remix|mix|live|edit)\b`;
+const TITLE_EXTRA = new RegExp(
+  String.raw`\s*[([](?:feat\.?|ft\.?|featuring|with)\s[^)\]]*[)\]]` + // (feat. X)
+    String.raw`|\s*[([](?![^)\]]*${KEEP})[^)\]]*${EDITION}[^)\]]*[)\]]` + // (Remastered 2011)
+    String.raw`|\s+-\s+(?!.*${KEEP}).*${EDITION}.*$`, // - Remastered 2011
+  "gi",
+);
+
+/** An (artist, title, autocorrect) form: `autocorrect` can move a title to a smaller page. */
+export type SongForm = [string, string, boolean];
+
+/**
+ * The forms to ask Last.fm for a song. Rust asks each one and keeps the page with more plays
+ * (LISTENERS.md §10.2). A plain name that differs from Apple's: the plain form with autocorrect
+ * off (*Get Lucky* is 4.9M, 1.8M with it on), with it on, then Apple's names. Names that match:
+ * one form. `exact`: Apple's names alone, with no correction.
+ */
+export function songForms(artist: string, title: string, exact = false): SongForm[] {
+  const a = artist.trim();
+  const b = title.trim();
+  if (!a || !b) return [];
+  if (exact) return [[a, b, false]];
+  const main = mainArtist(a);
+  const plain = b.replace(TITLE_EXTRA, "").trim() || b;
+  return main === a && plain === b ? [[a, b, true]] : [[main, plain, false], [main, plain, true], [a, b, true]];
+}
+
+/** A count for a song row's pill (his form, 2026-11-05): 4976, 80.4k, 210.4k, 6M. Exact under
+ *  10,000; above, one decimal with ".0" dropped. A count that rounds up takes the next unit. */
+export function pillCount(n: number): string {
+  const unit = (v: number, s: string) => `${Math.round(v * 10) / 10}${s}`;
+  if (n >= 999_950_000) return unit(n / 1_000_000_000, "B");
+  if (n >= 999_950) return unit(n / 1_000_000, "M");
+  if (n >= 10_000) return unit(n / 1_000, "k");
+  return String(n);
+}
+
 const ENTITIES: Record<string, string> = {
   amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'",
   // The named ones a Last.fm wiki uses beyond those (2026-10-17: `&eacute;` showed as text).

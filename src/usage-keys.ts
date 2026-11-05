@@ -30,7 +30,7 @@ export const REPORTED: readonly string[] = [
   "compassCloseAway", "menuMode", "toasts", "hoverHints", "hoverHintDelay", "hoverSongNames", "goToTarget",
   // Sound (soundEqPreset: a built-in's id, or "user" for one the user named)
   "soundEq", "soundEqPreset", "soundEqMode", "soundEqPreamp", "soundEqPerOutput", "soundAdaptive",
-  "soundMatch", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol",
+  "soundMatch", "soundLoudTarget", "soundLoudAlbum", "soundLowVol",
   "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays",
   // Rooms
   ...ROOM_GUEST_CONTROLS.map((c) => `roomGuests.${c}`),
@@ -43,7 +43,7 @@ export const REPORTED: readonly string[] = [
   "pressVinyl", "pressVinylWhere", "pressVinylSpeed", "pressVinylPlate", "pressVinylFps", "albumWave",
   // Playback
   "streamQuality", "playNowScope", "pinNewAct", "dropPlayQueue", "playerWheelVolume", "previousReach", "restoreQueue",
-  "listEndWeb", "shuffleStays", "shuffleOff", "shuffleManual", "historyShowDay", "showListeners",
+  "listEndWeb", "shuffleStays", "shuffleOff", "shuffleManual", "historyShowDay", "showListeners", "listenCount",
   "showArtistInfo", "showAlbumInfo", "showSongInfo", "notesSource", "shuffleIdle",
   "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue",
   // The 1.4 rows (his call 2026-11-05): let go after a pause, the clicks on a collection and a tile

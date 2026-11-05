@@ -920,6 +920,12 @@ No Settings row yet. Stop here for the ear test.
 an interlude. A playlist that jumps between them. Compare `until` with `always`, with Forget
 measurements first so songs have no row. He picks the values, and cap-only against cap-then-fixed.
 
+**Done ahead of step 5 (his call, 2026-11-05: "keep it stupid simple", with the depth a click away).**
+The panel lost *Songs not measured get* (the key `soundLoudUnmeasured` is gone; a release with the cap
+off takes the usual amount) and *Clear measurements* (`__cap.forget()` is the ear test's way now). The
+line says only what the song's gain is, the *(N of M songs measured)* text and the progress went, and
+the fold's text was rewritten. The progress tick stays: a capped song's gain moves while it plays.
+
 **Step 5: after the ear test.**
 - **The panel:** `loudLine()` loses `heard`, and the *(N of M songs measured)* text.
   `renderLoudStatus()` no longer needs the progress tick. New line for `capped`. Off line and the fold's
@@ -938,7 +944,7 @@ measurements first so songs have no row. He picks the values, and cap-only again
 - **Before it ships:** the §7.3 heaviness check, on against off.
 
 **Desk test (after step 5).**
-1. Clear measurements. Play a loud song with no row: it settles near the target with no audible pump.
+1. `__cap.forget()`. Play a loud song with no row: it settles near the target with no audible pump.
 2. Play a quiet song with no row: it stays down for 20 s, then rises slowly to the target.
 3. Finish a song and play it again: a fixed gain from the first sample, no cap (`sound:match`).
 4. A first play of an album from Search: no gain change during songs 2 onward; a quiet song stays quiet.

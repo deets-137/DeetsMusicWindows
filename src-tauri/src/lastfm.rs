@@ -15,6 +15,7 @@
 //! in `<app_data>/lastfm-session.json` and never reaches the renderer or the log.
 
 use crate::lock::LockExt;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -737,6 +738,8 @@ async fn run_flush(app: &AppHandle) {
 /// How long a cached count stands before the next read asks Last.fm again. Listener counts
 /// move slowly; a month keeps a library of a few thousand songs at a few calls a day.
 const LISTENERS_TTL_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+/// 2026-11-06 00:00 UTC: a song's count from before this was asked under Apple's names alone.
+const FORMS_SINCE_MS: i64 = 1_793_923_200_000;
 /// The shortest age a caller may ask for (`max_age_ms`): presentation mode re-reads the counts
 /// while it is open (PresentationMode.md), and this floor keeps a bug from asking Last.fm in a
 /// loop.
@@ -860,10 +863,10 @@ fn wiki_of(v: &serde_json::Value) -> Option<String> {
 
 /// `track.getInfo` with `autocorrect=1`, so "Beyoncé" and "Beyonce" land on one page. The
 /// signed POST `call` is reused: Last.fm ignores `api_sig` on a method that needs none.
-async fn fetch_count(artist: &str, title: &str) -> Result<ListenCount, CallError> {
+async fn fetch_count(artist: &str, title: &str, autocorrect: bool) -> Result<ListenCount, CallError> {
     let json = call(
         "track.getInfo",
-        vec![("artist".into(), artist.into()), ("track".into(), title.into()), ("autocorrect".into(), "1".into())],
+        vec![("artist".into(), artist.into()), ("track".into(), title.into()), ("autocorrect".into(), if autocorrect { "1" } else { "0" }.into())],
     )
     .await?;
     let t = &json["track"];
@@ -884,6 +887,10 @@ async fn fetch_count(artist: &str, title: &str) -> Result<ListenCount, CallError
 /// to ask with. A network failure is an `Err` and caches nothing, so the next open tries again.
 /// `max_age_ms`: a shorter age for the cached row (presentation mode). `facts`: the caller
 /// draws the song facts box (§8), so a known song kept before its tags were is asked again.
+/// `forms`: the (artist, title, autocorrect) forms to ask (`songForms`). All are asked and the
+/// page with more plays wins: Apple's "A & B" misses most of a song's plays, and a main artist
+/// cut from "Simon & Garfunkel" finds little (LISTENERS.md §10.2). A row kept before the forms
+/// is asked once more.
 #[tauri::command]
 pub async fn lastfm_listeners(
     track_id: String,
@@ -891,6 +898,7 @@ pub async fn lastfm_listeners(
     title: String,
     max_age_ms: Option<i64>,
     facts: Option<bool>,
+    forms: Option<Vec<(String, String, bool)>>,
     app: AppHandle,
 ) -> Result<Option<ListenCount>, String> {
     if API_KEY.is_none() || track_id.is_empty() {
@@ -901,25 +909,36 @@ pub async fn lastfm_listeners(
     if artist.is_empty() || title.is_empty() {
         return Ok(None);
     }
+    let mut forms: Vec<(String, String, bool)> = forms
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(a, b, c)| (a.trim().to_string(), b.trim().to_string(), c))
+        .filter(|(a, b, _)| !a.is_empty() && !b.is_empty())
+        .collect();
+    if forms.is_empty() {
+        forms.push((artist, title, true));
+    }
     let id = track_id.clone();
     let hit = crate::db_thread::run(&app, move |db| Ok(cached_count(&db.lock(), &id))).await?;
     if let Some(c) = hit {
         let unfed = facts == Some(true) && c.state == "have" && c.tags.is_none();
-        if now_ms() - c.fetched_at < max_age(max_age_ms) && !unfed {
+        let old_form = forms.len() > 1 && c.fetched_at < FORMS_SINCE_MS;
+        if now_ms() - c.fetched_at < max_age(max_age_ms) && !unfed && !old_form {
             return Ok(Some(c));
         }
     }
-    let count = match fetch_count(&artist, &title).await {
-        Ok(c) => c,
-        // Track not found: an answer, cached like one.
-        Err(CallError::Api(6, _)) => {
-            ListenCount { state: "none", listeners: 0, playcount: 0, url: None, tags: None, wiki: None, fetched_at: now_ms() }
+    // Track not found: an answer, cached like one.
+    let mut count = ListenCount { state: "none", listeners: 0, playcount: 0, url: None, tags: None, wiki: None, fetched_at: now_ms() };
+    for (a, b, autocorrect) in &forms {
+        match fetch_count(a, b, *autocorrect).await {
+            Ok(c) if count.state == "none" || c.playcount > count.playcount => count = c,
+            Ok(_) | Err(CallError::Api(6, _)) => {}
+            Err(e) => {
+                crate::log::warn(&format!("lastfm: listeners for {track_id} failed ({e})"));
+                return Err(e.to_string());
+            }
         }
-        Err(e) => {
-            crate::log::warn(&format!("lastfm: listeners for {track_id} failed ({e})"));
-            return Err(e.to_string());
-        }
-    };
+    }
     crate::log::info(&format!(
         "lastfm: listeners for {track_id}: {} ({} listeners, {} plays)",
         count.state, count.listeners, count.playcount
@@ -932,6 +951,44 @@ pub async fn lastfm_listeners(
     })
     .await?;
     Ok(Some(count))
+}
+
+/// A song row's pill (LISTENERS.md §10): the kept counts of many songs in one read, no call.
+#[derive(Serialize)]
+pub struct KeptCount {
+    state: String,
+    listeners: i64,
+    playcount: i64,
+}
+
+/// The kept counts for these ids, inside the month. `two_forms`: the ids with two name forms, whose
+/// row must also be newer than the forms. A song not in the answer goes through `lastfm_listeners`.
+#[tauri::command]
+pub async fn lastfm_listen_counts(ids: Vec<String>, two_forms: Vec<String>, app: AppHandle) -> Result<HashMap<String, KeptCount>, String> {
+    let month = now_ms() - LISTENERS_TTL_MS;
+    let two_forms: std::collections::HashSet<String> = two_forms.into_iter().collect();
+    crate::db_thread::run(&app, move |db| {
+        let conn = db.lock();
+        let mut read = conn
+            .prepare_cached("SELECT state, listeners, playcount FROM listen_counts WHERE track_id = ?1 AND fetched_at >= ?2")
+            .map_err(|e| e.to_string())?;
+        let mut out = HashMap::new();
+        for id in ids {
+            let since = if two_forms.contains(&id) { month.max(FORMS_SINCE_MS) } else { month };
+            let row = read.query_row(rusqlite::params![id, since], |r| {
+                Ok(KeptCount {
+                    state: r.get(0)?,
+                    listeners: r.get::<_, Option<i64>>(1)?.unwrap_or(0),
+                    playcount: r.get::<_, Option<i64>>(2)?.unwrap_or(0),
+                })
+            });
+            if let Ok(c) = row {
+                out.insert(id, c);
+            }
+        }
+        Ok(out)
+    })
+    .await
 }
 
 // ── artist facts (LISTENERS.md §6) ──────────────────────────────────────────

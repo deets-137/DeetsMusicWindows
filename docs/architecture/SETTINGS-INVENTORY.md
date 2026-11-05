@@ -105,8 +105,6 @@ Settings › Sound, except the curve, the presets and the two Clear actions.
 | Match loudness | Under the Equalizer (SOUND.md § 11a-1). Plays every song at about the same loudness. A song is measured the first time you hear most of it | on / **off** |
 | Match songs to | In *How Match loudness decides*. How loud songs are made. Standard is Apple's Sound Check level | Standard / **Louder** / Quieter |
 | Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
-| Songs not measured get | A song is measured the first time you hear it | **Usual amount** / No change |
-| Clear measurements | Deletes every song's loudness measurement | — |
 
 **Adaptive sound tab** — hidden since 2026-09-25 (SOUND.md §11a): only a DevTools flag shows it.
 
@@ -335,7 +333,8 @@ Each group shows only while its skin is the one you are using.
 | Shuffle keeps picks | Where songs you queued by hand land | **First** / In place / Mixed |
 | Shuffle with nothing currently playing behavior | Shuffle with nothing playing | **Library** / Nothing |
 | Show the day in History | Each History row says Today, Yesterday or the date | on / **off** |
-| Show play counts from Last.FM | Now Playing wears a badge with the song's Last.fm plays and listeners: both in the full player, plays on the Max card. A click opens the song's Last.fm page. Off: Last.fm is not asked | **on** / off |
+| Show play counts from Last.FM | Now Playing wears a badge with the song's Last.fm plays and listeners: both in the full player, plays on the Max card. A click opens the song's Last.fm page. The song rows of albums and playlists wear a pill with the plays. Off: Last.fm is not asked | **on** / off |
+| Count a song's plays by | Last.fm counts each version of a title apart. Shown while the row above is on | **Largest version** / Exact title |
 | Show artist info on the artist's page | An artist's page shows a box beside the photo: Last.fm's tags, the artist's plays and listeners, On tour, and a Last.fm link. On a narrow card the box folds under an *Artist Info* line. Off: Last.fm is not asked | **on** / off |
 | Remember Artist filters | The pill on a Full artist page's Albums shelf shows all releases, or only albums, singles and EPs, live albums or compilations. On: the pick stays the same on the next artist (an artist with none of that kind shows All). Off: every artist page opens on All | **on** / off |
 | Show album info on the album's page | An album's page shows a box beside the cover: Last.fm's tags, the album's plays and listeners, an About (Apple Music's short note on the album, else the first two sentences of its Last.fm wiki, by *Notes from*), and a Last.fm link. When Apple has a full note, a click on the About opens it. On a narrow card the box folds under an *Album Info* line. A right-click on the box can turn this off. Off: neither Last.fm nor Apple's notes are asked | **on** / off |
@@ -363,7 +362,6 @@ are not listening — and because Ctrl+Space can only reach a setting the card h
 | Match loudness | Plays every song at about the same loudness. A song is measured the first time you hear most of it | on / **off** |
 | Match songs to | How loud songs are made. Standard is Apple's Sound Check level | Standard / **Louder** / Quieter |
 | Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
-| Songs not measured get | A song is measured the first time you hear it | **Usual amount** / No change |
 
 **Adaptive sound** — hidden since 2026-09-25 (SOUND.md §11a): only a DevTools flag shows these rows.
 

@@ -34,6 +34,7 @@ import { pinPress, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } fro
 import { sortByOrder, isRanked, moveTo, onRowOrderChange, sectionsMovable, holdMs, sectionAt } from "./row-order";
 import { musicCell, explicitBadge, heroCover } from "./library-card";
 import { addSquareHTML } from "./add-square";
+import { listenPillHTML } from "./listen-pill";
 import { onGrowChange } from "./card-grow";
 import { openContextMenuUnder, menuState, MENU_CHOSEN, type MenuItem } from "./context-menu";
 import { appleMusicItem } from "./playlist-export";
@@ -388,7 +389,7 @@ export const playlistsCard: CardDef = {
         // Lines view carries the Add-to-Library square at the row's end (add-square.ts); a tile has no room.
         render: (t, density, idx) =>
           musicCell(density, idx, t.artwork, t.title, t.artistName, {
-            badge: explicitBadge(t) + (density === "lines" ? addSquareHTML(t, "add-square--row") : ""),
+            badge: explicitBadge(t) + (density === "lines" ? listenPillHTML(t) + addSquareHTML(t, "add-square--row") : ""),
             cid: t.catalogId ?? "",
           }),
         nowMark: { context: ctxTag, ids: (t) => [t.catalogId, t.libraryId] },

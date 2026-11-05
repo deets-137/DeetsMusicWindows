@@ -2,7 +2,7 @@
 // (LISTENERS.md §7; probed live 2026-10-12).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { albumForms, mainArtist, noteText, stripReleaseSuffix, wikiSentences, wikiText } from "../src/lastfm-names.ts";
+import { albumForms, mainArtist, noteText, pillCount, songForms, stripReleaseSuffix, wikiSentences, wikiText } from "../src/lastfm-names.ts";
 
 test("Apple's release suffix comes off", () => {
   assert.equal(stripReleaseSuffix("THREAD 27 - EP"), "THREAD 27");
@@ -78,4 +78,50 @@ test("a stub wiki (only the Read more link) is no note (2026-10-17)", () => {
   assert.equal(noteText(""), undefined);
   assert.equal(noteText(undefined), undefined);
   assert.equal(noteText("A song. <a href=\"x\">Read more on Last.fm</a>"), "A song.");
+});
+
+test("a song's forms: the plain form, then Apple's (2026-11-05)", () => {
+  assert.deepEqual(songForms("Leven Kali & Alissia", "RAINING SUN"), [["Leven Kali", "RAINING SUN", false], ["Leven Kali", "RAINING SUN", true], ["Leven Kali & Alissia", "RAINING SUN", true]]);
+  assert.deepEqual(songForms("WILLOW", "pain for fun (feat. St. Vincent)")[0], ["WILLOW", "pain for fun", false]);
+  assert.deepEqual(songForms("Rahill", "Song [feat. Beck]")[0], ["Rahill", "Song", false]);
+  assert.deepEqual(songForms("SZA", "Kill Bill"), [["SZA", "Kill Bill", true]]);
+  assert.deepEqual(songForms("SZA", "(with you)"), [["SZA", "(with you)", true]]); // a title that is only the extra stays
+  assert.deepEqual(songForms("", "Kill Bill"), []);
+});
+
+test("the pill's number: his four examples, and the edges (2026-11-05)", () => {
+  assert.equal(pillCount(4976), "4976");
+  assert.equal(pillCount(80_000), "80k");
+  assert.equal(pillCount(210_400), "210.4k");
+  assert.equal(pillCount(6_000_000), "6M");
+  assert.equal(pillCount(9_999), "9999");
+  assert.equal(pillCount(10_000), "10k");
+  assert.equal(pillCount(80_440), "80.4k");
+  assert.equal(pillCount(999_949), "999.9k");
+  assert.equal(pillCount(999_950), "1M"); // never "1000k"
+  assert.equal(pillCount(6_440_000), "6.4M");
+  assert.equal(pillCount(999_950_000), "1B");
+});
+
+// Plain title of each form, the first of the three.
+const plainTitle = (t: string) => songForms("Queen", t)[0][1];
+
+test("an edition's words come off a title, a recording's stay (2026-11-05)", () => {
+  assert.equal(plainTitle("Bohemian Rhapsody (Remastered 2011)"), "Bohemian Rhapsody");
+  assert.equal(plainTitle("Bohemian Rhapsody - Remastered 2011"), "Bohemian Rhapsody");
+  assert.equal(plainTitle("Dreams (2004 Remaster)"), "Dreams");
+  assert.equal(plainTitle("Song - 2021 Remaster"), "Song");
+  assert.equal(plainTitle("Song (Deluxe Edition)"), "Song");
+  assert.equal(plainTitle("Song (Bonus Track)"), "Song");
+  assert.equal(plainTitle("Song [Explicit]"), "Song");
+  assert.equal(plainTitle("Song (30th Anniversary Edition)"), "Song");
+  assert.equal(plainTitle("Get Lucky (Daft Punk Remix)"), "Get Lucky (Daft Punk Remix)");
+  assert.equal(plainTitle("Song (Live at Wembley) "), "Song (Live at Wembley)");
+  assert.equal(plainTitle("Song (Radio Edit)"), "Song (Radio Edit)");
+  assert.equal(plainTitle("Song - Remastered Live"), "Song - Remastered Live");
+  assert.equal(plainTitle("Song (Remastered Remix)"), "Song (Remastered Remix)");
+});
+
+test("Exact title asks Apple's names alone, with no correction (2026-11-05)", () => {
+  assert.deepEqual(songForms("A & B", "Song (feat. C)", true), [["A & B", "Song (feat. C)", false]]);
 });

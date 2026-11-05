@@ -242,6 +242,7 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.3.1", section: "Window", row: "maxstageside" }, // Now Playing and Queue in Max, built 2026-11-02 (MAX-CARDS.md §13)
   { since: "1.3.1", section: "Window", row: "fpqueueside" }, // Queue in the full player, built 2026-11-02 (fullscreen-player.md §18.2)
   { since: "1.3.0", section: "Playlists", row: "newcover" }, // New cover, from 0.14: shown again beside the Later list, which starts with it (his call 2026-11-01, LISTEN-LATER.md §2.2)
+  { since: "1.4.0", section: "Playback", row: "listencount" }, // Count a song's plays by, built 2026-11-05 (LISTENERS.md §10.2)
   { since: "1.4.0", section: "Playback", row: "releasepause" }, // Let go of Apple after a pause, built 2026-11-03 (QUEUE.md § Let go after a pause)
   { since: "1.4.0", section: "Sound", row: "soundmatch" }, // Match loudness, back on its own, built 2026-11-04 (SOUND.md § 11a-1)
   { since: "1.4.0", section: "Home", row: "tileclick" }, // Click and double-click on a tile, built 2026-11-04 (HOME.md §11)
@@ -526,7 +527,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, the sides of Now Playing and the Queue in Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "maxStageSide", "fpQueueSide", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "releaseAfterPause", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "pinNewDouble", "collectionClick", "collectionDouble", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
+    keys: ["listenCount", "streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "releaseAfterPause", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "pinNewDouble", "collectionClick", "collectionDouble", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -542,7 +543,7 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   {
     id: "sound", label: "Sound", hint: adaptiveUnhidden() ? "The equalizer, adaptive sound and their choices. Not your saved presets" : "The equalizer and its choices. Not your saved presets",
-    keys: ["soundEq", "soundEqPreset", "soundEqCustom", "soundEqMode", "soundEqPreamp", "soundEqPreampDb", "soundEqPerOutput", "soundEqOutputs", "soundMatch", "soundAdaptive", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol", "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays"],
+    keys: ["soundEq", "soundEqPreset", "soundEqCustom", "soundEqMode", "soundEqPreamp", "soundEqPreampDb", "soundEqPerOutput", "soundEqOutputs", "soundMatch", "soundAdaptive", "soundLoudTarget", "soundLoudAlbum", "soundLowVol", "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays"],
   },
   { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
   { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "tileClick", "tileDouble", "tilePressWait", "homeHideLasts", "homeHidden"] },
@@ -1811,7 +1812,13 @@ function mountSettings(
         },
         storeToggle("historyday", "Show the day in History", "historyShowDay", () => "Each row says Today, Yesterday or the date, next to the artist"),
         // The Last.fm counts badge (LISTENERS.md §4; his calls 2026-10-12: Playback, on by default).
-        storeToggle("listeners", "Show play counts from Last.FM", "showListeners", () => "Now Playing shows how many plays and listeners a song has on Last.fm. Off: Last.fm is not asked"),
+        storeToggle("listeners", "Show play counts from Last.FM", "showListeners", () => "Now Playing and the song rows of albums and playlists show how many plays a song has on Last.fm. Off: Last.fm is not asked"),
+        {
+          kind: "choice", id: "listencount", label: "Count a song's plays by", key: "listenCount",
+          hint: "Last.fm counts each version of a title apart. Largest version shows the highest count. Exact title shows the count for Apple's exact name",
+          options: [{ value: "largest", label: "Largest version" }, { value: "exact", label: "Exact title" }],
+          when: () => setting("showListeners"),
+        },
         // The artist facts box (LISTENERS.md §6; his calls 2026-10-12: its own row, on by default).
         storeToggle("artistinfo", "Show artist info on the artist's page", "showArtistInfo", () => "The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked"),
         storeToggle("artistfilters", "Remember Artist filters", "rememberArtistFilters", () => "The filter on an artist's Albums shelf stays the same on the next artist. Off: every artist opens on All"),
@@ -1883,11 +1890,6 @@ function mountSettings(
           options: [{ value: "-16", label: "Standard" }, { value: "-14", label: "Louder" }, { value: "-18", label: "Quieter" }],
         },
         storeToggle("loudalbum", "Keep albums together", "soundLoudAlbum", () => "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet"),
-        {
-          kind: "choice", id: "loudunmeasured", label: "Songs not measured get", key: "soundLoudUnmeasured",
-          hint: "A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is",
-          options: [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }],
-        },
         // Adaptive sound is hidden (SOUND.md §11a): these rows show only with the DevTools flag.
         { ...headRow("g-adaptive", "Adaptive sound"), when: adaptiveUnhidden },
         {

@@ -286,6 +286,7 @@ export function makeGhost(row: HTMLElement, p: DragPayload | undefined): { root:
   const r = row.getBoundingClientRect();
   const ghost = row.cloneNode(true) as HTMLElement;
   ghost.classList.remove("is-context", "is-selected", "is-drag-source", "is-drop-target");
+  ghost.querySelector(".listen-pill")?.remove(); // a copy on <body>: no list width, no hover to lay it out
   ghost.classList.add("drag-ghost");
   ghost.removeAttribute("id");
   ghost.removeAttribute("tabindex");

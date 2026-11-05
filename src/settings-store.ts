@@ -290,7 +290,6 @@ export interface Settings {
   /** Part A: an album played in order keeps one gain, so its quiet songs stay quiet. */
   soundLoudAlbum: boolean;
   /** Part A: a song never measured gets the library's median gain, or none. */
-  soundLoudUnmeasured: "median" | "none";
   /** Part B: Fuller at low volume, and how much. */
   soundLowVol: "off" | "gentle" | "full";
   /** Part B keys on the app slider × the Windows master volume, or the app slider only. */
@@ -328,6 +327,7 @@ export interface Settings {
   /** Now Playing shows the song's Last.fm counts on a badge: plays and listeners in the full
    *  player, plays on the Max card (LISTENERS.md §4). Off: no Last.fm call is made. */
   showListeners: boolean;
+  listenCount: "largest" | "exact";
   /** An artist's page shows the Last.fm facts box beside the photo: tags, plays and listeners,
    *  on tour, the Last.fm link (LISTENERS.md §6). Off: no artist call is made. */
   showArtistInfo: boolean;
@@ -697,7 +697,6 @@ export const DEFAULTS: Settings = {
   soundMatch: false, // his call 2026-11-04: back on its own, and off like every effect. A new key: `soundAdaptive` and the old `soundLoudness` hold choices made before the 2026-09-25 hide, and neither may turn it on with no word
   soundLoudTarget: -14, // user's call 2026-09-18: the level streaming services use; at −16 a library of modern masters (−8 to −10 LUFS) was a 6–8 dB cut on nearly everything (it was −16, Apple Sound Check's level, from 2026-09-16)
   soundLoudAlbum: true, // user's call 2026-09-16: an album keeps its own dynamics
-  soundLoudUnmeasured: "median", // user's call 2026-09-16
   soundLowVol: "gentle", // half the ISO 226 boost: noticeable, never boomy
   soundLowVolKey: "both", // user's call 2026-09-16: app slider × Windows master
   soundCrossfeed: "auto", // user's call 2026-09-16: on for headphones only
@@ -712,6 +711,7 @@ export const DEFAULTS: Settings = {
   playNowScope: "list", // user's call 2026-09-10: Play Now = the song, then the rest of its list
   historyShowDay: false, // user's call 2026-09-15: History looks as it always did until you ask
   showListeners: true, // his call 2026-10-12: the badge shows for everyone; one Last.fm call per song, cached a month
+  listenCount: "largest", // his call 2026-11-05: Last.fm counts each title text apart, so a song reads its largest page; Exact title is there for who wants the one page
   showArtistInfo: true, // his call 2026-10-12: on for everyone, its own row (not the badge's); one Last.fm call per artist, cached a month
   rememberArtistFilters: true, // his call 2026-10-27: someone who picks Albums wants it on every artist; the pill always names the pick
   showAlbumInfo: true, // 2026-10-13: its own row (his call), on like the artist's; one or two Last.fm calls per album, cached a month

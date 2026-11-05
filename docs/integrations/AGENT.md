@@ -390,8 +390,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   PLAYLIST-WEB.md §12): `listEndWeb` (On | Off, default On). On: a list that ends with Repeat off
   plays a temporary web (1 day) made from it. Off: the list waits at its first song, paused.
 - **Playback › Show play counts from Last.FM** (2026-10-12, LISTENERS.md §4): `showListeners` (On | Off,
-  default On). On: Now Playing wears the song's Last.fm plays and listeners on a badge. Off: no
-  Last.fm call is made.
+  default On). On: Now Playing wears the song's Last.fm plays and listeners on a badge, and album
+  and playlist song rows a pill of plays. Off: no
+  Last.fm call is made. `listenCount` "Count a song's plays by" (Largest version | Exact title).
 - **Playback › Show artist info on the artist's page** (2026-10-12, LISTENERS.md §6):
   `showArtistInfo` (On | Off, default On). On: an artist's page shows Last.fm's tags, plays and
   listeners, On tour and a link beside the photo. Off: no Last.fm artist call is made.
@@ -461,8 +462,7 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   Flat, Bass lift, Vocal, Treble lift, Warm, Late night, Custom, or a saved one), `soundEqMode`
   (Sliders | Dots), `soundEqPreamp` "Avoid distortion" (Limiter only | When needed | Always | By hand), `soundEqPerOutput`
   "Remember each output", `soundLoudTarget` "Match songs to" (Standard −16 | Louder −14 |
-  Quieter −18 LUFS), `soundLoudAlbum` "Keep albums together", `soundLoudUnmeasured` "Songs not measured
-  yet" (Usual amount | No change), and — only with the Adaptive sound flag (above) — `soundLowVol` (Off | Gentle | Full), `soundLowVolKey` "Follow the
+  Quieter −18 LUFS), `soundLoudAlbum` "Keep albums together", and — only with the Adaptive sound flag (above) — `soundLowVol` (Off | Gentle | Full), `soundLowVolKey` "Follow the
   volume of" (App + Windows | App only),
   `soundCrossfeed` (Auto | Always | Off), `soundCrossfeedLevel` (Light | Medium | Strong),
   `soundReviewDays` (7 | 14 | 3 days | Never). The bands themselves are not an agent value.

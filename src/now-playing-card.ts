@@ -445,7 +445,7 @@ export const nowPlayingCard: CardDef = {
     listenMeta?.addEventListener("click", openListen);
     const unsubListenState = onPlayerState(refreshListen);
     const unsubListenSetting = onSettingsChange((k) => {
-      if (k !== "showListeners") return;
+      if (k !== "showListeners" && k !== "listenCount") return;
       listenKey = "\0"; // never a real key: the next refresh repaints
       refreshListen();
     });

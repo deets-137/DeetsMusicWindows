@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 73 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 846 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 850 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -595,6 +595,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--np-listen-edge` | `color-mix(in srgb, var(--np-listen-ink) 18%, transparent)` | — | a faint rim: the chip holds its edge on a busy cover or the band |
 | `--np-listen-inset` | `var(--space-2)` | — | off the cover's bottom-right corner (Max) |
 | `--np-listen-gap` | `var(--space-3)` | — | the title block ↔ the badge (the full player) |
+| `--listen-pill-w` | `calc(var(--fs-subtext) * 4.4)` | — | A song row's pill (LISTENERS.md §10): six characters, 210.4k, at the row's square height. |
+| `--listen-pill-h` | `var(--icon-lg)` | — |  |
+| `--listen-slide` | `calc(var(--dur-med) * 1.5)` | — | the + growing in and the pill moving aside |
 | `--np-title-scroll-rate` | `40` | — | A cut-off title slides to its end while the pointer rests on it, at this many px a second. |
 | `--np-title-scroll-delay` | `350ms` | — |  |
 | `--np-title-scroll-back` | `var(--dur-med)` | — | the way back when the pointer leaves: quick, never the slide's time |
@@ -881,6 +884,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--grow-col-heart` | `2em` | — |  |
 | `--grow-col-mark` | `var(--icon-lg)` | — | an album's mark column: one add-square (CARD-GROW.md §9b) |
 | `--grow-col-num-digit` | `1ch` | — | an album's # column: one digit; the column is as many as its widest number |
+| `--grow-col-stats` | `var(--listen-pill-w)` | — | an album's Stats column: one pill |
 | `--grow-col-year` | `3.4em` | — |  |
 | `--grow-col-plays` | `3.6em` | — |  |
 | `--player-dur` | `var(--grow-dur)` | press, ocean, glass, cyber | -- full player (full-player.ts, features/fullscreen-player.md §9.4, §12) -- Now Playing grows so the cover is as large as the window allows. The cover flies from its rest place to its full place while a clip opens the card; the rows and the band come in at --player-rows-at of the open. Each skin restates the four motion values in its own block (his call, 2026-10-02): the grow's values in the first version, so a skin can get its own shape later as a change of values. --player-art-wait: how long the open waits for the large cover file to decode before it flies with what it has. --full-wide-w: a card at least this much wider than tall is WIDE: the controls sit under the cover, which gives up their height (his call, 2026-10-11: no column beside the cover). A card that is not wide has them under the cover only when the space there holds them, else OVER it on the band. A resize that moves them slides them in --player-dur. --np-band-strength: how opaque the band under the rows is. |
@@ -1189,6 +1193,7 @@ reader is a token nothing uses.
 | `--ocean-ripple-dur` | `3.4s` | — | styles.css |
 | `--ocean-ripple-gap` | `0.35s` | — | ocean.ts |
 | `--ocean-ripple-ease` | `cubic-bezier(0.2, 0.6, 0.35, 1)` | — | styles.css |
+| `--listen-slide` | `calc(var(--dur-med) * 1.5)` | — | styles.css |
 | `--np-title-scroll-delay` | `350ms` | — | styles.css |
 | `--np-title-scroll-back` | `var(--dur-med)` | — | styles.css |
 | `--vinyl-swap-dur` | `0.4s` | press, metal | metal.ts, pet.ts, vinyl.ts |

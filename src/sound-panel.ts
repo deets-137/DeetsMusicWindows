@@ -188,7 +188,7 @@ export function initSoundPanel(): void {
   loudness.onLoudnessChange(() => {
     if (!panel.hidden) renderStatus();
   });
-  // The listen's own progress: the only part of the status that moves between songs.
+  // A capped song's gain: the only part of the status that moves during a song.
   onPlayerProgress(() => renderLoudStatus());
   // A new song starts a new shape.
   let songKey = "";
@@ -527,28 +527,17 @@ function build(panel: HTMLElement): void {
   const loud = cyclePill("soundMatch", [true, false], ["On", "Off"], "Plays every song at about the same loudness, so you do not reach for the volume between songs");
   syncs.push(loud.sync);
   loudStatus = el("div", "sound__status");
-  eqView.append(partRow("Match loudness", loudStatus, loud.btn));
-  eqView.append(foldButton("How Match loudness decides", "Shows how a song is measured and the settings that change it", () => loudFoldBody));
+  // In a row end, as the Equalizer's: the 44 px On / Off pill, not the Adaptive column's wider one.
+  const loudEnd = el("div", "sound__row-end");
+  loudEnd.append(loud.btn);
+  eqView.append(partRow("Match loudness", loudStatus, loudEnd));
+  eqView.append(foldButton("How Match loudness decides", "Shows how it works and the settings that change it", () => loudFoldBody));
   loudFoldBody = el("div", "sound__fold");
   loudWhy = el("div", "sound__why");
   const target = cyclePill("soundLoudTarget", [-16, -14, -18], ["Standard", "Louder", "Quieter"], "How loud songs are made: Standard is Apple's Sound Check level (−16 LUFS), Louder is −14 LUFS, Quieter is −18 LUFS");
   const album = cyclePill("soundLoudAlbum", [true, false], ["On", "Off"], "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet");
-  const unmeasured = cyclePill("soundLoudUnmeasured", ["median", "none"], ["Usual amount", "No change"], "A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is");
-  syncs.push(target.sync, album.sync, unmeasured.sync);
-  const forget = el("button", "sound__chip", "Clear");
-  forget.type = "button";
-  forget.title = "Deletes every song's loudness measurement. Each song is measured again the next time you hear most of it";
-  forget.addEventListener("click", () => {
-    forget.disabled = true;
-    void loudness.forgetMeasurements().finally(() => (forget.disabled = false));
-  });
-  loudFoldBody.append(
-    row("Match songs to", target.btn),
-    row("Keep albums together", album.btn),
-    row("Songs not measured get", unmeasured.btn),
-    row("Clear measurements", forget),
-    loudWhy,
-  );
+  syncs.push(target.sync, album.sync);
+  loudFoldBody.append(row("Match songs to", target.btn), row("Keep albums together", album.btn), loudWhy);
   loudFoldBody.hidden = true;
   eqView.append(loudFoldBody);
 
@@ -1160,42 +1149,33 @@ function renderBandRow(): void {
   bandOn.setAttribute("aria-pressed", String(b.on));
 }
 
-/** Match loudness, one line: what sets this song's gain, and how far the listen has come. */
+/** Match loudness, one line: what this song's gain is now. */
 function loudLine(): string {
-  const { source: s, heardPct, songMeasured } = loudness.loudnessState();
+  const { source: s } = loudness.loudnessState();
   const moved = (g: number) => (g < -0.05 ? `turned down ${db(-g)}` : g > 0.05 ? `turned up ${db(g)}` : "left as it is");
   const cap = (x: { cappedFrom?: number }) => (x.cappedFrom !== undefined ? ", less than it needs so its loudest moments stay clean" : "");
-  // The song's own measurement is there: say so, and drop the progress. Every listen is measured
-  // again, so without this the line said "Measuring" on a song measured months ago.
-  const heard = songMeasured
-    ? " Measured."
-    : heardPct !== null && s.kind !== "off" && s.kind !== "idle"
-      ? ` Measuring: ${heardPct} %.`
-      : "";
   switch (s.kind) {
     case "off":
       return "Off.";
     case "idle":
       return "Starts with the next song.";
     case "song":
-      return `This song is ${moved(s.gainDb)}${cap(s)}.${heard}`;
+      return `This song is ${moved(s.gainDb)}${cap(s)}.`;
     case "album":
-      return `This album is ${moved(s.gainDb)} as one (${s.measured} of ${s.total} songs measured)${cap(s)}.${heard}`;
+      return `This album is ${moved(s.gainDb)} as one${cap(s)}.`;
     case "median":
-      return `New song: ${moved(s.gainDb)}, the usual amount for your songs.${heard}`;
     case "capped":
-      return `New song: ${moved(s.gainDb)} while it plays.${heard}`;
+      return `This song is ${moved(s.gainDb)} for now.`;
     case "none":
-      return `New song: left as it is until it is measured.${heard}`;
+      return "This song is left as it is for now.";
   }
 }
 
-/** The Match loudness line alone. A progress tick calls this, so "Measuring: N %" counts up
- *  instead of standing at the number it held when the panel opened. `setText` drops the write
- *  when the sentence did not change, which is most ticks. */
+/** The Match loudness line alone. A progress tick calls this, because a capped song's gain moves
+ *  while it plays. `setText` drops the write when the sentence did not change, which is most ticks. */
 function renderLoudStatus(): void {
   if (!parts || parts.panel.hidden) return;
-  setText(loudStatus, setting("soundMatch") ? loudLine() : "Off. When on, a song is measured the first time you hear most of it.");
+  setText(loudStatus, setting("soundMatch") ? loudLine() : "Off.");
 }
 
 function renderStatus(): void {
@@ -1226,9 +1206,8 @@ function renderStatus(): void {
         : `${levelText}. Adds ${db(shelves.low + shelves.sub)} deep bass and ${db(shelves.high)} treble.`);
   const xf = sound.crossfeedState();
   setText(xfStatus, !adaptive ? offLine : xf.why);
-  const ls = loudness.loudnessState();
   setWhy(loudWhy, [
-    `Songs are made at very different loudness, so one can be much louder than the next. DeetsMusic measures a song while you listen. When you have heard most of it without skipping ahead, it turns that song up or down to the same level every time it plays.${setting("soundLoudAlbum") ? " An album played in order moves as one, so its quiet songs stay quiet." : ""} A song never moves more than 12 dB. ${ls.measuredSongs} ${ls.measuredSongs === 1 ? "song is" : "songs are"} measured so far.`,
+    `Songs are made at very different loudness. DeetsMusic listens as a song plays, holds a loud one down, and remembers what it heard, so the song starts at the right level next time.${setting("soundLoudAlbum") ? " An album played in order moves as one, so its quiet songs stay quiet." : ""} A song never moves more than 12 dB.`,
   ]);
   setWhy(adaptWhy, [
     `Fuller at low volume: when music is quiet, the ear hears the deep and the high sounds less than the middle, so the music sounds thin. "Fuller" means this part adds back bass (around 100 Hz) and a little treble (around 10 kHz) as the volume goes down, by the amounts the standard equal-loudness curves give. At full volume it adds nothing. Gentle adds half of Full. It follows ${both ? "the DeetsMusic volume and the Windows volume together" : "the DeetsMusic volume only"}.`,

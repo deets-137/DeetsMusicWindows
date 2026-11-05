@@ -55,6 +55,7 @@ declare global {
       set: (values: Partial<CapValues>) => CapValues;
       mode: (mode: CapMode) => CapMode;
       state: () => unknown;
+      forget: () => Promise<number>;
     };
   }
 }
@@ -64,7 +65,6 @@ interface Measured {
   peakDb: number;
 }
 const measured = new Map<string, Measured>();
-let loaded = false;
 
 /** The cap stays out of a release until his ear test and step 5 (SOUND.md § 11a-2). */
 let capMode: CapMode = import.meta.env.DEV ? "until" : "off";
@@ -213,7 +213,7 @@ function decide(h: TrackHandle, track: Track | undefined): GainSource {
   const m = id ? measured.get(id) : undefined;
   if (m) return { kind: "song", lufs: m.lufs, ...capped(target - m.lufs, m.peakDb) };
   if (capMode !== "off") return { kind: "capped", gainDb: startGuess(target) };
-  const med = setting("soundLoudUnmeasured") === "median" ? median() : null;
+  const med = median();
   if (med) return { kind: "median", songs: med.songs, ...capped(med.gainDb, undefined) };
   return { kind: "none" };
 }
@@ -328,16 +328,12 @@ function onHop(ms: number, peak: number): void {
 
 // ── For the panel ───────────────────────────────────────────────────────────────────
 
-export function loudnessState(): { source: GainSource; measuredSongs: number; loaded: boolean; heardPct: number | null; songMeasured: boolean } {
-  const heardPct = listen && listen.durationSec ? Math.min(100, Math.round((100 * listen.heardSec) / listen.durationSec)) : null;
-  // The song has its own row from an earlier listen. This listen measures it again and replaces
-  // the row, but the line says "Measured": the number the gain comes from is already there.
-  const songMeasured = !!listen && measured.has(listen.id);
-  return { source: listen?.source ?? { kind: sound.getSound().match ? "idle" : "off" }, measuredSongs: measured.size, loaded, heardPct, songMeasured };
+export function loudnessState(): { source: GainSource } {
+  return { source: listen?.source ?? { kind: sound.getSound().match ? "idle" : "off" } };
 }
 
-/** The panel's "Forget measurements": every song is measured again from its next full listen. */
-export async function forgetMeasurements(): Promise<number> {
+/** Every song is measured again from its next listen. Dev only now: `__cap.forget()`, for the ear test. */
+async function forgetMeasurements(): Promise<number> {
   const n = await invoke<number>("loudness_forget");
   measured.clear();
   medianCache = null;
@@ -361,6 +357,7 @@ function devCap(): void {
       apply();
       return capMode;
     },
+    forget: forgetMeasurements,
     state: () => ({
       mode: capMode,
       values: { ...capValues },
@@ -390,14 +387,13 @@ export function initLoudness(): void {
   invoke<[string, number, number][]>("loudness_all")
     .then((rows) => {
       for (const [id, lufs, peakDb] of rows) measured.set(id, { lufs, peakDb });
-      loaded = true;
       medianCache = null;
       diag.log("sound:measurements", { songs: rows.length });
       apply();
     })
     .catch((e) => diag.error("sound:measureLoadFailed", { err: String(e) }));
   onSettingsChange((k) => {
-    if (k === "soundMatch" || k === "soundLoudTarget" || k === "soundLoudAlbum" || k === "soundLoudUnmeasured") {
+    if (k === "soundMatch" || k === "soundLoudTarget" || k === "soundLoudAlbum") {
       if (k === "soundMatch" && listen) listen.late = true;
       medianCache = null;
       apply();
