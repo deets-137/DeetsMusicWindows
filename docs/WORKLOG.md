@@ -6,6 +6,23 @@ updated: 2026-11-04
 ---
 # DeetsMusic — Work log
 
+## 2026-11-04 — The open desk tests read against the logs
+
+- **The ask.** List the desk tests, check the logs, and say which are not finished.
+- **Passed.** A18, Unshuffled from the top: the dev log shows the rule ran on his press and turned
+  shuffle off (DESK-TESTS.md §5). It does not record the song order.
+- **Still open.** A13 to A17: the logs show only part of each. The dev log starts at 18:26 tonight
+  and the live log at 2026-11-01, so older open markers cannot be read this way.
+
+## 2026-11-04 — The Live MCP revised after a real read
+
+- **The ask.** He asked for a better way for Claude to read the live data, then said yes to five
+  changes to the design.
+- **Changed.** LIVE-MCP.md: its own worker on the same D1, a `live_thread` tool, one shared source
+  for the thresholds and the waiting rule, read-only, no raw SQL (L5 to L9). Nothing is built.
+- **Open.** Sign-in from claude.ai and the phone is the first build step. Where the last look lives
+  (a D1 row or a KV key) is his call at build time.
+
 ## 2026-11-04 — The sort and the now mark: his hand test passed
 
 - **His word.** "Hand tested and good to go", for this sitting's features: the playlist sort and the
