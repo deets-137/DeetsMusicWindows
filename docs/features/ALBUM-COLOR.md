@@ -1,7 +1,7 @@
 ---
 status: shipped
 shipped_in: 0.4.3
-desk_test: open
+desk_test: passed 2026-11-05
 sources: [src/album-slots.ts, src/album-color.ts, src/album-neon.ts, src/album-light.ts]
 updated: 2026-11-05
 ---

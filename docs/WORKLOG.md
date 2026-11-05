@@ -23,6 +23,8 @@ updated: 2026-11-05
   sunset.
 - **The §7.3 heaviness check is dropped (his call).** Match shares the Equalizer's graph and is off
   until a user turns it on. It never ran, so no number exists.
+- **Closed by his word.** The short panel line, Ocean and the Glass text, and the recipe. Demo login
+  and the deploy wait for 1.4 installed here, with no reminder until then.
 
 ## 2026-11-05 — His looks for 1.4; the ear test starts; one call for an artist's plays
 

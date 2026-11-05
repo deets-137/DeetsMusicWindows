@@ -217,10 +217,10 @@ needed for the app to work.
 **The cap: on in every build since 2026-11-05 (1.4 waits for it, his call).** A song with no
 measurement is held by a slow cap, and a fixed gain takes over once it has a row. It also fixes album
 gain for albums played from Search. **His ear test passed 2026-11-05** ([SOUND.md](features/SOUND.md)
-§ 11a-2); no cap row, and the recipe Quieter after sunset in its place. Open before it ships: his
-look at the short panel line (the heaviness check is dropped, his call), and the 1.4.0
-note's real date. Demo login's hand test and the DeetsSupport deploy wait for 1.4 installed here
-(his call, 2026-11-05).
+§ 11a-2); no cap row, and the recipe Quieter after sunset in its place. The panel line and the
+recipe are closed by his word, 2026-11-05, and the heaviness check is dropped. Open: the 1.4.0
+note's real date. Demo login's hand test and the DeetsSupport deploy wait for 1.4 installed here:
+do not raise them with him until then (his call, 2026-11-05).
 
 ### Built, not released: Unshuffled from the top (2026-11-04)
 
@@ -250,7 +250,7 @@ color and its bolts the secondary; a new color turns in around each card. Settin
 copy needs `npm run usage:keys` with the other 1.4 keys, and a deploy is his call. His first look:
 "looks pretty good". **80 % by default** on both skins (his call, 2026-11-05). Stress test done
 2026-11-05 (WORKLOG). His look passed 2026-11-05 ("album light looks good", fine at scale and
-hanging edges). Open: his look at Ocean and the Glass text after the `fromOKLCH` fix. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.
+hanging edges). Ocean and the Glass text after the `fromOKLCH` fix: closed by his word, 2026-11-05. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.
 
 ### For 1.4: a listen count on each song row (2026-11-03, designed 2026-11-05)
 

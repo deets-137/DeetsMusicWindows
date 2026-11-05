@@ -821,7 +821,7 @@ Both scripts go in `docs/ops/checks/` (his ask, 2026-10-01), beside the probe of
 
 ## 10. A listen count on each song row of an album (idea for 1.4, 2026-11-03)
 
-> **Part:** built · 2026-11-05 · desk test open (§10.4). §10.2 is his design; §10.3 is what is still open.
+> **Part:** built · 2026-11-05 · desk test passed 2026-11-05 (§10.4, his word). §10.2 is his design; §10.3's drafts stand.
 
 **His ask (2026-11-03):** *"get the number of listens per song in the song row itself when the
 card is grown / has space to show it. So within an album, a user can get a feel for
