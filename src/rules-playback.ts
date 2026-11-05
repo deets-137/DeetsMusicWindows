@@ -10,7 +10,7 @@
 import {
   getRepeat, getVolume, isShuffleOn, nextTrack, nowPlayingMeta, onPlayerProgress, onPlayerState, onTransport,
   pausePlayback, playPause, playStation, playTracks, prevTrack, setRepeat, setShuffleMode, setVolume,
-  isPlayingNow, onVolumeChange, onShufflePress, shuffleLibrary, type PlayerState,
+  isPlayingNow, onVolumeChange, onShufflePress, onAlbumTop, shuffleLibrary, type PlayerState,
 } from "./player";
 import { getCurrent, getUpcoming } from "./queue";
 import { trackById } from "./track-store";
@@ -69,7 +69,7 @@ function applyVolume(v: unknown): void {
 
 export function initRulesPlayback(): void {
   let last: PlayerState | null = null; // the player's last state (the facts read it too)
-  for (const e of ["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "queue.end", "station.play", "station.return", "shuffle.press"] as const)
+  for (const e of ["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "queue.end", "station.play", "station.return", "shuffle.press", "album.top"] as const)
     registerEvent(e, { facts: [] });
 
   const meta = () => nowPlayingMeta();
@@ -135,6 +135,7 @@ export function initRulesPlayback(): void {
 
   onTransport((way) => emit(way === "next" ? "skip.next" : "skip.prev", { card: "*" }));
   onShufflePress(() => emit("shuffle.press", { card: "*" }));
+  onAlbumTop(() => emit("album.top", { card: "*" }));
 
   // ── the song and pause events, from the player's state ──
   let lastKey = "";

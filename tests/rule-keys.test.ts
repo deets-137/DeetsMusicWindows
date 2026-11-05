@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RECIPES } from "../src/rules-recipes.ts";
-import { resolveState, validate, type Known } from "../src/rules-eval.ts";
+import { pickMoment, resolveState, validate, type Known } from "../src/rules-eval.ts";
 import { RULE_KEYS } from "../src/settings-store.ts";
 import { doText, sentenceText, doWordOf, NO_LISTS } from "../src/rulez-words.ts";
 
@@ -13,6 +13,16 @@ const known: Known = {
   actions: new Set(["next"]),
   targets: new Set(RULE_KEYS.map((k) => `key:${k}`)),
 };
+
+test("2026-11-04 Unshuffled from the top turns shuffle off only when an album starts with it on", () => {
+  const rules = recipe("albumTop").rules;
+  const words: Known = { events: new Set(["album.top"]), facts: new Set(["shuffle"]), actions: new Set(["shuffle"]), targets: new Set() };
+  for (const r of rules) assert.equal(validate(r, words), null);
+  assert.deepEqual(pickMoment(rules, "album.top", "library", { shuffle: true }).rule?.do, { shuffle: false });
+  assert.equal(pickMoment(rules, "album.top", "library", { shuffle: false }).rule, null);
+  assert.equal(pickMoment(rules, "song.play", "library", { shuffle: true }).rule, null);
+  assert.equal(sentenceText(rules[0], NO_LISTS), "When you start an album from the top, DeetsMusic turns shuffle off, only if shuffle is on.");
+});
 
 test("Battery saver (2026-09-27) holds only while the PC reports not charging", () => {
   const rules = recipe("battery").rules;

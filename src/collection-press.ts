@@ -47,7 +47,7 @@ export function collectionPress(e: MouseEvent | undefined, c: Collection): void 
     if (verb === "open") return c.open();
     void Promise.resolve(c.tracks())
       .then((ts) => {
-        if (ts.length) runListAction(verb === "shuffle" ? "shuffle" : "play", ts, (list, start) => void playTracks(list, start, c.context).catch((err) => console.error("[press] play", err)));
+        if (ts.length) runListAction(verb === "shuffle" ? "shuffle" : "play", ts, (list, start) => void playTracks(list, start, c.context).catch((err) => console.error("[press] play", err)), c.kind === "album");
       })
       .catch((err) => console.error("[press] tracks", err));
   });

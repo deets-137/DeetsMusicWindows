@@ -19,7 +19,9 @@ export type EventId =
   // Route 8 (RULEZ.md §10.1): the Queue's layout change (a cancel event), Go to, the shuffle press.
   | "queue.summon" | "goto.artist" | "goto.album" | "shuffle.press"
   // A click or double-click on one type of collection (HOME.md §11.5): the site reads the answer.
-  | "press.album" | "press.playlist" | "press.artist" | "press.album.double" | "press.playlist.double" | "press.artist.double";
+  | "press.album" | "press.playlist" | "press.artist" | "press.album.double" | "press.playlist.double" | "press.artist.double"
+  // A press that starts an album from the top, fired before the list is handed over (RULEZ.md §10.2).
+  | "album.top";
 export type FactId =
   | "surface" | "cause" | "from" | "entry.new" | "daylight" | "lookMode" | "output" | "now"
   // Rulez (RULES.md §20.3).

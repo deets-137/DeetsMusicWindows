@@ -57,6 +57,7 @@ export const EVENTS: EventWord[] = [
   { id: "station.play", section: "Playback", label: "A station plays" },
   { id: "station.return", section: "Playback", label: "A station is about to come back", cancel: true },
   { id: "shuffle.press", section: "Playback", label: "You press shuffle" },
+  { id: "album.top", section: "Playback", label: "You start an album from the top" },
   { id: "clock", section: "Time", label: "The clock reaches" },
   { id: "app.open", section: "Window", label: "The app opens" },
   { id: "surface.change", section: "Window", label: "The surface changes" },

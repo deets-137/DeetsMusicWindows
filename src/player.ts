@@ -2801,6 +2801,20 @@ export function onShufflePress(cb: () => void): () => void {
   return () => shuffleSubs.delete(cb);
 }
 
+const albumTopSubs = new Set<() => void>();
+/** A press that starts an album from the top; rules-playback.ts reports it as *You start an
+ *  album from the top* (RULEZ.md §10.2). */
+export function onAlbumTop(cb: () => void): () => void {
+  albumTopSubs.add(cb);
+  return () => albumTopSubs.delete(cb);
+}
+/** The site calls this BEFORE it reads the shuffle mode or hands the list over, so a rule's
+ *  *Turn shuffle off* decides the start song and the queue's order. A rule runs at once. */
+export function albumFromTop(): void {
+  if (roomBridge) return; // the room decides the order (§10)
+  albumTopSubs.forEach((cb) => cb());
+}
+
 /**
  * Shuffle the remaining queue once. Playing: manual picks rise to the top, the auto
  * tail shuffles (queue.shuffleUpcoming), and MusicKit's live window is reconciled

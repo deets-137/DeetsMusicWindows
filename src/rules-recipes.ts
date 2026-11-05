@@ -124,6 +124,20 @@ export const RECIPES: Recipe[] = [
       },
     ],
   },
+  {
+    // His ask, 2026-11-04 (RULEZ.md §10.2, step 7). `album.top` fires before the list is handed
+    // over, so the plain *Turn shuffle off* gives song 1 and the album's order. Shuffle stays off
+    // after the album (his call).
+    id: "albumTop",
+    name: "Unshuffled from the top",
+    desc: "Automatically turn off shuffle when starting a new album (via the play button or playing from the top).",
+    rules: [
+      {
+        id: "recipe:albumTop:0", kind: "moment", source: src("albumTop"), on: true, name: "Unshuffled from the top",
+        when: "album.top", card: "*", if: { fact: "shuffle", is: true }, do: { shuffle: false },
+      },
+    ],
+  },
 ];
 
 // Live Theming (RULEZ.md §11.1, his ask 2026-09-27): the theme follows the playing song's cover.

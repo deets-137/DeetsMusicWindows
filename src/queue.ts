@@ -15,6 +15,9 @@ import { watchSet } from "./page-counts";
 
 export type QueueOrigin = "auto" | "manual";
 
+/** The context tag of one album's songs: your album, or Apple's whole album. */
+export const isAlbumContext = (context?: string): boolean => /^(album|search-albums):/.test(context ?? "");
+
 /** What callers pass in — ids + provenance. `origin` is set by the operation. */
 export interface TrackHandle {
   /** Catalog id is the preferred play target; library id is the fallback. */

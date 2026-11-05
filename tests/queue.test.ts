@@ -17,6 +17,11 @@ test("setContext plays from the clicked song; the rest is Up Next", () => {
   assert.deepEqual(ids(q.getRecentlyPlayed()), []);
 });
 
+test("2026-11-04 one album's context tag is an album; a picked set or a playlist is not", () => {
+  for (const c of ["album:1", "search-albums:1"]) assert.equal(q.isAlbumContext(c), true);
+  for (const c of ["albums:picked", "playlist:1", "artist:x", "library", "", undefined]) assert.equal(q.isAlbumContext(c), false);
+});
+
 test("the clicked song never appears twice in the back-chain", () => {
   q.setContext([h("a"), h("b"), h("a"), h("c")], 2);
   assert.deepEqual(ids(q.getHistory()), ["b"]);

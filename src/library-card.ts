@@ -21,6 +21,7 @@ import { creditIndex } from "./artist-credit";
 import { tracks, onTracksChange, noCatalogCopy, addTransientTracks, tracksLoaded } from "./track-store";
 import { materializeTrack } from "./search";
 import { playTracks, shuffledStart } from "./player";
+import { isAlbumContext } from "./queue";
 import { onLibraryDrill, onLibraryFilter, takeLibraryDrill, takeLibraryFilter } from "./layout-bus";
 import { drawFilterPanel, emptyRule, type FilterState, type PanelHost } from "./filter-panel";
 import { filterRow, filtersReady, libraryKeys, onFiltersChange } from "./filters";
@@ -420,6 +421,7 @@ export function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<T
       playTracks(items, idx, o.context).catch((e) => console.error("[library] play", e));
     },
     playAll: o.actionTitles ?? true, // the Play / Shuffle row (NEXT-VERSION §13)
+    album: isAlbumContext(o.context),
     // Right-click → act on this song; Play Now's scope (just it, or it then the list)
     // is the setting (SETTINGS.md / FUTURE-SETTINGS §1).
     menu: (t, idx, items) => songMenu(t, { context: o.context, nav: o.nav, listFrom: { items, idx }, catalog: o.mark }),

@@ -6,6 +6,16 @@ updated: 2026-11-04
 ---
 # DeetsMusic — Work log
 
+## 2026-11-04 — A rule event for an album started from the top
+
+- **The ask.** Turn shuffle off when he starts an album from song 1. No rule could do it: there
+  was no first-song fact, and a rule's *Turn shuffle off* leaves the queue shuffled.
+- **Built.** The event `album.top`, *You start an album from the top* (RULEZ.md §10.2, step 7). It
+  fires before play, so the existing *Turn shuffle off* gives an album in order.
+- **The recipe.** *Unshuffled from the top*, his name and description, off by default (RULEZ.md
+  §10.2, step 8). Shuffle stays off after the album, his call.
+- **Open.** His hand test. At his word, Claude did not run the rule on the dev app.
+
 ## 2026-11-04 — Board replies: Compass and toasts with Now Playing on the right, compilations
 
 - **The ask.** He pulled the unanswered suggestions from the live board and asked for research on

@@ -36,7 +36,7 @@ import type { Track } from "./library";
 import {
   playPause, nextTrack, prevTrack, toggleShuffle, cycleRepeat, toggleMute, isMuted, isPlayingNow, isShuffleOn, getRepeat,
   playTracks, playStation, jumpToUpcoming, setVolume, queueTracksNext, queueTracksLater, queueTracksAt, shuffledPlay,
-  clearQueueWithUndo,
+  clearQueueWithUndo, albumFromTop,
 } from "./player";
 import { sleepIn, sleepOff, sleepArmed, sleepAtEnd, openSleepPanel } from "./sleep";
 import { restartWalk } from "./walk";
@@ -1039,7 +1039,7 @@ function libraryRows(): { songs: Row[]; albums: Row[]; artists: Row[]; genres: R
     return {
       group: "Albums", title: t.albumName ?? "Unknown Album", sub: `${t.artistName} · ${ts.length} song${ts.length === 1 ? "" : "s"}`,
       run: () => requestLibraryDrill({ kind: "album", track: t }),
-      alt: { label: "Play", run: () => play(albumOrder(ts)) },
+      alt: { label: "Play", run: () => { albumFromTop(); play(albumOrder(ts)); } },
       tracks: () => Promise.resolve(albumOrder(ts)),
     };
   });

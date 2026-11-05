@@ -1129,7 +1129,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     const act = target.closest<HTMLElement>("[data-act]");
     if (act) {
       diag.log("ui:act", { at: "diary", do: act.dataset.act ?? "", n: e.tracks.length });
-      runListAction(act.dataset.act ?? "", e.tracks.filter((t) => !t.unreleased), (l, start) => playFrom(e, l, start));
+      runListAction(act.dataset.act ?? "", e.tracks.filter((t) => !t.unreleased), (l, start) => playFrom(e, l, start), true);
       return;
     }
     if (target.closest("[data-foot-play]")) {

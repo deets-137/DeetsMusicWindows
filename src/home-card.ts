@@ -217,7 +217,7 @@ export const homeCard: CardDef = {
       // An album or artist off the library plays whole (its `whole` fetch), not only the songs known.
       void (it.whole?.() ?? Promise.resolve(it.tracks()))
         .then((ts) => {
-          if (ts.length) runListAction(verb === "shuffle" ? "shuffle" : "play", ts, (list, start) => void playTracks(list, start, it.context).catch(err("play")));
+          if (ts.length) runListAction(verb === "shuffle" ? "shuffle" : "play", ts, (list, start) => void playTracks(list, start, it.context).catch(err("play")), it.kind === "album");
         })
         .catch(err("play"));
     };

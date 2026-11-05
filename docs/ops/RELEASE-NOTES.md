@@ -66,6 +66,11 @@ plays it, in the Library, Playlists, Search and artist pages. Change either in S
 Click a collection, and on Home in Settings > Home. Each pin has its own On Click and On Double
 Click rows. For one type only, make a rule in Rulez: When You click a playlist, Use Play.
 
+**Unshuffled from the top.** With shuffle on, an album's Play button starts on a random song. Turn
+on this new recipe in Rulez, and pressing Play or clicking the first song turns shuffle off, so the
+album plays in order from its first song. Shuffle stays off until you turn it on again. To make
+your own rule, use the new When, You start an album from the top.
+
 **Compilations on artist pages.** The Full artist page now shows an artist's compilations, and the
 filter on the Albums shelf has a Compilations choice.
 

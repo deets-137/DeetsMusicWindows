@@ -33,6 +33,8 @@ export const playStation = later;
 export const queueStationAfter = later;
 export const setShuffleMode = noop;
 export const shuffledPlay = noop;
+export const albumFromTop = noop;
+export const isAlbumContext = () => false;
 
 // ./playlists
 export const addToPlaylistItem = () => row("Add to Playlist");

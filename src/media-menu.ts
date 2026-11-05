@@ -28,7 +28,8 @@ import type { Station } from "./radio";
 import type { HomeItem } from "./home";
 import { artistDetail, catalogRelated, materializeTrack } from "./search";
 import { addTransientTracks, tracks } from "./track-store";
-import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, shuffledPlay } from "./player";
+import { albumFromTop, playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, shuffledPlay } from "./player";
+import { isAlbumContext } from "./queue";
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
 import { listenLaterItem } from "./listen-later";
 import { requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
@@ -86,7 +87,7 @@ export interface ListFrom {
 export function playRows(
   load: () => Track[] | Promise<Track[]>,
   context: string | undefined,
-  opts: { catalog?: boolean; label?: string; now?: (ts: Track[]) => Promise<void>; shuffle?: boolean } = {},
+  opts: { catalog?: boolean; label?: string; now?: (ts: Track[]) => Promise<void>; shuffle?: boolean; album?: boolean } = {},
 ): MenuItem[] {
   const run = (how: "now" | "shuffle" | "next" | "later") => () =>
     void Promise.resolve(load())
@@ -96,6 +97,7 @@ export function playRows(
           addTransientTracks(ts);
           ts.forEach(materializeTrack);
         }
+        if (how === "now" && opts.album) albumFromTop(); // before the queue reads the shuffle mode
         if (how === "now") return opts.now ? opts.now(ts) : playTracks(ts, 0, context);
         // The Shuffle button's rule (shuffledPlay): the mode turns on, the list goes over in
         // order from a random song, and the queue shuffles the rest (3A, 2026-10-12).
@@ -199,8 +201,10 @@ export function songMenu(t: Track | undefined, w: SongWhere): MenuItem[] {
   if (w.play !== undefined) play = w.play ?? [];
   else if (t) {
     const lf = w.listFrom;
-    const now = lf && setting("playNowScope") === "list" ? () => playTracks(lf.items, lf.idx, w.context) : undefined;
-    play = playRows(() => [t], w.context, { catalog: w.catalog, now });
+    const list = lf && setting("playNowScope") === "list";
+    const now = list ? () => playTracks(lf.items, lf.idx, w.context) : undefined;
+    // Play Now on an album's top row, with the rest of the list after it: the album from the top.
+    play = playRows(() => [t], w.context, { catalog: w.catalog, now, album: list && lf.idx === 0 && isAlbumContext(w.context) });
   }
   return join(
     w.lead ?? [],
@@ -315,7 +319,7 @@ export function albumMenu(a: AlbumSubject, w: AlbumWhere): MenuItem[] {
     songId: seed?.catalogId,
   });
   return join(
-    playRows(load, w.context, { catalog: a.catalog, shuffle: true }),
+    playRows(load, w.context, { catalog: a.catalog, shuffle: true, album: true }),
     desk(addToPlaylistItem(load), listenLaterItem(load)),
     [goArtist, goAlbum],
     [

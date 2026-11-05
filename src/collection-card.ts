@@ -26,7 +26,7 @@ import { registerFinder } from "./find-key";
 import { isAddSquare } from "./add-square";
 import { rowPick, canPick, picksText, objectId } from "./row-pick";
 import { randomIndex } from "./queue";
-import { isShuffleOn, shuffledPlay } from "./player";
+import { albumFromTop, isShuffleOn, shuffledPlay } from "./player";
 import { onSettingsChange, setting } from "./settings-store";
 import { enterRows } from "./pop";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
@@ -106,6 +106,9 @@ export interface Grouping<T = any> {
    *  `activate` on the first row of the current sort + filter (Shuffle: of a shuffled copy).
    *  An object carries the hover text for each button (what exactly the list is). */
   playAll?: boolean | ActionTitles;
+  /** The rows are one album's songs: Play, or a press on the top row, starts the album from
+   *  the top (`runListAction`, RULEZ.md §10.2). */
+  album?: boolean;
   // Right-click actions for an item (Play Now / Play Next / Add to Queue …). Omit for
   // groupings with no menu (e.g. Artists for now). Gets the sorted view + index too.
   menu?: (x: T, index: number, items: T[]) => MenuItem[];
@@ -336,10 +339,13 @@ function actionsHTML(g: Grouping, count: number, picked: number, enter: boolean)
  * Apple does; the queue shuffles the rest). Shuffle: `shuffledPlay` — the mode turns on
  * and the list goes over in order from a random song, so the plan keeps the order for
  * unshuffle (his call 3A, 2026-10-12); with "Shuffle button stays on" off, a shuffled copy.
+ * `album`: the list is one album, so Play reports *You start an album from the top* first. A rule
+ * that turns shuffle off there makes the start the top song and the queue the album's order.
  */
-export function runListAction<T>(act: string, items: T[], run: (list: T[], start: number) => void): void {
+export function runListAction<T>(act: string, items: T[], run: (list: T[], start: number) => void, album = false): void {
   if (!items.length) return;
   if (act === "shuffle") return shuffledPlay(items, run, "panel");
+  if (album) albumFromTop();
   run(items, isShuffleOn() ? randomIndex(items.length) : 0);
 }
 
@@ -2183,7 +2189,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
         return;
       }
       if (!g.activate) return;
-      runListAction(what, f.items, (list, start) => g.activate!(list[start], start, list));
+      runListAction(what, f.items, (list, start) => g.activate!(list[start], start, list), g.album);
       return;
     }
 
@@ -2287,6 +2293,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       if (g.pick && pick.click(e, x)) return;
       if (g.activate) {
         diag.log("ui:act", { at: `${opts.storeKey}:${g.key}`, do: "row", i: idx, n: cur().items.length });
+        if (g.album && idx === 0) albumFromTop();
         g.activate(x, idx, cur().items, e);
         return;
       }

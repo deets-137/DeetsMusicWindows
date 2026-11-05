@@ -208,6 +208,11 @@ test, and the §7.3 heaviness check before it ships: [SOUND.md](features/SOUND.m
 usage list dropped `soundLoudness`, so DeetsSupport's `src/usage-keys.js` has a local change; no
 deploy is needed for the app to work.
 
+### Built, not released: Unshuffled from the top (2026-11-04)
+
+The rule event *You start an album from the top* and the recipe on it. Open: his hand test. Claude
+did not run it on the dev app, at his word: [RULEZ.md](features/RULEZ.md) §10.2, steps 7 and 8.
+
 ### Idea for 1.4: a listen count on each album song row (2026-11-03)
 
 His ask: when an album's song list has the width, each row shows the song's Last.fm count, so
