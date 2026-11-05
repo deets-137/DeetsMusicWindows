@@ -27,6 +27,7 @@ import { TEMPLATE, GLYPH_NOTE, ICON_PLAY, ICON_PAUSE } from "./now-playing-card"
 import { mountVinyl } from "./vinyl";
 import { ownPeek } from "./metal";
 import { watchAlbumColor } from "./album-color";
+import { watchAlbumLight } from "./album-light";
 import { ownSea } from "./ocean";
 import { artURL, coverArtPx } from "./queue-rows";
 import { motionReduced } from "./motion";
@@ -141,9 +142,15 @@ export function mountPreview(host: HTMLElement): CardInstance {
   const releasePeek = ownPeek(art, () => SONGS[at].id, (side) => cover((at + (side === "next" ? 1 : SONGS.length - 1)) % SONGS.length));
   // The album light, from this preview's cover.
   let colorChanged: (() => void) | null = null;
+  let lightChanged: (() => void) | null = null;
+  const previewCover = () => ({ cover: byId.get(SONGS[at].id)?.artwork?.urlTemplate ?? null, catalogId: SONGS[at].id });
   const stopColor = watchAlbumColor(box, {
-    now: () => ({ cover: byId.get(SONGS[at].id)?.artwork?.urlTemplate ?? null, catalogId: SONGS[at].id }),
+    now: previewCover,
     onChange: (cb) => { colorChanged = cb; return () => { colorChanged = null; }; },
+  });
+  const stopLight = watchAlbumLight(box, {
+    now: previewCover,
+    onChange: (cb) => { lightChanged = cb; return () => { lightChanged = null; }; },
   });
 
   const paintClock = () => {
@@ -169,6 +176,7 @@ export function mountPreview(host: HTMLElement): CardInstance {
     box.style.setProperty("--ob-cover", src ? `url("${src}")` : "none");
     vinyl.show(`song:${s.id}`, src ?? undefined, back);
     colorChanged?.();
+    lightChanged?.();
     sea.cover(byId.get(s.id)?.artwork?.urlTemplate ?? null, s.id);
     paintClock();
   };
@@ -220,6 +228,7 @@ export function mountPreview(host: HTMLElement): CardInstance {
       lookWatch.disconnect();
       releasePeek();
       stopColor();
+      stopLight();
       sea.destroy();
       vinyl.destroy();
       host.replaceChildren();

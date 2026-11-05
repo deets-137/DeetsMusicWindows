@@ -1722,7 +1722,7 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   --ocean-breath: 0;              /* −1…1, from the music (ocean.ts); 0 = calm */
   /* 0…1: Settings › Album light (skin-settings.ts sets --ocean-light, 0–100, on <html>).
      0 is the plain sea; it lights the crests in neon and raises the glow from the deep. */
-  --ocean-lit: calc(var(--ocean-light, 0) / 100);
+  --album-lit: calc(var(--ocean-light, 0) / 100);
 }
 /* The heave: each band rises with the music, the near one most (--ocean-breath). */
 .ocean__heave {
@@ -1780,7 +1780,7 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   will-change: opacity;
   transition: opacity var(--ocean-breath-dur) var(--ocean-breath-ease-stepped, var(--ocean-breath-ease));
 }
-.ocean__neon[data-on] { opacity: calc(var(--ocean-lit) * (1 + var(--ocean-breath) * var(--ocean-neon-pulse))); }
+.ocean__neon[data-on] { opacity: calc(var(--album-lit) * (1 + var(--ocean-breath) * var(--ocean-neon-pulse))); }
 /* The album's color, glowing up from the deep (ocean.ts sets --ocean-glow-color on .ocean;
    transparent with no album). It swells a little with the music. The color crossfades as
    a registered property, which repaints this one box while it fades (once per album). */
@@ -1793,9 +1793,9 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   position: absolute;
   inset: 0;
   /* Album light raises it: stronger (--ocean-glow → --ocean-light-glow) and taller */
-  background: radial-gradient(ellipse 80% calc(60% + var(--ocean-light-reach) * var(--ocean-lit)) at 50% 115%,
+  background: radial-gradient(ellipse 80% calc(60% + var(--ocean-light-reach) * var(--album-lit)) at 50% 115%,
                               var(--ocean-glow-color), transparent 75%);
-  opacity: calc((var(--ocean-glow) + (var(--ocean-light-glow) - var(--ocean-glow)) * var(--ocean-lit))
+  opacity: calc((var(--ocean-glow) + (var(--ocean-light-glow) - var(--ocean-glow)) * var(--album-lit))
                 * (1 + var(--ocean-breath) * 0.5));
   transition: --ocean-glow-color var(--ocean-glow-fade) var(--ocean-breath-ease),
               opacity var(--ocean-breath-dur) var(--ocean-breath-ease-stepped, var(--ocean-breath-ease));
@@ -1924,6 +1924,96 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   vector-effect: non-scaling-stroke;
   filter: var(--storm-glow);
   transform: translateX(var(--storm-x, 50px)) scaleX(var(--storm-flip, 1)); /* raw: the fallback is in the viewBox's user units */
+}
+
+/* ── The album wave (album-light.ts) ────────────────────────── */
+/* A new album's color turns in around each card, clockwise from 12 o'clock: a pinwheel on every
+   card. Each wheel has two halves, fixed clips on either side of the card's center. In each, the
+   strike box is a half plane that turns about the center, and the hold box turns back by the same
+   amount, so the copy of the edges stays still and only the front moves: the storm's wipe, turned.
+   The right half covers the first 180°, the left the rest. Constant speed, since one easing
+   cannot run across two boxes. transform only, so nothing repaints in the motion. Over the cards.
+   --wheel-* and --edge-* are set per card, from its box on screen. */
+.album-wave {
+  position: absolute;
+  inset: calc(-1 * var(--grow-clip-pad));
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+.album-wave__wheel {
+  position: absolute;
+  left: var(--wheel-x);
+  top: var(--wheel-y);
+}
+.album-wave__half {
+  position: absolute;
+  top: calc(-1 * var(--wheel-r));
+  width: var(--wheel-r);
+  height: calc(2 * var(--wheel-r));
+  overflow: hidden;
+}
+.album-wave__half--right { left: 0; }
+.album-wave__half--left  { left: calc(-1 * var(--wheel-r)); }
+.album-wave__strike,
+.album-wave__hold {
+  position: absolute;
+  will-change: transform;
+  animation-duration: var(--album-wave-dur);
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+.album-wave__strike {
+  top: calc(-1 * var(--wheel-r));
+  width: calc(2 * var(--wheel-r));
+  height: calc(4 * var(--wheel-r));
+  overflow: hidden;
+  transform-origin: 100% 50%;
+}
+.album-wave__half--right .album-wave__strike { left: calc(-2 * var(--wheel-r)); animation-name: album-wave-first; }
+.album-wave__half--left  .album-wave__strike { left: calc(-1 * var(--wheel-r)); animation-name: album-wave-second; }
+.album-wave__hold {
+  left: 100%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+}
+.album-wave__half--right .album-wave__hold { animation-name: album-wave-first-hold; }
+.album-wave__half--left  .album-wave__hold { animation-name: album-wave-second-hold; }
+.album-wave__edge,
+.album-wave__plate {
+  position: absolute;
+  box-sizing: border-box;
+  left: var(--edge-x);
+  top: var(--edge-y);
+  width: var(--edge-w);
+  height: var(--edge-h);
+}
+.album-wave__edge {
+  border: var(--panel-border-width) solid var(--card-edge, var(--panel-border));
+  border-radius: var(--panel-radius);
+  box-shadow: var(--shadow-card);
+}
+.album-wave__plate {
+  border-radius: 50%;
+  box-shadow: var(--vinyl-plate-shadow);
+}
+@keyframes album-wave-first {
+  from { transform: rotate(0deg); }
+  50%, to { transform: rotate(180deg); }
+}
+@keyframes album-wave-first-hold {
+  from { transform: rotate(0deg); }
+  50%, to { transform: rotate(-180deg); }
+}
+@keyframes album-wave-second {
+  from, 50% { transform: rotate(180deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes album-wave-second-hold {
+  from, 50% { transform: rotate(-180deg); }
+  to { transform: rotate(-360deg); }
 }
 
 /* ── Bento grid (a "screen" is a composition of panels) ─────── */
@@ -2062,7 +2152,7 @@ body .reveal-in { animation: pop-row-in var(--pop-in) var(--pop-ease) both; tran
   -webkit-backdrop-filter: var(--panel-backdrop);  /* none under most skins; Glass frosts */
   backdrop-filter: var(--panel-backdrop);
   isolation: var(--panel-isolation);
-  border: var(--panel-border-width) solid var(--panel-border);
+  border: var(--panel-border-width) solid var(--card-edge, var(--panel-border));
   border-radius: var(--panel-radius);
   box-shadow: var(--shadow-card);   /* none under Vanilla; Press prints a plate, Ocean/Glass lift */
   padding: var(--panel-pad);
@@ -4583,7 +4673,7 @@ html[data-boot="lift"] .bento .panel[data-slot="d"]     { transition-delay: calc
   isolation: var(--panel-isolation);
 }
 .grow-shell__edge {
-  border: var(--panel-border-width) solid var(--panel-border);
+  border: var(--panel-border-width) solid var(--card-edge, var(--panel-border));
   box-shadow: var(--shadow-card);
 }
 .bento .panel.is-shelled {

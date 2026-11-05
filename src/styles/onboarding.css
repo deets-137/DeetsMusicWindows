@@ -400,7 +400,7 @@
   background: var(--panel-paint);
   -webkit-backdrop-filter: var(--panel-backdrop);
   backdrop-filter: var(--panel-backdrop);
-  border: var(--panel-border-width) solid var(--panel-border);
+  border: var(--panel-border-width) solid var(--card-edge, var(--panel-border));
   border-radius: var(--ob-thumb-radius);
   box-shadow: var(--shadow-card);
 }

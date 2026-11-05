@@ -44,7 +44,7 @@ export function fromOKLCH([L, C, h]: LCH): RGB {
   const s = (L - 0.0894841775 * a - 1.291485548 * bb) ** 3;
   return [
     gam(clamp01(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)),
-    gam(clamp01(-1.2684380046 * l + 2.6097574011 * m - 0.6368000104 * s)),
+    gam(clamp01(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s)),
     gam(clamp01(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)),
   ];
 }
@@ -123,6 +123,45 @@ export function auroraSlots(p: AlbumPalette): [string | undefined, string | unde
   if (!first) return [undefined, undefined, undefined];
   const halo = second && (second.chroma >= GREY_CHROMA || first.chroma < GREY_CHROMA) ? second.s : first.s;
   return [third?.s ?? second?.s, first.s, halo];
+}
+
+// ── the album as neon (OCEAN.md §7, ALBUM-COLOR.md § The album light) ────────────
+
+/** Is this ground dark enough for a lit line? Below it, neon lifts toward white; above it, neon
+ *  goes deeper, since a bright line vanishes on a light ground. */
+export const isDark = (c: RGB): boolean => toOKLCH(c)[0] < 0.55;
+
+/** Album color → a neon line: the bloom in the color made more vivid, and a core lifted toward
+ *  white on a dark ground (a lit tube). On a light ground a bright line vanishes, so both go
+ *  deeper. A grey cover stays grey: the chroma is scaled, never invented. */
+export function asNeon(c: RGB, darkGround: boolean): { core: RGB; bloom: RGB } {
+  const [, C, h] = toOKLCH(c);
+  const vivid = Math.min(C * 1.5, 0.2);
+  return darkGround
+    ? { bloom: fromOKLCH([0.72, vivid, h]), core: fromOKLCH([0.92, vivid * 0.45, h]) }
+    : { bloom: fromOKLCH([0.62, vivid, h]), core: fromOKLCH([0.45, vivid, h]) };
+}
+
+/** The album light's three roles, as hex. */
+export interface Neon {
+  core: string;
+  bloom: string;
+  /** The secondary color's bloom (Cyber's bolts). */
+  second: string;
+}
+
+/** A palette as the card edges' neon. `auroraSlots` ranks the colors: the most colorful is the
+ *  primary, the next the secondary (the primary again when the next is grey). An all-grey cover
+ *  on a dark ground lights white (his call, 2026-11-05): its bloom alone is a mid grey, so the
+ *  core stands in for it, and no hue is invented. */
+export function albumNeon(p: AlbumPalette, darkGround: boolean): Neon | null {
+  const [, rim, halo] = auroraSlots(p);
+  const main = rim ? parseColor(rim) : null;
+  if (!main) return null;
+  const lit = asNeon(main, darkGround);
+  const grey = darkGround && toOKLCH(main)[1] < GREY_CHROMA;
+  const next = asNeon((halo ? parseColor(halo) : null) ?? main, darkGround);
+  return { core: toHex(lit.core), bloom: toHex(grey ? lit.core : lit.bloom), second: toHex(grey ? next.core : next.bloom) };
 }
 
 // ── a palette from a picture's own pixels (COVER-WALLPAPER.md §8, U4) ───────────

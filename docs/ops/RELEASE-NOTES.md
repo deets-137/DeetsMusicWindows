@@ -78,6 +78,16 @@ Playlists card, Home and your pins.
 **A mark on the playing song.** In an album or playlist you play from, a small chevron beside the
 song slides down to the next one. Any other list that holds the song shows a short line.
 
+**Album colors on Press and Cyber.** Your card edges can now light up in the colors of the album
+you are playing. On Press, the plate and the thin card edges glow in the album's main color. On
+Cyber, the thin edges take that color and the lightning takes the album's second color. When a new
+album starts, its color turns in around each card. It is off until you turn it on: raise Album
+light in Settings > Skin settings. To change the color at once, with no turn, switch off Spin in
+new colors.
+
+**Truer album colors on Ocean and Glass.** A color error gave these album colors a slight pink
+tint. Ocean's glow and neon waves, and Glass's Now Playing text, now show the true color.
+
 **Compilations on artist pages.** The Full artist page now shows an artist's compilations, and the
 filter on the Albums shelf has a Compilations choice.
 

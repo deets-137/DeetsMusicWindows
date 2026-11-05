@@ -118,6 +118,14 @@ export interface Settings {
    *  higher lights the crest lines in the album's color as neon and raises the glow.
    *  skin-settings.ts publishes it as --ocean-light; ocean.ts paints the neon while it is > 0. */
   oceanLight: number;
+  /** Press only, 0–100: the album light on the card edges. 0 = the theme's ink; higher lights the
+   *  plate and the thin line in the album's color as neon (album-light.ts, --press-light). */
+  pressLight: number;
+  /** Cyber only, 0–100: the album light. 0 = the theme's edge and bolts; higher colors the thin
+   *  card edge with the album's primary color and the bolts with its secondary. */
+  cyberLight: number;
+  /** Press and Cyber: a new album's color turns in around each card. Off: it changes at once. */
+  albumWave: boolean;
   /** Glass only: the live frost. On = a real blur behind each card, the aurora drifts, and the
    *  four Glass sliders show. Off = the frost is painted into each card (no blur to redraw),
    *  the aurora holds still, and the sliders hold GLASS_LOCKED. `data-glass-fancy` on <html>. */
@@ -621,6 +629,9 @@ export const DEFAULTS: Settings = {
   oceanSand: 15, // user's call 2026-09-15: ≈ 9px of sand when it is turned on
   oceanCardOpacity: 80, // his call 2026-10-11 (was 100, solid): the swell shows a little through the cards
   oceanLight: 80, // his call 2026-10-11 (was 0, opt-in): the album's neon on the crests out of the box
+  pressLight: 0, // his call 2026-11-05: off until the 1.4 polish; a user turns it up
+  cyberLight: 0, // his call 2026-11-05: as Press
+  albumWave: true, // his call 2026-11-05: the turn is the way the color arrives
   glassFancy: false, // user's call 2026-09-16: the painted frost; the live blur failed on software drawing (DEBUGGING.md)
   glassTint: 65, // user's call 2026-09-16: GLASS_LOCKED, the look Glass holds with Fancy Glass off
   glassBacklight: 85,

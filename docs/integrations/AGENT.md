@@ -447,6 +447,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   (100 = solid, the default).
 - `oceanLight` (0–100, 2026-09-23) `[Ocean only]`: the album light. 0 = the plain sea (the
   default); higher lights the wave crests in the album's color as neon and raises the glow.
+- `pressLight` `[Press only]` and `cyberLight` `[Cyber only]` (0–100, 2026-11-05): the album light on
+  the card edges; 0 is the theme's color, the default. `albumWave` (on | off) `[Press and Cyber only]`: a new
+  album's color turns in around each card.
 - **Adaptive sound is hidden (2026-09-25, SOUND.md §11a):** the `soundAdaptive` /
   `soundLowVol*` / `soundCrossfeed*` specs are left out of the list unless the
   window has the DevTools flag `deets.dev.adaptiveSound`, so an agent cannot reach them.

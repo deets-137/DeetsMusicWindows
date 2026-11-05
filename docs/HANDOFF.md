@@ -238,6 +238,16 @@ comes off: donate.md §4.
 call: not a priority now). A real Krita export and a FontForge file are tested when the first font
 starts ([FONTPACK.md](ops/FONTPACK.md) §7). Open then: a title font, or a title and body pair.
 
+### Built, not released: the album light on Press and Cyber (2026-11-05)
+
+Press lights its plate and card edges in the album's neon; Cyber's thin edges take the primary
+color and its bolts the secondary; a new color turns in around each card. Settings › Skin settings:
+*Album light* on each skin, *Spin in new colors*. `albumWave` is a reported key: the DeetsSupport
+copy needs `npm run usage:keys` with the other 1.4 keys, and a deploy is his call. His first look:
+"looks pretty good". **Off by default** (both sliders 0) until the 1.4 polish; he revisits it
+there. Stress test done 2026-11-05 (WORKLOG). Open: 125 % and 150 % display scale; a menu that
+overhangs a card edge during a turn; his look at Ocean and the Glass text after the `fromOKLCH` fix. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.
+
 ### For 1.4: a listen count on each song row (2026-11-03, designed 2026-11-05)
 
 His ask: a pill with the song's Last.fm plays at the end of an album or playlist song row, and in

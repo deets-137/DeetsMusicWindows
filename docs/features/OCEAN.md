@@ -193,7 +193,7 @@ the maximum "it feels like neon lines and glows", and at the minimum it is the s
 | The row | **"Album light", default 0**, under Card opacity, with the N badge |
 
 **As built.**
-- `oceanLight` (0–100) → `--ocean-light` on `<html>` → `--ocean-lit` (0–1) on `.ocean`.
+- `oceanLight` (0–100) → `--ocean-light` on `<html>` → `--album-lit` (0–1) on `.ocean`.
 - **The neon.** Each band's roll box holds two `.ocean__neon` layers. With the light above 0,
   `paintNeon` (ocean.ts) has the worker paint the band again in neon mode (`neonColumn`,
   ocean-texture.ts), with the band's rows and seed, so the crests are the same crests. It paints
@@ -207,7 +207,7 @@ the maximum "it feels like neon lines and glows", and at the minimum it is the s
   cover stays grey. On dark water, the bloom is at L 0.72 and the core is lifted toward white
   (L 0.92). On light water, the bloom is at L 0.62 and the core is deeper (L 0.45), because a
   bright line vanishes on pale water.
-- **Brightness.** The neon's opacity is `--ocean-lit` × (1 + heave × `--ocean-neon-pulse` 0.35).
+- **Brightness.** The neon's opacity is `--album-lit` × (1 + heave × `--ocean-neon-pulse` 0.35).
   The glow from the deep goes from `--ocean-glow` 0.28 to `--ocean-light-glow` 0.7, and its
   ellipse grows by `--ocean-light-reach` 35% taller. A slider drag eases over the heave's 1.1 s.
 - **Cost.** No masks. The neon layers are plain images, each its own layer (`will-change:

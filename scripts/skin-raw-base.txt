@@ -116,3 +116,7 @@
 --scene-bob-dur
 --scene-ray-pulse-dur
 --scene-sky-fade-dur
+
+# The album wave (2026-11-05, ALBUM-COLOR.md § The album light): one turn around a card, timed by
+# eye for that distance. A UI motion token is timed for one control.
+--album-wave-dur

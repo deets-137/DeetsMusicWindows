@@ -160,6 +160,9 @@ nothing about authoring changed when the box did.
 | A row held by Reduce motion (2026-10-20) | the green dot | Reduce motion is on, so this is off. Your own setting comes back when Reduce motion is off. · after a hand change: Your pick holds until DeetsMusic restarts. Press to give it back to Reduce motion. | reduce-motion.ts (RULES.md §9) |
 | Settings › Skin settings | Card opacity | Ocean only. How solid the sunken cards are. Lower: the sea shows through | settings-card.ts |
 | Settings › Skin settings | Album light | Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon, and cost more on a PC without a graphics card | settings-card.ts |
+| Settings › Skin settings (2026-11-05) | Album light | Press only. How strongly the album's color lights the plate and the card edges. 0: the theme's ink | settings-card.ts |
+| Settings › Skin settings (2026-11-05) | Album light | Cyber only. How strongly the album's colors light the card edges and the lightning. 0: the theme's colors | settings-card.ts |
+| Settings › Skin settings (2026-11-05) | Spin in new colors | Press and Cyber only. A new album's color turns in around each card, clockwise. Off: it changes at once | settings-card.ts |
 | Settings › Skin settings (2026-09-24) | Canvas | Glass only. What shows behind the cards: the theme's glow, the album covers, or a picture you choose | settings-card.ts (COVER-WALLPAPER.md §3.7) |
 | Settings › Skin settings (2026-09-24) | Tiles | Glass only. How many album covers sit around the one that plays. One cover: it fills the window alone | settings-card.ts |
 | Settings › Skin settings (2026-09-24; the list 2026-09-27) | Picture · its Choose half | Glass only. The picture behind the cards: one you chose before, or press Choose for a new one. Drop an image file on this row. Right-click to rename or delete a picture · Opens a picture from your PC | settings-card.ts (RULEZ.md §5.2) |

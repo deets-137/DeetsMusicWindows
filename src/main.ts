@@ -15,6 +15,7 @@ import { applySurface, currentSurface, fullSurface, initSurface, isNarrowWindow,
 import { initStorm } from "./storm";
 import { initAmbient } from "./ambient";
 import { initOcean } from "./ocean";
+import { initAlbumLight } from "./album-light";
 import { initWallpaper } from "./wallpaper";
 import { initArtworkHeal } from "./artwork-heal";
 import { initBrowserDefaults } from "./browser-defaults";
@@ -232,6 +233,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // reduced-motion start never shows a heavy effect for a moment.
   boot("initReduceMotion", () => initReduceMotion());
   boot("initStorm", () => initStorm()); // storm-layer position re-roll; inert unless the skin opts in
+  boot("initAlbumLight", () => initAlbumLight()); // the album's neon on the card edges; inert under a skin without --hook-light
   boot("initOcean", () => initOcean()); // the Ocean sea's textures, album light, breath and ripples; inert under other skins
   boot("initAmbient", () => initAmbient()); // pause the skins' decorative loops while the window is minimized / in the tray
   boot("initWallpaper", () => initWallpaper()); // Glass › Canvas: the album covers or a chosen picture behind the cards; inert otherwise

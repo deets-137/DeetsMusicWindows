@@ -79,6 +79,7 @@ Three kinds of piece, from heaviest to lightest to move:
 | `--hook-wallpaper: on` | Glass | wallpaper.ts | the canvas: the album and queue covers, or a picture | Canvas, Diffusion |
 | `--hook-material: metal` | Metal | metal.ts | the brushed or acrylic plates, the grain, the side covers | Material, Grain |
 | `--hook-scene: on` | Happy | scene.ts, pet.ts | the sky, the sun or moon, clouds, the ground, the pets | Sky, card opacity |
+| `--hook-light` (+ `--album-lit`) | Press, Cyber | album-light.ts, storm.ts | the card edges and the bolts in the album's colors, the wave | Album light, Spin in new colors |
 | `--hook-scrub` | every skin but Vanilla | styles.css § Fancy scrubbers | the playhead: nib (Press), float (Ocean), lens (Glass), bolt (Cyber), wheel (Metal), ball (Happy) | none |
 | `--cover-swap` | Metal, Happy | vinyl.ts's turn, drum.ts, pet.ts | the song change: zoetrope (Metal, with the peek), pet (Happy); the record's slide in Press | Metal: Cover change, Peek |
 

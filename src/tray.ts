@@ -19,7 +19,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { makeSlider } from "./slider";
 import { log } from "./diag";
 import { mountVinyl } from "./vinyl";
-import { applyVinylAttrs, isVinylKey } from "./skin-settings";
+import { applyLightLevels, applyVinylAttrs, isLightKey, isVinylKey } from "./skin-settings";
+import { groundIsDark, setNeon } from "./album-neon";
 import { paintSkin, type SkinName } from "./skin";
 import { initMetalMaterial } from "./metal-material";
 import { onSettingsChange, setSettingsVersion, onSettingChanged } from "./settings-store";
@@ -28,7 +29,7 @@ import { openContextMenu, type MenuItem } from "./context-menu";
 import { initHints } from "./hint";
 import { watchCsp } from "./csp-watch";
 import type { NpState } from "./np-bus";
-import { auroraSlots, type AlbumPalette } from "./album-slots";
+import { albumNeon, auroraSlots, type AlbumPalette } from "./album-slots";
 import type { Track } from "./library";
 import built from "virtual:release-notes";
 
@@ -136,8 +137,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // The two rows come from the shared settings store; a change in the main window arrives
   // as a `storage` event (settings-store.ts).
   applyVinylAttrs();
+  applyLightLevels();
   onSettingsChange((k) => {
     if (isVinylKey(k)) applyVinylAttrs();
+    if (isLightKey(k)) applyLightLevels();
   });
   // Metal's texture: the panel showed Metal's flat colors only (metal.md §6.7); drawn here as in
   // the main window, again on a skin, Material or Grain change.
@@ -147,9 +150,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // ── palette (ALBUM-COLOR.md) — same runtime roles the NP card uses ──
   const PROPS = ["--album-bg", "--album-c1", "--album-c2"] as const;
+  // The card edges' album light (ALBUM-COLOR.md § The album light), again on a new ground.
+  let neonPalette: AlbumPalette | null = null;
+  const paintNeon = () => {
+    const root = document.documentElement;
+    setNeon(root, neonPalette && albumNeon(neonPalette, groundIsDark(root)));
+  };
+  new MutationObserver(() => requestAnimationFrame(paintNeon)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-skin"] });
   const clearPalette = () => {
     PROPS.forEach((p) => npEl.style.removeProperty(p));
     npEl.classList.remove("np--album");
+    neonPalette = null;
+    paintNeon();
     paletteKey = "";
   };
   const tintFrom = (template: string | undefined, catalogId: string | undefined) => {
@@ -165,6 +177,8 @@ window.addEventListener("DOMContentLoaded", () => {
           if (slots[i]) npEl.style.setProperty(prop, slots[i]!);
         });
         npEl.classList.add("np--album");
+        neonPalette = p;
+        paintNeon();
       })
       .catch(() => {});
   };

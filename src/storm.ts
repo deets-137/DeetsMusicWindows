@@ -13,11 +13,27 @@
 // Skin-agnostic by construction: when no skin opts in, the layer is
 // display:none, the animation never runs, no iteration events fire, and
 // this module is inert. No skin check needed.
+/** The album's secondary color (album-light.ts) on one bolt. A bolt takes it only while dark, so
+ *  it never changes in view. */
+function takeAlbum(strike: HTMLElement): void {
+  const album = document.documentElement.style.getPropertyValue("--album-neon-2");
+  if (album) strike.style.setProperty("--storm-album", album);
+  else strike.style.removeProperty("--storm-album");
+}
+
+/** The roles changed: every bolt that is dark now takes them. A lit one waits for its seam. */
+export function stormTakeAlbum(): void {
+  document.querySelectorAll<HTMLElement>(".storm__strike").forEach((strike) => {
+    if (getComputedStyle(strike).opacity === "0") takeAlbum(strike);
+  });
+}
+
 export function initStorm(): void {
   document.querySelectorAll<HTMLElement>(".storm__strike").forEach((strike) => {
     const roll = () => {
       strike.style.setProperty("--storm-x", `${Math.round(8 + Math.random() * 84)}px`);
       strike.style.setProperty("--storm-flip", Math.random() < 0.5 ? "-1" : "1");
+      takeAlbum(strike);
     };
     roll(); // scatter the first strikes too, not just subsequent ones
     strike.addEventListener("animationiteration", (e) => {

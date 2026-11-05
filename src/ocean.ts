@@ -25,7 +25,8 @@ import { onMeter } from "./sound";
 import { onDragLand } from "./row-drag";
 import { setting, onSettingsChange } from "./settings-store";
 import { currentCover, lookupPalette } from "./album-color";
-import { albumColor, fromOKLCH, toOKLCH, type RGB } from "./album-slots";
+import { albumColor, asNeon, fromOKLCH, isDark, toOKLCH, type RGB } from "./album-slots";
+import { toRGB } from "./album-neon";
 import { BANDS, seaRows } from "./ocean-texture";
 import { parseBezier, parseSeconds, steppedEase } from "./stepped-ease";
 import type { LayerJob } from "./ocean-worker";
@@ -80,18 +81,6 @@ const reduced = () => motionReduced();
 const responsive = () => active() && root.dataset.bgMotion !== "off" && !reduced() && root.dataset.ambient !== "paused";
 
 // ── colors ──────────────────────────────────────────────────────────────────────
-// Any CSS color (color-mix, oklch, var) → sRGB, through a 1×1 canvas: the computed style of a
-// color-mix is `color(srgb …)`, which the album parser does not read.
-const swatch = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
-swatch.canvas.width = swatch.canvas.height = 1;
-function toRGB(css: string): RGB | null {
-  swatch.clearRect(0, 0, 1, 1);
-  swatch.fillStyle = "#000";
-  swatch.fillStyle = css;
-  swatch.fillRect(0, 0, 1, 1);
-  const [r, g, b, a] = swatch.getImageData(0, 0, 1, 1).data;
-  return a ? [r / 255, g / 255, b / 255] : null;
-}
 /** A token resolved inside a sea (so skin and theme both apply) to sRGB. */
 function resolve(s: SeaState, expr: string): RGB | null {
   if (!s.probe) {
@@ -105,24 +94,11 @@ function resolve(s: SeaState, expr: string): RGB | null {
 }
 const to255 = (c: RGB): [number, number, number] => c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255)) as [number, number, number];
 const hex = (c: RGB) => "#" + to255(c).map((v) => v.toString(16).padStart(2, "0")).join("");
-const isDark = (c: RGB) => toOKLCH(c)[0] < 0.55;
-
 /** Album color → a glow far under the surface: hue kept, chroma capped, a middle lightness
  *  (brighter reads as a lamp, darker vanishes into the deep water). */
 function asGlow(c: RGB, darkWater: boolean): RGB {
   const [L, C, h] = toOKLCH(c);
   return fromOKLCH([darkWater ? Math.min(Math.max(L, 0.45), 0.6) : Math.min(Math.max(L, 0.55), 0.7), Math.min(C, 0.14), h]);
-}
-
-/** Album color → the neon crest: the bloom in the color made more vivid, and a core lifted
- *  toward white on dark water (a lit tube). On light water a bright line vanishes, so both
- *  go deeper. A grey cover stays grey: the chroma is scaled, never invented. */
-function asNeon(c: RGB, darkWater: boolean): { core: RGB; bloom: RGB } {
-  const [, C, h] = toOKLCH(c);
-  const vivid = Math.min(C * 1.5, 0.2);
-  return darkWater
-    ? { bloom: fromOKLCH([0.72, vivid, h]), core: fromOKLCH([0.92, vivid * 0.45, h]) }
-    : { bloom: fromOKLCH([0.62, vivid, h]), core: fromOKLCH([0.45, vivid, h]) };
 }
 
 // ── the bands ───────────────────────────────────────────────────────────────────

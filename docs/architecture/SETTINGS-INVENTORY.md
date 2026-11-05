@@ -253,8 +253,7 @@ Your Windows reduced-motion preference always wins over these.
 
 ### Skin settings
 
-Each group shows only while its skin is the one you are using. Cyber sets nothing here, so
-under Cyber the whole section is gone.
+Each group shows only while its skin is the one you are using.
 
 **Ocean only**
 
@@ -279,6 +278,13 @@ under Cyber the whole section is gone.
 | Dim canvas | Darkens the space between the cards | 0–100%, **10** |
 | Backlight | The light behind each card, under its tint | 0–100%, **85** |
 | Tint cards | How much theme color fills a card | 0–100%, **65** |
+
+**Press and Cyber**
+
+| Control | What it does | Choices |
+|---|---|---|
+| Album light | Press: how strongly the album's color lights the plate and the card edges. Cyber: how strongly its colors light the card edges and the lightning. 0 is the theme's own color. Each skin keeps its own value | 0–100%, **0** |
+| Spin in new colors | A new album's color turns in around each card, clockwise. Off: it changes at once | **On** / Off |
 
 **Press only**
 

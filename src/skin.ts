@@ -33,7 +33,7 @@ export function paintSkin(name: SkinName): void {
 // a skin switch and its hooks land in the same frame (and the first frame is under the launch
 // cover anyway). A skin's own setting may change a hook (a variant block in skin.css), so any
 // other attribute change on <html> reads them again.
-export const HOOKS = ["scrub", "material", "sea", "record", "wallpaper", "scene"] as const;
+export const HOOKS = ["scrub", "material", "sea", "record", "wallpaper", "scene", "light"] as const;
 export type HookName = (typeof HOOKS)[number];
 
 const root = document.documentElement;

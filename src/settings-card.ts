@@ -29,6 +29,7 @@ import { defaultTheme, type ThemeName } from "./theme";
 import { makeSlider } from "./slider";
 import { previewSkin } from "./skin-settings";
 import { setAlbumLight } from "./ocean";
+import { setCardLight } from "./album-light";
 import { pickWallpaper, setWallpaperFromFile } from "./wallpaper";
 import { userFiles, userFile, renameFile, deleteFile, onFilesChange } from "./user-files";
 import { motionReduced } from "./motion";
@@ -249,6 +250,9 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.4.0", section: "Playback", row: "pinnewdouble" },
   { since: "1.4.0", section: "Playback", row: "collclick" }, // Click a collection, built 2026-11-04 (HOME.md §11.5)
   { since: "1.4.0", section: "Playback", row: "colldouble" },
+  { since: "1.4.0", section: "Skin settings", row: "presslight", skin: "press" }, // Album light on the card edges, built 2026-11-05
+  { since: "1.4.0", section: "Skin settings", row: "cyberlight", skin: "cyber" },
+  { since: "1.4.0", section: "Skin settings", row: "albumwave" },
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -511,8 +515,8 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   { id: "motion", label: "Motion", hint: "Reduce motion, the three Animate rows, Fancy scrubber, and If graphics fail", keys: ["reduceMotion", "appearanceMotion", "cardSwapMotion", "backgroundMotion", "fancyScrubber", "graphicsFallback"] },
   {
-    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, the Press record player, Metal's four rows, and Happy's sky and card opacity",
-    keys: ["happySky", "happyCardOpacity", "oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps", "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek"],
+    id: "skinrows", label: "Skin settings", hint: "The Ocean card opacity, album light, edges and sand, the Glass canvas, tiles, diffusion and aurora color, Fancy Glass and its four sliders, the Press record player, the album light on Press and Cyber, Metal's four rows, and Happy's sky and card opacity",
+    keys: ["happySky", "happyCardOpacity", "oceanCardOpacity", "oceanLight", "oceanEdges", "oceanSand", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor", "glassFancy", "glassCanvasGlow", "glassCanvasDim", "glassBacklight", "glassTint", "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps", "pressLight", "cyberLight", "albumWave", "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek"],
   },
   {
     id: "menus", label: "Menus, hints and notices",
@@ -1410,8 +1414,8 @@ function mountSettings(
       ],
     },
     {
-      // Every row here is gated on one skin, so the whole section is not drawn under a skin
-      // that sets nothing (Cyber today).
+      // Every row here is gated on a skin, so the whole section is not drawn under a skin that
+      // sets nothing (Vanilla today).
       title: "Skin settings",
       rows: [
         {
@@ -1440,6 +1444,29 @@ function mountSettings(
           hint: "Ocean only. How far the sand reaches into each card",
           preview: (v) => previewSkin("oceanSand", v),
           when: () => currentSkin() === "ocean" && setting("oceanEdges") === "sand",
+        },
+        // Press and Cyber: the album light on the card edges (ALBUM-COLOR.md § The album light)
+        {
+          kind: "range", id: "presslight", label: "Album light", key: "pressLight", min: 0, max: 100, unit: "%",
+          hint: "Press only. How strongly the album's color lights the plate and the card edges. 0: the theme's ink",
+          preview: (v) => {
+            previewSkin("pressLight", v);
+            setCardLight(v); // the first move above 0 starts the color, so the drag shows it
+          },
+          when: () => currentSkin() === "press",
+        },
+        {
+          kind: "range", id: "cyberlight", label: "Album light", key: "cyberLight", min: 0, max: 100, unit: "%",
+          hint: "Cyber only. How strongly the album's colors light the card edges and the lightning. 0: the theme's colors",
+          preview: (v) => {
+            previewSkin("cyberLight", v);
+            setCardLight(v);
+          },
+          when: () => currentSkin() === "cyber",
+        },
+        {
+          ...storeToggle("albumwave", "Spin in new colors", "albumWave", () => "Press and Cyber only. A new album's color turns in around each card, clockwise. Off: it changes at once"),
+          when: () => (currentSkin() === "press" && setting("pressLight") > 0) || (currentSkin() === "cyber" && setting("cyberLight") > 0),
         },
         // Glass: what the canvas shows first (COVER-WALLPAPER.md §3.7) with the rows it reveals,
         // then Fancy Glass (it shows the sliders), then the layers in paint order, back to

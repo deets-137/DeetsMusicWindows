@@ -6,6 +6,47 @@ updated: 2026-11-04
 ---
 # DeetsMusic — Work log
 
+## 2026-11-05 — The album light on Press and Cyber
+
+- **His design.** Press: the plate and the card edges lit in neon, the line itself, never the gap.
+  Cyber: thin edges in the primary color, bolts in the secondary. The more colorful color is the
+  primary. Then a wave of the color from the top down.
+- **His calls.** One color on Press. An all-grey cover lights white. The front leans 8°, 0.8 s.
+  A settings line for it.
+- **Built.** ALBUM-COLOR.md § The album light. `asNeon` and `isDark` moved from ocean.ts to
+  album-slots.ts; `--ocean-lit` is `--album-lit`. New: `album-neon.ts`, `album-light.ts`, three
+  roles, `--card-edge`, `--hook-light`. The wave uses the bolts' strike and hold boxes.
+- **Measured.** 6,044 cached palettes: 34 % two real colors, 31 % one, 34 % all grey.
+- **The wave became a pinwheel (his ask, same day).** First top down, 8°, 0.8 s; he then asked for
+  a pinwheel in one direction over 1.2 s, on each card. Clockwise from 12 o'clock, constant speed.
+  On the dev server, single turns: worst frame 42 to 54 ms, 19 to 32 % of 244 Hz frames dropped, as a
+  song starts; never measured on `dev:built`. Three albums in a row: 3 turns, no leftover, worst 83 ms.
+- **Stress test on the pinwheel (his go, same day).** `dev:built`, Press, 244 Hz, three single turns:
+  worst frame 25 to 33 ms, 8 to 13 % dropped, as a song starts. A second break-it pass (three Sonnet
+  agents), then scripted on the dev app: Cyber's turn, a drill's class, a theme change mid-turn
+  (the turn goes on, in the color for that ground), a card's height and a surface change (it ends),
+  slider to 0 mid-turn, the toggle off, Reduce motion, a grow, midi (3 wheels). All held.
+  **Found and fixed:** a drill cut the turn for no reason; a card's height or a surface change left
+  copies at old boxes; a stale palette could relight after the slider went to 0, or lose its turn
+  to a wake; a theme change with a queued album showed the wrong album's color; the seam center was
+  whole CSS pixels, not device pixels. **Not tested:** 125 % and 150 % display scale; a menu that
+  overhangs a card edge (a Sort menu inside a card is clean).
+- **An old bug, fixed.** `fromOKLCH` had one wrong number in its green row (−0.6368, should be
+  −0.3413), so every color it made lacked green and a grey came out pink. A test on the white
+  neon found it. Ocean's glow and neon, and the Glass text guard, now show true colors. He looks.
+- **Desk test, agent part, on the dev app.** Wave: 0.82 s, 6 cards, the most a frame waited 33 ms,
+  copies still to 0.01 px. Three albums in a row: two waves one after the other, no leftover, the
+  last color stays (a 54 ms frame during the song loads). Full player and a grow during a wave:
+  the copies go at once (`why: moved`). *Pour in new colors* off and Reduce motion: no wave. Slider
+  0 and back, Lilac, Sepia, Moonlight: right colors, no wave. Vanilla, Glass, Ocean, Metal, Happy:
+  no roles, their own edges. `album-wave-probe.mjs`, `album-wave-cases.mjs`.
+- **The break-it pass found** (three Sonnet agents): rapid Next popped (a new album now waits for
+  the wave); a grow and the full player fire no animation event (a card's class change and a
+  ResizeObserver now end the wave); a theme fade ended it (Live Theming); the three shadows stepped
+  at two corners (negative spreads); `--card-edge` resolved on `<html>` (now unset by default); the
+  first color at launch poured; the first bolts kept the theme color; a drag asked for the palette
+  on every step; the tray kept the old ground.
+
 ## 2026-11-05 — The cap: steps 1 to 4; the 1.4 rows in the usage report
 
 - **His calls.** 1.4 waits for the cap. The listen count stays in 1.4 and is built later. The eight

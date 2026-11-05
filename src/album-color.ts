@@ -171,7 +171,7 @@ export interface CoverSource {
   now: () => { cover: string | null; catalogId: string | null };
   onChange: (cb: () => void) => () => void;
 }
-const playerCovers: CoverSource = { now: currentCover, onChange: onPlayerState };
+export const playerCovers: CoverSource = { now: currentCover, onChange: onPlayerState };
 
 /** Watch playback and tint `card` (the .np element) with the current album's palette. */
 export function watchAlbumColor(card: HTMLElement, source: CoverSource = playerCovers): () => void {

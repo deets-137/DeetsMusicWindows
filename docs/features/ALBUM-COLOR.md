@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: open
-sources: [src/album-slots.ts, src/album-color.ts]
-updated: 2026-10-10
+sources: [src/album-slots.ts, src/album-color.ts, src/album-neon.ts, src/album-light.ts]
+updated: 2026-11-05
 ---
 # DeetsMusic — Album Color (the radiant Now-Playing aurora)
 
@@ -160,10 +160,98 @@ feature stays grey instead of inventing a hue.
 - **Shape it after the pick:** each feature sets its own lightness and chroma cap for its
   backdrop (the Ocean's `asGlow` / `asNeon`). Scale the chroma; never raise it from zero.
 - **Users today:** the NP aurora and the tray panel (the rim, via `auroraSlots`), the Ocean's
-  glow from the deep and its neon crests (OCEAN.md §3, §7), and the Rulez fact *Album color*
-  (`albumWords`, RULEZ.md §11, 2026-09-27). The Album theme (SKINZ.md §12) is the next.
+  glow from the deep and its neon crests (OCEAN.md §3, §7), the album light on the Press and Cyber
+  card edges (below), and the Rulez fact *Album color* (`albumWords`, RULEZ.md §11, 2026-09-27).
+  The Album theme (SKINZ.md §12) is the next.
 - **The exception:** text keeps Apple's `c1` / `c2` by name (§Text & accent), because Apple chose
   them to read on that cover.
+
+---
+
+## The album light (Press and Cyber card edges)
+> **Part:** built · 2026-11-05 · desk test open
+
+His design, 2026-11-05. **Press:** the whole screen lights in neon: the plate and the card edges
+are lit. The line itself, never the area between the cards. **Cyber:** the thin card edges take the
+album's primary color and the bolts take its secondary. In both, the more colorful color is the
+primary. A new album's color turns in around each card, a pinwheel in one direction, over 1.2 s.
+
+**The colors.** `albumNeon(palette, darkGround)` (album-slots.ts) ranks by `auroraSlots`: the
+primary is the rim, the secondary the halo, which is the primary again when the next color is
+grey. Each goes through `asNeon` (Ocean's math, moved here): a bloom and a lifted core on a dark
+ground, both deeper on a light ground. **An all-grey cover lights white** (his call): on a dark
+ground the core stands in for the bloom, and no hue is invented. On his 6,044 cached palettes,
+34 % have two real colors, 31 % one, and 34 % are all grey (2026-11-05), so most covers show one
+color.
+
+**The tokens.** JS sets three roles on `<html>`: `--album-neon-core`, `--album-neon-bloom`,
+`--album-neon-2`. With none set, each skin falls back to the plain look.
+
+| Token | Tier | Job |
+|---|---|---|
+| `--hook-light` | hook | Names the skin's slider: `pressLight`, `cyberLight`. A skin without it is untouched |
+| `--album-lit` | skin | 0 to 1. Each skin points it at its slider. Ocean sets it on `.ocean` |
+| `--card-edge` | skin | A card's own border. Unset it falls back to `--panel-border`, which chips and menus share |
+| `--plate-core`, `--plate-bloom` | skin | Press: the plate's bands, mixed from `--ink-2` by `--album-lit` |
+| `--storm-album` | runtime | Cyber: the color a bolt strikes in, set on its strike box |
+| `--album-wave-dur` | skin | The turn, 1.2 s |
+
+**Press.** `--shadow-card` is three hard bands in the plate's 4 px: 1 px bloom, 2 px core, 1 px
+bloom. Negative spreads start all three at the plate's own corner, so the plain plate has the
+shape it always had. There is no blur, so nothing reaches the gap and `--grow-clip-pad` stays 6 px. The thin line
+takes the primary as well (his call: one color on Press). `--vinyl-plate-shadow` is the same bands.
+Menus keep `--shadow-panel` in `--ink-2`.
+
+**Cyber.** `--card-edge` takes the bloom. A bolt takes `--album-neon-2` at its loop seam
+(`storm.ts`, opacity 0), so a bolt on screen finishes in its old color and the color never redraws
+its glow in view. The bolts keep their glow: they are behind the cards.
+
+**The wave** (`album-light.ts`, styles.css § The album wave). It began top down and became a
+pinwheel on each card (his ask, 2026-11-05): clockwise from 12 o'clock, all cards at once, 1.2 s,
+constant speed. CSS cannot wipe a color along a border, so it is the bolts' method, turned: a copy
+of a card's edges in the new color sits in a hold box; a strike box, a half plane about the card's
+center, turns and clips it, and the hold box turns back by the same amount. One box covers half a
+circle, so each card has two, behind fixed clips: the right half runs the first 180°, the left the
+rest. Only `transform` moves. The Press record's plate has its own wheel. At the end the real
+cards take the roles and the copies go, in one frame.
+The copies read the same token expressions as the cards: the skins declare them on
+`:is([data-skin="…"], [data-skin="…"] .album-wave)`, so the copies work them out from the host's
+own roles, and the two cannot differ.
+
+**No wave:** at launch; on a theme or skin change; on a slider drag; with Reduce motion; with the
+window hidden; with *Spin in new colors* off; while a card is in motion (the color changes at once).
+A card that starts moving, a size change of the cards' area or a skin change ends a running wave.
+CSS motion fires an event; a grow and the full player run from script and fire none, so a class
+change on a card, a new child of `.bento`, `data-surface` and a ResizeObserver on the bento and each
+card catch them. A drill does not end it: `is-drill-swap` changes a card's inside, not its box. A theme change does not
+end a wave: Live Theming changes the theme with the album, so the wave goes on in the color for
+that ground. A new album during a wave waits for it, then turns in; rapid Next keeps only the last, so
+nothing pops. A same-color cover changes nothing.
+
+**Where else.** The tray panel takes the roles from its own palette (no wave, `album-neon.ts`
+carries no player). The grand opening's preview player uses `watchAlbumLight(box, source)`.
+
+**Settings** (Skin settings): *Album light* on Press (`pressLight`) and on Cyber (`cyberLight`),
+0–100, **0: off by default** (his call, 2026-11-05, until the 1.4 polish); each skin keeps its own value. *Spin in new colors* (`albumWave`), on, shows on both
+while the slider is above 0. The toggle is a reported usage key. Skin settings now shows under
+Cyber.
+
+**Log:** `albumLight:watch`, `albumLight:color` (on / off), `albumLight:wave` (`why`: done, next, moved, look,
+late, off; `cards`, `ms`). Frames: `album-wave`. Mark: `albumLight:wave`.
+
+**Desk test.** No restart for the front end. The agent part ran on the dev app 2026-11-05
+(WORKLOG.md, `docs/ops/checks/album-wave-probe.mjs`, `album-wave-cases.mjs`). He tried it the same
+day: "looks pretty good". Stress test done the same day (WORKLOG.md). Open: the polish, 125 % and
+150 % display scale, a menu that overhangs a card edge during a turn.
+1. Press, dark theme, a song plays, Album light up. The plate and thin line show the album's neon on every card,
+   and the gaps stay plain.
+2. Press Next to another album. The new color turns in around each card, clockwise, in 1.2 s.
+3. Press Next five times fast. No stuck copy, and the last album's color stays.
+4. Cyber: the thin edges take the primary. The next bolt strikes in the secondary.
+5. A black and white album lights white. A theme change repaints with no wave.
+6. Album light at 0: the plain skin. Drag it up: the color follows the drag.
+7. *Spin in new colors* off: the color changes at once.
+8. During a wave, swap a card and open a menu. Nothing stays out of place.
 
 ---
 

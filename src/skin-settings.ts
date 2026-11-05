@@ -11,6 +11,9 @@
 //        `glassDiffusion` (0–100) → --glass-diffusion, the wallpaper's blur (never locked).
 // Press: `pressVinyl` / `pressVinylWhere` → `data-press-vinyl` / `data-press-vinyl-where`
 //        (docs/features/VINYL.md); the tray panel applies these two as well.
+// Press, Cyber: `pressLight` / `cyberLight` (0–100) → --press-light / --cyber-light, the album
+//        light on the card edges. album-light.ts reads the keys itself; the tray publishes them
+//        through `applyLightLevels`.
 // Metal: `metalMaterial` → `data-metal-material`; `metalCoverChange` → `data-metal-cover`
 //        (skin.css turns it into --cover-swap); `metalPeek` → `data-metal-peek`, present only
 //        with the zoetrope on. metal.ts draws the textures (it reads `metalGrain` itself).
@@ -20,7 +23,7 @@
 
 import { setting, effective, onSettingsChange, GLASS_LOCKED } from "./settings-store";
 
-type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "glassDiffusion" | "oceanSand" | "oceanCardOpacity" | "oceanLight" | "happyCardOpacity";
+type SliderKey = "glassTint" | "glassBacklight" | "glassCanvasGlow" | "glassCanvasDim" | "glassDiffusion" | "oceanSand" | "oceanCardOpacity" | "oceanLight" | "pressLight" | "cyberLight" | "happyCardOpacity";
 const PROPS: Record<SliderKey, [string, string]> = {
   happyCardOpacity: ["--card-opacity", ""],
   glassDiffusion: ["--glass-diffusion", ""],
@@ -31,6 +34,8 @@ const PROPS: Record<SliderKey, [string, string]> = {
   oceanSand: ["--ocean-sand", ""],
   oceanCardOpacity: ["--ocean-card-opacity", ""],
   oceanLight: ["--ocean-light", ""],
+  pressLight: ["--press-light", ""],
+  cyberLight: ["--cyber-light", ""],
 };
 const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
 const isSlider = (k: string): k is SliderKey => k in PROPS;
@@ -51,6 +56,12 @@ export function applyVinylAttrs(): void {
   document.documentElement.dataset.pressVinylWhere = setting("pressVinylWhere");
   document.documentElement.dataset.pressVinylPlate = setting("pressVinylPlate") ? "on" : "off";
 }
+/** Album light on the card edges: the two sliders the tray panel publishes as well. */
+export function applyLightLevels(): void {
+  previewSkin("pressLight", setting("pressLight"));
+  previewSkin("cyberLight", setting("cyberLight"));
+}
+export const isLightKey = (k: string): boolean => k === "pressLight" || k === "cyberLight";
 const VINYL_KEYS: string[] = ["pressVinyl", "pressVinylWhere", "pressVinylPlate"];
 /** A change to one of the record rows. */
 export const isVinylKey = (k: string): boolean => VINYL_KEYS.includes(k);

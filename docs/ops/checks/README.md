@@ -248,3 +248,4 @@ state is not read (no pointer rests on a row). A disabled control is listed and 
   can read wrong). Judge smoothness by `[perf] frames` on `npm run dev:built` (DEBUGGING.md).
 - The demo's MusicKit is fake: no real playback, no network, no song change failure.
 - A strip shows what moved and when. Whether it looks right is the owner's eye.
+- `album-wave-probe.mjs`, `album-wave-cases.mjs`: the album pinwheel's recorder and its state cases on the dev app (ALBUM-COLOR.md § The album light).

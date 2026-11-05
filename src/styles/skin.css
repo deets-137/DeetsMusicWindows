@@ -413,6 +413,7 @@
   --panel-pad:          var(--space-3);
   --panel-border-width: 0;          /* borderless: spacing/typography carry the
                                        grouping (Glass opts back into a 1px edge) */
+  --card-edge:          initial;    /* a card's own border, --panel-border when unset. Not --panel-border itself, which every chip and menu shares: Press and Cyber light this one alone. Unset, so a nested theme's border still reaches a card in it */
 
   /* Card fill — which theme surface the cards sit on. This is a
      SKIN decision (does this skin lift cards off the canvas?); the
@@ -695,6 +696,11 @@
   --album-spin-dur:        48s;     /* rotation period of the highlight sweep */
   --album-fade-dur:        600ms;   /* crossfade on track change */
   --album-fade-delay:      0s;      /* when that change starts (Metal: one step as the new cover comes forward) */
+  /* The album light on the card edges (album-light.ts). 0…1; a skin points it at its own slider. */
+  --album-lit:             0;
+  --album-wave-dur:        1.2s;    /* the color turns once around each card */
+  --plate-core:            initial; /* Press: the plate's bright band */
+  --plate-bloom:           initial; /* Press: the plate's colored bands */
 
   /* -- storm layer (decorative strokes behind the cards) ------ */
   /* A layer in .app-body (two wiped strikes, each an SVG bolt)
@@ -1157,6 +1163,7 @@
   --hook-sea:       none;   /* on: the sea under the cards (ocean.ts) */
   --hook-record:    none;   /* on: the cover can be a turning record (vinyl.ts; Settings › Record) */
   --hook-wallpaper: none;   /* on: the canvas can show the covers or a picture (wallpaper.ts; Settings › Canvas) */
+  --hook-light:     none;   /* names the skin's Album light slider, which lights the card edges (album-light.ts): pressLight · cyberLight */
   --hook-scene:     none;   /* on: a scene around the cards — a sky, a sun or moon, clouds, the ground, and sprites that live there (scene.ts, pet.ts; Happy) */
 
   /* -- the scene (happy.md §2; mods.md §11) --------------------
@@ -1275,6 +1282,8 @@
 [data-skin="press"] {
   --hook-scrub:  nib;   /* the I-beam playhead (styles.css §Fancy scrubbers) */
   --hook-record: on;    /* the cover can be a record (vinyl.ts) */
+  --hook-light:  pressLight; /* the plate and the card edges light up (album-light.ts) */
+  --album-lit:   calc(var(--press-light, 0) / 100);
   /* sound panel: an ink-line curve, square plot, no glow (printed, not lit) */
   --sound-curve-w:       1.5px;
   --sound-graph-radius:  0px;
@@ -1311,7 +1320,6 @@
   --panel:              var(--surface);
   --panel-border-width: 1px;
   --panel-backdrop:     none;
-  --shadow-card:        4px 4px 0 var(--ink-2);
   --grow-clip-pad:      6px;        /* the plate's offset stays inside the opening clip */
   /* full player motion (features/fullscreen-player.md §9.4): the grow's values for now */
   --player-dur:          0.34s;
@@ -1355,7 +1363,6 @@
   /* record player — the disc sits on the press plate (the card's own offset ink), and a
      song change pulls one sheet off and stamps the next down: the nav ease, a longer run */
   --vinyl-inset:        5px;
-  --vinyl-plate-shadow: 4px 4px 0 var(--ink-2);
   --vinyl-swap-dur:     0.42s;
   --vinyl-swap-ease:    cubic-bezier(0.85, 0, 0.15, 1);
 
@@ -1383,6 +1390,20 @@
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='2' width='12' height='20' fill='%23000'/%3E%3C/svg%3E");
   --scrubber-handle-size: 12px;
   --scrubber-track-h:     4px;
+}
+
+/* Press's lit edges. The plate is three hard bands, a lit tube in the 4px of the offset ink: no
+   blur, so nothing reaches the gap between cards (his call, 2026-11-05). The upper two take a
+   negative spread with their offset, so all three start at the plate's own 4px corner: plain
+   offsets would step at the bottom left and top right. With no album or the slider at 0 each band
+   is --ink-2, the plain plate. These sit apart from the block above so the
+   wave's copies (.album-wave) work them out from their own neon roles. */
+:is([data-skin="press"], [data-skin="press"] .album-wave) {
+  --plate-core:  color-mix(in oklab, var(--album-neon-core, var(--ink-2)) calc(var(--album-lit) * 100%), var(--ink-2));
+  --plate-bloom: color-mix(in oklab, var(--album-neon-bloom, var(--ink-2)) calc(var(--album-lit) * 100%), var(--ink-2));
+  --card-edge:   color-mix(in oklab, var(--album-neon-bloom, var(--panel-border)) calc(var(--album-lit) * 100%), var(--panel-border));
+  --shadow-card: 2.5px 2.5px 0 -1.5px var(--plate-bloom), 3.5px 3.5px 0 -0.5px var(--plate-core), 4px 4px 0 var(--plate-bloom);
+  --vinyl-plate-shadow: var(--shadow-card);
 }
 
 /* ============================================================
@@ -1777,6 +1798,8 @@
    ============================================================ */
 [data-skin="cyber"] {
   --hook-scrub: bolt;    /* the breathing bolt */
+  --hook-light: cyberLight; /* the card edges and the bolts take the album's colors (album-light.ts) */
+  --album-lit:  calc(var(--cyber-light, 0) / 100);
   /* full player motion (features/fullscreen-player.md §9.4): the grow's values for now */
   --player-dur:          0.34s;
   --player-ease:         var(--pop-ease);
@@ -1827,7 +1850,6 @@
      below). Two --title bolts, ~5s and ~7s draws, glow in a soft halo
      of the same role. */
   --storm-display: block;
-  --storm-glow:    drop-shadow(0 0 6px color-mix(in srgb, var(--title) 60%, transparent));
   --storm-path-1:  path("M 0 -2 L 5 14 L -3 27 L -9 36 L -12 45 L -9 36 L -3 27 L 4 41 L -2 55 L 3 70 L 10 80 L 16 92 L 10 80 L 3 70 L -4 85 L 1 102");
   --storm-path-2:  path("M 0 -2 L -4 15 L 3 28 L 9 37 L 13 47 L 9 37 L 3 28 L -2 42 L 5 56 L -3 71 L -10 80 L -15 90 L -10 80 L -3 71 L 2 86 L -1 102");
 
@@ -1880,6 +1902,17 @@
      filled via the mask, like every skin's handle) */
   --scrubber-handle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 2 L6 14 h5 l-2 8 L18 9 h-5 l3 -7 Z' fill='%23000'/%3E%3C/svg%3E");
   --scrubber-handle-size: 14px;
+}
+
+/* Cyber's lit edge and bolts. The thin edge takes the album's primary color; each bolt takes the
+   secondary at its loop seam (--storm-album, storm.ts), so it is set on the strike box and the
+   glow follows it. No album or the slider at 0: --panel-border and --title, the plain skin. */
+:is([data-skin="cyber"], [data-skin="cyber"] .album-wave) {
+  --card-edge: color-mix(in oklab, var(--album-neon-bloom, var(--panel-border)) calc(var(--album-lit) * 100%), var(--panel-border));
+}
+[data-skin="cyber"] .storm__strike {
+  --storm-ink:  color-mix(in oklab, var(--storm-album, var(--title)) calc(var(--album-lit) * 100%), var(--title));
+  --storm-glow: drop-shadow(0 0 6px color-mix(in srgb, var(--storm-ink) 60%, transparent));
 }
 
 /* ============================================================

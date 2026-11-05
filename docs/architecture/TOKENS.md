@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 73 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 840 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 846 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -456,8 +456,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--panel-radius` | `12px` | press, ocean, glass, cyber, metal |  |
 | `--panel-pad` | `var(--space-3)` | — |  |
 | `--panel-border-width` | `0` | press, ocean, glass, cyber, metal | borderless: spacing/typography carry the |
-| `--panel` | `var(--canvas)` | press, ocean, glass, cyber, metal, happy | grouping (Glass opts back into a 1px edge) Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
-| `--shadow-card` | `none` | press, ocean, cyber | skins add a real card shadow |
+| `--card-edge` | `initial` | — | grouping (Glass opts back into a 1px edge) — a card's own border, --panel-border when unset. Not --panel-border itself, which every chip and menu shares: Press and Cyber light this one alone. Unset, so a nested theme's border still reaches a card in it |
+| `--panel` | `var(--canvas)` | press, ocean, glass, cyber, metal, happy | Card fill — which theme surface the cards sit on. This is a SKIN decision (does this skin lift cards off the canvas?); the theme owns the actual color. Vanilla = flush with the canvas. |
+| `--shadow-card` | `none` | ocean, cyber | skins add a real card shadow |
 | `--panel-backdrop` | `none` | press, glass | frosted-glass blur behind the panel; a skin opts in |
 | `--scroller-layer` | `auto` | vanilla, press, ocean, glass, cyber | will-change on the card lists: scroll-position gives each list its own compositor layer (a scroll moves it, the card is not repainted). Base auto: on an opaque card a layer turns the list's colour (subpixel) text smoothing into grey smoothing, a visible change, so only the see-through skins opt in — their text is grey-smoothed already (measured 2026-09-16, DEBUGGING.md §Fancy Glass and the Ocean swell). Press and Vanilla opted in too on 2026-10-11, so every skin has the layer: without it a list scrolls on the main thread and drops frames |
 | `--panel-isolation` | `auto` | glass | isolate: the card is its own stacking context (Glass's painted frost keeps the live frost's stacking) |
@@ -607,7 +608,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--vinyl-strip` | `0` | — |  |
 | `--vinyl-tray` | `0` | — |  |
 | `--vinyl-inset` | `0px` | press | room around the disc for the plate's shadow |
-| `--vinyl-plate-shadow` | `none` | press |  |
+| `--vinyl-plate-shadow` | `none` | — |  |
 | `--vinyl-hole` | `5%` | — | the spindle hole |
 | `--vinyl-label` | `33%` | — | the label edge (a real LP: 100 of 300 mm) |
 | `--vinyl-ring-w` | `1px` | — |  |
@@ -701,6 +702,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--album-spin-dur` | `48s` | glass | rotation period of the highlight sweep |
 | `--album-fade-dur` | `600ms` | metal | crossfade on track change |
 | `--album-fade-delay` | `0s` | metal | when that change starts (Metal: one step as the new cover comes forward) |
+| `--album-lit` | `0` | press, cyber | The album light on the card edges (album-light.ts). 0…1; a skin points it at its own slider. |
+| `--album-wave-dur` | `1.2s` | — | the color turns once around each card |
+| `--plate-core` | `initial` | — | Press: the plate's bright band |
+| `--plate-bloom` | `initial` | — | Press: the plate's colored bands |
 
 ### storm layer (decorative strokes behind the cards)
 
@@ -708,7 +713,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 |---|---|---|---|
 | `--storm-display` | `none` | cyber | A layer in .app-body (two wiped strikes, each an SVG bolt) that a skin opts into — same doctrine as --panel-backdrop. The that a skin opts into — same doctrine as --panel-backdrop. The GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can GEOMETRY is a skin token (CSS `d: path(...)`), so a future skin can reuse the layer for rain / streaks / scan lines; the ink is a theme reuse the layer for rain / streaks / scan lines; the ink is a theme ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per ROLE. Horizontal position is RUNTIME (--storm-x, re-rolled per strike by src/storm.ts) — not a skin token. Base is fully inert. — cyber opts in |
 | `--storm-ink` | `var(--title)` | — | stroke color — theme role, recolors per theme |
-| `--storm-glow` | `none` | cyber | drop-shadow() halo; a skin opts in |
+| `--storm-glow` | `none` | — | drop-shadow() halo; a skin opts in |
 | `--storm-w` | `2px` | — | stroke width (non-scaling) |
 | `--storm-path-1` | `none` | cyber | bolt geometry, via CSS d: path(...) |
 | `--storm-path-2` | `none` | cyber |  |
@@ -1061,6 +1066,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--hook-sea` | `none` | ocean | on: the sea under the cards (ocean.ts) |
 | `--hook-record` | `none` | press | on: the cover can be a turning record (vinyl.ts; Settings › Record) |
 | `--hook-wallpaper` | `none` | glass | on: the canvas can show the covers or a picture (wallpaper.ts; Settings › Canvas) |
+| `--hook-light` | `none` | press, cyber | names the skin's Album light slider, which lights the card edges (album-light.ts): pressLight · cyberLight |
 | `--hook-scene` | `none` | happy | on: a scene around the cards — a sky, a sun or moon, clouds, the ground, and sprites that live there (scene.ts, pet.ts; Happy) |
 | `--scene-floor` | `0px` | happy | -- the scene (happy.md §2; mods.md §11) -------------------- What a scene skin gives: pictures (url()) and a few sizes in the art's own pixels. The app draws them at --scene-px (scene.ts sets it: whole device pixels, 2× in Max, 1.5× elsewhere, his call H8). The sky's colors are theme roles (themes.css --sky-*). — room under the cards for the ground, so only its top reaches over their edges |
 | `--scene-grass` | `none` | happy | a tile that repeats along the window's bottom |
@@ -1201,6 +1207,7 @@ reader is a token nothing uses.
 | `--rulez-fold-ease` | `var(--ease-ui)` | — | styles.css |
 | `--album-spin-dur` | `48s` | glass | styles.css |
 | `--album-fade-dur` | `600ms` | metal | styles.css |
+| `--album-wave-dur` | `1.2s` | — | album-light.ts, styles.css |
 | `--storm-cycle-1` | `8s` | — | styles.css |
 | `--storm-cycle-2` | `12s` | — | styles.css |
 | `--scrub-bob-dur` | `2.4s` | — | ambient.ts, styles.css |
