@@ -20,7 +20,9 @@ updated: 2026-11-05
   on Press and Cyber; 80 is Ocean's). Demo login and the deploy wait for 1.4 installed here.
 - **Tested.** `sound-cap.mjs` 16 ok on the dev app; no release build was run.
   `daylight` read true on the dev app with the schedule off. **Not run:** the recipe across a real
-  sunset; the §7.3 heaviness check.
+  sunset.
+- **The §7.3 heaviness check is dropped (his call).** Match shares the Equalizer's graph and is off
+  until a user turns it on. It never ran, so no number exists.
 
 ## 2026-11-05 — His looks for 1.4; the ear test starts; one call for an artist's plays
 

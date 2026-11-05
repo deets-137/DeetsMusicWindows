@@ -218,7 +218,7 @@ needed for the app to work.
 measurement is held by a slow cap, and a fixed gain takes over once it has a row. It also fixes album
 gain for albums played from Search. **His ear test passed 2026-11-05** ([SOUND.md](features/SOUND.md)
 § 11a-2); no cap row, and the recipe Quieter after sunset in its place. Open before it ships: his
-look at the short panel line, his call on the §7.3 heaviness check (never run), and the 1.4.0
+look at the short panel line (the heaviness check is dropped, his call), and the 1.4.0
 note's real date. Demo login's hand test and the DeetsSupport deploy wait for 1.4 installed here
 (his call, 2026-11-05).
 

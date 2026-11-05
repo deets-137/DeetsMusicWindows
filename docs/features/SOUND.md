@@ -611,7 +611,8 @@ this process after the graph (§1).
 
 The larger, older cost: while any effect (Match loudness included) is on, audio runs through the
 Web Audio graph and the bus worklet (EQ, limiter) the whole time it plays. The §7.3 heaviness check
-(`heaviness-sample.ps1`, on against off) is still to be run.
+(`heaviness-sample.ps1`, on against off) never ran, and it is no longer a gate (his call,
+2026-11-05, § 11a-2).
 
 ### 10.4 Desk test (needs a runner restart: Rust changed)
 **Status (user, 2026-09-16):** steps 1–3 PASS on the desk. Steps 4–10 are tested when the release is
@@ -757,7 +758,7 @@ crossfeed stay hidden. The reason: a user asked for an option that evens the vol
   the agent specs' gate and the Compass words.
 - **The checklist.** `NEW_MARKS` with `since`, the ONBOARDING.md hints, AGENT.md, a release note.
 
-**Run before it ships:** the §7.3 heaviness check, on against off. It has never run.
+**The §7.3 heaviness check:** never run; dropped as a gate 2026-11-05 (his call, § 11a-2).
 
 **Limits to say in the row's hint.** A song is measured after 80 % of it is heard. A new install
 has no measurements, so the first listens change little.
@@ -799,7 +800,11 @@ fits at 409 px under its 620 px limit. Turning it on logged `sound:measureOn`, `
 
 ## 11a-2. Cap until measured (designed 2026-11-04)
 
-> **Part:** built · 2026-11-05, in every build; ear test passed; the heaviness check is open. This replaces the wait for a measurement in § 11a-1.
+> **Part:** built · 2026-11-05, in every build; ear test passed. This replaces the wait for a measurement in § 11a-1.
+
+**The heaviness check is dropped for Match (his call, 2026-11-05).** Match runs on the graph and
+worklet the Equalizer already uses, adds 10 small messages a second, and is off until a user turns
+it on. No number is measured. Run the check if a user reports a slow PC or dropouts with Match on.
 
 **Closed 2026-11-05 (his calls, after the ear test: "Ear test is good").** The default values stay.
 **No *Cap the level* row in 1.4**: the mode is `until` in every build, and Always and At set hours
@@ -950,7 +955,7 @@ the fold's text was rewritten. The progress tick stays: a capped song's gain mov
 - **The checklist:** agent spec and AGENT.md; `NEW_MARKS` with `since: 1.4.0`; ONBOARDING.md hints;
   SETTINGS-INVENTORY.md; `usage-keys.ts` (his call, as for `soundMatch`); a release note; a line in
   `web/handlers.ts` only if a new `invoke()` lands in a shared file. The Compass row is automatic.
-- **Before it ships:** the §7.3 heaviness check, on against off.
+- **Before it ships:** dropped, see the top of this section.
 
 **Desk test (after step 5).**
 1. `__cap.forget()`. Play a loud song with no row: it settles near the target with no audible pump.
