@@ -2,9 +2,33 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 # DeetsMusic — Work log
+
+## 2026-11-04 — Board replies: Compass and toasts with Now Playing on the right, compilations
+
+- **The ask.** He pulled the unanswered suggestions from the live board and asked for research on
+  four and one bug report.
+- **Built.** Compass clears Now Playing on the right (COMPASS.md §11). Toasts go top-left in that
+  state, his idea (TOASTS.md). The Full artist page reads `compilation-albums`, and the filter
+  pill has Compilations (ARTIST-VIEW.md §12.4).
+- **Fixed.** A pinned playlist's Open on Home did nothing while the Playlists card was off
+  screen: `requestOpenPlaylist` held a request and nothing brought the card in. It now asks for
+  the card itself (PINS.md §8.9). Claude ran it on the dev app with a real tile click.
+- **His hand test.** Compass, compilations and the pin fix passed ("good").
+- **Built after it.** Click and double-click on a tile (HOME.md §11.3b, schema v23, a pure press
+  reader with tests). Match loudness alone, under the Equalizer (SOUND.md § 11a-1).
+- **His second hand test.** Double-click and Match loudness: "tentatively good to go". The dev log
+  holds no press lines, so the record is his word.
+- **Built after it.** The same click and double-click on every collection, Open at once, the
+  `press.*` rule events and a guide page (HOME.md §11.5).
+- **The break-it pass (six Sonnet reviews).** It found a Compass misread during the side slide, a
+  mid-song Match change that claimed a gain and saved a partial row, a right-click dropped by the
+  tile guard, a double-click restarting a pinned song, and a normal-speed double-click doing
+  nothing after an Open. All fixed.
+- **Open.** The song mark on a row waits for his design (HANDOFF). Double-click and Match loudness
+  wait on his desk test; the heaviness check runs before Match ships.
 
 ## 2026-11-03 — Let go of Apple after a pause
 

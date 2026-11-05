@@ -720,7 +720,7 @@ export const rulezCard: CardDef = {
       else {
         const w = r.when ? whenText(r, L) : "";
         when = `<span class="rulez__word">When</span>${blank(w ? lowerFirst(w) : "what happens?", "when", "Picks what starts this rule; with none, it holds while the If is true", "", !r.when && !hasCond)}`;
-        const cardEvent = r.when && ["card.open", "album.open", "artist.open", "grow.outside", "grow.back", "queue.summon", "goto.artist", "goto.album"].includes(r.when);
+        const cardEvent = r.when && ["card.open", "album.open", "artist.open", "grow.outside", "grow.back", "queue.summon", "goto.artist", "goto.album", "press.album", "press.playlist", "press.artist", "press.album.double", "press.playlist.double", "press.artist.double"].includes(r.when);
         if (cardEvent || r.card !== "*") when += `<span class="rulez__word">in</span>${blank(r.card === "*" ? "any card" : L.cards.find((c) => c.value === r.card)?.label ?? r.card, "in", "Picks the card the event must happen in")}`;
       }
       // Line 2: DeetsMusic does.

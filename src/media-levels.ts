@@ -60,6 +60,8 @@ import { albumMenu, artistMenu, playlistMenu, songMenu, type ArtistSubject } fro
 import { handOff } from "./handoff";
 import { requestPlaylistPane } from "./go-to";
 import { requestOpenPlaylist, playlistTracks } from "./playlists";
+import { collectionPress, catalogTracks } from "./collection-press";
+import { pid } from "./rewind";
 import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey, fmtClock } from "./library-model";
 import * as diag from "./diag";
 import { countUse } from "./use-counts";
@@ -206,6 +208,9 @@ interface ShelfAlbum {
   /** The Apple view it came from (Full only): the Albums shelf's filter (ARTIST-VIEW.md §12). */
   kind?: AlbumKind;
   open?: () => void;
+  /** Its songs and play-log tag, for a click or double-click that plays (HOME.md §11.5). */
+  tracks?: () => Track[] | Promise<Track[]>;
+  context?: string;
   menu: () => MenuItem[];
 }
 
@@ -221,6 +226,7 @@ const ALBUM_PICKS: { value: AlbumPick; label: string }[] = [
   { value: "album", label: "Albums" },
   { value: "single", label: "Singles & EPs" },
   { value: "live", label: "Live" },
+  { value: "compilation", label: "Compilations" },
 ];
 const PICK_KEY = "deets.artistAlbumPick";
 const isPick = (v: unknown): v is AlbumPick => ALBUM_PICKS.some((p) => p.value === v);
@@ -561,8 +567,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         count: p.value === "all" ? all.length : counts.get(p.value),
       }));
     };
-    // Albums, singles and EPs, and live albums in one shelf (his call, 2026-10-26), with a pill to
-    // show one kind (§12). Two kinds or more, or no pill.
+    // Albums, singles and EPs, live albums and compilations in one shelf (his calls, 2026-10-26 and
+    // 2026-11-04), with a pill to show one kind (§12). Two kinds or more, or no pill.
     const albumsShelf = (): string => {
       const all = newestFirst(d.albums());
       const counts = kindCounts(all);
@@ -570,7 +576,7 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       albumList = pick === "all" ? all : all.filter((al) => al.kind === pick);
       const pill =
         counts.size > 1
-          ? shelfPillHTML(ALBUM_PICKS.find((p) => p.value === pick)!.label, "Shows all of the artist's releases, or only albums, singles and EPs, or live albums")
+          ? shelfPillHTML(ALBUM_PICKS.find((p) => p.value === pick)!.label, "Shows all of the artist's releases, or only albums, singles and EPs, live albums or compilations")
           : "";
       return albumTiles("album", albumList, "Albums", pill);
     };
@@ -631,23 +637,37 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       // An album drills in place. A featured playlist opens as a Search pane; one of yours in
       // the Playlists card — each after the chip flight, which fetches the songs first so the
       // view arrives full (§5). "Check N more" fetches the unopened ones (§3).
-      onShelf: (el) => {
+      onShelf: (el, e) => {
         const i = Number(el.dataset.shelfIdx);
         const kind = el.dataset.shelfItem;
         if (kind === "album" || kind === "appears") {
-          shelfAlbum(kind, i)?.open?.();
+          const al = shelfAlbum(kind, i);
+          if (al?.open && al.tracks && al.context) collectionPress(e, { kind: "album", key: `album:${al.context}`, context: al.context, open: al.open, tracks: al.tracks });
+          else al?.open?.();
         } else if (kind === "featured") {
           const p = d.featured()?.[i];
           const id = p?.catalogId;
           if (p && id) {
             const intent = { id, name: p.name, artwork: p.artwork, curatorName: p.curatorName };
-            if (deps.playlistsHere) card().drill(playlistLevel(intent));
-            else handOff(el, "search", () => collectionTracks("playlists", id), (ts) => requestPlaylistPane({ ...intent, tracks: ts }));
+            collectionPress(e, {
+              kind: "playlist", key: `playlist:${id}`, context: `search-playlists:${id}`,
+              open: () => {
+                if (deps.playlistsHere) card().drill(playlistLevel(intent));
+                else handOff(el, "search", () => collectionTracks("playlists", id), (ts) => requestPlaylistPane({ ...intent, tracks: ts }));
+              },
+              tracks: () => catalogTracks(() => collectionTracks("playlists", id)),
+            });
           }
         } else if (kind === "yours") {
           const p = yours?.hits[i]?.p;
           const lid = p?.libraryId;
-          if (p && lid) handOff(el, "playlists", () => playlistTracks(p), (ts) => requestOpenPlaylist(lid, ts), p.trackCount);
+          if (p && lid) {
+            collectionPress(e, {
+              kind: "playlist", key: `playlist:${lid}`, context: `playlist:${pid(p)}`,
+              open: () => handOff(el, "playlists", () => playlistTracks(p), (ts) => requestOpenPlaylist(lid, ts), p.trackCount),
+              tracks: () => playlistTracks(p),
+            });
+          }
         } else if (kind === "check" && yours && !checking) {
           checking = { done: 0, total: yours.unchecked.length };
           card().reload(ctx);
@@ -821,6 +841,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
           artwork: al.artwork,
           releaseDate: al.releaseDate,
           open: () => card().drill(libAlbumLevel(al)),
+          tracks: () => albumOrder(tracks().filter((t) => albumKey(t) === al.key)),
+          context: `album:${al.key}`,
           menu: () =>
             albumMenu(libAlbum(albumOrder(tracks().filter((t) => albumKey(t) === al.key))), { context: `album:${al.key}`, nav: libNav, inArtist: true }),
         })),
@@ -967,6 +989,8 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
         open: aid
           ? () => card().drill(fullAlbumLevel({ albumId: aid, name: al.title, artist: al.artistName || name(), artwork: al.artwork, releaseDate: al.releaseDate }))
           : undefined,
+        tracks: aid ? () => catalogTracks(() => collectionTracks("albums", aid)) : undefined,
+        context: aid ? `search-albums:${aid}` : undefined,
         menu: () =>
           aid
             ? albumMenu(

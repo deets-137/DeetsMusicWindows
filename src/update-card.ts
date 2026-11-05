@@ -25,6 +25,7 @@ import { onPlayerState, playPause, nextTrack, prevTrack, refreshPlayerState } fr
 import * as queue from "./queue";
 import { resolveEntry, artURL, coverArtPx } from "./queue-rows";
 import { ICON_PLAY, ICON_PAUSE, GLYPH_NOTE } from "./now-playing-card";
+import { pinnedItems, pinDouble, setPinDouble, type PinAct } from "./pins";
 
 declare global {
   interface Window {
@@ -210,7 +211,43 @@ function settingsColumn(col: HTMLElement, line: Line): () => void {
       col.append(offer);
     }
   }
+  if (line.line === PINS_LINE) pinsList(col);
   return () => stops.forEach((f) => f());
+}
+
+// ── Your pins (HOME.md §11.3a, his call 2026-11-04) ──────────────────────────────
+/** The line that brought On Double Click: its page lists the pins a user already has. */
+const PINS_LINE = "1.4";
+const PIN_VERBS: { value: PinAct; label: string }[] = [{ value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }, { value: "open", label: "Open" }];
+
+/** Every album, playlist and artist pin, each with its On Double Click choice. */
+function pinsList(col: HTMLElement): void {
+  const items = pinnedItems(["album", "playlist", "artist"]);
+  if (!items.length) return;
+  const head = document.createElement("div");
+  head.className = "set__head uc__release";
+  head.textContent = "Double-click on your pins";
+  col.append(head);
+  for (const it of items) {
+    const row = document.createElement("div");
+    row.className = "set__row uc__pin";
+    row.innerHTML =
+      `<span class="set__label">${esc(it.title)}</span><div class="set__split">` +
+      PIN_VERBS.map((v) => `<button class="set__half" type="button" data-verb="${v.value}" title="A double-click on this pin does this">${v.label}</button>`).join("") +
+      `</div>`;
+    const halves = [...row.querySelectorAll<HTMLButtonElement>(".set__half")];
+    const paint = () => {
+      const now = pinDouble(it.key, it.kind);
+      halves.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.verb === now)));
+    };
+    halves.forEach((b) =>
+      b.addEventListener("click", () => {
+        void setPinDouble(it.key, b.dataset.verb as PinAct).then(paint).catch((e) => console.error("[update card] pin", e));
+      }),
+    );
+    paint();
+    col.append(row);
+  }
 }
 
 // ── While You Read (§3.19, his design 2026-11-02) ────────────────────────────────

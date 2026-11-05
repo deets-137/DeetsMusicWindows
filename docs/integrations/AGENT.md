@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-14
 sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts, src/agent-rules.ts, src/agent-rules-shape.ts, cli/src/main.rs]
-updated: 2026-10-23
+updated: 2026-11-04
 ---
 # Agent / CLI control — `deetsmusic`
 
@@ -339,6 +339,12 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   played and added elsewhere, and the "New" shelf of your artists' releases. Off, every shelf
   still builds from this machine alone. The hide rows are not exposed: hiding a tile is a
   gesture on the tile.
+- **Click and double-click on a tile** (2026-11-04, HOME.md §11): `tileClick`, `tileDouble`
+  (Play | Shuffle | Open, default Play) in Home; `tilePressWait` (150 | 250 | 350 | 500 ms, default
+  250) in Home; `pinNewDouble` (the same verbs, default Play) in Playback, the verb a new pin
+  starts with on a double-click. `collectionClick` (default Open) and `collectionDouble` (default
+  Play) in Playback: albums, playlists and artists in the Library, Playlists, Search and artist
+  pages (§11.5).
 - **Playback › Pinned Item click behavior** (2026-09-20, PINS.md §8): `pinNewAct`
   (Open | Play | Shuffle). The verb a NEW pinned tile starts with. It never touches a pin that
   already exists — a verb set on a tile is kept for ever, and a pin made before this shipped
@@ -441,19 +447,19 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   (100 = solid, the default).
 - `oceanLight` (0–100, 2026-09-23) `[Ocean only]`: the album light. 0 = the plain sea (the
   default); higher lights the wave crests in the album's color as neon and raises the glow.
-- **Adaptive sound is hidden (2026-09-25, SOUND.md §11a):** the ten `soundAdaptive` /
-  `soundLoud*` / `soundLowVol*` / `soundCrossfeed*` specs are left out of the list unless the
+- **Adaptive sound is hidden (2026-09-25, SOUND.md §11a):** the `soundAdaptive` /
+  `soundLowVol*` / `soundCrossfeed*` specs are left out of the list unless the
   window has the DevTools flag `deets.dev.adaptiveSound`, so an agent cannot reach them.
-- The **Sound** section (2026-09-16, SOUND.md): `soundEq` and `soundAdaptive` are **off only** —
+- The **Sound** section (2026-09-16, SOUND.md): `soundEq`, `soundMatch` and `soundAdaptive` are **off only** —
   every effect ships off (Apple DPLA §3.3.6.D) and turning one on is the user's own choice in the
   Sound panel; `set … on` → `403`. Since 2026-09-18 nine of this section's rows are rows of
   **Settings › Sound** as well as of the panel; the master switches, the curve and the presets
   are in the panel alone. The rest set freely: `soundEqPreset` (a preset id or its name:
   Flat, Bass lift, Vocal, Treble lift, Warm, Late night, Custom, or a saved one), `soundEqMode`
   (Sliders | Dots), `soundEqPreamp` "Avoid distortion" (Limiter only | When needed | Always | By hand), `soundEqPerOutput`
-  "Remember each output", and — only with the Adaptive sound flag (above) — `soundLoudness`, `soundLoudTarget` "Match songs to" (Standard −16 | Louder −14 |
+  "Remember each output", `soundLoudTarget` "Match songs to" (Standard −16 | Louder −14 |
   Quieter −18 LUFS), `soundLoudAlbum` "Keep albums together", `soundLoudUnmeasured` "Songs not measured
-  yet" (Usual amount | No change), `soundLowVol` (Off | Gentle | Full), `soundLowVolKey` "Follow the
+  yet" (Usual amount | No change), and — only with the Adaptive sound flag (above) — `soundLowVol` (Off | Gentle | Full), `soundLowVolKey` "Follow the
   volume of" (App + Windows | App only),
   `soundCrossfeed` (Auto | Always | Off), `soundCrossfeedLevel` (Light | Medium | Strong),
   `soundReviewDays` (7 | 14 | 3 days | Never). The bands themselves are not an agent value.

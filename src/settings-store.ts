@@ -274,9 +274,10 @@ export interface Settings {
   soundOutputNames: Record<string, string>;
   /** DeetsAdaptiveSound, the one switch over its three parts. */
   soundAdaptive: boolean;
-  /** Part A: each song at the same loudness. */
-  soundLoudness: boolean;
-  /** Part A's target, in LUFS. */
+  /** Match loudness: each song at the same loudness. Its own switch since 2026-11-04, outside
+   *  Adaptive sound (SOUND.md § 11a-1). Songs are measured only while it is on. */
+  soundMatch: boolean;
+  /** Match loudness's target, in LUFS. */
   soundLoudTarget: number;
   /** Part A: an album played in order keeps one gain, so its quiet songs stay quiet. */
   soundLoudAlbum: boolean;
@@ -454,6 +455,17 @@ export interface Settings {
    *  only gate on the room (FRIENDS.md §8.5.3). OFF by default. */
   discordRoomInvite: boolean;
   pinNewAct: "open" | "play" | "shuffle";
+  /** What a double-click on a new pin does (HOME.md §11.3a); each pin has its own row. */
+  pinNewDouble: "open" | "play" | "shuffle";
+  /** What a click and a double-click on an unpinned Home tile do (HOME.md §11.3a). */
+  tileClick: "open" | "play" | "shuffle";
+  tileDouble: "open" | "play" | "shuffle";
+  /** What a click and a double-click do on an album, playlist or artist everywhere else: the
+   *  Library, the Playlists card, Search and the artist page (HOME.md §11.5). */
+  collectionClick: "open" | "play" | "shuffle";
+  collectionDouble: "open" | "play" | "shuffle";
+  /** How long a click waits for a second press, in ms, on a tile whose two verbs differ. */
+  tilePressWait: number;
   /** Press and hold a section header to move it (MOVABLE-ROWS.md fork 6). Off leaves every
    *  header a plain fold and no section can be reordered — a pinned tile keeps its own grip
    *  bar either way, because that is not a hold. row-order.ts reads it. */
@@ -671,7 +683,7 @@ export const DEFAULTS: Settings = {
   soundEqOutputs: {},
   soundOutputNames: {}, // filled as presets are remembered: a Windows output's key is an unreadable id
   soundAdaptive: false, // user's call 2026-09-16: off like every effect. Hidden since 2026-09-25: read adaptiveOn(), which also needs the DevTools flag
-  soundLoudness: true, // user's call 2026-09-18: on inside Adaptive sound — a person who turns Adaptive sound on expects it to do something, and this is its most audible part (it was off from 2026-09-17; every effect still ships off because soundAdaptive does)
+  soundMatch: false, // his call 2026-11-04: back on its own, and off like every effect. A new key: `soundAdaptive` and the old `soundLoudness` hold choices made before the 2026-09-25 hide, and neither may turn it on with no word
   soundLoudTarget: -14, // user's call 2026-09-18: the level streaming services use; at −16 a library of modern masters (−8 to −10 LUFS) was a 6–8 dB cut on nearly everything (it was −16, Apple Sound Check's level, from 2026-09-16)
   soundLoudAlbum: true, // user's call 2026-09-16: an album keeps its own dynamics
   soundLoudUnmeasured: "median", // user's call 2026-09-16
@@ -734,6 +746,12 @@ export const DEFAULTS: Settings = {
   discordRoomInvite: false, // the button publishes the room code for as long as the card is up
   moveSections: true, // user's call 2026-09-20: on, at a 400 ms hold — long enough that a click-to-fold never trips it
   pinNewAct: "open", // user's call 2026-09-20: albums, playlists and artists open, as all three cards do today — so nothing changes verb on update day
+  pinNewDouble: "play", // his call 2026-11-04: Open on a click, Play on a double-click, with no setup
+  tileClick: "play", // HOME.md §11.2: nothing changes for a user who never opens the row
+  tileDouble: "play", // his call 2026-11-04; the same verb as the click, so a default tile never waits
+  collectionClick: "open", // what every one of these places did before 2026-11-04
+  collectionDouble: "play", // his call 2026-11-04; an Open acts at once, so this costs no lag
+  tilePressWait: 250, // his call 2026-11-04: short enough to feel instant, and a setting for slower hands
   playlistAutoRefresh: true, // the bug it fixes is silent: a mix serves last week until you press ⟳ (PLAYLIST-REFRESH.md §0)
   webReach: 2, // the artist's collaborators and theirs: a real web without drifting far (PLAYLIST-WEB.md §3)
   webSize: 50, // an afternoon of music; 100 at reach 3 is where unrelated artists start to show

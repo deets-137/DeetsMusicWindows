@@ -2,7 +2,7 @@
 status: foundation
 desk_test: none
 sources: [src/settings-store.ts, src/settings-card.ts, src/styles/settings.css, src/agent-settings.ts]
-updated: 2026-10-23
+updated: 2026-11-04
 ---
 # DeetsMusic — Settings: the machinery
 
@@ -216,7 +216,7 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Playback | Show the day in History (Each row says Today, Yesterday or the date, next to the artist) — toggle (2026-09-15) | `historyShowDay` | on / **off** | `history-card.ts` — the day joins the row's subtitle line; never a divider ([QUEUE.md](../features/QUEUE.md)) |
 | Playback | Show play counts from Last.FM (Now Playing shows how many plays and listeners a song has on Last.fm. Off: Last.fm is not asked) — toggle (2026-10-12) | `showListeners` | **on** / off | `now-playing-card.ts` `refreshListen` — the badge: plays and listeners in the full player, plays on the Max card; one `track.getInfo` per song, cached a month ([LISTENERS.md §4](../features/LISTENERS.md)). The song badge only since 2026-10-12: the artist box has its own row, below |
 | Playback | Show artist info on the artist's page (The artist's page shows Last.fm's tags, plays and listeners, and a link. Off: Last.fm is not asked) — toggle (2026-10-12) | `showArtistInfo` | **on** / off | `listeners.ts` `artistInfoFor` — the facts box beside the artist photo in the Library and Search artist views; one `artist.getInfo` per artist, cached a month ([LISTENERS.md §6](../features/LISTENERS.md)). His call: its own row, independent of `showListeners`; it replaced the DevTools flag `deets.dev.artistBox` |
-| Playback | Remember Artist filters (The filter on an artist's Albums shelf stays the same on the next artist. Off: every artist opens on All) — toggle (2026-10-27) | `rememberArtistFilters` | **on** / off | `media-levels.ts` `artistLevel` — the pick of the Albums shelf's pill (All · Albums · Singles & EPs · Live), kept in localStorage `deets.artistAlbumPick` while on; off, each artist page keeps its own pick until it closes. [ARTIST-VIEW.md §12](../features/ARTIST-VIEW.md) |
+| Playback | Remember Artist filters (The filter on an artist's Albums shelf stays the same on the next artist. Off: every artist opens on All) — toggle (2026-10-27) | `rememberArtistFilters` | **on** / off | `media-levels.ts` `artistLevel` — the pick of the Albums shelf's pill (All · Albums · Singles & EPs · Live · Compilations), kept in localStorage `deets.artistAlbumPick` while on; off, each artist page keeps its own pick until it closes. [ARTIST-VIEW.md §12](../features/ARTIST-VIEW.md) |
 | Playback | Show album info on the album's page (The album's page shows Last.fm's tags, plays and listeners, a few words about it from Apple Music or Last.fm, and a link. Off: neither is asked) — toggle (2026-10-13) | `showAlbumInfo` | **on** / off | `listeners.ts` `albumInfoFor` — the facts box beside the album cover in the Library's Lib and Full levels and the Search album pane; `album.getInfo` under Spotify's form, then Apple's (one or two calls per album), cached a month ([LISTENERS.md §7](../features/LISTENERS.md)). Since 2026-10-17 also Apple's editorial notes (`album-notes.ts` `notesFor`, `album_notes` in notes.rs: 0 calls on a Full album, 1 the first time on a library album, cached a month; [album-notes.md](../features/album-notes.md)). His call: its own row. A right-click on the box turns it off (toast with Undo) |
 | Playback | Show song info on the song's page (Song Credits shows Last.fm's tags, plays and listeners, a few words about the song or its album, and a link) — toggle (2026-10-17) | `showSongInfo` | **on** / off | `listeners.ts` `songInfoFor` — the facts box beside the cover on the song level (Song Credits, Library and Search); rides the song's `track.getInfo` (one call per song, cached a month) ([LISTENERS.md §8](../features/LISTENERS.md)). Its own row, as the album's. A right-click on the box turns it off (toast with Undo) |
 | Playback | Notes from (Where the About words on a song's or an album's page come from) — choice (2026-10-17) | `notesSource` | **both** / apple / lastfm / none | `notes-order.ts` `pickNote` — the About cell: the song before its album, Apple before Last.fm; one source keeps that order inside it; none leaves the cell empty ([LISTENERS.md §8.4](../features/LISTENERS.md)). His ask. Apple's notes since 2026-10-17 ([album-notes.md](../features/album-notes.md)): *Apple only* shows Apple's short note, or Apple's words about the song |
@@ -245,10 +245,14 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Last.fm | Scrobble plays (Sends each song to your Last.fm profile once you hear half of it or 4 minutes) — 2026-09-16. Status line under the rows: the account and the waiting count | Rust `lastfmScrobble` (`settings_set_lastfm_scrobble`) | **on** / off | `lastfm.rs` `lastfm_heard` — [LASTFM.md §6](../integrations/LASTFM.md) |
 | Last.fm | Show now playing (Your Last.fm profile shows the song while it plays) — 2026-09-16 | Rust `lastfmNowPlaying` (`settings_set_lastfm_now_playing`) | **on** / off | `lastfm.rs` `now_playing` |
 | Home | Follow your other devices (Home asks Apple what you played and added elsewhere, and what your artists released) (2026-09-18, [HOME.md](../features/HOME.md) §9, §10) | `homeApple` | **on** / off | `home.ts` — off makes zero Apple calls for the shelves |
+| Home | Click a Home tile · Double-click a Home tile — *Play* / *Shuffle* / *Open* (2026-11-04, [HOME.md](../features/HOME.md) §11) | `tileClick` · `tileDouble` | **play** / shuffle / open, each | `home-card.ts` through `tile-press.ts`. A pin has its own rows; a station always plays |
+| Home | Double-click wait — *150 ms* / *250 ms* / *350 ms* / *500 ms* (2026-11-04) | `tilePressWait` | 150 / **250** / 350 / 500 | `tile-press.ts`, for Home and the Pinned shelves. Only a tile whose two verbs differ waits |
 | Home | Hiding lasts (Right-click a Home tile and Hide to take it off the card) — pills *Until cleared* / *This session* (2026-09-15) | `homeHideLasts` | **forever** / session | `home.ts` `hiddenMap` — [HOME.md §5](../features/HOME.md) |
 | Home | Hidden tiles (Puts every hidden tile back on Home. Playing one again also brings it back) — a *Clear* action; the section's status line counts them | `homeHidden` (key → hidden-at ms) | **{}** | `home.ts` `clearHidden` / `hiddenCount` |
 | Playlists | Show playlist counts (§14) (One small request per playlist, once) | `playlistEagerCounts` | on / off | `playlists-card.ts` backfill |
 | Playlists | Refresh playlists by themselves (Re-reads a playlist when you open it, and once a day. Each playlist keeps its own setting) (2026-09-20, [PLAYLIST-REFRESH.md](../features/PLAYLIST-REFRESH.md)) | `playlistAutoRefresh` | **on** / off | `playlist-refresh.ts` — the master switch over every playlist's own Refresh ▸ choice |
+| Playback | Click a collection · Double-click a collection — *Open* / *Play* / *Shuffle* (2026-11-04, [HOME.md](../features/HOME.md) §11.5) | `collectionClick` · `collectionDouble` | **open** / play / shuffle · **play** / shuffle / open | `collection-press.ts`: albums, playlists and artists in the Library, Playlists, Search and artist pages. A rule on `press.album` and the like answers first |
+| Playback | Pinned Item double-click behavior — *Play* / *Shuffle* / *Open* (2026-11-04, [HOME.md](../features/HOME.md) §11.3a) | `pinNewDouble` | **play** / shuffle / open | `pins.ts` `setPin`. A pin made before it reads Play |
 | Playback | Pinned Item click behavior (The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click) — *Open* / *Play* / *Shuffle* (2026-09-18, [PINS.md](../features/PINS.md) §8) | `pinNewAct` | **open** / play / shuffle | `pins.ts` `setPin` — a pin made after a change keeps the verb it was made with |
 | Playlists | New playlist opens Search (Puts the Search card beside the new playlist, so adding songs is one card away) — pills *On* / *Never* (2026-10-16; three-way *Not in mini* / *Always* / *Never* from 2026-09-15, a toggle before: `true` and *Not in mini* → **on** + the follow-up off, *Always* → on + the follow-up on) | `playlistCreateSummon` | **on** / off | the rules engine ([RULES.md](RULES.md) §13): `playlists-card.ts` `createAndEnter` emits `playlist.create`; the row's rule summons Search (`if soloCard ≠ playlists` while the follow-up is off) |
 | Playlists | Also when Playlists is the only card (In Mini, in Max with one card, and when Playlists fills the window, Search takes its place) — shows while the row above is *On* (his call 2026-10-16) | `playlistCreateSummonSolo` | on / **off** | the same rule: off adds `if soloCard ≠ playlists`. `soloCard` (layout.ts) is the one content card on screen, or `none` |
@@ -359,8 +363,8 @@ Two tabs on one Web Audio graph. **Every effect ships off** (Apple DPLA §3.3.6.
 | Remember each output | `soundEqPerOutput` | **on** / off | `sound.ts` on output change | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Output key → preset id | `soundEqOutputs` | **{}** | same |
 | Output key → its name when last seen | `soundOutputNames` | **{}** | the panel's output list |
-| Adaptive sound (the switch over the three parts) | `soundAdaptive` | on / **off** | `sound.ts` |
-| Part A — Match loudness | `soundLoudness` | **on** / off (on since 2026-09-18; was off) | `sound-loudness.ts` |
+| Adaptive sound (the switch over Parts B and C, behind the DevTools flag) | `soundAdaptive` | on / **off** | `sound.ts` |
+| Match loudness (its own switch since 2026-11-04, SOUND.md § 11a-1; replaced `soundLoudness`) | `soundMatch` | on / **off** | `sound-loudness.ts` | **Also a row of Settings › Sound (§3).**
 | Part A — target, in LUFS | `soundLoudTarget` | −16 (Apple Sound Check) / **−14** / −18 (−14 since 2026-09-18; was −16) | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Part A — keep an album together | `soundLoudAlbum` | **on** / off | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
 | Part A — a song never measured | `soundLoudUnmeasured` | **median** / none | same | **Also a row of Settings › Sound (§3), 2026-09-18.**
@@ -372,12 +376,8 @@ Two tabs on one Web Audio graph. **Every effect ships off** (Apple DPLA §3.3.6.
 | When an effect was first turned on (epoch ms) | `soundFirstOn` | **0** | same — internal, no control |
 | The review was answered *Keep* | `soundReviewed` | **false** | same — internal, no control |
 
-Turning `soundAdaptive` on turns Match loudness on with it (`soundLoudness` defaults on since
-2026-09-18): a person who turns Adaptive sound on expects it to do something, and this is its
-most audible part. From 2026-09-17 to 2026-09-18 it defaulted off inside the off parent, with
-songs measured meanwhile so a later switch-on had gains ready; the review of 2026-09-18 found
-that on the owner's install it had changed 3 of 106 song starts. Every effect still ships off,
-because `soundAdaptive` does.
+`soundMatch` is off by default, as every effect is, and songs are measured only while it is on. It
+is a new key, so a choice made before the 2026-09-25 hide does not turn it on with no word.
 
 ### The pin — the title-bar panel in `index.html`, driven by `pin.ts` ([PIN.md](../features/PIN.md))
 

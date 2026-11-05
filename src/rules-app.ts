@@ -48,6 +48,9 @@ export function initRulesApp(): void {
   // question, whose answer is the rule's `openIn` (the site acts, as a cancel site reads Keep).
   for (const e of ["queue.summon", "goto.artist", "goto.album"] as const) registerEvent(e, { facts: [] });
   registerAction("openIn", { cost: "free", run: () => undefined });
+  // A click or double-click on one type (HOME.md §11.5): collection-press.ts reads `useVerb`.
+  for (const e of ["press.album", "press.playlist", "press.artist", "press.album.double", "press.playlist.double", "press.artist.double"] as const) registerEvent(e, { facts: [] });
+  registerAction("useVerb", { cost: "free", run: () => undefined });
 
   registerAction("set", {
     cost: "free",

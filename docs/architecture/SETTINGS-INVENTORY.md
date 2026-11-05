@@ -2,7 +2,7 @@
 status: guide
 desk_test: none
 sources: []
-updated: 2026-10-23
+updated: 2026-11-04
 ---
 # Every control in DeetsMusic
 
@@ -102,24 +102,24 @@ Settings › Sound, except the curve, the presets and the two Clear actions.
 | Avoid distortion | How a boost is kept from clipping | **Limiter** / When needed / Always / By hand |
 | Lower the song by | The amount for *By hand*, in dB | −24…+6, **0** |
 | Remember each output | Headphones, speakers and AirPlay speakers each keep their own preset | **On** / Off |
+| Match loudness | Under the Equalizer (SOUND.md § 11a-1). Plays every song at about the same loudness. A song is measured the first time you hear most of it | on / **off** |
+| Match songs to | In *How Match loudness decides*. How loud songs are made. Standard is Apple's Sound Check level | Standard / **Louder** / Quieter |
+| Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
+| Songs not measured get | A song is measured the first time you hear it | **Usual amount** / No change |
+| Clear measurements | Deletes every song's loudness measurement | — |
 
 **Adaptive sound tab** — hidden since 2026-09-25 (SOUND.md §11a): only a DevTools flag shows it.
 
 | Control | What it does | Choices |
 |---|---|---|
-| Adaptive sound | The switch over all three parts below | on / **off** |
-| Match loudness | Plays every song at about the same loudness | on / **off** |
+| Adaptive sound | The switch over the two parts below | on / **off** |
 | Fuller at low volume | Adds bass and a little treble as you turn down. Gentle adds half as much as Full | Off / **Gentle** / Full |
 | Headphone crossfeed | Mixes a little of each side into the other, as speakers in a room do | **Auto** / Always / Off |
-| Match songs to | How loud songs are made. Standard is Apple's Sound Check level | **Standard** / Louder / Quieter |
-| Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
-| Songs not measured get | A song is measured the first time you hear it | **Usual amount** / No change |
-| Clear measurements | Deletes every song's loudness measurement | — |
 | Follow the volume of | What *Fuller at low volume* watches | **App + Windows** / App only |
 | Blend amount | How much crossfeed | Light / **Medium** / Strong |
 | The review question | When to ask whether the effects are worth keeping | **7 days** / 14 days / 3 days / Never |
 
-Turning **Adaptive sound** on does not turn its three parts on. Each part has its own switch.
+Turning **Adaptive sound** on does not turn its parts on. Each part has its own switch.
 
 ### Sleep timer
 Music pauses when the timer runs out. The last three rows are also in Settings › Sleep.
@@ -305,6 +305,9 @@ under Cyber the whole section is gone.
 
 | Control | What it does | Choices |
 |---|---|---|
+| Click a Home tile | What one click does on an album, playlist, artist or song tile | **Play** / Shuffle / Open |
+| Double-click a Home tile | What a double-click does on the same tiles. When it differs from the click, a click waits for a second press | **Play** / Shuffle / Open |
+| Double-click wait | How long a click on a Home or pinned tile waits for a second press | 150 ms / **250 ms** / 350 ms / 500 ms |
 | Hiding lasts | Right-click a Home tile › Hide takes it off the card | **Until cleared** / This session |
 | Hidden tiles | **Clear** puts every hidden tile back. Playing one again also brings it back | — |
 
@@ -328,7 +331,7 @@ under Cyber the whole section is gone.
 | Show the day in History | Each History row says Today, Yesterday or the date | on / **off** |
 | Show play counts from Last.FM | Now Playing wears a badge with the song's Last.fm plays and listeners: both in the full player, plays on the Max card. A click opens the song's Last.fm page. Off: Last.fm is not asked | **on** / off |
 | Show artist info on the artist's page | An artist's page shows a box beside the photo: Last.fm's tags, the artist's plays and listeners, On tour, and a Last.fm link. On a narrow card the box folds under an *Artist Info* line. Off: Last.fm is not asked | **on** / off |
-| Remember Artist filters | The pill on a Full artist page's Albums shelf shows all releases, or only albums, singles and EPs, or live albums. On: the pick stays the same on the next artist (an artist with none of that kind shows All). Off: every artist page opens on All | **on** / off |
+| Remember Artist filters | The pill on a Full artist page's Albums shelf shows all releases, or only albums, singles and EPs, live albums or compilations. On: the pick stays the same on the next artist (an artist with none of that kind shows All). Off: every artist page opens on All | **on** / off |
 | Show album info on the album's page | An album's page shows a box beside the cover: Last.fm's tags, the album's plays and listeners, an About (Apple Music's short note on the album, else the first two sentences of its Last.fm wiki, by *Notes from*), and a Last.fm link. When Apple has a full note, a click on the About opens it. On a narrow card the box folds under an *Album Info* line. A right-click on the box can turn this off. Off: neither Last.fm nor Apple's notes are asked | **on** / off |
 | Show song info on the song's page | Song Credits (a song's page) shows a box beside the cover: Last.fm's tags, the song's plays and listeners, About, and a Last.fm link. On a narrow card the box folds under a *Song Info* line. In Max a click on the plays shows them large. A right-click on the box can turn this off. Off: no box | **on** / off |
 | Notes from | Where an About cell's words come from, on a song's or an album's page. *Apple and Last.fm*: the song's own note first, then its album's, Apple before Last.fm. *Apple only* / *Last.fm only*: that source alone, in the same order. *None*: no About | **Apple and Last.fm** / Apple only / Last.fm only / None |
@@ -347,13 +350,19 @@ are not listening — and because Ctrl+Space can only reach a setting the card h
 | Lower the song by | The amount for *By hand*. A slider in half-decibel steps | −24…+6 dB, **0** |
 | Remember each output | Headphones, speakers and AirPlay speakers each keep their own preset | **On** / Off |
 
+**Match loudness** — back on its own since 2026-11-04 (SOUND.md § 11a-1).
+
+| Control | What it does | Choices |
+|---|---|---|
+| Match loudness | Plays every song at about the same loudness. A song is measured the first time you hear most of it | on / **off** |
+| Match songs to | How loud songs are made. Standard is Apple's Sound Check level | Standard / **Louder** / Quieter |
+| Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
+| Songs not measured get | A song is measured the first time you hear it | **Usual amount** / No change |
+
 **Adaptive sound** — hidden since 2026-09-25 (SOUND.md §11a): only a DevTools flag shows these rows.
 
 | Control | What it does | Choices |
 |---|---|---|
-| Match songs to | How loud songs are made. Standard is Apple's Sound Check level | **Standard** / Louder / Quieter |
-| Keep albums together | An album played in order moves by one amount, so a quiet song stays quiet | **On** / Off |
-| Songs not measured get | A song is measured the first time you hear it | **Usual amount** / No change |
 | Follow the volume of | What *Fuller at low volume* watches | **App + Windows** / App only |
 | Blend amount | How much crossfeed | Light / **Medium** / Strong |
 | Ask to keep after | When to ask whether the effects are worth keeping | 3 days / **7 days** / 14 days / Never |
@@ -420,6 +429,9 @@ Who can see what you play. A status line under the rows says what is shared now.
 
 | Control | What it does | Choices |
 |---|---|---|
+| Click a collection | What one click does on an album, playlist or artist in the Library, Playlists, Search and artist pages. For one type only, make a rule in Rulez | **Open** / Play / Shuffle |
+| Double-click a collection | What a double-click does on the same items. An Open happens at once, and a second press then does this | **Play** / Shuffle / Open |
+| Pinned Item double-click behavior | The verb a new album, playlist or artist pin starts with on a double-click | **Play** / Shuffle / Open |
 | Pinned Item click behavior | The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click | **Open** / Play / Shuffle |
 | Show playlist counts | Fills in the song count on the overview. One small request per playlist, once | **on** / off |
 | Refresh playlists by themselves | Re-reads a playlist when you open it, and once a day. Each playlist keeps its own setting | **on** / off |

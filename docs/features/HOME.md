@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.3
 desk_test: passed 2026-09-19
 sources: [src/home.ts, src-tauri/src/library.rs, src-tauri/src/apple.rs, src/home-card.ts]
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 # DeetsMusic — the Home card
 
@@ -569,7 +569,7 @@ preference, it is what keeps the row off every album tile on the Library card.
 
 ## 11. Click to open, double-click to play (idea for 1.4, 2026-11-03)
 
-> **Part:** idea · 2026-11-03 — not designed, not built. The forks in §11.3 are his.
+> **Part:** built · 2026-11-04; desk test tentatively good 2026-11-04 (his word). His calls are §11.3a; §11.3b is the code.
 
 **The idea (user feedback, brought by the owner 2026-11-03):** *"Might be nice to have a
 setting that controls when clicking a song/album from the home screen to go to the album —
@@ -604,7 +604,7 @@ click. The right-click menu already has **Go to Album** on every song and album 
   (`since: "1.4.0"`), a settings key with an agent spec, a hint in the ONBOARDING.md ledger and a
   release note.
 
-### 11.3 Open forks (his)
+### 11.3 The forks as they were asked (closed by §11.3a)
 
 1. **Which tiles follow it.** His words name song and album tiles. Do artist tiles (open the
    artist view) and playlist tiles (open the playlist) follow it too? A station always plays: it
@@ -619,6 +619,156 @@ click. The right-click menu already has **Go to Album** on every song and album 
 3. **The row's wording.** Draft: **Click a Home tile** — `Play` · `Open` (a double-click plays).
    With Play, does a double-click still restart the list, or is the second click ignored?
 
+### 11.3a His calls (2026-11-04)
+
+1. **Wait, 250 ms.** A click waits 250 ms for a second press before it acts. A setting makes that
+   time longer or shorter, per user.
+2. **On Double Click defaults to Play.** A Settings row sets the start value for new pins, and for
+   new playlists and albums. The update card's right column lists the user's existing pins, with
+   the option to change each one.
+3. **One build, for any collection of songs:** albums, playlists and the like, pinned or not.
+   Beside the pin's On Click, a per-pin **On Double Click** row with the same verbs.
+
+**Rules Claude proposes inside his calls (for his review at build time).**
+- **No wait when there is nothing to tell apart.** When the click and the double-click run the
+  same verb, the click acts at once, and the second press does nothing. So a default tile that
+  plays on both never lags.
+- **A slow double-click.** The Windows default is 500 ms, so a gap of 300 ms at the 250 ms setting
+  reads as two clicks. The press after a tile acted is stopped for that time, with the Grow edge
+  bar's `guardPoint` pattern (card-grow.ts). It also stops a second press landing on a card that
+  took Home's place.
+- **Enter and Space** act as a click, with no wait.
+- **Songs and stations** have no double-click row: they are not collections.
+
+### 11.3b As built (2026-11-04)
+
+- `src/press-read.ts` is the pure rule, with tests. `src/tile-press.ts` is the page's half: the
+  wait, the guard and `ui:press` in the log. `pinPress` (pins.ts) and `activate` (home-card.ts)
+  call it. A key press or a scripted click (`detail` 0) acts at once.
+- **Settings › Home:** *Click a Home tile*, *Double-click a Home tile* (Play · Shuffle · Open, both
+  default Play) and *Double-click wait* (150, 250, 350, 500 ms). **Settings › Playback:** *Pinned
+  Item double-click behavior*. A right-click on a pin: *On Double Click ▸*, under *On Click ▸*.
+- **The guard** stops a late second left press for what is left of 500 ms, at that place. A
+  right-click passes it, so a tile's menu opens at once.
+- **Open** on an unpinned tile runs the tile's own Go to row, so it lands where the right-click
+  does. A tile with no such row plays.
+- **A pinned song, a pinned station and an unpinned station** have no double-click row. They play
+  at once, and the second press is dropped, so a double-click no longer restarts them.
+- **The update card:** see UPDATE-CARD.md §3.21.
+
+**What Claude decided at build time (his review).**
+- The wait's choices: 150, 250, 350 and 500 ms. One setting for Home and every Pinned shelf.
+- *Any collection* covers Home and the Pinned shelves. Tiles on an artist page and in Search are
+  not included: he can ask for them.
+- An artist tile counts. A song tile follows too, because the first request named songs: Open goes
+  to its album.
+- A pin's Open keeps its old rule: an album the library does not hold plays (§11.1).
+
+**Known and left.** A pin on Open with Play on a double-click waits 250 ms on every click: that is
+his default. A press within the guard cannot start a drag of that tile.
+
+**Run on the dev app (2026-11-04), with scripted presses.** A pin on Open and Play: two presses 100
+ms apart logged `held`, `double` and a play, and no card moved. One press opened Playlists 301 ms
+later. An unpinned tile on Play and Play: played at once, and the second press was dropped. On
+Open: it ran the open after the wait.
+
 ### 11.4 Desk test
 
-Written when §11.3 is closed and the row is built.
+Needs a dev runner restart (Rust changed; the `pins.dbl` column).
+1. Pin a playlist. Its right-click has On Click and On Double Click. They read Open and Play.
+2. Home: one click opens it at once (§11.5). A double-click opens it and plays it.
+3. Set the pin's On Click to Play and On Double Click to Shuffle. A click waits a quarter second,
+   then plays; a double-click shuffles. Settings › Home › Double-click wait to 500 ms: it waits
+   longer.
+4. Settings › Home: Click a Home tile to Open. A click on an album tile opens the album at once,
+   and a double-click also plays it. Set it back to Play: a click plays at once.
+5. Click a tile, then right-click it at once: the menu opens.
+6. A double-click on a pinned song plays it once.
+7. Mini: double-click an Open pin. It plays. Click it once: it opens, and a slow second click does
+   nothing on the card that came in.
+8. Open the update card's 1.4 page (`__updateCard.preview("1.4.0", "1.3.1")`): the right column
+   ends with your pins. Pick a verb: the pin keeps it.
+
+### 11.5 Beyond Home and pins (built 2026-11-04)
+> **Part:** built · 2026-11-04; desk test open. The design below; "As built" at the end is the code.
+
+**His ask:** the same click and double-click on albums, playlists and artists across the app,
+set in Settings, with no right-click row. Pins keep their own rows.
+
+**What a click does today.** The Library, the Playlists card, Search and the artist page open an
+album, a playlist or an artist. A double-click there is two clicks.
+
+**His calls (2026-11-04).**
+1. **One pair of rows** for every collection: *Click a collection* and *Double-click a collection*.
+   A user who wants a different verb per type makes a rule. The app points to that, with a tutorial.
+2. **Open at once.** When a click's verb is Open, the page opens with no wait, and a second press
+   inside the wait runs the double-click on that item. This replaces the wait in §11.3a for an
+   Open, on pins and Home too, so a pin on Open no longer lags. A click that plays or shuffles keeps
+   the wait: there a false start can be heard.
+
+**The design.**
+- **The press reader** gains the Open rule: run the click now, keep the tile's double-click for
+  the wait. The page slides in under the pointer, so the second press lands on it. The guard
+  (`guardPoint`) gains a callback: a guarded left press in the wait runs the kept verb.
+- **The three click paths:** the collection engine's `g.open` ([collection-card.ts](../../src/collection-card.ts)),
+  Search's album, playlist and artist clicks, and the artist page's `onShelf`. Each needs a way to
+  play the item it would open.
+- **Rows:** *Click a collection* defaults to Open, *Double-click a collection* to Play. A new
+  section is not needed: they sit in Settings › Playback beside *Pinned Item click behavior*.
+- **Home keeps its own two rows,** because its click plays by default and the rest open.
+- **Songs and stations stay out.** A song row keeps playing on a click. Ctrl and Shift picks come
+  first, and Enter acts as a click.
+
+**The per-type rule (his call 1).** `goto.album` and `goto.artist` are the pattern: a moment event,
+and `decided()` hands the rule's Do back to the site (RULEZ.md §10.1). New events `press.album`,
+`press.playlist` and `press.artist` with In = the card, and Dos *Use Play*, *Use Shuffle*, *Use
+Open*. Click or double-click is part of the event's choice. The Settings pair is the default when
+no rule answers. A rule works in every surface, and the Rulez card that makes it is Max only.
+
+**The tutorial.** RULEZ.md §6 records his call that the card feeds no rule to a user. His new ask
+is a pointer from these rows, so it sits on the rows, not in the card: the hint on *Click a
+collection* names Rulez, and a user-guide page in `docs/guide/` walks through one rule.
+
+**As built.**
+- `src/collection-press.ts` asks the rules, then the Settings pair, then calls `tilePress`.
+  `press-read.ts` answers `eager` for an Open; `tile-press.ts` then sets `guardPoint` with a `hit`,
+  so a second left press within 500 ms runs the double-click, even on the page that opened. The
+  rest of that press is stopped too. The window is Windows' double-click time and not *Double-click
+  wait*: the break-it pass found a press at 250–500 ms did nothing. So that setting now acts only on
+  a click that plays or shuffles.
+- **Sites:** Library album and artist rows (`Grouping.press`), Playlists rows, Search's album,
+  playlist and artist tiles, and the artist page's Albums, Appears On, Featured Playlists and Your
+  Playlists tiles. A Library genre row keeps its plain drill.
+- **Rules:** six events, *You click an album* and *You double-click an album*, and the same for a
+  playlist and an artist, each with In = the card. Their one Do is **Use** Open, Play or Shuffle.
+- **The pointer:** the hint on *Click a collection* names Rulez. The guide page is
+  `docs/guide/clicks-by-type.md`, in the outline state: he sets it to written.
+
+**What Claude decided at build time (his review).** The row and event words. A double-click on the
+default now also starts the music on every one of these places, so a habit double-click plays.
+Friends, the Diary, Rewind and History are not included.
+
+**Known and left (the break-it pass).** The guard is by place only: a second press within 24 px in
+500 ms counts as the double-click, even on another row. A play whose fetch fails logs to the console
+and shows no toast. With a rule on Play, a drag started in the wait still plays when the wait ends.
+Keyboard users reach the click verb only. A Library artist plays every song; a Search artist plays
+Top Songs.
+
+**Run on the dev app (2026-11-04), with scripted presses on a Playlists row.** One press: `eager`,
+and the page was up in 77 ms, the slide's own start. Two presses 120 ms apart at one place: `eager`,
+`double`, then Play, with the page open. Search and the artist page were not pressed, and no rule
+was fired on the app. The rule's words have a unit test.
+
+**Desk test (front end only, no restart).**
+1. Library › Albums: click an album: it opens at once. Back. Double-click it: it opens and plays.
+2. The same on an artist, on a playlist in Playlists, and on an album, a playlist and an artist in
+   Search.
+3. An artist page: click and double-click an Albums tile, a Featured Playlists tile and a Your
+   Playlists tile.
+4. Settings › Playback › Click a collection to Play: a click waits a quarter second and plays.
+   Back to Open.
+5. Open an album, then at once click a song row on the page at another place: it plays that song.
+6. Ctrl+click a row in the Library: a pick, no open.
+7. Rulez: When *You click a playlist*, *Use Play*. Click a playlist: it plays. Click an album: it
+   opens. Delete the rule.
+8. Enter on a focused album row: it opens.

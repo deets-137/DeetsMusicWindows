@@ -81,7 +81,7 @@ async function collectionTracks(kind: string, id: string): Promise<unknown> {
 
 async function catalogArtist(id: string): Promise<unknown> {
   const base = `/v1/catalog/${storefront()}/artists/${encodeURIComponent(id)}?views=top-songs,full-albums`;
-  let r = await appleGet(`${base},singles,live-albums,${APPEARS_VIEW},featured-playlists`);
+  let r = await appleGet(`${base},singles,live-albums,compilation-albums,${APPEARS_VIEW},featured-playlists`);
   if (r.status !== 200 && r.status !== 404) r = await appleGet(base); // a view Apple does not know
   if (r.status !== 200) throw new Error(`catalog/artists/${id} HTTP ${r.status}`);
   // A view with a `next` is read again whole, in pages of 100 (apple.rs `whole_view`).

@@ -57,6 +57,24 @@ would check in again first. Your song stays in Now Playing at the same spot, and
 there, about a second slower than usual. Change the wait, or choose Never, in Settings > Playback >
 Let go of Apple after a pause.
 
+**Match loudness in the Sound panel.** A song can be much louder than the one before it. Turn on
+Match loudness, under the Equalizer, and DeetsMusic measures each song the first time you hear most
+of it, then plays it at about the same level as the rest. It is off until you turn it on.
+
+**Double-click to play.** A click on an album, playlist or artist opens it, and a double-click now
+plays it, in the Library, Playlists, Search and artist pages. Change either in Settings > Playback >
+Click a collection, and on Home in Settings > Home. Each pin has its own On Click and On Double
+Click rows. For one type only, make a rule in Rulez: When You click a playlist, Use Play.
+
+**Compilations on artist pages.** The Full artist page now shows an artist's compilations, and the
+filter on the Albums shelf has a Compilations choice.
+
+**Pinned playlists open from Home.** A click on a pinned playlist did nothing while the Playlists
+card was off screen. It opens now, and so does a playlist picked in the Compass.
+
+**Compass and toasts with Now Playing on the right.** Ctrl+Space opened out of sight in Max with Now
+Playing on the right. The bar now sits beside the card, and toasts move to the top left.
+
 ## 1.3.1 — 2026-11-02
 
 **Flip flip (the side of the Queue and Now Playing).** In Settings > Window, there now exists two

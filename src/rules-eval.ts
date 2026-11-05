@@ -17,7 +17,9 @@ export type EventId =
   // A cancel event (RULEZ.md §1.7): a rule whose Do is `keep` stops what the app was about to do.
   | "grow.outside" | "station.return" | "grow.back" | "replay.weekly"
   // Route 8 (RULEZ.md §10.1): the Queue's layout change (a cancel event), Go to, the shuffle press.
-  | "queue.summon" | "goto.artist" | "goto.album" | "shuffle.press";
+  | "queue.summon" | "goto.artist" | "goto.album" | "shuffle.press"
+  // A click or double-click on one type of collection (HOME.md §11.5): the site reads the answer.
+  | "press.album" | "press.playlist" | "press.artist" | "press.album.double" | "press.playlist.double" | "press.artist.double";
 export type FactId =
   | "surface" | "cause" | "from" | "entry.new" | "daylight" | "lookMode" | "output" | "now"
   // Rulez (RULES.md §20.3).
@@ -105,6 +107,7 @@ export type Action =
   // Route 8 (RULEZ.md §10.1): where Go to opens (the site reads it, as a cancel site reads Keep);
   // the idle shuffle press.
   | { openIn: "library" | "search" }
+  | { useVerb: "open" | "play" | "shuffle" }
   | { shuffleLibrary: true }
   // The full player (features/fullscreen-player.md §12.6).
   | { player: "open" | "close" };

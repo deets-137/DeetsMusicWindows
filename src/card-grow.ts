@@ -1133,14 +1133,36 @@ export function stageGapShared(): boolean {
 // card once it grows (the break-it pass, §20, B2: a History row under the pointer at +150 ms).
 // For the length of a double click after a bar's click, a press at that place does nothing.
 // Windows' default double-click time; a user's own setting is not readable from the page.
-const DOUBLE_CLICK_MS = 500;
+export const DOUBLE_CLICK_MS = 500;
 const GUARD_PX = 24;
-let guard: { x: number; y: number; until: number } | null = null;
-const guardPoint = (x: number, y: number) => (guard = { x, y, until: performance.now() + DOUBLE_CLICK_MS });
+/** How long the rest of a caught press stays stopped: its mouseup and click come after it. */
+const PRESS_TAIL_MS = 200;
+/** A second press that means something: it runs `run` if it lands by `until`. */
+export interface GuardHit {
+  until: number;
+  run: () => void;
+}
+let guard: { x: number; y: number; until: number; leftOnly: boolean; hit?: GuardHit } | null = null;
+/** A press at this place does nothing for `ms`. A tile's late second press uses it too
+ *  (tile-press.ts), with `leftOnly`: a right-click on the tile just pressed still opens its menu.
+ *  `hit`: an Open already ran, so a second press in time runs the tile's double-click verb, even
+ *  when the page that opened now lies under the pointer. */
+export const guardPoint = (x: number, y: number, ms = DOUBLE_CLICK_MS, leftOnly = false, hit?: GuardHit) => (guard = { x, y, until: performance.now() + ms, leftOnly, hit });
 function guarded(e: MouseEvent): boolean {
   if (!guard || performance.now() > guard.until) return (guard = null), false;
+  if (guard.leftOnly && (e.type === "contextmenu" || e.button !== 0)) return false;
   if (Math.hypot(e.clientX - guard.x, e.clientY - guard.y) > GUARD_PX) return false;
-  return !(e.target instanceof Element && e.target.closest(".grow-zone"));
+  if (e.target instanceof Element && e.target.closest(".grow-zone")) return false;
+  const hit = guard.hit;
+  if (hit) {
+    guard.hit = undefined;
+    const now = performance.now();
+    if (now <= hit.until) {
+      guard.until = Math.max(guard.until, now + PRESS_TAIL_MS);
+      hit.run();
+    }
+  }
+  return true;
 }
 
 /** Give a host its four strips (called with the Grow button, after the card's markup lands). */

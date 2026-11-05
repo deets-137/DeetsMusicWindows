@@ -31,7 +31,7 @@ import { addTransientTracks, tracks } from "./track-store";
 import { playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, shuffledPlay } from "./player";
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
 import { listenLaterItem } from "./listen-later";
-import { requestDrillCard, requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
+import { requestLibraryDrill, requestDiaryAlbum } from "./layout-bus";
 import { goTo, goToArtistItem, goToAlbumItem, goToAlbumPaneItem, artistSearch, songCreditsItem, requestPlaylistPane, requestArtistPane, type LibraryWay } from "./go-to";
 import { creditIndex, goToPeople, type GoToPerson } from "./artist-credit";
 import { songArtists } from "./primary-artist";
@@ -42,7 +42,7 @@ import { addSongToLibraryItem, addAlbumFromSongsItem, addAlbumToLibraryItem, add
 import { favoriteItem, albumFavoriteItem, playlistFavoriteItem, playlistFav } from "./favorites";
 import { suggestSongItem, suggestArtistItem, suggestAlbumItem } from "./suggest";
 import { markItem } from "./sotd";
-import { pinRows, pinItem, pinActItem, songKey, isPinned, setPin, clearPin } from "./pins";
+import { pinRows, pinItem, pinActItem, pinDoubleItem, songKey, isPinned, setPin, clearPin } from "./pins";
 import { albumKey, pid } from "./rewind";
 import { picksText } from "./row-pick";
 import { setting } from "./settings-store";
@@ -278,6 +278,7 @@ function albumPinRows(a: AlbumSubject): Row[] {
   const on = isPinned(key);
   return [
     pinActItem(key, "album"),
+    pinDoubleItem(key, "album"),
     {
       label: on ? "Unpin" : "Pin",
       run: () =>
@@ -443,7 +444,7 @@ export function playlistMenu(p: Playlist, load: () => Track[] | Promise<Track[]>
   else if (w.open) open = { label: "Go to Playlist", run: w.open };
   else if (p.libraryId) {
     const id = p.libraryId;
-    open = { label: "Go to Playlist", run: () => { requestDrillCard("playlists"); requestOpenPlaylist(id); } };
+    open = { label: "Go to Playlist", run: () => requestOpenPlaylist(id) };
   } else if (p.catalogId) {
     const id = p.catalogId;
     open = { label: "Go to Playlist", run: () => requestPlaylistPane({ id, name: p.name, artwork: p.artwork, curatorName: p.curatorName }) };

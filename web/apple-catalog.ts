@@ -169,9 +169,9 @@ export function collectionTracksFrom(kind: "albums" | "playlists", body: Json, i
 }
 
 /** The views merged into the Albums shelf, in order (apple.rs `ALBUM_VIEWS`). */
-export const ALBUM_VIEWS = ["full-albums", "singles", "live-albums"] as const;
+export const ALBUM_VIEWS = ["full-albums", "singles", "live-albums", "compilation-albums"] as const;
 /** `Album.kind` for each of ALBUM_VIEWS (apple.rs `ALBUM_KINDS`). */
-const ALBUM_KINDS = ["album", "single", "live"] as const;
+const ALBUM_KINDS = ["album", "single", "live", "compilation"] as const;
 export const APPEARS_VIEW = "appears-on-albums";
 
 /** The reply of `/v1/catalog/{sf}/artists/{id}?views=…` → `ArtistDetail`. `whole`: a view read

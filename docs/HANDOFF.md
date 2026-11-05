@@ -191,12 +191,22 @@ the New mark, so the row is in column 2 of the update card's 1.4 page (`__update
 shows it on the dev app). Whether the weekly report sends the key is his call (`usage-keys.ts`
 NOT_REPORTED).
 
-### Idea for 1.4: click a Home tile to open it (2026-11-03)
+### Built, not released: click and double-click on a tile (2026-11-04)
 
 User feedback: a setting so a click on a Home song or album tile opens the album, and a
-double-click plays it. Today every unpinned tile plays on one click. Not designed; three forks
-open (which tiles, how the double-click is read, the wording):
-[HOME.md](features/HOME.md) §11.
+double-click plays it. His calls 2026-11-04: a 250 ms wait with a setting, On Double Click on
+every pin and defaulting to Play, one build for any collection of songs, and existing pins listed
+in the update card's right column. Built, schema v23; his desk test: tentatively good, 2026-11-04.
+**Built after that:** the same click and double-click on every collection, Open at once, a per-type
+rule and a guide page (`docs/guide/clicks-by-type.md`, outline). Open: his desk test of §11.5 and
+his review of the choices made at build time: [HOME.md](features/HOME.md) §11.3b, §11.5.
+
+### Built, not released: Match loudness alone (2026-11-04)
+
+A section under the Equalizer, on its own off-by-default switch (`soundMatch`). Open: the desk
+test, and the §7.3 heaviness check before it ships: [SOUND.md](features/SOUND.md) § 11a-1. The
+usage list dropped `soundLoudness`, so DeetsSupport's `src/usage-keys.js` has a local change; no
+deploy is needed for the app to work.
 
 ### Idea for 1.4: a listen count on each album song row (2026-11-03)
 
@@ -204,6 +214,14 @@ His ask: when an album's song list has the width, each row shows the song's Last
 a user sees which songs are popular. It reuses the song's cached `track.getInfo`. Not designed;
 four forks open (which number, when the calls go out, the width, the name form):
 [LISTENERS.md](features/LISTENERS.md) §10.
+
+### To design: show the playing song on its row (2026-11-04)
+
+User feedback (the board, "Show current song on album"): when an album plays, its current song
+stands out on the album's list, in bold or with a small animation. No song row has a mark
+today. The data is there (`getCurrent()`, `onPlayerState`). **He has an idea for the look, so
+he designs it. Do not design or build it first.** Whether it covers every song list or only
+album pages is part of that design.
 
 ### Live, waiting on his test or his look
 

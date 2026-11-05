@@ -1,9 +1,9 @@
 /* ── Toasts (src/toast.ts; docs/architecture/TOASTS.md) ───────────────────────────────
    A fixed top-right column, newest on top, flying in from the right. In mini
    and midi it hangs under the Now Playing card (--toast-top, measured by
-   toast.ts) so the song stays readable; in max, whose stage is on the left,
-   it sits under the titlebar. The strip wears the menu material (Glass frosts
-   it); the kind wears the theme's traffic lights as a stripe on the leading
+   toast.ts) so the song stays readable; in max it sits under the titlebar, on the
+   side away from the stage: top-left when Now Playing is on the right. The strip
+   wears the menu material (Glass frosts it); the kind wears the theme's traffic lights as a stripe on the leading
    edge — success --go, warn --pause, error --stop, info --panel-border — so
    every theme, the monochrome ones included, expresses severity in-family.
    Geometry through skin tokens (--toast-*), motion through --dur-med/--ease-ui.
@@ -37,6 +37,14 @@
     max(calc(var(--titlebar-h) + var(--space-2)), calc(var(--toast-below, 0px) + var(--space-2))),
     calc(100vh - var(--toast-floor-room))
   );
+}
+/* Max with Now Playing on the right: the column moves to the left, so a toast never covers the
+   cover. It flies in and out on the left. The Friends panel hangs from the right of the title
+   bar, so --toast-below has nothing to clear here. */
+[data-surface="max"][data-stage-side="right"] .toast-host {
+  top: calc(var(--titlebar-h) + var(--space-2));
+  align-items: flex-start;
+  --toast-in: translateX(calc(-1 * var(--toast-shift)));
 }
 .toast {
   pointer-events: auto;

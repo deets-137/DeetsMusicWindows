@@ -11,6 +11,7 @@ import { toast, noticeOff } from "./toast";
 import { setting } from "./settings-store";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { drawCover } from "./cover-art";
+import { requestDrillCard } from "./layout-bus";
 
 // ── change bus (same subscribe idiom as layout-bus / onPlayerState) ────────────
 // Fires after any LOCAL-store mutation (create / add tracks / delete), with the
@@ -588,9 +589,12 @@ export interface OpenPlaylistRequest {
 let pendingOpen: (OpenPlaylistRequest & { at: number }) | null = null;
 const openSubs = new Set<() => void>();
 
-/** Ask the Playlists card to open the playlist with this libraryId. Summon the card first. */
+/** Bring the Playlists card on screen and open the playlist with this libraryId there. The
+ *  summon lives here, as in layout-bus's `heldRequest`, so no caller can leave it out: a pinned
+ *  tile on Home and a Compass row did, and nothing opened (2026-11-04, PINS.md §8.9). */
 export function requestOpenPlaylist(libraryId: string, tracks?: Track[]): void {
   pendingOpen = { id: libraryId, tracks, at: Date.now() };
+  requestDrillCard("playlists");
   openSubs.forEach((cb) => cb());
 }
 /** Playlists-card side: take the waiting request (null when none, or too old). */

@@ -522,14 +522,15 @@ const H: Record<string, Handler> = {
   pins_list: () => store.pins,
   pin_set: (a) => {
     store.pins = store.pins.filter((p) => p.key !== a?.key);
-    const row = { key: String(a?.key), kind: String(a?.kind), data: a?.data ?? null, pinnedAt: Date.now(), act: a?.act ?? null };
+    const row = { key: String(a?.key), kind: String(a?.kind), data: a?.data ?? null, pinnedAt: Date.now(), act: a?.act ?? null, dbl: a?.dbl ?? null };
     store.pins.push(row);
     save();
     return row;
   },
   pin_act: (a) => {
     const p = store.pins.find((x) => x.key === a?.key);
-    if (p) p.act = a?.act ?? null;
+    if (p && a?.double) p.dbl = a?.act ?? null;
+    else if (p) p.act = a?.act ?? null;
     save();
     return !!p;
   },

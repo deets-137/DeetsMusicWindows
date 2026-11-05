@@ -169,7 +169,7 @@ Mark as Song of the Day · Pin.
 ### 3.2 Album — `albumMenu`
 Play Now · Shuffle · Play Next · Add to Queue · Add to Playlist ▸ · Listen Later · Go to Artist ·
 Go to Album · Start a Web · Copy Link · Add to Library · Review This Album · Favorite · Suggest Less of This Album ·
-On Click ▸ · Pin.
+On Click ▸ · On Double Click ▸ · Pin.
 
 - **Shuffle** (2026-09-24, his call 3A): the hero's Shuffle button as a row, on every card. With
   "Shuffle stays on" it turns the mode on (`runListAction`'s rule).
@@ -189,7 +189,7 @@ On Click ▸ · Pin.
 
 ### 3.3 Artist — `artistMenu`
 Play Now · Play Next · Add to Queue · Add to Playlist ▸ · Go to Artist · Start Station · Start
-a Web · Copy Link · Suggest Less of This Artist · On Click ▸ · Pin.
+a Web · Copy Link · Suggest Less of This Artist · On Click ▸ · On Double Click ▸ · Pin.
 
 - **What plays** (fork 4A): the artist's songs in your library, in album order. An artist off
   the library plays Apple's Top Songs — one memoized `artistDetail` read, on the press only.
@@ -203,7 +203,7 @@ a Web · Copy Link · Suggest Less of This Artist · On Click ▸ · Pin.
 
 ### 3.4 Playlist — `playlistMenu`
 Play Now · Shuffle · Play Next · Add to Queue · Add to Playlist ▸ (not itself) · Go to Playlist ·
-Copy Link · Add to Library · Favorite · On Click ▸ · Pin.
+Copy Link · Add to Library · Favorite · On Click ▸ · On Double Click ▸ · Pin.
 
 - **Shuffle**: as on an album (§3.2).
 - **Add to Library** (2026-09-24, his call 4B): only one of Apple's playlists (Search, Home, an

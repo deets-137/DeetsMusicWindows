@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.5
 desk_test: passed 2026-09-19
 sources: [src/compass.ts, src/styles/compass.css, src/compass-math.ts, src/list-keys.ts, src/styles/skin.css, src/main.ts]
-updated: 2026-09-20
+updated: 2026-11-04
 ---
 # Compass — go anywhere from the keyboard
 
@@ -517,15 +517,26 @@ Where the card is decides which way the bar moves (styles.css, the bento):
 | midi | row 1, full width, under the title bar | drops below the card |
 | mini, card view | the top row of the one column | drops below the card |
 | max | the tall left stage column | keeps its top, insets its left edge right of the card |
+| max, Now Playing on the right | the tall right stage column | keeps its top, insets its right edge left of the card |
 | mini, player view | the whole window | nothing to dodge: it hangs from the title bar (fork 2B) |
 
 **How.** `keepClearOfNp()` in compass.ts measures the card against the title bar (the
-panel's positioning context) and publishes two custom properties on the panel:
-`--np-drop` (the card's bottom edge below the title bar) and `--np-right` (the card's right
-edge from the title bar's left). styles/compass.css picks one per surface through
-`--compass-drop`; max sets the drop to `0px` and uses `--np-right + --panel-gap` for `left`;
+panel's positioning context) and publishes custom properties on the panel:
+`--np-drop` (the card's bottom edge below the title bar), `--np-right` (the card's right
+edge from the title bar's left) and `--np-left-in` (the card's left edge from the title bar's
+right). styles/compass.css picks one per surface through
+`--compass-drop`; max sets the drop to `0px` and uses `--np-right + --panel-gap` for `left`, or
+`--np-left-in + --panel-gap` for `right` under `[data-stage-side="right"]`;
 mini's player view sets the drop to `0px` as well. No card measured (width or height `0`)
-drops both, and the CSS falls back to today's placement.
+drops them all, and the CSS falls back to today's placement.
+
+**Now Playing on the right (fixed 2026-11-04; desk test passed the same day, his word: "good").** A user's report: Ctrl+Space worked in Max only
+with the full player. From 1.3.1, with the stage on the right, the left-side rule put the bar's left edge
+past the window's right edge. It opened 10 px wide, with the focus in it, so nothing showed.
+A change of side does not resize the card, so a MutationObserver on `data-stage-side` measures
+again. The bar can be open then: its own Settings row makes the change. The stage is still at its
+old place in that moment (a transform), so this one measure reads the card's layout position,
+where the slide will stop.
 
 Both numbers are **measured, not tokens**, for two reasons found in the code:
 

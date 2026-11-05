@@ -677,8 +677,10 @@ function applySettings(): void {
     // Windows' slider in dB, not its 0..1 position (the slider is a taper). The AirPlay capture
     // is taken before the Windows volume, so while a speaker plays it does not count.
     masterVolume: setting("soundLowVolKey") === "both" && !airplayOutput && windowsMasterKnown ? Math.pow(10, windowsMasterDb / 20) : 1,
-    match: adaptive && setting("soundLoudness"),
-    measure: adaptive,
+    // Match loudness is its own switch since 2026-11-04 (§ 11a-1). Nothing is measured, and
+    // nothing routed for it, while it is off (§10.2, option B stays rejected).
+    match: setting("soundMatch"),
+    measure: setting("soundMatch"),
     crossfeed: { on: xf.on, ...level },
   };
   const was = wanted();
@@ -859,6 +861,7 @@ function checkReview(): void {
         label: "Turn off",
         run: () => {
           setSetting("soundEq", false, "panel");
+          setSetting("soundMatch", false, "panel");
           setSetting("soundAdaptive", false, "panel");
         },
       },

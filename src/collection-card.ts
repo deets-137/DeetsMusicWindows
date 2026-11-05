@@ -98,7 +98,10 @@ export interface Grouping<T = any> {
   open?: (x: T) => Context | null; // drill target, or null for a leaf (e.g. a song)
   // Leaf action on click (e.g. play a song). Takes precedence over `open`, and gets the
   // current sorted view + index so it can act on "everything from here onward".
-  activate?: (x: T, index: number, items: T[]) => void;
+  activate?: (x: T, index: number, items: T[], e?: MouseEvent) => void;
+  /** A press on a row that opens: the click and double-click rule (collection-press.ts). `open`
+   *  is the row's own drill. Without it, a press opens. */
+  press?: (x: T, e: MouseEvent, open: () => void) => void;
   /** The rows are songs: a Play / Shuffle row under the hero (NEXT-VERSION §13) runs
    *  `activate` on the first row of the current sort + filter (Shuffle: of a shuffled copy).
    *  An object carries the hover text for each button (what exactly the list is). */
@@ -206,7 +209,7 @@ export interface Context {
     active: () => string;
     pick: (value: string) => void;
   };
-  onShelf?: (item: HTMLElement) => void;
+  onShelf?: (item: HTMLElement, e?: MouseEvent) => void;
   /** A press inside the shelves that starts a drag of its own — the grip on a pinned tile
    *  (MOVABLE-ROWS.md §5.2). Null when the press was somewhere else. */
   shelfDrag?: (target: HTMLElement) => DragRow | null;
@@ -2268,7 +2271,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     // a shelf tile under the hero → the context's own handler
     const shelfItem = t.closest<HTMLElement>("[data-shelf-item]");
     if (shelfItem) {
-      cur().ctx.onShelf?.(shelfItem);
+      cur().ctx.onShelf?.(shelfItem, e);
       return;
     }
 
@@ -2284,12 +2287,16 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       if (g.pick && pick.click(e, x)) return;
       if (g.activate) {
         diag.log("ui:act", { at: `${opts.storeKey}:${g.key}`, do: "row", i: idx, n: cur().items.length });
-        g.activate(x, idx, cur().items);
+        g.activate(x, idx, cur().items, e);
         return;
       }
       if (g.open) {
-        const child = g.open(x);
-        if (child) drill(child);
+        const open = () => {
+          const child = g.open!(x);
+          if (child) drill(child);
+        };
+        if (g.press) g.press(x, e, open);
+        else open();
       }
     }
   });

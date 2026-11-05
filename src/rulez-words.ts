@@ -42,6 +42,8 @@ export interface EventWord {
   cancel?: boolean;
   /** A Go to event: its rule's Do is *Open in* (RULEZ.md §10.1). */
   goTo?: boolean;
+  /** A press on a type of collection: its rule's Do is *Use* (HOME.md §11.5). */
+  press?: boolean;
 }
 
 export const EVENTS: EventWord[] = [
@@ -70,6 +72,12 @@ export const EVENTS: EventWord[] = [
   { id: "playlist.create", section: "Library", label: "You make a playlist" },
   { id: "goto.artist", section: "Library", label: "You press Go to Artist", goTo: true },
   { id: "goto.album", section: "Library", label: "You press Go to Album", goTo: true },
+  { id: "press.album", section: "Library", label: "You click an album", press: true },
+  { id: "press.album.double", section: "Library", label: "You double-click an album", press: true },
+  { id: "press.playlist", section: "Library", label: "You click a playlist", press: true },
+  { id: "press.playlist.double", section: "Library", label: "You double-click a playlist", press: true },
+  { id: "press.artist", section: "Library", label: "You click an artist", press: true },
+  { id: "press.artist.double", section: "Library", label: "You double-click an artist", press: true },
   { id: "cog", section: "Library", label: "You press the cog" },
   { id: "replay.weekly", section: "Library", label: "The weekly Replay is about to be made", cancel: true },
   { id: "output.change", section: "Sound", label: "The output changes" },
@@ -259,8 +267,11 @@ export interface DoWord {
   cancel?: boolean;
   /** Offered only for a Go to event (*Open in*). */
   goTo?: boolean;
+  /** Offered only for a press on a type of collection (*Use*). */
+  press?: boolean;
 }
 const OPEN_IN: Choice[] = [{ value: "library", label: "Library" }, { value: "search", label: "Search" }];
+const PRESS_VERBS: Choice[] = [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }];
 
 const SHARING = ["shareActivityApp", "shareActivityDiscord", "discordRoomInvite"] as const;
 const ON_OFF: Choice[] = [{ value: true, label: "On" }, { value: false, label: "Off" }];
@@ -346,6 +357,7 @@ export const DOS: DoWord[] = [
   // Route 8 (RULEZ.md §10.1).
   { id: "shuffleLibrary", section: "Playback", label: "Play the library shuffled", input: "none", moment: () => ({ shuffleLibrary: true }) },
   { id: "openIn", section: "Library", label: "Open it in", input: "choice", choices: OPEN_IN, goTo: true, moment: (v) => ({ openIn: v === "library" ? "library" : "search" }) },
+  { id: "useVerb", section: "Library", label: "Use", input: "choice", choices: PRESS_VERBS, press: true, moment: (v) => ({ useVerb: v === "play" ? "play" : v === "shuffle" ? "shuffle" : "open" }) },
   // The rule keys of 2026-09-27 (Battery saver, Focus): While rows only.
   keyWord("backgroundMotion", "Look", "Animate backgrounds", MOTION),
   keyWord("appearanceMotion", "Look", "Animate look changes", ON_OFF),
@@ -380,8 +392,9 @@ export function dosFor(rule: Rule): DoWord[] {
   if (rule.kind === "state") return DOS.filter((d) => d.state);
   const ev = eventWord(rule.when);
   if (ev?.goTo) return DOS.filter((d) => d.goTo);
+  if (ev?.press) return DOS.filter((d) => d.press);
   const cancel = !!ev?.cancel;
-  return DOS.filter((d) => d.moment && !d.goTo && (cancel ? d.cancel : !d.cancel));
+  return DOS.filter((d) => d.moment && !d.goTo && !d.press && (cancel ? d.cancel : !d.cancel));
 }
 
 // ── the time field ───────────────────────────────────────────────
@@ -559,6 +572,7 @@ export function actionText(a: Action | undefined, lists: Lists): string {
     case "playSound": return `Play the sound ${labelOf(lists.sounds, arg)}`;
     case "shuffleLibrary": return "Play the library shuffled";
     case "openIn": return `Open it in ${arg === "library" ? "the Library" : "Search"}`;
+    case "useVerb": return `Use ${arg === "play" ? "Play" : arg === "shuffle" ? "Shuffle" : "Open"}`;
     case "set": {
       const { key, value } = arg as { key: string; value: unknown };
       if (key === "theme") return `Use theme ${labelOf(lists.themes, value)}`;
@@ -645,7 +659,7 @@ export const SAYS: Record<string, { act?: string; keep?: string }> = {
   sharePause: { act: "pauses sharing for an hour", keep: "keeps sharing paused" }, sleepIn: { act: "starts the sleep timer for" },
   note: { act: "shows the note" }, picture: { act: "uses the picture", keep: "keeps the picture" }, playSound: { act: "plays the sound" }, hide: { act: "hides in the tray" }, addTo: { act: "adds the song to" },
   love: { act: "loves the song" }, suggestLess: { act: "marks the song Suggest Less" }, diary: { act: "opens this album's review" }, scrobble: { act: "turns scrobbling" },
-  shuffleLibrary: { act: "plays the library shuffled" }, openIn: { act: "opens it in" },
+  shuffleLibrary: { act: "plays the library shuffled" }, openIn: { act: "opens it in" }, useVerb: { act: "uses" },
   // A rule key reads as a thing DeetsMusic keeps at a value, never as its Settings label
   // (2026-10-10: "keeps Collapse on outside click off" was the Party recipe's sentence).
   backgroundMotion: { keep: "keeps background motion" }, appearanceMotion: { keep: "keeps look-change motion" },

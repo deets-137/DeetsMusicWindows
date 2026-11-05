@@ -38,7 +38,8 @@ import { dropToLibrary } from "./drop-actions";
 import { libraryAddEnabled } from "./library-add";
 import { mosaicHTML } from "./mosaic";
 import { expireArtistInfo, playCounts, type PlayCount } from "./artist-view";
-import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
+import { collectionPress } from "./collection-press";
+import { pinPress, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 import { addSquareHTML, markCellHTML } from "./add-square";
 import { unreleasedHint } from "./release";
 import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey, fmtClock } from "./library-model";
@@ -453,6 +454,8 @@ function albumsGrouping(
     match: (a, q) => a.name.toLowerCase().includes(q) || a.artist.toLowerCase().includes(q),
     render: (a, density, idx) => musicCell(density, idx, a.artwork, a.name, a.artist),
     open: openDetail,
+    press: (a, e, open) =>
+      collectionPress(e, { kind: "album", key: `album:${a.key}`, context: `album:${a.key}`, open, tracks: () => albumOrder(list().filter((t) => albumKey(t) === a.key)) }),
     // Right-click → act on the whole album, tracks in disc/track order.
     menu: (a) => albumMenu(libAlbum(albumOrder(list().filter((t) => albumKey(t) === a.key))), { context: `album:${a.key}`, nav }),
     drag: (a) => ({
@@ -494,6 +497,8 @@ function artistsGrouping(list: () => Track[], openDetail: (a: ArtistGroup) => Co
     render: (a, density, idx) =>
       musicCell(density, idx, a.artwork, a.name, `${a.songCount} song${a.songCount === 1 ? "" : "s"}`, { round: true }),
     open: openDetail,
+    press: (a, e, open) =>
+      collectionPress(e, { kind: "artist", key: `artist:${a.name}`, context: `artist:${a.name}`, open, tracks: () => artistOrder(creditIndex(list()).tracksFor(a.name)) }),
     // Right-click → Start Station (the artist seed resolves lazily via one of their
     // songs — derived groups carry no catalog artist id; see start-station.ts).
     // The station and the link resolve the artist lazily via one of their songs (derived
@@ -707,10 +712,10 @@ export const libraryCard: CardDef = {
     };
     // One rule for every Pinned shelf (PINS.md §8.4): the pin's own verb decides, and this
     // card can open an album or an artist in place, so it says so.
-    const pinShelfOpen = (el: HTMLElement) => {
+    const pinShelfOpen = (el: HTMLElement, e?: MouseEvent) => {
       const it = pinShelfItem(el);
       if (!it) return;
-      pinActivate(it, "library", {
+      pinPress(e, it, "library", {
         openAlbum: (t) => libNav.drillAlbum(t),
         openArtist: () => libNav.drillArtist(it.title),
       });

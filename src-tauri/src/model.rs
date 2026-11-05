@@ -120,8 +120,8 @@ pub struct Album {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_added: Option<String>,
     /// The artist page's Albums shelf only: the Apple view the release came from, "album"
-    /// (`full-albums`), "single" (`singles`, where Apple files EPs) or "live" (`live-albums`).
-    /// The shelf's filter reads it (ARTIST-VIEW.md §12). None everywhere else.
+    /// (`full-albums`), "single" (`singles`, where Apple files EPs), "live" (`live-albums`) or
+    /// "compilation" (`compilation-albums`). The shelf's filter reads it (ARTIST-VIEW.md §12). None everywhere else.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
 }
@@ -262,8 +262,8 @@ pub struct NamedRef {
 #[serde(rename_all = "camelCase")]
 pub struct ArtistDetail {
     pub artist: Artist,
-    /// The Albums shelf: Apple's `full-albums`, `singles` (Apple files an EP there) and
-    /// `live-albums`, merged and read whole (ARTIST-VIEW.md §11).
+    /// The Albums shelf: Apple's `full-albums`, `singles` (Apple files an EP there), `live-albums`
+    /// and `compilation-albums`, merged and read whole (ARTIST-VIEW.md §11).
     pub albums: Vec<Album>,
     /// Releases by others the artist is on (`appears-on-albums`): the last shelf.
     pub appears_on: Vec<Album>,

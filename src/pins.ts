@@ -28,6 +28,7 @@ import type { DragRow } from "./row-drag";
 import { playTracks, playStation } from "./player";
 import { requestOpenPlaylist } from "./playlists";
 import { requestLibraryDrill } from "./layout-bus";
+import { tilePress } from "./tile-press";
 import { mosaicHTML } from "./mosaic";
 import * as diag from "./diag";
 import { countUse } from "./use-counts";
@@ -42,6 +43,8 @@ export interface Pin {
   pinnedAt: number;
   /** What a click does (PINS.md §8). Absent = never chosen = the card's own rule. */
   act?: string | null;
+  /** What a double-click does (HOME.md §11.3a). Absent = never chosen = Play. */
+  dbl?: string | null;
 }
 
 /** The three verbs a pinned tile can carry. */
@@ -108,7 +111,8 @@ export async function setPin(key: string, kind: PinKind, data?: unknown): Promis
   // by hand survives a re-pin (PINS.md §8.4). A song and a station always play, so they
   // carry no verb at all.
   const act = hasAct(kind) ? setting("pinNewAct") : null;
-  const row = await invoke<Pin>("pin_set", { key, kind, data: data == null ? null : JSON.stringify(data), act });
+  const dbl = hasAct(kind) ? setting("pinNewDouble") : null;
+  const row = await invoke<Pin>("pin_set", { key, kind, data: data == null ? null : JSON.stringify(data), act, dbl });
   pins.set(row.key, row);
   diag.log("pin:set", { key, act: row.act ?? null });
   countUse("pin.added");
@@ -129,6 +133,14 @@ export function pinAct(key: string, kind: PinKind): PinAct {
   return a === "play" || a === "shuffle" || a === "open" ? a : "open";
 }
 
+/** What a double-click on this pin does: the verb it carries, else Play (HOME.md §11.3a). A pin
+ *  made before v23 has no verb, so it reads Play, his default. */
+export function pinDouble(key: string, kind: PinKind): PinAct {
+  if (!hasAct(kind)) return "play";
+  const a = pins.get(key)?.dbl;
+  return a === "shuffle" || a === "open" ? a : "play";
+}
+
 /** Set what a click does. */
 export async function setPinAct(key: string, act: PinAct): Promise<void> {
   await invoke<boolean>("pin_act", { key, act });
@@ -138,21 +150,40 @@ export async function setPinAct(key: string, act: PinAct): Promise<void> {
   emit();
 }
 
-/** The On Click row: the three verbs, the current one ticked. Null for a kind that is not
- *  asked, and for a key that is not pinned (the row belongs to the pin, not the item). */
-export function pinActItem(key: string, kind: PinKind): MenuItem | null {
-  if (!hasAct(kind) || !pins.has(key)) return null;
-  const now = pinAct(key, kind);
-  const verb = (act: PinAct, label: string) => ({
-    label,
+/** Set what a double-click does. */
+export async function setPinDouble(key: string, act: PinAct): Promise<void> {
+  await invoke<boolean>("pin_act", { key, act, double: true });
+  const p = pins.get(key);
+  if (p) pins.set(key, { ...p, dbl: act });
+  diag.log("pin:double", { key, act });
+  emit();
+}
+
+/** A verb row of the pin's menu: the three verbs, the current one ticked. */
+function verbRow(label: string, now: PinAct, set: (act: PinAct) => Promise<void>): MenuItem {
+  const verb = (act: PinAct, name: string) => ({
+    label: name,
     badge: now === act ? MENU_CHOSEN : "",
-    run: () => void setPinAct(key, act).catch((e) => console.error("[pins] act", e)),
+    run: () => void set(act).catch((e) => console.error("[pins] act", e)),
   });
   return {
-    label: "On Click",
+    label,
     badge: menuState(now === "play" ? "Play" : now === "shuffle" ? "Shuffle" : "Open"),
     sub: () => [verb("play", "Play"), verb("shuffle", "Shuffle"), verb("open", "Open")],
   };
+}
+
+/** The On Click row. Null for a kind that is not asked, and for a key that is not pinned (the
+ *  row belongs to the pin, not the item). */
+export function pinActItem(key: string, kind: PinKind): MenuItem | null {
+  if (!hasAct(kind) || !pins.has(key)) return null;
+  return verbRow("On Click", pinAct(key, kind), (act) => setPinAct(key, act));
+}
+
+/** The On Double Click row, under On Click. */
+export function pinDoubleItem(key: string, kind: PinKind): MenuItem | null {
+  if (!hasAct(kind) || !pins.has(key)) return null;
+  return verbRow("On Double Click", pinDouble(key, kind), (act) => setPinDouble(key, act));
 }
 
 /** How the card that owns this tile opens an item in place. A card that cannot open a kind
@@ -166,9 +197,9 @@ export interface PinNav {
 
 /** A click on a pinned tile, everywhere. This is the one rule: it replaced four
  *  hand-written shelf bodies that had drifted into two different answers (§8.1). */
-export function pinActivate(it: HomeItem, at: string, nav?: PinNav): void {
+export function pinActivate(it: HomeItem, at: string, nav?: PinNav, verb?: PinAct): void {
   countUse("pin.played");
-  const act = pinAct(it.key, it.kind);
+  const act = verb ?? pinAct(it.key, it.kind);
   // The click trail (LOGGING.md §The click trail): a complaint about this is read, not
   // guessed — which tile, and which verb it ran.
   diag.log("ui:act", { at, do: "pin", kind: it.kind, act });
@@ -182,9 +213,11 @@ export function pinActivate(it: HomeItem, at: string, nav?: PinNav): void {
 
   if (act === "open") {
     if (it.kind === "playlist" && it.playlist) {
-      if (nav?.openPlaylist) nav.openPlaylist(it.playlist);
-      else if (it.playlist.libraryId) requestOpenPlaylist(it.playlist.libraryId);
-      return;
+      const p = it.playlist;
+      if (nav?.openPlaylist) return nav.openPlaylist(p);
+      if (p.libraryId) return requestOpenPlaylist(p.libraryId);
+      // No library id: the Search pane, as Go to Playlist does. With neither id, it plays below.
+      if (p.catalogId) return requestPlaylistPane({ id: p.catalogId, name: p.name, artwork: p.artwork, curatorName: p.curatorName });
     }
     if (it.kind === "playlist" && it.catalogId) {
       requestPlaylistPane({ id: it.catalogId, name: it.title, artwork: it.art, curatorName: it.sub });
@@ -219,6 +252,14 @@ export function pinActivate(it: HomeItem, at: string, nav?: PinNav): void {
     .catch(err("activate"));
 }
 
+/** A press on a pinned tile: its click or its double-click verb (HOME.md §11.3a). A song and a
+ *  station have no double-click: they play at once, and the second press is dropped, so a
+ *  double-click no longer restarts them. */
+export function pinPress(e: MouseEvent | undefined, it: HomeItem, at: string, nav?: PinNav): void {
+  if (!hasAct(it.kind)) return tilePress(e, it.key, "play", "play", () => pinActivate(it, at, nav));
+  tilePress(e, it.key, pinAct(it.key, it.kind), pinDouble(it.key, it.kind), (verb) => pinActivate(it, at, nav, verb));
+}
+
 export async function clearPin(key: string): Promise<void> {
   await invoke<boolean>("pin_clear", { key });
   if (pins.delete(key)) {
@@ -247,7 +288,8 @@ export function pinItem(key: string, kind: PinKind, data?: unknown): MenuItem {
  *  builders in media-menu.ts call it with the key of what each menu IS. */
 export function pinRows(key: string, kind: PinKind, data?: unknown): MenuItem[] {
   const act = pinActItem(key, kind);
-  return act ? [act, pinItem(key, kind, data)] : [pinItem(key, kind, data)];
+  const dbl = pinDoubleItem(key, kind);
+  return act && dbl ? [act, dbl, pinItem(key, kind, data)] : [pinItem(key, kind, data)];
 }
 
 /** Plays per pin key, all time (fork 5). */

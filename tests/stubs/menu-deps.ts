@@ -102,6 +102,7 @@ export const markItem = () => row("Mark as Song of the Day");
 export const pinRows = () => [row("Pin")];
 export const pinItem = () => row("Pin");
 export const pinActItem = () => row("On Click");
+export const pinDoubleItem = () => null;
 export const songKey = (t: { catalogId?: string }) => `song:${t.catalogId ?? ""}`;
 export const isPinned = () => false;
 export const setPin = later;

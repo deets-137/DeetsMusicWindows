@@ -241,6 +241,8 @@ let lowStatus!: HTMLDivElement;
 let xfStatus!: HTMLDivElement;
 let adaptFoldBody!: HTMLDivElement;
 let adaptWhy!: HTMLDivElement;
+let loudFoldBody!: HTMLDivElement;
+let loudWhy!: HTMLDivElement;
 let compareBtn!: HTMLButtonElement;
 let holding = false;
 let nameMode: "save" | "rename" = "save";
@@ -254,7 +256,7 @@ function build(panel: HTMLElement): void {
   // 1. Head: the title, the two tabs, i and Compare
   head = el("div", "sound__head");
   eqView = el("div", "sound__view");
-  adaptView = el("div", "sound__view");
+  adaptView = el("div", "sound__view sound__view--adapt");
   compareBtn = el("button", "sound__compare", "Compare");
   compareBtn.type = "button";
   compareBtn.title = "Hold to hear the music without the effects, at the same loudness";
@@ -300,7 +302,7 @@ function build(panel: HTMLElement): void {
     t.setAttribute("role", "tab");
   });
   tabEq.title = "The equalizer: the curve, the sliders and the presets";
-  tabAdapt.title = "Adaptive sound: even loudness between songs, a fuller sound at low volume, and a natural sound on headphones";
+  tabAdapt.title = "Adaptive sound: a fuller sound at low volume, and a natural sound on headphones";
   tabEq.addEventListener("click", () => setTab("eq"));
   tabAdapt.addEventListener("click", () => setTab("adapt"));
   tabs.append(tabEq, tabAdapt);
@@ -520,15 +522,40 @@ function build(panel: HTMLElement): void {
   syncs.push(perOut.sync);
   eqView.append(row("Remember each output", perOut.btn));
 
-  // 6. DeetsAdaptiveSound
-  adaptivePill = pill("Turns adaptive sound on or off. Each of the three parts below also has its own switch");
-  adaptivePill.addEventListener("click", () => setSetting("soundAdaptive", !adaptiveOn(), "panel"));
-  adaptView.append(row("Adaptive sound", adaptivePill, "sound__row--strong"));
-
-  const loud = cyclePill("soundLoudness", [true, false], ["On", "Off"], "Plays every song at about the same loudness, so you do not reach for the volume between songs");
+  // 5a. Match loudness (his call 2026-11-04, § 11a-1): under the Equalizer, so it shows at first
+  // glance. The one Adaptive part that came back; it has its own switch.
+  const loud = cyclePill("soundMatch", [true, false], ["On", "Off"], "Plays every song at about the same loudness, so you do not reach for the volume between songs");
   syncs.push(loud.sync);
   loudStatus = el("div", "sound__status");
-  adaptView.append(partRow("Match loudness", loudStatus, loud.btn));
+  eqView.append(partRow("Match loudness", loudStatus, loud.btn));
+  eqView.append(foldButton("How Match loudness decides", "Shows how a song is measured and the settings that change it", () => loudFoldBody));
+  loudFoldBody = el("div", "sound__fold");
+  loudWhy = el("div", "sound__why");
+  const target = cyclePill("soundLoudTarget", [-16, -14, -18], ["Standard", "Louder", "Quieter"], "How loud songs are made: Standard is Apple's Sound Check level (−16 LUFS), Louder is −14 LUFS, Quieter is −18 LUFS");
+  const album = cyclePill("soundLoudAlbum", [true, false], ["On", "Off"], "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet");
+  const unmeasured = cyclePill("soundLoudUnmeasured", ["median", "none"], ["Usual amount", "No change"], "A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is");
+  syncs.push(target.sync, album.sync, unmeasured.sync);
+  const forget = el("button", "sound__chip", "Clear");
+  forget.type = "button";
+  forget.title = "Deletes every song's loudness measurement. Each song is measured again the next time you hear most of it";
+  forget.addEventListener("click", () => {
+    forget.disabled = true;
+    void loudness.forgetMeasurements().finally(() => (forget.disabled = false));
+  });
+  loudFoldBody.append(
+    row("Match songs to", target.btn),
+    row("Keep albums together", album.btn),
+    row("Songs not measured get", unmeasured.btn),
+    row("Clear measurements", forget),
+    loudWhy,
+  );
+  loudFoldBody.hidden = true;
+  eqView.append(loudFoldBody);
+
+  // 6. DeetsAdaptiveSound: hidden behind the DevTools flag (§11a), its two parts left.
+  adaptivePill = pill("Turns adaptive sound on or off. Each part below also has its own switch");
+  adaptivePill.addEventListener("click", () => setSetting("soundAdaptive", !adaptiveOn(), "panel"));
+  adaptView.append(row("Adaptive sound", adaptivePill, "sound__row--strong"));
 
   const low = cyclePill("soundLowVol", ["off", "gentle", "full"], ["Off", "Gentle", "Full"], "Adds bass and a little treble as you turn the volume down, because quiet music sounds thin. Gentle adds half as much as Full");
   syncs.push(low.sync);
@@ -543,24 +570,10 @@ function build(panel: HTMLElement): void {
   adaptView.append(foldButton("How adaptive sound decides", "Shows what each part follows and the settings that change it", () => adaptFoldBody));
   adaptFoldBody = el("div", "sound__fold");
   adaptWhy = el("div", "sound__why");
-  const target = cyclePill("soundLoudTarget", [-16, -14, -18], ["Standard", "Louder", "Quieter"], "How loud songs are made: Standard is Apple's Sound Check level (−16 LUFS), Louder is −14 LUFS, Quieter is −18 LUFS");
-  const album = cyclePill("soundLoudAlbum", [true, false], ["On", "Off"], "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet");
-  const unmeasured = cyclePill("soundLoudUnmeasured", ["median", "none"], ["Usual amount", "No change"], "A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is");
   const key = cyclePill("soundLowVolKey", ["both", "app"], ["App + Windows", "App only"], "App + Windows: counts the DeetsMusic volume and the Windows volume together. App only: counts the DeetsMusic volume");
   const level = cyclePill("soundCrossfeedLevel", ["medium", "strong", "light"], ["Medium", "Strong", "Light"], "How much of each side goes into the other");
-  syncs.push(target.sync, album.sync, unmeasured.sync, key.sync, level.sync);
-  const forget = el("button", "sound__chip", "Clear");
-  forget.type = "button";
-  forget.title = "Deletes every song's loudness measurement. Each song is measured again the next time you hear most of it";
-  forget.addEventListener("click", () => {
-    forget.disabled = true;
-    void loudness.forgetMeasurements().finally(() => (forget.disabled = false));
-  });
+  syncs.push(key.sync, level.sync);
   adaptFoldBody.append(
-    row("Match songs to", target.btn),
-    row("Keep albums together", album.btn),
-    row("Songs not measured get", unmeasured.btn),
-    row("Clear measurements", forget),
     row("Follow the volume of", key.btn),
     row("Blend amount", level.btn),
     adaptWhy,
@@ -1077,20 +1090,20 @@ let shownTitle = "";
 
 function renderIcon(): void {
   if (!parts) return;
-  const on = setting("soundEq") || adaptiveOn();
+  const on = setting("soundEq") || setting("soundMatch") || adaptiveOn();
   const html = icon(sound.activePreset().bands, setting("soundEq"));
   if (html !== shownIcon) parts.btn.innerHTML = shownIcon = html;
   parts.btn.toggleAttribute("data-armed", on);
   const what: string[] = [];
   if (setting("soundEq")) what.push(`${sound.activePreset().name} EQ`);
+  if (setting("soundMatch")) what.push("Match loudness");
   if (adaptiveOn()) {
-    if (setting("soundLoudness")) what.push("Match loudness");
     if (setting("soundLowVol") !== "off") what.push("Fuller at low volume");
     if (sound.crossfeedState().on) what.push("Crossfeed");
   }
   const title = what.length
     ? `Sound: ${what.join(" · ")}`
-    : adaptiveUnhidden() ? "Sound: the equalizer and adaptive sound. Everything is off" : "Sound: the equalizer. It is off";
+    : adaptiveUnhidden() ? "Sound: the equalizer and adaptive sound. Everything is off" : "Sound: the equalizer and Match loudness. Both are off";
   if (title !== shownTitle) parts.btn.title = shownTitle = title; // hint.ts moves it to data-hint
 }
 
@@ -1147,12 +1160,6 @@ function renderBandRow(): void {
   bandOn.setAttribute("aria-pressed", String(b.on));
 }
 
-/** Match loudness off inside Adaptive sound: the songs are still measured (sound.ts `measure`). */
-function measuringLine(): string {
-  const n = loudness.loudnessState().measuredSongs;
-  return `Off. Songs are measured as you listen, so they are ready when you turn it on (${n} so far).`;
-}
-
 /** Match loudness, one line: what sets this song's gain, and how far the listen has come. */
 function loudLine(): string {
   const { source: s, heardPct, songMeasured } = loudness.loudnessState();
@@ -1186,9 +1193,7 @@ function loudLine(): string {
  *  when the sentence did not change, which is most ticks. */
 function renderLoudStatus(): void {
   if (!parts || parts.panel.hidden) return;
-  setText(loudStatus, !adaptiveOn()
-    ? "Adaptive sound is off."
-    : !setting("soundLoudness") ? measuringLine() : loudLine());
+  setText(loudStatus, setting("soundMatch") ? loudLine() : "Off. When on, a song is measured the first time you hear most of it.");
 }
 
 function renderStatus(): void {
@@ -1220,8 +1225,10 @@ function renderStatus(): void {
   const xf = sound.crossfeedState();
   setText(xfStatus, !adaptive ? offLine : xf.why);
   const ls = loudness.loudnessState();
+  setWhy(loudWhy, [
+    `Songs are made at very different loudness, so one can be much louder than the next. DeetsMusic measures a song while you listen. When you have heard most of it without skipping ahead, it turns that song up or down to the same level every time it plays.${setting("soundLoudAlbum") ? " An album played in order moves as one, so its quiet songs stay quiet." : ""} A song never moves more than 12 dB. ${ls.measuredSongs} ${ls.measuredSongs === 1 ? "song is" : "songs are"} measured so far.`,
+  ]);
   setWhy(adaptWhy, [
-    `Match loudness: songs are made at very different loudness, so one can be much louder than the next. DeetsMusic measures a song while you listen. When you have heard most of it without skipping ahead, it turns that song up or down to the same level every time it plays.${setting("soundLoudAlbum") ? " An album played in order moves as one, so its quiet songs stay quiet." : ""} A song never moves more than 12 dB. ${ls.measuredSongs} ${ls.measuredSongs === 1 ? "song is" : "songs are"} measured so far.`,
     `Fuller at low volume: when music is quiet, the ear hears the deep and the high sounds less than the middle, so the music sounds thin. "Fuller" means this part adds back bass (around 100 Hz) and a little treble (around 10 kHz) as the volume goes down, by the amounts the standard equal-loudness curves give. At full volume it adds nothing. Gentle adds half of Full. It follows ${both ? "the DeetsMusic volume and the Windows volume together" : "the DeetsMusic volume only"}.`,
     "Headphone crossfeed: on headphones each ear hears only its own side, which sounds unnatural when a song puts an instrument in one ear only. Crossfeed mixes a little of each side into the other, as speakers in a room do. On Auto it turns on only when Windows reports headphones or a headset.",
   ]);

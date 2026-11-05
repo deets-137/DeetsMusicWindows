@@ -65,6 +65,7 @@ interface Spec {
 
 const ON_OFF: Opt[] = [{ value: "on", label: "On" }, { value: "off", label: "Off" }];
 
+const TILE_VERBS: Opt[] = [{ value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }, { value: "open", label: "Open" }];
 const storeChoice = (section: string, key: keyof Settings, label: string, options: Opt[], extra: Partial<Spec> = {}): Spec => ({
   key, label, section, kind: "choice", options,
   get: () => String(ownSetting(key)),
@@ -210,18 +211,19 @@ const SPECS: Spec[] = [
   storeChoice("Sound", "soundEqMode", "Equalizer view", [{ value: "graphic", label: "Sliders" }, { value: "parametric", label: "Dots" }]),
   storeChoice("Sound", "soundEqPreamp", "Avoid distortion", [{ value: "limiter", label: "Limiter only" }, { value: "needed", label: "When needed" }, { value: "always", label: "Always" }, { value: "manual", label: "By hand" }]),
   storeToggle("Sound", "soundEqPerOutput", "Remember each output"),
+  // Match loudness: back on its own (SOUND.md § 11a-1). Off only, as the Equalizer's switch.
+  storeToggle("Sound", "soundMatch", "Match loudness", { offOnly: true }),
+  storeChoice("Sound", "soundLoudTarget", "Match songs to", [[-16, "Standard"], [-14, "Louder"], [-18, "Quieter"]].map(([v, l]) => ({ value: String(v), label: `${l} (${v} LUFS)` })), {
+    get: () => String(setting("soundLoudTarget")),
+    set: (v) => setSetting("soundLoudTarget", Number(v), "agent"),
+  }),
+  storeToggle("Sound", "soundLoudAlbum", "Keep albums together"),
+  storeChoice("Sound", "soundLoudUnmeasured", "Songs not measured get", [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }]),
   // Adaptive sound is hidden (SOUND.md §11a, his call 2026-09-25: DevTools only). An agent sees
   // these specs only when the DevTools flag is set in this window.
   ...(adaptiveUnhidden()
     ? [
         storeToggle("Sound", "soundAdaptive", "Adaptive sound", { offOnly: true }),
-        storeToggle("Sound", "soundLoudness", "Match loudness"),
-        storeChoice("Sound", "soundLoudTarget", "Match songs to", [[-16, "Standard"], [-14, "Louder"], [-18, "Quieter"]].map(([v, l]) => ({ value: String(v), label: `${l} (${v} LUFS)` })), {
-          get: () => String(setting("soundLoudTarget")),
-          set: (v) => setSetting("soundLoudTarget", Number(v), "agent"),
-        }),
-        storeToggle("Sound", "soundLoudAlbum", "Keep albums together"),
-        storeChoice("Sound", "soundLoudUnmeasured", "Songs not measured get", [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }]),
         storeChoice("Sound", "soundLowVol", "Fuller at low volume", [{ value: "off", label: "Off" }, { value: "gentle", label: "Gentle" }, { value: "full", label: "Full" }]),
         storeChoice("Sound", "soundLowVolKey", "Follow the volume of", [{ value: "both", label: "App + Windows" }, { value: "app", label: "App only" }]),
         storeChoice("Sound", "soundCrossfeed", "Headphone crossfeed", [{ value: "auto", label: "Auto" }, { value: "always", label: "Always" }, { value: "off", label: "Off" }]),
@@ -319,6 +321,15 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "pinNewAct", "Pinned Item click behavior", [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }]),
   storeChoice("Playback", "dropPlayQueue", "Dragging a Song into Now Playing behavior", [{ value: "keep", label: "Keep Queue" }, { value: "replace", label: "Replace it" }]),
   storeToggle("Playback", "playerWheelVolume", "Scroll over the Player for volume"),
+  storeChoice("Playback", "pinNewDouble", "Pinned Item double-click behavior", TILE_VERBS),
+  storeChoice("Playback", "collectionClick", "Click a collection", TILE_VERBS),
+  storeChoice("Playback", "collectionDouble", "Double-click a collection", TILE_VERBS),
+  storeChoice("Home", "tileClick", "Click a Home tile", TILE_VERBS),
+  storeChoice("Home", "tileDouble", "Double-click a Home tile", TILE_VERBS),
+  storeChoice("Home", "tilePressWait", "Double-click wait", [150, 250, 350, 500].map((m) => ({ value: String(m), label: `${m} ms` })), {
+    get: () => String(ownSetting("tilePressWait")),
+    set: (v) => setSetting("tilePressWait", Number(v), "agent"),
+  }),
   storeToggle("Playback", "clearQueueOnLaunch", "Clear the queue on launch"),
   storeChoice("Playback", "releaseAfterPause", "Let go of Apple after a pause", [5, 10, 30, 0].map((m) => ({ value: String(m), label: m ? `${m} min` : "Never" })), {
     get: () => String(ownSetting("releaseAfterPause")),

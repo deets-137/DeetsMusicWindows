@@ -41,6 +41,12 @@
   --compass-drop: 0px;
   left: calc(var(--np-right, 0px) + var(--panel-gap));
 }
+/* max with NP on the right (Now Playing and Queue in Max): the same dodge, mirrored. Without
+   this the bar's left edge sat past the window's right edge, and only its padding showed. */
+[data-surface="max"][data-stage-side="right"] .compass {
+  left: var(--panel-edge-gap);
+  right: calc(var(--np-left-in, 0px) + var(--panel-gap));
+}
 /* mini's player view is the NP card alone: there is nothing to dodge, so the bar hangs from
    the title bar as before (the owner's pick, 2026-09-17). */
 [data-surface="mini"][data-mini="player"] .compass { --compass-drop: 0px; }

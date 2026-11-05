@@ -1,6 +1,6 @@
 // Match loudness (SOUND.md §3A — phase 5): every song at one perceived loudness.
 //
-// Measure: while Adaptive sound is on (Match loudness on or off), each routed element's worklet sends its K-weighted mean
+// Measure: while Match loudness is on (its own switch since 2026-11-04, SOUND.md § 11a-1), each routed element's worklet sends its K-weighted mean
 // square and sample peak every 100 ms (sound-worklet.ts, before the match gain). This module
 // divides MusicKit's volume back out (it acts before the graph, §0), groups the hops into
 // 400 ms blocks with 75 % overlap, and at the end of the listen gates them (BS.1770-4) into
@@ -22,7 +22,7 @@ import { getAppliedGain, isPlayingNow, isShuffleOn } from "./player";
 import { integratedLufs } from "./sound-dsp";
 import { trackById, tracks, onTracksChange } from "./track-store";
 import { albumKey } from "./rewind";
-import { setting, onSettingsChange, adaptiveOn } from "./settings-store";
+import { setting, onSettingsChange } from "./settings-store";
 import type { TrackHandle } from "./queue";
 import type { Track } from "./library";
 import * as diag from "./diag";
@@ -65,6 +65,9 @@ interface Listen {
   durationSec: number;
   lastSec?: number;
   jumped: boolean;
+  /** Match loudness changed during this listen. The song may not be routed yet, and only part
+   *  of it was measured, so it moves from the next song and saves no row (§ 11a-1). */
+  late?: boolean;
   source: GainSource;
 }
 let listen: Listen | null = null;
@@ -122,7 +125,8 @@ function capped(gainDb: number, peakDb: number | undefined): { gainDb: number; c
 }
 
 function decide(h: TrackHandle, track: Track | undefined): GainSource {
-  if (!adaptiveOn() || !setting("soundLoudness")) return { kind: "off" };
+  if (!setting("soundMatch")) return { kind: "off" };
+  if (listen?.late) return { kind: "idle" };
   const target = setting("soundLoudTarget");
   if (track && setting("soundLoudAlbum") && !isShuffleOn()) {
     const key = albumKey(track);
@@ -158,7 +162,7 @@ function apply(): void {
 function finish(): void {
   const l = listen;
   listen = null;
-  if (!l || !l.durationSec || l.jumped || l.heardSec < HEARD_TO_COUNT * l.durationSec) return;
+  if (!l || !l.durationSec || l.jumped || l.late || l.heardSec < HEARD_TO_COUNT * l.durationSec) return;
   const lufs = integratedLufs(l.blocks);
   if (lufs === null || !isFinite(l.peak) || l.peak <= 0) return;
   const peakDb = toDb(l.peak);
@@ -241,7 +245,8 @@ export function initLoudness(): void {
     })
     .catch((e) => diag.error("sound:measureLoadFailed", { err: String(e) }));
   onSettingsChange((k) => {
-    if (k === "soundAdaptive" || k === "soundLoudness" || k === "soundLoudTarget" || k === "soundLoudAlbum" || k === "soundLoudUnmeasured") {
+    if (k === "soundMatch" || k === "soundLoudTarget" || k === "soundLoudAlbum" || k === "soundLoudUnmeasured") {
+      if (k === "soundMatch" && listen) listen.late = true;
       medianCache = null;
       apply();
     }

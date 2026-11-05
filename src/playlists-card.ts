@@ -27,7 +27,8 @@ import { initFavorites, reconcile, reconcilePlaylist, playlistFav } from "./favo
 import { initCollectionCard, esc, formatTotal, type Context, type Grouping, type SortSpec, type ViewState } from "./collection-card";
 import { picksText } from "./row-pick";
 import { songMenu, playlistMenu, setMenu, tileMenu } from "./media-menu";
-import { pinActivate, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
+import { collectionPress } from "./collection-press";
+import { pinPress, pinnedShelfHTML, pinShelfItem, onPinsChange, pinDragRow } from "./pins";
 import { sortByOrder, isRanked, moveTo, onRowOrderChange, sectionsMovable, holdMs, sectionAt } from "./row-order";
 import { musicCell, explicitBadge, heroCover } from "./library-card";
 import { addSquareHTML } from "./add-square";
@@ -940,9 +941,9 @@ export const playlistsCard: CardDef = {
       shelfDrag: pinDragRow, // the grip moves a pinned tile along the shelf (MOVABLE-ROWS.md §5.2)
       shelvesFirst: true,
       // The pin's own verb decides (PINS.md §8.4); this card opens a playlist in place.
-      onShelf: (el) => {
+      onShelf: (el, e) => {
         const it = pinShelfItem(el);
-        if (it) pinActivate(it, "playlists", { openPlaylist: (p) => card.drill(detail(p)) });
+        if (it) pinPress(e, it, "playlists", { openPlaylist: (p) => card.drill(detail(p)) });
       },
       shelfMenu: (el) => {
         const it = pinShelfItem(el);
@@ -977,9 +978,13 @@ export const playlistsCard: CardDef = {
               : x.kind === "divider"
                 ? `<div class="pl-divider" aria-hidden="true"></div>`
                 : shelfCell(x, idx),
-          activate: (x) => {
-            if (x.kind === "playlist") card.drill(detail(x.p));
-            else if (x.kind !== "divider") toggleSection(sectionKey(x));
+          activate: (x, _i, _items, e) => {
+            if (x.kind === "playlist") {
+              const p = x.p;
+              const open = () => card.drill(detail(p));
+              if (e) collectionPress(e, { kind: "playlist", key: `playlist:${pid(p)}`, context: `playlist:${pid(p)}`, open, tracks: () => tracksOf(p) });
+              else open(); // the head's own action, with no press to read
+            } else if (x.kind !== "divider") toggleSection(sectionKey(x));
           },
           menu: (x) =>
             x.kind === "playlist" ? listMenu(x.p) : x.kind === "folder" ? folderMenu(x.id) : [],

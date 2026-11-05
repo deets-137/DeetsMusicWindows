@@ -2128,9 +2128,9 @@ pub async fn apple_add_to_library(
 
 /// The views merged into the artist page's Albums shelf (his call, 2026-10-26). Apple files an
 /// EP under `singles` (probed 2026-10-26: LISA's "PRESS PLAY - EP"), so there is no EP view.
-const ALBUM_VIEWS: [&str; 3] = ["full-albums", "singles", "live-albums"];
+const ALBUM_VIEWS: [&str; 4] = ["full-albums", "singles", "live-albums", "compilation-albums"];
 /// `Album.kind` for each of ALBUM_VIEWS, in the same order.
-const ALBUM_KINDS: [&str; 3] = ["album", "single", "live"];
+const ALBUM_KINDS: [&str; 4] = ["album", "single", "live", "compilation"];
 /// Releases by others the artist is on: its own shelf, the last on the page.
 const APPEARS_VIEW: &str = "appears-on-albums";
 /// Pages of 100 read per view after the first answer. A runaway guard: Taylor Swift's 87
@@ -2195,7 +2195,7 @@ pub async fn catalog_artist(
 
     let base = format!("https://api.music.apple.com/v1/catalog/{sf}/artists/{id}?views=top-songs,full-albums");
     let (mut status, mut body) =
-        api_get(&client, &dev, &user, &format!("{base},singles,live-albums,{APPEARS_VIEW},featured-playlists")).await?;
+        api_get(&client, &dev, &user, &format!("{base},singles,live-albums,compilation-albums,{APPEARS_VIEW},featured-playlists")).await?;
     if status != 200 && status != 404 {
         crate::log::warn(&format!("catalog_artist: a view was refused (HTTP {status}), retrying with the two original views"));
         (status, body) = api_get(&client, &dev, &user, &base).await?;

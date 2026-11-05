@@ -20,7 +20,7 @@ export interface Album {
   dateAdded?: string;
   /** The artist page's Albums shelf only: the Apple view the release came from, "single"
    *  holding EPs (model.rs `Album.kind`, ARTIST-VIEW.md §12). */
-  kind?: "album" | "single" | "live";
+  kind?: "album" | "single" | "live" | "compilation";
 }
 
 export interface Artist {
@@ -75,7 +75,7 @@ export interface SearchResults {
 
 export interface ArtistDetail {
   artist: Artist;
-  /** The Albums shelf: Apple's albums, singles and EPs, and live albums, merged (ARTIST-VIEW.md §11). */
+  /** The Albums shelf: Apple's albums, singles and EPs, live albums and compilations, merged (ARTIST-VIEW.md §11). */
   albums: Album[];
   /** Releases by others the artist is on: the last shelf. */
   appearsOn: Album[];

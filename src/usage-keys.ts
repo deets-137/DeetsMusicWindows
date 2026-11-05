@@ -28,7 +28,7 @@ export const REPORTED: readonly string[] = [
   "compassCloseAway", "menuMode", "toasts", "hoverHints", "hoverHintDelay", "hoverSongNames", "goToTarget",
   // Sound (soundEqPreset: a built-in's id, or "user" for one the user named)
   "soundEq", "soundEqPreset", "soundEqMode", "soundEqPreamp", "soundEqPerOutput", "soundAdaptive",
-  "soundLoudness", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol",
+  "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol",
   "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays",
   // Rooms
   ...ROOM_GUEST_CONTROLS.map((c) => `roomGuests.${c}`),
@@ -95,4 +95,11 @@ export const NOT_REPORTED: Readonly<Record<string, string>> = {
   rememberArtistFilters: "a new Playback row (2026-10-27, ARTIST-VIEW.md §12): his call before it is sent",
   clearQueueOnLaunch: "a new Playback row (2026-10-29, QUEUE.md § Clear Queue): his call before it is sent",
   releaseAfterPause: "a new Playback row (2026-11-03, QUEUE.md § Let go after a pause): his call before it is sent",
+  soundMatch: "a new Sound row (2026-11-04, SOUND.md § 11a-1): his call before it is sent",
+  pinNewDouble: "a new Playback row (2026-11-04, HOME.md §11): his call before it is sent",
+  collectionClick: "a new Playback row (2026-11-04, HOME.md §11.5): his call before it is sent",
+  collectionDouble: "a new Playback row (2026-11-04, HOME.md §11.5): his call before it is sent",
+  tileClick: "a new Home row (2026-11-04, HOME.md §11): his call before it is sent",
+  tileDouble: "a new Home row (2026-11-04, HOME.md §11): his call before it is sent",
+  tilePressWait: "a new Home row (2026-11-04, HOME.md §11): his call before it is sent",
   afterUpdateShow: "a new Updates row (2026-11-02, UPDATE-CARD.md §3.15): his call before it is sent",};

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-20
 sources: [src/toast.ts, src/styles/toast.css, src/report-draft.ts]
-updated: 2026-10-30
+updated: 2026-11-04
 ---
 # DeetsMusic — Toasts
 
@@ -72,8 +72,8 @@ page. Text the user already typed in the form is kept. Nothing is sent until the
 
 | | Deets.Solutions | DeetsMusic |
 |---|---|---|
-| Position | top-right column under the header | **top-right, newest on top**, on every surface. **mini/midi:** under the Now Playing card, so the song stays readable (`--toast-top`, the card's bottom edge measured by `toast.ts`) · **max:** under the titlebar, since the stage is on the left. Changed 2026-09-13 from bottom-centred in mini/midi. **While the Friends panel is open** (2026-09-26): under the panel (`--toast-below`, set by `room-panel.ts` `placeToasts`), so an ask does not cover Leave / End room; `--toast-floor-room` keeps one toast inside a short window. |
-| Fly-in | from the right | from the right (`--toast-shift`) |
+| Position | top-right column under the header | **top-right, newest on top**, except the one top-left case under max. **mini/midi:** under the Now Playing card, so the song stays readable (`--toast-top`, the card's bottom edge measured by `toast.ts`) · **max:** under the titlebar, on the side away from the stage. With Now Playing on the right (`data-stage-side="right"`, 2026-11-04, his call) the column is **top-left**, so a toast does not cover the cover, and `--toast-below` does not apply: the Friends panel hangs from the right. Changed 2026-09-13 from bottom-centred in mini/midi. **While the Friends panel is open** (2026-09-26): under the panel (`--toast-below`, set by `room-panel.ts` `placeToasts`), so an ask does not cover Leave / End room; `--toast-floor-room` keeps one toast inside a short window. |
+| Fly-in | from the right | from the right (`--toast-shift`); from the left in the top-left column |
 | Cap | 4 | **3** — the oldest *timed* toast yields first; sticky ones only when nothing timed is left, **which destroys them with their actions unrun — see §4a** |
 | Setting | none | `toasts`: `all` (default, 2026-09-13) · `failures` — Settings › Look and feel › **Show notices** (no `off` since 2026-09-14, §4) |
 | Notices | none | `dismissKey` + `noticeOff()` |

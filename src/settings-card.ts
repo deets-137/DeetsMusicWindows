@@ -242,6 +242,13 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.3.1", section: "Window", row: "fpqueueside" }, // Queue in the full player, built 2026-11-02 (fullscreen-player.md §18.2)
   { since: "1.3.0", section: "Playlists", row: "newcover" }, // New cover, from 0.14: shown again beside the Later list, which starts with it (his call 2026-11-01, LISTEN-LATER.md §2.2)
   { since: "1.4.0", section: "Playback", row: "releasepause" }, // Let go of Apple after a pause, built 2026-11-03 (QUEUE.md § Let go after a pause)
+  { since: "1.4.0", section: "Sound", row: "soundmatch" }, // Match loudness, back on its own, built 2026-11-04 (SOUND.md § 11a-1)
+  { since: "1.4.0", section: "Home", row: "tileclick" }, // Click and double-click on a tile, built 2026-11-04 (HOME.md §11)
+  { since: "1.4.0", section: "Home", row: "tiledouble" },
+  { since: "1.4.0", section: "Home", row: "tilewait" },
+  { since: "1.4.0", section: "Playback", row: "pinnewdouble" },
+  { since: "1.4.0", section: "Playback", row: "collclick" }, // Click a collection, built 2026-11-04 (HOME.md §11.5)
+  { since: "1.4.0", section: "Playback", row: "colldouble" },
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -515,7 +522,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, the sides of Now Playing and the Queue in Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "maxStageSide", "fpQueueSide", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "releaseAfterPause", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
+    keys: ["streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "releaseAfterPause", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "pinNewDouble", "collectionClick", "collectionDouble", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -531,10 +538,10 @@ const RESET_GROUPS: ResetGroup[] = [
   },
   {
     id: "sound", label: "Sound", hint: adaptiveUnhidden() ? "The equalizer, adaptive sound and their choices. Not your saved presets" : "The equalizer and its choices. Not your saved presets",
-    keys: ["soundEq", "soundEqPreset", "soundEqCustom", "soundEqMode", "soundEqPreamp", "soundEqPreampDb", "soundEqPerOutput", "soundEqOutputs", "soundAdaptive", "soundLoudness", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol", "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays"],
+    keys: ["soundEq", "soundEqPreset", "soundEqCustom", "soundEqMode", "soundEqPreamp", "soundEqPreampDb", "soundEqPerOutput", "soundEqOutputs", "soundMatch", "soundAdaptive", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol", "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays"],
   },
   { id: "sleep", label: "Sleep", hint: "Sleep every day, the time, Wind down and Play out song. Not a timer that is running", keys: ["sleepSchedule", "sleepAt", "sleepWind", "sleepPlayOut"] },
-  { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "homeHideLasts", "homeHidden"] },
+  { id: "home", label: "Home", hint: "Your other devices, hiding, and every hidden tile", keys: ["homeApple", "tileClick", "tileDouble", "tilePressWait", "homeHideLasts", "homeHidden"] },
   { id: "cards", label: "Cards", hint: "Every card back in the picker, and every card waits for its covers. Rewind stays out until 50 plays", keys: ["hiddenCards", "instantCards"] },
   { id: "rewind", label: "Rewind", hint: "Every Rewind row", keys: ["fullPlayRule", "replayDay", "replayAuto", "replayKeep", "rewindToday"] },
   { id: "diary", label: "Album Reviews", hint: "Rescale scores and Grow on open. Not your reviews — those are your writing, not a setting", keys: ["diaryRescale", "diaryGrow"] },
@@ -1651,6 +1658,23 @@ function mountSettings(
           () => "Home asks Apple what you played and added elsewhere, and what your artists released",
         ),
         {
+          kind: "choice", id: "tileclick", label: "Click a Home tile", key: "tileClick",
+          hint: "What one click does on an album, playlist, artist or song tile. A pin has its own On Click row, and a station always plays",
+          options: [{ value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }, { value: "open", label: "Open" }],
+        },
+        {
+          kind: "choice", id: "tiledouble", label: "Double-click a Home tile", key: "tileDouble",
+          hint: "What a double-click does on the same tiles. When it differs from the click, a click waits for a second press",
+          options: [{ value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }, { value: "open", label: "Open" }],
+        },
+        {
+          kind: "choice", id: "tilewait", label: "Double-click wait", key: "tilePressWait",
+          hint: "How long a click on a Home or pinned tile waits for a second press. Longer suits a slower double-click; shorter, a quicker click",
+          get: () => String(setting("tilePressWait")),
+          set: (v) => setSetting("tilePressWait", Number(v)),
+          options: [{ value: "150", label: "150 ms" }, { value: "250", label: "250 ms" }, { value: "350", label: "350 ms" }, { value: "500", label: "500 ms" }],
+        },
+        {
           kind: "choice", id: "homehide", label: "Hiding lasts", key: "homeHideLasts",
           hint: "Right-click a Home tile and Hide to take it off the card",
           options: [{ value: "forever", label: "Until cleared" }, { value: "session", label: "This session" }],
@@ -1692,6 +1716,21 @@ function mountSettings(
           kind: "choice", id: "pinnewact", label: "Pinned Item click behavior", key: "pinNewAct",
           hint: "The verb a new pin starts with. Change any pin with its own On Click row. Songs and stations are played on click",
           options: [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }],
+        },
+        {
+          kind: "choice", id: "pinnewdouble", label: "Pinned Item double-click behavior", key: "pinNewDouble",
+          hint: "The verb a new album, playlist or artist pin starts with on a double-click. Change any pin with its own On Double Click row",
+          options: [{ value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }, { value: "open", label: "Open" }],
+        },
+        {
+          kind: "choice", id: "collclick", label: "Click a collection", key: "collectionClick",
+          hint: "What one click does on an album, playlist or artist in the Library, Playlists, Search and artist pages. For one type only, make a rule in Rulez",
+          options: [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }],
+        },
+        {
+          kind: "choice", id: "colldouble", label: "Double-click a collection", key: "collectionDouble",
+          hint: "What a double-click does on the same items. An Open happens at once, and a second press then does this",
+          options: [{ value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }, { value: "open", label: "Open" }],
         },
         {
           kind: "choice", id: "dropplay", label: "Dragging a Song into Now Playing behavior", key: "dropPlayQueue",
@@ -1806,23 +1845,24 @@ function mountSettings(
           when: () => setting("soundEqPreamp") === "manual",
         },
         storeToggle("eqperoutput", "Remember each output", "soundEqPerOutput", () => "On: headphones, speakers and AirPlay speakers each remember their own preset"),
-        // Adaptive sound is hidden (SOUND.md §11a): these rows show only with the DevTools flag.
-        { ...headRow("g-adaptive", "Adaptive sound"), when: adaptiveUnhidden },
+        // Match loudness came back on its own (his call 2026-11-04, SOUND.md § 11a-1).
+        headRow("g-loudness", "Match loudness"),
+        storeToggle("soundmatch", "Match loudness", "soundMatch", () => "Plays every song at about the same loudness. A song is measured the first time you hear most of it"),
         {
           kind: "choice", id: "loudtarget", label: "Match songs to", key: "soundLoudTarget",
           hint: "How loud songs are made. Standard is Apple's Sound Check level (−16 LUFS), Louder is −14, Quieter is −18",
           get: () => String(setting("soundLoudTarget")),
           set: (v) => setSetting("soundLoudTarget", Number(v)),
           options: [{ value: "-16", label: "Standard" }, { value: "-14", label: "Louder" }, { value: "-18", label: "Quieter" }],
-          when: adaptiveUnhidden,
         },
-        { ...storeToggle("loudalbum", "Keep albums together", "soundLoudAlbum", () => "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet"), when: adaptiveUnhidden },
+        storeToggle("loudalbum", "Keep albums together", "soundLoudAlbum", () => "On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet"),
         {
           kind: "choice", id: "loudunmeasured", label: "Songs not measured get", key: "soundLoudUnmeasured",
           hint: "A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is",
           options: [{ value: "median", label: "Usual amount" }, { value: "none", label: "No change" }],
-          when: adaptiveUnhidden,
         },
+        // Adaptive sound is hidden (SOUND.md §11a): these rows show only with the DevTools flag.
+        { ...headRow("g-adaptive", "Adaptive sound"), when: adaptiveUnhidden },
         {
           kind: "choice", id: "lowvolkey", label: "Follow the volume of", key: "soundLowVolKey",
           hint: "App + Windows: counts the DeetsMusic volume and the Windows volume together",

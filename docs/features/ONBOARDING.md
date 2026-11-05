@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.1
 desk_test: none
 sources: [src/hint.ts, src/walk.ts, src/context-menu.ts, src/styles/hint.css, src/styles/walk.css, scripts/dev-app.mjs]
-updated: 2026-10-23
+updated: 2026-11-04
 ---
 # Onboarding — how the app explains itself
 
@@ -119,20 +119,22 @@ nothing about authoring changed when the box did.
 | Settings › Last.fm | Scrobble plays · Show now playing | Sends each song to your Last.fm profile once you hear half of it or 4 minutes · Your Last.fm profile shows the song while it plays | settings-card.ts |
 | Settings › AirPlay | Send to speaker | DeetsMusic only: the speaker plays your music and this PC goes quiet. All PC sound: every app's sound, and this PC keeps playing | settings-card.ts |
 | Title bar | Web (the web of rings, left of the room figures; 2026-09-22) | Web: makes a playlist from an artist and the artists they make songs with. Its panel's hints are the Playlist web panel row's | index.html / web.ts |
-| Title bar | Sound (the EQ faders) | Sound: the equalizer. It is off · on: *Sound: Vocal EQ*. With the Adaptive sound flag (SOUND.md §11a): Sound: the equalizer and adaptive sound. Everything is off · on: *Sound: Vocal EQ · Match loudness · Fuller at low volume · Crossfeed* | index.html / sound-panel.ts |
+| Title bar | Sound (the EQ faders) | Sound: the equalizer and Match loudness. Both are off · on: *Sound: Vocal EQ · Match loudness*. With the Adaptive sound flag (SOUND.md §11a): Sound: the equalizer and adaptive sound. Everything is off · on: *Sound: Vocal EQ · Match loudness · Fuller at low volume · Crossfeed* | index.html / sound-panel.ts |
 | Sound panel | Compare | Hold to hear the music without the effects, at the same loudness | sound-panel.ts |
 | Sound panel | i (the reading) | *This song is heavy in the bass and soft in the top end.* Click for the numbers · before 3 s of sound: *What this song's sound is like. Click for the numbers* | sound-panel.ts |
 | Sound panel | Bass · Body · Voice · Detail · Air | Bass, 20–150 Hz: the kick drum and the bass guitar. Raise it for weight; lower it if the sound booms. Hold to hear only this range (and one line each for Body, Voice, Detail, Air) | sound-panel.ts |
 | Sound panel | This song · What you hear (legend) | The song's own shape, averaged while it plays · The song's shape with your equalizer applied (with the Adaptive sound flag: … with your equalizer and adaptive sound applied) | sound-panel.ts |
-| Sound panel | Equalizer · Adaptive tabs | The equalizer: the curve, the sliders and the presets · Adaptive sound: even loudness between songs, a fuller sound at low volume, and a natural sound on headphones | sound-panel.ts |
+| Sound panel | Equalizer · Adaptive tabs | The equalizer: the curve, the sliders and the presets · Adaptive sound: a fuller sound at low volume, and a natural sound on headphones | sound-panel.ts |
 | Sound panel | Reset · Undo | Puts every band back to 0 dB (the Flat preset). Undo is offered for a moment · Brings back what was there before | sound-panel.ts |
-| Sound panel | Equalizer · Adaptive sound pills | Turns the equalizer on or off · Turns adaptive sound on or off. Each of the three parts below also has its own switch | sound-panel.ts |
+| Sound panel | Equalizer · Adaptive sound pills | Turns the equalizer on or off · Turns adaptive sound on or off. Each part below also has its own switch | sound-panel.ts |
 | Sound panel | the graph · a band's dot | Click the curve to add a band. Drag a dot to move it; roll the wheel on a dot to widen or narrow it · Drag to move this band. Wheel: wider or narrower. Double-click: back to 0 dB. Delete: remove | sound-panel.ts |
 | Sound panel | a graphic fader | *250 Hz: +2.0 dB.* Drag up for more, down for less | sound-panel.ts |
 | Sound panel | band row: shape · On/Off · × | The band's shape. Click for the next one · Turns this band on or off without losing it · Removes this band | sound-panel.ts |
 | Sound panel | ‹ › · Sliders/Dots · ⋯ | The previous / next preset · Sliders: ten fixed sliders, one per range. Dots: a dot per band on the curve, free to move · Save, rename, delete, import or copy the preset | sound-panel.ts |
 | Sound panel | Save as · Rename · Delete · Import · Paste · Copy · OK | Saves the curve under a new name · Renames this saved preset · Deletes this saved preset. Click twice · Reads an Equalizer APO or AutoEq text file (Preamp and Filter lines) · Reads Equalizer APO or AutoEq text from the clipboard · Copies the preset as Equalizer APO text · Saves the name | sound-panel.ts |
 | Sound panel | the "How adaptive sound decides" fold (the equalizer's fold left 2026-10-19, SOUND.md §11b) | Shows what each part follows and the settings that change it | sound-panel.ts |
+| Sound panel | the "How Match loudness decides" fold (2026-11-04, SOUND.md § 11a-1) | Shows how a song is measured and the settings that change it | sound-panel.ts |
+| Update card | a pin's verbs in *Double-click on your pins* (2026-11-04, HOME.md §11) | A double-click on this pin does this | update-card.ts |
 | Sound panel | Remember each output (its own row under the preset row since 2026-10-19) | On: headphones, speakers and AirPlay speakers each remember their own preset | sound-panel.ts |
 | Sound panel | Match loudness · Fuller at low volume · Headphone crossfeed | Plays every song at about the same loudness, so you do not reach for the volume between songs · Adds bass and a little treble as you turn the volume down, because quiet music sounds thin. Gentle adds half as much as Full · On headphones, mixes a little of the left side into the right and back, as speakers in a room do. Auto: only on headphones | sound-panel.ts |
 | Sound panel | Match songs to · Keep albums together · Songs not measured get · Clear measurements · Follow the volume of · Blend amount | How loud songs are made: Standard is Apple's Sound Check level (−16 LUFS), Louder is −14 LUFS, Quieter is −18 LUFS · On: when you play an album in order, all its songs move by the same amount, so a quiet song stays quiet · A song is measured the first time you hear it. Until then: move it by your songs' usual amount, or leave it as it is · Deletes every song's loudness measurement. Each song is measured again the next time you hear most of it · App + Windows: counts the DeetsMusic volume and the Windows volume together. App only: counts the DeetsMusic volume · How much of each side goes into the other | sound-panel.ts |
@@ -208,7 +210,7 @@ nothing about authoring changed when the box did.
 | Radio | Refresh | Reads the stations from Apple Music again | radio-card.ts |
 | Any shelf tile (Home, Library, Playlists, Radio) | the pin badge (2026-09-18, PINS.md) | Unpin | pins.ts |
 | Library artist view | the hero cover | Opens the menu for this cover (the engine's cover button; the menu is Pin / Unpin) | collection-card.ts |
-| Full artist view (2026-10-27) | the Albums shelf's filter pill (All · Albums · Singles & EPs · Live) | Shows all of the artist's releases, or only albums, singles and EPs, or live albums | media-levels.ts; [ARTIST-VIEW.md §12](ARTIST-VIEW.md) |
+| Full artist view (2026-10-27) | the Albums shelf's filter pill (All · Albums · Singles & EPs · Live · Compilations) | Shows all of the artist's releases, or only albums, singles and EPs, live albums or compilations | media-levels.ts; [ARTIST-VIEW.md §12](ARTIST-VIEW.md) |
 | Search | Clear · Filter | Clears the search · Picks which kinds of results show: songs, albums, artists, playlists, stations | search-card.ts |
 | Song pane (2026-09-17) | a writer chip | Other songs by this writer | search-card.ts (CREDITS.md §7) |
 | Search | recent-term pin | Pin / Unpin | search-card.ts (pre-existing) |
@@ -363,7 +365,7 @@ same in every card** (2026-09-23): the rows, their order and each card's own row
 |---|---|---|
 | Any card | a **song** · an **album** · an **artist** · a **playlist** · a **station** | the media type's own menu, the same in every card: the rows and their order are [CONTEXT-MENUS.md](../architecture/CONTEXT-MENUS.md) §3.1–§3.5 and are not copied here (they drifted once, 2026-09-27; `tests/media-menu.test.ts` holds the order) |
 | Any card | a **genre** · a **picked set** (Ctrl/Shift+click) | the list menu, CONTEXT-MENUS.md §3.6, then the card's Remove / Delete N |
-| Any card | a **pinned** tile or row | the item's own menu; **On Click ▸** (Play · Shuffle · Open) sits above Pin for album, artist and playlist pins (PINS.md §8) |
+| Any card | a **pinned** tile or row | the item's own menu; **On Click ▸** and **On Double Click ▸** (Play · Shuffle · Open) sit above Pin for album, artist and playlist pins (PINS.md §8) |
 | Playlists | playlist row | Rename (field, hand-made only) above the playlist menu; its own rows: Move to Folder ▸ · **Refresh ▸** · Import to Edit (Apple) · Keep Playlist · the cover rows; last: Delete Playlist (local) |
 | Playlists | song in a playlist | the song menu; last: Remove from Playlist (hand-made) |
 | Playlists | folder header | Rename (field) · Delete Folder |

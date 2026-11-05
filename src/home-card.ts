@@ -30,13 +30,15 @@ import { toast } from "./toast";
 import { openContextMenu, type MenuItem } from "./context-menu";
 import { rowDrag, type DragPayload } from "./row-drag";
 import { mosaicHTML } from "./mosaic";
-import { esc } from "./collection-card";
+import { esc, runListAction } from "./collection-card";
+import { setting } from "./settings-store";
 import { enterRows } from "./pop";
 import { patchHTML } from "./keyed";
 import type { Artwork } from "./library";
 import type { CardDef, MountOpts } from "./cards";
 import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
-import { isPinned, pinActivate, pinBadgeHTML, handleUnpin, onPinsChange, PIN_GRIP, pinDragRow, isPinGrip } from "./pins";
+import { tilePress, type TileVerb } from "./tile-press";
+import { isPinned, pinPress, pinBadgeHTML, handleUnpin, onPinsChange, PIN_GRIP, pinDragRow, isPinGrip } from "./pins";
 import { sortByOrder, moveTo, onRowOrderChange, sectionsMovable, holdMs } from "./row-order";
 import { pickByKey, pickMenu, suggestMarkItem, onSotdChange, SUGGEST_KEY } from "./sotd";
 import * as diag from "./diag";
@@ -197,28 +199,47 @@ export const homeCard: CardDef = {
     };
 
     // ── acting on a tile ──
-    const activate = (it: HomeItem) => {
-      // A PINNED tile obeys the verb the pin carries, here as in the three cards (PINS.md
+    /** Open a tile by its own Go to row, so a click lands where the right-click does: the
+     *  Library, the Search pane or the Playlists card, by the same rules. True when it opened. */
+    const openTile = (it: HomeItem): boolean => {
+      const label = it.kind === "playlist" ? "Go to Playlist" : it.kind === "artist" ? "Go to Artist" : "Go to Album";
+      const row = tileMenu(it, {}).find((m) => m && "label" in m && m.label === label);
+      if (!row || !("run" in row) || !row.run) return false;
+      row.run();
+      return true;
+    };
+    const runTile = (it: HomeItem, verb: TileVerb) => {
+      // The click trail (LOGGING.md §The click trail): which tile, and what it stands for
+      // — a song tile queues ONE song, an album tile queues the album, and the two lead
+      // to very different queues from the same gesture.
+      diag.log("ui:act", { at: "home", do: "tile", kind: it.kind, verb, n: it.count ?? 1 });
+      if (verb === "open" && openTile(it)) return;
+      // An album or artist off the library plays whole (its `whole` fetch), not only the songs known.
+      void (it.whole?.() ?? Promise.resolve(it.tracks()))
+        .then((ts) => {
+          if (ts.length) runListAction(verb === "shuffle" ? "shuffle" : "play", ts, (list, start) => void playTracks(list, start, it.context).catch(err("play")));
+        })
+        .catch(err("play"));
+    };
+    const activate = (it: HomeItem, e?: MouseEvent) => {
+      // A PINNED tile obeys the verbs the pin carries, here as in the three cards (PINS.md
       // §8.2 fork 4: one pin, one verb, in all four Pinned shelves). Home has no detail of
       // its own, so an Open hops to the card that holds the item — `pinActivate` with no
       // nav does exactly that.
       if (isPinned(it.key)) {
-        pinActivate(it, "home");
+        pinPress(e, it, "home");
         if (it.kind === "station") build();
         return;
       }
-      // The click trail (LOGGING.md §The click trail): which tile, and what it stands for
-      // — a song tile queues ONE song, an album tile queues the album, and the two lead
-      // to very different queues from the same gesture.
-      diag.log("ui:act", { at: "home", do: "tile", kind: it.kind, n: it.count ?? 1 });
       if (it.kind === "station" && it.station) {
-        void playStation(it.station).then(build).catch(err("play station"));
+        const station = it.station;
+        tilePress(e, it.key, "play", "play", () => {
+          diag.log("ui:act", { at: "home", do: "tile", kind: it.kind, n: 1 });
+          void playStation(station).then(build).catch(err("play station"));
+        });
         return;
       }
-      // An album or artist off the library plays whole (its `whole` fetch), not only the songs known.
-      void (it.whole?.() ?? Promise.resolve(it.tracks()))
-        .then((ts) => (ts.length ? playTracks(ts, 0, it.context) : undefined))
-        .catch(err("play"));
+      tilePress(e, it.key, setting("tileClick"), setting("tileDouble"), (verb) => runTile(it, verb));
     };
 
     // Hide: the tile goes, the shelf refills from the next candidate, and the toast
@@ -317,7 +338,7 @@ export const homeCard: CardDef = {
       if (isPinGrip(e)) return; // the grip moves the tile; it never plays it
       if (drag.consumeClick()) return; // the tail of a drag, not a play
       const it = itemAt(tileAt(e.target));
-      if (it) activate(it);
+      if (it) activate(it, e);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" && e.key !== " ") return;

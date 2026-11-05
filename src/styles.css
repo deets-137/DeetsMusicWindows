@@ -994,7 +994,7 @@ body {
 .sound__part { display: flex; flex-direction: column; gap: var(--sound-status-gap); }
 .sound__part-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .sound__part-head .sound__label { color: var(--text); }
-.sound__panel[data-adaptive-off] .sound__part { opacity: var(--sound-dim); }
+.sound__panel[data-adaptive-off] .sound__view--adapt .sound__part { opacity: var(--sound-dim); }
 .sound__title {
   font-family: var(--font-title); font-weight: var(--fw-title); font-size: var(--fs-text);
   color: var(--title); letter-spacing: var(--sound-title-tracking);

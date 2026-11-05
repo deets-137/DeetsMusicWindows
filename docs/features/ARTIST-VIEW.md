@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.0
 desk_test: passed 2026-10-27
 sources: [src/artist-view.ts, src/media-levels.ts, src/collection-card.ts, src/collection-window.ts, src/library-card.ts, src/search-card.ts, src-tauri/src/apple.rs, web/apple-catalog.ts]
-updated: 2026-10-27
+updated: 2026-11-04
 ---
 # Artist view — hero, Featured Playlists, Your Playlists
 
@@ -31,7 +31,7 @@ Top to bottom. An empty shelf is hidden.
 | Hero title | Artist name | Artist name |
 | Hero meta | "12 albums · 84 songs" | The first genre |
 | Card / pane header | "Artist" | "Artist" |
-| Shelves | Albums (newest first; a tile drills in place), Featured Playlists, Your Playlists | Albums (albums, singles and EPs, live albums, in one shelf, §11), Featured Playlists, Your Playlists |
+| Shelves | Albums (newest first; a tile drills in place), Featured Playlists, Your Playlists | Albums (albums, singles and EPs, live albums, compilations, in one shelf, §11, §12.4), Featured Playlists, Your Playlists |
 | Below | "Songs": the artist's library songs as rows, newest first (Sort/View still apply) | Top Songs (Apple's `top-songs` view: Apple's popularity order), then Appears On (§11) |
 
 **Library Songs sorts** (user, 2026-09-15: "sort option for each"). Apple's library data has no
@@ -104,7 +104,7 @@ Everything below is saved in `artist_catalog` (enrich.rs), keyed by the library 
 | After 7 days, or after the Library ⟳ | **1** — the featured playlists; the id is never fetched again |
 | "Check N more playlists" | **1 per 100 songs of each unopened Apple playlist**, once |
 | Chip flight to a Featured playlist | **1+** (its songs, fetched before the flight and handed to the Search pane, which then fetches nothing) |
-| Search artist view | **1 on every open** (`catalog_artist`) — `featured-playlists` joins that `views=` fetch, so the shelf adds 0. **+1 per album view longer than 10** (singles, full albums, live, Appears On; §11). Not saved in `artist_catalog`; held in memory for the session (CARD-MEMORY.md §6) |
+| Search artist view | **1 on every open** (`catalog_artist`) — `featured-playlists` joins that `views=` fetch, so the shelf adds 0. **+1 per album view longer than 10** (singles, full albums, live, compilations, Appears On; §11). Not saved in `artist_catalog`; held in memory for the session (CARD-MEMORY.md §6) |
 | Start Station on a Library artist | 0 once the id is saved (it shared a session-only cache before) |
 
 **`artist_catalog` belongs to the Library artist view only** (keyed by the library artist
@@ -487,8 +487,8 @@ EPs, live albums and albums on the Albums shelf (§11 merged them).
 - The pill: `.lib-pill--shelf`, no vertical padding, in a wrap with no height
   (`.lib-ctrl--shelf`), so it centers on the label's line and the row keeps its height. The label
   takes `.search__label--pick` only when it holds a pill.
-- The options: All, Albums, Singles & EPs, Live, each with its count. A kind with no release is
-  not offered. An artist with one kind gets no pill: the label stays plain.
+- The options: All, Albums, Singles & EPs, Live, Compilations (§12.4), each with its count. A kind
+  with no release is not offered. An artist with one kind gets no pill: the label stays plain.
 - The pill names the pick in force ("All", "Live"). With *Remember* on, the pick is localStorage
   `deets.artistAlbumPick`; an artist with none of that kind shows All, and the remembered pick
   stays for the next artist. With it off, each page keeps its own pick until it closes (Back
@@ -497,8 +497,8 @@ EPs, live albums and albums on the Albums shelf (§11 merged them).
 
 **What Claude decided inside his calls (for his review).**
 - The option names: *All · Albums · Singles & EPs · Live*, with counts.
-- The pill's hint: *Shows all of the artist's releases, or only albums, singles and EPs, or live
-  albums*. The row's hint: *The filter on an artist's Albums shelf stays the same on the next
+- The pill's hint: *Shows all of the artist's releases, or only albums, singles and EPs, live
+  albums or compilations*. The row's hint: *The filter on an artist's Albums shelf stays the same on the next
   artist. Off: every artist opens on All*.
 - The row sits under *Show artist info on the artist's page* in Settings › Playback.
 - A pick closes the pop (Sort keeps its pop open; here the level re-renders with the pick).
@@ -519,4 +519,34 @@ EPs, live albums and albums on the Albums shelf (§11 merged them).
 5. A small artist with only albums: no pill, the label as before.
 6. Keyboard: Tab to the pill, Enter, the arrow keys move, Enter picks, Escape closes.
 7. Each skin: the pill sits in the label's line and does not cut the line above.
+
+### 12.4 Compilations (built 2026-11-04)
+> **Part:** built · 2026-11-04; desk test passed 2026-11-04 (his word: "good").
+
+A user's report (2026-11-04): an artist's compilation albums showed only once added through Apple
+Music. The Full page never asked for them. The Lib page builds from library songs, so an added
+album showed there.
+
+**His call (2026-11-04).** Include them in the read, and add the option to the same filter.
+
+**As built.** `compilation-albums` joins `ALBUM_VIEWS` and the `views=` read, last of the four, in
+apple.rs and the web twin. `Album.kind` gains "compilation". The pill gains *Compilations*. It
+adds no call on the first read; a view longer than 10 costs one more (§11). The Album's kind is
+the first view that holds it, so a compilation also in `appears-on-albums` moves to the Albums
+shelf.
+
+**The probe (2026-11-04, the dev app, MusicKit's own API).** Elvis Presley: the view exists, 10
+in the first answer with a `next`, none of those in the first 10 of `full-albums`, and each has
+`isCompilation: true`.
+
+**What Claude decided inside his call (for his review).**
+- The word: *Compilations*, last in the pill.
+- *All* shows compilations too, so an artist with many has a longer Albums shelf.
+
+**Desk test (needs a dev runner restart: Rust changed).**
+1. Search › Elvis Presley › Full: the pill lists Compilations with a count. Pick it: only
+   compilations show, and the pill reads *Compilations*.
+2. Open an artist with no compilations: All, and no Compilations row.
+3. Pick Compilations, open another artist with some: it opens on Compilations (with *Remember
+   Artist filters* on).
 

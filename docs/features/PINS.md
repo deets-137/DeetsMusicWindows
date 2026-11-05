@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.11.0
 desk_test: passed 2026-09-20
 sources: [src/pins.ts, src/home-card.ts, src/library-card.ts, src/playlists-card.ts, src/radio-card.ts, src-tauri/src/library.rs]
-updated: 2026-09-20
+updated: 2026-11-04
 ---
 # DeetsMusic — Pins
 
@@ -455,3 +455,31 @@ Nothing in the build changed as a result, so §8.7 stands exactly as written.
   bodies that `pinActivate` replaced. Leave it, but it should say so once the test passes.
 - Check the two migrations against each other. `pins.act` (v12) and `playlist_refresh` (v11)
   shipped in one tree; the desk test is the first time both run on a real database.
+
+### 8.9 Open on Home did nothing with Playlists off screen (fixed 2026-11-04)
+> **Part:** built · 2026-11-04; desk test passed 2026-11-04 (his word: "good").
+
+A user's report: a click on a pinned playlist on Home did not open it, and right-click › Go to
+Playlist did. `pinActivate` with no `nav` called `requestOpenPlaylist`, which only held a request.
+Nothing brought the Playlists card on screen, so the request went stale after 5 s. With the card
+already on screen it worked, which hid the fault.
+
+**The fix.** `requestOpenPlaylist` asks for the card itself (`requestDrillCard`), as layout-bus's
+`heldRequest` does for the Library. That covers the pin, the Compass's playlist rows and a web's
+open with no tile. A pinned playlist with no `libraryId` opens the Search pane, as Go to Playlist
+does; before, the click did nothing.
+
+**Run on the dev app (2026-11-04).** A real tile click with Playlists off screen: Playlists took
+Home's slot, open at the playlist, and Back returned to Home. A request with no press: the card
+came to the least-recently-used slot, open at the playlist. A second request moved nothing.
+
+**Desk test (front end only, no restart).** Steps in Max or Midi: pin a playlist, keep Playlists
+off every slot, click the tile on Home: the playlist opens, and Back goes to Home. Then Ctrl+Space,
+type a playlist's name, Enter: it opens.
+
+### 8.10 On Double Click (built 2026-11-04)
+> **Part:** built · 2026-11-04; desk test open (HOME.md §11.4). Schema v23 adds `pins.dbl`.
+
+A second verb on each pin, beside On Click: the same three verbs, a right-click row under On
+Click, and a Settings row for what a new pin starts with. It defaults to **Play**. His calls and
+the rules are [HOME.md](HOME.md) §11.3a: one design for pinned and unpinned tiles.

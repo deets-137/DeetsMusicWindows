@@ -1403,6 +1403,8 @@ function runRow(i: number, alt = false): void {
  *                card view, where NP is the full-width top row, so the bar drops under it.
  *    --np-right  where the card's right edge sits from the title bar's left — max, where NP
  *                is the tall left stage column, so the bar insets its left edge instead.
+ *    --np-left-in  where the card's left edge sits from the title bar's right — max with NP
+ *                on the right, so the bar insets its right edge instead.
  *
  *  Measured, not tokens, for two reasons: the midi/mini row is content-sized, so the card's
  *  height changes when the transport row stacks (a resize, or a station hiding Repeat), and
@@ -1414,24 +1416,37 @@ function keepClearOfNp(panel: HTMLElement): () => void {
   const bar = panel.parentElement;                                  // the title bar
   const np = document.querySelector<HTMLElement>('[data-slot="np"]');
   if (!bar || !np) return () => {};
-  const place = (): void => {
+  /** An element's left edge from layout alone: a transform (the stage's slide) does not count. */
+  const layoutLeft = (el: HTMLElement): number => {
+    let x = 0;
+    for (let e: HTMLElement | null = el; e; e = e.offsetParent as HTMLElement | null) x += e.offsetLeft;
+    return x;
+  };
+  /** `landing`: the card is sliding, so read where it will stop, not where it is now. */
+  const place = (landing = false): void => {
     const card = np.getBoundingClientRect();
     const top = bar.getBoundingClientRect();
     if (card.width <= 0 || card.height <= 0) {                      // no card: CSS falls back
-      ["--np-drop", "--np-right", "--np-left", "--np-right-in"].forEach((p) => panel.style.removeProperty(p));
+      ["--np-drop", "--np-right", "--np-left-in", "--np-left", "--np-right-in"].forEach((p) => panel.style.removeProperty(p));
       return;
     }
+    const left = landing ? top.left + layoutLeft(np) - layoutLeft(bar) : card.left;
+    const right = left + card.width;
     panel.style.setProperty("--np-drop", `${Math.max(0, Math.round(card.bottom - top.bottom))}px`);
-    panel.style.setProperty("--np-right", `${Math.max(0, Math.round(card.right - top.left))}px`);
+    panel.style.setProperty("--np-right", `${Math.max(0, Math.round(right - top.left))}px`);
+    panel.style.setProperty("--np-left-in", `${Math.max(0, Math.round(top.right - left))}px`);
     // The full player (2026-10-11): Now Playing IS the view, so the bar lines up with it.
-    panel.style.setProperty("--np-left", `${Math.max(0, Math.round(card.left - top.left))}px`);
-    panel.style.setProperty("--np-right-in", `${Math.max(0, Math.round(top.right - card.right))}px`);
+    panel.style.setProperty("--np-left", `${Math.max(0, Math.round(left - top.left))}px`);
+    panel.style.setProperty("--np-right-in", `${Math.max(0, Math.round(top.right - right))}px`);
   };
   place();
-  new ResizeObserver(place).observe(np);   // the card's own size: a stack, a surface open size
-  window.addEventListener("resize", place);
-  onSurfaceChange(place);                  // a flip moves the card before the window resizes
-  return place;
+  new ResizeObserver(() => place()).observe(np);   // the card's own size: a stack, a surface open size
+  window.addEventListener("resize", () => place());
+  onSurfaceChange(() => place());          // a flip moves the card before the window resizes
+  // The stage changes sides at the same size, so the observer stays quiet. The bar can be open
+  // then: its own Settings row makes the change. The attribute is the truth, a rule's side too.
+  new MutationObserver(() => place(true)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-stage-side"] });
+  return () => place();
 }
 
 export function initCompass(): void {

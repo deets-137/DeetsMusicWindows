@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-24
 sources: [src/sound.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts, src/settings-store.ts]
-updated: 2026-10-19
+updated: 2026-11-04
 ---
 # DeetsMusic — sound processing: Advanced EQ + DeetsAdaptiveSound
 
@@ -733,6 +733,69 @@ only a DevTools flag brings it back.
    the rows are back, and the switch shows your last choice. Remove the flag and reload: gone.
 4. The log after a song with the Equalizer on: `sound:meterOn`, and no `sound:measured` line.
 
+## 11a-1. Match loudness comes back alone (built 2026-11-04)
+
+> **Part:** built · 2026-11-04; desk test tentatively good 2026-11-04 (his word). The list below is the design; "As built" is the code.
+
+**His call (2026-11-04):** bring back only Match loudness. Fuller at low volume and Headphone
+crossfeed stay hidden. The reason: a user asked for an option that evens the volume between songs
+(the board, on "Ctrl+Space only working on max", 2026-11-04). This changes §11a for this one part.
+
+**What the code needs.**
+- **Split the gate.** `adaptiveUnhidden()` and `adaptiveOn()` hide all three parts as one. Match
+  loudness gets its own read, and the other two stay behind the flag.
+- **A new key for the switch.** `soundAdaptive` holds an old choice, and `soundLoudness` defaults
+  to true. Neither can be the switch: a user who had Adaptive sound on would get it back with no
+  word, and every effect ships off. A new key, default off, is the switch. This is the one
+  `setting` a person sees; its name is a build step.
+- **Boot.** `initLoudness()` runs for every install (main.ts), so the `loudness` table and the
+  Rulez fact *Song loudness* work.
+- **Measure only while on.** `config.measure` and `config.match` follow the new key. Nothing is
+  routed for a user who leaves it off (§10.2, option B stays rejected).
+- **Rows.** The rows and their keys: the switch, *Match songs to*, *Keep albums together*, *Songs
+  not measured get*, and Forget measurements. Each `when: adaptiveUnhidden` on these goes, as do
+  the agent specs' gate and the Compass words.
+- **The checklist.** `NEW_MARKS` with `since`, the ONBOARDING.md hints, AGENT.md, a release note.
+
+**Run before it ships:** the §7.3 heaviness check, on against off. It has never run.
+
+**Limits to say in the row's hint.** A song is measured after 80 % of it is heard. A new install
+has no measurements, so the first listens change little.
+
+**Where it sits (his call, 2026-11-04):** a row or section under the Equalizer in the Sound panel,
+so it shows at first glance. No Adaptive tab. The rows are in Settings › Sound too, as the other
+Sound rows are (§2.4).
+
+**As built.**
+- `soundMatch` (off) is the switch and replaced `soundLoudness`, which is gone from the store, the
+  agent and the usage list. `config.match` and `config.measure` both follow it. Adaptive sound's
+  switch no longer touches it.
+- The Sound panel: a part row under *Remember each output*, with its status line, then a *How
+  Match loudness decides* fold holding *Match songs to*, *Keep albums together*, *Songs not
+  measured get*, *Clear measurements* and the plain-words text. Off, the line reads: *Off. When
+  on, a song is measured the first time you hear most of it.*
+- The Sound button's hint names it, and the button's armed mark follows it. The review toast's
+  *Turn off* turns it off too.
+- An agent may turn it off only, as with the Equalizer. Its three choices are open to an agent.
+- Settings › Sound has a *Match loudness* group; the DevTools flag now shows only the two other
+  parts' rows.
+- **A change during a song waits for the next song** (found in the break-it pass). The playing
+  song may not be routed, so a gain could not reach it, and only part of it was measured. That
+  listen is marked `late`: the line says *Starts with the next song*, and it saves no row.
+
+**Run on the dev app (2026-11-04).** The row shows in the panel at full opacity, and the panel
+fits at 409 px under its 620 px limit. Turning it on logged `sound:measureOn`, `sound:matchOn` and
+`sound:on`; the hint read *Sound: Match loudness*; off put the line back.
+
+**Desk test (needs a dev runner restart: Rust changed in the same tree).**
+1. Sound panel: Match loudness shows under the Equalizer, Off, with its line. No tab row.
+2. Turn it on and play a song to its end. The log has `sound:measured`. Play it again: the line
+   says how much it moved.
+3. Two songs of different loudness in a row: they sit closer than with it off.
+4. Off mid-song: the level returns to normal in the same song. The line reads Off. On mid-song:
+   the line reads *Starts with the next song*, the song does not change, and it saves no row.
+5. Quit and start the app: it stays on, and the measurements are kept.
+6. With it on, an AirPlay speaker hears the matched level.
 
 ## 11b. The Sound panel's lower box removed (2026-10-19)
 

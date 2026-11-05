@@ -3,8 +3,8 @@
 // (DeetsSolutions/js/toast.js): same API, same four kinds, same traffic-light
 // stripe, same hover-holds-the-clock behaviour. What is new here: the `toasts`
 // setting gates which kinds show, `dismissKey` makes a one-time notice, and the
-// host moves with the surface (bottom-centre in mini/midi, top-right in max —
-// CSS, styles/toast.css).
+// host moves with the surface (bottom-centre in mini/midi, top-right in max, top-left
+// in max with Now Playing on the right — CSS, styles/toast.css).
 //
 //   toast({ kind, text, sticky, timeout, actions, dismissKey }) → { dismiss, update, shown }
 //

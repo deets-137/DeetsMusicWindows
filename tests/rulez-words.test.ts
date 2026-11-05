@@ -32,6 +32,11 @@ test("a row reads as When · Do; a cancel event offers only Keep", () => {
   assert.equal(whenText(r, lists), "You press outside a grown card");
   assert.equal(doText(r, lists), "Keep it from happening");
   assert.deepEqual(dosFor(r).map((d) => d.id), ["keep"]);
+  // 2026-11-04: a press on a type of collection offers Use alone (HOME.md §11.5), and no other
+  // event offers it.
+  assert.deepEqual(dosFor({ ...r, when: "press.playlist" }).map((d) => d.id), ["useVerb"]);
+  assert.deepEqual(dosFor({ ...r, when: "press.album.double" }).map((d) => d.id), ["useVerb"]);
+  assert.ok(!dosFor({ ...r, when: "song.play" }).some((d) => d.id === "useVerb"));
   assert.equal(doWordOf(r)?.word.id, "keep");
   const s: StateRule = { id: "u:2", kind: "state", source: { user: true }, on: true, while: { all: [] }, set: [{ target: { prop: "tone.bass" }, value: -3 }], onHand: "next" };
   assert.equal(doText(s, lists), "Set the bass to -3 dB");

@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-10-30
 sources: [src/update-card.ts, src/update-card-rules.ts, src/paged-card.ts, src/onboarding.ts, src/styles/onboarding.css, src/settings-card.ts, src/settings-store.ts, src/release-leads.ts, vite-release-notes.ts, src/updates-btn.ts, src/update-rules.ts, src/compass.ts]
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 # The update card — new settings after an update
 
@@ -445,6 +445,15 @@ to scroll, the row stays put. Clear the queue: the row goes. Midi: no row.
 
 The card opens and closes in the skin's own page motion, the same for the grand opening:
 [GRAND-OPENING.md](GRAND-OPENING.md) §12.
+
+### 3.21 Double-click on your pins (built 2026-11-04)
+> **Part:** built · 2026-11-04; desk test open (HOME.md §11.4 step 8).
+
+His ask: the right column of the 1.4 page shows the user's existing pins, with the option to change
+each one. `pinsList` (update-card.ts) adds a *Double-click on your pins* head after the new
+settings, then a `.set__row` per album, playlist and artist pin: its name, and a split pill of
+Play, Shuffle and Open (`setPinDouble`). A user with no such pins sees no head. The column scrolls
+on its own (§3.18), so a long list stays above *While You Read*.
 
 ## 4. Not in scope
 - A toast for a small update (his call 3).

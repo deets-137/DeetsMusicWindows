@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.25.1
 desk_test: passed 2026-10-13
 sources: [src/rulez-card.ts, src/rulez-words.ts, src/rules-app.ts, src/rules-playback.ts, src/rules-facts.ts, src/album-slots.ts, src/rules.ts, src/rules-eval.ts, src/card-grow.ts, src/layout.ts, src/sound.ts, src/player.ts, src/rules-window.ts, src/go-to.ts, src/media-menu.ts, src/rules-recipes.ts]
-updated: 2026-10-14
+updated: 2026-11-04
 ---
 # DeetsMusic — Rulez, the rules builder
 
@@ -781,6 +781,7 @@ shuffle rule's condition: **No song loaded** (today's behavior), not "the music 
 | 3 | `goto.artist` / `goto.album`, *You press Go to Artist / Album* (In = the card the menu opened in, `context-menu.ts menuCard()`). Their only Do is **Open it in** *Library* / *Search* (`openIn`); `rules.ts decided()` returns it to the site, as `cancelled()` does Keep. `go-to.ts goTo()` does the rest: each Go to item has a Library way and a Search way, and a missing way falls back to the other. Settings › Menus, hints and notices › **Go to opens** (`goToTarget`: Where it fits · Search · Library) makes `row:goToTarget:artist/album`; *Where it fits* makes none. |
 | 4 | `shuffle.press`, *You press shuffle*: player.ts `onShufflePress`, fired in `shuffleQueue` (a press that shuffles; a press that turns the mode off is not one). The idle branch moved to `shuffleLibrary()`, run only by the action *Play the library shuffled*. `shuffleIdle` = Library makes `row:shuffleIdle`: `if loaded is false`. New fact **A song is loaded** (`loaded`). |
 | 5 | `src/rules-window.ts`: `windowWidth` / `windowHeight` (px, Window section), one ResizeObserver on `<html>`, 150 ms trailing edge, a change only when the size moved. |
+| 6 (2026-11-04) | `press.album`, `press.playlist`, `press.artist` and each one's `.double`: *You click an album*, *You double-click an album* and so on (In = the card). Their one Do is **Use** Open, Play or Shuffle (`useVerb`); `decided()` returns it to `collection-press.ts`, and the Settings pair answers when no rule does ([HOME.md](HOME.md) §11.5). |
 
 **Decided inside his choices (for his review).**
 - In Max, a grow never covers the Queue: Fill covers the four content slots only. So his exact

@@ -988,6 +988,8 @@ pub struct Pin {
     /// nothing was ever chosen, which reads as the card's own rule — every pin that existed
     /// before v12 is NULL, so nothing changed verb on update day.
     pub act: Option<String>,
+    /// What a double-click on this pin does (HOME.md §11.3a): the same verbs. NULL reads as Play.
+    pub dbl: Option<String>,
 }
 
 /// v18 (2026-09-29): two indexes on `play_events`. Until now only `started_ts` was indexed,
@@ -1012,6 +1014,19 @@ pub fn migrate_v18(conn: &Connection) -> Result<(), String> {
     meta_set(conn, "schema_version", "18")
 }
 
+/// v23 (2026-11-04): `pins.dbl`, what a double-click does (HOME.md §11.3a). Additive, idempotent.
+pub fn migrate_v23(conn: &Connection) -> Result<(), String> {
+    let has: i64 = conn
+        .query_row("SELECT COUNT(*) FROM pragma_table_info('pins') WHERE name = 'dbl'", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if has == 0 {
+        conn.execute_batch("ALTER TABLE pins ADD COLUMN dbl TEXT;")
+            .map_err(|e| format!("add pins.dbl column: {e}"))?;
+        crate::log::info("migration: v23 added pins.dbl");
+    }
+    meta_set(conn, "schema_version", "23")
+}
+
 /// v12 (2026-09-20): `pins.act` (PINS.md §8.4). Additive, idempotent. v10 is Song of the
 /// Day and v11 is `playlist_refresh`, so the column the doc called v10 is v12.
 pub fn migrate_v12(conn: &Connection) -> Result<(), String> {
@@ -1032,11 +1047,11 @@ pub async fn pins_list(app: tauri::AppHandle) -> Result<Vec<Pin>, String> {
     crate::db_thread::run(&app, move |db| {
         let conn = db.lock();
         let mut stmt = conn
-            .prepare_cached("SELECT key, kind, data, pinned_at, act FROM pins ORDER BY pinned_at DESC")
+            .prepare_cached("SELECT key, kind, data, pinned_at, act, dbl FROM pins ORDER BY pinned_at DESC")
             .map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map([], |r| {
-                Ok(Pin { key: r.get(0)?, kind: r.get(1)?, data: r.get(2)?, pinned_at: r.get(3)?, act: r.get(4)? })
+                Ok(Pin { key: r.get(0)?, kind: r.get(1)?, data: r.get(2)?, pinned_at: r.get(3)?, act: r.get(4)?, dbl: r.get(5)? })
             })
             .map_err(|e| e.to_string())?;
         let out: Result<Vec<Pin>, _> = rows.collect();
@@ -1050,7 +1065,7 @@ pub async fn pins_list(app: tauri::AppHandle) -> Result<Vec<Pin>, String> {
 /// you set by hand survives a re-pin (PINS.md §8.6 step 7). `act` is therefore the verb a
 /// NEW row starts with (the caller passes the Settings default); it never overwrites one.
 #[tauri::command]
-pub async fn pin_set(key: String, kind: String, data: Option<String>, act: Option<String>, app: tauri::AppHandle) -> Result<Pin, String> {
+pub async fn pin_set(key: String, kind: String, data: Option<String>, act: Option<String>, dbl: Option<String>, app: tauri::AppHandle) -> Result<Pin, String> {
     crate::db_thread::run(&app, move |db| {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -1058,16 +1073,16 @@ pub async fn pin_set(key: String, kind: String, data: Option<String>, act: Optio
             .unwrap_or(0);
         let conn = db.lock();
         conn.execute(
-            "INSERT INTO pins(key, kind, data, pinned_at, act) VALUES(?1, ?2, ?3, ?4, ?5)
+            "INSERT INTO pins(key, kind, data, pinned_at, act, dbl) VALUES(?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(key) DO UPDATE SET kind = excluded.kind, data = excluded.data",
-            rusqlite::params![key, kind, data, now, act],
+            rusqlite::params![key, kind, data, now, act, dbl],
         )
         .map_err(|e| e.to_string())?;
-        let (pinned_at, act): (i64, Option<String>) = conn
-            .query_row("SELECT pinned_at, act FROM pins WHERE key = ?1", [&key], |r| Ok((r.get(0)?, r.get(1)?)))
+        let (pinned_at, act, dbl): (i64, Option<String>, Option<String>) = conn
+            .query_row("SELECT pinned_at, act, dbl FROM pins WHERE key = ?1", [&key], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
             .map_err(|e| e.to_string())?;
         crate::log::info(&format!("pin:set {key}"));
-        Ok(Pin { key, kind, data, pinned_at, act })
+        Ok(Pin { key, kind, data, pinned_at, act, dbl })
     })
     .await
 }
@@ -1076,14 +1091,16 @@ pub async fn pin_set(key: String, kind: String, data: Option<String>, act: Optio
 /// unknown key is a no-op rather than an error, because the tile may have been unpinned
 /// from another surface while the menu was open.
 #[tauri::command]
-pub async fn pin_act(key: String, act: String, app: tauri::AppHandle) -> Result<bool, String> {
+pub async fn pin_act(key: String, act: String, double: Option<bool>, app: tauri::AppHandle) -> Result<bool, String> {
     crate::db_thread::run(&app, move |db| {
         if !matches!(act.as_str(), "play" | "shuffle" | "open") {
             return Err(format!("unknown pin act: {act}"));
         }
         let conn = db.lock();
+        // `double`: the On Double Click row (HOME.md §11.3a). Two fixed statements, no SQL built.
+        let sql = if double == Some(true) { "UPDATE pins SET dbl = ?2 WHERE key = ?1" } else { "UPDATE pins SET act = ?2 WHERE key = ?1" };
         let n = conn
-            .execute("UPDATE pins SET act = ?2 WHERE key = ?1", rusqlite::params![key, act])
+            .execute(sql, rusqlite::params![key, act])
             .map_err(|e| e.to_string())?;
         if n > 0 {
             crate::log::info(&format!("pin:act {key} {act}"));

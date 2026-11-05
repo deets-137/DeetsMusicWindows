@@ -19,7 +19,7 @@ import { initWallpaper } from "./wallpaper";
 import { initArtworkHeal } from "./artwork-heal";
 import { initBrowserDefaults } from "./browser-defaults";
 import { initHints } from "./hint";
-import { setting, onSettingsChange, adaptiveUnhidden, setSettingsVersion, onSettingChanged } from "./settings-store";
+import { setting, onSettingsChange, setSettingsVersion, onSettingChanged } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
 import { nextSyncEnd } from "./library";
@@ -239,9 +239,9 @@ window.addEventListener("DOMContentLoaded", () => {
   boot("initPet", () => initPet()); // its pet and friend: fetch, the rest pose, the cover pushes; inert otherwise
   boot("initArtworkHeal", () => initArtworkHeal()); // retry cover <img>s that fail to load (sleep/wake, network blips)
   boot("initSound", () => initSound()); // before MusicKit's first play: routes its <audio> through the effects when one is on (SOUND.md §1)
-  // Match loudness: measures songs and sets each one's gain (SOUND.md §3A). Hidden with Adaptive
-  // sound since 2026-09-25 (§11a): without the DevTools flag the `loudness` table is not read.
-  if (adaptiveUnhidden()) boot("initLoudness", () => initLoudness());
+  // Match loudness: measures songs and sets each one's gain (SOUND.md §3A, § 11a-1). It reads
+  // the `loudness` table and registers Rulez's Song loudness; it measures only while it is on.
+  boot("initLoudness", () => initLoudness());
   // File drops belong to the page (tauri.conf.json `dragDropEnabled: false`, for the playlist
   // cover). A drop no element took must not navigate the webview to the file.
   window.addEventListener("dragover", (e) => {

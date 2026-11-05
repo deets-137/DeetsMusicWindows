@@ -471,7 +471,7 @@ function stateSnap(ruleId: string, target: string, verdict: Verdict, f: Facts): 
 }
 
 /** The events that fire often: a miss writes no log line. */
-const QUIET = new Set<EventId>(["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "card.open", "grow.outside", "grow.back", "surface.change", "queue.summon", "goto.artist", "goto.album", "shuffle.press"]);
+const QUIET = new Set<EventId>(["song.play", "song.end", "music.pause", "music.resume", "skip.next", "skip.prev", "card.open", "grow.outside", "grow.back", "surface.change", "queue.summon", "goto.artist", "goto.album", "shuffle.press", "press.album", "press.playlist", "press.artist", "press.album.double", "press.playlist.double", "press.artist.double"]);
 
 /** The fire cap: the rule is off until the app starts again, and a notice names it. */
 function tripRule(rule: Rule): void {

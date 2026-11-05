@@ -484,6 +484,8 @@
    under a line. */
 .uc__page .uc__side { overflow: hidden; }
 .uc__side-body { display: flex; flex-direction: column; gap: var(--space-2); }
+/* A pin's name gives way to its three verbs. */
+.uc__pin .set__label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .uc__page .uc__side-body { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; }
 .uc__page .uc__side-body > * { flex-shrink: 0; }
 .uc__listen {

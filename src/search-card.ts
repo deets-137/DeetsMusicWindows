@@ -25,10 +25,11 @@ import { esc, initCollectionCard, type CardSnapshot, type Context } from "./coll
 import { explicitBadge, heroCover, musicCell, songsGrouping } from "./library-card";
 import { mediaLevels } from "./media-levels";
 import {
-  searchCatalog, collectionTracks, materializeTrack,
+  searchCatalog, collectionTracks, materializeTrack, artistDetail,
   ALL_TYPES as EVERY_TYPE, type SearchType, type SearchResults, type Artist, type Album, type Playlist,
 } from "./search";
 import { WEB_ROOMS } from "./platform";
+import { collectionPress, catalogTracks } from "./collection-press";
 
 /** The categories this card offers. The web port has no stations: a station leaves a room
  *  (ROOMS.md §10), and a room is all the web port is for (WebRooms.md §9.3 F). */
@@ -597,20 +598,35 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     }
     const artist = t.closest<HTMLElement>("[data-artist]");
     if (artist?.dataset.artist) {
-      const a = results?.artists.find((x) => x.catalogId === artist.dataset.artist);
-      open(levels.fullArtist({ name: a?.name ?? "", id: artist.dataset.artist, artwork: a?.artwork }));
+      const id = artist.dataset.artist;
+      const a = results?.artists.find((x) => x.catalogId === id);
+      collectionPress(e, {
+        kind: "artist", key: `artist:${id}`, context: `search-artist:${id}`,
+        open: () => open(levels.fullArtist({ name: a?.name ?? "", id, artwork: a?.artwork })),
+        tracks: () => catalogTracks(() => artistDetail(id).then((d) => d.topSongs)),
+      });
       return;
     }
     const album = t.closest<HTMLElement>("[data-album]");
     if (album?.dataset.album) {
-      const al = results?.albums.find((x) => x.catalogId === album.dataset.album);
-      open(levels.fullAlbum({ albumId: album.dataset.album, name: al?.title ?? "Album", artwork: al?.artwork, artist: al?.artistName, releaseDate: al?.releaseDate }));
+      const id = album.dataset.album;
+      const al = results?.albums.find((x) => x.catalogId === id);
+      collectionPress(e, {
+        kind: "album", key: `album:${id}`, context: `search-albums:${id}`,
+        open: () => open(levels.fullAlbum({ albumId: id, name: al?.title ?? "Album", artwork: al?.artwork, artist: al?.artistName, releaseDate: al?.releaseDate })),
+        tracks: () => catalogTracks(() => collectionTracks("albums", id)),
+      });
       return;
     }
     const pl = t.closest<HTMLElement>("[data-playlist]");
     if (pl?.dataset.playlist) {
-      const p = results?.playlists.find((x) => x.catalogId === pl.dataset.playlist);
-      open(levels.playlist({ id: pl.dataset.playlist, name: p?.name ?? "Playlist", artwork: p?.artwork, curatorName: p?.curatorName }));
+      const id = pl.dataset.playlist;
+      const p = results?.playlists.find((x) => x.catalogId === id);
+      collectionPress(e, {
+        kind: "playlist", key: `playlist:${id}`, context: `search-playlists:${id}`,
+        open: () => open(levels.playlist({ id, name: p?.name ?? "Playlist", artwork: p?.artwork, curatorName: p?.curatorName })),
+        tracks: () => catalogTracks(() => collectionTracks("playlists", id)),
+      });
       return;
     }
     const st = t.closest<HTMLElement>("[data-station]");
