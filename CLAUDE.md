@@ -317,6 +317,8 @@ wait. How to use it: DEBUGGING.md § The loading set.
   for anything older. The ring auto-flushes every 5 minutes. Two code paths that read the
   same in the file can behave differently on the queue's state at the click, so reading the
   source is not a trace. DEBUGGING.md §Recipe — the user reports a playback complaint.
+  **His live settings and ring are one bridge call away (2026-11-04):** read them before you
+  reason from the code. DEBUGGING.md §Recipe — read the live app from a Claude shell.
 - **Before you call a desk test open, read the record (2026-10-17, his ask).** A doc's
   `desk_test: open` can be stale: he often runs the test and forgets to mark it. Check the
   evidence first: the log file (the feature's own log lines, e.g. `rulezPlaylist pass`), the

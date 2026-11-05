@@ -1962,6 +1962,32 @@ answer it, in this order, and none of them needs a restart.
 that look identical in the file can behave differently because of the queue's state at
 the moment of the click. Read what happened.
 
+## Recipe — read the live app from a Claude shell (2026-11-04)
+
+Use this first when a report depends on a setting or on what his installed app did. The
+`deetsmusic-dev` MCP tools reach the dev app only, and `deetsmusic` is not on a Claude shell's path.
+The bridge is what the CLI calls, so call it directly. It answers on `127.0.0.1:47825`–`47828`
+(AGENT.md).
+
+```bash
+T=$(node -p "require(process.env.APPDATA + '/com.deetsmusic.app/settings.json').bridgeToken")
+curl -s -H "Authorization: Bearer $T" http://127.0.0.1:47825/settings
+curl -s -H "Authorization: Bearer $T" "http://127.0.0.1:47825/diag?limit=300&tag=ocean"
+```
+
+- **Which app answers:** each app has its own token, so the live token gets a 401 from the dev app.
+  Port 47825 belongs to whichever app started first: on a 401, try the next port.
+- **`GET /settings`** gives `{settings:[{key, label, section, value}]}`, every row with its value.
+- **`GET /diag`** reads the window's live ring, with `limit`, `since` and `tag`.
+- **Read only.** Use GET. A `POST /settings` changes his live app, so it needs his word first.
+- **Never print the token,** and never put it in a doc, a log or a commit.
+- **Not the disk.** `localStorage` sits in WebView2's leveldb files, and a plain `grep` finds nothing
+  in them. `settings.json` holds the Rust settings only.
+
+**First use (2026-11-04).** "The Ocean feels calm": the code and the log pointed at the Sound graph,
+but his Equalizer was on and the audio was routed. `/settings` showed `backgroundMotion = off`
+in one read, which holds the sea still and stops the heave (OCEAN.md, *Gates*).
+
 ## Recipe — why a web came out small (2026-10-21)
 1. `grep -a "web: trace\|web: built" deetsmusic.log | tail -6`: the artists at each degree,
    why each was taken, how many were cut, and each artist's songs read → kept.
