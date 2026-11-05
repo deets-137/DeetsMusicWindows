@@ -58,7 +58,10 @@ there, about a second slower than usual. Change the wait, or choose Never, in Se
 Let go of Apple after a pause.
 
 **Donate button in Max.** A dollar sign in the title bar opens the Donate panel: what donations
-pay for, and a link to PayPal. The updates and Network buttons moved left of the Compass.
+pay for, and a link to PayPal.
+
+**Title bar buttons rearranged in Max.** The updates and Network buttons moved left of the Compass.
+From the left, the order is now the cog, updates, Donate, Network, the Compass, Rewind and the pin.
 
 **Match loudness in the Sound panel.** A song can be much louder than the one before it. Turn on
 Match loudness, under the Equalizer, and DeetsMusic measures each song the first time you hear most

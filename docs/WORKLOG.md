@@ -19,6 +19,9 @@ updated: 2026-11-05
   order is in `index.html`, with a Compass row and `panel.donate`; the release notes have a line.
   Measured: the title bar needs 624 px, and at the 495 px floor the window buttons are cut off.
   The released order has this too. Not fixed; his call.
+- **Corrected, same day (his question).** That fault needs *Resize changes surface* off. On, the
+  default, Max becomes Midi below 780 px, so the title bar always fits. The release notes now have
+  their own paragraph for the rearranged buttons.
 
 ## 2026-11-05 — The album light on Press and Cyber
 

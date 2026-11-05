@@ -64,10 +64,13 @@ updated: 2026-11-05
   shut button, because `close()` in `dropdown.ts` set `hidden` on a shut panel and every dropdown
   hears Escape. Fixed in `dropdown.ts`, so the updates arrows no longer roll on a stray Escape
   either. `turn` now reads `playState`, not a finish event, so no stale state can hold it.
-- **A narrow Max window (measured 2026-11-05, open).** The title bar needs 624 px. Below that the
-  gap between the two groups is gone. Then the Compass button shrinks to nothing, and at the 495 px
-  floor (`surface.ts`) the right group ends at 595 px, so the window buttons are cut off. The
-  released order has this fault too, 24 px sooner to clear: Donate adds 24 px. Not fixed.
+- **A narrow Max window (2026-11-05).** The title bar needs 624 px with the full volume bar. With
+  *Resize changes surface* on, the default, Max becomes Midi below 780 px, so the title bar always
+  fits. Only with that setting off can Max reach its 495 px floor (`surface.ts`). There, the right
+  group would end at 595 px and cut off the window buttons. That number comes from setting the
+  title bar's width by script, not from a real window. The released order does this too, by 76 px.
+  Donate adds 24 px. Left as it is (his call, 2026-11-05): 1 of 68 live reports in 2026-W45 has
+  that setting off.
 
 ## 3. Decided inside his ask (for his review)
 
