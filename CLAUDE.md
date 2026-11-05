@@ -432,7 +432,9 @@ wait. How to use it: DEBUGGING.md § The loading set.
      §1 ledger. A new row shape goes in `SHAPES` (hint.ts) and the §1a list.
   4. **Toasts:** every new `toast()` call is a row in TOASTS.md §5.
   5. **Settings keys:** a new key in `settings-store.ts` gets a default with the "why", a
-     spec in `agent-settings.ts` (so the agent reaches it) and a line in AGENT.md.
+     spec in `agent-settings.ts` (so the agent reaches it) and a line in AGENT.md. A new toggle
+     or choice also goes on `REPORTED` in `src/usage-keys.ts`, then `npm run usage:keys`: no
+     question (his call, 2026-11-05). The worker's deploy stays his call.
   5a. **New badge:** a new Settings row or section gets one line in `NEW_MARKS`
      (settings-card.ts), with its `since` version, so it wears the N until the pointer first
      rests on it, its quick panel square shows the N again (QUICK-SETTINGS.md §10, his wish

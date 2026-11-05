@@ -921,8 +921,10 @@ export function mediaLevels(deps: LevelDeps): MediaLevels {
       songs: rows,
       ready: () => songs !== null,
       // Asked by the names the level opened with (the Lib level's own, so its answer is
-      // shared), else by the songs' once they land.
-      lfm: () => [src.artist || artistName(), src.name || name()],
+      // shared), else by the songs' once they land. "Album" is only the word a level shows
+      // until Apple names it (a restore, a song's drill): Last.fm has a real album of that name
+      // for many artists, so it is never asked (39 plays for *empathogen*, fixed 2026-11-05).
+      lfm: () => [src.artist || artistName(), src.name && src.name !== "Album" ? src.name : songs ? name() : ""],
       // Apple's notes by the album's id, once the read named it: the read kept them (no call).
       notes: () => (songs || failed ? (id ? { albumId: id } : {}) : null),
       noteSongs: () => {

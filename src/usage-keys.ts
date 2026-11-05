@@ -6,6 +6,8 @@
 //
 // His call (2026-10-13): every toggle and choice spec, the account and sharing toggles
 // included. Only the value goes, as the option's value (usage-rules.ts `settingValue`).
+// His call (2026-11-05): a new toggle or choice goes on REPORTED as it is built, with no question.
+// NOT_REPORTED is only for a value USAGE-COUNTS.md §2 rule 3 keeps off the list.
 
 import { HIDEABLE_CARDS } from "./layout-rules";
 
@@ -28,7 +30,7 @@ export const REPORTED: readonly string[] = [
   "compassCloseAway", "menuMode", "toasts", "hoverHints", "hoverHintDelay", "hoverSongNames", "goToTarget",
   // Sound (soundEqPreset: a built-in's id, or "user" for one the user named)
   "soundEq", "soundEqPreset", "soundEqMode", "soundEqPreamp", "soundEqPerOutput", "soundAdaptive",
-  "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol",
+  "soundMatch", "soundLoudTarget", "soundLoudAlbum", "soundLoudUnmeasured", "soundLowVol",
   "soundLowVolKey", "soundCrossfeed", "soundCrossfeedLevel", "soundReviewDays",
   // Rooms
   ...ROOM_GUEST_CONTROLS.map((c) => `roomGuests.${c}`),
@@ -44,6 +46,12 @@ export const REPORTED: readonly string[] = [
   "listEndWeb", "shuffleStays", "shuffleOff", "shuffleManual", "historyShowDay", "showListeners",
   "showArtistInfo", "showAlbumInfo", "showSongInfo", "notesSource", "shuffleIdle",
   "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue",
+  // The 1.4 rows (his call 2026-11-05): let go after a pause, the clicks on a collection and a tile
+  "releaseAfterPause", "pinNewDouble", "collectionClick", "collectionDouble",
+  "tileClick", "tileDouble", "tilePressWait",
+  // The rows that had waited for his call (his call 2026-11-05: "Yes, add all 7")
+  "reduceMotion", "npShade", "npOffCover", "pinView", "rememberArtistFilters", "clearQueueOnLaunch",
+  "afterUpdateShow",
   // AirPlay, Home, Apple Music
   "airplaySend", "homeApple", "libraryAdd", "addSquareOwned", "playlistExport", "playlistGetNew",
   // Last.fm (on/off only)
@@ -65,7 +73,7 @@ export const REPORTED: readonly string[] = [
 
 /** The feature uses the day count may carry (USAGE-COUNTS.md §18), as counts of one finished UTC
  *  day. `npm run usage:keys` copies this list too; the worker drops any other name. A new name
- *  is his call, as a new setting is. */
+ *  is his call. */
 export const USE_COUNTS = [
   // Listen Later (LISTEN-LATER.md, his call 2026-11-01): saves by where they came from, the
   // songs the setting took out after a full play, and Undo presses.
@@ -85,21 +93,4 @@ export type UseName = (typeof USE_COUNTS)[number];
 export const NOT_REPORTED: Readonly<Record<string, string>> = {
   sunShift: "minutes, close to a time",
   usageReports: "the switch itself: a report leaves only while it is on",
-  // Reduce motion (2026-10-20, GRAPHICS-FALLBACK.md §10.4): not sent until he decides (a new key
-  // on the allow-list is his call, USAGE-COUNTS.md §2). Metal's and Happy's rows moved to
-  // REPORTED on 2026-10-23 (his call of 2026-10-21).
-  reduceMotion: "a new Motion row: his call before it is sent",
-  npShade: "a new Window row (2026-10-25): his call before it is sent",
-  npOffCover: "a new Window row (2026-10-26): his call before it is sent",
-  pinView: "the pin panel's last tile (2026-10-26, PIN.md): his call before it is sent",
-  rememberArtistFilters: "a new Playback row (2026-10-27, ARTIST-VIEW.md §12): his call before it is sent",
-  clearQueueOnLaunch: "a new Playback row (2026-10-29, QUEUE.md § Clear Queue): his call before it is sent",
-  releaseAfterPause: "a new Playback row (2026-11-03, QUEUE.md § Let go after a pause): his call before it is sent",
-  soundMatch: "a new Sound row (2026-11-04, SOUND.md § 11a-1): his call before it is sent",
-  pinNewDouble: "a new Playback row (2026-11-04, HOME.md §11): his call before it is sent",
-  collectionClick: "a new Playback row (2026-11-04, HOME.md §11.5): his call before it is sent",
-  collectionDouble: "a new Playback row (2026-11-04, HOME.md §11.5): his call before it is sent",
-  tileClick: "a new Home row (2026-11-04, HOME.md §11): his call before it is sent",
-  tileDouble: "a new Home row (2026-11-04, HOME.md §11): his call before it is sent",
-  tilePressWait: "a new Home row (2026-11-04, HOME.md §11): his call before it is sent",
-  afterUpdateShow: "a new Updates row (2026-11-02, UPDATE-CARD.md §3.15): his call before it is sent",};
+};

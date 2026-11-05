@@ -170,7 +170,6 @@ folded once for a user who had folded the old one. Harmless; say it in the relea
 | Motion | If graphics fail (When the graphics card stops, turn off heavy effects until DeetsMusic restarts) — choice (2026-10-11) | `graphicsFallback` | **save** (Save + tell) / tell (Tell only) / off | a row that makes a built-in rule (`row:graphicsFallback`, `rules-eval.ts`): while the `graphics` fact is `software`, Reduce motion is held on and a Covers / Picture canvas on Aurora (since 2026-10-20, §10); `gpu.ts` reads the renderer, the toasts and the quiet restart; [GRAPHICS-FALLBACK.md](../features/GRAPHICS-FALLBACK.md) |
 | Motion | Reduce motion (Turn off animations and heavy effects. Always on when Windows reduces motion) — toggle (2026-10-20), first in Motion; a rule key | `reduceMotion` | **false** | the catch-all: on (or Windows' reduced motion, which locks the row On) sets `data-motion="reduced"` on `<html>` (`reduce-motion.ts`; every transition reads it through `motion.ts`) and the `motionReduced` fact, which makes the built-in rule `row:reduceMotion` hold Fancy Glass, the three Animate rows, Fancy scrubber and Metal's cover change off; [GRAPHICS-FALLBACK.md §10.4](../features/GRAPHICS-FALLBACK.md) |
 | Skin settings | Card opacity (Ocean only. How solid the sunken cards are. Lower: the sea shows through) — slider 0–100% (2026-09-23); shows only while Ocean is the skin | `oceanCardOpacity` | **80** / 0–100 (100 until 2026-10-11) | `skin-settings.ts` → `--ocean-card-opacity` on `<html>` → Ocean `--panel` at that percent. OCEAN.md |
-| Skin settings | Album light (Ocean only. How strongly the album's color lights the sea. High: the waves glow like neon, and cost more on a PC without a graphics card) — slider 0–100% (2026-09-23); shows only while Ocean is the skin | `oceanLight` | **80** / 0–100 (0 until 2026-10-11) | `skin-settings.ts` → `--ocean-light` on `<html>` (the neon's opacity, the glow's strength and reach); `ocean.ts` reads the key and paints the neon crests only above 0. OCEAN.md §7 |
 | Skin settings | Draw card edges (Ocean only. Sand: the card edges break into grains, like a dark beach) — pills *Sand* / *Soft*; shows only while Ocean is the skin (2026-09-15; a stored `waves` or `fade` from the dropped versions migrates to soft) | `oceanEdges` | **soft** / sand | `skin-settings.ts` → `data-ocean-edges` on `<html>`; UI-ARCHITECTURE.md §Sand edges |
 | Skin settings | Sand width (Ocean only. How far the sand reaches into each card) — slider 0–100% (2026-09-15); shows only while Ocean is the skin and Draw card edges is Sand | `oceanSand` | **15** / 0–100 | `skin-settings.ts` → `--ocean-sand` on `<html>` → Ocean `--sand-reach` = 4px…40px |
 | Skin settings | Canvas (Glass only. What shows behind the cards: the theme's glow, the album covers, or a picture you choose) — pills (2026-09-24); shows only while Glass is the skin | `glassCanvas` | aurora / **covers** / picture (aurora until 2026-10-11) | `wallpaper.ts` fills the `.wallpaper` layer and sets `data-wallpaper` on `<html>` while it shows. COVER-WALLPAPER.md |
@@ -523,9 +522,10 @@ with the swap motion; the other surface's saved layout drops it too.
    card's label, section and choices. A consent gate (like Add to Library) takes
    `offOnly: true`; a value agents must never change takes `readOnly: true`. docs:check 20
    fails a key with no spec.
-6. Usage counts: put the key on `REPORTED` or `NOT_REPORTED` in `src/usage-keys.ts`, then
-   `npm run usage:keys` (USAGE-COUNTS.md §4). `tests/usage-keys.test.ts` fails a toggle or
-   choice on neither list.
+6. Usage counts: put a new toggle or choice on `REPORTED` in `src/usage-keys.ts`, with no question
+   (his call, 2026-11-05), then `npm run usage:keys` (USAGE-COUNTS.md §4). `NOT_REPORTED` is for a
+   value USAGE-COUNTS.md §2 rule 3 keeps off the list. `tests/usage-keys.test.ts` fails a toggle
+   or choice on neither list. The worker's copy reaches live only with his deploy.
 7. A new row or section gets one line in `NEW_MARKS` (`settings-card.ts`), so it wears the N
    badge (QUICK-SETTINGS.md §10). A new section also needs a place in the quick panel, or none (§3c):
    bring him that choice.

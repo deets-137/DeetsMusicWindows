@@ -316,9 +316,10 @@ const HEART_MARK =
 const END = "lib-cols__cell--end";
 function songColumns(cols: ColumnMode, o: SongOpts, list: () => Track[]): ColumnSpec[] {
   // The # column is as wide as the album's widest number, so the gap on each side of a
-  // number is the card's column gap (his ask, 2026-10-01). The "#↑" header may be wider:
-  // it spills left into the mark column's empty header (styles.css).
-  const digits = o.numbered ? String(Math.max(1, ...list().map((t, i) => t.trackNumber ?? i + 1))).length : 0;
+  // number is the card's column gap (his ask, 2026-10-01), and never under two digits: your 3
+  // songs of an 11-song album took one, so Full | Lib moved every column (fixed 2026-11-05).
+  // The "#↑" header may be wider: it spills left into the mark column's empty header (styles.css).
+  const digits = o.numbered ? Math.max(2, String(Math.max(1, ...list().map((t, i) => t.trackNumber ?? i + 1))).length) : 0;
   const specs: ColumnSpec[] = [
     ...(o.numbered
       ? [

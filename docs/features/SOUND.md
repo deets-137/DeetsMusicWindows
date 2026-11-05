@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-24
-sources: [src/sound.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts, src/settings-store.ts]
-updated: 2026-11-04
+sources: [src/sound.ts, src/sound-cap.ts, src/sound-loudness.ts, src/sound-dsp.ts, scripts/webview-eval.mjs, src/sleep.ts, src/sound-worklet.ts, src/sound-presets.ts, src/settings-store.ts]
+updated: 2026-11-05
 ---
 # DeetsMusic — sound processing: Advanced EQ + DeetsAdaptiveSound
 
@@ -799,7 +799,7 @@ fits at 409 px under its 620 px limit. Turning it on logged `sound:measureOn`, `
 
 ## 11a-2. Cap until measured (designed 2026-11-04)
 
-> **Part:** designed · 2026-11-04. Not built. This replaces the wait for a measurement in § 11a-1.
+> **Part:** built · 2026-11-05, steps 1 to 4, dev only; the ear test is next. This replaces the wait for a measurement in § 11a-1.
 
 **His call (2026-11-04):** a song with no measurement is held by a slow cap that only cuts. Once
 the song has a row, a fixed gain takes over and the cap is off, so the song keeps its dynamics. A
@@ -841,7 +841,30 @@ install's database, and no build has sent one. His 464 rows run from 2026-09-16 
 the build to the hide (`e016b30`). The usage reports cannot show who used it in those days: they
 began in 2026-10 and do not carry `soundAdaptive`.
 
-### Build spec (for the next sitting)
+### As built (steps 1 to 4, 2026-11-05)
+
+`src/sound-cap.ts` (pure, `tests/sound-cap.test.ts`), wired in `src/sound-loudness.ts`. The mode is
+`until` in a dev build and `off` in a release, so nothing reaches a user before step 5.
+
+Where it differs from the spec below:
+- **`startLufs: −9` in place of `startDb: −5`.** The start is `target − startLufs`: −5 dB at the −14
+  target, and it stays right at −16 and −18.
+- **The running estimate also pulls down.** Past `settleAtS` the gain moves to `target − estimate` in
+  both directions, so a loud song settles near the target, as desk test step 1 asks.
+- **A raise also stops at the room over the song's peak so far,** as a fixed gain does (`capped()`).
+- **`album()` was library only.** `tracks()` holds no transient tracks, so a Search album's songs come
+  from the queue: the history, the current song, Up Next and the plan, by context.
+- **An album's run** is keyed by the play's context. A song with a row counts by its length; a song
+  with none counts for what the run heard of it, a skipped song too. The first song takes the rows'
+  gain if there are any, and otherwise the cap. A fully measured album takes its one fixed gain.
+- **`always`** caps every song and starts from the song's fixed gain. It has no album run.
+- **The panel** has one plain line for `capped` until step 5 rewrites it.
+
+**For the ear test:** `__cap.mode("until" | "always" | "off")`, `__cap.set({ level, attackDbS,
+releaseDbS, settleAtS, windowS, startLufs, albumStepDb })`, `__cap.state()`. Values go back to the
+defaults on a reload. Match loudness must be on.
+
+### Build spec (2026-11-04)
 
 **No Rust and no schema change.** The `loudness` table and the worklet stay as they are. No runner
 restart is needed.

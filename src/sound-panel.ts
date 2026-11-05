@@ -1183,6 +1183,8 @@ function loudLine(): string {
       return `This album is ${moved(s.gainDb)} as one (${s.measured} of ${s.total} songs measured)${cap(s)}.${heard}`;
     case "median":
       return `New song: ${moved(s.gainDb)}, the usual amount for your songs.${heard}`;
+    case "capped":
+      return `New song: ${moved(s.gainDb)} while it plays.${heard}`;
     case "none":
       return `New song: left as it is until it is measured.${heard}`;
   }

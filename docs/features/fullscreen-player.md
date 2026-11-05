@@ -1122,8 +1122,8 @@ by default, and darken only the area behind the text, for legibility.
 
 **As built:**
 - Settings › Window › *Shade behind the title*: **Text only** / Band (`npShade`, default `text`;
-  agent spec in `agent-settings.ts`; a `NEW_MARKS` line; `NOT_REPORTED` in `usage-keys.ts`
-  until he puts it on the usage list). `full-player.ts` writes `data-np-shade` on `<html>`.
+  agent spec in `agent-settings.ts`; a `NEW_MARKS` line; `REPORTED` in `usage-keys.ts`, his
+  call 2026-11-05). `full-player.ts` writes `data-np-shade` on `<html>`.
 - `styles.css`: in *below* (and not Metal's title-under-the-cover), the title block's grid
   gets three columns: the lines' column at the widest line's width, a spacer, the Last.fm
   badge. The band's `::before` moves onto the lines' grid area (an absolute child of a grid
@@ -1166,7 +1166,7 @@ default, that keeps the album title, the artist info and the buttons off the cov
 
 **As built:**
 - Settings › Window › *Title under the cover* (`npOffCover`, default off; agent spec; a
-  `NEW_MARKS` line; `NOT_REPORTED` in `usage-keys.ts` until he puts it on the usage list).
+  `NEW_MARKS` line; `REPORTED` in `usage-keys.ts`, his call 2026-11-05).
   `full-player.ts` writes `data-np-off-cover` on `<html>`; the look watch lays out again on it.
 - On, the title block takes Metal's place under the cover (`metaBelow()` is true, so
   `data-np-meta-below` and the rows below, as Zoetrope, §6.4 of metal.md): no band, no shade,

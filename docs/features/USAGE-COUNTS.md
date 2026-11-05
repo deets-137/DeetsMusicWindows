@@ -84,7 +84,8 @@ of them is a new fork for the owner, never a build detail.
    never reads it, never writes it, and never logs the request. No `cf.country`, no city, no
    ASN, no user agent, no request time finer than the UTC day or the ISO week.
 3. **An allow-list, never a block-list.** A setting is sent only when its spec says
-   `report: true` (§4). A new setting is not sent until someone decides it may be. Free text,
+   `report: true` (§4). **Changed 2026-11-05 (his call):** a new toggle or choice goes on the list
+   as it is built, with no question, and the worker's copy waits for his deploy. Free text,
    paths, names, IDs, times, and slider values are never on the list. **One exception (his
    call, 2026-11-01, §17):** the day count carries the whole minutes of music played on the last
    day it was sent, as one number. Never which songs, and never when in the day. **A second
@@ -417,8 +418,9 @@ Where this record and the design above disagree, this record is the code.
   the admin queries and the cross-check ran on the stored rows.
 
 **The app:**
-- `src/usage-keys.ts`: `REPORTED` (137 keys with the card and room lists expanded) and
-  `NOT_REPORTED` (`sunShift`, `usageReports`). `tests/usage-keys.test.ts` fails while a toggle
+- `src/usage-keys.ts`: `REPORTED` (168 keys with the card and room lists expanded, 2026-11-05) and
+  `NOT_REPORTED` (`sunShift` and `usageReports`).
+  `tests/usage-keys.test.ts` fails while a toggle
   or choice spec is on neither list, when a slider, time or size is on `REPORTED`, and when the
   worker's copy differs.
 - `src/usage-rules.ts` (tested): the UTC day, the ISO week, the day count's flags, the weekly

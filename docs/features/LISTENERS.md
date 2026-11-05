@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.27.0
 desk_test: passed 2026-10-13
 sources: [src-tauri/src/lastfm.rs, src/listeners.ts, src-tauri/src/lib.rs, src/now-playing-card.ts, src/settings-store.ts, src/info-box.ts, src/hero-slide.ts, src/media-levels.ts, src/present.ts, src/notes-order.ts, src/info-box-menu.ts]
-updated: 2026-11-03
+updated: 2026-11-05
 ---
 # Listeners — how rare a song is, from Last.fm
 
@@ -821,7 +821,7 @@ Both scripts go in `docs/ops/checks/` (his ask, 2026-10-01), beside the probe of
 
 ## 10. A listen count on each song row of an album (idea for 1.4, 2026-11-03)
 
-> **Part:** idea · 2026-11-03 — not designed, not built. The forks in §10.3 are his.
+> **Part:** designed · 2026-11-05 — not built. §10.2 is his design; §10.3 is what is still open.
 
 **His ask (2026-11-03):** *"get the number of listens per song in the song row itself when the
 card is grown / has space to show it. So within an album, a user can get a feel for
@@ -849,24 +849,49 @@ made its own feature. It does not need presentation mode or §9's summed album n
   number (§9.1 item 4: *Essex Honey*, 8 of 14 songs at 45–79 listeners). On a row next to its
   siblings, that looks like a deep cut and is not one. §9.6 F3 (the name form) decides this too.
 
-### 10.2 What follows from his words (not forks)
+### 10.2 His design (2026-11-05)
 
-- **Album song lists only.** He said "within an album". Playlists, the Songs view and the Queue
-  are later work, if he asks.
-- **Shown only when the row has space.** A Mini or a narrow card shows the rows as they are now.
+**His ask, with two pictures:** a rectangle or pill at the end of a song's line that holds only the
+number: 4976, 80k, 210.4k, 6M. Hovering the line gently slides the pill left as the + gently
+appears. In an album's columns (a grown card), a new column after Year, called **Stats**, holds the
+same pill.
 
-### 10.3 Open forks (his)
+**His calls:**
+- **A list that can show ✓ at rest keeps one pill column** (fork 1A). The pills stay in line and the
+  + only fades in. A list with no ✓ at rest slides as he described.
+- **The E, then the pill** (fork 2A). All pills share one right edge.
 
-1. **Which number.** Listeners (how many people; the probe's *THREAD 27* falls 4,094 → 100) ·
-   plays (how many times) · either one, with a bar against the album's top song (the §9.3 row
-   shape) · the bar only, with the number in the row's hover hint.
-2. **When the calls go out.** When the album opens wide (every row fills in a few seconds, then
-   is cached a month) · only the counts already cached (0 new calls; an album you never played
-   shows gaps).
-3. **The width where the column shows.** Set by a picture of a real album at Midi, grown and
-   Max; he picks the width from the pictures.
-4. **The name form.** §9.6 F3 and §8.11 must close first, or a mismatched song shows a false
-   low number. Or ship with a guard: a row under 1 % of the top song's count shows no number.
+**What follows from his words and the code (shown to him 2026-11-05):**
+- **The number is Plays** ("listens"). The hover hint gives plays and listeners.
+- **The rows:** Album and Playlist song rows, as his picture shows; this replaces "albums only".
+  Search, Queue and History stay as they are unless he asks.
+- **The pill has one fixed width.** The title gives up that width on every row, so a pill that
+  arrives late moves nothing. It is in the family of the Now Playing badge (`.np__listen`).
+- **The slide:** the + grows from no width to full width, and the pill and the title's end move
+  with it. A transform alone would put the pill over a long title. Reduced motion: at once.
+- **The calls:** only rows that rest on screen, at 4 a second at most (a new limit: nothing paces
+  `lastfm_listeners` today), with one cache read for many rows. Only cached counts would leave
+  gaps on an album never played, so that option is gone.
+- **The setting:** *Show play counts from Last.FM* (`showListeners`), not `showSongInfo` as §10.1
+  thought. Under 300 px of list width the pill hides, as the Library toolbar's rule does.
+- **False low numbers:** when Apple's names find little or nothing, ask the plain form too (§9.6
+  F3), after probe §9.4. The 1 % guard has no meaning in a playlist, so it is gone.
+- A press on the pill plays the song, as the rest of the row does. No count: no pill.
+
+### 10.3 Open (his)
+
+1. **The number form** (a draft: one decimal from 10,000, `.0` dropped, exact below), and whether
+   Now Playing and the facts boxes take it in place of `fmtCount`'s `48K`.
+2. **The slide time** (a draft: about 1.5 × `--dur-med`).
+
+An album's mark is closed: as it was, first column in the columns, right end in the plain row (his
+call 2026-11-05, after the right end looked smushed; CARD-GROW.md §9b). Stats is the last column.
+
+**Read 2026-11-05, live against Last.fm, for the name form.** Apple's artist text costs a song most
+of its count: *RAINING SUN* is 62 plays as *Leven Kali & Alissia*, 6,592 as *Leven Kali*; *pain for
+fun (feat. St. Vincent)* is 17,632, *pain for fun* 140,107. A plain form can also land on another
+song: *home* as *WILLOW* reads 109,571 from another album, 12,503 as *WILLOW & Jon Batiste*. So
+the rule needs more than "take the larger page".
 
 ### 10.4 Desk test
 

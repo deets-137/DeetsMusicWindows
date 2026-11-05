@@ -6,6 +6,32 @@ updated: 2026-11-04
 ---
 # DeetsMusic — Work log
 
+## 2026-11-05 — The cap: steps 1 to 4; the 1.4 rows in the usage report
+
+- **His calls.** 1.4 waits for the cap. The listen count stays in 1.4 and is built later. The eight
+  new 1.4 settings go in the usage report, and every new toggle or choice from now on, with no
+  question (USAGE-COUNTS.md §2 rule 3). He has replied to most of the board. Then the seven older
+  rows too ("Yes, add all 7"): `reduceMotion`, `npShade`, `npOffCover`, `pinView`,
+  `rememberArtistFilters`, `clearQueueOnLaunch`, `afterUpdateShow`. The list is 168 keys;
+  `NOT_REPORTED` keeps only `sunShift` and `usageReports`.
+- **The listen pill, designed.** His design and calls are LISTENERS.md §10.2: a pill at the row's
+  end, a Stats column after Year, one pill column where ✓ can rest, the E before the pill. Not built.
+- **An album in a grown Search card takes the columns** (his call; `grownRows`, CARD-GROW.md §9b).
+  Not run on the dev app: another session was driving it. The desk test is his.
+- **An album's mark at the right end: tried and put back** (his eye: smushed; CARD-GROW.md §9b). Full |
+  Lib shifted the columns by one digit; the # column is now never under two digits. Not run.
+- **Fixed: the album box asked Last.fm for an album called "Album".** A level opened by id (a
+  restore) holds that word until Apple answers, and `lfm` sent it: *empathogen* read 39 plays from
+  an album of that name; it is 4.65M. Seven rows like it stay in `album_info` until their month ends.
+- **Built.** `src/sound-cap.ts`, the wiring in `sound-loudness.ts`, album gain for Search albums, the
+  `__cap` handle (SOUND.md § 11a-2, *As built*). Dev builds only: a release keeps the mode `off`.
+- **Found.** `tracks()` is the library only, so a Search album's songs come from the queue.
+- **Tested.** `tests/sound-cap.test.ts`, and `docs/ops/checks/sound-cap.mjs` on the dev app at 1.5 %
+  volume, 16 cases ok, on a quiet album (−22.6 LUFS, 9 songs). Its few starts
+  are in the dev `plays` table. Volume, settings and queue went back.
+- **Open.** His ear test, then step 5. The DeetsSupport copy of the list is written, not committed,
+  not deployed: until it is, the worker drops these keys.
+
 ## 2026-11-04 — Match loudness: cap until measured, designed for the next sitting
 
 - **His calls.** Cap until measured. Night is an example of why, and when the cap acts is

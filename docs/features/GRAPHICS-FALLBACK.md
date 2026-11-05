@@ -462,7 +462,7 @@ low.
 7. **The busy guards:** a listening room, AirPlay output while music plays, a focused text field
    that holds text. An export is not a guard (it is not long-running in the window).
 8. **Restart now from the toast also plays on** if music played (the same `play` mark).
-9. **`reduceMotion` is not on the usage allow-list** (`NOT_REPORTED`): a new key there is his call.
+9. **`reduceMotion` is on the usage allow-list** (`REPORTED`, his call 2026-11-05).
 10. **The effects go off on the GPU-process event itself**, before the reads (§10.4 item 3).
 11. **Glass's blur is not in the set yet** (F4 item 7): it waits for P2's numbers.
 

@@ -8,7 +8,8 @@
 // collection-card engine, built by media-levels.ts: the same page the Library draws, in the
 // same code (ARTIST-VIEW.md §10.1, his calls 2026-10-12/13). The results page stays this card's
 // own: the engine starts at the first drill, with a bare root over the results, and Back on the
-// first level brings the results back. Search keeps compact rows (never the column table).
+// first level brings the results back. Search keeps compact rows, but for an album in a grown
+// card: an album has the Library's columns in both cards (his call, 2026-11-05).
 
 import { playTracks, queueTracksNext, queueTracksLater, playStation } from "./player";
 import { addTransientTracks } from "./track-store";
@@ -38,7 +39,7 @@ import type { Track } from "./library";
 import type { CardDef, CardInstance, MountOpts } from "./cards";
 import { rowDrag } from "./row-drag";
 import { rowPick, picksText } from "./row-pick";
-import { ruleGrowComing } from "./card-grow";
+import { onGrowChange, ruleGrowComing } from "./card-grow";
 
 const TYPES_KEY = "deets.search.types";
 const RECENTS_KEY = "deets.search.recents";
@@ -248,7 +249,9 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
     rootContext: () => BARE_ROOT,
     bare: true,
     finder: false, // Ctrl+F is the Search field's (SEARCH-FIELDS.md), at every level
-    grown: () => null, // compact rows, never the column table, even grown (his call)
+    // An album takes the Library's columns and rail in a grown card (his call, 2026-11-05);
+    // every other list keeps compact rows, even grown (his call, 2026-10-13).
+    grownRows: (g) => (g.album ? ((host.dataset.grow as "wide" | "tall" | "full" | undefined) ?? null) : null),
     resolve: (key) => levels.resolve(key),
     onReturn: mountOpts?.onReturn,
     returnTitle: mountOpts?.returnTitle,
@@ -256,6 +259,14 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       onLevel(h.atRoot);
       headerCbs.forEach((cb) => cb(h));
     },
+  });
+  // A grow or a collapse of THIS card (CARD-GROW.md §6): an open album builds its rows again at
+  // the new width, as the Library's do.
+  let lastGrow = host.dataset.grow;
+  const unsubGrow = onGrowChange(() => {
+    if (host.dataset.grow === lastGrow) return;
+    lastGrow = host.dataset.grow;
+    engine.reload();
   });
   /** Open a level from the results or from a request. `mountStill`: a request taken at the
    *  mount of a drill swap, whose slide brings the card in with the level on it already. */
@@ -796,6 +807,7 @@ function mountSearch(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   return {
     snapshot,
     destroy() {
+      unsubGrow();
       unsubTerm();
       unwireKeys();
       document.removeEventListener("keydown", onKey);

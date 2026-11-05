@@ -184,8 +184,7 @@ the dev app; step 2 passed when he allowed 5 min (released at once, 370 s into t
 resume after a release took 0.95 s from the press to sound at the spot. Desk test passed 2026-11-04
 (his word). For 1.4.0: its release note (dated 2026-11-03; set the real date at release) and
 the New mark, so the row is in column 2 of the update card's 1.4 page (`__updates.asVersion("1.4.0")`
-shows it on the dev app). Whether the weekly report sends the key is his call (`usage-keys.ts`
-NOT_REPORTED).
+shows it on the dev app). The weekly report sends the key (his call, 2026-11-05).
 
 ### Built, not released: click and double-click on a tile (2026-11-04)
 
@@ -215,11 +214,11 @@ A section under the Equalizer, on its own off-by-default switch (`soundMatch`). 
 dropped `soundLoudness`, so DeetsSupport's `src/usage-keys.js` has a local change; no deploy is
 needed for the app to work.
 
-**Next: build the cap (his call 2026-11-04, the next sitting).** A song with no measurement is held
-by a slow cap, and a fixed gain takes over once it has a row. Measuring stays, with no progress on
-screen. The spec is ready: [SOUND.md](features/SOUND.md) § 11a-2, steps 1 to 4, then his ear test,
-then step 5. It also fixes album gain, which misses albums played from Search. Open before it ships:
-the ear test, the desk test, and the §7.3 heaviness check.
+**The cap: steps 1 to 4 built 2026-11-05, dev only (1.4 waits for it, his call).** A song with no
+measurement is held by a slow cap, and a fixed gain takes over once it has a row. It also fixes album
+gain for albums played from Search. **Next: his ear test** ([SOUND.md](features/SOUND.md) § 11a-2),
+then step 5. Open before it ships: step 5, the desk test, the §7.3 heaviness check, and the 1.4.0
+note, which still describes measure-first.
 
 ### Built, not released: Unshuffled from the top (2026-11-04)
 
@@ -239,12 +238,12 @@ comes off: donate.md §4.
 call: not a priority now). A real Krita export and a FontForge file are tested when the first font
 starts ([FONTPACK.md](ops/FONTPACK.md) §7). Open then: a title font, or a title and body pair.
 
-### Idea for 1.4: a listen count on each album song row (2026-11-03)
+### For 1.4: a listen count on each song row (2026-11-03, designed 2026-11-05)
 
-His ask: when an album's song list has the width, each row shows the song's Last.fm count, so
-a user sees which songs are popular. It reuses the song's cached `track.getInfo`. Not designed;
-four forks open (which number, when the calls go out, the width, the name form):
-[LISTENERS.md](features/LISTENERS.md) §10.
+His ask: a pill with the song's Last.fm plays at the end of an album or playlist song row, and in
+a Stats column after Year in an album's columns. It reuses the song's cached `track.getInfo`. In
+1.4 (his call, 2026-11-05). Designed, not built. Open: the number form,
+the slide time: [LISTENERS.md](features/LISTENERS.md) §10.3.
 
 ### Live, waiting on his test or his look
 
@@ -261,8 +260,9 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
 - **`DEETS_USAGE_OWNER` on his other PCs, if any.** This PC is done (closed 2026-11-02): the
   user variable is `1`, and the live log reads `usage: health sent (owner)`.
 - **The Microsoft Store test (failed 2026-11-04, at Apple's sign-in window):** *Demo login* is
-  built for 1.4 (WEB-DEMO.md §17), not committed. The worker (`../DeetsSupport/src/signin.js`) needs
-  his deploy. Then the Notes for certification.
+  built for 1.4 (WEB-DEMO.md §17), committed (`ba5684c`), hand test open. The worker
+  (`../DeetsSupport/src/signin.js`, `41dc442`, not pushed) needs his deploy; it also carries the
+  usage allow-list. Then the Notes for certification.
 - **The admin page's *Needs a look* thresholds** (`FLAG` in DeetsSolutions `admin.js`) are
   drafts for his edit (support.md, "The Health tab").
 - **The Rewind card:** keep it or let the Rewind button replace it (listening-time.md §9.4, his

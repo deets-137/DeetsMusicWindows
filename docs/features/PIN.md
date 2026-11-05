@@ -148,8 +148,8 @@ and so on), and one button pins the window and starts it.
   `currentMiniView`, `setMiniView`. `rules-eval.ts`: the built-in `fixed:pin`, always made.
   Rulez: "The pin" in its built-in list, the `pinned` fact under Window. Settings: *Cover opens
   at* (with its New mark), and the Keep on top hint names the pin. Compass: "Pin on top", or
-  "Unpin" while pinned. `pinView` is listed as not sent in `usage-keys.ts` (a new key on the
-  allow-list is his call).
+  "Unpin" while pinned. `pinView` is on `REPORTED` in `usage-keys.ts` (his call
+  2026-11-05).
 - **The panel** is two tiles wide (`--pin-tile-w` 96 px), his ask at the hand test.
 - **The switch is covered (his call, 2026-10-26).** A pin or unpin that changes the view runs
   under the launch cover, as an agent's surface change does (UX-COVERUPS.md §6b): the cover

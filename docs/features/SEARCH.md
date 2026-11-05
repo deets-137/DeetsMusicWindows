@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-24
 sources: [src/search-card.ts, src/media-levels.ts, src/context-menu.ts, src/add-square.ts, src-tauri/src/apple.rs, src-tauri/src/model.rs, src/search.ts, src/release.ts]
-updated: 2026-10-13
+updated: 2026-11-05
 ---
 # DeetsMusic — Search card (catalog search)
 
@@ -414,8 +414,9 @@ same page the Library draws, in the same code (ARTIST-VIEW.md §10.1, his calls 
   card's head (its Back, its title, the Full | Lib chips in `[data-coll-views]`) over a **bare**
   root (`CardOptions.bare`), the `.search__levels` layer over the results. The results slide
   out with the first level and back with the last (the engine's --nav-* motion).
-- Search keeps **compact rows**, never the column table, even grown (`grown: () => null`). An
-  album shows track numbers; a playlist keeps its own order (*Playlist Order*).
+- Search keeps **compact rows**, even grown, but for an album: a grown Search card shows an album
+  in the Library's columns, with the letter rail (`grownRows`, his call 2026-11-05, CARD-GROW.md
+  §9b). An album shows track numbers; a playlist keeps its own order (*Playlist Order*).
 - **Full | Lib** shows on an album and an artist; Lib opens your copy in place, in this card.
 - The search field stays above the levels. A new term closes every level at once
   (`engine.toRoot()`) and the results show. Ctrl+F stays the field's (`finder: false`).

@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.6.0
 desk_test: passed 2026-10-27
 sources: [src/artist-view.ts, src/media-levels.ts, src/collection-card.ts, src/collection-window.ts, src/library-card.ts, src/search-card.ts, src-tauri/src/apple.rs, web/apple-catalog.ts]
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 # Artist view — hero, Featured Playlists, Your Playlists
 
@@ -260,8 +260,8 @@ stops the run.
 - *Go to Genre* from a Lib row inside Search opens the genre **in the Library** (a Library view).
 - Apple's playlist page gets **its own builder** in the shared module; a merge with the
   Playlists card's playlist level is a later project.
-- Already his: compact rows in Search (never the column table, even grown), the full toolbar,
-  Full | Lib in Search with Lib in place.
+- Already his: compact rows in Search (never the column table, even grown; since 2026-11-05 an
+  album is the exception, SEARCH.md), the full toolbar, Full | Lib in Search with Lib in place.
 - Decided inside "structured the same" (told to him, 2026-10-13): the shared album keeps the
   Search pane's pre-release line ("Coming 09/25", "3 of 10 songs out"), so the Library's Full
   album shows it too. The search field stays above the levels; a new search returns to the
@@ -502,7 +502,7 @@ EPs, live albums and albums on the Albums shelf (§11 merged them).
   artist. Off: every artist opens on All*.
 - The row sits under *Show artist info on the artist's page* in Settings › Playback.
 - A pick closes the pop (Sort keeps its pop open; here the level re-renders with the pick).
-- The pick is not in the usage counts (`NOT_REPORTED`): a new key on the allow-list is his call.
+- The pick is in the usage report (`REPORTED`, his call 2026-11-05).
 
 ### 12.3 Desk test
 

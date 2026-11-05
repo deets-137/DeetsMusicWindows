@@ -411,6 +411,9 @@ export interface CardOptions {
   onHeader?: (h: { title: string; atRoot: boolean }) => void;
   /** The host's grow state (CARD-GROW.md): wide / full → columns, any → the letter rail. */
   grown?: () => "wide" | "tall" | "full" | null;
+  /** A card that takes the columns and the rail on some lists only (the Search card: an album,
+   *  CARD-GROW.md §9b): the grow state for this grouping. Wins over `grown` for the rows. */
+  grownRows?: (g: Grouping) => "wide" | "tall" | "full" | null;
   /** Card memory: turn a level's key back into its context; null when it is gone. */
   resolve?: (key: string) => Context | null;
   /** The drill swap (CARD-GROW.md §14): the next level this card opens returns through it. */
@@ -889,8 +892,9 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     g.pick ? pick.markHTML(g.render(x, density, i, cols), x, i) : g.render(x, density, i, cols);
 
   /** The column mode a frame renders in: a wide or full card, line rows, a grouping with columns. */
+  const rowsGrown = (g: Grouping) => (opts.grownRows ? opts.grownRows(g) : opts.grown?.());
   const colsOf = (f: Frame, g: Grouping): ColumnMode | null => {
-    const mode = opts.grown?.();
+    const mode = rowsGrown(g);
     return f.density === "lines" && g.columns && (mode === "wide" || mode === "full") ? mode : null;
   };
 
@@ -911,7 +915,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   };
   const syncRail = (pane: HTMLElement, f: Frame, g: Grouping) => {
     const view = pane.querySelector<HTMLElement>("[data-view]");
-    const on = !!opts.grown?.() && f.sortKey === "az" && !g.mixed && f.items.length > 0 && !!view;
+    const on = !!rowsGrown(g) && f.sortKey === "az" && !g.mixed && f.items.length > 0 && !!view;
     let rail = pane.querySelector<HTMLElement>(":scope > .lib-rail");
     if (!on) {
       rail?.remove();

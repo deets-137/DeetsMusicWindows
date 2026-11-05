@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.0
 desk_test: passed 2026-09-19
 sources: [src/card-grow.ts, src/add-square.ts, scripts/webview-eval.mjs, src/layout.ts, src/collection-card.ts, src/library-card.ts, src/styles.css, src/layout-bus.ts, src/search-card.ts, src/cards.ts, docs/ops/checks/drill-review.mjs]
-updated: 2026-10-21
+updated: 2026-11-05
 ---
 # DeetsMusic — growing a card
 
@@ -268,15 +268,26 @@ after the title, so a long title's ellipsis cuts it off.
 
 **Scope: album lists only.** These are the two `songsGrouping` calls with `numbered: true`: the
 Library's album drill (the Lib view) and Apple's whole album (the Full view), both built by
-`media-levels.ts` (one album builder since 2026-10-13; Search's album pane joins it next,
-ARTIST-VIEW.md §10.1). Library Songs, playlists, History and
+`media-levels.ts` (one album builder since 2026-10-13, ARTIST-VIEW.md §10.1). Library Songs,
+playlists, History and
 the artist view keep §9a's columns and their ♥ column. Full and Lib exist in many places, so an
 album drilled from the Library can show either view.
 
+**In the Search card too (his call, 2026-11-05).** A grown Search card shows an album in these
+columns, with the letter rail. Every other Search list keeps compact rows. The card says which
+lists take them with `grownRows` (`CardOptions`), and it builds its rows again on a grow.
+
+Desk test: Search an album, open it, grow the card wide, then Fill. The rows become columns at each
+step, and Full | Lib keeps them. Collapse: the plain rows return and the place in the list is kept.
+An artist page in the same grown card keeps compact rows.
+
 **The columns.** Mark · # · Title · Artist · Length (· Genre · Year in a full card). The ♥ column
-is removed. The mark column is the first column and has no header label. The # column is as wide as
-the album's widest track number, so the numbers sit under the header and the gap on each side
-of a number is the card's column gap (his ask, 2026-10-01). The "#↑" header spills left into
+is removed. The mark column is the first column and has no header label. **Tried at the right end
+2026-11-05 and put back the same day (his eye):** it looked smushed against Year and the
+scrollbar. The # column is as wide as the album's widest track number, so the numbers sit under
+the header and the gap on each side of a number is the card's column gap (his ask, 2026-10-01),
+and it is never under two digits: Full | Lib must not move the columns when your songs of an album
+stop at 9 and Apple's go past it (his find, 2026-11-05). The "#↑" header spills left into
 the empty mark header (`.lib-cols__cell--spill`).
 
 **What the mark column shows:**
