@@ -180,7 +180,7 @@ Two time spans side by side ("this month vs last month") per row. A later step; 
 
 | Part | Where |
 |---|---|
-| The button: right of the updates button, before the drag gap; hidden in Mini and Midi by CSS | `index.html` (`#rewind-top`), `styles/rewind-top.css` |
+| The button: right of the Compass, before the pin; hidden in Mini and Midi by CSS | `index.html` (`#rewind-top`), `styles/rewind-top.css` |
 | The panel: the head "Rewind", the Today row, the two chips, one list part; a dropdown (`makeDropdown`) with `.pop` and `enterRows` on open; `keepRightInWindow` | `src/rewind-btn.ts` `initRewindButton` (main.ts, a `later` step after the updates button) |
 | Today: the sum of `ms_listened` since local midnight. Read at the panel's open, at each play event (`stats.onPlayEvent`) and every 30 s while open, so an open play's 30 s saves show | `rewind.ts` `listenedToday`; `rewind-window.ts` `todayStart`, `fmtToday` (tested) |
 | Top Listens: the whole log (`topSince(view, 0)`), sorted by plays, then minutes; ↑ reverses it; 50 rows; each row's right side says "N plays" | `rewind.ts` `topSince` (split out of `topBy`, no change to the card) |
@@ -199,7 +199,7 @@ No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.
 
 - **Max only**, as the Compass and the updates button: Mini and Midi keep the title bar free to
   drag the window. In those surfaces the Rewind card is still the way in.
-- The place: right of the updates button, the last button on the left side.
+- The place: right of the Compass, before the pin (since 2026-11-05, donate.md).
 - **Top Listens reads all time** (the whole play log, from 2026-07-01), not a time span: his
   words were "most played". **Plays first, minutes second** (the card ranks minutes first).
 - Rows show "N plays" on the right; 50 rows, then the list scrolls (`--rewind-top-list-max-h`, 320 px).
@@ -218,7 +218,7 @@ No new Rust, no schema change, no Apple call. The Rewind card is unchanged (§9.
 
 ### 9.3 The desk test (his)
 
-1. Max. The hourglass sits right of the updates button. Mini and Midi: no hourglass.
+1. Max. The hourglass sits right of the Compass. Mini and Midi: no hourglass.
 2. Click it: "Rewind", then "Today: N mins". Play a song for a minute with the panel open:
    the number goes up within 30 s.
 3. Settings › Rewind › Today's time in › Hours and minutes: the row reads "2 hrs 14 mins" (or

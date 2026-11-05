@@ -1,24 +1,32 @@
 // The Donate button and its panel (docs/features/donate.md): the Max title bar button left of the
-// Network button. DEV ONLY for now: main.ts imports this module behind `import.meta.env.DEV`, so
-// the release bundle carries none of it, the button, the panel, or the title bar's new order.
-//
-// The title bar's new order is made here, for that same reason: index.html keeps the released
-// order, and this module moves the updates and Network buttons left of the Compass. When the flag
-// comes off, the order moves into index.html (donate.md §4).
+// Network button.
 //
 // His glyph move (2026-11-04): each open turns the dollar sign over. The line leaves through the
 // top, the S pulls straight and becomes the new line, and a new stroke comes in from the bottom
 // left, goes through that line, and curls into the new S. Each close plays it backwards.
 
 import "./styles/donate.css";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { applyCss } from "./dom";
 import { fillGoals } from "./donate-rules";
-import { makeDropdown } from "./dropdown";
+import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { keepRightInWindow } from "./quick-panel";
 import { tokenMs } from "./boot-cover";
 import { motionReduced } from "./motion";
+import { currentSurface } from "./surface";
 import * as diag from "./diag";
+
+/** His PayPal donate page (2026-11-05). It opens in the browser: the app never touches a card,
+ *  and PayPal does not support its page in a web view (ideas/donations.md §4). */
+const PAYPAL_URL =
+  "https://www.paypal.com/donate/?business=T5AABZGWDAXUJ&no_recurring=0&item_name=Support+DeetsMusic%27s+growth+and+unlock+new+features+like+lyrics%21&currency_code=USD";
+
+/** The top of the panel, a paragraph each. The words are his (2026-11-05). */
+const SAY = [
+  "Hey folks, here's the deal. DeetsMusic is my passion project and has been keeping me going for the past couple months as I entered unemployment and search for a new software/solutions/product/healthtech job in this brutal market. I very much plan to continue working on it to the best of my abilities, but certain ideas I have and things I want to do are price-gated, with the first and biggest one being synced lyrics.",
+  "Musixmatch is what Spotify and Apple pull from themselves, considering it the gold standard for timed lyrics. If we can reach the $50 mark for donations, that would allow us to get v0.9 of lyrics up and running, with me trying to time-sync the lyrics myself. At the $200 mark, we get more songs and Musixmatch's help with time-syncing for the best quality. If you have a couple bucks to spare, I'd greatly appreciate it and the community would too.",
+];
 
 /** The S, from its top right end to its bottom left end: six curves. */
 const S_POINTS = [
@@ -96,11 +104,18 @@ function goalHtml(g: Goal): string {
   );
 }
 
+let dropdown: DropdownHandle | null = null;
+
+/** Open the panel (the Compass row). Max only, as the button. */
+export function openDonatePanel(): boolean {
+  if (currentSurface() !== "max" || !dropdown) return false;
+  dropdown.open();
+  return true;
+}
+
 export function initDonateButton(): void {
-  const compass = document.getElementById("compass-open");
-  const updates = document.getElementById("updates");
   const net = document.getElementById("net");
-  if (!compass || !updates || !net) return;
+  if (!net) return;
 
   const root = document.createElement("div");
   root.className = "donate";
@@ -108,13 +123,18 @@ export function initDonateButton(): void {
   root.innerHTML =
     `<button class="donate__btn" id="donate-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Donate" title="Donate">` +
     `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="donate__line" d="M12 ${LINE_TOP}V${LINE_BOTTOM}"/><path class="donate__s" d="${S_PATH}"/><path class="donate__thread" d="${S_PATH}"/></svg></button>` +
-    `<div class="donate__panel pop" id="donate-panel" role="group" aria-label="Donate" data-frames="donate" data-tauri-drag-region="false" hidden>` +
-    `<div class="donate__head">Donate</div>${GOALS.map(goalHtml).join("")}</div>`;
+    `<div class="donate__panel pop app-scroll" id="donate-panel" role="group" aria-label="Donate" data-frames="donate" data-tauri-drag-region="false" hidden>` +
+    `<div class="donate__head">Donate</div>` +
+    `<div class="donate__say">${SAY.map((p) => `<p>${p}</p>`).join("")}</div>` +
+    `<div class="donate__act"><button class="account__link donate__link" type="button" title="Opens PayPal's donation page in your browser">Donate with PayPal</button>` +
+    `<span class="donate__note">(not tax-deductible*)</span></div>` +
+    `<div class="donate__rule" role="separator"></div>${GOALS.map(goalHtml).join("")}</div>`;
   applyCss(root); // the marks' places (data-css: the CSP refuses style="…", CSP.md §3)
-  compass.before(updates, root, net);
+  net.before(root);
 
   const btn = root.querySelector<HTMLElement>(".donate__btn")!;
   const panel = root.querySelector<HTMLElement>(".donate__panel")!;
+  root.querySelector(".donate__link")!.addEventListener("click", () => void openUrl(PAYPAL_URL));
   const showRaised = (dollars: number) => {
     const tops = GOALS.map(goalTop);
     const held = fillGoals(tops, dollars);
@@ -123,7 +143,7 @@ export function initDonateButton(): void {
       bar.setAttribute("aria-valuenow", String(held[i]));
     });
   };
-  window.__donate = { raised: showRaised };
+  if (import.meta.env.DEV) window.__donate = { raised: showRaised };
   const line = root.querySelector(".donate__line")!;
   const s = root.querySelector(".donate__s")!;
   const thread = root.querySelector(".donate__thread")!;
@@ -166,11 +186,11 @@ export function initDonateButton(): void {
   // Every open and every close, by any path (the updates arrows' roll does the same).
   new MutationObserver(() => turn(panel.hidden)).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
 
-  // No `use` yet: a usage key waits until the panel ships (donate.md §4).
-  makeDropdown({
+  dropdown = makeDropdown({
     root,
     trigger: btn,
     panel,
+    use: "panel.donate",
     onOpen: () => {
       keepRightInWindow(root, panel);
       enterRows([...panel.children]);

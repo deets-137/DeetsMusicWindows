@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-09-26
+updated: 2026-11-05
 ---
 # Release notes
 
@@ -56,6 +56,9 @@ Apple ID. Now DeetsMusic lets go of Apple after 10 minutes of pause, or a little
 would check in again first. Your song stays in Now Playing at the same spot, and Play starts it
 there, about a second slower than usual. Change the wait, or choose Never, in Settings > Playback >
 Let go of Apple after a pause.
+
+**Donate button in Max.** A dollar sign in the title bar opens the Donate panel: what donations
+pay for, and a link to PayPal. The updates and Network buttons moved left of the Compass.
 
 **Match loudness in the Sound panel.** A song can be much louder than the one before it. Turn on
 Match loudness, under the Equalizer, and DeetsMusic measures each song the first time you hear most

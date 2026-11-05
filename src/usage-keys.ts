@@ -81,7 +81,7 @@ export const USE_COUNTS = [
   // Feature reach (USAGE-COUNTS.md §21, his call 2026-11-02: "Build this list"). Panels count when
   // they open (makeDropdown's `use`, the tray panel its own); features where they do their job.
   "panel.sleep", "panel.sound", "panel.playon", "panel.room", "panel.pin", "panel.updates", "panel.rewind",
-  "panel.net", "panel.quick", "panel.web", "panel.cards", "compass.open", "panel.tray",
+  "panel.net", "panel.donate", "panel.quick", "panel.web", "panel.cards", "compass.open", "panel.tray",
   "sleep.set", "sleep.fired", "web.made.artist", "web.made.song", "web.made.album",
   "rule.made", "rulezPlaylist.made", "filter.used", "review.saved", "pin.added", "pin.played",
   "station.apple", "room.made", "room.joined", "sotd.picked",

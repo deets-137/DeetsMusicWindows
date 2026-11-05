@@ -376,7 +376,7 @@ the EQ grid's line. Each threshold's reason is beside it in `src/net-rules.ts`.
 5. **No settings key, no New badge, no rule fact** in v1. The `network` rule fact (§4) and an
    agent route stay for later.
 6. **The thresholds** in §8.1 (each with its reason in net-rules.ts).
-7. **The button's place:** right of the updates button.
+7. **The button's place:** left of the Compass, right of Donate (since 2026-11-05, donate.md).
 
 ### 8.4 Known limits
 
@@ -388,7 +388,7 @@ the EQ grid's line. Each threshold's reason is beside it in `src/net-rules.ts`.
 
 ## 9. Desk test (his, on the dev app)
 
-1. `npm run dev:app`, Max. The car is right of the Rewind button (on `v-thirtyone`). Hover:
+1. `npm run dev:app`, Max. The car is left of the Compass. Hover:
    "Network: Good". Open the panel: the car drives off to the right and the next one drives in
    from the left. Close it: off to the left, in from the right.
 2. Play a song. Open the panel: "Network: Good"; Internet, Apple Music, Stream, each with one

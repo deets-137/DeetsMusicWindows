@@ -59,6 +59,7 @@ import { openUpdateCard } from "./update-card";
 import { openRewindPanel } from "./rewind-btn";
 import { windowPinned, openPinPanel, unpin } from "./pin";
 import { openNetworkPanel } from "./net";
+import { openDonatePanel } from "./donate-btn";
 import { updateStatusText } from "./updater";
 import { openRoomPanel } from "./room-panel";
 import { inRoom, leaveRoom, endRoom, roomState, startRoom, isStopped, listenAgain, stopListening } from "./room";
@@ -371,6 +372,9 @@ function places(all: boolean, typed: CardShape | null = null, plain = false): Ro
   // The Network panel (docs/features/speedtest.md): Max only, as its button.
   if (currentSurface() === "max")
     rows.push({ group: "Places", title: "Network", sub: "How steady the connection has been, and a speed test", aliases: ["speed test", "internet", "wifi", "ping", "connection", "packet loss"], run: () => openNetworkPanel() });
+  // The Donate panel (docs/features/donate.md): Max only, as its button.
+  if (currentSurface() === "max")
+    rows.push({ group: "Places", title: "Donate", sub: "The goals, and a link to PayPal", aliases: ["donation", "support", "paypal", "tip"], run: () => void openDonatePanel() });
   // The pin (docs/features/PIN.md): every surface, as its button. Pinned, the row unpins.
   if (windowPinned())
     rows.push({ group: "Places", title: "Unpin", sub: "The window goes back to how it was", aliases: ["keep on top", "always on top", "pin"], run: () => void unpin("compass") });

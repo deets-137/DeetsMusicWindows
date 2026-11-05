@@ -1389,6 +1389,7 @@ Panels, counted when they open, through one new option on the dropdown primitive
 | `panel.updates` | Updates | `updates-btn.ts` |
 | `panel.rewind` | Rewind | `rewind-btn.ts` (the title-bar panel) |
 | `panel.net` | The car button's network panel | `net.ts` |
+| `panel.donate` | The dollar sign button's Donate panel | `donate-btn.ts` |
 | `panel.quick` | The cog's quick panel | `quick-panel.ts` |
 | `panel.web` | The title bar's Playlist web | `web.ts` (`initTitleWeb`'s dropdown) |
 | `panel.cards` | The card picker on a card's title (was `panel.layout`: `layout.ts`'s dropdown is the picker, not a Layout panel) | `layout.ts` |

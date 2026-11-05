@@ -146,8 +146,8 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
 - `UpdatesButton.md` — the Max title bar's updates button and panel (`src/updates-btn.ts`,
   `src/release-leads.ts`, `virtual:release-notes` in vite.config.ts).
 - `speedtest.md` — the car button and the network panel (`net.rs` ping, `src/fetch-wrap.ts`).
-- `donate.md` — the dollar sign button and the Donate panel (`src/donate-btn.ts`), behind
-  `import.meta.env.DEV` in main.ts; §4 what to do when the flag comes off.
+- `donate.md` — the dollar sign button and the Donate panel (`src/donate-btn.ts`), goals and the
+  PayPal link.
 - `WHEEL-VOLUME.md` — the mouse wheel on Now Playing steps the volume (`src/wheel-step.ts`, pure).
 - `HIDE-CARDS.md` — Settings › Cards hides a card from the card picker (`hiddenCards`).
 - `MAX-CARDS.md` — *Layout for Max* (`maxCards`); the geometry is pure in `layout-rules.ts`.

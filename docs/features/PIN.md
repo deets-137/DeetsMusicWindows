@@ -17,7 +17,7 @@ and so on), and one button pins the window and starts it.
 
 ## 1. What the code has today
 
-- **The title bar buttons.** Updates, Rewind and Network (the car) sit right of the Compass.
+- **The title bar buttons.** Updates, Donate and Network (the car) sit left of the Compass, and Rewind right of it (since 2026-11-05).
   Each is a `makeDropdown` panel with `.pop` and `enterRows` (`src/rewind-btn.ts`,
   `src/net.ts`). They show in Max only (`styles/net.css` hides them in Mini and Midi).
 - **Keep on top.** *Settings › Window › Keep on top*: Always · Player · **Off**

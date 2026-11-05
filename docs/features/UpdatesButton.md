@@ -56,7 +56,7 @@ updated: 2026-11-01
 
 | Question | His call |
 |---|---|
-| Where | **Max only**, in the title bar, right of the Compass. |
+| Where | **Max only**, in the title bar, right of the cog (since 2026-11-05, donate.md). |
 | Glyph | **Two arrows**, down on the left, up on the right (his drawing). |
 | An update exists | The up arrow **flies up**, the down arrow **moves to the center**, and the button is **highlighted**. |
 | Panel row 1 | The version. With an offer: the new version and a **Download** or **Restart** button. Without: the current version and a **Check now** button. |
@@ -422,7 +422,7 @@ the rule is the release that ships this button.
 Run `npm run dev:app` (vite.config.ts changed: a dev server that was already running needs a
 restart). Use Max.
 
-1. **The button.** Right of the Compass: two arrows, down on the left, up on the right, in
+1. **The button.** Right of the cog: two arrows, down on the left, up on the right, in
    `--subtext`; `--title` on hover. Hint: *Updates, what's new, and bug reports*. Switch to
    Mini and Midi: the button is gone.
 2. **The panel.** Click it. The panel drops from the button's left edge with the row slide.

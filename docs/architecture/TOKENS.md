@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 73 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 850 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 852 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -261,7 +261,9 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--donate-turn` | `0.72s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | a press: the line leaves, the S pulls straight, a new stroke curls into the S |
 | `--donate-travel` | `var(--updates-roll-y)` | — | how far a stroke travels: out of the glyph's box |
 | `--donate-panel-w` | `var(--quick-panel-w)` | — | the cog's panel family: one width |
+| `--donate-panel-max-h` | `calc(100vh - 48px)` | — | his words make it taller than the cog's family: the whole panel shows, and it scrolls only in a short window |
 | `--donate-panel-pad` | `var(--quick-panel-pad)` | — |  |
+| `--donate-note-fs` | `calc(var(--fs-subtext) - 2px)` | — | the note right of the PayPal link: under the panel's own type, in every skin |
 | `--donate-goal-gap` | `var(--space-1)` | — | a goal's name, bar and lines |
 | `--donate-tick-h` | `10px` | — | a mark on the bar: taller than the track |
 | `--donate-bar-margin` | `var(--space-1)` | — | room for the marks above and below the track |

@@ -2,9 +2,23 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 # DeetsMusic — Work log
+
+## 2026-11-05 — The PayPal link in the Donate panel
+
+- **His ask.** He sent the PayPal donate address.
+- **Built.** *Donate with PayPal*, dev only, as donate.md §2. The address shows a merchant ID, not
+  his email.
+- **His hand tests passed.** The link, and a card payment with no PayPal login. A script gets 403
+  from PayPal, so neither could run from here.
+- **His next asks, same day.** The link moved to the top, a divider sits above the goals, and his
+  two paragraphs sit at the top of the panel, for now. The panel now scrolls when it is too tall.
+- **The flag came off (his call, same day).** *(not tax-deductible\*)* sits right of the link. The
+  order is in `index.html`, with a Compass row and `panel.donate`; the release notes have a line.
+  Measured: the title bar needs 624 px, and at the 495 px floor the window buttons are cut off.
+  The released order has this too. Not fixed; his call.
 
 ## 2026-11-05 — The album light on Press and Cyber
 

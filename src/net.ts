@@ -1,5 +1,5 @@
 // The Network button and its panel (docs/features/speedtest.md §7–§8, his calls 2026-10-19). The
-// Max title bar button right of the Rewind button; the car from his drawing (2026-10-19). Each
+// Max title bar button left of the Compass; the car from his drawing (2026-10-19). Each
 // open drives it off to the right as the next one drives in from the left; each close, the
 // other way (`drive`). The glyph turns the Bad color while the title says Bad (F3).
 //

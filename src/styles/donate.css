@@ -1,5 +1,5 @@
 /* ── The Donate button and its panel (docs/features/donate.md) ──────────────────────────
-   Dev only for now: donate-btn.ts imports this sheet. The button is the updates button's family
+   donate-btn.ts imports this sheet. The button is the updates button's family
    (styles/updates.css): the row's height, no fill, no border, --subtext until hover. Max only.
    The panel is the cog's panel family, hung from the button's left edge. */
 
@@ -25,6 +25,9 @@
   --pop-origin: top left;
   margin-top: var(--space-1);
   width: var(--donate-panel-w);
+  max-height: var(--donate-panel-max-h);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex; flex-direction: column; align-items: stretch;
   gap: var(--space-2);
   padding: var(--donate-panel-pad);
@@ -76,3 +79,15 @@
   display: flex; flex-direction: column; gap: var(--updates-lead-gap);
   color: var(--subtext);
 }
+/* His words at the top of the panel, a paragraph each. */
+.donate__say { display: flex; flex-direction: column; gap: var(--space-2); }
+.donate__say p { margin: 0; }
+/* The PayPal link: the account row's text link (.account__link), only as wide as its words. The
+   panel's gap already spaces it. */
+.donate__act { display: flex; align-items: baseline; gap: var(--space-1); }
+.donate__link { margin-top: 0; }
+/* The note right of the link, in smaller type (his ask, 2026-11-05). */
+.donate__note { font-size: var(--donate-note-fs); color: var(--subtext); }
+/* Between the top of the panel and the goals: the menu divider's family (.ctx-menu__divider), with
+   no inset, because nothing in this panel is inset. */
+.donate__rule { height: 1px; background: var(--border); }

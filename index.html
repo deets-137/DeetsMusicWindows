@@ -254,13 +254,7 @@
         </div>
       </div>
 
-      <!-- The Compass (COMPASS.md): the title bar's own button, right of the cog. The glyph
-           is the hand-drawn compass the owner gave (a face, a needle, two ticks). Max only
-           since 2026-10-11 (styles/compass.css): Mini and Midi need the room to drag the
-           window; Ctrl+Space opens the bar on every surface. -->
-      <button class="compass__btn" id="compass-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Go anywhere" title="Go anywhere! (Ctrl + Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg></button>
-
-      <!-- The updates button (docs/features/UpdatesButton.md): right of the Compass, Max only
+      <!-- The updates button (docs/features/UpdatesButton.md): right of the cog, Max only
            (styles/updates.css). His two arrows: down on the left, up on the right. When an
            update is offered, the up arrow flies off the top, the down arrow moves to the center
            and the button takes the highlight color; a thin bar fills under it while it downloads.
@@ -273,17 +267,7 @@
         </div>
       </div>
 
-      <!-- The Rewind button (docs/features/listening-time.md): right of the updates button, Max
-           only (styles/rewind-top.css). The hourglass from his drawing (2026-10-19): a flat top
-           and base, the sand as dots; it turns a half turn, the same way, on each open and close
-           (rewind-btn.ts). The panel: Today's
-           minutes, then Top Listens and SOTD, each sliding its list in below. src/rewind-btn.ts. -->
-      <div class="rewind-top" id="rewind-top">
-        <button class="rewind-top__btn" id="rewind-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Rewind" title="Rewind: what you listened to today, your top listens and your Songs of the Day"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5H17V6.4C17 9.2 12.7 10.6 12.7 12C12.7 13.4 17.5 15.4 17.5 20.5H6.5C6.5 15.4 11.3 13.4 11.3 12C11.3 10.6 7 9.2 7 6.4Z"/><g class="rewind-top__sand"><circle cx="10" cy="7.4" r=".65"/><circle cx="12" cy="8.6" r=".65"/><circle cx="14" cy="7.4" r=".65"/><circle cx="12" cy="15.9" r=".65"/><circle cx="10.6" cy="17.5" r=".65"/><circle cx="13.4" cy="17.5" r=".65"/><circle cx="9.2" cy="18.9" r=".65"/><circle cx="12" cy="18.9" r=".65"/><circle cx="14.8" cy="18.9" r=".65"/></g></svg></button>
-        <div class="rewind-top__panel pop" id="rewind-panel" role="group" aria-label="Rewind" data-frames="rewind-top" data-tauri-drag-region="false" hidden></div>
-      </div>
-
-      <!-- The Network button (docs/features/speedtest.md): right of the Rewind button, Max only
+      <!-- The Network button (docs/features/speedtest.md): left of the Compass, Max only
            (styles/net.css). The car from his drawing (2026-10-19): straight lines, a rear wing,
            two wheels of one size. The open drives it off to the right as the next one drives in
            from the left; the close, the other way (net.ts). It takes the Bad color while the
@@ -294,7 +278,23 @@
         <div class="net__panel pop app-scroll" id="net-panel" role="group" aria-label="Network" data-frames="net" data-tauri-drag-region="false" hidden></div>
       </div>
 
-      <!-- The pin (docs/features/PIN.md): right of the Network button in Max, right of the app
+      <!-- The Compass (COMPASS.md): the title bar's own button, right of the Network button. The glyph
+           is the hand-drawn compass the owner gave (a face, a needle, two ticks). Max only
+           since 2026-10-11 (styles/compass.css): Mini and Midi need the room to drag the
+           window; Ctrl+Space opens the bar on every surface. -->
+      <button class="compass__btn" id="compass-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Go anywhere" title="Go anywhere! (Ctrl + Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4c4.6-.3 8.2 3 8.4 7.6.2 4.9-3.5 9.2-8.3 9.4-4.7.2-8.6-3.6-8.5-8.4C3.7 7.4 7.4 3.7 12 3.4z"/><path d="M12 5.6l1.6 6.9L12 12l-1.6.5z"/><path d="M6.1 11.7h1.7M16.2 11.7h1.7M12 16.8v1.2"/></svg></button>
+
+      <!-- The Rewind button (docs/features/listening-time.md): right of the Compass, Max
+           only (styles/rewind-top.css). The hourglass from his drawing (2026-10-19): a flat top
+           and base, the sand as dots; it turns a half turn, the same way, on each open and close
+           (rewind-btn.ts). The panel: Today's
+           minutes, then Top Listens and SOTD, each sliding its list in below. src/rewind-btn.ts. -->
+      <div class="rewind-top" id="rewind-top">
+        <button class="rewind-top__btn" id="rewind-open" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Rewind" title="Rewind: what you listened to today, your top listens and your Songs of the Day"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5H17V6.4C17 9.2 12.7 10.6 12.7 12C12.7 13.4 17.5 15.4 17.5 20.5H6.5C6.5 15.4 11.3 13.4 11.3 12C11.3 10.6 7 9.2 7 6.4Z"/><g class="rewind-top__sand"><circle cx="10" cy="7.4" r=".65"/><circle cx="12" cy="8.6" r=".65"/><circle cx="14" cy="7.4" r=".65"/><circle cx="12" cy="15.9" r=".65"/><circle cx="10.6" cy="17.5" r=".65"/><circle cx="13.4" cy="17.5" r=".65"/><circle cx="9.2" cy="18.9" r=".65"/><circle cx="12" cy="18.9" r=".65"/><circle cx="14.8" cy="18.9" r=".65"/></g></svg></button>
+        <div class="rewind-top__panel pop" id="rewind-panel" role="group" aria-label="Rewind" data-frames="rewind-top" data-tauri-drag-region="false" hidden></div>
+      </div>
+
+      <!-- The pin (docs/features/PIN.md): right of the Rewind button in Max, right of the app
            title in Mini and Midi, where the buttons before it are hidden (his call, 2026-10-26).
            A pin glyph: diagonal at rest, horizontal while pressed, vertical while pinned
            (styles/pin.css). The panel: four tiles and the Pin button. src/pin.ts. -->
