@@ -230,7 +230,7 @@ dev log, 2026-11-04 (DESK-TESTS.md §5, A18): [RULEZ.md](features/RULEZ.md) §10
 A dollar sign in the Max title bar and a Donate panel. The dev flag came off on 2026-11-05 (his
 call). Desk test passed 2026-11-04 (his word, [donate.md](features/donate.md) §5).
 The PayPal link is in the panel and works, card with no login too (his test, 2026-11-05).
-Open: §5 steps 8 and 9, the title bar with Resize changes surface off (donate.md §2), and the questions in
+Open: §5 steps 8 and 9, and the questions in
 [ideas/donations.md](ideas/donations.md) §3. The bars show $0 until the total is built. The worker deploy for
 `panel.donate` is his call.
 
