@@ -204,7 +204,14 @@ his review of the choices made at build time: [HOME.md](features/HOME.md) §11.3
 ### Built, not released: a playlist remembers its sort (2026-11-04)
 
 User feedback (the board, "Remember playlist sorting order"). Per playlist, in a new table (schema
-v24), and every Play follows it. Open: his hand test: [PLAYLISTS.md](features/PLAYLISTS.md) §13.
+v24), and every Play follows it. His hand test passed 2026-11-04: [PLAYLISTS.md](features/PLAYLISTS.md) §13.
+
+### Built, not released: the now mark (2026-11-04)
+
+User feedback (the board, "Show current song on album") and his design: a chevron in the row's left
+padding that slides to the next song in the list the song plays from, and a line in any other list.
+His hand test passed 2026-11-04. Open: the motion checks not run, and `aria-current` on the row:
+[NOW-MARK.md](features/NOW-MARK.md) §6, §7.
 
 ### Built, not released: Match loudness alone (2026-11-04)
 
@@ -217,6 +224,19 @@ deploy is needed for the app to work.
 
 The rule event *You start an album from the top* and the recipe on it. Open: his hand test. Claude
 did not run it on the dev app, at his word: [RULEZ.md](features/RULEZ.md) §10.2, steps 7 and 8.
+
+### Built, dev only: the Donate button (2026-11-04)
+
+A dollar sign in the Max title bar and a Donate panel, behind `import.meta.env.DEV`, so the release
+bundle has none of it. Open: his hand test ([donate.md](features/donate.md) §5), the PayPal page, the
+panel's words, and the questions in [ideas/donations.md](ideas/donations.md) §3. Before the flag
+comes off: donate.md §4.
+
+### Built, not part of the app: Fontpack (2026-11-04)
+
+`scripts/fontpack.py` makes a font from sheets drawn in Krita. Open: his desk test with a real Krita
+export and a FontForge file ([FONTPACK.md](ops/FONTPACK.md) §7), and whether the first font is a
+title font or a title and body pair.
 
 ### Idea for 1.4: a listen count on each album song row (2026-11-03)
 
@@ -319,9 +339,6 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   behind Cloudflare Access, for his phone, claude.ai and sessions; fixed queries, a combined
   `live_check`, a daily email on a flag, no week-over-week yet. The build-time checks are
   [LIVE-MCP.md](ops/LIVE-MCP.md) §5; build and deploy on his go.
-- **The now mark** (2026-11-04, his calls N1–N4): a chevron in the margin that slides to the next
-  song in the list the song plays from, and a vertical line in any other list.
-  [NOW-MARK.md](features/NOW-MARK.md). Build on his go, after the sort.
 - **S2's week of mirror dates** (apple-calls.md S2), with no code: one read-only call a day,
   from a script, so the evidence is ready when S2 is built.
 

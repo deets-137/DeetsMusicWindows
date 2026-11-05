@@ -75,6 +75,9 @@ your own rule, use the new When, You start an album from the top.
 after you leave it and after a restart. Play follows that sort everywhere: from the playlist, the
 Playlists card, Home and your pins.
 
+**A mark on the playing song.** In an album or playlist you play from, a small chevron beside the
+song slides down to the next one. Any other list that holds the song shows a short line.
+
 **Compilations on artist pages.** The Full artist page now shows an artist's compilations, and the
 filter on the Albums shelf has a Compilations choice.
 

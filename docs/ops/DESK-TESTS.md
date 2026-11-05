@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [scripts/webview-eval.mjs, scripts/dev-app.mjs, src/diag.ts]
-updated: 2026-10-17
+updated: 2026-11-04
 ---
 # Desk tests — the runbook for an agent
 
@@ -128,6 +128,7 @@ Terms:
 > now). Every other row passed: the runs of 2026-09-27 to 2026-10-12, his report of 2026-10-13,
 > his word of 2026-10-17 (B22) and the live log of 2026-10-17 (B20, §5). The
 > rows stay as a record and for a regression run; a new open test is a new row.
+> **Added 2026-11-04:** A13 to A18 are open. A12 and A19 passed by his word the same day.
 
 Order: the uncommitted work first (a fail there stops a commit), then the released work.
 
@@ -144,6 +145,14 @@ Order: the uncommitted work first (a fail there stops a commit), then the releas
 | A9 | Graphics fallback: the rule, the toast's three buttons, the restart, the GPU-process event, the row's three choices | [GRAPHICS-FALLBACK.md §8](../features/GRAPHICS-FALLBACK.md) | one | agent | Built 2026-10-11. Steps 1–3 and 6–8 on `dev:app -- --gpu=off`; step 4 relaunches the app; step 5 ends the dev app's GPU process by PID (match `com.deetsmusic.dev` in the command line, never the live app's) |
 | A11 | The Metal skin: the cover change, the peek, the thumbwheel, the four rows, every theme and surface; the other skins unchanged | [metal.md §6.7](../features/metal.md), DESK-TESTS.md §6.6 · `docs/ops/checks/metal-*.json` | one | owner | **Agent part done 2026-10-20 (metal.md §6.7):** the break-it pass, the scripts cold and warm, the timing and paint traces, frames by time at pixel level; the independent design review reached 9/10. His part passed 2026-10-20 (his word, §5). Pause through the app's Play button (a direct `pause()` was resumed) |
 | A10 | The Network panel: the title, the bars, the ping only while playing, Test, a drop, AirPlay; the fetch wrap's A/B | [speedtest.md §9](../features/speedtest.md) · `node docs/ops/checks/fetch-wrap.mjs` (§6.2) | one | owner, then agent | Built 2026-10-19 on `net-worked` in a cloud session: type-checked for Windows, never run. He runs §9 the evening of 2026-10-19; the A/B can be an agent's, on `dev:built`. Step 9 waits on the DeetsSupport deploy (his call) |
+| A12 | A playlist remembers its sort: every Play follows it | [PLAYLISTS.md §13](../features/PLAYLISTS.md) · `node docs/ops/checks/playlist-sort.mjs` | one | owner | The script's 14 cases and an agent's `play` passed 2026-11-04. His hand test passed the same day (his word) |
+| A13 | The Donate button: the order, the turn, the close, rapid presses, Mini and Midi, the release bundle | [donate.md §5](../features/donate.md) · `node docs/ops/checks/donate-turn.mjs` | one | agent + owner | Dev only. The script passed 2026-11-04. Open: his look |
+| A14 | Fontpack: a real Krita export, then `build`, `spacing.json` and `pull` from FontForge | [FONTPACK.md §7](FONTPACK.md) | none | owner | Needs Krita and FontForge. The script passed on filled sheets 2026-11-04 |
+| A15 | Let go after a pause: Next after a release, a station, Never, his iPhone | [QUEUE.md § Let go after a pause](../features/QUEUE.md), steps 5–8 | one | agent + owner | Steps 1–4 passed 2026-11-03. Step 7 waits 15 min. Step 8 needs his iPhone on the same Apple ID |
+| A16 | Click and double-click on every collection, Open at once, the `press.*` rule events | [HOME.md §11.5](../features/HOME.md) | one | owner | The first build (§11.4) is tentatively good, his word 2026-11-04. Open: §11.5, and his review of the choices in §11.3b |
+| A17 | Match loudness alone: the desk test, then the §7.3 heaviness check, on against off | [SOUND.md § 11a-1](../features/SOUND.md) | one | agent + owner | Tentatively good, his word 2026-11-04. Needs a dev runner restart. The heaviness check has never run, and it comes before Match ships |
+| A18 | Unshuffled from the top: *You start an album from the top* and the recipe | [RULEZ.md §10.2](../features/RULEZ.md), steps 7 and 8 | one | owner | Claude did not run it, at his word. The log holds one `album.top` event, which does not test the recipe |
+| A19 | The now mark: the chevron's slide, the line, a long move, rapid Next, Back on a long list, Play Next | [NOW-MARK.md §7](../features/NOW-MARK.md) · `node docs/ops/checks/now-mark.mjs` | one | agent + owner | Plays music: set the app's volume to 0 first. The script's 18 cases passed 2026-11-04, and his hand test the same day (his word). Not run: the motion monitor, full-size frames |
 | B1 | Go to Album grows, and the grow replaces the slide | [RULES.md §18](../architecture/RULES.md), *the grow replaces the slide* | one | agent | Also `deetsmusic diag --flush` (LOGGING.md § Reading it from outside) |
 | B2 | The rules engine: the tray panel follows a look change | [RULES.md §18](../architecture/RULES.md), the owner's list | one | agent | The tray panel is `tray.html`, a second webview; read its `data-theme` after a rule changes the look |
 | B3 | The rules engine: a real `dev:fresh` first run | RULES.md §18 · [ONBOARDING.md §5](../features/ONBOARDING.md) | one | agent | `npm run dev:fresh`; the walk should start; every `NEW_MARKS` key starts seen |

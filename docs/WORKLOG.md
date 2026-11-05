@@ -6,6 +6,37 @@ updated: 2026-11-04
 ---
 # DeetsMusic — Work log
 
+## 2026-11-04 — The sort and the now mark: his hand test passed
+
+- **His word.** "Hand tested and good to go", for this sitting's features: the playlist sort and the
+  now mark. Marked passed in PLAYLISTS.md §13, NOW-MARK.md §7 and DESK-TESTS.md.
+- **Committed.** The now mark, on `main`, not pushed. The sort went in earlier, in `a0308e8`.
+- **Open.** The motion monitor and full-size frames were not run (NOW-MARK.md §7). The two suggestions
+  on the board have no reply yet. LIVE-MCP.md still waits for his answer on the 5 changes.
+
+## 2026-11-04 — One commit beside the now mark, and the doc gaps
+
+- **The ask.** Commit everything except the now mark's build, and count the docs that are current.
+- **Committed.** `a0308e8`: the playlist sort, the Donate button, Fontpack and two Settings hints,
+  not pushed. It was built in a temporary index and passed tsc, tests, docs:check and the Vite
+  build in a clean worktree. The now mark's design doc went in, without its build.
+- **Fixed.** HANDOFF.md gained Donate and Fontpack, DESK-TESTS.md gained rows A12 to A18, and
+  `checks/README.md` gained `playlist-sort.mjs`. The PLAYLISTS.md and donate.md `sources` are complete.
+
+## 2026-11-04 — The now mark: built
+
+- **The ask.** "Start the mark", on the design in NOW-MARK.md.
+- **Built.** `src/now-mark.ts`, `src/now-mark-rules.ts`, `Grouping.nowMark`, `paintMark` in the engine,
+  the `--now-mark` alias and tokens, `data-patch-keep` in `keyed.ts`, `centerOf` in the windower.
+- **Changed from the design.** `.coll-viewport` clips the card's margin, so the mark sits in the
+  row's left padding. That is where his picture has it, and no layout changed.
+- **Break-it pass.** Three Sonnet agents. Six faults fixed (NOW-MARK.md §6). Several reports were
+  false alarms against the code (a list that plays with no context: none exists).
+- **Tested.** `docs/ops/checks/now-mark.mjs` on the dev app, muted, 18 cases ok. The failures on the
+  way were the script's: the player drops a press while a song loads.
+- **Open.** His hand test, the motion monitor, frames at full size, changes of theme or surface
+  during a slide. His dev queue was replayed, so it is the album again, under an agent context.
+
 ## 2026-11-04 — A playlist remembers its sort: built
 
 - **The ask.** "Start now", on the design in the entry "Two board asks designed" below.

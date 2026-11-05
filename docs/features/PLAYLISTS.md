@@ -2,7 +2,7 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: none
-sources: [src/context-menu.ts, src-tauri/src/playlists.rs, src/playlists-card.ts, src/playlists.ts, src-tauri/src/model.rs, src/collection-card.ts, src/playlist-export.ts]
+sources: [src/context-menu.ts, src-tauri/src/playlists.rs, src/playlists-card.ts, src/playlists.ts, src-tauri/src/model.rs, src/collection-card.ts, src/playlist-export.ts, src/playlist-sort.ts, src/sort-items.ts]
 updated: 2026-11-04
 ---
 # DeetsMusic — Playlists
@@ -799,8 +799,7 @@ and reopen lose it.
 
 **Desk test:** `docs/ops/checks/playlist-sort.mjs` on the dev app: 14 cases, all ok, 2026-11-04.
 An agent's `play` on a 5-song playlist with Playlist Order, descending, started on the last song,
-and Up Next ran in reverse. Open: his hand test, and Play from a real press on a Home tile or a pin
-(the check reads those tiles' songs, it does not press them).
+and Up Next ran in reverse. His hand test passed, 2026-11-04 ("hand tested and good to go").
 
 ---
 

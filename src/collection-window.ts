@@ -41,6 +41,9 @@ export interface Windower {
   scrollTo(top: number): void;
   /** The first visible item's index — the place to keep across a rebuild. */
   anchorIndex(): number;
+  /** The center of item `index` in the scroller's coordinates, rendered or not; null before the
+   *  first measure. */
+  centerOf(index: number): number | null;
   destroy(): void;
 }
 
@@ -339,6 +342,12 @@ export function windowView(view: HTMLElement, spec: WindowSpec): Windower {
       pass(true);
     },
     anchorIndex: () => Math.min(count - 1, Math.max(0, anchorRow * cols)),
+    // From a drawn row, not `heroH`: a head that grew has moved the rows before the next measure.
+    centerOf: (index) => {
+      const first = top.nextElementSibling as HTMLElement | null;
+      if (!pitch || !first || first === bot || !first.offsetHeight) return null;
+      return first.offsetTop + (rowOf(index) - rowOf(a)) * pitch + first.offsetHeight / 2;
+    },
     destroy() {
       dead = true;
       view.removeEventListener("scroll", onScroll);

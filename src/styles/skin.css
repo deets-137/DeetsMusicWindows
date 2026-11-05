@@ -1054,6 +1054,14 @@
   --drag-scroll-speed: 540;         /* px per second: the old 9 px a frame at 60 Hz, now the same on every refresh rate */
   --drag-source-opacity: 0.4;       /* the pressed row, left in place while its copy moves */
   --drop-line-w: 2px;               /* insertion-indicator + drop-target outline thickness */
+  --now-mark-w:       6px;          /* the chevron (NOW-MARK.md): it fits the row's left padding, --space-2 */
+  --now-mark-h:       12px;
+  --now-mark-line-w:  3px;          /* the line, in a list the song does not play from */
+  --now-mark-line-h:  20px;
+  --now-mark-slide:   0.42s;        /* the chevron's slide to the next song */
+  --now-mark-fade:    0.2s;         /* a long move, a change of shape, the song leaving the list */
+  --now-mark-ease:    var(--nav-ease);
+  --now-mark-reach:   8;            /* rows: the chevron slides this far, and fades beyond it */
   /* -- movable rows (MOVABLE-ROWS.md): the press-and-hold that turns a header into its
         own grip, and the grip bar on a pinned tile -- */
   --hold-ms:    400ms;              /* how long a header is held before it can be moved */

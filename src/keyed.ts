@@ -147,8 +147,10 @@ function patchChildren(parent: Element, next: Element[], after: Node | null = nu
   const olds: Element[] = [];
   const stray: ChildNode[] = [];
   for (let n = first; n; n = n.nextSibling) {
-    if (n instanceof Element) olds.push(n);
-    else stray.push(n); // whitespace between children
+    if (n instanceof Element) {
+      // Not the card's markup: the now mark rides at the end of the list, its motion running.
+      if (!n.hasAttribute("data-patch-keep")) olds.push(n);
+    } else stray.push(n); // whitespace between children
   }
   stray.forEach((n) => n.remove());
   const seenOld = new Map<string, number>();

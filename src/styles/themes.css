@@ -67,6 +67,10 @@
   --new-badge:      light-dark(var(--paint-amber-glow), var(--paint-hazard));
   --rule-chip-rule: light-dark(var(--paint-forest), var(--paint-fern));
   --rule-chip-hand: light-dark(var(--paint-blood), var(--paint-siren));
+  /* The now mark (NOW-MARK.md, his call 2026-11-04): a color that stands against the title, like
+     yellow on red. One alias over existing roles, because no single role does it in all six
+     themes. Black & Yellow overrides it: its yellow is its title. */
+  --now-mark:       light-dark(var(--ink-2), var(--new-badge));
   /* The updates button while an update is offered (docs/features/UpdatesButton.md): the New
      badge's yellow, the app's one color for "something new for you". */
   --updates-lit:    var(--new-badge);
@@ -282,6 +286,7 @@
   --subtext: var(--paint-straw);
 
   --ink-2:   var(--go);     /* hazard yellow, printed straight */
+  --now-mark: var(--rule-chip-hand);   /* red on the yellow title */
 
   /* surfaces — floating panels (menus, popovers) above the canvas */
   --surface:       var(--paint-onyx);

@@ -2715,6 +2715,30 @@ html.is-drag-nodrop * { cursor: no-drop !important; }
   outline: var(--drop-line-w) solid var(--title);
   outline-offset: calc(-1 * var(--drop-line-w));
 }
+/* The now mark (NOW-MARK.md): the playing song's mark, in the row's left padding. `.coll-viewport`
+   clips the card's margin, so it stays inside the list. Over a lifted row, under the stuck bar. */
+.lib-view[data-now-mark] { position: relative; }
+.now-mark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--space-2);
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--now-mark);
+  pointer-events: none;
+  z-index: 1;
+}
+.now-mark__glyph { flex: none; }
+.now-mark--chevron .now-mark__glyph { width: var(--now-mark-w); height: var(--now-mark-h); }
+.now-mark--line .now-mark__glyph {
+  width: var(--now-mark-line-w);
+  height: var(--now-mark-line-h);
+  background: currentColor;
+  border-radius: var(--radius-round);
+}
 /* A list while a line shows in it: the positioned reference for the line. */
 .is-reordering { position: relative; }
 /* Insertion indicator — where the dragged row will land (top set in JS). */

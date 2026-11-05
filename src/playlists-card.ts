@@ -391,6 +391,7 @@ export const playlistsCard: CardDef = {
             badge: explicitBadge(t) + (density === "lines" ? addSquareHTML(t, "add-square--row") : ""),
             cid: t.catalogId ?? "",
           }),
+        nowMark: { context: ctxTag, ids: (t) => [t.catalogId, t.libraryId] },
         // Click a song → play the playlist from here, in the current sort order.
         activate: (_t, idx, items) =>
           void playTracks(items, idx, ctxTag).catch((e) => console.error("[playlists] play", e)),

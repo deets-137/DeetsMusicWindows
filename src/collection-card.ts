@@ -25,7 +25,10 @@ import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload, t
 import { registerFinder } from "./find-key";
 import { isAddSquare } from "./add-square";
 import { rowPick, canPick, picksText, objectId } from "./row-pick";
-import { randomIndex } from "./queue";
+import { randomIndex, getCurrent } from "./queue";
+import { clearMarks, noteRow, onNowSong, syncMarks } from "./now-mark";
+import { rowsOfSong } from "./now-mark-rules";
+import { onSkinChange } from "./skin";
 import { albumFromTop, isShuffleOn, shuffledPlay } from "./player";
 import { onSettingsChange, setting } from "./settings-store";
 import { enterRows } from "./pop";
@@ -116,6 +119,9 @@ export interface Grouping<T = any> {
   /** The highlighted item (a drilled-in song). Lets the engine find its index and reveal
    *  it when the pane is windowed and the element may not exist yet. */
   isSelected?: (x: T) => boolean;
+  /** A song list (NOW-MARK.md): the mark shows on the playing song's row. `context` is the tag
+   *  this list plays under, so it knows it is the source; `ids` are a row's song ids. */
+  nowMark?: { context?: string; ids: (x: T) => readonly (string | undefined)[] };
   /** Items of unequal height (shelf headers among rows): never windowed. */
   mixed?: boolean;
   /** Drag-to-reorder (row-drag.ts), offered only in lines density, in THIS sort ascending,
@@ -977,6 +983,35 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     return pane;
   };
 
+  /** The playing song's mark on this list (NOW-MARK.md). A row's place is its own box when it
+   *  exists, else the windower's sum. */
+  const paintMark = (pane: HTMLElement, f: Frame, how: "move" | "still") => {
+    const view = pane.querySelector<HTMLElement>("[data-view]");
+    if (!view) return;
+    const spec = f.density === "lines" ? groupingOf(f).nowMark : undefined;
+    if (!spec) return clearMarks(view);
+    const now = getCurrent();
+    syncMarks(
+      view,
+      {
+        hits: now ? rowsOfSong(f.items, spec.ids, [now.catalogId, now.libraryId]) : [],
+        // A song added by hand (Play Next) carries the list it was added from, but it does not
+        // play from that list: only the list's own run shows the chevron.
+        source: !!now?.context && now.context === spec.context && now.origin === "auto",
+        place: (row) => {
+          const el = view.querySelector<HTMLElement>(`[data-idx="${row}"]`);
+          if (!el) return windowers.get(view)?.centerOf(row) ?? null;
+          return el.offsetHeight ? el.offsetTop + el.offsetHeight / 2 : null; // a pane not in the page yet
+        },
+        again: () => paintMark(pane, f, "still"),
+      },
+      how,
+    );
+  };
+  const unsubNowSong = onNowSong(() => curPane && paintMark(curPane, cur(), "move"));
+  // A skin can change the row's height: the marks follow once its sheet has applied.
+  const unsubNowSkin = onSkinChange(() => requestAnimationFrame(() => curPane && paintMark(curPane, cur(), "still")));
+
   const renderViewInto = (pane: HTMLElement, f: Frame) => {
     const view = pane.querySelector<HTMLElement>("[data-view]");
     if (!view) return;
@@ -1082,6 +1117,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
           : `<p class="lib-empty__msg">${msg}</p>` + footer,
       );
       settleHead();
+      paintMark(pane, f, "still");
       revealOf(view)?.check();
       return;
     }
@@ -1095,6 +1131,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       else windowers.set(view, windowView(view, spec));
       settleHead();
       syncRail(pane, f, g);
+      paintMark(pane, f, "still");
       revealOf(view)?.check();
       return;
     }
@@ -1102,6 +1139,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     fill(items.map((x, i) => keyRow(renderRow(g, x, f.density, i, cols), idOf(g, x))).join("") + footer);
     settleHead();
     syncRail(pane, f, g);
+    paintMark(pane, f, "still");
     revealOf(view)?.check();
     // scroll restore / highlight scrolling is done post-mount in applyScroll()
   };
@@ -1112,7 +1150,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   // first screen, then enters as one diagonal wave. A scroll, a filter, a sort or a
   // background update never holds: the keyed patch keeps their rows in place.
   const REVEAL_TILES =
-    ".lib-hero, .lib-actions, .search__label, [data-shelf-item], .lib-view-bar, .lib-cols, [data-idx], .lib-empty__msg, .lib-empty__slot";
+    ".lib-hero, .lib-actions, .search__label, [data-shelf-item], .lib-view-bar, .lib-cols, [data-idx], .now-mark__glyph, .lib-empty__msg, .lib-empty__slot";
   const holdView = (pane: HTMLElement, why: string) => {
     if (pane.classList.contains("coll-pane--bare")) return;
     const view = pane.querySelector<HTMLElement>("[data-view]");
@@ -1341,7 +1379,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   const listParts = (view: HTMLElement): HTMLElement[] => {
     const out: HTMLElement[] = [];
     for (const el of [...view.children] as HTMLElement[]) {
-      if (el.matches(".lib-hero")) continue;
+      if (el.matches(".lib-hero, .now-mark")) continue;
       if (el.querySelector(".lib-hero")) {
         for (const c of [...el.children] as HTMLElement[]) if (!c.matches(".lib-hero")) out.push(c);
         continue;
@@ -2282,6 +2320,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
       if (g.activate) {
         diag.log("ui:act", { at: `${opts.storeKey}:${g.key}`, do: "row", i: idx, n: cur().items.length });
         if (g.album && idx === 0) albumFromTop();
+        const list = item.closest<HTMLElement>("[data-view]");
+        if (list) noteRow(list, idx); // a song listed twice: this copy
         g.activate(x, idx, cur().items, e);
         return;
       }
@@ -2632,6 +2672,8 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     destroy() {
       release();
       unsubFind();
+      unsubNowSong();
+      unsubNowSkin();
       unwatchHold();
       drag.destroy(); // a drag's document listeners would outlive the card
       unsubDragEnd();

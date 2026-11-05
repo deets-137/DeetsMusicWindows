@@ -413,6 +413,7 @@ export function songsGrouping(list: () => Track[], o: SongOpts = {}): Grouping<T
           ),
     columns: (cols) => songColumns(cols, o, list),
     isSelected: o.selectedId ? (t) => trackId(t) === o.selectedId : undefined,
+    nowMark: { context: o.context, ids: (t) => [t.catalogId, t.libraryId] },
     // Click a song → play it and queue the rest of THIS list from here, in the
     // current sort order (the engine hands us the live sorted view). Apple's rows (`mark`)
     // join the store first, as a Search play always did (playTracks drops the unreleased).

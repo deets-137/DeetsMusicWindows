@@ -13,8 +13,8 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 | Tier | File | Count |
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
-| Theme (color roles) | themes.css | 72 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 832 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
+| Theme (color roles) | themes.css | 73 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
+| Skin (everything else) | skin.css base block | 840 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 68, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -35,6 +35,7 @@ The value is the `:root` fallback when a theme does not map the role. *Set by* l
 | `--new-badge` | `light-dark(var(--paint-amber-glow), var(--paint-hazard))` | — | The mark dots (his design, 2026-09-26). Yellow: the New badge (QUICK-SETTINGS.md §8) — warm amber on a light theme, where plain yellow fades into the menu; hi-vis yellow on a dark one. Green: a rule set the value; scarlet: your pick holds (the rule chip, RULES.md §9). The deep paint on a light theme, the brighter one of the pair on a dark theme. |
 | `--rule-chip-rule` | `light-dark(var(--paint-forest), var(--paint-fern))` | — |  |
 | `--rule-chip-hand` | `light-dark(var(--paint-blood), var(--paint-siren))` | — |  |
+| `--now-mark` | `light-dark(var(--ink-2), var(--new-badge))` | black-yellow | The now mark (NOW-MARK.md, his call 2026-11-04): a color that stands against the title, like yellow on red. One alias over existing roles, because no single role does it in all six themes. Black & Yellow overrides it: its yellow is its title. |
 | `--updates-lit` | `var(--new-badge)` | — | The updates button while an update is offered (docs/features/UpdatesButton.md): the New badge's yellow, the app's one color for "something new for you". |
 | `--updates-bad` | `var(--stop)` | — | The updates panel's status when a check failed: the error toast's edge. |
 | `--net-good` | `color-mix(in srgb, var(--go) var(--net-good-strength), transparent)` | — | The Network panel (docs/features/speedtest.md): Good · OK · Bad are the traffic lights' three, so a cell reads like the window's own lights. Good sits quieter than OK, OK than Bad (the skin's strengths), so a one-color theme still tells them apart. An empty minute is the EQ grid's line. |
@@ -958,6 +959,14 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--drag-scroll-speed` | `540` | — | px per second: the old 9 px a frame at 60 Hz, now the same on every refresh rate |
 | `--drag-source-opacity` | `0.4` | — | the pressed row, left in place while its copy moves |
 | `--drop-line-w` | `2px` | press, cyber | insertion-indicator + drop-target outline thickness |
+| `--now-mark-w` | `6px` | — | the chevron (NOW-MARK.md): it fits the row's left padding, --space-2 |
+| `--now-mark-h` | `12px` | — |  |
+| `--now-mark-line-w` | `3px` | — | the line, in a list the song does not play from |
+| `--now-mark-line-h` | `20px` | — |  |
+| `--now-mark-slide` | `0.42s` | — | the chevron's slide to the next song |
+| `--now-mark-fade` | `0.2s` | — | a long move, a change of shape, the song leaving the list |
+| `--now-mark-ease` | `var(--nav-ease)` | — |  |
+| `--now-mark-reach` | `8` | — | rows: the chevron slides this far, and fades beyond it |
 | `--hold-ms` | `400ms` | — | -- movable rows (MOVABLE-ROWS.md): the press-and-hold that turns a header into its own grip, and the grip bar on a pinned tile -- — how long a header is held before it can be moved |
 | `--hold-swell` | `1.015` | — | the held header swells, so the hold is visible |
 | `--tile-art` | `96px` | — | a shelf tile's cover (styles.css .search__tile-art) |
@@ -1246,6 +1255,9 @@ reader is a token nothing uses.
 | `--sh-cross-dur` | `0.42s` | — | styles.css |
 | `--rp-loop-dur` | `0.5s` | — | styles.css |
 | `--drag-scroll-speed` | `540` | — | row-drag.ts |
+| `--now-mark-slide` | `0.42s` | — | now-mark.ts |
+| `--now-mark-fade` | `0.2s` | — | now-mark.ts |
+| `--now-mark-ease` | `var(--nav-ease)` | — | now-mark.ts |
 | `--hold-ms` | `400ms` | — | row-order.ts, styles.css, styles/diary.css |
 | `--diary-morph-dur` | `calc(var(--nav-dur) * 1.4)` | — | diary-card.ts |
 | `--diary-morph-ease` | `var(--nav-ease)` | — | diary-card.ts |
