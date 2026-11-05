@@ -6,6 +6,26 @@ updated: 2026-11-04
 ---
 # DeetsMusic — Work log
 
+## 2026-11-04 — The Store test failed at Apple's window; Demo login for 1.4
+
+- **The report.** Microsoft's Store test failed: "Unusable Feature: Failed to login with Apple
+  Account", with the toast "Sign-in didn't finish. Try again."
+- **What the code shows.** The toast is the catch-all. The app opened the page, and the failure
+  came back at once. MusicKit gives one `AUTHORIZATION_ERROR` for a closed window, Decline, an
+  unavailable account and a user switch, so the exact reason is only in the tester's log. Store
+  Policy 10.3.1 asks for a working demo account in Notes for certification.
+- **His first design.** An in-app demo was costed (about 0.1 MB) and set aside for a page link.
+  A *Try the demo* link goes on the hosted sign-in page, in both states (DATA-ARCHITECTURE.md
+  §2a). It is in `../DeetsSupport/src/signin.js`, not committed and not deployed.
+- **Then his next design, built.** *Demo login* on the same page returns to the app, which fills
+  with his Songs of the Day and previews, for 1.4 (WEB-DEMO.md §17). It replaces *Try the demo*.
+  Built beside the session on the playlist sort, on `main`, with none of its files touched.
+- **A fault found while building.** A failure link ended the sign-in, so the button on the failure
+  page would have done nothing. The nonce now stays for a Demo login only.
+- **Checked.** §17.2's desk test, on the second dev app; `npm run check` exits 0.
+- **Open.** His hand test; the commit; the worker deploy; the Notes for certification;
+  `src/usage-keys.js` in DeetsSupport has an uncommitted change that a deploy would carry.
+
 ## 2026-11-04 — A rule event for an album started from the top
 
 - **The ask.** Turn shuffle off when he starts an album from song 1. No rule could do it: there

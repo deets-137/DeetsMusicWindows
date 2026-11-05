@@ -242,6 +242,9 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   features/friends-shelf.md §5.
 - **`DEETS_USAGE_OWNER` on his other PCs, if any.** This PC is done (closed 2026-11-02): the
   user variable is `1`, and the live log reads `usage: health sent (owner)`.
+- **The Microsoft Store test (failed 2026-11-04, at Apple's sign-in window):** *Demo login* is
+  built for 1.4 (WEB-DEMO.md §17), not committed. The worker (`../DeetsSupport/src/signin.js`) needs
+  his deploy. Then the Notes for certification.
 - **The admin page's *Needs a look* thresholds** (`FLAG` in DeetsSolutions `admin.js`) are
   drafts for his edit (support.md, "The Health tab").
 - **The Rewind card:** keep it or let the Rewind button replace it (listening-time.md §9.4, his

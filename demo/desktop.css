@@ -1,0 +1,19 @@
+/* Apple's badge on the Now Playing cover, in demo mode only (WEB-DEMO.md §17). */
+.np__art:has(.demo-badge) {
+  position: relative;
+}
+.demo-badge {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  z-index: 2;
+  display: block;
+  line-height: 0;
+}
+/* `.np__art img` fills the cover, so this rule outranks it. */
+.np__art .demo-badge img {
+  position: static;
+  display: block;
+  height: calc(var(--space-5) + var(--space-3));
+  width: auto;
+}

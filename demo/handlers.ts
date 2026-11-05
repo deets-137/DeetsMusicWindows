@@ -40,7 +40,7 @@ interface Store {
   folderOf: Record<string, number>;
   loved: string[];
   known: string[];
-  pins: { key: string; kind: string; data: string | null; pinnedAt: number; act: string | null }[];
+  pins: { key: string; kind: string; data: string | null; pinnedAt: number; act: string | null; dbl?: string | null }[];
   rowOrder: { scope: string; id: string; rank: number }[];
   queue: string | null;
   events: PlayEventRow[];
@@ -473,6 +473,8 @@ const H: Record<string, Handler> = {
     else store.folderOf[a.playlistKey] = Number(a.folderId);
     save();
   },
+  playlist_view_rows: () => [],
+  playlist_view_set: () => null,
   playlist_refresh_rows: () => [],
   playlist_refresh_set: () => null,
   playlist_refresh_stamp: () => null,

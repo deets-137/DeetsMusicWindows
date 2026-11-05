@@ -1,8 +1,8 @@
 ---
 status: built
 desk_test: passed 2026-09-24
-sources: [demo/boot.ts, demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
-updated: 2026-10-23
+sources: [demo/desktop.ts, src/demo-gate.ts, src/ipc-core.ts, vite-sotd.ts, demo/boot.ts, demo/shim.ts, demo/handlers.ts, demo/diary.ts, demo/musickit.ts, demo/catalog.ts, vite.demo.config.ts, scripts/demo-publish.mjs, scripts/publish-update.mjs]
+updated: 2026-11-04
 ---
 # DeetsMusic — Web demo
 
@@ -411,3 +411,70 @@ ES2022 for the `await`.
 
 **Desk test:** a private window on the demo: the cards rise, Deets and Happy walk to the
 wordmark; no grand opening. Ctrl+Space › Onboarding opens it.
+
+## 17. Demo login in the desktop app (built 2026-11-04)
+> **Part:** built · 2026-11-04 · for 1.4; desk test open
+
+**Why.** Microsoft's Store test failed at Apple's sign-in window (WORKLOG 2026-11-04). The tester
+has no usable Apple Account, and Store Policy 10.3.1 wants a product that can be tested.
+
+### 17.1 His calls (2026-11-04)
+| fork | choice |
+|---|---|
+| The way in | The tester presses Sign in in the app, then **Demo login** on the hosted page. The page returns to the app the way a sign-in does. |
+| What fills the app | His Songs of the Day, as in the web demo (§15). |
+| Sound | Apple's 30-second previews. |
+| The Apple badge | **On top of the album cover** in the Now Playing card. It need not be pretty. |
+| The release | 1.4 is the build that goes to the Store. |
+
+### 17.2 As built
+**The page (`../DeetsSupport/src/signin.js`).** *Demo login* shows under the sign-in button and
+after a failure. A finished sign-in hides it. It opens `<scheme>://auth?n=<nonce>&demo=1`. The
+worker shows it only to an app of 1.4 or later (the page's `v`), so an older app never gets a
+button it cannot answer, and the worker can deploy at any time.
+
+**Rust (`apple.rs`).** `handle_link` takes `demo=1` after the same nonce and 5-minute checks as a
+token, so a stray web page cannot start the demo. A failure link used to end the sign-in, so a
+button on the failure page would have done nothing. Now it marks the nonce `failed`: that nonce
+answers only a Demo login, and the 5-minute expiry drops it. Rust emits `demo-login`.
+
+**The front end.**
+- `apple.ts` hears `demo-login` and calls `enterDemo()` (`src/demo-gate.ts`): it saves
+  `deets.demoMode`, ends the grand opening and reloads. An event, because `connect()` has
+  stopped polling after a failure.
+- **The seam:** the `ipc-core` plugin (vite.config.ts) now runs in every build. With no flag,
+  `invoke` passes straight to Rust. With the flag, `src/ipc-core.ts` loads `demo/desktop.ts` and
+  sends each command there. Tauri's globals are read-only, so `demo/shim.ts` cannot run here.
+- **`demo/desktop.ts`:** the `REAL` set (the window, the tray, the log, system sound) reaches
+  Rust. Every other command stays in `demo/handlers.ts`, so the demo never reaches a real
+  library, the `plays` table or Apple's user routes. A new command that must reach Rust in the
+  demo is a line in `REAL`.
+- **Sign out** (`apple_disconnect`) leaves the demo. The flag stays through a restart.
+- **The tray panel** is its own page and stays on real Rust. It shows what the player publishes.
+- **MusicKit:** `FakeMusicKit` holds `window.MusicKit` through a getter, so the CDN script,
+  still in index.html, cannot replace it.
+- **The picks:** `virtual:sotd-picks` is in `vite-sotd.ts`, shared by both configs. The feed's
+  fetch fails on the app's own origin, so the built-in copy fills the demo: a release carries
+  the picks of its build day.
+- **The badge:** `demo/listen-on-apple-music.svg` (Apple's file) on `#np-art`, put back each
+  second if the card remounts. A click opens `music.apple.com/song/<id>`.
+
+**Weight (`npx vite build`, 2026-11-04).** `desktop-*.js` is 201 KB, 56 KB compressed, picks
+included. The page does not load it without the flag. No timing code reaches a release.
+
+**The rule in §9 ends here:** `src/` now knows about the demo, in `ipc-core.ts`, `demo-gate.ts`
+and `apple.ts`. The web demo's own build still has none of this.
+
+**Desk test, run by Claude (2026-11-04, `dev:app -- --second --hidden`, links sent to the exe):**
+a demo link with no sign-in: ignored. A wrong nonce: ignored. A failure link, then a token link:
+the toast the Store tester saw, then ignored. Then a demo link: the demo opens. The same link
+again: ignored. The cards fill with no broken cover; a preview plays from
+`audio-ssl.itunes.apple.com`; a reload keeps the demo; the badge sits in the cover's corner; sign
+out returns the real MusicKit and the real queue; `play_events` gains no row. With `--built`: a
+normal launch loads no demo file, and the built-in picks fill the demo. Not run: a real browser
+press of the button, the installed app's `tauri://` origin, the mini surface. His hand test.
+
+### 17.3 Before the Store
+- Deploy the worker. Notes for certification: press Sign in, then Demo login.
+- Apple's own rules for the badge over artwork are not read yet. The rule on record is only
+  that a preview sits near a store badge (§15.1).

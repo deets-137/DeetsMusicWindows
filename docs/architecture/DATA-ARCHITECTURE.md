@@ -129,6 +129,8 @@ from the plan below, each for a reason found while building:
   close (a `pagehide` beacon to `/callback-error`, reason `page closed`) so the row does not
   wait five minutes; the hosted page cannot reach the app on close — the cancel click is
   the answer there.
+- **Demo login (built 2026-11-04, for 1.4).** A button on the hosted page returns to the app
+  in demo mode, for someone with no Apple Music: WEB-DEMO.md §17.
 - Debug seam: `DEETS_SIGNIN_BASE=http://localhost:<port>` points a debug build at a
   `npx wrangler dev --remote --port <port>` session (remote, so the deployed secrets sign).
   The release build has no override. DEBUGGING.md §Sign-in.

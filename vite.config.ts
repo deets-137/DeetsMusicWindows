@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { copyEditPlugin } from "./scripts/copy-edit-plugin.mjs";
 // What's new's bold leads, put in the bundle (vite-release-notes.ts; the demo uses it too).
 import { releaseNotesPlugin } from "./vite-release-notes";
+// The picks the desktop demo plays (WEB-DEMO.md §17).
+import { sotdPicks } from "./vite-sotd";
 // The CSP on the dev servers, report-only (docs/architecture/CSP.md §12.1): a dev page never
 // passes Tauri's asset protocol, so its policy would not reach it.
 import { cspDevPlugin } from "./scripts/csp-dev-plugin.mjs";
@@ -44,18 +46,16 @@ function releaseMapsPlugin() {
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
-// The command recorder (guide/LOADING-SET.md §3.1): in a telemetry build (the dev server, or a
-// VITE_PERF=1 bundle, as telemetry-on.ts reads it), every `@tauri-apps/api/core` import from
-// src/ resolves to src/ipc-core.ts, whose `invoke` is timed. src/ipc-core.ts's own import, and
-// node_modules' (the plugins, the api's other modules), get the real module. A release build
-// has no such plugin, so it ships the real module only (release-check 5).
-function ipcTimingPlugin() {
+// One `invoke` for the app (src/ipc-core.ts): every `@tauri-apps/api/core` import from src/
+// resolves to that file. It times each call in a telemetry build (guide/LOADING-SET.md §3.1;
+// release-check 5 keeps the timing out of a release) and answers from the demo with the demo flag
+// (WEB-DEMO.md §17). Its own import, and node_modules' (the plugins, the api's other modules), get
+// the real module.
+function ipcCorePlugin() {
   const shim = fileURLToPath(new URL("./src/ipc-core.ts", import.meta.url));
   return {
-    name: "ipc-timing",
+    name: "ipc-core",
     enforce: "pre" as const,
-    // @ts-expect-error process is a nodejs global
-    apply: (_: unknown, env: { command: string }) => env.command === "serve" || process.env.VITE_PERF === "1",
     resolveId(id: string, importer?: string) {
       if (id !== "@tauri-apps/api/core" || !importer) return null;
       const from = importer.replace(/\\/g, "/");
@@ -67,7 +67,12 @@ function ipcTimingPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [ipcTimingPlugin(), copyEditPlugin(), releaseNotesPlugin(), cspDevPlugin(), releaseMapsPlugin()],
+  define: { __DEMO_VERSION__: JSON.stringify(JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version) },
+
+  // demo/catalog.ts reads its feed with a top-level await (WEB-DEMO.md §15.3), in the demo's own chunk.
+  esbuild: { supported: { "top-level-await": true } },
+
+  plugins: [ipcCorePlugin(), sotdPicks(), copyEditPlugin(), releaseNotesPlugin(), cspDevPlugin(), releaseMapsPlugin()],
 
   // Two pages: the player (index.html) and the tray panel (tray.html, TRAY.md).
   build: {

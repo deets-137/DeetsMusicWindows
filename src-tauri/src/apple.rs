@@ -102,6 +102,9 @@ pub enum AuthStatus {
 pub struct PendingLink {
     nonce: String,
     started: Instant,
+    /// The page reported a failure. The nonce now answers only a Demo login: the page offers
+    /// that button after a failure too (WEB-DEMO.md §17), and the failure link came first.
+    failed: bool,
 }
 
 // ── Hosted sign-in page + deep link (DATA-ARCHITECTURE §2a) ─────────────────
@@ -165,11 +168,13 @@ pub fn handle_link(app: &tauri::AppHandle, raw: &str) {
     let mut nonce = None;
     let mut token = None;
     let mut error = None;
+    let mut demo = false;
     for (k, v) in url.query_pairs() {
         match &*k {
             "n" => nonce = Some(v.into_owned()),
             "mut" => token = Some(v.into_owned()),
             "error" => error = Some(v.chars().take(120).collect::<String>()),
+            "demo" => demo = v == "1",
             _ => {}
         }
     }
@@ -180,7 +185,7 @@ pub fn handle_link(app: &tauri::AppHandle, raw: &str) {
     let state = app.state::<AppleState>();
     {
         let mut pending = state.link.lock_or_recover();
-        let Some(p) = pending.as_ref() else {
+        let Some(p) = pending.as_mut() else {
             crate::log::warn("sign-in: link arrived with no sign-in in progress; ignored (start the sign-in from DeetsMusic)");
             return;
         };
@@ -188,13 +193,30 @@ pub fn handle_link(app: &tauri::AppHandle, raw: &str) {
             crate::log::warn("sign-in: link nonce does not match the sign-in in progress; ignored");
             return;
         }
+        if p.failed && !demo {
+            crate::log::warn("sign-in: link after the page's failure; ignored");
+            return;
+        }
         let expired = p.started.elapsed() > LINK_TTL;
-        *pending = None; // single use, matched or expired
+        if !expired && !demo && error.is_some() {
+            p.failed = true; // spent, but for a Demo login from the same page
+        } else {
+            *pending = None; // single use, matched or expired
+        }
         if expired {
             crate::log::warn("sign-in: link arrived after 5 min; sign-in abandoned");
             *state.auth.lock_or_recover() = AuthStatus::Failed { reason: "timeout".into() };
             return;
         }
+    }
+
+    // Demo login (WEB-DEMO.md §17): no token and no account. The page's own code (apple.ts)
+    // saves the demo flag and reloads into the demo.
+    if demo {
+        crate::log::info("sign-in: demo login");
+        *state.auth.lock_or_recover() = AuthStatus::Idle;
+        let _ = app.emit("demo-login", ());
+        return;
     }
 
     if let Some(reason) = error {
@@ -219,7 +241,7 @@ fn begin_hosted(app: &tauri::AppHandle, state: &AppleState, theme: &str, skin: &
     use tauri_plugin_opener::OpenerExt;
     let nonce = random_nonce();
     arm_abort(state);
-    *state.link.lock_or_recover() = Some(PendingLink { nonce: nonce.clone(), started: Instant::now() });
+    *state.link.lock_or_recover() = Some(PendingLink { nonce: nonce.clone(), started: Instant::now(), failed: false });
     *state.auth.lock_or_recover() = AuthStatus::Pending;
 
     let link = state.link.clone();
@@ -228,10 +250,12 @@ fn begin_hosted(app: &tauri::AppHandle, state: &AppleState, theme: &str, skin: &
     std::thread::spawn(move || {
         std::thread::sleep(LINK_TTL);
         let mut pending = link.lock_or_recover();
-        if pending.as_ref().map(|p| p.nonce == armed).unwrap_or(false) {
+        if let Some(failed) = pending.as_ref().filter(|p| p.nonce == armed).map(|p| p.failed) {
             *pending = None;
-            crate::log::warn("sign-in: no link within 5 min; browser sign-in abandoned");
-            *auth.lock_or_recover() = AuthStatus::Failed { reason: "timeout".into() };
+            if !failed {
+                crate::log::warn("sign-in: no link within 5 min; browser sign-in abandoned");
+                *auth.lock_or_recover() = AuthStatus::Failed { reason: "timeout".into() };
+            }
         }
     });
 

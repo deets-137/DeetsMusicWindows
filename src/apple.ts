@@ -5,6 +5,12 @@
 // the Music User Token lives in Rust and never enters the renderer.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { enterDemo } from "./demo-gate";
+
+// Demo login on the hosted sign-in page (WEB-DEMO.md §17). An event, not a sign-in status: the
+// page offers it after a failure too, when `connect()` has already stopped polling.
+void listen("demo-login", () => enterDemo());
 
 export async function isConnected(): Promise<boolean> {
   try {

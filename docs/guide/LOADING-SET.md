@@ -251,13 +251,12 @@ Also checked by hand: a release build (`npx vite build`) carries none of it (`__
 - **The global cannot be wrapped (found at the first run).** Tauri defines
   `window.__TAURI_INTERNALS__` and each of its properties (`invoke`, `ipc`, `transformCallback`,
   the callback table) as read-only and not configurable. The assignment threw at module load
-  and stopped the page from booting. So the recorder sits at the import instead: in a telemetry
-  build, the `ipc-timing` plugin in `vite.config.ts` resolves every `@tauri-apps/api/core`
-  import made from `src/` to `src/ipc-core.ts`. That file re-exports the real module with a
-  timed `invoke`, which calls `timed()` in ipc-timing.ts. No call site changes. The plugin
-  applies on the dev server and in a `VITE_PERF=1` bundle (as `TELEMETRY` does); a release has
-  no plugin, so it bundles the real module only. Release-check 5 also fails a bundle that holds
-  `__ipcTiming`.
+  and stopped the page from booting. So the recorder sits at the import instead: the `ipc-core`
+  plugin in `vite.config.ts` resolves every `@tauri-apps/api/core` import made from `src/` to
+  `src/ipc-core.ts`. That file re-exports the real module with a timed `invoke`, which calls
+  `timed()` in ipc-timing.ts. No call site changes. Since 2026-11-04 the plugin runs in every
+  build, for the demo (WEB-DEMO.md §17). `timed()` does nothing without `TELEMETRY`, and
+  release-check 5 fails a bundle that holds `__ipcTiming`.
 - **Not timed:** the calls the `@tauri-apps/api` modules and the Tauri plugins make from
   `node_modules` (`listen`, `emit`, the window calls). They import core by their own path. They
   are not data waits.
