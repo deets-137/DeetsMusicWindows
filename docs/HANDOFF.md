@@ -163,8 +163,8 @@ item closes, delete it here and write the day in WORKLOG.md.
   Max* (`maxStageSide`) and *Queue in the full player* (`fpQueueSide`). BUILT; his look passed
   2026-11-02 ("looks good"); the update card's 1.3 page lists both, and 1.3.1's note is written. Desk tests passed:
   [MAX-CARDS.md](features/MAX-CARDS.md) §13, [fullscreen-player.md](features/fullscreen-player.md)
-  §18.2. The DeetsSupport copy of the usage allow-list (`src/usage-keys.js`) is committed, not
-  deployed: until it is, the worker drops the two keys from reports.
+  §18.2. The DeetsSupport copy of the usage allow-list (`src/usage-keys.js`) is deployed
+  (`f2b7028b`, 2026-11-06).
 - **The mouse's back button (2026-11-02).** A user's ask, his call 1A: the card
   under the pointer goes back one step (`browser-defaults.ts`, `backIn` in list-keys.ts). BUILT;
   desk test passed 2026-11-02 ("good to go"): [DRAG-DROP.md](architecture/DRAG-DROP.md) §6a. Its 1.3.1 note is written.
@@ -218,8 +218,7 @@ dropped `soundLoudness`. DeetsSupport's `src/usage-keys.js` matches the app's li
 measurement is held by a slow cap, and a fixed gain takes over once it has a row. It also fixes album
 gain for albums played from Search. **His ear test passed 2026-11-05** ([SOUND.md](features/SOUND.md)
 § 11a-2); no cap row, and the recipe Quieter after sunset in its place. The panel line and the
-recipe are closed by his word, 2026-11-05, and the heaviness check is dropped. Demo login's hand test and the DeetsSupport deploy wait for 1.4 installed here:
-do not raise them with him until then (his call, 2026-11-05).
+recipe are closed by his word, 2026-11-05, and the heaviness check is dropped. The DeetsSupport deploy is done (`f2b7028b`, his word, 2026-11-06). 1.4.1 is live, so Demo login's hand test is open.
 
 ### Built, not released: Unshuffled from the top (2026-11-04)
 
@@ -234,9 +233,8 @@ The PayPal link is in the panel and works, card with no login too (his test, 202
 look good for now (his word). **The total (built 2026-11-05):** the panel reads it in 1.4
 ([ideas/donations.md](ideas/donations.md) §5). The worker route (`POST /admin/donated`) and the admin
 page's Donate tab are pushed (DeetsSupport `fe6ed45`, DeetsSolutions `227a9ac`, 2026-11-05, his ask).
-The tab is live and the worker is not deployed: the tab says it cannot read the total, and Save stays
-off, until his deploy. Until then one D1 row sets the total. The route and the tab passed on a local worker in a
-browser. Not run: the app reading a real row. Left as they are, low risk: an older reply can land
+The worker is deployed (`f2b7028b`, 2026-11-06), so the tab sets the total. The route and the tab passed on a local worker in a
+browser. Not run: the tab on live, and the app reading a real row. Left as they are, low risk: an older reply can land
 last on rapid opens, and an open panel comes back on Midi → Max (the updates panel does the same).
 Open: the asterisk's words and the other questions in §3. `panel.donate` is copied to
 DeetsSupport and reaches the worker with the deploy above.
@@ -252,7 +250,7 @@ starts ([FONTPACK.md](ops/FONTPACK.md) §7). Open then: a title font, or a title
 Press lights its plate and card edges in the album's neon; Cyber's thin edges take the primary
 color and its bolts the secondary; a new color turns in around each card. Settings › Skin settings:
 *Album light* on each skin, *Spin in new colors*. `albumWave` is a reported key: the DeetsSupport
-copy has it with the other 1.4 keys (pushed), and a deploy is his call. His first look:
+copy has it with the other 1.4 keys (deployed 2026-11-06). His first look:
 "looks pretty good". **80 % by default** on both skins (his call, 2026-11-05). Stress test done
 2026-11-05 (WORKLOG). His look passed 2026-11-05 ("album light looks good", fine at scale and
 hanging edges). Ocean and the Glass text after the `fromOKLCH` fix: closed by his word, 2026-11-05. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.

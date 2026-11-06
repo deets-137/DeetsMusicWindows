@@ -21,7 +21,9 @@ updated: 2026-11-05
   became 1.4.1. Built and signed from the uncommitted tree; the delta is from 1.3.1. Not published.
 - **Pushed (his ask).** DeetsSupport `fe6ed45`, DeetsSolutions `227a9ac`: the Donate total. The
   worker deploy is his, with a reminder set for 2026-11-06 09:00.
-- **Open.** His look at the underline. His install of 1.4.1.
+- **Published (his go: "fine to publish").** 1.4.1 from `acdad49`, every check in RELEASE.md §0a's
+  row passed. Then the worker, his word (`f2b7028b`), so the reminder was deleted.
+- **Open.** His look at the underline, on 1.4.1. Demo login's hand test. The Donate tab on live.
 
 ## 2026-11-05 — The synth grid, on paper
 
