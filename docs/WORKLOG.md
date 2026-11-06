@@ -2,9 +2,19 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-05
+updated: 2026-11-06
 ---
 # DeetsMusic — Work log
+
+## 2026-11-06 — A friend's row shows the name they typed
+
+- **The report.** A user on 1.4.1, with 3 accounts: every friend reads "Friend", not the name in
+  the field (post `aSze2eBDK5O6Bb3Q`).
+- **The cause.** Add by code passes an empty name, and `clean_name` saved the word "Friend". The
+  row took that word as your own name for them. This was so for every friend added by code since
+  0.12.2, and the row never read `theirName`.
+- **The fix.** [FRIENDS.md](integrations/FRIENDS.md) §21. Your name wins, then the name they typed,
+  then the code. No worker change. Not released, and the two-app desk test in §21 is open.
 
 ## 2026-11-05 — The 1.4 notes in order of use; an underline on each lead
 

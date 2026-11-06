@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-11-02
+updated: 2026-11-06
 ---
 # DeetsMusic — Handoff
 
@@ -110,10 +110,13 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-**Live: 1.3.1** (2026-11-02, built from `8bdf960` on `main`). It carries the Rooms reconnect fix
-(`e0524cf`). Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
+**Live: 1.4.1** (2026-11-06, built from `acdad49` on `main`; RELEASE.md has the log). Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
+
+- **A friend's typed name (2026-11-06).** Built, not committed, not released. The two-app desk
+  test is open ([FRIENDS.md](integrations/FRIENDS.md) §21, DESK-TESTS.md B24). The next release's
+  notes need a line. The reporter's post is `aSze2eBDK5O6Bb3Q`.
 
 ### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)
 

@@ -2,11 +2,14 @@
 status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
-sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts, src/friend-pin.ts]
-updated: 2026-10-14
+sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts, src/friend-pin.ts, src/friend-name.ts]
+updated: 2026-11-06
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
+> **Status (2026-11-06): the name on a friend's row is rebuilt (§21). Its desk test is open
+> (DESK-TESTS.md B24).**
+>
 > **Status (2026-09-22): DONE. The owner ran the §17 desk test and confirmed it on 2026-09-22, and the
 > `/j/` route (step 7) is deployed.** The last item, the Discord buttons' second-account check
 > (§8.4 item 3), passed on live 2026-10-13 (his; DESK-TESTS.md B19).
@@ -1706,3 +1709,25 @@ what is shared (picks, Diary entries, scores, notes); who sees it (all friends, 
 opt-in per item or one switch; where a friend sees it (the friend row, Home, a card); whether a
 friend can answer it (a reply, a ♥, Add to Diary); the worker's storage and its free-tier cost
 (§5 has the limits); and what stays on the PC.
+
+## 21. The name on a friend's row (as built, 2026-11-06)
+> **Part:** built · 2026-11-06
+
+A row shows the name you gave the friend. Until you give one, it shows the name they typed in
+*Your name*. With neither, it shows their friend code. The rule is `src/friend-name.ts`.
+
+- **The fault.** Add by code passes an empty name, and `clean_name` saved the word "Friend". The
+  row read that word as your name, so the name they typed never showed (a user report on 1.4.1,
+  2026-11-06, seen on 3 accounts).
+- **An empty name stays empty.** A file from before this fix reads "Friend" as no name
+  (`clear_placeholder_names`, on load).
+- **Offline rows.** `friend_seen` keeps the last name heard in `seenName` in `friends.json`. Only
+  a trusted presence writes it (§19).
+- **"Listener" is not a name.** The app and the worker send it for somebody who typed none, so
+  the row shows the code.
+- **A changed name** goes out on the next coalesced push, without waiting for the next song.
+  No worker change: the worker already carries the name on every presence.
+
+**Desk test.** Two dev apps (`npm run dev:app -- --second`). Type a name on each, and add each
+other by code. Each row shows the typed name, then keeps it after the other app quits. Change the
+name on one: the other row follows within about 20 seconds. Rename a friend: your name wins.
