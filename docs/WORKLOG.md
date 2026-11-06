@@ -6,6 +6,78 @@ updated: 2026-11-05
 ---
 # DeetsMusic — Work log
 
+## 2026-11-05 — The 1.4 notes in order of use; an underline on each lead
+
+- **His ask.** An intro on the 1.4 page, and the notes in order of impact and estimated use, from
+  the usage counts. He writes the intro himself.
+- **Read.** Live D1, week 2026-W45: 74 active installs, 70 settings rows, 49 installs that sent
+  feature counts. Double-clicks, pauses, sorts and Search use have no count, so those places are
+  estimates. `maxStageSide` is on the app's list but has no value in the live rows.
+- **Done.** The 16 paragraphs of the 1.4.0 entry moved, text unchanged, *Double-click to play*
+  first. `.uc__lead` takes the Settings group label's underline (UPDATE-CARD.md §3.22).
+- **Also done.** His intro (`### Intro`), in his words. A `### Start open` list of 5 leads, his OK.
+- **1.4.1 (his ask, for his local install).** 1.4.0 was installed and never published, so it was
+  held in `installers/velopack/_held-1.4.0/` (RELEASE.md §1b) and the entry and the 12 `since` lines
+  became 1.4.1. Built and signed from the uncommitted tree; the delta is from 1.3.1. Not published.
+- **Pushed (his ask).** DeetsSupport `fe6ed45`, DeetsSolutions `227a9ac`: the Donate total. The
+  worker deploy is his, with a reminder set for 2026-11-06 09:00.
+- **Open.** His look at the underline. His install of 1.4.1.
+
+## 2026-11-05 — The synth grid, on paper
+
+- **His idea.** A Max only minigame: a 6 by 12 grid, a drum and a basic piano, a loop that locks in so the
+  user can layer. Saved as `docs/ideas/synth-grid.md`. §1 is his words. The rest is a proposal.
+- **Read.** No synth code exists. The synth joins where a clip joins (`sound.ts`, into the tap),
+  but `playClip` plays one at a time, so it needs a new input. Nothing is built.
+- **Open.** The forks in §6. Not measured: the press-to-sound delay on the `playback` context.
+
+## 2026-11-05 — 1.4 prep; the Donate total on paper
+
+- **His calls.** 1.4.0 is dated 2026-11-06. He hand tests tonight and plans to publish in the
+  morning. The Donate desk test is done. The bars look good for now. The now mark is done, and it
+  stays out of screen readers.
+- **Done.** `npm version 1.4.0`. A *Truer Last.fm counts* paragraph in the 1.4.0 note, for *Count a
+  song's plays by* and the album name fix. The HANDOFF lines on the DeetsSupport usage copy
+  corrected: it is pushed and matches the app's list, and only the deploy is left.
+- **His ask.** Set the total on the admin page, and a worker returns it to the app
+  ([ideas/donations.md](ideas/donations.md) §5). His calls: in 1.4, a new Donate tab, the fill
+  slides, bars only, the privacy line corrected, no `[ph]` on the website.
+- **Built.** `donate.rs` and the panel's read; `POST /admin/donated` in DeetsSupport and the Donate
+  tab in DeetsSolutions, neither committed nor deployed.
+- **Tested.** `donate-total.mjs` on the dev app: the real call answers `null` (no row yet); a new
+  amount slides and is kept; the same amount and reduced motion move nothing; $400 fills both bars.
+  **Not run:** a real row end to end, the admin tab in a browser, the break-it pass (§6.6).
+- **The 1.4.0 build.** `npm run release` stopped at `release-check`: check 5's `__marks` matched the
+  CSS class `donate__marks`, the first release with the panel. It is not telemetry. The check now
+  matches the handle only. The packed build had not changed, so the check ran again alone and
+  passed, and the Setup.exe was copied by hand, the step after the check. Built from an uncommitted
+  tree: `installers/DeetsMusic_1.4.0_x64-setup.exe`. Not installed, not published.
+- **The break-it pass (three Sonnet agents, his go).** Two real faults, both on the admin tab, fixed:
+  a failed read showed 0, so Save could wipe the real total (now `GET /admin/donated`, and Save
+  stays off), and every failed save said *Try again* (a 403 now says to sign in). Neither touches
+  the installer. Left, low risk: an older reply can land last on rapid opens; an open panel comes
+  back on Midi → Max, as the updates panel does; a deleted row keeps the last amount, so 0 is saved
+  instead.
+- **Tested on a local worker, in headless Edge.** The route refuses a signed-out call, another
+  Origin and each bad value; a save reaches `/config` as a number; the tab reads, saves, stops 7.5,
+  keeps Save off on a failed read, and says to sign in on a 403.
+- **`sound:measurements`.** It read 23 songs at this launch, so the table loads. The 0 fits a table
+  with no rows yet, before the first finished song. Closed.
+- **Not driven:** the pill with `lastfm_artist_top` failing. The forced failure never fired: the
+  album's counts were already kept.
+- **Not explained.** `sound:measurements {"songs":0}` from the ear test: the dev app was down, and
+  the log files do not hold the line.
+
+## 2026-11-05 — The Discord server; board posts as Discord threads, on paper
+
+- **Done.** The DeetsOTD bot joined the DeetsMusic server. He gave it Administrator through the
+  invite link. Nothing on the server changed.
+- **His calls.** A bug filed in Discord is open. A Discord person shows on the web as their
+  Discord name with a Discord mark. Doc only for now.
+- **Written.** [integrations/discord-board.md](integrations/discord-board.md). No code, no deploy.
+- **Found.** The app's install link has only `applications.commands`, so the first install added
+  an integration and no bot user. An invite needs the `bot` scope.
+
 ## 2026-11-05 — The cap in every build; the short panel line; Quieter after sunset
 
 - **His calls.** The panel's line is "7.0 dB quieter", with no "this song" or "for now". No cap row.

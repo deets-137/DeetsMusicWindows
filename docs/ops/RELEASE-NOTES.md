@@ -48,7 +48,20 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
-## 1.4.0 — 2026-11-03
+## 1.4.1 — 2026-11-06
+
+**Double-click to play.** A click on an album, playlist or artist opens it, and a double-click now
+plays it, in the Library, Playlists, Search and artist pages. Change either in Settings > Playback >
+Click a collection, and on Home in Settings > Home. Each pin has its own On Click and On Double
+Click rows. For one type only, make a rule in Rulez: When You click a playlist, Use Play.
+
+**Play counts on song rows.** Album and playlist song rows now show each song's Last.fm plays in a
+small pill. In a grown card, the album's columns show them under Stats. Turn them off in
+Settings > Playback > Show play counts from Last.FM.
+
+**Truer Last.fm counts.** Last.fm counts each spelling of a song title apart, so a count now comes
+from the song's largest page. To read only the exact title, change Settings > Playback > Count a
+song's plays by. An album's count also no longer reads a wrong, tiny number while its page loads.
 
 **Paused music lets your other devices play.** While a song is paused, Apple Music still counts
 this PC as playing, so a paused DeetsMusic could stop the music on an iPhone signed in to the same
@@ -56,37 +69,6 @@ Apple ID. Now DeetsMusic lets go of Apple after 10 minutes of pause, or a little
 would check in again first. Your song stays in Now Playing at the same spot, and Play starts it
 there, about a second slower than usual. Change the wait, or choose Never, in Settings > Playback >
 Let go of Apple after a pause.
-
-**Donate button in Max.** A dollar sign in the title bar opens the Donate panel: what donations
-pay for, and a link to PayPal.
-
-**Title bar buttons rearranged in Max.** The updates and Network buttons moved left of the Compass.
-From the left, the order is now the cog, updates, Donate, Network, the Compass, Rewind and the pin.
-
-**Match loudness in the Sound panel.** A song can be much louder than the one before it. Turn on
-Match loudness, under the Equalizer. The first time a song plays, DeetsMusic adjusts its level and
-measures it. After that, the song plays at one fixed level. It is off until you turn it on. To
-play quieter at night, turn on the Quieter after sunset recipe in Rulez.
-
-**Play counts on song rows.** Album and playlist song rows now show each song's Last.fm plays in a
-small pill. In a grown card, the album's columns show them under Stats. Turn them off in
-Settings > Playback > Show play counts from Last.FM.
-
-**Album columns in Search.** An album in a grown Search card now shows its songs in columns.
-
-**Double-click to play.** A click on an album, playlist or artist opens it, and a double-click now
-plays it, in the Library, Playlists, Search and artist pages. Change either in Settings > Playback >
-Click a collection, and on Home in Settings > Home. Each pin has its own On Click and On Double
-Click rows. For one type only, make a rule in Rulez: When You click a playlist, Use Play.
-
-**Unshuffled from the top.** With shuffle on, an album's Play button starts on a random song. Turn
-on this new recipe in Rulez, and pressing Play or clicking the first song turns shuffle off, so the
-album plays in order from its first song. Shuffle stays off until you turn it on again. To make
-your own rule, use the new When, You start an album from the top.
-
-**Playlists remember their sort.** A playlist now keeps the sort you choose, each playlist its own,
-after you leave it and after a restart. Play follows that sort everywhere: from the playlist, the
-Playlists card, Home and your pins.
 
 **A mark on the playing song.** In an album or playlist you play from, a small chevron beside the
 song slides down to the next one. Any other list that holds the song shows a short line.
@@ -98,17 +80,63 @@ starts, its color turns in around each card. Change the strength, or set it to 0
 in Settings > Skin settings. To change the color at once, with no turn, switch off Spin in new
 colors.
 
+**Match loudness in the Sound panel.** A song can be much louder than the one before it. Turn on
+Match loudness, under the Equalizer. The first time a song plays, DeetsMusic adjusts its level and
+measures it. After that, the song plays at one fixed level. It is off until you turn it on. To
+play quieter at night, turn on the Quieter after sunset recipe in Rulez.
+
 **Truer album colors on Ocean and Glass.** A color error gave these album colors a slight pink
 tint. Ocean's glow and neon waves, and Glass's Now Playing text, now show the true color.
 
-**Compilations on artist pages.** The Full artist page now shows an artist's compilations, and the
-filter on the Albums shelf has a Compilations choice.
+**Playlists remember their sort.** A playlist now keeps the sort you choose, each playlist its own,
+after you leave it and after a restart. Play follows that sort everywhere: from the playlist, the
+Playlists card, Home and your pins.
+
+**Album columns in Search.** An album in a grown Search card now shows its songs in columns.
+
+**Donate button in Max.** A dollar sign in the title bar opens the Donate panel: what donations
+pay for, and a link to PayPal.
+
+**Title bar buttons rearranged in Max.** The updates and Network buttons moved left of the Compass.
+From the left, the order is now the cog, updates, Donate, Network, the Compass, Rewind and the pin.
 
 **Pinned playlists open from Home.** A click on a pinned playlist did nothing while the Playlists
 card was off screen. It opens now, and so does a playlist picked in the Compass.
 
 **Compass and toasts with Now Playing on the right.** Ctrl+Space opened out of sight in Max with Now
 Playing on the right. The bar now sits beside the card, and toasts move to the top left.
+
+**Compilations on artist pages.** The Full artist page now shows an artist's compilations, and the
+filter on the Albums shelf has a Compilations choice.
+
+**Unshuffled from the top.** With shuffle on, an album's Play button starts on a random song. Turn
+on this new recipe in Rulez, and pressing Play or clicking the first song turns shuffle off, so the
+album plays in order from its first song. Shuffle stays off until you turn it on again. To make
+your own rule, use the new When, You start an album from the top.
+
+### Intro
+
+Welcome to 1.4 squad. Look below for the sea of changes, updates, upgrades, and bug fixes. You'll
+find about 11 of the 16 changes in this update were a result of listeners like you putting in
+feedback. Keep em coming! Everytime you see a feature or bug people complain about AM not having
+that we do, shout out DeetsMusic to help grow the community and build a powerhouse ready to
+compete with Apple (to get their attention on actual User Experience for Windows). Thanks again
+everyone.
+
+I've also added my paypal for a donation link in the toolbar panel, it has a bar tracking how much
+we've raised and what each milestone buys us. Would appreciate any 2 cents y'all can provide,
+money or enhancements. Absolutely no pressure, the app will stay free forever.
+
+PS for people following: Happy just got surgery yesterday, docs said it went well and I'm so
+excited to see him again today. Rooting for the little guy.
+
+### Start open
+
+Double-click to play
+Play counts on song rows
+Paused music lets your other devices play
+A mark on the playing song
+Album colors on Press and Cyber
 
 ## 1.3.1 — 2026-11-02
 

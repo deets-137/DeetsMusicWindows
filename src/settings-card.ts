@@ -242,18 +242,18 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.3.1", section: "Window", row: "maxstageside" }, // Now Playing and Queue in Max, built 2026-11-02 (MAX-CARDS.md §13)
   { since: "1.3.1", section: "Window", row: "fpqueueside" }, // Queue in the full player, built 2026-11-02 (fullscreen-player.md §18.2)
   { since: "1.3.0", section: "Playlists", row: "newcover" }, // New cover, from 0.14: shown again beside the Later list, which starts with it (his call 2026-11-01, LISTEN-LATER.md §2.2)
-  { since: "1.4.0", section: "Playback", row: "listencount" }, // Count a song's plays by, built 2026-11-05 (LISTENERS.md §10.2)
-  { since: "1.4.0", section: "Playback", row: "releasepause" }, // Let go of Apple after a pause, built 2026-11-03 (QUEUE.md § Let go after a pause)
-  { since: "1.4.0", section: "Sound", row: "soundmatch" }, // Match loudness, back on its own, built 2026-11-04 (SOUND.md § 11a-1)
-  { since: "1.4.0", section: "Home", row: "tileclick" }, // Click and double-click on a tile, built 2026-11-04 (HOME.md §11)
-  { since: "1.4.0", section: "Home", row: "tiledouble" },
-  { since: "1.4.0", section: "Home", row: "tilewait" },
-  { since: "1.4.0", section: "Playback", row: "pinnewdouble" },
-  { since: "1.4.0", section: "Playback", row: "collclick" }, // Click a collection, built 2026-11-04 (HOME.md §11.5)
-  { since: "1.4.0", section: "Playback", row: "colldouble" },
-  { since: "1.4.0", section: "Skin settings", row: "presslight", skin: "press" }, // Album light on the card edges, built 2026-11-05
-  { since: "1.4.0", section: "Skin settings", row: "cyberlight", skin: "cyber" },
-  { since: "1.4.0", section: "Skin settings", row: "albumwave" },
+  { since: "1.4.1", section: "Playback", row: "listencount" }, // Count a song's plays by, built 2026-11-05 (LISTENERS.md §10.2)
+  { since: "1.4.1", section: "Playback", row: "releasepause" }, // Let go of Apple after a pause, built 2026-11-03 (QUEUE.md § Let go after a pause)
+  { since: "1.4.1", section: "Sound", row: "soundmatch" }, // Match loudness, back on its own, built 2026-11-04 (SOUND.md § 11a-1)
+  { since: "1.4.1", section: "Home", row: "tileclick" }, // Click and double-click on a tile, built 2026-11-04 (HOME.md §11)
+  { since: "1.4.1", section: "Home", row: "tiledouble" },
+  { since: "1.4.1", section: "Home", row: "tilewait" },
+  { since: "1.4.1", section: "Playback", row: "pinnewdouble" },
+  { since: "1.4.1", section: "Playback", row: "collclick" }, // Click a collection, built 2026-11-04 (HOME.md §11.5)
+  { since: "1.4.1", section: "Playback", row: "colldouble" },
+  { since: "1.4.1", section: "Skin settings", row: "presslight", skin: "press" }, // Album light on the card edges, built 2026-11-05
+  { since: "1.4.1", section: "Skin settings", row: "cyberlight", skin: "cyber" },
+  { since: "1.4.1", section: "Skin settings", row: "albumwave" },
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -2644,7 +2644,8 @@ function mountSettings(
         `DeetsMusic is not affiliated with or endorsed by Apple.</div>` +
         `<div class="set__status">The log stays on this PC unless you send a bug with Attach log on. ` +
         `The app contacts Apple, music-api.deets.solutions for its access key and updates, and ` +
-        `support.deets.solutions when you send a report, and for the usage counts while they are on. ` +
+        `support.deets.solutions when you send a report, for the usage counts while they are on, ` +
+        `and to read small settings and the donation total. ` +
         `It sends no listening history, unless you connect Last.fm: then the songs you hear go to Last.fm.</div>`,
     },
   ];

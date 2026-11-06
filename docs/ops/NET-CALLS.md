@@ -41,7 +41,7 @@ more services.
 | `musickit` | the webview | none: MusicKit JS makes its own requests (playback, licenses, the queue, `js-cdn.music.apple.com`) | Dev only: one `[perf] click→sound` line per play lists that play's requests (`perf.ts:181`) |
 | `art` | the webview | none: `<img>` tags, plus `fetch` in `mosaic-worker.ts`, `album-color.ts`, `playlists.ts:188`, `wallpaper-worker.ts` | No. WebView2's HTTP cache answers most of them |
 | `lastfm` | Rust | `call()` in `lastfm.rs:163`: 7 methods (`auth.getToken`, `auth.getSession`, `track.updateNowPlaying`, `track.scrobble`, `track.getInfo`, `album.getInfo`, `artist.getInfo`) | No. Failures go to the log, with no count |
-| `deets` | Rust | four places: the mint (`apple.rs`, `music-api.deets.solutions`), the update feed (`update.rs`, `velo.rs`), reports (`report.rs`), usage (`usage.rs`) | No |
+| `deets` | Rust | five places: the Donate panel's total (`donate.rs`), the mint (`apple.rs`, `music-api.deets.solutions`), the update feed (`update.rs`, `velo.rs`), reports (`report.rs`), usage (`usage.rs`) | No |
 | `rooms` | the webview | `room.ts` (one `POST /room` and a WebSocket), `presence.ts` | No |
 | `friends` | the webview | `friends.ts` (a WebSocket) | No |
 | `discord` | Rust | `sotd/discord.rs` (webhook posts) | No |

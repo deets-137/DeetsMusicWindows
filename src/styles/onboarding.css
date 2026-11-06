@@ -536,6 +536,11 @@
   font: inherit;
   font-weight: var(--fw-title);
   color: var(--title);
+  /* The underline of a Settings group label (.set__row--group, §3.22): a lead stands out from
+     its paragraph. */
+  text-decoration: underline;
+  text-decoration-thickness: var(--focus-ring-w);
+  text-underline-offset: var(--space-1);
   text-align: start;
   cursor: default;
 }

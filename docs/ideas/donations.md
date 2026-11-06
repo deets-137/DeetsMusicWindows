@@ -29,8 +29,7 @@ updated: 2026-11-05
 - **The bars and the fill rule are built.** `GOALS` in `src/donate-btn.ts` holds the goals in fill
   order. `fillGoals` in `src/donate-rules.ts` is the rule, with tests.
 - **The PayPal link is built (2026-11-05).** `PAYPAL_URL` in `src/donate-btn.ts`.
-- **There is no real amount.** The bars show $0, also in the release, until §3 question 6 is built. `__donate.raised(250)` in DevTools shows a
-  pretend amount.
+- **The amount is his to set (§5).** The bars show $0 until the first total is saved.
 - **The costs behind the marks, as known today:** Musixmatch Grow is $199 a month (the $200 mark).
   The Apple Developer Program is the $100 mark.
 
@@ -49,9 +48,7 @@ updated: 2026-11-05
 4. **The $50 mark.** 500 songs a day between all users (his call). Which Musixmatch plan gives
    that for $50? Grow is $199 a month and 2,000 calls a day.
 5. **The daily limit.** What does a user see when the day's songs run out?
-6. **The amount in the app.** He writes it by hand on the admin page (§1). How does the panel read
-   it? DeetsSupport's `GET /config?app=deetsmusic` is an existing route (CSP.md), and it reads a D1
-   overlay as well as the `CONFIG` var, so the number may change with no deploy. Test this first.
+6. **The amount in the app.** He writes it by hand on the admin page (§1). The way is §5.
 7. **More than the goals.** What do the bars show when money passes the last goal?
 
 ## 4. The method: what was read (2026-11-04)
@@ -95,3 +92,35 @@ automatic total.
   before launch.
 - Say in the panel that lyrics for all users is what the money pays for, and no donor gets a
   perk, so a donation stays a donation.
+
+## 5. The total: set on the admin page, read by the app
+
+> **Part:** built · 2026-11-05 · the app's half in 1.4; the worker route and the admin tab wait for
+> the deploy ([features/donate.md](../features/donate.md) § 2). His ask, 2026-11-05: a way in the
+> admin panel to set the total, which a worker returns to the app.
+
+**Tested against the code and the live route, 2026-11-05.**
+- `GET support.deets.solutions/config?app=deetsmusic` answers on live, with no sign-in. It lays the
+  D1 `config` table over the `CONFIG` var, so a D1 row reaches it with no deploy.
+- No owner route writes that table yet. A new `/admin/` route needs a DeetsSupport deploy.
+- The page cannot fetch that host: `connect-src` does not list it, and the worker sends no CORS
+  header to the app. Rust can (`csp.rs`, `report.rs`). The token's config is too slow: it refreshes
+  about every 14 days (CSP.md §12.2).
+
+**The way.**
+1. **The worker:** an owner route writes `donated` (whole dollars, 0 or more) as one `config` row,
+   behind `isOwner()` as every `/admin/` route. `/config` needs no change.
+2. **The admin page:** a number field and a Save button (DeetsSolutions `deetsmusic/admin/`).
+3. **The app:** an async command in Rust reads `/config` each time the panel opens. The panel shows
+   the last amount at once, kept on this PC, then the new one through `fillGoals`. On a failure it
+   keeps the last amount. A value that is not a number, or is below 0, counts as no value.
+4. **The handlers:** the command gets a line in `demo/handlers.ts` and `web/handlers.ts`.
+
+**Dropped.** Adding the host to `connect-src`: it widens the policy of the page that holds the
+Apple Music token, for one number.
+
+**Before the admin route is deployed,** one D1 row sets the total by hand.
+
+**His calls (2026-11-05).** The app's half goes in 1.4. The admin page gets a new Donate tab. A new
+amount slides the fill. The panel shows bars only, with no amount in words. The Settings privacy
+line names the read. No `[ph]` on the website's strings.

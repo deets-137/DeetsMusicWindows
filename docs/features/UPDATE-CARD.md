@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-10-30
 sources: [src/update-card.ts, src/update-card-rules.ts, src/paged-card.ts, src/onboarding.ts, src/styles/onboarding.css, src/settings-card.ts, src/settings-store.ts, src/release-leads.ts, vite-release-notes.ts, src/updates-btn.ts, src/update-rules.ts, src/compass.ts]
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 # The update card — new settings after an update
 
@@ -454,6 +454,17 @@ each one. `pinsList` (update-card.ts) adds a *Double-click on your pins* head af
 settings, then a `.set__row` per album, playlist and artist pin: its name, and a split pill of
 Play, Shuffle and Open (`setPinDouble`). A user with no such pins sees no head. The column scrolls
 on its own (§3.18), so a long list stays above *While You Read*.
+
+### 3.22 An underline on each lead (built 2026-11-05)
+> **Part:** built · 2026-11-05; desk test open.
+
+His ask: make the notes easier to read, with an underline on each bold lead. `.uc__lead`
+(onboarding.css) takes the underline of a Settings group label (`.set__row--group .set__label`,
+settings.css): the same thickness and offset, so no new token. It shows on every version page, in
+Max, Midi and Mini.
+
+**Desk test** (dev app): `__updates.asVersion("1.4.1")`, then *See the new settings*: each lead has
+the underline, and it clears the paragraph under it, on a lead that wraps too.
 
 ## 4. Not in scope
 - A toast for a small update (his call 3).

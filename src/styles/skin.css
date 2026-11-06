@@ -199,6 +199,7 @@
   --donate-goal-gap:         var(--space-1);         /* a goal's name, bar and lines */
   --donate-tick-h:           10px;                   /* a mark on the bar: taller than the track */
   --donate-bar-margin:       var(--space-1);         /* room for the marks above and below the track */
+  --donate-fill-slide:       var(--dur-spin) var(--ease-ui); /* a new total slides the fill; the same total moves nothing */
   /* The Network button and panel (docs/features/speedtest.md): the updates button's family. */
   --net-btn-size:            var(--traffic-size);
   --net-drive:               var(--updates-roll);    /* the car leaves and the next one arrives: the updates arrows' roll */

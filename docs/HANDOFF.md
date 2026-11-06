@@ -182,9 +182,9 @@ after Settings › Playback › *Let go of Apple after a pause* (10 min), or bef
 ([QUEUE.md § Let go after a pause](features/QUEUE.md)). Claude ran desk-test steps 1, 3 and 4 on
 the dev app; step 2 passed when he allowed 5 min (released at once, 370 s into the pause). A
 resume after a release took 0.95 s from the press to sound at the spot. Desk test passed 2026-11-04
-(his word). For 1.4.0: its release note (dated 2026-11-03; set the real date at release) and
-the New mark, so the row is in column 2 of the update card's 1.4 page (`__updates.asVersion("1.4.0")`
-shows it on the dev app). The weekly report sends the key (his call, 2026-11-05).
+(his word). Its release note and New mark are in, so the row is in column 2 of the update card's
+1.4 page (`__updates.asVersion("1.4.1")` shows it on the dev app). The weekly report sends the key
+(his call, 2026-11-05).
 
 ### Built, not released: click and double-click on a tile (2026-11-04)
 
@@ -205,21 +205,20 @@ v24), and every Play follows it. His hand test passed 2026-11-04: [PLAYLISTS.md]
 
 User feedback (the board, "Show current song on album") and his design: a chevron in the row's left
 padding that slides to the next song in the list the song plays from, and a line in any other list.
-His hand test passed 2026-11-04. Open: the motion checks not run, and `aria-current` on the row:
-[NOW-MARK.md](features/NOW-MARK.md) §6, §7.
+His hand test passed 2026-11-04. Closed by his word, 2026-11-05: the motion checks not run stay
+unrun, and the mark stays out of screen readers ([NOW-MARK.md](features/NOW-MARK.md) §6, §7).
 
 ### Built, not released: Match loudness alone (2026-11-04)
 
 A section under the Equalizer, on its own off-by-default switch (`soundMatch`). The usage list
-dropped `soundLoudness`, so DeetsSupport's `src/usage-keys.js` has a local change; no deploy is
-needed for the app to work.
+dropped `soundLoudness`. DeetsSupport's `src/usage-keys.js` matches the app's list and is pushed
+(`86227fa`); it reaches the worker with the deploy below. The app works without it.
 
 **The cap: on in every build since 2026-11-05 (1.4 waits for it, his call).** A song with no
 measurement is held by a slow cap, and a fixed gain takes over once it has a row. It also fixes album
 gain for albums played from Search. **His ear test passed 2026-11-05** ([SOUND.md](features/SOUND.md)
 § 11a-2); no cap row, and the recipe Quieter after sunset in its place. The panel line and the
-recipe are closed by his word, 2026-11-05, and the heaviness check is dropped. Open: the 1.4.0
-note's real date. Demo login's hand test and the DeetsSupport deploy wait for 1.4 installed here:
+recipe are closed by his word, 2026-11-05, and the heaviness check is dropped. Demo login's hand test and the DeetsSupport deploy wait for 1.4 installed here:
 do not raise them with him until then (his call, 2026-11-05).
 
 ### Built, not released: Unshuffled from the top (2026-11-04)
@@ -230,11 +229,17 @@ dev log, 2026-11-04 (DESK-TESTS.md §5, A18): [RULEZ.md](features/RULEZ.md) §10
 ### Built, in the next release: the Donate button (2026-11-04)
 
 A dollar sign in the Max title bar and a Donate panel. The dev flag came off on 2026-11-05 (his
-call). Desk test passed 2026-11-04 (his word, [donate.md](features/donate.md) §5).
-The PayPal link is in the panel and works, card with no login too (his test, 2026-11-05).
-Open: §5 steps 8 and 9, and the questions in
-[ideas/donations.md](ideas/donations.md) §3. The bars show $0 until the total is built. The worker deploy for
-`panel.donate` is his call.
+call). Desk test passed 2026-11-05, every step (his word, [donate.md](features/donate.md) §5).
+The PayPal link is in the panel and works, card with no login too (his test, 2026-11-05). The bars
+look good for now (his word). **The total (built 2026-11-05):** the panel reads it in 1.4
+([ideas/donations.md](ideas/donations.md) §5). The worker route (`POST /admin/donated`) and the admin
+page's Donate tab are pushed (DeetsSupport `fe6ed45`, DeetsSolutions `227a9ac`, 2026-11-05, his ask).
+The tab is live and the worker is not deployed: the tab says it cannot read the total, and Save stays
+off, until his deploy. Until then one D1 row sets the total. The route and the tab passed on a local worker in a
+browser. Not run: the app reading a real row. Left as they are, low risk: an older reply can land
+last on rapid opens, and an open panel comes back on Midi → Max (the updates panel does the same).
+Open: the asterisk's words and the other questions in §3. `panel.donate` is copied to
+DeetsSupport and reaches the worker with the deploy above.
 
 ### Built, not part of the app: Fontpack (2026-11-04)
 
@@ -247,7 +252,7 @@ starts ([FONTPACK.md](ops/FONTPACK.md) §7). Open then: a title font, or a title
 Press lights its plate and card edges in the album's neon; Cyber's thin edges take the primary
 color and its bolts the secondary; a new color turns in around each card. Settings › Skin settings:
 *Album light* on each skin, *Spin in new colors*. `albumWave` is a reported key: the DeetsSupport
-copy needs `npm run usage:keys` with the other 1.4 keys, and a deploy is his call. His first look:
+copy has it with the other 1.4 keys (pushed), and a deploy is his call. His first look:
 "looks pretty good". **80 % by default** on both skins (his call, 2026-11-05). Stress test done
 2026-11-05 (WORKLOG). His look passed 2026-11-05 ("album light looks good", fine at scale and
 hanging edges). Ocean and the Glass text after the `fromOKLCH` fix: closed by his word, 2026-11-05. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.
@@ -409,6 +414,8 @@ Each of these shipped; what is left is listed.
 
 ### His to design or decide (asks and ideas, not built)
 
+- **Discord threads for the boards (2026-11-05):** two forks closed, five small ones open. No
+  build until he says so: [integrations/discord-board.md](integrations/discord-board.md).
 - **Glass text (2026-11-01):** sharp text on smooth glass. His route: canvas-drawn lists first,
   our own renderer only if it comes to it; a later sitting. Forks C1–C5 and the small pieces
   (§7: the font, the blobs, the Now Playing card's order, the contrast probe):

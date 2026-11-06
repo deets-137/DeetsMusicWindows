@@ -6,9 +6,10 @@
 // left, goes through that line, and curls into the new S. Each close plays it backwards.
 
 import "./styles/donate.css";
+import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { applyCss } from "./dom";
-import { fillGoals } from "./donate-rules";
+import { fillGoals, keptTotal } from "./donate-rules";
 import { makeDropdown, type DropdownHandle } from "./dropdown";
 import { enterRows } from "./pop";
 import { keepRightInWindow } from "./quick-panel";
@@ -21,6 +22,9 @@ import * as diag from "./diag";
  *  and PayPal does not support its page in a web view (ideas/donations.md §4). */
 const PAYPAL_URL =
   "https://www.paypal.com/donate/?business=T5AABZGWDAXUJ&no_recurring=0&item_name=Support+DeetsMusic%27s+growth+and+unlock+new+features+like+lyrics%21&currency_code=USD";
+
+/** The last total read, kept on this PC. Not a setting: it is a copy of his number. */
+const TOTAL_KEY = "deets.donateTotal";
 
 /** The top of the panel, a paragraph each. The words are his (2026-11-05). */
 const SAY = [
@@ -84,9 +88,9 @@ const GOALS: Goal[] = [
 
 declare global {
   interface Window {
-    /** Dev only: show the bars at a pretend amount. `__donate.raised(75)`. No real amount
-     *  exists yet (donate.md §2). */
-    __donate?: { raised: (dollars: number) => void };
+    /** Dev only: show the bars at a pretend amount, until the next read of the total.
+     *  `__donate.raised(75)`. */
+    __donate?: { raised: (dollars: number) => void; take: (dollars: number | null) => void };
   }
 }
 
@@ -143,7 +147,23 @@ export function initDonateButton(): void {
       bar.setAttribute("aria-valuenow", String(held[i]));
     });
   };
-  if (import.meta.env.DEV) window.__donate = { raised: showRaised };
+  // The last amount shows at once, while the panel is shut, so an open with no change moves
+  // nothing. Only a new amount slides, by the fill's transition (donate.md § The total).
+  let shown = keptTotal(localStorage.getItem(TOTAL_KEY));
+  showRaised(shown);
+  const takeTotal = (dollars: number | null) => {
+    if (dollars === null || dollars === shown) return;
+    shown = dollars;
+    showRaised(dollars);
+    localStorage.setItem(TOTAL_KEY, String(dollars));
+    diag.log("donate:total", { dollars });
+  };
+  const readTotal = () => {
+    invoke<number | null>("donate_total")
+      .then(takeTotal)
+      .catch((e) => diag.log("donate:totalFailed", { error: String(e) }));
+  };
+  if (import.meta.env.DEV) window.__donate = { raised: showRaised, take: takeTotal };
   const line = root.querySelector(".donate__line")!;
   const s = root.querySelector(".donate__s")!;
   const thread = root.querySelector(".donate__thread")!;
@@ -195,6 +215,7 @@ export function initDonateButton(): void {
       keepRightInWindow(root, panel);
       enterRows([...panel.children]);
       diag.log("donate:open", {});
+      readTotal();
     },
   });
   window.addEventListener("resize", () => {

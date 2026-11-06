@@ -12,6 +12,7 @@ mod db_thread;
 mod dbhealth;
 mod diary;
 mod display;
+mod donate;
 mod enrich;
 mod favorites;
 mod filter;
@@ -413,6 +414,7 @@ pub fn run() {
             apple::apple_developer_token_retry,
             app_restart,
             apple::apple_remote_config,
+            donate::donate_total,
             apple::apple_begin_auth,
             apple::apple_connection_status,
             apple::apple_auth_status,

@@ -65,7 +65,9 @@
   width: calc(var(--donate-raised, 0) * 100%);
   background: var(--title); border-radius: var(--radius-round);
   background-image: var(--accent-sheen); background-blend-mode: var(--accent-sheen-blend); background-size: var(--accent-sheen-size);
+  transition: width var(--donate-fill-slide);
 }
+:root[data-motion="reduced"] .donate__fill { transition: none; }
 /* --donate-at is 0 to 1. The last mark ends on the bar's right edge, not past it. */
 .donate__tick {
   position: absolute; top: 50%;

@@ -1,7 +1,7 @@
 ---
 status: built
-desk_test: passed 2026-11-04
-sources: [src/donate-btn.ts, src/donate-rules.ts, src/styles/donate.css, src/styles/skin.css, src/main.ts, src/compass.ts, src/dropdown.ts, index.html]
+desk_test: passed 2026-11-05
+sources: [src/donate-btn.ts, src/donate-rules.ts, src-tauri/src/donate.rs, src/styles/donate.css, src/styles/skin.css, src/main.ts, src/compass.ts, src/dropdown.ts, index.html]
 updated: 2026-11-05
 ---
 # The Donate button — a dollar sign in the Max title bar
@@ -58,8 +58,17 @@ updated: 2026-11-05
   `app-scroll`. No `scrollbar-gutter`: the panel's height does not change while it is open.
 - **The bar:** the song scrubber's track and fill with no handle. The marks are the sleep dial's
   major ticks, taller than the track.
-- **The amount:** no real amount exists yet, so the bar shows $0. `__donate.raised(75)` in
-  DevTools shows a pretend amount until the next reload.
+- **The total (built 2026-11-05, in 1.4; his calls: on the admin page, a new Donate tab, the fill
+  slides, bars only).** He sets whole dollars on the admin page's Donate tab. `POST /admin/donated`
+  (owner only) writes the `donated` row in DeetsSupport's D1 `config` table, and `GET /config`
+  returns it. The tab reads `GET /admin/donated`, not `/config`, which hides a database fault; on a
+  failed read Save stays off, so an unknown total is never saved over the real one. Each panel open calls `donate_total` (`donate.rs`, async, 5 s), which sends no user ID.
+  The page cannot make the call: the CSP stays as it is (ideas/donations.md §5). The last amount is
+  in `localStorage` (`deets.donateTotal`), so it shows at once. Only a new amount moves the bar:
+  `--donate-fill-slide`, none under reduced motion. On a failure, or with no row, the panel keeps the
+  last amount, and one diag line names a failure. The demo answers `null`, so its bars stay at $0.
+  `__donate.raised(75)` shows a pretend amount, and `__donate.take(75)` acts as a reply.
+  `docs/ops/checks/donate-total.mjs` is the test.
 - **Break-it pass (2026-11-04, three agents).** One real fault: Escape played the close turn on a
   shut button, because `close()` in `dropdown.ts` set `hidden` on a shut panel and every dropdown
   hears Escape. Fixed in `dropdown.ts`, so the updates arrows no longer roll on a stray Escape
@@ -97,6 +106,8 @@ updated: 2026-11-05
 
 ## 5. Desk test
 
+**Passed 2026-11-05, every step (his word: "donate desk test is done").**
+
 Run `npm run dev:app`. Use Max.
 
 1. **The order.** The title bar reads: cog, updates, dollar sign, car, Compass, hourglass, pin.
@@ -109,7 +120,7 @@ Run `npm run dev:app`. Use Max.
 6. **Release.** Since 2026-11-05 the release bundle has the button. Check it on the installed app.
 7. **The link (passed 2026-11-05, his word).** Click *Donate with PayPal*: the browser opens the
    PayPal page, with DeetsMusic's line on the page and US dollars.
-8. **The top of the panel (2026-11-05, open).** Open the panel. From the top: *Donate*, his two
+8. **The top of the panel (2026-11-05).** Open the panel. From the top: *Donate*, his two
    paragraphs, the link with *(not tax-deductible\*)* right of it in smaller type, a line the width
    of the panel, both goals. Make the Max window as short as it goes: the panel scrolls only if it
    must, with the app's bar, and the last goal can be reached.

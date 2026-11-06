@@ -77,6 +77,8 @@ the app can do any of these things.
 - [density.md](density.md) — an idea (2026-10-26, from user feedback): a Compact | Spacious
   setting for every shelf; the scrollbar hidden until hover with its gutter always reserved
   (his calls §2); the forks (§4).
+- [synth-grid.md](synth-grid.md) — an idea (2026-11-05): a minigame, a 6 by 12 step grid with a
+  drum and a basic piano; a loop locked in as a layer; §1 his words, the forks (§6).
 - [listening-time.md](../features/listening-time.md) — moved to features/ on 2026-10-19, when its
   V1 was built (the Rewind button in the Max title bar).
 - [PresentationMode.md](../features/PresentationMode.md) — moved to features/ on 2026-10-13, when

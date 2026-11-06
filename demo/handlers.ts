@@ -595,6 +595,9 @@ const H: Record<string, Handler> = {
   lastfm_artist_top: () => [],
   lastfm_keep_counts: () => undefined,
 
+  // The Donate panel's total: no number in the demo, so the bars stay at $0
+  donate_total: () => null,
+
   // Credits
   credits_for: (a) => {
     const out: Record<string, unknown> = {};

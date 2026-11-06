@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 73 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 852 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 853 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -267,6 +267,7 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--donate-goal-gap` | `var(--space-1)` | — | a goal's name, bar and lines |
 | `--donate-tick-h` | `10px` | — | a mark on the bar: taller than the track |
 | `--donate-bar-margin` | `var(--space-1)` | — | room for the marks above and below the track |
+| `--donate-fill-slide` | `var(--dur-spin) var(--ease-ui)` | — | a new total slides the fill; the same total moves nothing |
 | `--net-btn-size` | `var(--traffic-size)` | — | The Network button and panel (docs/features/speedtest.md): the updates button's family. |
 | `--net-drive` | `var(--updates-roll)` | — | the car leaves and the next one arrives: the updates arrows' roll |
 | `--net-drive-x` | `var(--updates-roll-y)` | — | how far a car travels: out of the glyph's box |
@@ -1173,6 +1174,7 @@ reader is a token nothing uses.
 | `--updates-roll` | `0.42s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | styles/skin.css, updates-btn.ts |
 | `--rewind-top-flip` | `var(--compass-spin)` | — | styles/rewind-top.css |
 | `--donate-turn` | `0.72s cubic-bezier(0.34, 1.26, 0.64, 1)` | — | donate-btn.ts |
+| `--donate-fill-slide` | `var(--dur-spin) var(--ease-ui)` | — | styles/donate.css |
 | `--net-drive` | `var(--updates-roll)` | — | net.ts |
 | `--pin-turn` | `var(--compass-spin)` | — | styles/pin.css |
 | `--pin-cover-fade` | `var(--dur-fast)` | — | styles/pin.css |
@@ -1263,7 +1265,7 @@ reader is a token nothing uses.
 | `--search-pulse-dur` | `0.9s` | — | styles.css, styles/skin.css |
 | `--dur-fast` | `0.12s` | press, glass, cyber | copy-edit.ts, styles.css, styles/compass.css, styles/diary.css, styles/donate.css, styles/hint.css, styles/net.css, styles/pin.css, styles/qcard.css, styles/rewind-top.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css |
 | `--dur-med` | `0.18s` | press | styles.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/walk.css |
-| `--dur-spin` | `0.7s` | — | styles.css |
+| `--dur-spin` | `0.7s` | — | styles.css, styles/skin.css |
 | `--ease-ui` | `ease` | — | copy-edit.ts, donate-btn.ts, full-player.ts, net.ts, styles.css, styles/compass.css, styles/diary.css, styles/donate.css, styles/hint.css, styles/net.css, styles/pin.css, styles/qcard.css, styles/rewind-top.css, styles/settings.css, styles/skin.css, styles/toast.css, styles/updates.css, styles/walk.css, updates-btn.ts |
 | `--pulse-ease` | `ease-in-out` | — | styles.css |
 | `--sh-cross-dur` | `0.42s` | — | styles.css |

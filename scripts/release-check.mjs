@@ -153,10 +153,11 @@ if (signed.length) {
 {
   const assets = join(root, "dist", "assets");
   const js = existsSync(assets) ? readdirSync(assets).filter((f) => f.endsWith(".js")) : [];
-  // `__marks`: the shots runner's timeline marks (src/marks.ts), on the same gate.
+  // `__marks`: the shots runner's timeline marks (src/marks.ts), on the same gate. The handle
+  // only: `donate__marks`, a CSS class, failed the 1.4.0 build (2026-11-05).
   // `page:sample`: the page sample and its timer wrapper (src/page-sample.ts, 2026-10-17).
   // `__ipcTiming`: the command recorder (src/ipc-timing.ts, guide/LOADING-SET.md §3.1, 2026-10-17).
-  const leaked = js.filter((f) => /\[perf\] frames|__marks|page:sample|__ipcTiming/.test(readFileSync(join(assets, f), "utf8")));
+  const leaked = js.filter((f) => /\[perf\] frames|(?<![\w-])__marks|page:sample|__ipcTiming/.test(readFileSync(join(assets, f), "utf8")));
   if (!js.length) failures.push("dist/assets has no JS — build before release-check");
   else if (leaked.length) failures.push(`dev telemetry shipped in ${leaked.join(", ")} — VITE_PERF was set for this build`);
 }

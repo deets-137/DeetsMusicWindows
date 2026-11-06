@@ -176,6 +176,8 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
   (friends see your picks and Diary) is an idea: do not tell a user it exists.
 - `DeetsOTD.md` — Song of the Day and its outlets.
 - `THREADS.md` — a Threads outlet for Song of the Day picks and Diary reviews.
+- `discord-board.md` — a Discord thread for each public board post, kept the same on both sides;
+  the sync worker is new. A private post never gets a thread.
 - `PROVIDERS.md` — Apple Music and Spotify in one library (parked, §9 why).
 - `LOCAL-DATA.md` — the library read tool and read-only SQL for agents and users.
 
@@ -224,6 +226,8 @@ picture, never write it for him.
 - `mods.md` — skins and themes a user downloads (`.deetsmod`, values only); §10 the public layer.
 - `density.md` — a Compact | Spacious setting for every shelf.
 - `owner-polls.md` — his polls and suggestions shown in the app; open ended on purpose.
+- `synth-grid.md` — a Max title bar minigame: a 6 by 12 step grid, drum and piano, loops locked in as layers.
+  **§1 is what he said and is fixed; the rest is Claude's proposal.**
 - `cross-skin.md` — one skin borrows a piece of another, redrawn in the borrower's look.
 - `DeetsPod.md` — a pocket device on his ESP32-S3 pucks, the home PC plays. **§1 is what he
   said and is fixed; the rest is Claude's proposal.**

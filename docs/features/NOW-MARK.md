@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-11-04
 sources: [src/now-mark.ts, src/now-mark-rules.ts, src/collection-card.ts, src/collection-window.ts, src/keyed.ts, src/queue.ts, src/styles/themes.css]
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 # Now mark — the playing song on its row
 
@@ -95,7 +95,8 @@ Metal changes some themes' roles, so check Metal at build time.
   are outside the engine (the Diary has its own `.is-playing`).
 - The motion tokens are in `skin.css` (`--now-mark-*`). The ease is `--nav-ease`, so each skin's
   slide feels like its own. `--now-mark-reach` is the 8-row limit.
-- Not done: the row carries no `aria-current`, so a screen reader hears nothing of the mark.
+- The row carries no `aria-current`, so a screen reader hears nothing of the mark (his call,
+  2026-11-05: leave it out).
 
 **The break-it pass (three Sonnet agents, 2026-11-04).** Six faults found and fixed: a pane drawn
 before it was in the page (the mark at the top of the list after Back, or missing on a long list);
@@ -113,6 +114,7 @@ and on a 417-song list, a slide cut by a long move, Play Next, reduced motion.
   song's load. The mark's own scan costs 0.54 ms on 4,147 songs. It moves only transform and
   opacity, so the load should not hold it, but this ran on the dev server, not `dev:built`.
 - **Not run:** the motion monitor, frames read at full size, and the theme, surface and skin
-  changes during a slide. His hand test came first, by his choice.
+  changes during a slide. His hand test came first, by his choice. Closed by his word, 2026-11-05
+  ("now mark is done").
 - **His hand test:** passed, 2026-11-04 ("hand tested and good to go"). The slide, the 0.42 s and the
   8-row reach stay as built.
