@@ -234,7 +234,7 @@ export const NULL_ON_PURPOSE = new Set([
   "filter_save", "filter_delete", "filter_attach", "filter_set_refresh", "filter_set_lists", "filter_read", "filter_write",
   "pin_act", "pin_clear", "pin_set", "row_order_reset", "row_order_set", "credits_fetch", "credits_for", "songs_by_writer",
   // Friends (none on the web, his call W3), Song of the Day, Last.fm
-  "friend_add", "friend_key_export", "friend_key_import", "friend_me", "friend_pin", "friend_remove", "friend_rename", "friend_sign",
+  "friend_add", "friend_key_export", "friend_key_import", "friend_me", "friend_pin", "friend_remove", "friend_rename", "friend_seen", "friend_sign",
   "pick_delete_posts", "pick_mark", "pick_note", "pick_post", "pick_skip", "pick_today", "pick_unmark", "pick_withdraw", "picks_missed_skip",
   "lastfm_album_info", "lastfm_artist_info", "lastfm_artist_top", "lastfm_keep_counts", "lastfm_listen_counts", "lastfm_listeners",
   "donate_total",

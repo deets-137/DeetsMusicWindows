@@ -176,7 +176,7 @@ Order: the uncommitted work first (a fail there stops a commit), then the releas
 | B22 | Rooms on the web: sign in, sound, an app and a browser in one room | [WebRooms.md §10.5](../features/WebRooms.md) | `npm run listen` + `dev:app` | owner | Needs his Apple ID typed in Apple's window. Claude ran the rest 2026-10-13 against the live worker (§10.4). The Safari part waits for the site page (part H) |
 | B23 | Velopack: his looks at Setup.exe, the uninstall and the media flyout; an update from a Start Menu start | [VELOPACK.md §12.5](VELOPACK.md) | the installed beta | owner | Set up 2026-10-15: the beta on beta.4, beta.6 on the feed, its Setup.exe built. Claude reads Velopack's log after step 2 |
 | B20 | The dead-next heal's double play | [QUEUE.md](../features/QUEUE.md) § The healed song played twice | live | owner | Cannot be forced; watch the next `player:deadNext` |
-| B24 | A friend's row shows the name they typed, online and offline | [FRIENDS.md §21](../integrations/FRIENDS.md) | two (`dev:app -- --second`) | owner | Added 2026-11-06. Open. Unit tests pass; not run on two apps |
+| B24 | A friend's row shows the name they typed, online and offline | [FRIENDS.md §21](../integrations/FRIENDS.md) | two (`dev:app -- --second`) | owner | Added 2026-11-06. Closed by his commit the same day; the unit tests pass, and no agent ran it on two apps |
 
 ## 4. The two small scripts that live here
 

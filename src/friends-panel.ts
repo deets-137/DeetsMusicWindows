@@ -39,6 +39,7 @@ import { roomState } from "./room";
 import { setSetting } from "./settings-store";
 import { toast } from "./toast";
 import { el } from "./dom";
+import { shownName } from "./friend-name";
 
 /** How long a box keeps drawing a song after it was last heard about. Past this the row
  *  says the time instead of pretending it is live — a friend whose PC slept should not
@@ -194,7 +195,7 @@ function box(row: FriendRow): El {
   b.append(art);
 
   const lines = el("div", "friend__lines");
-  lines.append(el("span", "friend__name", row.name || formatFriendCode(row.code)));
+  lines.append(el("span", "friend__name", shownName(row) || formatFriendCode(row.code)));
   if (!row.allowed) {
     lines.append(el("span", "friend__song friend__song--quiet", "Waiting for them to add you"));
   } else if (!row.online) {
@@ -275,7 +276,7 @@ function menuFor(row: FriendRow, live: boolean): MenuItem[] {
         void removeFriend(row.code);
         toast({
           kind: "info",
-          text: `${row.name || "They"} is off your list.`,
+          text: `${shownName(row) || "They"} is off your list.`,
           actions: [{ label: "Undo", run: () => void addFriend(row.code, row.name) }],
         });
       },

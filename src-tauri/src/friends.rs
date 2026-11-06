@@ -40,12 +40,16 @@ use tauri::{AppHandle, Emitter};
 pub const MAX_FRIENDS: usize = 50;
 
 /// One person you have added. `code` is theirs and permanent; `name` is yours and local —
-/// nobody is told what you called them.
+/// nobody is told what you called them. It is empty until you give one (FRIENDS.md §21).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Friend {
     pub code: String,
     pub name: String,
+    /// The name they typed, as last heard on their presence. The row shows it while `name`
+    /// is empty, and this copy is what it shows while they are offline.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub seen_name: String,
     /// Unix milliseconds. Only the list's default order uses it.
     pub added_at: i64,
     /// Their full public key (base64), pinned the first time the worker hands us one it
@@ -130,7 +134,17 @@ fn load() -> Store {
             crate::log::warn(&format!("friends: these values could not be read and are back to empty: {}{copy}", r.bad_fields.join(", ")));
         }
     }
-    r.value
+    let mut store = r.value;
+    clear_placeholder_names(&mut store.friends);
+    store
+}
+
+/// Until 2026-11-06 a friend added by code was saved under the word "Friend", which hid the
+/// name they typed. That word was never a name somebody chose, so it reads as no name.
+fn clear_placeholder_names(friends: &mut [Friend]) {
+    for f in friends.iter_mut().filter(|f| f.name == "Friend") {
+        f.name.clear();
+    }
 }
 
 fn save(store: &Store) -> Result<(), String> {
@@ -270,6 +284,12 @@ pub async fn friend_rename(code: String, name: String) -> Result<(), String> {
     off_ui(move || rename(code, name)).await?
 }
 
+/// Keep the name a friend typed, so their row still has it while they are offline.
+#[tauri::command]
+pub async fn friend_seen(code: String, name: String) -> Result<(), String> {
+    off_ui(move || seen(code, name)).await?
+}
+
 #[tauri::command]
 pub async fn friend_remove(code: String) -> Result<(), String> {
     off_ui(move || remove(code)).await?
@@ -355,7 +375,7 @@ fn add(code: String, name: String) -> Result<Friend, String> {
         if s.friends.len() >= MAX_FRIENDS {
             return Err(format!("{MAX_FRIENDS} friends is the most the list holds."));
         }
-        let friend = Friend { code: code.clone(), name, added_at: now_ms(), key: None };
+        let friend = Friend { code: code.clone(), name, seen_name: String::new(), added_at: now_ms(), key: None };
         s.friends.push(friend.clone());
         save(s)?;
         Ok(friend)
@@ -370,6 +390,21 @@ fn rename(code: String, name: String) -> Result<(), String> {
             return Err("They are not on your list.".to_string());
         };
         f.name = name;
+        save(s)
+    })
+}
+
+fn seen(code: String, name: String) -> Result<(), String> {
+    let code = crate::rooms::normalize(&code).ok_or("That is not a friend code.")?;
+    let name = clean_name(&name);
+    with_store(|s| {
+        let Some(f) = s.friends.iter_mut().find(|f| f.code == code) else {
+            return Ok(()); // removed while the message was on its way
+        };
+        if name.is_empty() || f.seen_name == name {
+            return Ok(());
+        }
+        f.seen_name = name;
         save(s)
     })
 }
@@ -446,10 +481,10 @@ pub async fn friend_pin(code: String, key: String) -> Result<String, String> {
 }
 
 /// A name is yours and local, so the only rules are that it fits on a row and holds no
-/// control characters. 24 is what a room name already allows (`room.ts`).
+/// control characters. 24 is what a room name already allows (`room.ts`). Empty stays empty:
+/// that is what lets the row show the name they typed (`friend-name.ts`).
 fn clean_name(raw: &str) -> String {
-    let cleaned: String = raw.trim().chars().filter(|c| !c.is_control()).take(24).collect();
-    if cleaned.is_empty() { "Friend".to_string() } else { cleaned }
+    raw.trim().chars().filter(|c| !c.is_control()).take(24).collect()
 }
 
 // ── the invite link ──────────────────────────────────────────────────────────
@@ -539,10 +574,25 @@ mod tests {
     }
 
     #[test]
-    fn a_name_is_trimmed_and_never_empty() {
+    fn a_name_is_trimmed_and_an_empty_one_stays_empty_2026_11_06() {
         assert_eq!(clean_name("  Sam  "), "Sam");
-        assert_eq!(clean_name(""), "Friend");
+        assert_eq!(clean_name(""), "");
         assert_eq!(clean_name(&"x".repeat(80)).chars().count(), 24);
+    }
+
+    #[test]
+    fn the_old_placeholder_reads_as_no_name_and_a_real_name_stays_2026_11_06() {
+        let friend = |name: &str| Friend {
+            code: "ABCD2345".into(),
+            name: name.into(),
+            seen_name: String::new(),
+            added_at: 0,
+            key: None,
+        };
+        let mut friends = vec![friend("Friend"), friend("Sam")];
+        clear_placeholder_names(&mut friends);
+        assert_eq!(friends[0].name, "");
+        assert_eq!(friends[1].name, "Sam");
     }
 
     #[test]

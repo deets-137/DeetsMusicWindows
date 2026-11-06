@@ -40,6 +40,7 @@ import { effective, onSettingsChange, ownSetting, setting, setSetting } from "./
 import { toast } from "./toast";
 import { plainError } from "./plain-error";
 import { judgeKey, pinsForWorker } from "./friend-pin";
+import { heardName } from "./friend-name";
 import { netNote } from "./net-feed";
 import { asLogAlbum, expireLogs, mergeAlbums, recentToSend, SEND_MAX, type FriendLog, type LogAlbum } from "./friends-log";
 
@@ -97,9 +98,9 @@ export interface FriendPresence {
 /** One box in the panel (§3). */
 export interface FriendRow {
   code: string;
-  /** What YOU called them. Local, and never sent anywhere. */
+  /** What YOU called them. Local, never sent anywhere, and empty until you rename them. */
   name: string;
-  /** What they call themselves, when they are online. */
+  /** What they call themselves: live while they are online, then the last one heard. */
   theirName: string;
   online: boolean;
   /** Have they added you back? Until they do, there is nothing to show (§3, mutual add). */
@@ -172,7 +173,7 @@ function rowsNow(): FriendRow[] {
     return {
       code: f.code,
       name: f.name,
-      theirName: link?.theirName ?? "",
+      theirName: link?.theirName || f.seenName || "",
       online: !!link?.ready && !!link?.allowed,
       allowed: link?.allowed ?? true,
       presence: link?.presence ?? null,
@@ -307,7 +308,8 @@ async function handle(link: Link, ws: WebSocket, message: Record<string, unknown
         return emit();
       }
       link.allowed = true;
-      link.theirName = String(message.name ?? "");
+      link.theirName = heardName(message.name);
+      keepTheirName(link.of, link.theirName);
       link.presence = (message.presence as FriendPresence | null) ?? null;
       logPresence(link.of, link.presence, message.sharing);
       return emit();
@@ -709,7 +711,7 @@ export function inviteToRoom(code: string): void {
   send(link.ws, { t: "invite", to: code, room: room.code });
   diag.log("friends:invite", { to: code });
   const friend = listCache.find((f) => f.code === code);
-  toast({ kind: "info", text: `Asked ${friend?.name || "them"} to listen along.` });
+  toast({ kind: "info", text: `Asked ${friend?.name || friend?.seenName || "them"} to listen along.` });
 }
 
 // ── the list ─────────────────────────────────────────────────────────────────
@@ -717,11 +719,22 @@ export function inviteToRoom(code: string): void {
 interface StoredFriend {
   code: string;
   name: string;
+  /** The name they typed, as last heard, so an offline row still has it (§21). */
+  seenName?: string;
   addedAt: number;
   /** Their full public key, pinned on first sight (friends.rs::friend_pin, §19). */
   key?: string;
 }
 let listCache: StoredFriend[] = [];
+
+/** Keep the name they typed on disk, once per change. Only a trusted presence reaches here,
+ *  so a key that is not theirs cannot leave a name behind. */
+function keepTheirName(code: string, name: string): void {
+  const friend = listCache.find((f) => f.code === code);
+  if (!friend || !name || friend.seenName === name) return;
+  friend.seenName = name;
+  invoke("friend_seen", { code, name }).catch((e) => diag.warn("friends:seen", { of: code, e: String(e) }));
+}
 
 // ── the key pin (FRIENDS.md §19, 2026-09-29) ─────────────────────────────────
 
@@ -774,7 +787,7 @@ function keyChanged(friend: StoredFriend, where: string): void {
   if (keyWarned.has(friend.code)) return;
   keyWarned.add(friend.code);
   diag.warn("friends:key-changed", { of: friend.code, where });
-  const name = friend.name || "a friend";
+  const name = friend.name || friend.seenName || "a friend";
   toast({
     kind: "warn",
     sticky: true,
@@ -950,6 +963,12 @@ export async function initFriends(): Promise<void> {
     if (k !== "friendsRoomInvite" || effective(k) === wasInvite) return;
     wasInvite = effective(k);
     if (sharing() && wasHosting) push("roomInvite", true);
+  });
+
+  // *Your name* changed: friends hear it without waiting for the next song. The field fires
+  // on each letter, so this rides the same coalescing as a song change.
+  onSettingsChange((k) => {
+    if (k === "roomName") push("name");
   });
 
   // A `deetsmusic://friend?code=…` link. It fills the panel's field; the person presses

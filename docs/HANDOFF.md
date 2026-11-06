@@ -114,8 +114,8 @@ extension's icons are LANCZOS resizes of the same file.
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
 
-- **A friend's typed name (2026-11-06).** Built, not committed, not released. The two-app desk
-  test is open ([FRIENDS.md](integrations/FRIENDS.md) §21, DESK-TESTS.md B24). The next release's
+- **A friend's typed name (2026-11-06).** Committed, not released
+  ([FRIENDS.md](integrations/FRIENDS.md) §21, DESK-TESTS.md B24). The next release's
   notes need a line. The reporter's post is `aSze2eBDK5O6Bb3Q`.
 
 ### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)

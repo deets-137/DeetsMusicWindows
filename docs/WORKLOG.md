@@ -14,7 +14,7 @@ updated: 2026-11-06
   row took that word as your own name for them. This was so for every friend added by code since
   0.12.2, and the row never read `theirName`.
 - **The fix.** [FRIENDS.md](integrations/FRIENDS.md) §21. Your name wins, then the name they typed,
-  then the code. No worker change. Not released, and the two-app desk test in §21 is open.
+  then the code. No worker change. Committed at his word, not released.
 
 ## 2026-11-05 — The 1.4 notes in order of use; an underline on each lead
 

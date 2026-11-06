@@ -459,6 +459,7 @@ pub fn run() {
             friends::friend_list,
             friends::friend_add,
             friends::friend_rename,
+            friends::friend_seen,
             friends::friend_remove,
             friends::friend_pin,
             roworder::row_order_all,

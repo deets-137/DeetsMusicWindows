@@ -7,8 +7,8 @@ updated: 2026-11-06
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
 
-> **Status (2026-11-06): the name on a friend's row is rebuilt (§21). Its desk test is open
-> (DESK-TESTS.md B24).**
+> **Status (2026-11-06): the name on a friend's row is rebuilt (§21; DESK-TESTS.md B24), not
+> released yet.**
 >
 > **Status (2026-09-22): DONE. The owner ran the §17 desk test and confirmed it on 2026-09-22, and the
 > `/j/` route (step 7) is deployed.** The last item, the Discord buttons' second-account check
