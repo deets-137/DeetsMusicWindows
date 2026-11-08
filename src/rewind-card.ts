@@ -25,7 +25,8 @@ import {
   topBy, fmtListen, fmtPlays, albumKey, pid, STAT_LABELS, WINDOW_LABELS, REWIND_ABOUT, INFO_GLYPH,
   type RewindRow, type RewindStat, type RewindWindow,
 } from "./rewind";
-import type { CardDef, CardInstance } from "./cards";
+import type { CardDef, CardInstance, MountOpts } from "./cards";
+import { scrollSnapshot, applyScrollSnapshot } from "./card-memory";
 import { makeReplayPlaylist, makePicksPlaylist, makePickedPlaylist, NothingToAdd } from "./replay";
 import { sotdOn, pickMenu, allPicks, onSotdChange, isPosted, withdrawAsking } from "./sotd";
 import { rowDrag } from "./row-drag";
@@ -52,10 +53,10 @@ function loadPick(): Pick {
 export const rewindCard: CardDef = {
   id: "rewind",
   title: "Rewind",
-  mount: (host) => mountRewind(host),
+  mount: (host, opts) => mountRewind(host, opts),
 };
 
-function mountRewind(host: HTMLElement): CardInstance {
+function mountRewind(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
   const pillHTML = (kind: "stat" | "window", label: string) => `
     <div class="lib-ctrl">
       <button class="lib-pill" data-pick="${kind}" type="button" aria-haspopup="true" aria-expanded="false">
@@ -93,6 +94,10 @@ function mountRewind(host: HTMLElement): CardInstance {
   // The rows rendered last — the contextmenu handler resolves data-idx against this.
   let view: RewindRow[] = [];
   let renderSeq = 0; // stale-async guard: only the latest topBy() call may render
+  // Card memory (CARD-MEMORY.md §5): the runners-up list's scroll. The stat and the window
+  // already persist (`STORE_KEY`), so the place is put back once, after the first board lands.
+  let memory: unknown = mountOpts?.memory;
+  const scroller = () => board.querySelector<HTMLElement>(".qcard__list");
 
   // The withdraw square on a posted pick (§10.7). It joins the add-square family: a
   // `panel__action` at the row's end that takes no room until the row is hovered or focused,
@@ -189,6 +194,9 @@ function mountRewind(host: HTMLElement): CardInstance {
         held?.check();
         // The card re-renders whole, so one sweep marks what is picked.
         picks.mark(board, "[data-idx]", (el) => view[Number(el.dataset.idx)]);
+        const list = scroller();
+        if (memory !== undefined && list) applyScrollSnapshot(list, memory);
+        memory = undefined;
       })
       .catch((e) => {
         console.error("[rewind] load", e);
@@ -501,6 +509,10 @@ function mountRewind(host: HTMLElement): CardInstance {
   render();
 
   return {
+    snapshot: () => {
+      const list = scroller();
+      return list ? scrollSnapshot(list) : undefined;
+    },
     destroy() {
       held?.cancel();
       renderSeq++; // orphan any in-flight load

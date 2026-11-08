@@ -6,6 +6,45 @@ updated: 2026-11-06
 ---
 # DeetsMusic — Work log
 
+## 2026-11-07 — 1.4.2 notes, the upload CORS fix, Claude's desk tests
+
+- **His calls.** The 1.4.2 notes drafted (RELEASE-NOTES.md); the upload silence fix built now,
+  his test with a real upload before the publish (UPLOADS.md §4).
+- **Run on the dev app (DESK-TESTS.md §5).** A6 passed (the Diary's copy through Rust's
+  clipboard). B26 passed, scripted (`checks/forward-click.mjs` 13 ok; `checks/forward-swap.mjs`
+  7 ok with the real back and forward buttons over CDP). Rewind's memory passed (120 → 120).
+- **Not run.** B25: no upload in the dev library; his WAV files must be added in Apple's app.
+  B27: it needs two apps as friends on the live Friends worker.
+- **A slip.** A first click on a Library row PLAYED a song (the Library was in its Songs view):
+  about 30 s of "Stuff We Did" and one partial play in the dev library. Paused at once; the
+  forward script now refuses to run outside the Albums view.
+- **Put back after the runs.** The layout (Library, Home, Search, Playlists), the Library's
+  Songs view, `goToTarget` "fits". The card picks ended Search's grow over the Library.
+
+## 2026-11-07 — Forward click and the friend's name on the cover
+
+- **His calls.** F1 A (Forward redoes a drill swap), F2 A (no on-screen control); N1 A (the pill
+  names the friend, the sub line is the artist), N2 A (bottom left), N3 A ("Sam +1").
+- **Built.** DRAG-DROP.md §6b (engine, layout, Album Reviews, Rulez, the update card's Older
+  page); friends-shelf.md §6 (`whoPlayed`, `pillText`, one new unit test). tsc, 526 tests,
+  docs:check and `vite build` pass; `npm run tokens` for the four `--tile-friend-*` aliases.
+- **Not run.** Neither desk test (B26, B27): the forward button needs his mouse, and the pill two
+  apps. No shots run (his rule, 2026-10-21).
+
+## 2026-11-07 — Before 1.4.2: the board read, four small fixes
+
+- **Read.** The live forum, every DeetsMusic post. Open on the board: lyrics (two posts), the
+  Microsoft Store, the icon, non-ultrawide text size, the two 1.4.2 bug fixes already built, and
+  **forward click**, promised for 1.4 and not built (HANDOFF › Open now).
+- **Built (his go on all four).** The Diary's copy falls back to Rust's Win32 clipboard when the
+  page's clipboard refuses a window without focus; the Donate panel drops an older reply; the
+  Rewind card keeps its list's scroll (the last card-memory gap); each stored choice is checked
+  against its options at load (`settings-check.ts`, 5 unit tests). `npm run check` and `vite
+  build` pass. Not run on the dev app: his hand test, in HANDOFF › Open now.
+- **Decided inside his go.** The page's clipboard stays first and Rust is only the fallback. The
+  demo's fallback throws (no OS clipboard there). Rewind restores the runners-up list only, not
+  the open info box. A dropped setting logs to the console, with no toast.
+
 ## 2026-11-07 — The admin MCP: the sign-in test worker
 
 - **His calls.** The name DeetsMusicAdminMCP, and go on the first build step (LIVE-MCP.md §5). He
@@ -23,6 +62,16 @@ updated: 2026-11-06
 - **The first run.** After he reconnected the connector, every tool answered with live data
   (§8.5a). Two text faults fixed in 0.2.1, not deployed. Committed and pushed at his word:
   DeetsSolutions 3cedf63, these docs, and the worker in its own private repo.
+
+## 2026-11-06 — Uploaded songs: the album key and the covers
+
+- **The report.** "Local files not working" (post `tWWvv_5rQO-fuzPX`): no sound, an album split
+  into single tracks, most covers blank. He has no uploads, so the causes came from the log, the
+  code, `musickit.js` and Apple's replies.
+- **Fixed, his word: the two proven faults.** The album key held a signed link, and a signed cover
+  link lasts 24 hours. [UPLOADS.md](features/UPLOADS.md) §2, §3. Unit tests pass; no upload was
+  played or synced.
+- **Not fixed: the silence.** UPLOADS.md §4. He offered an MP3 to test it (DESK-TESTS.md B25).
 
 ## 2026-11-06 — A friend's row shows the name they typed
 

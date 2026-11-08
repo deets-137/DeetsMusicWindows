@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 1.2.1
 desk_test: open
 sources: [src/home.ts, src/home-card.ts, src/friends.ts, src/friends-log.ts, tests/friends-log.test.ts, ../DeetsMusicFriends/src/friends.js, ../DeetsMusicFriends/src/sanitize.js]
-updated: 2026-11-01
+updated: 2026-11-07
 ---
 # Friends are listening to: a Home shelf of your friends' albums
 
@@ -158,3 +158,50 @@ that are friends (`npm run dev:app -- --second`).
 6. App A: right-click a left tile: the album menu, Listen Along, no Hide. Click a tile: the
    album plays from its first song.
 7. App A: remove B. B's albums are gone.
+
+## 6. The friend's name on the cover
+
+> **Part:** built · 2026-11-07 (his calls N1 A, N2 A, N3 A; desk test §6.1 open)
+
+**The ask.** A reporter (post `aSze2eBDK5O6Bb3Q`): "I can't tell which friend is who." His idea:
+a pill over the cover with the friend's name.
+
+**What the code does now.** Every tile on this shelf already has the friend's name as its sub
+line (`friendAlbumItem` in `home.ts`, `sub: name`). On 1.4.1 that name read "Friend" for every
+friend added by code (FRIENDS.md §21, fixed in `256a43a`, ships in 1.4.2). So the reporter saw
+"Friend" under every tile; the fix alone gives each tile its name.
+
+**The pattern.** The tile badge family (`.search__tile-badge`, the pin's Unpin square at the
+cover's top right; `.tile-grip` on the left edge on hover): `--surface` fill, `--title` text,
+`--tile-badge-radius`, `--tile-badge-inset`. The pill joins that family; a label, not a button.
+
+**The design.**
+- A pill on the cover with the friend's name, on every tile of the shelf, both sides. Shown at
+  all times. One line, cut with an ellipsis at the cover's width less the insets.
+- Not a press target: a click on it is the tile's click (play). The tile's hover hint names the
+  friend.
+- Tokens: alias the badge family (`--friend-pill-radius: var(--tile-badge-radius)` and the
+  rest); the type is the sub line's.
+
+**Fork N1 — the line under the cover.** Recommended: **A.** The pill carries the name, and the
+sub line goes back to the artist, as on every other Home album tile. B: the name in both places.
+
+**Fork N2 — where the pill sits.** Recommended: **A.** Bottom left of the cover: clear of the
+Unpin badge (top right, on an album you pinned) and of the grip's middle. B: bottom center.
+
+**Fork N3 — two friends played the same album** (today the tile shows once, with the name of the
+friend whose turn came first). Recommended: **A.** "Sam +1", with every name in the hover hint.
+B: the first name only, as now.
+
+**As built (2026-11-07).** `whoPlayed` and `pillText` in `friends-log.ts` (pure, tested): the
+tile's friend first, then every other friend whose now or log holds the album. `friendAlbumItem`
+(home.ts) carries `friends` and puts the artist in the sub line. `friendPill` and `tileHint`
+(home-card.ts) draw `.tile-friend` (styles.css) on the `--tile-friend-*` aliases (skin.css).
+
+### 6.1 Desk test (open; two apps, as §5)
+1. App B plays an album. App A, Home › Friends on DM: the tile wears B's name in a pill at the
+   cover's bottom left; the line under the cover is the artist.
+2. Pin that album on App A: the Unpin badge (top right) and the pill do not touch.
+3. App A's friend C (a third app, or B's log) plays the same album: the pill reads "B +1"; the
+   hover hint lists both names.
+4. A long name ends in "…" inside the cover. A press on the pill plays the album, as the tile.

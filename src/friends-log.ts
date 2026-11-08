@@ -115,3 +115,21 @@ export function takeTurns(
   }
   return out;
 }
+
+/** Every friend who played the album (now or in their log), the tile's own friend first, the
+ *  others in shelf order (features/friends-shelf.md §6, his call N3 A). */
+export function whoPlayed(
+  parts: { code: string; name: string; now: LogAlbum | null; albums: LogAlbum[] }[],
+  albumId: string,
+  firstCode: string,
+): string[] {
+  const has = (p: (typeof parts)[number]) =>
+    (p.now && albumIdOf(p.now) === albumId) || p.albums.some((a) => albumIdOf(a) === albumId);
+  const first = parts.find((p) => p.code === firstCode);
+  const rest = parts.filter((p) => p.code !== firstCode && has(p));
+  return [...(first ? [first.name] : []), ...rest.map((p) => p.name)];
+}
+
+/** The pill's words: one name, or the first name and how many more ("Sam +1"). */
+export const pillText = (names: string[]): string =>
+  names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0] ?? "";

@@ -18,7 +18,7 @@ import { infoBoxAt, openInfoBoxMenu } from "./info-box-menu";
 import { notesOpenIn, openNotes, openPresent, type NotesViewData } from "./present";
 import { currentSurface } from "./surface";
 import * as frames from "./frames";
-import { wireListKeys } from "./list-keys";
+import { wireListKeys, AHEAD_EVENT, AWAY_EVENT } from "./list-keys";
 import { openContextMenu, openContextMenuUnder, type MenuItem } from "./context-menu";
 import { windowView, WINDOW_MIN, type Windower } from "./collection-window";
 import { rowDrag, registerDropTarget, isDragging, onDragEnd, type DragPayload, type DragRow } from "./row-drag";
@@ -1298,13 +1298,43 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     });
   };
 
-  const drill = (childCtx: Context, still = false) => {
+  // ── forward (DRAG-DROP.md §6b): what each Back step closed, newest last ──
+  // A level keeps its own frame (its context, place and view are still good while the card
+  // lives); a closed search keeps its text and the level it was on. A new drill, a typed
+  // search, a view pick or a jump to the root clears the list; a remount starts with none.
+  type Forward = { kind: "level"; frame: Frame } | { kind: "search"; frame: Frame; query: string };
+  const fwd: Forward[] = [];
+  const clearForward = () => {
+    fwd.length = 0;
+    // Somewhere new: the slot's way forward across a drill swap goes too (layout.ts `aheads`).
+    opts.root.dispatchEvent(new Event(AWAY_EVENT, { bubbles: true }));
+  };
+  const forward = (): boolean => {
+    if (animating || gating) return false;
+    const step = fwd.pop();
+    if (!step) return false;
+    if (step.kind === "search") {
+      if (cur() !== step.frame) {
+        clearForward(); // the page it was on is gone: nothing left to step into
+        return false;
+      }
+      reopenSearch(step.query);
+      return true;
+    }
+    drill(step.frame.ctx, false, step.frame);
+    return true;
+  };
+
+  const drill = (childCtx: Context, still = false, again?: Frame) => {
     if (animating || gating) return;
     pick.clear(); // a drill changes which rows are on screen — the picks go with them (§19)
     // remember where we were so back restores scroll
     const v = curPane?.querySelector<HTMLElement>("[data-view]");
     if (v) cur().scroll = v.scrollTop;
-    const f = frameFor(childCtx, false);
+    // A Forward step brings back the frame Back took (its place and view); any other drill is
+    // somewhere new, and the forward list goes (his words: "resetting after I navigate away").
+    const f = again ?? frameFor(childCtx, false);
+    if (!again) clearForward();
     if (pendingReturn && Date.now() - pendingReturn.at < RETURN_TTL_MS) f.onBack = pendingReturn.cb;
     pendingReturn = null;
     stack.push(f);
@@ -1520,6 +1550,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   /** Switch to `ctx` now: the new pane is built, what differs fades out, then it is in. */
   const replace = (ctx: Context) => {
     if (animating || stack.length <= 1) return;
+    clearForward();
     pick.clear();
     closePops();
     const endFrames = frames.begin("view", ctx.views?.active ?? "");
@@ -1593,6 +1624,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   viewsEl?.addEventListener("click", (e) => {
     const key = splitPick(e);
     if (!key || stack.length <= 1) return;
+    clearForward();
     requestView(cur(), key);
   });
 
@@ -1604,6 +1636,11 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     // follows holds the level under it. A layout that declines leaves a plain Back.
     if (top.onBack) {
       const ret = top.onBack;
+      // The layout takes this card's place NOW, the level still on it, so the mouse's forward
+      // button can bring the card back at this level (DRAG-DROP.md §6b, his call F1 A).
+      const leaving = curPane?.querySelector<HTMLElement>("[data-view]");
+      if (leaving) top.scroll = leaving.scrollTop;
+      opts.root.dispatchEvent(new Event(AHEAD_EVENT, { bubbles: true }));
       top.onBack = undefined;
       stack.pop();
       // The card that leaves is the one a rule grew: after `ret` the slot holds the card that
@@ -1627,7 +1664,12 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     const header = () => setHeader(stack.length === 1, prev.ctx.headerLabel ?? prev.ctx.title, !!prev.onBack, prev.ctx);
     // The level leaves the stack now: while the page under it waits and slides, the renders
     // draw that page (`cur()` and `curPane` agree; 2026-09-29 drew a child under its parent).
+    // It waits on the forward list with its place, so Forward brings the same page back
+    // (DRAG-DROP.md §6b).
+    const leaving = curPane?.querySelector<HTMLElement>("[data-view]");
+    if (leaving) top.scroll = leaving.scrollTop;
     stack.pop();
+    fwd.push({ kind: "level", frame: top });
     // Back past the level a rule grow opened: the page goes in place and the shrink is the one
     // motion, as the open had the grow alone (his call 4A, 2026-10-21).
     if (ruleGrowEndsAt(cardId(), stack.length)) {
@@ -1643,6 +1685,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   /** Every level closes at once, no slide: the root is on screen again (`toRoot`). */
   const toRoot = () => {
     if (stack.length <= 1) return;
+    clearForward();
     pick.clear();
     stack.length = 1;
     dropPane(curPane);
@@ -2047,6 +2090,23 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
    *  (the field's own Escape cleared it the same way). The row at the top stays the row at
    *  the top. True when there was a bar to close — the key is then spent (2026-09-29: one
    *  Escape closed the bar AND went Back; now the first closes, the second goes back). */
+  /** Open the search again with its text: a Forward step over the Back that closed it. */
+  const reopenSearch = (query: string) => {
+    const f = cur();
+    const pane = curPane;
+    if (!f || !pane) return;
+    f.searchOpen = true;
+    pane.querySelector(".lib-searchbar")?.classList.add("is-open");
+    pane.querySelector('[data-pop="search"]')?.setAttribute("aria-expanded", "true");
+    if (!query) return;
+    f.query = query;
+    const input = pane.querySelector<HTMLInputElement>("[data-search]");
+    if (input) input.value = query;
+    if (input) fields.get(input)?.sync();
+    markSearchPill();
+    renderKeepingPlace(pane, f);
+  };
+
   const closeSearch = (): boolean => {
     const f = cur();
     const pane = curPane;
@@ -2382,6 +2442,7 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
   const onQuery = (input: HTMLInputElement) => {
     const pane = input.closest<HTMLElement>(".coll-pane");
     if (pane !== curPane) return;
+    clearForward();
     cur().query = input.value;
     cur().scroll = 0;
     markSearchPill();
@@ -2486,11 +2547,18 @@ export function initCollectionCard(opts: CardOptions): CollectionCardHandle {
     },
     count: () => cur().items.length,
     back: () => {
-      if (closeSearch()) return true; // the first Escape closes the search; the next goes back
+      // The first Escape closes the search; the next goes back. Forward opens it again.
+      const f = cur();
+      const query = f?.query ?? "";
+      if (closeSearch()) {
+        fwd.push({ kind: "search", frame: f, query });
+        return true;
+      }
       if (animating || stack.length <= 1) return false;
       back();
       return true;
     },
+    forward,
   });
 
   // ── start ──

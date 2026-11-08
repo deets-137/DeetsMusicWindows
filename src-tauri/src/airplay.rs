@@ -818,6 +818,9 @@ fn push_now_playing(app: &AppHandle, np: &NpState, force: bool) {
 fn fetch_artwork(app: AppHandle, url: String) {
     tauri::async_runtime::spawn(async move {
         let fetched = async {
+            if let Some((mime, bytes)) = crate::upload_art::link_bytes(&url) {
+                return Ok((mime.to_string(), bytes));
+            }
             let r = reqwest::get(&url).await.map_err(|e| e.to_string())?;
             let ct = r.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("image/jpeg").to_string();
             let bytes = r.bytes().await.map_err(|e| e.to_string())?;

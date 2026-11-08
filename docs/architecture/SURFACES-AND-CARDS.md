@@ -312,13 +312,13 @@ test and one line in CLAUDE.md.
 | Queue | ✓ | ✓ | ✓ | ✓ | ✓ | · (the queue is the state) |
 | History | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Now Playing | ✓ | · | · | ✓ | ✓ | · |
-| Rewind | ✓ | ✓ (2026-09-27) | ✓ | ✓ | ✓ | **—** |
+| Rewind | ✓ | ✓ (2026-09-27) | ✓ | ✓ | ✓ | ✓ (2026-11-07) |
 | Diary | ✓ | ✓ (2026-09-27) | · | ✓ | · (tiles wrap) | ✓ |
 | Rulez | own rows | ✓ (2026-09-27) | · | ✓ | ✓ | ✓ |
 | Settings | own rows | Ctrl+F | · | ✓ sections | · | ✓ |
 
-The gaps are the owner's to close or leave; they are listed in HANDOFF.md › Open now. Read
-again 2026-10-14: the one gap is still Rewind's memory (`rewind-card.ts` returns no `snapshot()`).
+The gaps are the owner's to close or leave; they are listed in HANDOFF.md › Open now. The last
+gap, Rewind's memory, closed 2026-11-07 (its list's scroll, CARD-MEMORY.md §5).
 
 ---
 

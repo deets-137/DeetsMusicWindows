@@ -45,6 +45,7 @@ import * as diag from "./diag";
 import { errorOf } from "./dom";
 import { TILE_PX } from "./art-size";
 import { friendShelfParts, listenAlong, onFriendsChange } from "./friends";
+import { pillText } from "./friends-log";
 
 const err = errorOf("home");
 
@@ -74,13 +75,22 @@ function tileArt(it: HomeItem): string {
   return `<div class="search__tile-art search__tile-art--empty${round}" aria-hidden="true">♪</div>`;
 }
 
+/** A Friends on DM tile: the friend's name in a pill on the cover's bottom left, "Sam +1" when
+ *  more friends played it (features/friends-shelf.md §6, his calls N1–N3 A). A label in the
+ *  tile badge family, not a button: a press on it is the tile's. */
+const friendPill = (it: HomeItem): string =>
+  it.friends?.length ? `<span class="tile-friend">${esc(pillText(it.friends))}</span>` : "";
+/** The tile's hover hint; a friend's tile names everyone who played it. */
+const tileHint = (it: HomeItem): string =>
+  it.friends?.length ? `${it.title} · Played by ${it.friends.join(", ")}` : it.title;
+
 /** `data-key` is the item's identity — the one thing a listener needs to find it again.
  *  On the Pinned shelf a tile also carries its place in that shelf and the grip that moves
  *  it (MOVABLE-ROWS.md §5.2); everywhere else it is exactly the tile it always was. */
 const tileHTML = (it: HomeItem, i: number, pinShelf: boolean): string =>
   `<div class="search__tile${it.dashed ? " search__tile--offer" : ""}" data-key="${esc(it.key)}"` +
-  `${pinShelf ? ` data-pin-idx="${i}"` : ""} role="button" tabindex="0" title="${esc(it.title)}">` +
-  `${tileArt(it)}${isPinned(it.key) ? pinBadgeHTML(it.key) : ""}${pinShelf ? PIN_GRIP : ""}` +
+  `${pinShelf ? ` data-pin-idx="${i}"` : ""} role="button" tabindex="0" title="${esc(tileHint(it))}">` +
+  `${tileArt(it)}${isPinned(it.key) ? pinBadgeHTML(it.key) : ""}${pinShelf ? PIN_GRIP : ""}${friendPill(it)}` +
   `<span class="search__tile-name">${esc(it.title)}</span>` +
   `<span class="search__tile-sub">${esc(it.sub)}</span></div>`;
 

@@ -9,7 +9,7 @@ updated: 2026-10-14
 
 Designed 2026-09-17. **BUILT the same day** (§11 = as built). Forks decided the same day (§10).
 
-Rewind's scroll is the one gap left (SURFACES-AND-CARDS.md §5; HANDOFF.md › Open now).
+Rewind's scroll, the last gap, is built (2026-11-07, §5).
 
 Files: `src/card-memory.ts` (the map, the disk row, the plain-card scroll helpers) ·
 `src/collection-card.ts` (keys, `snapshot` / `restore` / `hold`, the Back return) ·
@@ -128,7 +128,7 @@ The engine adds `snapshot()` and `restore(s)` to its return value.
 | History | root only: scroll | — | first page drawn |
 | Settings | root only: scroll. Open sections already persist (`FOLDS_KEY`) | — | at once |
 | Queue | nothing. It follows the playing song | — | — |
-| Rewind | nothing (its pick already persists in `STORE_KEY`) | — | — |
+| Rewind | root only: the runners-up list's scroll (2026-11-07). Its pick already persists in `STORE_KEY` | — | the first board drawn |
 | Diary (added since) | the open entry: `{ entry: <id> }` | the entry by id | the entries have loaded |
 | Rulez (added since) | the view, the open rule, the settings fold: `{ view, open, settings }` | — | at once |
 

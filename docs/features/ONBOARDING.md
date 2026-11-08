@@ -80,6 +80,7 @@ nothing about authoring changed when the box did.
 | Song Credits pane | a writer chip | Other songs by this name | search-card.ts (CREDITS.md §7) |
 | Any media right-click menu (2026-10-16) | a glyph in the quick column (Play · Add to Queue · Add to Library · ♥ · Pin) | the row's own label: Play Now (or Play 3 songs) · Add to Queue · Add to Library (the ✓: In your library) · Favorite / Unfavorite · Pin / Unpin | context-menu.ts (CONTEXT-MENUS.md §2a) |
 | Home | the Refresh button in the header | Builds the shelves again, and asks Apple Music what you played and added elsewhere | home-card.ts |
+| Home › Friends on DM (2026-11-07, friends-shelf.md §6) | a tile | The album's name · Played by (every friend who played it, the pill's friend first) | home-card.ts `tileHint` |
 | Song Credits | the *credited* mark on a writer with no track held | Credited, but DeetsMusic holds no track for it yet | credits.ts `FLAT_MARK` |
 | Compass | a Tab-walked pill (a kind chip, a two-answer row) · the Open / alt halves | Tab moves between these · Enter · Ctrl+Enter | compass.ts |
 | Settings › Connections (2026-10-11) | Set up the DeetsMusic MCP | Pick your AI app below and press Connect, then ask it to play something in a new chat | settings-card.ts (MCP-INSTALL.md §8b) |

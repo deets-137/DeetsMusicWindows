@@ -23,9 +23,16 @@ export interface AlbumGroup {
 // compilations, while two same-named albums with different covers stay distinct. Tracks
 // with no artwork fall back to the old name+artist key. The TRUE album identity (a real
 // library/catalog album id) is a later catalog-hydrate upgrade; this is the cheap fix.
+//
+// An uploaded song is the exception (UPLOADS.md §2). Its cover link is signed or saved per
+// picture, so it says nothing about the album, and it split one album into single tracks.
+// Those songs key on Apple's library album id, else on the album's artist.
+const UPLOAD_ART = /\.blobstore\.apple\.com\/|\/\/cover\.localhost\/upload\//;
+
 export const albumKey = (t: Track) => {
   const name = t.albumName ?? "Unknown Album";
   const art = t.artwork?.urlTemplate;
+  if (art && UPLOAD_ART.test(art)) return `${name} ${t.libraryAlbumId ?? t.albumArtist ?? t.artistName ?? ""}`;
   return art ? `${name} ${art}` : `${name} ${t.artistName ?? ""}`;
 };
 

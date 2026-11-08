@@ -380,7 +380,16 @@ function mountOlder(el: HTMLElement, lines: Line[], inNav: Set<string>, handle: 
       const b = (e.target as HTMLElement).closest<HTMLElement>("[data-line]");
       if (b) openLine(b.dataset.line!);
     });
-    const stopKeys = wireListKeys(hits, { rows: ".uc__hit" });
+    const stopKeys = wireListKeys(hits, {
+      rows: ".uc__hit",
+      // The mouse's forward button (DRAG-DROP.md §6b): the version Back left, open again.
+      forward: () => {
+        if (ahead === null) return false;
+        const l = ahead;
+        openLine(l);
+        return true;
+      },
+    });
     const field = searchField(input, { onTerm: (t) => ((term = t), paint()), first: () => hits.querySelector<HTMLElement>(".uc__hit") });
     if (term) field.set(term);
     else paint();
@@ -392,13 +401,19 @@ function mountOlder(el: HTMLElement, lines: Line[], inNav: Set<string>, handle: 
   /** A line in the nav bar opens as its page; an older one opens here, with Back to the list. */
   const openLine = (l: string) => {
     diag.log("updatecard:older", { line: l });
+    ahead = null; // a version opened: nothing waits ahead
     if (inNav.has(l)) return handle()?.show(`v${l}`);
     const line = lines.find((x) => x.line === l);
     if (!line) return;
     stop();
-    inner = mountVersion(el, line, list);
+    inner = mountVersion(el, line, () => {
+      ahead = l;
+      list();
+    });
   };
   let stop = () => {};
+  /** The version Back left, for the mouse's forward button. */
+  let ahead: string | null = null;
   list();
   return {
     destroy() {

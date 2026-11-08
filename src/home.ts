@@ -38,7 +38,7 @@ import { pinnedItems, pinsOf, pinPlayCounts } from "./pins";
 import { sortByOrder } from "./row-order";
 import { sotdOn, pickTiles, suggestionTile } from "./sotd";
 import { friendShelfParts } from "./friends";
-import { albumIdOf, takeTurns, type LogAlbum } from "./friends-log";
+import { albumIdOf, takeTurns, whoPlayed, type LogAlbum } from "./friends-log";
 
 // ── the windows ───────────────────────────────────────────────────────────────
 const DAY_MS = 86_400_000;
@@ -126,6 +126,9 @@ export interface HomeItem {
   artistName?: string;
   /** A Friends on DM tile of an album a friend plays now: their code, for Listen Along. */
   listenWith?: string;
+  /** A Friends on DM tile: who played it, the tile's own friend first. The pill on the cover
+   *  names them (features/friends-shelf.md §6). */
+  friends?: string[];
 }
 
 export interface HomeShelf {
@@ -1046,8 +1049,8 @@ export async function homeShelves(): Promise<HomeShelf[]> {
 
 /** One album a friend played, as a Home album tile: the same tile a catalog album played from
  *  Search makes (`albumItem` with one known song, the whole album on a press), under the
- *  friend's name. The song is yours from the store when you have it. */
-function friendAlbumItem(a: LogAlbum, name: string, listenWith?: string): HomeItem | null {
+ *  friend's name on the cover. The song is yours from the store when you have it. */
+function friendAlbumItem(a: LogAlbum, friends: string[], listenWith?: string): HomeItem | null {
   const seed: Track = trackById(a.catalogId) ?? {
     catalogId: a.catalogId,
     title: a.title,
@@ -1058,7 +1061,9 @@ function friendAlbumItem(a: LogAlbum, name: string, listenWith?: string): HomeIt
     artwork: a.artworkUrl ? { urlTemplate: a.artworkUrl, width: 600, height: 600 } : undefined,
   };
   const it = albumItem(albumKey(seed), [seed]);
-  return it ? { ...it, title: a.album, sub: name, artistName: a.artist, listenWith } : null;
+  // The sub line is the artist, as on every Home album tile; the pill names the friend (his
+  // call N1 A, 2026-11-07).
+  return it ? { ...it, title: a.album, sub: a.artist, artistName: a.artist, listenWith, friends } : null;
 }
 
 /** The Friends on DM shelf (features/friends-shelf.md §2.3): the albums friends play now, a
@@ -1077,11 +1082,11 @@ function friendsShelf(): HomeShelf | null {
     }
   };
   const playing = parts.filter((p) => p.now).sort((a, b) => (b.now?.at ?? 0) - (a.now?.at ?? 0));
-  for (const p of playing) if (p.now) add(friendAlbumItem(p.now, p.name, p.code));
+  const who = (a: LogAlbum, code: string) => whoPlayed(parts, albumIdOf(a), code);
+  for (const p of playing) if (p.now) add(friendAlbumItem(p.now, who(p.now, p.code), p.code));
   const left = items.length;
   const skip = new Set(playing.map((p) => (p.now ? albumIdOf(p.now) : "")));
-  const names = new Map(parts.map((p) => [p.code, p.name]));
-  for (const { code, album } of takeTurns(parts, skip)) add(friendAlbumItem(album, names.get(code) ?? "A friend"));
+  for (const { code, album } of takeTurns(parts, skip)) add(friendAlbumItem(album, who(album, code)));
   if (!items.length) return null;
   return { id: "friends", label: "Friends on DM", items, split: left && items.length > left ? left : undefined };
 }

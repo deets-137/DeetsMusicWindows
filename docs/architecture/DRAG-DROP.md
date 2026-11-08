@@ -2,8 +2,8 @@
 status: shipped
 shipped_in: 0.4.3
 desk_test: passed 2026-09-14
-sources: [src/row-drag.ts, src/row-pick.ts, src/browser-defaults.ts, src/list-keys.ts]
-updated: 2026-11-02
+sources: [src/row-drag.ts, src/row-pick.ts, src/browser-defaults.ts, src/list-keys.ts, src/collection-card.ts, src/layout.ts]
+updated: 2026-11-07
 ---
 # DeetsMusic — Drag and drop between cards
 
@@ -192,6 +192,77 @@ Browser Back key does the same as the button; a card's list step comes before it
 4. Point at another card with no drill and press: nothing happens; the Library's drill stays.
 5. Max with one card: the same as step 1.
 6. Press the forward button anywhere: nothing happens, and the page does not reload.
+
+## 6b. The mouse's forward button
+
+> **Part:** built · 2026-11-07 (his calls F1 A, F2 A; desk test below open)
+
+**The ask** (the board, post `NicTEql5iR5Cfgnm`, promised for 1.4): "if I've clicked back two
+screens, I can click forward two screens afterwards, resetting after I navigate away".
+
+**What exists.** Back is per card: the card under the pointer takes one step (§6a). In the
+collection engine (`collection-card.ts` `back`) a step pops a `Frame` off the stack; the frame
+object, with its `Context`, stays valid while the card lives. A level a drill swap opened
+(`onBack`, CARD-GROW.md §14.4) goes back by the layout bringing the first card back.
+
+**The design.**
+- **Per card, as Back.** Each card keeps a forward list. A Back step pushes what it closed; a
+  forward press in the card under the pointer takes the newest one back, with the drill's own
+  slide. The Browser Forward key does the same (the Back key's twin).
+- **What a Back step can close, and what Forward reopens:** a drill level (the same frame, with
+  its scroll and view); a search the first Back closed (its text); the Album Reviews card's
+  entry; the Rulez card's open rule; the update card's Older page.
+- **Reset** (his words): any new drill, a new search or a pick of another view in that card
+  clears its forward list. A remount (a summon, a title pick, Midi ↔ Max) clears it too.
+- **Nothing to go forward to:** nothing happens. `ui:forward` logs each press as `ui:back` does.
+
+**Fork F1 — a Back that crossed a card swap** (Go to Album in place, then Back brought the
+Library back). Recommended: **A.** Forward redoes the swap: the album card opens in place again,
+at its level. The layout keeps the swap's request with the forward step. B: Forward stops at the
+card's edge; after such a Back the button does nothing, which reads as broken. A costs a hook in
+`layout.ts`.
+
+**Fork F2 — an on-screen Forward control.** Recommended: **A.** None: the mouse button and the
+key only, as he asked, and the header keeps its one Back square. B: a forward arrow beside Back
+while a step waits (a new control in every card's header).
+
+**As built (2026-11-07).**
+- `browser-defaults.ts` `forwardAt`: button 4 and the `BrowserForward` key. First the card's
+  own step (`forwardIn`, list-keys.ts, the `forward` option beside `back`), then the layout's
+  (`swapForwardAt`, which `initLayout` registers, so the web port loads no layout).
+  `ui:forward` logs `how`, the card and `took`.
+- The collection engine (Library, Playlists, Radio, Search): `fwd`, a list of `level` (the
+  frame Back popped, its scroll saved first) and `search` (the text the first Back cleared, and
+  its level). `forward` re-enters a level through `drill(ctx, false, frame)`, the drill's own
+  slide; `clearForward` runs on a new drill, a typed search, a view pick, `replace` (the Full |
+  Lib chips) and `toRoot`.
+- Across a drill swap: the engine fires `AHEAD_EVENT` on its root as an `onBack` Back starts,
+  the level still on it; the layout takes the card's snapshot then, and keeps it in
+  `aheads[slot]` once `returnFrom` swaps. Forward runs `drillInPlace(slot, card, snap)`: the
+  card comes back with its level, and Back from it works again. `clearForward` fires
+  `AWAY_EVENT`, which empties the slot's `aheads`; so do a pick, `setAll` and a new composition.
+- The Album Reviews card keeps the entry Back left (`ahead`); Rulez the rule Back folded
+  (`foldedAhead`); the update card's Older page the version Back left. Opening another one
+  clears it.
+
+**What Claude decided inside his calls:** a closed search counts as a step (Back closes it
+first, so Forward opens it again with its text); the Browser Forward key acts as the button;
+the forward list lives in memory only, so a remount starts empty.
+
+**Desk test (his):**
+1. Library: open an artist, then one of their albums. Press back twice: the Library list.
+   Press forward twice: the artist, then the album, each with the drill's slide, at the
+   place you left.
+2. After step 1's two backs, open another album by hand. Press forward: nothing happens.
+3. Library: open the search, type a word, press back (the search closes). Press forward: the
+   search opens with the word.
+4. Make a drill swap (CARD-GROW.md §15: a Go to Album that opens in the place of the card you
+   are reading, e.g. from Home). Press back: the first card returns. Press forward: the album's card returns at the album. Press
+   back again: the first card.
+5. Album Reviews: open an entry, back, forward: the entry. Rulez: open a rule, back (it
+   folds), forward (it opens).
+6. The update card's Older updates: open a version, back, forward: the version.
+7. With nothing to go forward to, press forward in each card: nothing happens, no reload.
 
 ---
 

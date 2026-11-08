@@ -13,6 +13,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type { Track } from "./library";
+import { albumKey } from "./library-model";
 import { trackById } from "./track-store";
 import { primaryOf } from "./primary-artist";
 import { playlistsCached } from "./playlists";
@@ -90,14 +91,8 @@ export const playEventsSince = (sinceTs: number): Promise<PlayEvent[]> =>
 // Same id rule as the playlists card's `pid` — its context tags are `playlist:<pid>`.
 export const pid = (p: Playlist): string => p.libraryId ?? p.catalogId ?? p.name;
 
-// Same album identity rule as the Library card's `groupAlbums`: album name + cover-art
-// URL (all of an album's tracks share one cover), falling back to name + artist for
-// artless tracks — so featured-guest tracks don't fragment the album.
-export const albumKey = (t: Track): string => {
-  const name = t.albumName ?? "Unknown Album";
-  const art = t.artwork?.urlTemplate;
-  return art ? `${name} ${art}` : `${name} ${t.artistName ?? ""}`;
-};
+// The Library card's album identity, so a Rewind album is the same album.
+export { albumKey };
 
 interface Group {
   title: string;

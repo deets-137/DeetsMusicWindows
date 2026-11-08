@@ -7,6 +7,7 @@ mod beta;
 mod bridge;
 mod credits;
 mod csp;
+mod clipboard;
 mod db_open;
 mod db_thread;
 mod dbhealth;
@@ -45,6 +46,7 @@ mod sotd;
 mod suggest;
 mod tray;
 mod update;
+mod upload_art;
 mod usage;
 mod velo;
 mod wallpaper;
@@ -183,6 +185,7 @@ pub fn run() {
             // is read below — hence the seeding moved in here from run()'s top,
             // where it ran before Tauri could tell us where app data lives.
             apple::set_app_data_dir(dir.clone());
+            upload_art::setup(dir.clone());
             apple::set_app_handle(app.handle().clone());
 
             // Resolve the developer token ONCE, before the webview can ask for it:
@@ -415,6 +418,7 @@ pub fn run() {
             app_restart,
             apple::apple_remote_config,
             donate::donate_total,
+            clipboard::clipboard_write,
             apple::apple_begin_auth,
             apple::apple_connection_status,
             apple::apple_auth_status,

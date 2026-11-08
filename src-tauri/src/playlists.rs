@@ -252,6 +252,10 @@ fn cover_link(id: i64, version: i64) -> String {
 pub fn cover_response<R: tauri::Runtime>(app: &tauri::AppHandle<R>, path: &str) -> tauri::http::Response<Vec<u8>> {
     use base64::Engine;
     use tauri::Manager;
+    // An uploaded song's cover shares the scheme (UPLOADS.md §3).
+    if let Some(key) = path.strip_prefix("/upload/") {
+        return crate::upload_art::response(key);
+    }
     let not_found = || tauri::http::Response::builder().status(404).body(Vec::new()).unwrap();
     let Ok(id) = path.trim_start_matches('/').parse::<i64>() else { return not_found() };
     let Some(db) = app.try_state::<Db>() else { return not_found() };

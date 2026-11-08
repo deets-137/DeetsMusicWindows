@@ -96,6 +96,8 @@ RELEASE.md's section numbers · `HOP-IN.md` the Cruisin / Pro welcome screen, ne
 - `NOW-MARK.md` — the playing song's mark in a song list: a chevron in the source list, a line in
   any other (`--now-mark`). One element placed by index, never a part of a row.
 - `PINS.md` — pinned tiles, the shelves, the On Click verbs.
+- `UPLOADS.md` — a user's own uploaded songs: the album key, the saved covers
+  (`src-tauri/src/upload_art.rs`), why they can go silent. A signed blobstore link is never stored.
 - `ARTIST-VIEW.md` — the artist hero, its shelves, the chip flight.
 - `LAYOUT.md` — the artist view's shelf order and the On / Faded / Hidden buttons, as rule targets.
 - `FULL-LIB.md` — the Library's "Full | Lib" chips: Apple's whole album or artist in place of your songs.

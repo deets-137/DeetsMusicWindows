@@ -126,6 +126,10 @@ features = [
   # MessageBoxW: the one native box when the library file will not open (db_open.rs,
   # docs/ops/DB-HEALTH.md §7). A feature of the crate the app already has; no new download.
   "Win32_UI_WindowsAndMessaging",
+  # The clipboard from Rust (clipboard.rs): the page's clipboard refuses a window without focus,
+  # so a copy started by the CLI or an agent failed. Features of the crate the app already has.
+  "Win32_System_DataExchange",
+  "Win32_System_Memory",
   # Each window and the tray get their own frame of the app icon (app_icon.rs): the module
   # handle for LoadImageW, the window's scale, and the main window's subclass that hears a
   # scale change for the tray. Features of the crate the app already has.

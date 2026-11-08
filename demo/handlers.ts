@@ -597,6 +597,10 @@ const H: Record<string, Handler> = {
 
   // The Donate panel's total: no number in the demo, so the bars stay at $0
   donate_total: () => null,
+  // The clipboard's fallback when the page refuses (src/clipboard.ts): no OS clipboard here
+  clipboard_write: () => {
+    throw new Error("no clipboard in the demo");
+  },
 
   // Credits
   credits_for: (a) => {

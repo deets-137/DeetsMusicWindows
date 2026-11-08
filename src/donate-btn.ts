@@ -158,9 +158,16 @@ export function initDonateButton(): void {
     localStorage.setItem(TOTAL_KEY, String(dollars));
     diag.log("donate:total", { dollars });
   };
+  // Rapid opens send one read each, and the replies can land out of order: only the newest
+  // read's reply may set the total, so an older amount never lands last.
+  let readSeq = 0;
   const readTotal = () => {
+    const seq = ++readSeq;
     invoke<number | null>("donate_total")
-      .then(takeTotal)
+      .then((dollars) => {
+        if (seq !== readSeq) return diag.log("donate:staleReply", { dollars });
+        takeTotal(dollars);
+      })
       .catch((e) => diag.log("donate:totalFailed", { error: String(e) }));
   };
   if (import.meta.env.DEV) window.__donate = { raised: showRaised, take: takeTotal };

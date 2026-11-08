@@ -69,6 +69,13 @@ window's always-on-top and the dropdown mode in `main.ts`, the Rewind gate in
 **Migrated in on first load** (read once, then owned by the store): `deets.alwaysOnTop`,
 `deets.menuMode`, `deets.playlists.eagerCounts`.
 
+**Each stored value is checked at load (2026-11-07, `src/settings-check.ts`).** After the
+migrations, a choice key whose value is not one of its options, or a plain key holding another
+type than its default, is dropped, so that key reads its default; every other key keeps its
+value. A retired theme or skin id maps to its new id first. The options are `CHOICES`, a
+`Record` over each key's own type: a new choice key, or a new value in a choice, fails tsc until
+it is listed there. The console names the dropped keys.
+
 **Not in the store** (the card talks to the owner directly): **Library Add** — its own
 module (`library-add.ts`, `deets.libraryAdd`, with `onLibraryAddChange`); **Minimize to
 Tray** — Rust `settings.json` (`settings_get` / `settings_set_minimize_to_tray`), because

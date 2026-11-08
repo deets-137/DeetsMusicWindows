@@ -14,7 +14,7 @@ sources: [src/styles/palette.css, src/styles/themes.css, src/styles/skin.css]
 |---|---|---|
 | Palette (raw paints) | palette.css | 83 |
 | Theme (color roles) | themes.css | 73 roles · 6 themes (lilac, green, sepia, moonlight, black-yellow, black-red) |
-| Skin (everything else) | skin.css base block | 853 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
+| Skin (everything else) | skin.css base block | 857 tokens · overrides: vanilla 4, press 71, ocean 46, glass 73, cyber 69, metal 68, happy 48 |
 
 ## Theme roles
 
@@ -774,6 +774,10 @@ The base block is Vanilla. *Overridden by* lists the skins that set their own va
 | `--tile-badge-size` | `20px` | — | the tile badge (PINS.md): a pinned tile's corner square |
 | `--tile-badge-inset` | `var(--space-1)` | — |  |
 | `--tile-badge-radius` | `var(--lib-tile-radius)` | — | cut to the tile's own corner |
+| `--tile-friend-h` | `var(--tile-badge-size)` | — | The friend's name on a Friends on DM cover (friends-shelf.md §6): the tile badge family. |
+| `--tile-friend-inset` | `var(--tile-badge-inset)` | — |  |
+| `--tile-friend-radius` | `var(--tile-badge-radius)` | — |  |
+| `--tile-friend-pad` | `var(--space-1)` | — |  |
 | `--lib-tile-lh` | `1.3em` | — | a tile's text line; its meta block is pinned to two of |
 | `--lib-row-art` | `36px` | — | these so every tile in a grid row is one height — mini-cover size on density lines |
 | `--lib-row-h` | `46px` | press, cyber | a line row's fixed height — its natural height under this |

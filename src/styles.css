@@ -3888,6 +3888,24 @@ html.is-row-dragging .tile-grip { cursor: grabbing; }
 .search__tile:hover { transform: var(--hover-lift); }
 .search__tile-name { font-size: var(--fs-subtext); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search__tile-sub { font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The friend's name on a Friends on DM cover (friends-shelf.md §6, his calls 2026-11-07): the
+   cover's bottom left, clear of the Unpin badge (top right) and the grip. The tile badge
+   family's fill, text and radius; a label, so a press passes through to the tile. */
+.tile-friend {
+  position: absolute;
+  top: calc(var(--tile-art) - var(--tile-friend-inset) - var(--tile-friend-h));
+  left: var(--tile-friend-inset);
+  max-width: calc(var(--tile-art) - 2 * var(--tile-friend-inset));
+  height: var(--tile-friend-h);
+  line-height: var(--tile-friend-h);
+  padding: 0 var(--tile-friend-pad);
+  box-sizing: border-box;
+  background: var(--surface); color: var(--title);
+  border-radius: var(--tile-friend-radius);
+  font-size: var(--fs-subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none;
+}
 
 .search__artist { flex: 0 0 auto; width: var(--search-artist-w); display: flex; flex-direction: column; align-items: center; gap: var(--space-1); cursor: pointer; transition: transform var(--dur-fast) var(--ease-ui); }
 .search__artist-art { width: var(--search-artist-art); height: var(--search-artist-art); border-radius: var(--radius-round); object-fit: cover; }

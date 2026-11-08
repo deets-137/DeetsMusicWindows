@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "./toast";
+import { copyText } from "./clipboard";
 import { countUse } from "./use-counts";
 import { catalogRelated } from "./search";
 import type { Track } from "./library";
@@ -124,7 +125,7 @@ export function copyDiaryExport(id: number): Promise<void> {
     })
     .catch(() => {})
     .then(() => diaryExport(id))
-    .then((text) => navigator.clipboard.writeText(text))
+    .then((text) => copyText(text))
     .then(
       () => void toast({ kind: "success", text: "Review copied." }),
       (e) => {

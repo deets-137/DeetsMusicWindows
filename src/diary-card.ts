@@ -137,6 +137,8 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
   const body = host.querySelector<HTMLElement>(".diary")!;
 
   let entry: DiaryEntry | null = null;
+  /** The entry Back left, for the mouse's forward button (DRAG-DROP.md §6b). */
+  let ahead: number | null = null;
   let list: DiarySummary[] = [];
   let picking = false;
   let pickTerm = "";
@@ -722,6 +724,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     if (destroyed) return;
     const first = entry?.id !== e.id;
     entry = e;
+    ahead = null; // an entry is open: nothing waits ahead of it
     if (first) {
       // The foot waits for a song (his call, 2026-09-24): a new entry starts on its first song,
       // because the card grows for it and has room; a reopened one on the song that plays, if
@@ -1082,6 +1085,7 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
     flushNote();
     // A grow the entry's rule made ends with the entry; a grow the user made stays.
     levelLeft("diary", 0);
+    ahead = entry?.id ?? null; // the mouse's forward button opens it again (DRAG-DROP.md §6b)
     entry = null;
     selKey = null;
     setHeader();
@@ -1243,6 +1247,14 @@ function mountDiary(host: HTMLElement, opts?: MountOpts): CardInstance {
         tile.focus({ preventScroll: true });
         tile.scrollIntoView({ block: "nearest" });
       }
+      return true;
+    },
+    // The mouse's forward button (DRAG-DROP.md §6b): the entry Back left, open again.
+    forward: () => {
+      if (entry || ahead === null) return false;
+      const id = ahead;
+      ahead = null;
+      void openEntry(id);
       return true;
     },
   });

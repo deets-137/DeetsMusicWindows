@@ -29,6 +29,9 @@ export interface ListKeysOptions {
   activate?: boolean;
   /** Back one step. Return true when a step was taken (Escape is then consumed). */
   back?: () => boolean;
+  /** Forward one step: take back what the last Back closed (the mouse's forward button,
+   *  DRAG-DROP.md §6b). True when a step was taken. */
+  forward?: () => boolean;
   /** A windowed list: make the row at `index` exist and return it (the Library). */
   revealIndex?: (index: number) => HTMLElement | null;
   /** A windowed list: how many rows there are (for End). */
@@ -45,6 +48,30 @@ export function backIn(panel: Element): boolean {
   for (const [el, back] of backs) if (el.isConnected && panel.contains(el) && back()) return true;
   return false;
 }
+
+/** The way forward across a drill swap (DRAG-DROP.md §6b): a card's DOM events to the layout,
+ *  which listens on each slot's host. `AHEAD_EVENT`: a Back that leaves the card through
+ *  `onReturn` is starting (the layout takes the card's place now, the level still on it).
+ *  `AWAY_EVENT`: the user went somewhere new in the card, so the slot's way forward goes. */
+export const AHEAD_EVENT = "deets:return-ahead";
+export const AWAY_EVENT = "deets:away";
+
+/** Each wired list's Forward step (`forwardIn`), the twin of `backs`. */
+const forwards = new Map<HTMLElement, () => boolean>();
+
+/** Take one Forward step in `panel`: the first of its lists that has one to take. */
+export function forwardIn(panel: Element): boolean {
+  for (const [el, fwd] of forwards) if (el.isConnected && panel.contains(el) && fwd()) return true;
+  return false;
+}
+
+/** The layout's Forward step across a drill swap (layout.ts `aheads`), set by `initLayout`.
+ *  Registered here, not imported, so a page with no layout (the web port) does not load it. */
+let swapForward: (at: Element | null) => boolean = () => false;
+export const setSwapForward = (fn: (at: Element | null) => boolean): void => {
+  swapForward = fn;
+};
+export const swapForwardAt = (at: Element | null): boolean => swapForward(at);
 
 const KEYS = new Set(["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End", "PageDown", "PageUp", "Enter", " ", "ContextMenu", "F10", "Escape"]);
 
@@ -290,8 +317,10 @@ export function wireListKeys(container: HTMLElement, o: ListKeysOptions): () => 
   document.addEventListener("keydown", onElsewhere, true);
   document.addEventListener("keydown", onParkedKey, true);
   if (o.back) backs.set(container, o.back);
+  if (o.forward) forwards.set(container, o.forward);
   return () => {
     backs.delete(container);
+    forwards.delete(container);
     disarm();
     container.removeEventListener("keydown", onKey);
     container.removeEventListener("keydown", onAnyKey, true);

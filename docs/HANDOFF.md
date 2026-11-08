@@ -115,8 +115,30 @@ closed test went out (the WORKLOG has each day). Each item names where the detai
 item closes, delete it here and write the day in WORKLOG.md.
 
 - **A friend's typed name (2026-11-06).** Committed, not released
-  ([FRIENDS.md](integrations/FRIENDS.md) §21, DESK-TESTS.md B24). The next release's
-  notes need a line. The reporter's post is `aSze2eBDK5O6Bb3Q`.
+  ([FRIENDS.md](integrations/FRIENDS.md) §21, DESK-TESTS.md B24). The 1.4.2 note has its
+  line. The reporter's post is `aSze2eBDK5O6Bb3Q`.
+- **Uploaded songs (2026-11-06).** The album key and the saved covers are committed, not released
+  ([UPLOADS.md](features/UPLOADS.md) §2, §3). The silence with a Sound effect on: the CORS fix
+  is built (§4, his call A, 2026-11-07), not run, because the dev library holds no upload. **His
+  test with a real upload gates the 1.4.2 publish** (DESK-TESTS.md B25). The reporter's post is
+  `tWWvv_5rQO-fuzPX`. The 1.4.2 note has its line.
+- **Four small fixes for 1.4.2 (2026-11-07, his go).** Committed, not released; `npm run check`
+  passes; A6 and Rewind's memory passed on the dev app. (1) A Diary Done copies with the window behind: the page's clipboard first, then
+  Rust's Win32 clipboard (`src/clipboard.ts`, `clipboard.rs`; DESK-TESTS.md A6). (2) The Donate
+  panel drops an older reply on rapid opens (`readSeq` in donate-btn.ts). (3) The Rewind card
+  keeps its list's scroll place (CARD-MEMORY.md §5). (4) Each stored choice is checked against
+  its options at load; a bad value reads its default (`src/settings-check.ts`, unit tests;
+  SETTINGS.md §2). His hand test: a `diary done` from the CLI with the window behind; scroll
+  Rewind, swap the card out and back.
+- **Forward click (2026-11-07, his calls F1 A, F2 A).** Committed, not released; Claude's
+  scripted run passed (DESK-TESTS.md §5). The mouse's forward button and the Browser Forward key take back what Back
+  closed, per card, and across a drill swap ([DRAG-DROP.md](architecture/DRAG-DROP.md) §6b, desk
+  test there; DESK-TESTS.md B26). Promised on the board for 1.4 (post `NicTEql5iR5Cfgnm`). The
+  1.4.2 note has its line.
+- **The friend's name on the cover (2026-11-07, his calls N1–N3 A).** Committed, not released: a
+  pill on each Friends on DM tile, "Sam +1" for two, the artist back in the sub line
+  ([friends-shelf.md](features/friends-shelf.md) §6, desk test §6.1; DESK-TESTS.md B27). For the
+  reporter of `aSze2eBDK5O6Bb3Q`. The 1.4.2 note has its line.
 
 ### 1.3.0 — shipped 2026-11-02 (RELEASE.md release log)
 
@@ -237,8 +259,9 @@ look good for now (his word). **The total (built 2026-11-05):** the panel reads 
 ([ideas/donations.md](ideas/donations.md) §5). The worker route (`POST /admin/donated`) and the admin
 page's Donate tab are pushed (DeetsSupport `fe6ed45`, DeetsSolutions `227a9ac`, 2026-11-05, his ask).
 The worker is deployed (`f2b7028b`, 2026-11-06), so the tab sets the total. The route and the tab passed on a local worker in a
-browser. Not run: the tab on live, and the app reading a real row. Left as they are, low risk: an older reply can land
-last on rapid opens, and an open panel comes back on Midi → Max (the updates panel does the same).
+browser. Not run: the tab on live, and the app reading a real row. An older reply on rapid opens is dropped since
+2026-11-07 (only the newest read sets the total). Left as it is, low risk: an open panel comes back on Midi → Max (the
+updates panel does the same).
 Open: the asterisk's words and the other questions in §3. `panel.donate` is copied to
 DeetsSupport and reaches the worker with the deploy above.
 
@@ -491,17 +514,12 @@ Each of these shipped; what is left is listed.
 - **Motion review forks:** the surface-pick motion, the Now Playing song change (SHOTS.md §5e).
 - **Ocean on WARP** (OCEAN.md §6, B15): 27–34 fps with no GPU; a word in the *Animate
   backgrounds* hint then, or not.
-- **Code review leftovers:** check each stored choice value against its options before Backup is
-  built (settings-store.ts); generated types for `invoke<T>`, if ever.
-- **A Diary Done from the CLI or an agent** toasts *Couldn't copy the Diary entry*: the
-  clipboard refuses a window without focus. Skip the copy when the window is behind, or say so
-  in the toast (DESK-TESTS.md A6).
+- **Code review leftovers:** generated types for `invoke<T>`, if ever. (The stored choice check
+  is built, 2026-11-07, Open now.)
 - **Two update ideas** (2026-09-16, from the archived NEXT-VERSION.md): resume the song after
   an update's restart (today it comes back paused at its place, `queue-persist.ts` →
   `setResumeAt`, since 2026-09-14; playing on by itself is the open part); install an update at
   the end of a song. Not designed.
-- **Rewind has no card memory:** it opens at the top after a swap or a restart; the one gap
-  in the card-systems table (SURFACES-AND-CARDS.md §5). Close it or leave it.
 - **Look at next (2026-10-07):** the DeetsMahjong round-result page (`../DeetsSolutions/mahjong/`;
   ask him what is wrong first); Song of the Day "in the sidebar" (ask which sidebar first).
 - **AirPlay tracking (AIRPLAY.md §13.2a–b):** shipped in 0.30.0. Left: the switch timing, left

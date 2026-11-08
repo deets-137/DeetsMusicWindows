@@ -12,6 +12,7 @@ import { defaultSkin, defaultTheme, resolveSkin, resolveTheme, type SkinName, ty
 import type { EqPreset } from "./sound-presets";
 import type { Stored } from "./rules-eval";
 import { watchSet } from "./page-counts";
+import { dropBadValues } from "./settings-check";
 
 export interface Settings {
   // ── window ──
@@ -891,6 +892,9 @@ function load(): Settings {
   }
   seedOnboarding(stored); // first: it asks whether a look was ever saved
   migrate(stored);
+  // After the old shapes migrate, before the look falls back: a bad theme takes the mirror's.
+  const dropped = dropBadValues(stored as Record<string, unknown>, DEFAULTS as unknown as Record<string, unknown>);
+  if (dropped.length) console.warn("[settings] dropped values no option matches; these keys read their defaults:", dropped);
   migrateLook(stored);
   return { ...DEFAULTS, ...stored };
 }

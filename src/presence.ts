@@ -42,8 +42,9 @@ const cut = (s: string, n = CAP) => (s.length > n ? `${s.slice(0, n - 1)}…` : 
 
 /** Apple's artwork URLs end in `<w>x<h>bb.jpg`; the card draws a square, so ask for 512.
  *  Discord's media proxy fetches it itself — no upload, no extra Apple call (§8.4a). */
+// An uploaded song's cover is on this PC (UPLOADS.md §3), so Discord cannot reach it.
 const bigArt = (url?: string): string | undefined =>
-  url ? url.replace(/\/\d+x\d+bb\.jpg$/, "/512x512bb.jpg") : undefined;
+  url?.startsWith("https://") ? url.replace(/\/\d+x\d+bb\.jpg$/, "/512x512bb.jpg") : undefined;
 
 /** The app icon as the small badge on the cover's corner. An **asset key**, not a URL: the
  *  icon is uploaded once to the Discord application (Developer Portal › Rich Presence › Art

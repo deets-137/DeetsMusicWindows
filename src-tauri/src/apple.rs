@@ -1599,7 +1599,8 @@ impl AppleProvider {
 }
 
 fn artwork_from(v: &serde_json::Value) -> Option<Artwork> {
-    let url = v.get("url")?.as_str()?.to_string();
+    // An upload's cover link dies in 24 hours, so it never leaves here (upload_art.rs).
+    let url = crate::upload_art::localize(v.get("url")?.as_str()?.to_string());
     let text_colors: Vec<String> = ["textColor1", "textColor2", "textColor3", "textColor4"]
         .iter()
         .filter_map(|k| v.get(*k).and_then(|c| c.as_str()).map(String::from))

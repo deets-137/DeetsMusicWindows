@@ -410,6 +410,50 @@ function route(el: HTMLMediaElement): void {
   }
 }
 
+/** A user's own uploaded song streams from this host as a plain file (UPLOADS.md §4). */
+const UPLOAD_HOST = /^https:\/\/[^/]*\.blobstore\.apple\.com\//;
+
+/**
+ * An uploaded song asks for its file with CORS (UPLOADS.md §4, his call A, 2026-11-07). Through
+ * Web Audio (any Sound effect on), Chromium outputs silence for a cross-origin file loaded
+ * without CORS, and MusicKit never sets `crossOrigin`. The host answers with
+ * `access-control-allow-origin: *`, so the file stays playable and becomes audible through the
+ * graph. Set before the link, as a load reads it then: the `src` setter is wrapped, the way the
+ * play hook wraps `play`. Only this host: a catalog song plays from a `blob:` link, which needs
+ * nothing. The element is MusicKit's and is used again for the next song, so a link to any
+ * other host takes the attribute off again (only where this hook put it on).
+ */
+function installUploadCors(): void {
+  const proto = HTMLMediaElement.prototype;
+  const desc = Object.getOwnPropertyDescriptor(proto, "src");
+  if (!desc?.set || !desc.get) return;
+  const set = desc.set;
+  const before = (el: HTMLMediaElement, value: unknown) => {
+    const upload = typeof value === "string" && UPLOAD_HOST.test(value);
+    if (upload && el.crossOrigin !== "anonymous") {
+      el.crossOrigin = "anonymous";
+      el.dataset.uploadCors = "1";
+      diag.log("sound:uploadCors", {});
+    } else if (!upload && el.dataset.uploadCors) {
+      el.removeAttribute("crossorigin");
+      delete el.dataset.uploadCors;
+    }
+  };
+  Object.defineProperty(proto, "src", {
+    ...desc,
+    set(this: HTMLMediaElement, value: string) {
+      before(this, value);
+      set.call(this, value);
+    },
+  });
+  // The same link set as an attribute.
+  const setAttr = Element.prototype.setAttribute;
+  proto.setAttribute = function (this: HTMLMediaElement, name: string, value: string) {
+    if (name.toLowerCase() === "src") before(this, value);
+    return setAttr.call(this, name, value);
+  };
+}
+
 /**
  * Route MusicKit's elements as they start playing. The hook runs before the real play(), so
  * a context that is already warm routes the element before its first sample is heard.
@@ -1074,6 +1118,7 @@ export function startSoundContext(): void {
 }
 
 export function initSound(): void {
+  installUploadCors();
   installPlayHook();
   registerSoundRules();
   // Sound › Remember each output is a rule per remembered output (RULES.md §13): while

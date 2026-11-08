@@ -135,6 +135,8 @@ export const rulezCard: CardDef = {
     const snap = (opts?.memory ?? {}) as Partial<Snap>;
     let view: View = snap.view === "logs" ? "logs" : "rules";
     let openId: string | null = snap.open ?? null;
+    /** The rule Back folded, for the mouse's forward button (DRAG-DROP.md §6b). */
+    let foldedAhead: string | null = null;
     let closingId: string | null = null; // a row whose fold is gliding shut (openRow)
     let settingsOpen = snap.settings === true;
     let raw = false;
@@ -904,6 +906,7 @@ export const rulezCard: CardDef = {
       if (glideTimer) endGlide();
       const was = openId;
       openId = id;
+      if (id) foldedAhead = null; // a rule opened: nothing waits ahead
       closingId = was && was !== id ? was : null;
       render(true);
       const opening = id && id !== was ? foldOf(id) : null;
@@ -1105,7 +1108,17 @@ export const rulezCard: CardDef = {
       rows: ".rulez__rule",
       back: () => {
         if (!openId) return false;
+        const was = openId;
         openRow(null);
+        foldedAhead = was; // the mouse's forward button opens it again (DRAG-DROP.md §6b)
+        return true;
+      },
+      forward: () => {
+        if (openId || !foldedAhead) return false;
+        const id = foldedAhead;
+        foldedAhead = null;
+        if (!body.querySelector(`[data-id="${CSS.escape(id)}"]`)) return false; // deleted, or another view
+        openRow(id);
         return true;
       },
     });

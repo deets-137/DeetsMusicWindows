@@ -48,6 +48,31 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.4.2 — 2026-11-07
+
+**Mouse forward button support.** The forward button on your mouse now takes back what the back
+button closed, in the card your pointer is over. Go back two pages, and forward brings back the
+same two, at the place you left them. It also reopens a search you closed, an Album Review, a
+rule in Rulez, and a card that a Go to Album swapped out. Open something new, and the forward
+steps reset.
+
+**Friends' names on their albums.** On Home's Friends on DM shelf, each album now shows the
+friend's name in a small pill on its cover, and the line under it is the artist again. When two
+friends played the same album, the pill reads "Sam +1"; hover over it to see everyone. A friend
+you added by code also shows the name they typed now, not "Friend".
+
+**Your uploaded songs, one album at a time.** Songs you added to Apple Music from your own files
+now stay together as one album, their covers no longer go blank after a day, and they play with
+the Equalizer or Match loudness on.
+
+**Rewind remembers your place.** The Rewind card's list comes back where you scrolled it after
+the card is swapped out or the app restarts.
+
+**Fixes.** Marking an Album Review Done from an AI agent or the command line now copies the
+review even while the app is behind another window. The Donate panel no longer shows an older
+total when you open it quickly several times. A setting saved with a value the app does not know
+now goes back to its default, and your other settings stay as they are.
+
 ## 1.4.1 — 2026-11-06
 
 **Double-click to play.** A click on an album, playlist or artist opens it, and a double-click now

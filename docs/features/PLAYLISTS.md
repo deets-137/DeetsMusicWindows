@@ -504,7 +504,8 @@ delete too: Ctrl+click or Shift+click a run of playlists, right-click one of the
 
 ### 10.5 Name the skipped uploads
 - Uploaded songs DO work in DeetsMusic (Library, playback by library id, local playlists); only
-  catalog actions hide (Copy Link, Go To, ♥, Add to Library, export).
+  catalog actions hide (Copy Link, Go To, ♥, Add to Library, export). With a Sound effect on,
+  they may play silently (UPLOADS.md §4, 2026-11-06).
 - Export's skipped count names them the dead-song way instead of a Details button (toast
   buttons can't open a list): *2 songs skipped: "A" and "B" aren't in the Apple Music catalog.*
   Rust returns the skipped titles with the count.

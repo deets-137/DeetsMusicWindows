@@ -805,6 +805,28 @@ const META_FULL_SYNC_AT: &str = "full_sync_at";
 /// launch's one-call count, not with our row count: two library copies of one catalog song
 /// are one row here, so the row count can sit below Apple's for ever.
 const META_LIBRARY_TOTAL: &str = "library_songs_total";
+const META_UPLOAD_COVERS: &str = "upload_covers_v1";
+
+/// Once per install: a library that still stores signed cover links (UPLOADS.md §3) forgets
+/// its full-pass clock, so the next sync re-reads every song and saves those covers while
+/// Apple's new links are fresh. A library with no uploads pays nothing.
+pub(crate) fn reread_old_upload_covers(conn: &Connection) -> Result<bool, String> {
+    if meta_get(conn, META_UPLOAD_COVERS).is_some() {
+        return Ok(false);
+    }
+    let found: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM tracks WHERE source = 'library' AND json LIKE '%.blobstore.apple.com/%')",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    if found {
+        conn.execute("DELETE FROM meta WHERE key = ?1", [META_FULL_SYNC_AT]).map_err(|e| e.to_string())?;
+    }
+    meta_set(conn, META_UPLOAD_COVERS, "1")?;
+    Ok(found)
+}
 
 /// Apple's count of library songs at the last pass; None before the first and after a sign-out.
 /// The usage reports send it rounded (USAGE-COUNTS.md §19).
@@ -1347,6 +1369,9 @@ async fn library_sync_run(
 
     let (last_full, known_total): (Option<i64>, Option<u32>) = {
         let conn = db.lock();
+        if reread_old_upload_covers(&conn).map_err(fail)? {
+            crate::log::info("library: old upload cover links found, so this pass re-reads every song");
+        }
         (
             meta_get(&conn, META_FULL_SYNC_AT).and_then(|v| v.parse().ok()),
             meta_get(&conn, META_LIBRARY_TOTAL).and_then(|v| v.parse().ok()),
@@ -1696,6 +1721,29 @@ mod account_tests {
         crate::playlists::init_tables(&conn).unwrap(); // the Apple mirror forget_account clears
         migrate_v3(&conn).unwrap(); // the ♥ mirror
         conn
+    }
+
+    #[test]
+    fn old_upload_covers_cost_one_full_pass_and_no_uploads_cost_none_2026_11_06() {
+        let plain = db();
+        meta_set(&plain, META_FULL_SYNC_AT, "100").unwrap();
+        assert!(!reread_old_upload_covers(&plain).unwrap());
+        assert_eq!(meta_get(&plain, META_FULL_SYNC_AT).as_deref(), Some("100"));
+
+        let uploads = db();
+        meta_set(&uploads, META_FULL_SYNC_AT, "100").unwrap();
+        uploads
+            .execute(
+                "INSERT INTO tracks(track_id, source, sort_key, json) VALUES('i.a', 'library', 'a', ?1)",
+                [r#"{"artwork":{"urlTemplate":"https://store-037.blobstore.apple.com/a/image?X-Amz-Signature=1"}}"#],
+            )
+            .unwrap();
+        assert!(reread_old_upload_covers(&uploads).unwrap());
+        assert_eq!(meta_get(&uploads, META_FULL_SYNC_AT), None);
+        // Once only: a later clock stays, whatever the rows still hold.
+        meta_set(&uploads, META_FULL_SYNC_AT, "200").unwrap();
+        assert!(!reread_old_upload_covers(&uploads).unwrap());
+        assert_eq!(meta_get(&uploads, META_FULL_SYNC_AT).as_deref(), Some("200"));
     }
 
     // 2026-09-29: the sign-in account check and what it forgets.

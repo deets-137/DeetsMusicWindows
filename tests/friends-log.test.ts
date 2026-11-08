@@ -1,7 +1,7 @@
 // friends-log.ts: the Friends on DM shelf's log and its split (features/friends-shelf.md §2).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { asLogAlbum, expireLogs, KEEP_MS, mergeAlbums, recentToSend, takeTurns, type LogAlbum } from "../src/friends-log.ts";
+import { asLogAlbum, expireLogs, KEEP_MS, mergeAlbums, pillText, recentToSend, takeTurns, whoPlayed, albumIdOf, type LogAlbum } from "../src/friends-log.ts";
 
 const al = (album: string, at: number, artist = "A"): LogAlbum => ({ album, artist, title: `${album} song`, catalogId: `id-${album}`, artworkUrl: null, at });
 
@@ -53,4 +53,16 @@ test("2026-10-29 an album playing now, or already taken by a friend, is passed o
   assert.deepEqual(out, ["f1:Same", "f2:b2", "f1:a2"]);
   const skipped = takeTurns([f1], new Set(["same\na"]), 10).map((x) => x.album.album);
   assert.deepEqual(skipped, ["a2"]);
+});
+
+test("2026-11-07 the pill: the tile's friend first, then everyone else who played the album", () => {
+  const parts = [
+    { code: "a", name: "Ann", now: null, albums: [al("X", 1)] },
+    { code: "b", name: "Bo", now: al("x", 9), albums: [] },
+    { code: "c", name: "Cy", now: null, albums: [al("Y", 2)] },
+  ];
+  assert.deepEqual(whoPlayed(parts, albumIdOf(al("X", 0)), "b"), ["Bo", "Ann"]);
+  assert.deepEqual(whoPlayed(parts, albumIdOf(al("Y", 0)), "c"), ["Cy"]);
+  assert.equal(pillText(["Bo", "Ann"]), "Bo +1");
+  assert.equal(pillText(["Cy"]), "Cy");
 });

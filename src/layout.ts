@@ -13,6 +13,7 @@
 // open levels and scroll place across, so the card comes back where it was.
 
 import { registry, type CardDef, type CardId, type CardInstance, type MountOpts } from "./cards";
+import { AHEAD_EVENT, AWAY_EVENT, setSwapForward } from "./list-keys";
 import { setting, setSetting, effective, onSettingsChange } from "./settings-store";
 import { makeDropdown } from "./dropdown";
 import { enterRows } from "./pop";
@@ -561,6 +562,7 @@ export function initLayout(): void {
     }
     const other = comp.slots.find((s) => layout[s] === id);
     wipeChain(slot); // a pick in this slot ends its way back (CARD-GROW.md §15.3)
+    wipeAhead(slot); // and its way forward (DRAG-DROP.md §6b)
     // A pick that touches a grown card (CARD-GROW.md §7, fork 6): "Keep" swaps the cards and
     // the span stays on the slot; "Collapse" ends the grow first, then the pick runs.
     const g = grownState();
@@ -614,6 +616,38 @@ export function initLayout(): void {
   const chains: Partial<Record<Slot, { card: CardId; snap: unknown }[]>> = {};
   const wipeChain = (slot: Slot) => { delete chains[slot]; };
 
+  /** The way forward per slot (DRAG-DROP.md §6b, his call F1 A): each card a Back sent away
+   *  across a drill swap, with the place it had BEFORE that Back (the level it went back from
+   *  still on it), newest last. The mouse's forward button swaps it in again. A new drill, a
+   *  pick, a new composition or a new step inside the card that came back clears it. */
+  const aheads: Partial<Record<Slot, { card: CardId; snap: unknown }[]>> = {};
+  const wipeAhead = (slot: Slot) => { delete aheads[slot]; };
+  /** The leaving card's place, taken as its Back starts (before its level leaves the stack);
+   *  kept only if the swap back runs (`returnFrom`). */
+  const aheadPending: Partial<Record<Slot, { card: CardId; snap: unknown }>> = {};
+  for (const s of Object.keys(hosts) as Slot[]) {
+    const host = hosts[s];
+    if (!host) continue;
+    host.addEventListener(AHEAD_EVENT, () => {
+      const card = layout[s];
+      if (card) aheadPending[s] = { card, snap: mounted[s]?.inst.snapshot?.() };
+    });
+    host.addEventListener(AWAY_EVENT, () => wipeAhead(s));
+  }
+  // The mouse's forward button when the card under the pointer has no step of its own.
+  setSwapForward((at) => {
+    const slot = (Object.keys(hosts) as Slot[]).find((s) => !!at && !!hosts[s]?.contains(at));
+    if (!slot || !comp.slots.includes(slot)) return false;
+    const list = aheads[slot];
+    const e = list?.pop();
+    if (!e) return false;
+    if (layout[slot] === e.card || !drillInPlace(slot, e.card, e.snap)) {
+      wipeAhead(slot); // the slot moved on: nothing to step into
+      return false;
+    }
+    return true;
+  });
+
   /** The grand opening's Start with (GRAND-OPENING.md §7): every place of the layout on screen
    *  at once. A move in its list shifts several cards down a place in one step, so a run of
    *  `setSlot` swaps would remount the same slot twice. The slots that change remount where
@@ -628,6 +662,7 @@ export function initLayout(): void {
     if (!changed.length) return;
     for (const s of changed) {
       wipeChain(s);
+      wipeAhead(s);
       unmountSlot(s);
     }
     layout = { ...layout, ...map };
@@ -908,11 +943,14 @@ export function initLayout(): void {
 
   /** A drill: the target takes the slot you are reading, and the card that was there is pushed
    *  onto that slot's way back, with its own place (CARD-GROW.md §15.3). */
-  const drillInPlace = (slot: Slot, id: CardId): boolean => {
+  const drillInPlace = (slot: Slot, id: CardId, memory?: unknown): boolean => {
     const source = layout[slot];
     if (!source) return false;
     const snap = mounted[slot]?.inst.snapshot?.();
-    if (!drillSwap(slot, id, "in", undefined, true, registry[source]?.title)) return false;
+    // `memory`: a Forward step brings the card back where it was; any other drill is somewhere
+    // new, and the way forward goes.
+    if (!drillSwap(slot, id, "in", memory, true, registry[source]?.title)) return false;
+    if (memory === undefined) wipeAhead(slot);
     const stack = (chains[slot] ??= []);
     stack.push({ card: source, snap });
     if (stack.length > CHAIN_CAP) stack.shift();
@@ -922,6 +960,8 @@ export function initLayout(): void {
   /** Back on a level a drill opened: the card before it comes back, where it was. False when
    *  the chain is gone (a pick, a surface change, a collapse), so the card does a plain Back. */
   function returnFrom(slot: Slot): boolean {
+    const pending = aheadPending[slot];
+    delete aheadPending[slot];
     const stack = chains[slot];
     if (!stack?.length || !comp.slots.includes(slot)) return false;
     const entry = stack[stack.length - 1];
@@ -931,6 +971,7 @@ export function initLayout(): void {
     const ok = drillSwap(slot, entry.card, "back", entry.snap, deeper, deeper ? registry[stack[stack.length - 1].card]?.title : undefined);
     if (!ok) stack.push(entry); // put it back: the swap did not run
     else if (!deeper) wipeChain(slot); // back at the resting state: the chain goes
+    if (ok && pending) (aheads[slot] ??= []).push(pending); // Forward can bring it again
     return ok;
   }
 
@@ -948,6 +989,7 @@ export function initLayout(): void {
    *  for Max change: the stage column does not move, so its Queue keeps its place). */
   const decompose = (keepQueue = false) => {
     (Object.keys(hosts) as Slot[]).forEach(wipeChain); // a new composition has no way back
+    (Object.keys(hosts) as Slot[]).forEach(wipeAhead); // nor a way forward
     (Object.keys(mounted) as Slot[]).forEach(unmountSlot);
     if (keepQueue) return;
     queueGrow?.destroy();

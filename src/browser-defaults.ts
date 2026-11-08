@@ -3,10 +3,11 @@
 // field gets our own menu instead — Cut · Copy · Paste · Select All, greyed when they can't
 // act. Browser keys (Ctrl+F, F5, zoom, …) are turned off in Rust (lib.rs, release only).
 // The mouse's back button goes back one step in the card under the pointer, not in the
-// webview's history (DRAG-DROP.md §6a, his ask 2026-11-02).
+// webview's history (DRAG-DROP.md §6a, his ask 2026-11-02); the forward button takes back what
+// the Back steps closed (§6b, a user's ask, 2026-11-07).
 
 import { openContextMenu } from "./context-menu";
-import { backIn } from "./list-keys";
+import { backIn, forwardIn, swapForwardAt } from "./list-keys";
 import * as diag from "./diag";
 
 const TEXT_TYPES = new Set(["text", "search", "url", "email", "tel", ""]);
@@ -56,15 +57,24 @@ function backAt(at: Element | null, how: "mouse" | "key"): void {
   diag.log("ui:back", { how, card: panel?.dataset.slot ?? panel?.dataset.card ?? null, took });
 }
 
+/** One Forward step in the card at `at`: its own (a level, a search, an entry Back closed),
+ *  else the card a Back sent away across a drill swap (layout.ts). Nothing waits: nothing. */
+function forwardAt(at: Element | null, how: "mouse" | "key"): void {
+  const panel = at?.closest<HTMLElement>(".panel") ?? null;
+  const took = (!!panel && forwardIn(panel)) || swapForwardAt(at);
+  diag.log("ui:forward", { how, card: panel?.dataset.slot ?? panel?.dataset.card ?? null, took });
+}
+
 export function initBrowserDefaults(): void {
   window.addEventListener("dragstart", (e) => e.preventDefault());
   // The mouse's back button (Windows' XButton1, `button` 3) and forward button (4). Chromium's
   // own history step runs as mouseup's default action, so mouseup is where it stops; a stop on
-  // auxclick does not stop it. Forward has no step of ours yet: it only does nothing.
+  // auxclick does not stop it.
   window.addEventListener("mouseup", (e) => {
     if (e.button !== 3 && e.button !== 4) return;
     e.preventDefault();
     if (e.button === 3) backAt(e.target as Element | null, "mouse");
+    else forwardAt(e.target as Element | null, "mouse");
   });
   // A mouse program (Logitech Options and others) can send the keyboard's Browser Back key in
   // place of the button: the same step, in the card under the pointer's last place.
@@ -72,9 +82,11 @@ export function initBrowserDefaults(): void {
   let py = -1;
   window.addEventListener("pointermove", (e) => { px = e.clientX; py = e.clientY; }, { passive: true });
   window.addEventListener("keydown", (e) => {
-    if (e.key !== "BrowserBack" || e.defaultPrevented) return;
+    if ((e.key !== "BrowserBack" && e.key !== "BrowserForward") || e.defaultPrevented) return;
     e.preventDefault();
-    backAt(px >= 0 ? document.elementFromPoint(px, py) : null, "key");
+    const at = px >= 0 ? document.elementFromPoint(px, py) : null;
+    if (e.key === "BrowserBack") backAt(at, "key");
+    else forwardAt(at, "key");
   });
   // Bubble phase: a card that opened its own menu already called preventDefault.
   window.addEventListener("contextmenu", (e) => {
