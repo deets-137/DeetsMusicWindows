@@ -360,8 +360,11 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
 - **The live MCP** (2026-11-01 and 2026-11-04, his calls L1–L9): a remote MCP in its own worker on
   the support D1, behind Cloudflare Access, for his phone, claude.ai and sessions; read-only, fixed
   queries, `live_thread`, one shared waiting rule, a combined
-  `live_check`, a daily email on a flag, no week-over-week yet. The build-time checks are
-  [LIVE-MCP.md](ops/LIVE-MCP.md) §5; build and deploy on his go.
+  `live_check`, a daily email on a flag, no week-over-week yet. **2026-11-07: 0.2.0 is live**
+  (`../DeetsMusicAdminMCP`, `musicadmin.deets.solutions/mcp`): six tools, the sign-in passed from
+  Claude Code, each tool ran on live data (§8.5a), and the admin page reads the same `flags.js`
+  (DeetsSolutions 3cedf63, pushed). Open: deploy 0.2.1 (built, two text fixes); the phone test;
+  `live_logs`, file and line, the daily email (LIVE-MCP.md §8.6). Each deploy is his go.
 - **S2's week of mirror dates** (apple-calls.md S2), with no code: one read-only call a day,
   from a script, so the evidence is ready when S2 is built.
 

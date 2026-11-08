@@ -6,6 +6,24 @@ updated: 2026-11-06
 ---
 # DeetsMusic — Work log
 
+## 2026-11-07 — The admin MCP: the sign-in test worker
+
+- **His calls.** The name DeetsMusicAdminMCP, and go on the first build step (LIVE-MCP.md §5). He
+  asked to set Access up from the CLI.
+- **Built and deployed.** Zero Trust turned on (team `deetssolutions`; `deets` was taken), an email
+  code sign-in, an Access app with Managed OAuth for his email only, and a worker with one `ping`
+  tool. [LIVE-MCP.md](ops/LIVE-MCP.md) §8.
+- **Checked.** A call with no sign-in gets a 401 that points to Access's OAuth data; the
+  workers.dev address does not answer.
+- **Open.** He connects from claude.ai, the phone and Claude Code (§8.3).
+- **Later the same day: the sign-in test passed** (`ping` from a Claude Code session), and at his
+  "build them" and deploy go, 0.2.0 went live: six tools on the live D1 by fixed SELECTs, the last
+  look in KV, and the flag rules moved into one shared file, `DeetsSolutions/.../admin/flags.js`,
+  which admin.js now calls. LIVE-MCP.md §8.4–§8.6.
+- **The first run.** After he reconnected the connector, every tool answered with live data
+  (§8.5a). Two text faults fixed in 0.2.1, not deployed. Committed and pushed at his word:
+  DeetsSolutions 3cedf63, these docs, and the worker in its own private repo.
+
 ## 2026-11-06 — A friend's row shows the name they typed
 
 - **The report.** A user on 1.4.1, with 3 accounts: every friend reads "Friend", not the name in

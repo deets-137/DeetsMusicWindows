@@ -1,15 +1,16 @@
 ---
 status: designed
 desk_test: none
-sources: [../DeetsSupport/schema.sql, ../DeetsSupport/src/usage.js, ../DeetsSupport/src/index.js, ../DeetsSolutions/deetsmusic/admin/admin.js, scripts/errors-where.mjs, scripts/usage-r2.mjs]
-updated: 2026-11-04
+sources: [../DeetsMusicAdminMCP/src/index.ts, ../DeetsMusicAdminMCP/cloudflare.config.ts, ../DeetsSupport/schema.sql, ../DeetsSupport/src/usage.js, ../DeetsSupport/src/index.js, ../DeetsSolutions/deetsmusic/admin/admin.js, scripts/errors-where.mjs, scripts/usage-r2.mjs]
+updated: 2026-11-07
 ---
 # Live MCP — read the live support data from any Claude
 
 > Designed 2026-11-01 (his ask: "better ways to query the live database rather than directly
 > through the D1", then "MCP from the jump", then "the remote route so I can check on my
-> phone"). Revised 2026-11-04 after a real read of the forum (L5 to L9). Not built. §1 is why. §3
-> is the design. §4 holds his calls. §5 is what to check at build time.
+> phone"). Revised 2026-11-04 after a real read of the forum (L5 to L9). §1 is why. §3
+> is the design. §4 holds his calls. §5 is what to check at build time. §8 is as built: the
+> sign-in test worker, live 2026-11-07, with no tools on the D1 yet.
 
 ## 0. Terms
 
@@ -157,6 +158,7 @@ only, which is the address it needs.
 | L7 | The thresholds and the waiting rule in one shared source (§3.5). | 2026-11-04 |
 | L8 | Read-only, except the last look (§3.1). | 2026-11-04 |
 | L9 | No raw SQL: a new question is a new named query (§3.2). | 2026-11-04 |
+| L10 | The name DeetsMusicAdminMCP; Claude picks the address (`musicadmin.deets.solutions`, beside `musicfriends`). Access set up from the CLI. | 2026-11-07 |
 
 ## 5. Check at build time
 
@@ -189,3 +191,105 @@ only, which is the address it needs.
 | Cost | Nothing to deploy. Each token reads every D1 in the account. | A route or worker and a deploy (his go), an Access app. |
 
 ## 7. Desk test (to write at build time)
+
+## 8. As built
+
+> **Part:** built · 2026-11-07
+
+Where this disagrees with §3, this is the code. Version 0.2.0 (deployed 2026-11-07, his go): `ping`
+and six of the seven tools of §3.2. Not built yet: `live_logs`, the fingerprint file and line
+(§3.4) and the daily email (§3.7); §8.6.
+
+### 8.1 The parts
+
+- **The worker:** `../DeetsMusicAdminMCP` (made with `cf init`; `cf deploy`), worker
+  `deetsmusicadminmcp`, on the custom domain `musicadmin.deets.solutions`. `workersDev: false`, so
+  no address sits outside Access (checked: the workers.dev name answers 404).
+- **Zero Trust:** turned on 2026-11-07 from the CLI. Team `deetssolutions.cloudflareaccess.com`
+  (`deets` was taken). Sign-in: **Email code** (one-time PIN), the only identity provider.
+- **The Access app:** `DeetsMusicAdminMCP`, self-hosted, on the whole hostname. Policy *Owner only*:
+  his email. **Managed OAuth** on: Access runs the OAuth sign-in itself, so the worker holds no
+  OAuth code, client secret or OAuth KV. This replaces the Access-for-SaaS plan in §5 (that one
+  needs `workers-oauth-provider` in the worker). Dynamic client registration allows localhost,
+  loopback and the claude.ai / claude.com callback. Access token 15 minutes, refresh 2 weeks.
+- **The worker's own check (§3.8):** every request must carry a `Cf-Access-Jwt-Assertion` that
+  `jose` verifies against the team's keys, issuer and the app's `aud`; else 403. The email from it
+  goes to the tools (`getMcpAuthContext`) and to one log line per call.
+- **The MCP:** `createMcpHandler` from `agents/mcp/server` (stateless, SDK v2
+  `@modelcontextprotocol/server`), at `/mcp` only.
+
+### 8.2 What was checked (2026-11-07)
+
+- `POST /mcp` with no sign-in: 401, with a `WWW-Authenticate` that points to Access's
+  protected-resource data.
+- `/.well-known/oauth-authorization-server`: Access's endpoints, with dynamic registration and
+  S256.
+
+### 8.3 Desk test (his, open)
+
+1. claude.ai › Settings › Connectors › Add custom connector, URL
+   `https://musicadmin.deets.solutions/mcp`. Sign in with the email code. Ask Claude to run `ping`.
+   Pass: `ok · signed in as <his email>`.
+2. The same connector on the Claude mobile app. Ask for `ping`.
+3. Claude Code: `claude mcp add --transport http deetsmusic-admin https://musicadmin.deets.solutions/mcp`,
+   then `ping`.
+
+**2026-11-07: passed from a Claude Code session.** He connected and signed in; this session's
+`ping` returned `ok · signed in as <his email> · deetsmusic-admin 0.1.0` (the token reached the
+worker and its JWT check passed). The tool came in as a claude.ai-style connector id, so the
+claude.ai sign-in path likely works too; the phone is not tried yet.
+
+A fail at step 1 or 2 means claude.ai does not take Access's Managed OAuth; then §5's fallback
+(`workers-oauth-provider` in the worker) comes back to him as a fork.
+
+### 8.4 The tools (0.2.0)
+
+All read the `live` channel and the `deetsmusic` app. The SQL is in `src/queries.ts`; every query
+passes a guard that refuses anything but one SELECT. The answers are plain text (`src/tools.ts`).
+
+| Tool | Input | Returns |
+|---|---|---|
+| `live_check` | none | The "Needs a look" flags (the page's rules and words), then new posts and new replies from others on older posts since the last look (first look: 7 days). Moves the last look to now. |
+| `live_reports` | `since`: a date, an ISO time or `last_look` (default 7 days) | The same new posts and replies, then every post waiting on his reply with its days. |
+| `live_thread` | `pid` | The post (kind, state, public, votes, source, version, body) and its shown replies in order: you, poster, or member with their name. |
+| `live_errors` | `week` (default the newest with reports) | Reports by version and by week; panics, freezes and log classes; error kinds with how, type and place, NEW when not seen before. Each as installs and a share of that version's reports. |
+| `live_apple` | `week` | `apple.<group>.<class>` by group: installs, share of reports, and the least call count from the ranges. |
+| `live_installs` | none | Active per day (15 days) and the 7-day means, yesterday's version mix, updates per version, the Setup.exe funnel by source, first starts, the minutes listened. |
+
+- **Never returned:** a post's `code`, any `uid`, `meta` (only its version, as the admin list
+  reads it). `code` is read to join a thread and stays in the worker.
+- **The last look:** KV `deetsmusicadminmcp-state`, key `last_look` (unix seconds). Live's schema
+  does not change and the worker has no D1 write.
+- **The record:** `observability` on; one `tool_call` log line per call with the tool and the email.
+
+### 8.5 One set of rules (§3.5, built)
+
+- **The source:** `DeetsSolutions/deetsmusic/admin/flags.js` (plain ES5, `DeetsFlags`): `FLAG`, the
+  waiting rule, the week and day helpers, and `compute()`, which returns each flag as a kind and
+  raw numbers. The admin page loads it before `admin.js` and words each flag with `strings.js`;
+  `admin.js` keeps thin wrappers (`isWaiting`, `waitSince`, `healthStats`, `seenBefore`, …).
+- **The copy:** `npm run flags` in the worker writes `src/flags.gen.js`; `npm run check` (and so
+  `npm run deploy`) fails when it differs. Types are in `src/flags.gen.d.ts`, by hand.
+- **Pushed:** the admin page change is DeetsSolutions 3cedf63 (2026-11-08, at his word).
+- **The worker's repo:** `deets-137/DeetsMusicAdminMCP`, private, like the other workers.
+
+### 8.5a The first run (2026-11-07, 0.2.0, from a Claude Code session)
+
+Every tool answered with live data. `live_check` (the first look, so 7 days): 3 flags (v1.2.1
+freezes on 17% of W44 reports; v1.4.1 29% of installs at 0 minutes; "Microsoft Store" waiting 9
+days), 12 new posts. `live_reports` since 2026-11-05: 4 posts, 3 poster replies, 2 posts waiting.
+`live_thread` on "Microsoft Store": the post and its 3 replies. `live_errors` and `live_apple`: W44
+(W45 has no reports yet), 38 reports. `live_installs`: 47 a day over the last 7 days, 79% on 1.4.1.
+
+Read from the run: health reads the newest week **with reports** (W44, the 1.2.1 week), as the
+page does, so the freezes flag is about an old version. The "Microsoft Store" wait is the poster's
+"Great! Thanks!" after his last reply: the waiting rule counts any poster word.
+
+Fixed in 0.2.1 (built and committed, not deployed): a new post now lists its replies (`live_check` showed "0 new
+replies" while a new post had them); "1 installs" / "1 votes".
+
+### 8.6 Not built yet
+
+- `live_logs`: needs the worker to read Workers Logs with a read-only token (§5).
+- The fingerprint's file and line (§3.4): the release step must upload the maps to R2 first.
+- The daily email on a flag (§3.7): a cron and Email Routing's `send_email` to his address.
