@@ -110,24 +110,26 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-**Live: 1.4.1** (2026-11-06, built from `acdad49` on `main`; RELEASE.md has the log). Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
+**Live: 1.4.2** (2026-11-09, built from `7e3cf8d` on `main`; RELEASE.md has the log). Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
 
-- **Where Add to Queue puts songs (2026-11-09).** Committed, not released; passed by script on the
-  dev app ([QUEUE.md](features/QUEUE.md) § Where Add to Queue puts songs). The 1.4.2 note has no
-  line for it yet.
-- **A friend's typed name (2026-11-06).** Committed, not released
+- **Where Add to Queue puts songs (2026-11-09).** Shipped in 1.4.2; passed by script on the
+  dev app ([QUEUE.md](features/QUEUE.md) § Where Add to Queue puts songs). The 1.4.2 note has its
+  line.
+- **A friend's typed name (2026-11-06).** Shipped in 1.4.2
   ([FRIENDS.md](integrations/FRIENDS.md) §21, DESK-TESTS.md B24). The 1.4.2 note has its
   line. The reporter's post is `aSze2eBDK5O6Bb3Q`.
-- **Uploaded songs (2026-11-06).** The album key and the saved covers are committed, not released
+- **Uploaded songs (2026-11-06).** The album key and the saved covers are shipped in 1.4.2
   ([UPLOADS.md](features/UPLOADS.md) §2, §3). The silence with a Sound effect on: the CORS fix
   passed on a real upload on the dev app, 2026-11-09 (§4 *As run*), so it no longer gates the 1.4.2
   publish. One album and the covers passed on a 10-song test album. The end-of-song repair was
-  fixed for uploads (UPLOADS.md §6, 2026-11-09): it changes a path all playback uses, so **his hand
-  test comes before the 1.4.2 publish** (RELEASE.md §0b). Step 3 of the desk test waits for 24
-  hours. The reporter's post is `tWWvv_5rQO-fuzPX`. The 1.4.2 note has its line.
-- **Four small fixes for 1.4.2 (2026-11-07, his go).** Committed, not released; `npm run check`
+  fixed for uploads (UPLOADS.md §6, 2026-11-09), in 1.4.2. Step 3 of the desk test waits for 24
+  hours.
+- **Freezes on 1.4.1 (2026-11-09): not traced.** 11 of 43 reports in W45, with counts only. From
+  1.4.2 each freeze reports where it was and how long (LOGGING.md). `live_errors` lists
+  `freeze.Stuck@…` about a week after the update reaches users: read it, then trace. The reporter's post is `tWWvv_5rQO-fuzPX`. The 1.4.2 note has its line.
+- **Four small fixes for 1.4.2 (2026-11-07, his go).** Shipped in 1.4.2; `npm run check`
   passes; A6 and Rewind's memory passed on the dev app. (1) A Diary Done copies with the window behind: the page's clipboard first, then
   Rust's Win32 clipboard (`src/clipboard.ts`, `clipboard.rs`; DESK-TESTS.md A6). (2) The Donate
   panel drops an older reply on rapid opens (`readSeq` in donate-btn.ts). (3) The Rewind card
@@ -135,12 +137,12 @@ item closes, delete it here and write the day in WORKLOG.md.
   its options at load; a bad value reads its default (`src/settings-check.ts`, unit tests;
   SETTINGS.md §2). His hand test: a `diary done` from the CLI with the window behind; scroll
   Rewind, swap the card out and back.
-- **Forward click (2026-11-07, his calls F1 A, F2 A).** Committed, not released; Claude's
+- **Forward click (2026-11-07, his calls F1 A, F2 A).** Shipped in 1.4.2; Claude's
   scripted run passed (DESK-TESTS.md §5). The mouse's forward button and the Browser Forward key take back what Back
   closed, per card, and across a drill swap ([DRAG-DROP.md](architecture/DRAG-DROP.md) §6b, desk
   test there; DESK-TESTS.md B26). Promised on the board for 1.4 (post `NicTEql5iR5Cfgnm`). The
   1.4.2 note has its line.
-- **The friend's name on the cover (2026-11-07, his calls N1–N3 A).** Committed, not released: a
+- **The friend's name on the cover (2026-11-07, his calls N1–N3 A).** Shipped in 1.4.2: a
   pill on each Friends on DM tile, "Sam +1" for two, the artist back in the sub line
   ([friends-shelf.md](features/friends-shelf.md) §6, desk test §6.1; DESK-TESTS.md B27). For the
   reporter of `aSze2eBDK5O6Bb3Q`. The 1.4.2 note has its line.

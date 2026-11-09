@@ -45,6 +45,9 @@ updated: 2026-11-06
 - **Freezes: still not traced, now measurable (his go; he said not to search the bug logs).** The
   report carried a count and nothing else. It now carries the place and the length as error kinds,
   with no worker change. Run on the dev app: its UI thread suspended for 8 s. LOGGING.md.
+- **1.4.2 published (his go, the hand test waived: "since you've rated the real risk low, good to
+  go straight to 1.4.2").** From `7e3cf8d`, with 1.4.2-rc.1 held out of the feed (`_held-1.4.2-rc.1`).
+  RELEASE.md §0a has the checks.
 
 ## 2026-11-09 — The Discord card's bar (ticket `aTUQ4mJV38oHs3-V`)
 
