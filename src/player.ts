@@ -35,7 +35,7 @@ import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import { unreleasedToast } from "./release";
-import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart, skipToSameId, nextFed, addToQueueAt, addedNotice } from "./queue-sync";
+import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart, skipToSameId, nextFed, addToQueueAt, addedNotice, endStillHolds } from "./queue-sync";
 import { matchOf, onSuggestChange } from "./suggest";
 import { resumePoint } from "./resume-point";
 import { idleSkip } from "./idle-skip";
@@ -835,7 +835,9 @@ function dropSkippedTail(): void {
 }
 
 function maybeFinishQueue(): void {
-  if (!music || mode !== "queue" || loadingContext || isLoading) return;
+  // `endHealing`: the end-of-song repair owns this moment. It may have just moved the model onto
+  // the last row, so an empty Up Next is not the end of the list (2026-11-09, UPLOADS.md §6).
+  if (!music || mode !== "queue" || loadingContext || isLoading || endHealing) return;
   const S = window.MusicKit?.PlaybackStates;
   const st = music.playbackState;
   const finished = !!S && (st === S.completed || st === S.ended);
@@ -3696,7 +3698,13 @@ function watchForSound(why: string): void {
  *  - MusicKit's window ran dry (the song ended inside GROW_DELAY_MS, before the grow) →
  *    nothing is dead; advance the model and re-window.
  * A true queue end (model has nothing upcoming) is maybeFinishQueue's, not ours.
+ *
+ * The shape must LAST. Between two uploads MusicKit passes through `ended` with no song for
+ * about 50 ms and then starts the next one itself (measured 2026-11-09, UPLOADS.md §6). A repair
+ * at the first sight of it stopped a song change that was working: a gap at every upload, and
+ * the list's last song lost. So the repair waits END_SETTLE_MS and looks again.
  */
+const END_SETTLE_MS = 400;
 let endHealing = false;
 /** The last queue entry MusicKit played sound for (emitProgress). */
 let heardEntry: unknown = null;
@@ -3708,13 +3716,31 @@ let endRetried: unknown = null;
 function onEndedWithoutItem(): void {
   const m = music;
   const S = window.MusicKit?.PlaybackStates;
-  if (!m || !S || endHealing || cueingListEnd || loadingContext || isLoading || mode !== "queue") return;
+  if (!m || !S || endHealing || !endShape(m, S)) return;
+  endHealing = true; // also holds maybeFinishQueue while we wait
+  const row = queue.getCurrent();
+  window.setTimeout(() => {
+    if (music === m && endStillHolds({ shape: endShape(m, S), sameRow: queue.getCurrent() === row })) {
+      healEndedWithoutItem(m);
+      return;
+    }
+    endHealing = false;
+    diag.log("player:endSettled", { state: S[m.playbackState] ?? m.playbackState, id: m.nowPlayingItem?.id ?? null });
+    maybeFinishQueue(); // what the event we held back would have checked
+  }, END_SETTLE_MS);
+}
+
+/** MusicKit has stopped with no song, nothing of ours is loading, and Up Next holds a fed row. */
+function endShape(m: any, S: any): boolean {
+  if (cueingListEnd || loadingContext || isLoading || mode !== "queue") return false;
   const st = m.playbackState;
-  if ((st !== S.ended && st !== S.completed) || m.nowPlayingItem || !hasFedUpcoming()) return;
+  return (st === S.ended || st === S.completed) && !m.nowPlayingItem && hasFedUpcoming();
+}
+
+function healEndedWithoutItem(m: any): void {
   const items: any[] = m.queue?.items ?? [];
   const np = typeof m.nowPlayingItemIndex === "number" ? m.nowPlayingItemIndex : -1;
   const mkRemaining = np >= 0 ? items.length - np - 1 : 0;
-  endHealing = true;
   // Which song failed? When MusicKit announced the next song (the model followed it) and
   // then ended with no sound, the failed song is the model's `current`, not the one after it.
   // Retry it once; a second failure skips it as before. Before 2026-09-28 the heal always

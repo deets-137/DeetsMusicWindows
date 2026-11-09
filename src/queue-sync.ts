@@ -89,6 +89,12 @@ export function skipToSameId(ids: readonly (string | null | undefined)[], np: nu
   return !!here && ids[np + dir] === here;
 }
 
+/** After the settle wait at a song's end: is MusicKit still stopped with no song, on the row
+ *  the wait began on? False: MusicKit moved on by itself, or the user did. Nothing to repair. */
+export function endStillHolds(now: { shape: boolean; sameRow: boolean }): boolean {
+  return now.shape && now.sameRow;
+}
+
 /** How far ahead a difference must be repaired at a song change. A repair cuts MusicKit's
  *  upcoming from the first difference and appends it again, and at a song change that work
  *  meets the next song's own start. Near the play head it cannot wait: MusicKit plays into

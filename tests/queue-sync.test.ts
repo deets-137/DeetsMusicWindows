@@ -1,11 +1,17 @@
 // queue-sync.ts: what MusicKit's upcoming window should hold (QUEUE.md §The model is the master).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR, headPart, tailPart, splitRepeats, skipToSameId, addToQueueAt, addedNotice } from "../src/queue-sync.ts";
+import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR, headPart, tailPart, splitRepeats, skipToSameId, endStillHolds, addToQueueAt, addedNotice } from "../src/queue-sync.ts";
 
 const id = (e: { id?: string }) => e.id;
 
 const added = (e: string) => e === "m";
+
+test("A song's end: the repair runs only when the stop lasted, on the same row (2026-11-09)", () => {
+  assert.equal(endStillHolds({ shape: true, sameRow: true }), true);
+  assert.equal(endStillHolds({ shape: false, sameRow: true }), false, "MusicKit started the next upload itself");
+  assert.equal(endStillHolds({ shape: true, sameRow: false }), false, "the user moved on during the wait");
+});
 
 test("Add to Queue, end: after every row (2026-11-09)", () => {
   assert.equal(addToQueueAt(["m", "a", "a"], "end", added), 3);

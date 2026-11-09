@@ -28,6 +28,15 @@ updated: 2026-11-06
 - **Uploads, read for the 1.4.2 gate.** No `sound:uploadCors` in the dev or the live log, so the
   fix has not run. The 9 files in the dev `upload-covers/` are 9 Apple playlists' custom covers,
   not uploaded songs. DESK-TESTS.md B25 stays open.
+- **Later the same day: his WAV synced, and the silence is tested.** On the dev app: effects off,
+  Match loudness, the Equalizer, a catalog song after it, the upload again. The real download sends
+  the CORS header, every routed case has signal, no `sound:startLost`. UPLOADS.md §4 *As run*. The
+  file has no tags or cover, so the album and cover steps (§5 steps 1–3) stay open.
+- **Then the tagged album (10 MP3s).** One album, covers load. New fault: the last track of an
+  upload album never played, and a queued upload was lost.
+- **Fixed, his word ("the queue is the holy grail").** MusicKit was starting the next upload; our
+  repair stopped it at a 50 ms `ended` state. The repair now waits 400 ms and looks again, and the
+  list end waits for a repair. UPLOADS.md §6, with the runs. `checks/upload-next.mjs`.
 
 ## 2026-11-09 — The Discord card's bar (ticket `aTUQ4mJV38oHs3-V`)
 

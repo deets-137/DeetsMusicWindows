@@ -122,9 +122,11 @@ item closes, delete it here and write the day in WORKLOG.md.
   line. The reporter's post is `aSze2eBDK5O6Bb3Q`.
 - **Uploaded songs (2026-11-06).** The album key and the saved covers are committed, not released
   ([UPLOADS.md](features/UPLOADS.md) §2, §3). The silence with a Sound effect on: the CORS fix
-  is built (§4, his call A, 2026-11-07), not run, because the dev library holds no upload. **His
-  test with a real upload gates the 1.4.2 publish** (DESK-TESTS.md B25). The reporter's post is
-  `tWWvv_5rQO-fuzPX`. The 1.4.2 note has its line.
+  passed on a real upload on the dev app, 2026-11-09 (§4 *As run*), so it no longer gates the 1.4.2
+  publish. One album and the covers passed on a 10-song test album. The end-of-song repair was
+  fixed for uploads (UPLOADS.md §6, 2026-11-09): it changes a path all playback uses, so **his hand
+  test comes before the 1.4.2 publish** (RELEASE.md §0b). Step 3 of the desk test waits for 24
+  hours. The reporter's post is `tWWvv_5rQO-fuzPX`. The 1.4.2 note has its line.
 - **Four small fixes for 1.4.2 (2026-11-07, his go).** Committed, not released; `npm run check`
   passes; A6 and Rewind's memory passed on the dev app. (1) A Diary Done copies with the window behind: the page's clipboard first, then
   Rust's Win32 clipboard (`src/clipboard.ts`, `clipboard.rs`; DESK-TESTS.md A6). (2) The Donate

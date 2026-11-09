@@ -2,7 +2,7 @@
 status: built
 desk_test: open
 sources: [src/library-model.ts, src/rewind.ts, src/sound.ts, src/presence.ts, src-tauri/src/upload_art.rs, src-tauri/src/apple.rs, src-tauri/src/library.rs]
-updated: 2026-11-07
+updated: 2026-11-09
 ---
 # DeetsMusic — Uploaded songs
 
@@ -75,7 +75,25 @@ A catalog song (a `blob:` link) is not touched. Not run: no upload exists in the
 `heard: false`; the song is heard. If the song does not load at all, the host did not send the
 header on the real `GET`: the fallback is to turn the hook off and say so in the note.
 
+**As run (2026-11-09, his WAV, on the dev app).** A real upload, 18 s, played from
+`store-033.blobstore.apple.com` with `crossOrigin` on, so the host sends the header on the real
+`GET`. The risk above did not happen. No file came back without the header, and no `sound:startLost`
+was logged.
+
+| Case | Element | Level before the effects (`__sound.inspect`, RMS) | Log |
+|---|---|---|---|
+| Every effect off | Not routed, plays, no error | Not read: no graph | `sound:uploadCors` |
+| Match loudness on | Routed | 0.012–0.039 | `heard: true`, fresh, 35 ms |
+| Equalizer on, one band | Routed | 0.014–0.035 | `heard: true`, 23 ms |
+| A catalog song after it | `blob:`, `crossOrigin` removed | 0.010–0.014 | `heard: true` |
+| The upload again | `crossOrigin` set again | 0.014–0.039 | `heard: true`, 29 ms |
+
+Silence through the graph reads exactly 0. The effects were switched with `__sound.set`, not the
+Settings rows. The song also played to its natural end. No listener's ear was part of this run.
+
 ## 5. Desk test
+
+> **Part:** steps 1, 2, 4 and 5 passed 2026-11-09 (§4 as run, §6). Step 3 waits for 24 hours.
 
 Needs an upload: a file Apple cannot match, added in Apple's app with Sync Library on.
 
@@ -86,3 +104,36 @@ Needs an upload: a file Apple cannot match, added in Apple's app with Sync Libra
    Each time it is heard. The log has `sound:uploadCors` and no `sound:startLost` with
    `heard: false`.
 5. Play a catalog song after it: it plays as before.
+
+## 6. One upload after another
+> **Part:** built · 2026-11-09 · `docs/ops/checks/upload-next.mjs`
+
+Test album: 10 tagged MP3s with one cover, "Upload Test Vol. 1", in `Music\DeetsMusic Upload Test`.
+`groupAlbums` makes one album of 10, with a guest artist on one song. All 10 covers load at
+1024×1024 from `cover.localhost`, and no blobstore link reaches the page. Each song saves its own
+copy of the cover: the 10 files are byte-identical, because each song has its own link.
+
+**The fault.** At the end of an upload, MusicKit reports `ended` with no song for about 50 ms, then
+starts the next upload by itself. `onEndedWithoutItem` (`player.ts`) repaired at the first sight of
+that state, and stopped a song change that was working. The CORS hook did not cause it: with the
+hook taken out for one run, the repair still fired.
+
+| The next song | Before the fix |
+|---|---|
+| Not the last one MusicKit holds | `player:deadNext` re-windowed onto it: about 0.5 s of extra gap, with a warning. |
+| The last one MusicKit holds (an album's last track, or one queued song) | The `windowDry` branch moved the model onto the last row, so Up Next was empty. `maybeFinishQueue`, in the same tick, took that for the end of the list. The song was lost. |
+
+**The fix, two parts.** The stop must last: the repair waits `END_SETTLE_MS` (400 ms, about 8 times
+the measured state) and acts only if MusicKit is still stopped on the same row
+(`endStillHolds`, `queue-sync.ts`). While `endHealing` is set, `maybeFinishQueue` does nothing, so
+a repair onto the last row cannot end the list. The second part holds for catalog songs too.
+
+**As run (2026-11-09, dev app).** Middle of the album; the last track; a true list end (back to
+the first song, paused); a queued upload after a one-song list; catalog to upload to catalog; Next
+pressed during the wait; Match loudness on. The repair forced in the same tick on the last row
+played that row and did not end the list. In each normal change there was no repair, no warning,
+and the model and MusicKit stayed aligned. Not run: the wait before a repair on a truly stuck
+song, because the app drops a dead id before the song before it ends.
+
+**Also seen.** An agent cannot open an upload's album: `album:l.…` goes to Apple's catalog and
+answers 404.
