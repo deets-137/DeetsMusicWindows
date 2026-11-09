@@ -16,7 +16,13 @@ updated: 2026-11-06
 - **The 11-08 work, run on dev apps (his ask).** Signed out (the `--second` profile, its token set
   aside and put back): no sync, no `[playlists]` error, the one expected MusicKit warning. Signed
   in: `playlists: mirror synced, 48 playlist(s)`, no console error. Not forced: the wallpaper's
-  empty-slots race and a real network drop (the drop rule has unit tests).
+  empty-slots race and a real network drop (the drop rule has unit tests). Committed 8e3b639.
+- **Built (his go).** FRIENDS.md §8.9a: `src/presence-bar.ts` with 15 tests, `presence.ts`, and
+  `durationMs` on the player state. `checks/presence-bar.mjs` runs it on the dev app.
+- **A slip.** The check's first version caught the calls with CDP's Fetch domain. Its reply broke
+  Tauri's custom protocol, and real cards for "Here Comes the Sun" were on his Discord profile
+  from 11:23:38 to 11:24:45. The script now wraps `window.fetch` and proves the wrap first.
+- **Not run.** The card on a real Discord profile after the fix; that is his look.
 
 ## 2026-11-08 — The client errors on the admin page
 

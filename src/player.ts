@@ -498,6 +498,9 @@ export interface PlayerState {
   artist?: string;
   album?: string;
   artworkUrl?: string;
+  /** The song's own length, known as soon as the song is. The progress reports lag a song change
+   *  by a tick, so a reader that must not show the old song's clock uses this (presence.ts). */
+  durationMs?: number;
   /** True while a (re)window is buffering — a jump/seek out of the gapless window.
    *  The UX cover-up hook (see docs/architecture/UX-COVERUPS.md); natural play never sets it. */
   loading?: boolean;
@@ -720,6 +723,7 @@ function emit(): void {
     artist: item?.artistName ?? item?.attributes?.artistName,
     album: item?.albumName ?? item?.attributes?.albumName,
     artworkUrl: artworkUrlOf(item, coverArtPx()),
+    durationMs: Number(item?.attributes?.durationInMillis ?? item?.playbackDuration ?? 0) || undefined,
     loading: isLoading && !held,
     station:
       mode === "radio" && radioStation

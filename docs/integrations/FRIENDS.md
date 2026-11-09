@@ -2,7 +2,7 @@
 status: shipped
 shipped_in: 0.12.2
 desk_test: passed 2026-09-22
-sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts, src/friend-pin.ts, src/friend-name.ts]
+sources: [src/room.ts, scripts/discord-probe.mjs, src-tauri/src/presence.rs, src-tauri/src/rooms.rs, src/presence.ts, src/busy.ts, src/room-friends.ts, src/room-friend-rules.ts, src/friend-pin.ts, src/friend-name.ts, src/presence-bar.ts]
 updated: 2026-11-06
 ---
 # DeetsMusic — Friends (and telling Discord what you play)
@@ -622,7 +622,7 @@ other people.
 | A song starts | Set the activity | — |
 | The song changes | Set it again, **through the coalescer** | Discord rate-limits RPC updates (§8.4), and skipping down a playlist would otherwise send one per skip. A settled change fires at once; only skipping is delayed. |
 | You **pause** | **Clear after about a minute** | B1. A short pause — a doorbell, a sip of coffee — should not blank your profile and come back. A long one is no longer true. |
-| You press play again inside that minute | Nothing was cleared, so nothing is re-sent | The quiet case, and the reason B2 was not taken. |
+| You press play again inside that minute | Nothing was cleared, so the card stays up. A bar more than 3 s off is corrected (§8.9a) | The quiet case, and the reason B2 was not taken. |
 | You **quit** the app | Clear **at once** | The pipe closing would drop it anyway; doing it deliberately means it is never left behind on a crash-free exit. |
 | You switch *Share activity on Discord* **Off** | Clear **at once** | A privacy switch that takes a minute to take effect is not a privacy switch. |
 | You press *Pause sharing for an hour* | Clear **at once** | Same reason. |
@@ -633,7 +633,7 @@ the fire and the cancel, per CLAUDE.md checklist item 6.
 
 #### 8.9a The bar tells the truth (ticket `aTUQ4mJV38oHs3-V`)
 
-> **Part:** designed · 2026-11-09
+> **Part:** built · 2026-11-09
 
 **The report (1.4.1).** The card shows the wrong length, or about a minute of listening on a song
 that just began. **The cause, from the code and the reporter's log; not reproduced:** at a natural
@@ -649,7 +649,7 @@ The card is not cleared, so the reason B2 was not taken still holds.
 **The Discord limit still applies.** The send is local, but the Discord client enforces it (about
 five updates in twenty seconds, §8.4). Every send below goes through the 4-second coalescer.
 
-The build, not started:
+As built:
 1. **The song's own length.** `PlayerState` gains `durationMs`, read from the item in `emit()` the
    way `player.ts` reads `durationInMillis` elsewhere.
 2. **A song change discards the held progress.** On a new `keyOf`, the first card starts at 0:00
@@ -664,11 +664,14 @@ The build, not started:
 5. **The log.** `presence:set` also records the `start` and `end` it sent, so a later report can
    prove what the card said.
 
-Open inside his choice: the 3 s tolerance.
+Decided inside his choice: the 3 s tolerance (`BAR_TOLERANCE_S`). A card sent in the moment between
+two songs, while the player reads as paused, has no bar. The next report adds it, inside the
+4-second floor.
 
-**Desk test (write it out when built).** With sharing on, let a song end into the next: the bar
-starts near 0:00 with the new length. Pause for 20 s and play: the bar is right within about 4 s.
-Drag the scrubber, then loop a song on Repeat One: the same. Press Next five times fast: one card.
+**Script:** `node docs/ops/checks/presence-bar.mjs --port <dev bridge port>` answers every
+presence call in the page, so nothing reaches Discord. **Hand test (what the script cannot see: the
+card on a real profile).** With sharing on, let a song end into the next: Discord's bar starts near
+0:00 with the new length. Pause for 20 s and play: the bar is right within about 4 s.
 
 ---
 
@@ -746,7 +749,7 @@ rows **moved** into it (§8.5.2), and Song of the Day gained a *Where picks go* 
 moved Connect row. Three keys, all **Off / 0** by default, with agent specs, an AGENT.md line and a
 `Settings › Reset › Sharing` group.
 
-**The log** (CLAUDE.md checklist item 6): `presence:set {why, song, sent}` — `sent: "absent"` is
+**The log** (CLAUDE.md checklist item 6): `presence:set {why, song, sent, start, end}` — `sent: "absent"` is
 Discord not running, which is not an error and gets no toast and no retry — plus `presence:clear`,
 `presence:off`, `presence:retry-arm`, and the `presence:pause-arm` / `presence:pause-cancel` pair.
 

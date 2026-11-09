@@ -19,6 +19,7 @@ import { onRoomChange, roomState } from "./room";
 import * as queue from "./queue";
 import * as diag from "./diag";
 import { registerChipText } from "./rules";
+import { barFor, barIsWrong, type Bar } from "./presence-bar";
 
 /** Discord rate-limits RPC updates (about five in twenty seconds). A settled song change
  *  fires at once — nobody changes song twice in four seconds on purpose — and a run of
@@ -57,6 +58,7 @@ let progress: PlayerProgress = { progress: 0, currentTime: 0, duration: 0 };
 
 let lastSentAt = 0;
 let lastKey = ""; // the song identity last SENT, so a re-render never re-sends
+let lastBar: Bar | null = null; // the bar last SENT, which each progress report is checked against
 let showing = false; // a card is up (or Discord is absent and we think one is)
 let trailing: number | undefined; // the coalescer's trailing-edge timer
 let pauseTimer: number | undefined; // the clear-after-a-pause timer
@@ -113,10 +115,8 @@ function activity(): Record<string, unknown> | null {
   }
   // The progress bar. A live station has no length, so it gets none rather than a bar
   // that lies; a paused song keeps the bar it had, because we do not re-send on a pause.
-  if (!live && progress.duration > 0 && state.playing) {
-    const start = Date.now() - Math.max(0, progress.currentTime) * 1000;
-    act.timestamps = { start: Math.round(start), end: Math.round(start + progress.duration * 1000) };
-  }
+  const bar = !live && state.playing ? barFor(Date.now(), progress, songSeconds()) : null;
+  if (bar) act.timestamps = bar;
   if (url) {
     // The text itself becomes the link, which spends no button slot (§8.7.1).
     act.details_url = url;
@@ -141,14 +141,17 @@ function sendNow(reason: string): void {
   if (!act) return;
   lastSentAt = Date.now();
   const key = (lastKey = keyOf(state));
+  const bar = (act.timestamps as Bar | undefined) ?? null;
+  lastBar = bar;
   void invoke<Sent>("presence_set", { activity: act })
     .then((sent) => {
       // A refused card may leave the LAST song's card up, so `failed` counts as showing:
       // a pause must still be able to clear it.
       showing = sent !== "absent";
       // `absent` is Discord not running — the ordinary state of most PCs, and not an
-      // error (§8.9). It is logged once per change, never retried.
-      diag.log("presence:set", { why: reason, song: act.details, sent });
+      // error (§8.9). It is logged once per change, never retried. The bar's times are here so
+      // a report can prove what the card said (§8.9a).
+      diag.log("presence:set", { why: reason, song: act.details, sent, start: bar?.start, end: bar?.end });
       if (sent === "failed" && !reason.endsWith("+retry")) armRetry(reason, key);
     })
     .catch((e) => console.error("[presence] set", e));
@@ -164,6 +167,19 @@ function armRetry(reason: string, key: string): void {
     if (!sharing() || !state.playing || keyOf(state) !== key) return;
     sendNow(`${reason}+retry`);
   }, RETRY_MS);
+}
+
+/** The song's own length in seconds, or 0 when MusicKit has not told us. */
+const songSeconds = (): number => (state.durationMs ?? 0) / 1000;
+
+/** A progress report against the card on Discord (§8.9a): a resume, a seek, a Repeat One loop or
+ *  a restored position moves the song and not the card. It goes through `push`, so Discord's
+ *  rate limit holds however often the position jumps. */
+function checkBar(): void {
+  if (!sharing() || !showing || !state.playing || state.loading || state.station?.live) return;
+  if (keyOf(state) !== lastKey) return; // a song change has its own send on the way
+  if (!barIsWrong(lastBar, Date.now(), progress, songSeconds())) return;
+  push("bar");
 }
 
 /** Send, or schedule the trailing edge when Discord's rate limit is close. */
@@ -218,8 +234,11 @@ export function initPresence(): void {
   onPlayerState((s) => {
     const was = state;
     state = s;
-    if (!sharing()) return;
     const key = keyOf(s);
+    // The progress held now is the last song's: the new song's first report comes later, and a
+    // card built from it read the old song's position and length (live ticket, 2026-11-09).
+    if (key !== keyOf(was)) progress = { progress: 0, currentTime: 0, duration: 0 };
+    if (!sharing()) return;
 
     if (!s.playing) {
       // A pause holds the card for about a minute, then takes it down (B1). The arm, the
@@ -234,8 +253,8 @@ export function initPresence(): void {
       return;
     }
 
-    // Playing again inside the minute: nothing was cleared, so nothing is re-sent — the
-    // quiet case §8.9 names, and the reason a pause does not blank the profile.
+    // Playing again inside the minute: nothing was cleared, so the card stays up, which is the
+    // reason a pause does not blank the profile. If its bar ran ahead, `checkBar` corrects it.
     if (pauseTimer !== undefined) {
       window.clearTimeout(pauseTimer);
       pauseTimer = undefined;
@@ -248,6 +267,7 @@ export function initPresence(): void {
 
   onPlayerProgress((p) => {
     progress = p;
+    checkBar();
   });
 
   // The switches. Off and the hour's pause both close the pipe at once; switching back on

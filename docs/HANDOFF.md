@@ -377,9 +377,9 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
 
 ### Decided, not built (his next sittings)
 
-- **The Discord card's bar** (2026-11-09, his call; live ticket `aTUQ4mJV38oHs3-V`): a song change
-  takes the previous song's clock, and a resume, seek or loop is never corrected. The build waits
-  for his go. FRIENDS.md §8.9a.
+- **The Discord card's bar** (2026-11-09, his call; live ticket `aTUQ4mJV38oHs3-V`): built and
+  committed. The script passes on the dev app. Open: his look at the card on a real profile, and
+  the reply on the ticket. FRIENDS.md §8.9a.
 - **Deets posts and Pictures on posts** (2026-10-30, his calls D1–D4, P1): polls and
   suggestions every install receives, and pictures on forum posts. DeetsSolutions
   docs/support.md › The forum page.
