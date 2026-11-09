@@ -21,6 +21,13 @@ updated: 2026-11-06
   dev profile (unit tests hold the new-install default), the History card's press, and a room.
 - **Seen, not changed.** The dev profile has `openingPending` true: the grand opening has opened
   on every load since at least 11:18, before this work.
+- **Deployed (his word: deploy if service would not drop).** DeetsSupport `111a315`, the two keys
+  on the usage allow-list, version `2111d1e0`. The worker holds no sockets. Before this the live
+  worker matched the previous commit, so only the two keys went out. `/health` and `/config`
+  answered 200 after. Rooms and Friends had no change and were not deployed.
+- **Uploads, read for the 1.4.2 gate.** No `sound:uploadCors` in the dev or the live log, so the
+  fix has not run. The 9 files in the dev `upload-covers/` are 9 Apple playlists' custom covers,
+  not uploaded songs. DESK-TESTS.md B25 stays open.
 
 ## 2026-11-09 — The Discord card's bar (ticket `aTUQ4mJV38oHs3-V`)
 
