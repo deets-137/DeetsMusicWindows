@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { libraryTracks, librarySync, onSyncEvent, seenTracks, type Track } from "./library";
 import { isConnected } from "./apple";
+import { isNetDrop } from "./net-drop";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import * as health from "./apple-health";
@@ -230,7 +231,9 @@ async function backgroundSync(why: string): Promise<void> {
   } catch (e) {
     // A concurrent sync (the Library ⟳) is deduped by the Rust SYNC_IN_FLIGHT guard —
     // expected, not a failure. Only surface real errors.
-    if (!inFlight(e)) console.error(`[track-store] sync (${why})`, e);
+    if (inFlight(e)) return;
+    if (isNetDrop(e)) console.warn(`[track-store] sync (${why})`, e);
+    else console.error(`[track-store] sync (${why})`, e);
   }
 }
 

@@ -377,6 +377,9 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
 
 ### Decided, not built (his next sittings)
 
+- **The Discord card's bar** (2026-11-09, his call; live ticket `aTUQ4mJV38oHs3-V`): a song change
+  takes the previous song's clock, and a resume, seek or loop is never corrected. The build waits
+  for his go. FRIENDS.md §8.9a.
 - **Deets posts and Pictures on posts** (2026-10-30, his calls D1–D4, P1): polls and
   suggestions every install receives, and pictures on forum posts. DeetsSolutions
   docs/support.md › The forum page.
@@ -386,7 +389,7 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   `live_check`, a daily email on a flag, no week-over-week yet. **2026-11-07: 0.2.0 is live**
   (`../DeetsMusicAdminMCP`, `musicadmin.deets.solutions/mcp`): six tools, the sign-in passed from
   Claude Code, each tool ran on live data (§8.5a), and the admin page reads the same `flags.js`
-  (DeetsSolutions 3cedf63, pushed). Open: deploy 0.2.1 (built, two text fixes); the phone test;
+  (DeetsSolutions 3cedf63, pushed). 0.2.1 deployed 2026-11-08. Open: the phone test;
   `live_logs`, file and line, the daily email (LIVE-MCP.md §8.6). Each deploy is his go.
 - **S2's week of mirror dates** (apple-calls.md S2), with no code: one read-only call a day,
   from a script, so the evidence is ready when S2 is built.

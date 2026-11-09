@@ -47,6 +47,7 @@ import { unreleasedHint } from "./release";
 import { type AlbumGroup, albumKey, groupAlbums, albumOrder, artistOrder, libAlbum, artURL, trackId, playsKey, fmtClock } from "./library-model";
 import { mediaLevels } from "./media-levels";
 import * as diag from "./diag";
+import { isNetDrop } from "./net-drop";
 import { ROW_PX, TILE_PX, HERO_PX } from "./art-size";
 
 // ── derived models ────────────────────────────────────────────────────────────
@@ -898,7 +899,10 @@ export const libraryCard: CardDef = {
     });
     const syncUnlisten = onSyncEvent((e) => {
       if (e.phase === "done") console.log(`[sync] cached ${e.count}/${e.total} songs`);
-      if (e.phase === "error") console.error(`[sync] incomplete (${e.count}/${e.total} cached): ${e.message}`);
+      if (e.phase === "error") {
+        if (isNetDrop(e.message)) console.warn(`[sync] incomplete (${e.count}/${e.total} cached): ${e.message}`);
+        else console.error(`[sync] incomplete (${e.count}/${e.total} cached): ${e.message}`);
+      }
     });
 
     // A drop on the Library card adds the songs to the library, as Add to Library does

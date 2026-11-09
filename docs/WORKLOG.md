@@ -6,6 +6,37 @@ updated: 2026-11-06
 ---
 # DeetsMusic — Work log
 
+## 2026-11-09 — The Discord card's bar (ticket `aTUQ4mJV38oHs3-V`)
+
+- **Read.** The live ticket (1.4.1, wrong length, or about a minute on a new song), the reporter's
+  log as he pasted it, `presence.ts` and `player.ts`.
+- **Found, not reproduced.** At a natural song change the card takes the previous song's position
+  and length. The log cannot prove the bar: `presence:set` does not record the times it sent.
+- **His call.** Option 1: also correct the bar on a resume, a seek and a Repeat One loop.
+- **The 11-08 work, run on dev apps (his ask).** Signed out (the `--second` profile, its token set
+  aside and put back): no sync, no `[playlists]` error, the one expected MusicKit warning. Signed
+  in: `playlists: mirror synced, 48 playlist(s)`, no console error. Not forced: the wallpaper's
+  empty-slots race and a real network drop (the drop rule has unit tests).
+
+## 2026-11-08 — The client errors on the admin page
+
+- **Read.** W45's 21 error kinds through `live_errors`, each traced through the shipped map. All
+  wear "new" because W45 is the first week with fingerprints. Most places came from 1.3.1, in
+  reports sent after the update to 1.4.1 (USAGE-COUNTS.md §16.3). The largest groups are background
+  Apple reads that failed; the counts show `apple.library.net` on 10 installs. Reports carry no
+  message, so that cause is inferred. The CSP is ruled out: W45 has no `csp-*` class.
+- **Fixed (his word: what carries no risk).** The Playlists card no longer syncs while signed out
+  (`playlists-card.ts`); a sign-in still syncs. The cover wallpaper builds its slots again when a
+  leave's fade emptied them (`wallpaper.ts`, a TypeError on a song change). `errors:where` reads
+  the shipped map when a version folder holds several.
+- **His call.** A background read that got no answer is a warning, not an error (`net-drop.ts`,
+  five call sites). An HTTP status from Apple stays an error. The drops still count as
+  `apple.<group>.net`.
+- **Not changed.** MusicKit's rejected fetches stay as they are. Freezes (7 of 25 reports on
+  1.4.1) are not traced.
+- **Not run on the app.** `npm run check` and `vite build` only. Hand test: `npm run dev:fresh`,
+  no `[playlists] sync` error before sign-in; the playlists appear after sign-in.
+
 ## 2026-11-07 — 1.4.2 notes, the upload CORS fix, Claude's desk tests
 
 - **His calls.** The 1.4.2 notes drafted (RELEASE-NOTES.md); the upload silence fix built now,
@@ -60,7 +91,7 @@ updated: 2026-11-06
   look in KV, and the flag rules moved into one shared file, `DeetsSolutions/.../admin/flags.js`,
   which admin.js now calls. LIVE-MCP.md §8.4–§8.6.
 - **The first run.** After he reconnected the connector, every tool answered with live data
-  (§8.5a). Two text faults fixed in 0.2.1, not deployed. Committed and pushed at his word:
+  (§8.5a). Two text faults fixed in 0.2.1, deployed at his word and checked. Committed and pushed at his word:
   DeetsSolutions 3cedf63, these docs, and the worker in its own private repo.
 
 ## 2026-11-06 — Uploaded songs: the album key and the covers

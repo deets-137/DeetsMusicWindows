@@ -631,6 +631,45 @@ other people.
 **The clear-after-pause timer is armed on pause and cancelled on play.** `diag.log` records the arm,
 the fire and the cancel, per CLAUDE.md checklist item 6.
 
+#### 8.9a The bar tells the truth (ticket `aTUQ4mJV38oHs3-V`)
+
+> **Part:** designed · 2026-11-09
+
+**The report (1.4.1).** The card shows the wrong length, or about a minute of listening on a song
+that just began. **The cause, from the code and the reporter's log; not reproduced:** at a natural
+song change `player.ts` emits the new title before any progress report for the new song, and
+`presence.ts` builds the bar from the last report it holds. The card has the new title and the old
+song's position and length. Discord accepted those cards (`sent: "sent"`). Nothing corrects them,
+because a card is sent only when the song changes.
+
+**His call (2026-11-09): option 1.** The bar is also corrected on the same song. This replaces the
+row above: *You press play again inside that minute* no longer stays silent when the bar is wrong.
+The card is not cleared, so the reason B2 was not taken still holds.
+
+**The Discord limit still applies.** The send is local, but the Discord client enforces it (about
+five updates in twenty seconds, §8.4). Every send below goes through the 4-second coalescer.
+
+The build, not started:
+1. **The song's own length.** `PlayerState` gains `durationMs`, read from the item in `emit()` the
+   way `player.ts` reads `durationInMillis` elsewhere.
+2. **A song change discards the held progress.** On a new `keyOf`, the first card starts at 0:00
+   with the length from step 1. With no known length, that card has no bar.
+3. **A tick checks the card.** Pure rule, new file `src/presence-bar.ts`, with tests. Keep the
+   `start` and `end` last sent. A tick calls `push("bar")` when the position differs from
+   `(now - start)` by more than 3 s, or the length differs by more than 3 s. This one rule covers
+   a resume, a seek, a Repeat One loop, a restored position, and any first card that was still
+   wrong. A pause under 3 s sends nothing.
+4. **The check ignores** a tick while `state.loading`, while paused, on a live station, and a tick
+   whose length does not match the new song (the old song's last tick).
+5. **The log.** `presence:set` also records the `start` and `end` it sent, so a later report can
+   prove what the card said.
+
+Open inside his choice: the 3 s tolerance.
+
+**Desk test (write it out when built).** With sharing on, let a song end into the next: the bar
+starts near 0:00 with the new length. Pause for 20 s and play: the bar is right within about 4 s.
+Drag the scrubber, then loop a song on Repeat One: the same. Press Next five times fast: one card.
+
 ---
 
 ### 8.8 The build gate (2026-09-19)

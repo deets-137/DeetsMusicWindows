@@ -447,7 +447,9 @@ async function update(reason: string): Promise<void> {
   const started = performance.now();
 
   // What each slot should show.
-  const newGeom = g !== geom;
+  // No slots with a matching seed: a leave's fade ended while this mode was coming back and
+  // emptied them (2026-11-08, a TypeError on a song change, two installs). Build them again.
+  const newGeom = g !== geom || !slots.length;
   const urls: string[] = [];
   const plan: { slot: Slot; key: string; from?: Rect }[] = [];
   try {

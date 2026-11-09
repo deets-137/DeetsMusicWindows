@@ -7,7 +7,10 @@
 //   npm run errors:where -- 1.2.2 "main.js:2:4439 ← musickit.js:28:6351"   (the part before ← is read)
 //
 // A place in musickit.js is Apple's code: there is no map for it, and the line says so.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+//
+// A weekly report goes out under the version running when it is sent, but its counts can come from
+// the version before an update that week. A place that lands on no error line: try that version.
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { decodeMappings, lookup } from "../src/source-map-lite.ts";
 
@@ -30,11 +33,29 @@ if (!existsSync(dir)) {
 }
 // The fingerprint drops the build hash, so `main.js` is `main-<hash>.js.map`.
 const hit = readdirSync(dir).filter((f) => f === `${name}.${ext}.map` || (f.startsWith(`${name}-`) && f.endsWith(`.${ext}.map`) && f.length === name.length + 1 + 8 + ext.length + 5));
-if (hit.length !== 1) {
-  console.error(hit.length ? `More than one map for ${name}.${ext}: ${hit.join(", ")}` : `No map for ${name}.${ext} in ${dir}`);
+if (!hit.length) {
+  console.error(`No map for ${name}.${ext} in ${dir}`);
   process.exit(1);
 }
-const map = JSON.parse(readFileSync(join(dir, hit[0]), "utf8"));
+// Every `vite build` while package.json holds this version adds a map (1.4.1 had five, 1.3.1
+// twenty-three). The one that shipped is the last one built before the installer was made.
+let shipped = hit;
+if (hit.length > 1) {
+  const installer = join(import.meta.dirname, "..", "installers", `DeetsMusic_${version}_x64-setup.exe`);
+  if (!existsSync(installer)) {
+    console.error(`${hit.length} maps for ${name}.${ext} and no ${installer} to choose by: ${hit.join(", ")}`);
+    process.exit(1);
+  }
+  const made = statSync(installer).mtimeMs;
+  const before = hit.map((f) => ({ f, at: statSync(join(dir, f)).mtimeMs })).filter((m) => m.at <= made);
+  if (!before.length) {
+    console.error(`None of the ${hit.length} maps for ${name}.${ext} is older than the installer: ${hit.join(", ")}`);
+    process.exit(1);
+  }
+  shipped = [before.sort((a, b) => b.at - a.at)[0].f];
+  console.log(`(${shipped[0]}: the last of ${hit.length} builds before the installer)`);
+}
+const map = JSON.parse(readFileSync(join(dir, shipped[0]), "utf8"));
 const at = lookup(decodeMappings(map.mappings), Number(line), Number(col));
 if (!at) {
   console.error(`${place}: no source at that place in ${hit[0]}`);

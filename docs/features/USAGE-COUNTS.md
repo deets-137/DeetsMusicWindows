@@ -1045,6 +1045,14 @@ of a chunk. `npm run errors:where -- <version> <place>` prints the source file, 
 lines around it, through `src/source-map-lite.ts`. A place in `musickit.js` is Apple's: no map.
 A release built before this change kept no maps, so its places cannot be read back.
 
+Every `vite build` while `package.json` holds a version adds a map to that version's folder, so a
+folder can hold many. The script reads the last map built before that version's installer
+(checked 2026-11-08 against the bundle name inside the 1.3.1 and 1.4.1 packages).
+
+**A report's version is the version that sent it.** The week file keeps its counts across an
+update, so a report sent from 1.4.1 can hold places from 1.3.1 (W45: most of them). A place that
+lands on no error line belongs to the version before: run the script with that version.
+
 ### 16.4 The admin page
 
 Health › **Error kinds** (DeetsSolutions `admin.js` `renderErrKinds`): one row per fingerprint,

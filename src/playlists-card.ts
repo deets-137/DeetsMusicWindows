@@ -38,6 +38,8 @@ import { listenPillHTML } from "./listen-pill";
 import { onGrowChange } from "./card-grow";
 import { openContextMenuUnder, menuState, MENU_CHOSEN, type MenuItem } from "./context-menu";
 import { appleMusicItem } from "./playlist-export";
+import { isConnected } from "./apple";
+import { isNetDrop } from "./net-drop";
 import { APPLE_SIGIL } from "./apple-sigil";
 import { enterRows, rowsAfter } from "./pop";
 import { emit } from "./rules";
@@ -1219,7 +1221,10 @@ export const playlistsCard: CardDef = {
           favoritesSeeded = true;
           return playlistTracks(fav).then(() => initFavorites());
         })
-        .catch((e) => console.error("[playlists] sync", e))
+        .catch((e) => {
+          if (isNetDrop(e)) console.warn("[playlists] sync", e);
+          else console.error("[playlists] sync", e);
+        })
         .finally(() => refreshBtn?.classList.remove("is-busy"));
     };
 
@@ -1236,7 +1241,11 @@ export const playlistsCard: CardDef = {
       sessionSynced = true;
       doSync(false, tell);
     };
-    syncOnce();
+    // Signed out there is nothing to read, and Rust would refuse the call, which reached the error
+    // counts of every fresh install (2026-11-08). A sign-in syncs through `onSignIn`.
+    void isConnected().then((c) => {
+      if (c) syncOnce();
+    });
     const onSignIn = () => syncOnce(true);
     signedInSyncs.add(onSignIn);
     refreshBtn?.addEventListener("click", () => doSync(true));

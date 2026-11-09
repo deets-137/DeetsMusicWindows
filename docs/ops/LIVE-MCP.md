@@ -285,7 +285,7 @@ Read from the run: health reads the newest week **with reports** (W44, the 1.2.1
 page does, so the freezes flag is about an old version. The "Microsoft Store" wait is the poster's
 "Great! Thanks!" after his last reply: the waiting rule counts any poster word.
 
-Fixed in 0.2.1 (built and committed, not deployed): a new post now lists its replies (`live_check` showed "0 new
+Fixed in 0.2.1 (deployed 2026-11-08; checked with `live_reports`): a new post now lists its replies (`live_check` showed "0 new
 replies" while a new post had them); "1 installs" / "1 votes".
 
 ### 8.6 Not built yet
