@@ -373,9 +373,26 @@ fn log_area(word: &str, rest: &str) -> String {
     csp.or_else(|| AREAS.iter().find(|a| **a == word).copied()).unwrap_or("other").to_string()
 }
 
-/// The window stopped answering (watchdog.rs).
-pub fn note_freeze() {
-    with_now(|c| c.freezes += 1);
+/// The window stopped answering (watchdog.rs). `place` is the command in flight, `none`, or
+/// `wake`: app code or a fixed word, never a message. It goes in the weekly report as
+/// `freeze.Stuck@<place>` (USAGE-COUNTS.md §16a), because the line that names it stays on the PC.
+pub fn note_freeze(place: &str) {
+    with_now(|c| {
+        c.freezes += 1;
+        let fp = format!("freeze.Stuck@{place}");
+        if fp_ok(&fp) {
+            note_fp(&mut c.errors, &fp, 1);
+        }
+    });
+}
+
+/// The window answered again. `lasted` is one of watchdog.rs's fixed words. A Stuck with no
+/// Lasted is a window that never came back before the app was closed.
+pub fn note_freeze_end(lasted: &str, place: &str) {
+    let fp = format!("freeze.{lasted}@{place}");
+    if fp_ok(&fp) {
+        with_now(|c| note_fp(&mut c.errors, &fp, 1));
+    }
 }
 
 /// A database write failed (dbhealth.rs).
@@ -619,6 +636,13 @@ mod tests {
         assert_eq!(r["log"]["error"]["lastfm"], 3);
         assert_eq!(r["week"], "2026-W41");
         assert_eq!(r["freezes"], 1);
+    }
+
+    #[test]
+    fn a_freeze_says_where_in_the_workers_shape_2026_11_09() {
+        for fp in ["freeze.Stuck@none", "freeze.Stuck@wake", "freeze.Stuck@presence_set", "freeze.LastedOver60s@plugin:event.listen"] {
+            assert!(fp_ok(fp), "{fp}");
+        }
     }
 
     #[test]

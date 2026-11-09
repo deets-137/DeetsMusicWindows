@@ -1,7 +1,7 @@
 // library-model.ts: one album key (UPLOADS.md §2).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { albumKey, groupAlbums } from "../src/library-model.ts";
+import { albumKey, groupAlbums, isUploadLink } from "../src/library-model.ts";
 import type { Track } from "../src/library.ts";
 
 const song = (over: Partial<Track>): Track =>
@@ -37,4 +37,10 @@ test("2026-11-06 a catalog album's key does not change", () => {
   const url = "https://is1-ssl.mzstatic.com/image/thumb/a/{w}x{h}bb.jpg";
   assert.equal(albumKey(song({ libraryAlbumId: "l.abc", artwork: art(url) })), `Villainy ${url}`);
   assert.equal(albumKey(song({})), "Villainy MF DOOM");
+});
+
+test("2026-11-09 only an upload's signed link counts as one", () => {
+  assert.equal(isUploadLink("https://store-037.blobstore.apple.com/sq/x.jpg?X-Amz-Expires=86400"), true);
+  assert.equal(isUploadLink("http://cover.localhost/upload/abc"), false);
+  assert.equal(isUploadLink("https://is1-ssl.mzstatic.com/image/thumb/a/512x512bb.jpg"), false);
 });

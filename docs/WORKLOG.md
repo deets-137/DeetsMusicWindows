@@ -40,6 +40,11 @@ updated: 2026-11-06
 - **1.4.2 notes, his OK; a local `1.4.2-rc.1`.** His 1.4.11 would have ranked above 1.4.2, so the
   worker would not have offered it; he chose rc.1. A test build now shows its release's settings
   on the update card (`releaseOf`). The version files stay uncommitted until the 1.4.2 publish.
+- **On the rc, his uploads.** Clean song changes. Discord refused every upload's card: the signed
+  cover link is over its 300 limit. Fixed at the source, `artworkUrlOf`. UPLOADS.md §3.
+- **Freezes: still not traced, now measurable (his go; he said not to search the bug logs).** The
+  report carried a count and nothing else. It now carries the place and the length as error kinds,
+  with no worker change. Run on the dev app: its UI thread suspended for 8 s. LOGGING.md.
 
 ## 2026-11-09 — The Discord card's bar (ticket `aTUQ4mJV38oHs3-V`)
 

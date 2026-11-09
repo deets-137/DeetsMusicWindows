@@ -70,6 +70,9 @@ export function groupAlbums(tracks: Track[]): AlbumGroup[] {
   return groups;
 }
 
+/** Apple's signed link to an uploaded song's cover or file: it expires, and it stays on this PC. */
+export const isUploadLink = (url: string): boolean => /^https:\/\/[^/]*\.blobstore\.apple\.com\//.test(url);
+
 export function artURL(art: Artwork | undefined, px: number): string | null {
   if (!art?.urlTemplate) return null;
   const s = String(px);

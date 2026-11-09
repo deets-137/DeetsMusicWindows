@@ -415,6 +415,13 @@ as a freeze ("stopped answering 1801.6 s ago", four times on 2026-09-23 and 2026
 INFO  ui: the PC was asleep for 1801 s
 ```
 
+**What the weekly report learns (2026-11-09).** The line above stays on the user's PC, so the
+report used to carry only a count. Each stall now also counts as `freeze.Stuck@<place>`: the
+command in flight, `wake` (under 30 s after a PC sleep) or `none`. When the window answers again it
+adds `freeze.Lasted5to15s`, `Lasted15to60s` or `LastedOver60s` at the same place. A Stuck with no
+Lasted never came back. These are error kinds, so `live_errors` lists them with no worker change.
+USAGE-COUNTS.md §3.3.
+
 **It ships.** This is not dev-only telemetry like `frames.ts`: the failure it catches happened
 to a user on a release build. It costs one wake every 2 s and two atomics. The thresholds are
 deliberately slack — a slow frame, a big sort or a cold paint must never write this line.

@@ -38,6 +38,8 @@ const STALL_AFTER: Duration = Duration::from_secs(5);
 const ASLEEP_AFTER: Duration = Duration::from_secs(BEAT_EVERY.as_secs() + STALL_AFTER.as_secs());
 
 static ORIGIN: OnceLock<Instant> = OnceLock::new();
+/// A stall this soon after the PC woke counts as `wake`, not `none`: the system is still coming back.
+const AFTER_WAKE: Duration = Duration::from_secs(30);
 static LAST_BEAT: AtomicU64 = AtomicU64::new(0);
 /// The command the UI thread entered and has not left. `None` between commands.
 static IN_FLIGHT: Mutex<Option<(String, Instant)>> = Mutex::new(None);
@@ -65,6 +67,25 @@ fn blame() -> String {
     }
 }
 
+/// Where a stall counts in the weekly report: the command in flight, else `wake` or `none`.
+/// The worker's characters only, so a plugin's `plugin:event|listen` keeps its name.
+fn stall_place(command: Option<&str>, after_wake: bool) -> String {
+    match command {
+        Some(name) => name.chars().take(48).map(|ch| if ch.is_ascii_alphanumeric() || "_.:-".contains(ch) { ch } else { '.' }).collect(),
+        None if after_wake => "wake".to_string(),
+        None => "none".to_string(),
+    }
+}
+
+/// How long a stall lasted, as the report's word: a slow moment and a real hang read apart.
+fn lasted_word(quiet_ms: u64) -> &'static str {
+    match quiet_ms {
+        0..=14_999 => "Lasted5to15s",
+        15_000..=59_999 => "Lasted15to60s",
+        _ => "LastedOver60s",
+    }
+}
+
 /// Start watching. Safe to call once, from `setup`.
 pub fn start(app: &AppHandle) {
     ORIGIN.get_or_init(Instant::now);
@@ -72,6 +93,9 @@ pub fn start(app: &AppHandle) {
     let app = app.clone();
     let started = std::thread::Builder::new().name("watchdog".into()).spawn(move || {
         let mut told = false;
+        let mut place = String::new();
+        let mut longest = 0;
+        let mut woke_at: Option<u64> = None;
         loop {
             // Posting is not waiting. If the UI thread is wedged this closure simply never
             // runs, and that silence is the measurement.
@@ -83,22 +107,48 @@ pub fn start(app: &AppHandle) {
                 // The whole process was stopped, not the UI thread: start the count again.
                 crate::log::info(&format!("ui: the PC was asleep for {} s", slept.as_secs()));
                 LAST_BEAT.store(now_ms(), Ordering::Relaxed);
+                woke_at = Some(now_ms());
                 continue;
             }
             let quiet = now_ms().saturating_sub(LAST_BEAT.load(Ordering::Relaxed));
             if quiet >= STALL_AFTER.as_millis() as u64 {
+                longest = quiet;
                 if !told {
                     told = true;
-                    crate::usage::note_freeze();
+                    let after_wake = woke_at.is_some_and(|at| now_ms().saturating_sub(at) < AFTER_WAKE.as_millis() as u64);
+                    let in_flight = IN_FLIGHT.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map(|(name, _)| name.clone());
+                    place = stall_place(in_flight.as_deref(), after_wake);
+                    crate::usage::note_freeze(&place);
                     crate::log::warn(&format!("ui: the window stopped answering {:.1} s ago{}", quiet as f64 / 1000.0, blame()));
                 }
             } else if told {
                 told = false;
+                crate::usage::note_freeze_end(lasted_word(longest), &place);
                 crate::log::info("ui: the window is answering again");
             }
         }
     });
     if let Err(e) = started {
         crate::log::warn(&format!("watchdog: not started ({e})"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_stall_names_its_place_2026_11_09() {
+        assert_eq!(stall_place(Some("presence_set"), true), "presence_set", "a command beats the wake");
+        assert_eq!(stall_place(Some("plugin:event|listen"), false), "plugin:event.listen");
+        assert_eq!(stall_place(None, true), "wake");
+        assert_eq!(stall_place(None, false), "none");
+    }
+
+    #[test]
+    fn a_stall_reads_as_how_long_it_lasted_2026_11_09() {
+        assert_eq!(lasted_word(5_000), "Lasted5to15s");
+        assert_eq!(lasted_word(15_000), "Lasted15to60s");
+        assert_eq!(lasted_word(60_000), "LastedOver60s");
     }
 }

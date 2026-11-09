@@ -188,7 +188,9 @@ a song.
   (`fe-player`, `fe-window`, `fe-console`, `fe-toast` …, from `FE_FAMILIES` in `usage.rs`;
   `fe-other` for the rest), §15.
 - **Panics, freezes, database write failures.** The panic hook, the freeze watchdog
-  (`watchdog.rs`) and the database canary (`dbhealth.rs`) each add to a count.
+  (`watchdog.rs`) and the database canary (`dbhealth.rs`) each add to a count. A freeze also
+  counts in `errors` as `freeze.Stuck@<place>` and `freeze.Lasted…@<place>`, where the place is the
+  name of the app's own command, `wake` or `none`: app code, never a message (LOGGING.md, 2026-11-09).
 - **Apple calls.** The totals from `apple_calls.rs` (its 6 groups × 8 status classes), and the
   number of times the 429 back-off armed. Today `total` resets at each launch, so the week's sum
   is kept in a small file beside the log and added to at each hourly line and at quit.

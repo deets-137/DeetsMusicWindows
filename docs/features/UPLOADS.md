@@ -42,6 +42,10 @@ the link's path. It is not in a backup: the next sync gets it again.
 **Old rows.** `reread_old_upload_covers` runs once. If the library holds a signed link, it clears
 the full-pass clock, so the next sync re-reads every song. A library with no uploads pays nothing.
 
+**The now-playing state (2026-11-09).** MusicKit can hand a playing upload Apple's signed link (377
+characters, over Discord's limit of 300, seen as a refused card every 5 s). `artworkUrlOf`
+(`player.ts`) replaces it with the saved cover, so no signed link reaches Discord or Friends.
+
 **Where the cover does not go.** Friends and Discord cannot reach a file on this PC, so they get no
 cover: the friends worker drops an `http` link, and `bigArt` in `presence.ts` does too. AirPlay
 reads the file (`link_bytes`). The Windows media overlay shows no cover for an upload: its link

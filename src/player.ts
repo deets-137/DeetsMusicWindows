@@ -18,6 +18,7 @@ import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
 import type { TrackHandle } from "./queue";
 import { trackById, tracks, addTransientTracks, inLibrary, healedId, noCatalogCopy, refreshHeals } from "./track-store";
+import { artURL, isUploadLink } from "./library-model";
 import { coverArtPx } from "./queue-rows";
 import { materializeTrack } from "./search";
 import { recordStationPlay, type Station } from "./radio";
@@ -518,6 +519,9 @@ export interface PlayerState {
 /** Build a concrete artwork URL from a MusicKit item's template (mirrors the library). */
 function artworkUrlOf(item: any, px: number): string | undefined {
   const tmpl: unknown = item?.artwork?.url;
+  // An upload's cover from MusicKit is a signed link: over Discord's limit, and never to leave
+  // this PC (UPLOADS.md §3). The saved copy is the one every other part of the app shows.
+  if (typeof tmpl === "string" && isUploadLink(tmpl)) return artURL(trackById(item?.id)?.artwork, px) ?? undefined;
   if (typeof tmpl === "string") {
     const s = String(px);
     return tmpl.replace("{w}", s).replace("{h}", s).replace("{f}", "jpg");
