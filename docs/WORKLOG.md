@@ -37,6 +37,9 @@ updated: 2026-11-06
 - **Fixed, his word ("the queue is the holy grail").** MusicKit was starting the next upload; our
   repair stopped it at a 50 ms `ended` state. The repair now waits 400 ms and looks again, and the
   list end waits for a repair. UPLOADS.md §6, with the runs. `checks/upload-next.mjs`.
+- **1.4.2 notes, his OK; a local `1.4.2-rc.1`.** His 1.4.11 would have ranked above 1.4.2, so the
+  worker would not have offered it; he chose rc.1. A test build now shows its release's settings
+  on the update card (`releaseOf`). The version files stay uncommitted until the 1.4.2 publish.
 
 ## 2026-11-09 — The Discord card's bar (ticket `aTUQ4mJV38oHs3-V`)
 

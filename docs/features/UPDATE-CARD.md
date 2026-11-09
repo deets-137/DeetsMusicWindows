@@ -365,7 +365,9 @@ off. His pick: one choice row with three values.
   AGENT.md, SETTINGS.md; not in usage counts until his call.
 - **When** (`opensWhatsNew`): the first start after a 1.X update that brings a new setting or an
   offered default, or after a release he marked (§3.17). Only one thing opens: the card replaces
-  the panel. The card opens on the first version the user has not run (call 13).
+  the panel. The card opens on the first version the user has not run (call 13). A test build
+  (`1.4.2-rc.1`) counts as its release here and in `inLine`, so it shows that release's settings
+  (`releaseOf`, 2026-11-09).
 - **An install with no mark** (found 2026-11-01): `deets.updates.lastRun` came with 1.3.0, so a
   1.2.1 install that never opened the Updates panel had neither mark, and nothing opened.
   `assumedLastRun` (update-rules.ts, a test) now stands in the last patch of the line before

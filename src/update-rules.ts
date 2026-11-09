@@ -1,6 +1,10 @@
 // The pure half of the updater (updater.ts; RELEASE.md §6.3–6.5, VELOPACK.md). No Tauri and no
 // DOM here, so tests/update-rules.test.ts pins the rules.
 
+/** The release a version belongs to: "1.4.2-rc.1" → "1.4.2". A test build of a release brings
+ *  that release's settings and notes, though it sorts before it (2026-11-09). */
+export const releaseOf = (v: string): string => v.split("-")[0];
+
 /** -1 / 0 / 1 on x.y.z; a pre-release sorts before its release. Pre-release tags compare part by
  *  part on the dots, numbers as numbers (semver §11, the Worker's rule in DeetsSupport update.js),
  *  so beta.10 comes after beta.9. Unparseable = equal. */
@@ -79,7 +83,7 @@ export function offeredDefaultVersions(
  */
 export function opensWhatsNew(last: string, now: string, settingVersions: string[], marked: string[]): boolean {
   if (!last || compareVersions(last, now) >= 0) return false;
-  const inRange = (v: string) => compareVersions(v, last) > 0 && compareVersions(v, now) <= 0;
+  const inRange = (v: string) => compareVersions(v, last) > 0 && compareVersions(v, releaseOf(now)) <= 0;
   if (marked.some(inRange)) return true;
   const mm = (v: string) => /^(\d+)\.(\d+)\./.exec(v.trim())?.slice(1, 3).join(".") ?? "";
   if (mm(last) === mm(now)) return false;

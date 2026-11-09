@@ -30,6 +30,11 @@ test("a rollback skips the version it leaves when nothing newer was skipped", ()
   assert.equal(rollbackSkip("0.27.0", "0.28.0"), "0.28.0");
 });
 
+test("2026-11-09 a test build counts as the release it belongs to", () => {
+  assert.equal(opensWhatsNew("1.4.1", "1.4.2-rc.1", [], ["1.4.2"]), true);
+  assert.equal(opensWhatsNew("1.4.1", "1.4.2-rc.1", [], ["1.4.3"]), false);
+});
+
 // The Updates panel's own open (UPDATE-CARD.md §3.10, his call 9, 2026-10-29).
 test("2026-10-29 what's new opens after a minor or major update with a new setting in the range", () => {
   assert.equal(opensWhatsNew("1.2.1", "1.3.0", ["1.3.0"], []), true);

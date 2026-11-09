@@ -41,6 +41,11 @@ test("2026-10-29 a line shows its marks up to the installed version only", () =>
   assert.deepEqual(inLine(marks, "1.2", "1.2.1").map((m) => m.since), ["1.2.0", "1.2.1"]);
 });
 
+test("2026-11-09 a test build shows the settings of the release it belongs to", () => {
+  const marks = [{ since: "1.4.1" }, { since: "1.4.2" }, { since: "1.4.3" }];
+  assert.deepEqual(inLine(marks, "1.4", "1.4.2-rc.1").map((m) => m.since), ["1.4.1", "1.4.2"]);
+});
+
 test("2026-10-29 the Older search finds every word in a note or a setting's name, newest first", () => {
   const lines = groupLines([E("1.2.0", "**Volume by scrolling.** Roll the wheel."), E("1.2.1", "**Clear Queue.** Right-click a song.")]);
   const hits = searchUpdates("right song", lines, []);

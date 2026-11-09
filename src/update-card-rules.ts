@@ -1,7 +1,7 @@
 // The pure half of the update card (update-card.ts; docs/features/UPDATE-CARD.md §3). No DOM and no
 // Tauri, so tests/update-card-rules.test.ts pins the rules.
 
-import { compareVersions } from "./update-rules";
+import { compareVersions, releaseOf } from "./update-rules";
 
 export interface Entry {
   version: string;
@@ -88,7 +88,7 @@ export function inlineHtml(text: string): string {
 /** The marks (`NEW_MARKS`, `DEFAULT_CHANGES`) a line brings, up to the installed version: a row
  *  marked for a later release is not shown yet. */
 export function inLine<T extends { since: string }>(items: readonly T[], line: string, upTo: string): T[] {
-  return items.filter((m) => lineOf(m.since) === line && compareVersions(m.since, upTo) <= 0);
+  return items.filter((m) => lineOf(m.since) === line && compareVersions(m.since, releaseOf(upTo)) <= 0);
 }
 
 export interface Hit {
