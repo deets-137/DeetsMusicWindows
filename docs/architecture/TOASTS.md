@@ -299,6 +299,7 @@ what a toast already declares.
 
 | Where | Kind | Text | Notes |
 |---|---|---|---|
+| `player.ts` `addToQueueByPress` — a right-click Add to Queue (2026-11-09) | success | *Added 25 songs in positions #4,132–4,156.* · *Added 1 song in position #26.* | Settings › Playback › *Show where added songs land*, default on. None in a room, and none when the block starts playing an empty queue. `all`-tier. Text: `queue-sync.ts` `addedNotice` |
 | `playlist-refresh.ts` — a mirror changed, one | success | *“New Music Mix” has 12 new songs.* | The day-change check, or the open (PLAYLIST-REFRESH.md §7.1). Due, refetched and nothing changed is SILENT |
 | `playlist-refresh.ts` — several mirrors changed | success | *3 playlists updated.* | One toast for the check, never one per playlist |
 | `playlist-refresh.ts` — a refetch failed | warn | *Couldn't re-read “New Music Mix” from Apple Music.* | The old cache and the old stamp both stay, so the next trigger tries again. Only the OPEN path says it: a background failure is a `diag` line, not a notice |

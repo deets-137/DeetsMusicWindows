@@ -1,9 +1,33 @@
 // queue-sync.ts: what MusicKit's upcoming window should hold (QUEUE.md §The model is the master).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR, headPart, tailPart, splitRepeats, skipToSameId } from "../src/queue-sync.ts";
+import { expectedIds, suffixPlan, repairAtSongChange, REPAIR_NEAR, headPart, tailPart, splitRepeats, skipToSameId, addToQueueAt, addedNotice } from "../src/queue-sync.ts";
 
 const id = (e: { id?: string }) => e.id;
+
+const added = (e: string) => e === "m";
+
+test("Add to Queue, end: after every row (2026-11-09)", () => {
+  assert.equal(addToQueueAt(["m", "a", "a"], "end", added), 3);
+  assert.equal(addToQueueAt([], "end", added), 0);
+});
+
+test("Add to Queue, after added songs: below the run at the top (2026-11-09)", () => {
+  assert.equal(addToQueueAt(["m", "m", "a", "a"], "afterAdded", added), 2);
+  assert.equal(addToQueueAt(["a", "a"], "afterAdded", added), 0);
+  assert.equal(addToQueueAt(["m", "m"], "afterAdded", added), 2);
+  assert.equal(addToQueueAt([], "afterAdded", added), 0);
+});
+
+test("Add to Queue, after added songs: an added song far down does not pull the block there (2026-11-09)", () => {
+  assert.equal(addToQueueAt(["m", "a", "a", "m"], "afterAdded", added), 1);
+});
+
+test("the Add to Queue notice counts Up Next from 1 (2026-11-09)", () => {
+  assert.equal(addedNotice(25, 1), "Added 1 song in position #26.");
+  assert.equal(addedNotice(24, 25), "Added 25 songs in positions #25–49.");
+  assert.equal(addedNotice(4131, 25), `Added 25 songs in positions #${(4132).toLocaleString()}–${(4156).toLocaleString()}.`);
+});
 
 test("expectedIds keeps a repeated song (the 2026-09-24 bug)", () => {
   const up = [{ id: "a" }, { id: "b" }, { id: "a" }];

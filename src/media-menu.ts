@@ -28,7 +28,7 @@ import type { Station } from "./radio";
 import type { HomeItem } from "./home";
 import { artistDetail, catalogRelated, materializeTrack } from "./search";
 import { addTransientTracks, tracks } from "./track-store";
-import { albumFromTop, playTracks, queueTracksNext, queueTracksLater, playStation, queueStationAfter, shuffledPlay } from "./player";
+import { albumFromTop, playTracks, queueTracksNext, queueTracksAdd, playStation, queueStationAfter, shuffledPlay } from "./player";
 import { isAlbumContext } from "./queue";
 import { addToPlaylistItem, requestOpenPlaylist } from "./playlists";
 import { listenLaterItem } from "./listen-later";
@@ -102,7 +102,7 @@ export function playRows(
         // The Shuffle button's rule (shuffledPlay): the mode turns on, the list goes over in
         // order from a random song, and the queue shuffles the rest (3A, 2026-10-12).
         if (how === "shuffle") return new Promise<void>((res, rej) => shuffledPlay(ts, (list, start) => playTracks(list, start, context).then(res, rej), "panel"));
-        return how === "next" ? queueTracksNext(ts, context) : queueTracksLater(ts, context);
+        return how === "next" ? queueTracksNext(ts, context) : queueTracksAdd(ts, context);
       })
       .catch(err(`play ${how}`));
   return [

@@ -75,6 +75,7 @@ export const CHOICES: Choices = {
   listenCount: { largest: 1, exact: 1 },
   notesSource: { both: 1, apple: 1, lastfm: 1, none: 1 },
   dropPlayQueue: { keep: 1, replace: 1 },
+  addToQueueAt: { end: 1, afterAdded: 1 },
   previousReach: { lookback: 1, heard: 1 },
   restoreQueue: { song: 1, queue: 1, off: 1 },
   shuffleManual: { top: 1, hold: 1, mix: 1 },

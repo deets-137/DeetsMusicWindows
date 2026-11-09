@@ -322,6 +322,8 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "playNowScope", "Right Click > Play Now behavior", [{ value: "song", label: "Song only" }, { value: "list", label: "Song and rest of list" }]),
   storeChoice("Playback", "pinNewAct", "Pinned Item click behavior", [{ value: "open", label: "Open" }, { value: "play", label: "Play" }, { value: "shuffle", label: "Shuffle" }]),
   storeChoice("Playback", "dropPlayQueue", "Dragging a Song into Now Playing behavior", [{ value: "keep", label: "Keep Queue" }, { value: "replace", label: "Replace it" }]),
+  storeChoice("Playback", "addToQueueAt", "Right Click > Add to Queue behavior", [{ value: "end", label: "End of queue" }, { value: "afterAdded", label: "After added songs" }]),
+  storeToggle("Playback", "addToQueueToast", "Show where added songs land"),
   storeToggle("Playback", "playerWheelVolume", "Scroll over the Player for volume"),
   storeChoice("Playback", "pinNewDouble", "Pinned Item double-click behavior", TILE_VERBS),
   storeChoice("Playback", "collectionClick", "Click a collection", TILE_VERBS),

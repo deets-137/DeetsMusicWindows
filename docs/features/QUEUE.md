@@ -514,6 +514,51 @@ playing at 2 s. (5) aligned after every step. (6) Next from the last copy onto G
 
 ---
 
+## Where Add to Queue puts songs (2026-11-09)
+
+> **Part:** built · 2026-11-09 · desk test passed by script on the dev app, `checks/add-to-queue.mjs`, 37 checks
+
+**Why.** He pressed *Add to Queue* on a 25-song pinned playlist while his 4,134-song Library
+played. The songs went in at rows 4,132 to 4,156. No notice showed a success, so the press
+looked like a failure, and he pressed it again.
+
+**His calls.** Two rows in Settings › Playback. *Right Click > Add to Queue behavior*
+(`addToQueueAt`): *End of queue* for an existing install, so nothing changes under a user, and
+*After added songs* for a new install. *Show where added songs land* (`addToQueueToast`), on
+for everyone. The text gives the positions: *Added 25 songs in positions #25–49.*
+
+**The rule** (`queue-sync.ts`, under test). *After added songs*: below the run of hand-added
+songs at the top of Up Next, above everything else. A hand-added song lower down does not
+count, because the old end-of-queue rows would pull the block back to the bottom. Positions
+count Up Next from 1 (the next song), as the Compass and the agent do.
+
+**How it runs.** `addToQueueByPress` (`player.ts`) goes through `placeBlock`, the same path as a
+drop on the Queue card: the model takes the block, then `reconcileUpcoming` mirrors MusicKit's
+window. So a block beyond the window never enters MusicKit. The notice shows when the model
+takes the block, not after MusicKit: near the top, the mirror re-sends the window and can take
+seconds (the 2026-11-09 run saw a notice over 2.5 s late). If MusicKit then refuses, *Couldn't
+add to the queue.* follows it; the block stays in Up Next and the next top-up sends it again.
+
+**Where it applies.** The right-click and quick-action *Add to Queue* (`media-menu.ts`
+`playRows`, the History card). Not there: the Compass's "at the end" and the agent's `later`,
+which name their place and stay on `enqueueLater`; a room, which keeps its own order, with no
+notice; a block that starts an empty queue, with no notice. `Reset` of the Playback section
+gives *End of queue*, on a new install too, because the default is the existing installs'.
+
+**Desk test.**
+1. Play the Library's Songs view. Pin a playlist. Set *After added songs*. Right-click the
+   tile › *Add to Queue*. The songs sit at the top of the Queue card and the notice says
+   *positions #1–n*. The playing song does not stop.
+2. Add it again. The notice starts at *n+1*; the second block sits below the first.
+3. Set *End of queue* and add again. The notice gives the last rows.
+4. Turn off *Show where added songs land* and add again: no notice, the songs go in.
+5. Stop on an empty queue and add: the block plays, no notice.
+6. `npm run dev:fresh`: the row reads *After added songs*. The existing dev profile: *End of queue*.
+
+The 2026-11-09 run covers 1 to 5, two presses in one moment, a station playing and MusicKit
+refusing the insert. Step 6's new-install half is `tests/add-to-queue-default.test.ts`; `dev:fresh`
+was not run, because it wipes the dev profile.
+
 ## Dead ids — NOT_FOUND self-healing (2026-07-02)
 
 **The failure.** A library's cached `catalogId`s go stale (region pulls, catalog

@@ -35,7 +35,7 @@ import * as stats from "./stats";
 import * as perf from "./perf";
 import { toast } from "./toast";
 import { unreleasedToast } from "./release";
-import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart, skipToSameId, nextFed } from "./queue-sync";
+import { expectedIds, suffixPlan, repairAtSongChange, headPart, tailPart, skipToSameId, nextFed, addToQueueAt, addedNotice } from "./queue-sync";
 import { matchOf, onSuggestChange } from "./suggest";
 import { resumePoint } from "./resume-point";
 import { idleSkip } from "./idle-skip";
@@ -2587,22 +2587,53 @@ export const queueTracksLater = (tracks: Track[], context = "library"): Promise<
  */
 export async function insertInQueue(at: number, handles: TrackHandle[]): Promise<void> {
   if (roomBridge) return roomBridge.insertAt(at, handles);
+  await placeBlock(() => at, handles);
+}
+
+/** The core of an insert. `atNow` is asked after the player is ready, so two quick presses
+ *  count each other. Returns where the block went in Up Next, or null when it did not go
+ *  there: no playable song, or an empty queue, where the block starts playing. */
+async function placeBlock(atNow: () => number, handles: TrackHandle[], onPlaced?: (at: number, n: number) => void): Promise<{ at: number; n: number } | null> {
   const playable = handles.filter((h) => playId(h));
-  if (!playable.length) return;
+  if (!playable.length) return null;
   await initPlayer();
-  diag.log("player:insert", { at, n: playable.length });
   if (!queue.getCurrent() && !queue.getUpcoming().length) {
     await playContext(playable, 0); // nothing at all in the queue → start the block
-    return;
+    return null;
   }
+  const at = atNow();
+  const placed = { at, n: playable.length };
+  diag.log("player:insert", placed);
   queue.insertManyAt(at, playable);
-  if (modelOnlyQueue()) return; // a saved Up Next MusicKit does not hold: the first Play loads it
+  onPlaced?.(at, playable.length); // now, not after MusicKit: its mirror can take seconds near the top
+  if (modelOnlyQueue()) return placed; // a saved Up Next MusicKit does not hold: the first Play loads it
   if (mode === "radio") {
     pendingBreakout = true;
-    return;
+    return placed;
   }
   await reconcileUpcoming();
+  return placed;
 }
+
+/**
+ * The right-click Add to Queue (QUEUE.md § Where Add to Queue puts songs): Settings › Playback
+ * says where the block goes, and the notice gives its positions. The Compass's "at the end"
+ * and the agent's `later` name their place, so they stay on `enqueueLater`. A room keeps its
+ * own order and has no positions to report.
+ */
+export async function addToQueueByPress(handles: TrackHandle[]): Promise<void> {
+  if (roomBridge) return roomBridge.enqueue(handles, "later");
+  await placeBlock(
+    () => addToQueueAt(queue.getUpcoming(), setting("addToQueueAt"), (e) => e.origin === "manual"),
+    handles,
+    (at, n) => {
+      if (setting("addToQueueToast")) toast({ kind: "success", text: addedNotice(at, n) });
+    },
+  );
+}
+/** The right-click Add to Queue, over library Tracks. */
+export const queueTracksAdd = (tracks: Track[], context = "library"): Promise<void> =>
+  addToQueueByPress(handlesFrom(tracks, context)).catch(queueFailed);
 /**
  * Play Tracks at once and keep Up Next after them — a drop on Now Playing with Settings ›
  * Playback › Dragging a Song into Now Playing behavior = Keep Queue. The block goes to the top of Up Next and

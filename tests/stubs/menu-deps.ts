@@ -28,7 +28,7 @@ export const tracks = () => [];
 // ./player
 export const playTracks = later;
 export const queueTracksNext = later;
-export const queueTracksLater = later;
+export const queueTracksAdd = later;
 export const playStation = later;
 export const queueStationAfter = later;
 export const setShuffleMode = noop;

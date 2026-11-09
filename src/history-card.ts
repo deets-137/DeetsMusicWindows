@@ -17,7 +17,7 @@ import "./styles/qcard.css";
 import { invoke } from "@tauri-apps/api/core";
 import * as diag from "./diag";
 import * as queue from "./queue";
-import { playContext, enqueueNext, enqueueLater } from "./player";
+import { playContext, enqueueNext, addToQueueByPress } from "./player";
 import { onTracksChange, trackById } from "./track-store";
 import { setting, onSettingsChange } from "./settings-store";
 import { onPlayEvent } from "./stats";
@@ -199,7 +199,7 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       play: [
         { label: "Play Now", run: () => void playContext([h], 0).catch(err("play now")), quick: "play" },
         { label: "Play Next", run: () => void enqueueNext([h]).catch(err("play next")) },
-        { label: "Add to Queue", run: () => void enqueueLater([h]).catch(err("add to queue")), quick: "queue" },
+        { label: "Add to Queue", run: () => void addToQueueByPress([h]).catch(err("add to queue")), quick: "queue" },
       ],
     });
   };
@@ -213,7 +213,7 @@ function mountHistory(host: HTMLElement, mountOpts?: MountOpts): CardInstance {
       play: [
         { label: `Play ${picksText(set.length)}`, run: () => void playContext(hs, 0).catch(err("play set")), quick: "play" },
         { label: "Play Next", run: () => void enqueueNext(hs).catch(err("play next")) },
-        { label: "Add to Queue", run: () => void enqueueLater(hs).catch(err("add to queue")), quick: "queue" },
+        { label: "Add to Queue", run: () => void addToQueueByPress(hs).catch(err("add to queue")), quick: "queue" },
       ],
     });
   };

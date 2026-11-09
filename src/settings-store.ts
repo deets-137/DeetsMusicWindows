@@ -352,6 +352,10 @@ export interface Settings {
   /** A drop on the Now Playing card: play it and keep Up Next after it, or replace Up Next
    *  as Play Now does (DRAG-DROP.md §3). */
   dropPlayQueue: "keep" | "replace";
+  /** Where the right-click Add to Queue puts songs (QUEUE.md § Where Add to Queue puts songs). */
+  addToQueueAt: "end" | "afterAdded";
+  /** After a right-click Add to Queue, a notice gives the queue positions of the songs. */
+  addToQueueToast: boolean;
   /** The wheel anywhere on the Now Playing card steps the volume (WHEEL-VOLUME.md). Off: the wheel
    *  passes through. The title bar pill always takes the wheel. */
   playerWheelVolume: boolean;
@@ -720,6 +724,8 @@ export const DEFAULTS: Settings = {
   notesSource: "both", // his call 2026-10-17: Apple first, then Last.fm; the row is for a user who wants one or none (LISTENERS.md §8.4)
   usageReports: true, // his call 2026-09-29, again 2026-10-23: on, with a clear off switch on the grand opening's page 4; nothing leaves before that page was shown (USAGE-COUNTS.md §1, §7)
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
+  addToQueueAt: "end", // his call 2026-11-09: an existing install keeps what it does today; a new install is seeded "afterAdded" (seedOnboarding)
+  addToQueueToast: true, // his call 2026-11-09: a success was silent, and the songs at the end of a long Up Next looked lost
   playerWheelVolume: true, // his call 2026-10-27: on; the card has nothing that scrolls, and the sound itself is the feedback
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
@@ -953,11 +959,14 @@ function seedOnboarding(stored: Partial<Settings>): void {
   // A value already there wins: the web demo writes `false` before the app loads, so a visitor
   // gets the tour without the grand opening (WEB-DEMO.md; no file in src/ knows the demo).
   if (stored.openingPending === undefined) stored.openingPending = freshInstall;
+  // His call 2026-11-09: only a new install starts on this; the default stays "end" for the rest.
+  if (freshInstall) stored.addToQueueAt = "afterAdded";
   try {
     const raw = localStorage.getItem(KEY);
     const blob = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
     blob.onboardingStep = stored.onboardingStep;
     blob.openingPending = stored.openingPending;
+    if (freshInstall) blob.addToQueueAt = stored.addToQueueAt;
     localStorage.setItem(KEY, JSON.stringify(blob));
   } catch {
     /* storage disabled — the walk still runs this session, it just won't be remembered */

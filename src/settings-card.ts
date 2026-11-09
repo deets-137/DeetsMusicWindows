@@ -254,6 +254,8 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.4.1", section: "Skin settings", row: "presslight", skin: "press" }, // Album light on the card edges, built 2026-11-05
   { since: "1.4.1", section: "Skin settings", row: "cyberlight", skin: "cyber" },
   { since: "1.4.1", section: "Skin settings", row: "albumwave" },
+  { since: "1.4.2", section: "Playback", row: "addqueueat" }, // Where Add to Queue puts songs, built 2026-11-09 (QUEUE.md)
+  { since: "1.4.2", section: "Playback", row: "addqueuetoast" },
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>
@@ -527,7 +529,7 @@ const RESET_GROUPS: ResetGroup[] = [
   { id: "window", label: "Window", hint: "Tray icon opens, Resize changes surface, the five open sizes, Layout for Max, the sides of Now Playing and the Queue in Max, Shade behind the title, Keep on top, the Growing and drilling rows, and Keep card places on restart. Not Close to tray or Start with Windows", keys: ["trayView", "surfaceAutoFlip", "volumeShrink", "sizeMini", "sizePlayer", "sizeCover", "sizeMidi", "sizeMax", "maxShortWindow", "maxCards", "maxStageSide", "fpQueueSide", "npShade", "alwaysOnTop", "cardGrow", "cardGrowOutside", "cardGrowPick", "cardGrowView", "drillGrow", "cardDrill", "cardDrillBring", "cardMemoryDisk", "moveSections"] },
   {
     id: "playback", label: "Playback", hint: "Every Playback row",
-    keys: ["listenCount", "streamQuality", "playNowScope", "dropPlayQueue", "previousReach", "restoreQueue", "clearQueueOnLaunch", "releaseAfterPause", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "pinNewDouble", "collectionClick", "collectionDouble", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
+    keys: ["listenCount", "streamQuality", "playNowScope", "dropPlayQueue", "addToQueueAt", "addToQueueToast", "previousReach", "restoreQueue", "clearQueueOnLaunch", "releaseAfterPause", "listEndWeb", "shuffleStays", "shuffleOff", "shuffleMode", "repeatMode", "shuffleManual", "shuffleIdle", "historyShowDay", "showListeners", "showArtistInfo", "rememberArtistFilters", "showAlbumInfo", "showSongInfo", "notesSource", "pinNewAct", "pinNewDouble", "collectionClick", "collectionDouble", "playerWheelVolume", "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue"],
   },
   {
     id: "sharing", label: "Sharing", hint: "Share activity on DeetsMusic and on Discord, and the hour's pause that covers both",
@@ -1765,6 +1767,12 @@ function mountSettings(
           hint: "Songs dragged onto Now Playing play at once; Up Next can stay after them",
           options: [{ value: "keep", label: "Keep Queue" }, { value: "replace", label: "Replace it" }],
         },
+        {
+          kind: "choice", id: "addqueueat", label: "Right Click > Add to Queue behavior", key: "addToQueueAt",
+          hint: "After added songs: below the songs you added, above the rest of the list playing",
+          options: [{ value: "end", label: "End of queue" }, { value: "afterAdded", label: "After added songs" }],
+        },
+        storeToggle("addqueuetoast", "Show where added songs land", "addToQueueToast", () => "After Add to Queue, a notice gives the songs' positions in Up Next. Show notices = Failures hides it"),
         storeToggle("playerwheel", "Scroll over the Player for volume", "playerWheelVolume", () => "The mouse wheel anywhere on Now Playing turns the volume up or down. The volume bar in the title bar always does"),
         {
           kind: "choice", id: "previous", label: "Previous behavior for mid-list songs", key: "previousReach",

@@ -6,6 +6,22 @@ updated: 2026-11-06
 ---
 # DeetsMusic — Work log
 
+## 2026-11-09 — Where Add to Queue puts songs
+
+- **Read.** His report: Add to Queue on a pinned playlist "didn't go through". The live ring
+  showed both presses landed: `modelUpLen` 4156, then 4181, behind a 4,134-song Library play. A
+  success gave no notice. After his pin Shuffle, Up Next held 74 rows (24 + the 50 he added).
+- **His calls.** Two Settings › Playback rows; End of queue for an existing install, After added
+  songs for a new one; the notice on, with the positions.
+- **Built.** QUEUE.md § Where Add to Queue puts songs, with the desk test. `queue-sync.ts` holds
+  the rule and the text, with 4 tests.
+- **Run on the dev app (his ask).** `checks/add-to-queue.mjs`, the real right-click on the pinned
+  tile, muted: 37 checks pass. Found: the notice waited for MusicKit and came over 2.5 s late near
+  the top, so it now shows when the model takes the block. Not run: `dev:fresh`, which wipes the
+  dev profile (unit tests hold the new-install default), the History card's press, and a room.
+- **Seen, not changed.** The dev profile has `openingPending` true: the grand opening has opened
+  on every load since at least 11:18, before this work.
+
 ## 2026-11-09 — The Discord card's bar (ticket `aTUQ4mJV38oHs3-V`)
 
 - **Read.** The live ticket (1.4.1, wrong length, or about a minute on a new song), the reporter's

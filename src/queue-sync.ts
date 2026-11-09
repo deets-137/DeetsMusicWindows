@@ -3,6 +3,23 @@
 // DOM here, so tests/queue-sync.test.ts can pin the rules (the 2026-09-24 repeated-song bug
 // lived in the first function).
 
+/** Where the right-click Add to Queue puts a block in Up Next (QUEUE.md § Where Add to Queue
+ *  puts songs). `afterAdded`: below the run of hand-added songs at the top, above the rest. A
+ *  hand-added song far down the list does not count: the block must stay near the top. */
+export function addToQueueAt<E>(upcoming: readonly E[], place: "end" | "afterAdded", isAdded: (e: E) => boolean): number {
+  if (place === "end") return upcoming.length;
+  const below = upcoming.findIndex((e) => !isAdded(e));
+  return below < 0 ? upcoming.length : below;
+}
+
+/** The notice after an Add to Queue. `at` is the 0-based place of the first song; the text
+ *  counts Up Next from 1, as the Compass and the agent do. */
+export function addedNotice(at: number, n: number): string {
+  const first = (at + 1).toLocaleString();
+  if (n === 1) return `Added 1 song in position #${first}.`;
+  return `Added ${n.toLocaleString()} songs in positions #${first}–${(at + n).toLocaleString()}.`;
+}
+
 /** The model's upcoming ids, in order, capped to the window. **No dedup:** MusicKit keeps a
  *  repeated id across calls (one call is split at a repeat: `headPart`), and deduping against the songs MusicKit already held left a re-queued,
  *  already-heard song out of MusicKit entirely (2026-09-24). An entry with no playable id

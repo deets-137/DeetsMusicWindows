@@ -42,7 +42,7 @@ export const REPORTED: readonly string[] = [
   "oceanEdges", "glassCanvas", "glassTiles", "glassAuroraColor", "glassFancy",
   "pressVinyl", "pressVinylWhere", "pressVinylSpeed", "pressVinylPlate", "pressVinylFps", "albumWave",
   // Playback
-  "streamQuality", "playNowScope", "pinNewAct", "dropPlayQueue", "playerWheelVolume", "previousReach", "restoreQueue",
+  "streamQuality", "playNowScope", "pinNewAct", "dropPlayQueue", "addToQueueAt", "addToQueueToast", "playerWheelVolume", "previousReach", "restoreQueue",
   "listEndWeb", "shuffleStays", "shuffleOff", "shuffleManual", "historyShowDay", "showListeners", "listenCount",
   "showArtistInfo", "showAlbumInfo", "showSongInfo", "notesSource", "shuffleIdle",
   "suggestSkipStations", "suggestSkipWebs", "suggestSkipQueue",

@@ -322,6 +322,8 @@ Each group shows only while its skin is the one you are using.
 | Stream quality | Auto follows your network live | **Auto** / High / Low |
 | Right Click > Play Now behavior | What right-click › Play Now starts | Song only / **Song and rest of list** |
 | Dragging a Song into Now Playing behavior | Dragging a song onto Now Playing | **Keep Queue** / Replace it |
+| Right Click > Add to Queue behavior | Where the right-click Add to Queue puts songs | **End of queue** (an existing install) / After added songs (a new install): below your added songs, above the rest of the list |
+| Show where added songs land | The notice after a right-click Add to Queue, with the songs' positions in Up Next | **On** / Off |
 | Scroll over the Player for volume | The mouse wheel anywhere on Now Playing turns the volume up or down (a trackpad rises at most 40 % a second). Off: the wheel passes through. The title bar volume bar always takes the wheel | **On** / Off |
 | Previous behavior for mid-list songs | What Previous may go back into | **The list** / only Played songs |
 | Restore on launch | What comes back when the app opens | **Last song** (paused, with its queue) / Up Next only / Nothing |

@@ -114,6 +114,9 @@ extension's icons are LANCZOS resizes of the same file.
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
 
+- **Where Add to Queue puts songs (2026-11-09).** Committed, not released; passed by script on the
+  dev app ([QUEUE.md](features/QUEUE.md) § Where Add to Queue puts songs). The 1.4.2 note has no
+  line for it yet.
 - **A friend's typed name (2026-11-06).** Committed, not released
   ([FRIENDS.md](integrations/FRIENDS.md) §21, DESK-TESTS.md B24). The 1.4.2 note has its
   line. The reporter's post is `aSze2eBDK5O6Bb3Q`.

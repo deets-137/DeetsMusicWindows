@@ -376,6 +376,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
   (On | Off), `webSkipSeed` ("Skip the song you just heard": On | Off), and two keys with no
   Settings row: `webPlayMode` (Replaces the queue | Plays now, keeps Up Next | Plays after the
   song) and `webSkipSeedAt` (1–100 %, default 75). All four are rule keys.
+- **Playback › Add to Queue** (2026-11-09, QUEUE.md § Where Add to Queue puts songs):
+  `addToQueueAt` (End of queue | After added songs) and `addToQueueToast` (On | Off, default On).
+  Both change the right-click only: the agent's `later` always goes to the end.
 - **Playback › Clear the queue on launch** (2026-10-29, QUEUE.md § Clear Queue):
   `clearQueueOnLaunch` (On | Off, default Off). On: Up Next starts empty at each launch; the
   last song still follows Restore on launch.
