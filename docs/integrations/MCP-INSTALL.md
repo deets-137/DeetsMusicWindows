@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.26.0
 desk_test: passed 2026-10-13
 sources: [crates/mcp-install/src/lib.rs, src-tauri/src/mcp_install.rs, src/mcp-panel.ts, cli/src/main.rs, mcpb/server/index.js, mcpb/manifest.json, scripts/mcpb-pack.mjs, src-tauri/src/velo.rs]
-updated: 2026-10-14
+updated: 2026-11-10
 ---
 # DeetsMusic — connect AI apps (`mcp_install`)
 
@@ -440,8 +440,12 @@ Where it differs from the design above, this section is the code.
 - **Last used:** `serve_mcp` keeps `clientInfo.name` (printable, 64 characters) and sends it as
   `X-Deets-Client`; `bridge.rs` passes it to `mcp_install::note_agent` on a paired request only.
 - **The `.mcpb`:** `mcpb/manifest.json` (manifest 0.3, `node`, Windows only) and
-  `mcpb/server/index.js`. The shim finds `%LOCALAPPDATA%\DeetsMusic\cli\deetsmusic.exe`, else
-  `where deetsmusic.exe`; it pipes stdio, and answers the not-installed sentence when neither
+  `mcpb/server/index.js`. The shim finds `%LOCALAPPDATA%\DeetsMusic\current\cli\deetsmusic.exe`
+  (the Velopack install), else `%LOCALAPPDATA%\DeetsMusic\cli\deetsmusic.exe` (NSIS, up to 0.27),
+  else `where deetsmusic.exe`. Velopack adds nothing to PATH. **Bundle 1.0.0 looked only at the
+  NSIS path, so from 0.28.0 to 1.4.2 it told every user "DeetsMusic is not installed on this PC"
+  (found 2026-11-10); 1.0.1 fixes it, and a user who has 1.0.0 opens the `.mcpb` again from
+  Settings.** It pipes stdio, and answers the not-installed sentence when neither
   exists. `mcpb/package.json` makes the folder CommonJS (the repo root is an ES module
   package). `mcpb/icon.png` is the app's 256 px icon. `npm run mcpb:pack` writes
   `mcpb/dist/deetsmusic.mcpb` with Windows' own tar. `cli:build` and the beta release step run

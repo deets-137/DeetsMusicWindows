@@ -6,6 +6,32 @@ updated: 2026-11-06
 ---
 # DeetsMusic — Work log
 
+## 2026-11-10 — "DeetsMusic isn't running" while it runs; the Claude Desktop extension
+
+- **His question.** Does a live user see the CLI or MCP say the app is not running while it runs?
+  Today's case was owner-only: the debug CLI reads only the dev token (`cli/src/main.rs` `IDS`).
+- **Found, live reach.** The `.mcpb` shim looked only at `%LOCALAPPDATA%\DeetsMusic\cli\` (NSIS).
+  Velopack installs to `…\current\cli\` and adds nothing to PATH. So from 0.28.0 to 1.4.2 Claude
+  Desktop told every user "DeetsMusic is not installed on this PC". Also reachable: `/health`
+  calls `is_visible()`, which waits for the UI thread, so a busy or frozen app misses the CLI's
+  400 ms probe and reads as "isn't running". Not reachable live: beta ↔ release (beta paused),
+  token rotation (no caller), a port outside 47825–47828.
+- **His call.** Fix the shim first.
+- **Built.** The shim tries `current\cli\`, then `cli\`, then `where`; bundle 1.0.1, re-packed.
+  Run by hand over stdio against the installed 1.4.2: it started that CLI and `now_playing`
+  answered. MCP-INSTALL.md §8d and AGENT-SETUP.md's table say how a user with 1.0.0 gets the fix.
+- **Open.** It ships with the next release. Not done: the message that tells the three states
+  apart, `/health` off the UI thread, the MCP cache that keeps a 401.
+
+## 2026-11-09 — Search by Last.fm tag, on paper
+
+- **His ask.** Search by the Last.fm tags on an album he likes (*A Real Romantic*, ELIZA).
+- **His calls.** Look up only the rows on screen. A second tag adds its rows; narrowing must also
+  be possible, in a drill-down UI that we design later.
+- **Probe, live.** A tag's albums read in 1 or 2 calls. Two tags overlap on 0 to 5 albums, so
+  narrowing alone gives a nearly empty page. A crude lookup found 8 of 15 albums on Apple.
+- **Written, not built.** ideas/LastfmTags.md.
+
 ## 2026-11-09 — Where Add to Queue puts songs
 
 - **Read.** His report: Add to Queue on a pinned playlist "didn't go through". The live ring

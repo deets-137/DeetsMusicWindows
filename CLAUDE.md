@@ -239,6 +239,8 @@ picture, never write it for him.
   he said and is fixed.** The panel is `features/donate.md`.
 - `DeetsRecommends.md` — recommendations from the credit graph (who made the music).
 - `LastfmArtist.md` — Last.fm top tracks and similar artists on the artist view.
+- `LastfmTags.md` — click a Last.fm tag to open its albums and songs (`lastfm.rs`, `info-box.ts`);
+  a second tag adds or narrows. **§2 is what he decided; the drill-down UI is his.**
 - `DeetsWeather.md` · `WeatherSkin.md` — stations and a skin driven by the weather (WeatherKit).
 - `LinuxPort.md` — DeetsMusic on Linux and macOS: the blocks and the paths.
 - `MatterLights.md` — an on/off panel for Matter lights.

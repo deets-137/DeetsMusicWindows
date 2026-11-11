@@ -288,6 +288,16 @@ copy has it with the other 1.4 keys (deployed 2026-11-06). His first look:
 2026-11-05 (WORKLOG). His look passed 2026-11-05 ("album light looks good", fine at scale and
 hanging edges). Ocean and the Glass text after the `fromOKLCH` fix: closed by his word, 2026-11-05. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.
 
+### Built, not released: the Claude Desktop extension finds the CLI (2026-11-10)
+
+The `.mcpb` shim looked only at the NSIS path, so since 0.28.0 Claude Desktop told every user
+"DeetsMusic is not installed on this PC". Bundle 1.0.1 looks in `current\cli\` first; run over
+stdio against 1.4.2, it worked. A user with 1.0.0 presses **Install** on Claude Desktop's line in
+Settings. Not built, from the same report: one message per state in `connect()` (no bridge · a
+bridge but no token pairs · a bridge too slow to answer); `/health` without `is_visible()` (it
+waits for the UI thread, so a busy app reads as not running); the MCP's cached client cleared on
+a 401. [MCP-INSTALL.md](integrations/MCP-INSTALL.md) §8d, WORKLOG 2026-11-10.
+
 ### For 1.4: a listen count on each song row (2026-11-03, designed 2026-11-05)
 
 His ask: a pill with the song's Last.fm plays at the end of an album or playlist song row, and in
@@ -513,6 +523,8 @@ Each of these shipped; what is left is listed.
 - **Our scrobble names** (2026-10-12): we scrobble Apple's raw names, so plays land on Last.fm's
   small pages. LASTFM.md §10.
 - **Last.fm top tracks and similar artists:** ideas/LastfmArtist.md holds the calls.
+- **Search by Last.fm tag** (2026-11-09): his calls and the probe are in ideas/LastfmTags.md. Next
+  is the drill-down UI, with him (§5).
 - **The Rulez design pass on custom rules** (RULEZ.md §15, with §13), or **Layout**
   (LAYOUT.md), his pick. The graphics fallback rule's place in the engine's order
   (GRAPHICS-FALLBACK.md §9 item 3).

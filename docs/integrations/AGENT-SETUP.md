@@ -2,7 +2,7 @@
 status: guide
 desk_test: none
 sources: []
-updated: 2026-10-14
+updated: 2026-11-10
 ---
 # Control DeetsMusic from an AI app or the command line
 
@@ -108,5 +108,5 @@ deetsmusic queue
 | "no bridge running" or a connection error | Start DeetsMusic. It must be running, in the tray is fine. |
 | "not connected to Apple Music" | Sign in from the title menu › Account. |
 | The AI app says the server failed to start | The path in its config points at a file that is not there. Press **Repair** on its line in **Set up the DeetsMusic MCP**, or reinstall DeetsMusic. |
-| Claude Desktop says “DeetsMusic is not installed on this PC” | DeetsMusic was uninstalled. Install it again, or remove the extension in Claude Desktop › Settings › Extensions. |
+| Claude Desktop says “DeetsMusic is not installed on this PC” | If DeetsMusic is installed, the extension is an old copy. In DeetsMusic › Settings › Connections › **Set up the DeetsMusic MCP**, press **Install** on Claude Desktop's line, then press Install in Claude. If DeetsMusic was uninstalled, install it again, or remove the extension in Claude Desktop › Settings › Extensions. |
 | Install or uninstall says a file is in use | Quit the AI app first. It keeps `deetsmusic.exe` open while it runs. |

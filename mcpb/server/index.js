@@ -11,8 +11,13 @@ const path = require("node:path");
 
 function findCli() {
   const local = process.env.LOCALAPPDATA;
-  const usual = local ? path.join(local, "DeetsMusic", "cli", "deetsmusic.exe") : "";
-  if (usual && existsSync(usual)) return usual;
+  // Velopack (0.28.0 on) installs to DeetsMusic\current\, the same folder after every update.
+  // DeetsMusic\cli\ is the NSIS layout (up to 0.27): from 0.28 to 1.4.2 the shim looked only
+  // there and told every user DeetsMusic was not installed (2026-11-10).
+  const places = local
+    ? [path.join(local, "DeetsMusic", "current", "cli", "deetsmusic.exe"), path.join(local, "DeetsMusic", "cli", "deetsmusic.exe")]
+    : [];
+  for (const p of places) if (existsSync(p)) return p;
   // A custom install folder: the CLI folder may be on PATH.
   try {
     const hit = execFileSync("where.exe", ["deetsmusic.exe"], { encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }).split(/\r?\n/)[0].trim();
