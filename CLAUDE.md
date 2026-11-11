@@ -244,6 +244,9 @@ picture, never write it for him.
 - `DeetsWeather.md` · `WeatherSkin.md` — stations and a skin driven by the weather (WeatherKit).
 - `LinuxPort.md` — DeetsMusic on Linux and macOS: the blocks and the paths.
 - `MatterLights.md` — an on/off panel for Matter lights.
+- `OutputDevices.md` — pick the Windows output in the "Play on" panel, with a default row that
+  follows Windows; a group of outputs (an AirPlay speaker too) that Rust plays in time from the
+  tap. **§1 is what he said and is fixed; the panel is his to design.**
 - `WORKERS.md` — workers and queues in Rust; the forks are his.
 - `WorkerDeploy.md` — deploy a worker without dropping live connections.
 
