@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-15
 sources: [scripts/gen-sun-zones.mjs, src/look-schedule.ts, src/sun-zones.ts, src/look.ts, src/rules-eval.ts, src/rules.ts]
-updated: 2026-10-23
+updated: 2026-11-11
 ---
 # DeetsMusic — Look schedule (day look / night look)
 
@@ -65,6 +65,9 @@ accurate for the city). The app makes no request and asks for no permission.
   status line says the time is rough.
 - **Polar day or night:** one look all day; the next check is at midnight.
 - **Regenerate** the table when the tz database adds a zone: `node scripts/gen-sun-zones.mjs`.
+- **A bridge client reads the look on screen and today's sun** on `GET /settings` › `look`
+  (AGENT.md §6, 2026-11-11), for the Discord Activity's look and Happy sky. The `theme` and
+  `skin` rows stay the user's own pick.
 
 ## 4. Timing and launch
 

@@ -2,9 +2,22 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-06
+updated: 2026-11-11
 ---
 # DeetsMusic — Work log
+
+## 2026-11-11 — The look on screen and today's sun on GET /settings
+
+- **His ask.** The Lil Deets Discord Activity read the `theme` / `skin` rows, which are his own
+  pick (`ownSetting`), so it missed the look schedule, rules and a held manual pick. It also had
+  no sun times for Happy's sky (ACTIVITY.md §14.3 in `../DeetsDiscordBot`).
+- **Found.** `GET /health` already reported the painted `theme` / `skin`. Only the sun was new.
+- **His call: a `look` field on the `GET /settings` reply** (not a new route, not read-only rows).
+  `{theme, skin, sun}`: the painted ids, and `sunTimes(today)` with no Sun shift, or
+  `"day"` / `"night"`. Not on `/health` (no token there). AGENT.md §6 › The look on screen.
+- **Decided inside his choice:** read at call time from `data-theme` / `data-skin`; `sun` always
+  present, whatever the skin; on every list reply, with or without a section.
+- **Not done:** the bot side (his repo); no release.
 
 ## 2026-11-10 — "DeetsMusic isn't running" while it runs; the Claude Desktop extension
 

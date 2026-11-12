@@ -21,7 +21,7 @@ import { type ThemeName } from "./theme";
 import { currentSkin, type SkinName } from "./skin";
 import { pickLook } from "./look";
 import { applySurface, currentSurface, MIN_SIZES, SIZE_KEYS, type SurfaceName, type SizeSlot } from "./surface";
-import { THEME_OPTIONS, SKIN_OPTIONS } from "./look-schedule";
+import { THEME_OPTIONS, SKIN_OPTIONS, sunTimes } from "./look-schedule";
 import { withAppearanceTransition } from "./appearance";
 import { presetOptions, selectPreset } from "./sound";
 import { settingValue, changeFields } from "./usage-rules";
@@ -615,7 +615,24 @@ export async function settingsList(payload: any): Promise<Reply> {
   const want = String(payload?.section ?? "").trim().toLowerCase();
   const specs = want ? SPECS.filter((s) => s.section.toLowerCase() === want) : SPECS;
   if (want && !specs.length) throw unknown(`no section ${JSON.stringify(payload.section)} — sections: ${SECTIONS.join(", ")}`);
-  return { settings: await Promise.all(specs.map(rowOf)) };
+  return { settings: await Promise.all(specs.map(rowOf)), look: lookShown() };
+}
+
+/**
+ * The look on screen now, and today's sun (AGENT.md §6, `look`; his call 2026-11-11). Read-only
+ * and not a row: the `theme` and `skin` rows stay your own pick, and a set to them stays a hand
+ * pick. `theme` / `skin` are what is painted (data-theme / data-skin), after the look schedule,
+ * rules and a held manual pick, as GET /health reports them. `sun` is sunTimes for today, with
+ * no Sun shift: the value Happy's sky uses (scene.ts), so the Discord Activity can draw it.
+ */
+function lookShown(): { theme: string; skin: string; sun: ReturnType<typeof sunTimes> } {
+  const root = document.documentElement;
+  const sun = sunTimes(new Date());
+  return {
+    theme: root.dataset.theme ?? "",
+    skin: root.dataset.skin ?? "",
+    sun: typeof sun === "string" ? sun : { rise: Math.round(sun.rise), set: Math.round(sun.set) },
+  };
 }
 
 /** POST /settings: list · get · set. */

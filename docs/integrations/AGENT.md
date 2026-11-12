@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.5.0
 desk_test: passed 2026-09-14
 sources: [src/agent-writes.ts, src-tauri/src/bridge.rs, src/np-bus.ts, src/agent-settings.ts, src/agent-rules.ts, src/agent-rules-shape.ts, cli/src/main.rs]
-updated: 2026-11-04
+updated: 2026-11-11
 ---
 # Agent / CLI control — `deetsmusic`
 
@@ -92,7 +92,7 @@ answer (15 s; 90 s for `export`, `new_copy`, `get_songs`, `import`). An add goes
 deliberately **no `withdraw`**: pulling a message back out of a channel is the user's own call
 (DeetsOTD.md §10.6). **403 while Song of the Day is off**, and the first mark asks the user in the window (G2). CLI: `deetsmusic pick list` · `pick mark song:123 --note "…"` · `pick unmark 2`. MCP tool: `picks` (full pack only) |
 | `GET /diary[?id=]` · `POST /diary` | `{entries:[{id, title, artist, score?, done, folder?, reviewDate?, songsWritten, songCount}]}` · with `id`: `{entry:{…, songs:[{n, title, score?, note?, noteDate?, unreleased}]}, text}` (`text` = the Export) · `{action: add \| note \| score \| date \| done, id?, album?, song?, value?}` → `{ok, message}` — the Diary ([DIARY.md](../features/DIARY.md) §10). **403 unless Settings › Connections › Agents use the Diary is on** (off by default; agents may only turn it off). `song` is the track number; without it the album itself. An empty `value` clears; a score must be 0 to the entry's scale. Every write tells the window (`diary-changed`). CLI: `deetsmusic diary` · `diary show 3` · `diary add album:123` · `diary note 3 --song 2 "…"` · `diary score 3 7.5` · `diary date 3 today` · `diary done 3 off`. MCP tool: `diary` (full pack only) |
-| `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…]}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
+| `GET /settings[?section=]` · `POST /settings` | `{settings:[Row…], look}` · `{action: list \| get \| set, key, value?}` → `{row}` / `{ok, message}` / `pending` (§6) |
 | `GET /rules[?words=1]` · `POST /rules` | `{rules:[{id, name, kind, on, locked, source, idle?, text, rule?}]}` · with `words=1`: `{words:{events, facts, dos, cards, conditions}}` · `{action: list \| words \| show \| add \| remove \| on \| off, id?, rule?}` → `{rule}` / `{ok, message}` / `pending` (§8) — the rules engine's rules ([RULEZ.md](../features/RULEZ.md) §7). Every rule is read; only the user's own are written. A write rides Agent changes settings (§6). CLI: `deetsmusic rules` · `rules words` · `rules show ID` · `rules add '<json>'` · `rules remove ID` · `rules on ID` · `rules off ID`. MCP tool: `rules` (full pack only) |
 | `GET /history?limit=50` | `{plays:[Track…]}` — the **session** play log, newest first. 403 while Settings › Connections › Agents read play history is off |
 | `GET /diag[?limit=100&since=0&tag=&flush=1]` | `{events:[{n, t, tag, data}], dropped, flushed}` — the window's **live** diag ring, oldest first ([LOGGING.md](../ops/LOGGING.md) §Reading it from outside). What the app just did, without a flush or a restart: `ui:act` gestures, `player:*`, drills, toasts. `since` takes the `n` of an event already read; `tag` keeps the tags that start with it; `flush=1` also writes the new events to the log file first. Behind the Agent control switch, like every agent read. CLI: `deetsmusic diag -n 50 --tag player`. MCP tool: `diag` (full pack only) |
@@ -278,7 +278,7 @@ key by itself; `--small` does not get the tool. Code: `src/agent-settings.ts`.
 |---|---|
 | MCP tool `settings` | `action: list \| get \| set`, `key?`, `value?`, `section?` |
 | CLI | `deetsmusic settings [list [section]]` · `settings get <key>` · `settings set <key> <value…>` (the value's words are joined, so `set theme Black & Red` needs quotes only for the shell's `&`) |
-| Routes | `GET /settings[?section=]` → `{settings:[Row…]}` · `POST /settings` `{action: list \| get \| set, key, value?}` → `{row}` (get) · `{ok, message}` or `{ok, pending: "user", message}` (set) |
+| Routes | `GET /settings[?section=]` → `{settings:[Row…], look}` (`look`: below) · `POST /settings` `{action: list \| get \| set, key, value?}` → `{row}` (get) · `{ok, message}` or `{ok, pending: "user", message}` (set) |
 
 `/settings` is in `AGENT_ROUTES` (Agent control gates it). The bridge asks the window
 (`settings-get`, `settings`), like `/update`; `agent-writes.ts` `runAgentWrite` hands both kinds
@@ -320,6 +320,27 @@ agentSettings         Agent changes settings: Ask  (Allow | Ask | Off)  [read-on
 ```
 
 JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "off only" | "read-only"}`.
+
+### The look on screen — `look` (built 2026-11-11, his call)
+
+Every list reply (`GET /settings`, with or without `?section=`, and `POST /settings`
+`{action: "list"}`) carries one more field beside `settings`:
+
+```json
+"look": { "theme": "black-red", "skin": "ocean", "sun": { "rise": 1762865412000, "set": 1762902655000 } }
+```
+
+- `theme`, `skin`: the ids painted now (`data-theme`, `data-skin`), after the look schedule,
+  rules and a held manual pick. The same values as `GET /health` `theme` / `skin`. The `theme`
+  and `skin` **rows** stay the user's own pick, and a set to them stays a hand pick.
+- `sun`: today's sunrise and sunset in epoch ms for the time zone's main city
+  (`look-schedule.ts` `sunTimes`, no Sun shift: the value Happy's sky uses), or the string
+  `"day"` / `"night"` when the sun stays up or down all day.
+- Read at the time of the call (`agent-settings.ts` `lookShown`), so a changed look shows on the
+  next read. It is not a row: nothing can set it, and it needs no permission beyond the token
+  and Agent control that `/settings` already has. Not on `/health`: that route needs no token,
+  and the sun times tell the time zone's city.
+- The reader today: the Lil Deets Discord Activity (`../DeetsDiscordBot`, ACTIVITY.md §14.3).
 
 ### Values
 
