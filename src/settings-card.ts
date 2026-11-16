@@ -256,7 +256,7 @@ const NEW_MARKS: NewMark[] = [
   { since: "1.4.1", section: "Skin settings", row: "albumwave" },
   { since: "1.4.2", section: "Playback", row: "addqueueat" }, // Where Add to Queue puts songs, built 2026-11-09 (QUEUE.md)
   { since: "1.4.2", section: "Playback", row: "addqueuetoast" },
-  { since: "1.4.3", section: "Playback", row: "spaceplay" }, // Play/Pause on Space, built 2026-11-16 (live ticket Ifdw99vR5TYBOeLY)
+  { since: "1.5.0", section: "Playback", row: "spaceplay" }, // Play/Pause on Space, built 2026-11-16 (live ticket Ifdw99vR5TYBOeLY)
 ];
 /** A choice or range row's hint: its words, or the function that gives them now. */
 const rowHint = (r: { hint?: string | (() => string | undefined) }): string | undefined =>

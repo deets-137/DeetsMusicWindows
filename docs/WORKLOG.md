@@ -23,7 +23,7 @@ updated: 2026-11-06
   key. Built: `spacePlayPause`, a capture-phase listener. COMPASS.md §5.
 - **Decided inside his calls (for his look).** The notice text; 8 s on screen and at most one per
   8 s; skip at most 10 in a row; a click on a restricted song does not skip; with the setting On,
-  `select` keeps Space too, and a held Space toggles once; the row hint's words; `since: 1.4.3`.
+  `select` keeps Space too, and a held Space toggles once; the row hint's words; `since: 1.5.0` (his call: 1.5, so the Space row gets its own update-card page).
 - **Checked.** tsc, `npm test` (556 pass), docs:check (the 13 fails are sibling repos not in the
   cloud container, the same on a clean tree). Not run: `vite build` (needs ../DeetsSolutions),
   cargo, the dev-app desk tests (Windows only). `npm run usage:keys` changed DeetsSupport
