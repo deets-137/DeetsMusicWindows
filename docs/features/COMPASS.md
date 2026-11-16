@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.9.5
 desk_test: passed 2026-09-19
 sources: [src/compass.ts, src/styles/compass.css, src/compass-math.ts, src/list-keys.ts, src/styles/skin.css, src/main.ts]
-updated: 2026-11-04
+updated: 2026-11-16
 ---
 # Compass — go anywhere from the keyboard
 
@@ -27,7 +27,7 @@ updated: 2026-11-04
 | # | Fork | Pick |
 |---|---|---|
 | 1 | Shape | **A.** A panel that drops from the title bar over the window, any surface. Not a card in a slot: mini's NP view has no slot, and Max's Fill covers the cards. |
-| 2 | Apple catalog | **A.** Local only while typing. The last row hands the term to the Search card: "Search Apple Music for …". Zero Apple calls from the bar. |
+| 2 | Apple catalog | **A.** Local only while typing. The last row hands the term to the Search card: "Search Apple Music for …". Zero Apple calls from the bar. **Reversed 2026-11-16 (his call, live ticket `no37Szdt3ow1vnuE`): the bar asks Apple as you type, §2e.** |
 | 3 | Depth of a result | **A + B.** Enter goes to the owner. A Settings row whose value lives in the settings store also renders its control in the bar (toggle: on/off; choice of up to three: the split pill). Rows held in Rust, split rows, sliders and actions jump to the Settings card at the row. |
 | 4 | Discovery | **A**, then moved the same day: the compass icon sits in the **title bar, right of the title**, alone, with the hint "Go anywhere! (Ctrl + Space)". Plus a Tips entry. (The first build put it in the title menu as a row; the owner asked for the title bar.) |
 | 5 | Scope | **B.** The bar, plus **Space** for play / pause and **Enter / Space** on the Search card's rows. |
@@ -74,7 +74,7 @@ The bar has one text field at the top and groups of rows under it. The groups, i
 | **Genres** | The library's genres (a song's first genre, as the Library's Genres view groups them). | Opens the genre in the Library (§8). | Plays the genre's songs in artist order. |
 | **Playlists** | Local and Apple playlists by name. | Opens it in Playlists. | Plays it. |
 | **Stations** | The stations played before (recents). | Plays it. | — |
-| **Apple Music** | One row: "Search Apple Music for *term*". | The Search card opens with the term. | — |
+| **Apple Music** | Apple's answer for the term (§2e): the top artist, 3 albums, 6 songs, the top playlist and station, under the Apple Music chip. Then always one row: "Search Apple Music for *term*". | A result opens in the Search card (a song: its album). The last row: the Search card opens with the term. | Plays it (a station plays on Enter). |
 
 With no text: Places, then Actions. A group with no match is not drawn.
 
@@ -100,6 +100,39 @@ four calls the Radio card makes (live, my station, Discovery, genres), into the 
 so a Radio card opened after costs nothing (the owner's ask, 2026-09-17). A bar used only
 for cards or settings never makes them. Genre stations (one call per genre) are not read;
 the ones the Radio card already read show (`radioGenreStationsPeek`).
+
+### 2e. Apple Music as you type (2026-11-16, his calls)
+
+> **Part:** built · 2026-11-16 · desk test open
+
+A live ticket (`no37Szdt3ow1vnuE`): "99% of the time I'm wanting to find something I don't
+have saved". His calls: **1A** the Apple Music chip is shown first only when the library has no
+match; **2A** a term of 3 letters or more; **3B** no setting; **4A** the Search card's own call.
+
+- **The call.** `searchCatalog(term)` (`src/search.ts`), after `SEARCH_DELAY_MS` (300 ms) from
+  the last key: one request for the five kinds, counted as `search` (APPLE-CALLS.md), held off
+  by Apple's 429 back-off. It shares the Search card's session cache, so the same term in the
+  Search card after costs nothing, and a term typed again costs nothing. A newer term drops an
+  older answer (`catalogSeq`). Closing the bar drops the pending pause, so a closed bar never
+  calls. Not for a command or the calculator (any command row answered), and not under 3
+  letters. `compass:apple` (count, ms) or `compass:appleFail` in the diag ring.
+- **The chip.** "Apple Music" is the last chip in the filter row (§2a). It reads **…** while the
+  call is out, then its count. With no library match it is the shown kind; otherwise Tab
+  reaches it. A failed call (signed out, offline, the back-off) shows no chip.
+- **The rows** (up to the surface's row count): the top artist, up to 3 albums, up to 6 songs,
+  the top playlist, the top station. Each second line ends "· Apple Music". Enter opens it in
+  the Search card: the artist pane, the album pane, a song's album (the song → album hop, one
+  call), the playlist pane; a station plays. Ctrl+Enter plays: catalog songs join the store
+  first, as a Search play does (`addTransientTracks`, `materializeTrack`).
+- **"Search Apple Music for …"** stays the last row.
+
+*Desk test.* (1) Type a name your library lacks: the chip reads … then a count, and the rows
+show with no Tab. (2) Type one of your own artists: the library kind shows; Tab reaches Apple
+Music. (3) Type 2 letters: no chip, and no `compass:apple` line. (4) `=2+2` and `vol 50`: no
+chip. (5) Type fast: one `compass:apple` line for the last term. (6) Open the Search card with the
+same term: no second `search` call in `[apple] calls`. (7) Enter on an album opens its pane;
+Ctrl+Enter on a song plays it. (8) Signed out: no chip, the last row still works. (9) Close the
+bar during the pause: no call.
 
 ### 2c. How a card opens: the shape (2026-09-18, the owner's ask)
 
@@ -289,6 +322,22 @@ the text caret; Tab belongs to the filter row (2a).
 - **Reduced motion:** `.pop` and `enterRows` already snap.
 
 ## 5. The rest of the keyboard pass (fork 5B, then the lists — built 2026-09-17)
+
+> **Part:** built · 2026-11-16 · desk test open — *Play/Pause on Space*
+
+**Space and the focus (2026-11-16, live ticket `Ifdw99vR5TYBOeLY`).** Space plays or pauses
+only when nothing that takes Space has the focus (`main.ts`). A button keeps the focus after a
+mouse click, so Space then pressed that button again: the user read it as "Space repeats the
+last thing I pressed". **Settings › Playback › Play/Pause on Space** (`spacePlayPause`, default
+Off, his call: a user who presses buttons with Space keeps that) moves Space to a capture-phase
+listener: Space always plays or pauses, except in a text field (`input`, `textarea`, `select`,
+`[contenteditable]`) and in the Compass. A held Space does not toggle again (`e.repeat`). A rule
+key, so a rule can set it.
+
+*Desk test.* Off: click Next with the mouse, press Space: Next runs again (today's behavior).
+On: click Next, press Space: the song pauses; Space again plays. On, with focus on a Library
+row: Space plays or pauses and does not start the row. On, in the Search field: Space types a
+space. On, Compass open: Space types a space. Hold Space: one toggle only.
 
 **Inside every list** (`src/list-keys.ts`, adopted by the collection-card engine — Library,
 Playlists, Radio, the artist and genre views — and by hand in the Queue, History, Home, the

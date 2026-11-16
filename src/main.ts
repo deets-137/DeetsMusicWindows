@@ -20,7 +20,7 @@ import { initWallpaper } from "./wallpaper";
 import { initArtworkHeal } from "./artwork-heal";
 import { initBrowserDefaults } from "./browser-defaults";
 import { initHints } from "./hint";
-import { setting, onSettingsChange, setSettingsVersion, onSettingChanged } from "./settings-store";
+import { setting, effective, onSettingsChange, setSettingsVersion, onSettingChanged } from "./settings-store";
 import { requestCard } from "./layout-bus";
 import { cancelSignIn, connect, disconnect, isConnected, SignInError } from "./apple";
 import { nextSyncEnd } from "./library";
@@ -337,6 +337,20 @@ window.addEventListener("DOMContentLoaded", () => {
   // Keyboard shortcuts (NEXT-VERSION §5): summon a card. Fixed set; ignored while a
   // text field has focus. Rebinding is deferred (FUTURE-SETTINGS).
   const SHORTCUTS = CARD_KEYS; // one list, shared with the bar's own handler (compass.ts)
+  // Play/Pause on Space (spacePlayPause, COMPASS.md §5): in the capture phase, so a focused
+  // button, row, switch or list (list-keys.ts) never sees the key. A text field and the
+  // Compass keep it. A held Space does not toggle again.
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== " " || e.ctrlKey || e.altKey || e.metaKey || !effective("spacePlayPause")) return;
+      if ((e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable]") || compassOpen()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!e.repeat) void playPause("space").catch((err) => console.error("[keys] space", err));
+    },
+    true,
+  );
   document.addEventListener("keydown", (e) => {
     const target = e.target as HTMLElement | null;
     const inField = !!target?.closest("input, textarea, [contenteditable]");

@@ -359,6 +359,9 @@ export interface Settings {
   /** The wheel anywhere on the Now Playing card steps the volume (WHEEL-VOLUME.md). Off: the wheel
    *  passes through. The title bar pill always takes the wheel. */
   playerWheelVolume: boolean;
+  /** Space always plays or pauses, outside a text field: a focused button, row or switch no
+   *  longer takes it (COMPASS.md §5). Off: Space presses the control that has the focus. */
+  spacePlayPause: boolean;
   /** What Previous may rewind into: the parked list above the click, or only heard songs (§4). */
   previousReach: "lookback" | "heard";
   /** At launch: bring back last session's song as Now Playing (paused) + Up Next + Previous,
@@ -726,6 +729,7 @@ export const DEFAULTS: Settings = {
   dropPlayQueue: "keep", // user's call 2026-09-14: a drop on Now Playing keeps Up Next
   addToQueueAt: "end", // his call 2026-11-09: an existing install keeps what it does today; a new install is seeded "afterAdded" (seedOnboarding)
   addToQueueToast: true, // his call 2026-11-09: a success was silent, and the songs at the end of a long Up Next looked lost
+  spacePlayPause: false, // his call 2026-11-16 (live ticket Ifdw99vR5TYBOeLY): off, so a user who presses a focused button with Space keeps it
   playerWheelVolume: true, // his call 2026-10-27: on; the card has nothing that scrolls, and the sound itself is the feedback
   previousReach: "lookback",
   restoreQueue: "song", // user's call 2026-09-12: the last song back in Now Playing, paused, with its queue
@@ -1002,7 +1006,9 @@ export const RULE_KEYS = ["theme", "skin", "shareActivityApp", "shareActivityDis
   // Reduce motion (GRAPHICS-FALLBACK.md §10.4): the graphics rule holds it on in software.
   "reduceMotion",
   // Let go after a pause (QUEUE.md § Let go after a pause, 2026-11-03): e.g. Never while AirPlay plays.
-  "releaseAfterPause"] as const;
+  "releaseAfterPause",
+  // Play/Pause on Space (COMPASS.md §5, his call 2026-11-16): a rule may set it too.
+  "spacePlayPause"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
 const isRuleKey = (k: string): k is RuleKey => (RULE_KEYS as readonly string[]).includes(k);
 

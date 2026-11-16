@@ -2,9 +2,59 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-11
+updated: 2026-11-16
 ---
 # DeetsMusic — Work log
+
+## 2026-11-16 (end) — A warm handoff: HANDOFF pruned and corrected
+
+- **His ask.** Docs ready for a warm handoff; he goes on in a session on his PC (Partner Center
+  needs his browser, which a cloud session has not got).
+- **HANDOFF.** One 1.5.0 line at the top of Open now: what is on `main`, the checks and desk
+  tests left, the deploy, the release steps, the forum replies. Pruned: the 2026-11-03 to 11-05
+  "Built, not released" sections and the 1.4 listen-count section (all passed by his word and in
+  the 1.4.0 notes), kept as one "Open from 1.4" line for the Donate panel's open questions.
+- **Corrected.** The Store line said the Demo login worker was not deployed. It is: `41dc442` is
+  in DeetsSupport `master` under the 2026-11-06 deploy (`f2b7028b`). Claude repeated the stale
+  line to him earlier today; this entry is the record of the fix.
+- **Read.** `live_errors` W46 into the freeze line: six new freeze kinds, most placed `none`.
+
+## 2026-11-16 (later) — Apple Music in the Compass; 1.5.0 notes
+
+- **His calls.** Version 1.5.0, so the new rows get their own update-card page (it is a page per
+  minor line). The notes, his intro "A couple quick updates!!", two notes start open. The
+  Compass ticket (`no37Szdt3ow1vnuE`) the costly way: 1A, 2A, 3B (no setting), 4A.
+- **Built.** COMPASS.md §2e: `searchCatalog` after the 300 ms pause, an "Apple Music" chip,
+  12 rows that open in the Search card or play. A loading clip `load-compass-apple`.
+- **Decided inside his calls (for his look).** "…" in the chip while the call is out (no
+  spinner: a chip has none); no call for a command row or the calculator; the row mix (1 artist,
+  3 albums, 6 songs, 1 playlist, 1 station); Enter on a song opens its album (the library
+  rows' rule); a closed bar drops the pause; a failure shows no chip and no toast; the note and
+  "Apple Music results in Ctrl+Space" first in Start open.
+- **Checked.** tsc, `npm test` (556), docs:check. Not run: vite build, the desk test (dev app).
+
+## 2026-11-16 — Two live tickets: restricted songs, Play/Pause on Space
+
+- **Read.** Five posts wait on him (`live_reports`). The live MCP returns no `meta`, so a post's
+  log tail is his to paste (LIVE-MCP.md §3.8); he pasted the tail of `hGjdjlE2I7PE1C5-`.
+- **Found, `hGjdjlE2I7PE1C5-` ("won't play E-rated songs", v1.4.2).** Every failure was
+  `CONTENT_RESTRICTED`: the Apple ID does not allow explicit content. Ours: a bare "Couldn't
+  play", a health check per click, and the end-of-song heal took the song for dead and stopped on
+  the next restricted one. Not the Clean recipe (no `rule:` line).
+- **Built (his "yes, build it").** `isRestricted` (pause-rules.ts, tested), one named notice,
+  no heal on a click, auto-advance skips past restricted songs (≤ 10, never banked). QUEUE.md
+  § Restricted songs.
+- **Found, `Ifdw99vR5TYBOeLY` (Space).** A button clicked with the mouse keeps the focus, and
+  main.ts leaves Space to a focused control, so Space pressed it again.
+- **His calls.** A setting, default Off (2c); in Playback; the label "Play/Pause on Space"; a rule
+  key. Built: `spacePlayPause`, a capture-phase listener. COMPASS.md §5.
+- **Decided inside his calls (for his look).** The notice text; 8 s on screen and at most one per
+  8 s; skip at most 10 in a row; a click on a restricted song does not skip; with the setting On,
+  `select` keeps Space too, and a held Space toggles once; the row hint's words; `since: 1.5.0` (his call: 1.5, so the Space row gets its own update-card page).
+- **Checked.** tsc, `npm test` (556 pass), docs:check (the 13 fails are sibling repos not in the
+  cloud container, the same on a clean tree). Not run: `vite build` (needs ../DeetsSolutions),
+  cargo, the dev-app desk tests (Windows only). `npm run usage:keys` changed DeetsSupport
+  `src/usage-keys.js`: its deploy is his call.
 
 ## 2026-11-11 — The look on screen and today's sun on GET /settings
 

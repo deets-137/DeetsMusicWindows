@@ -30,7 +30,7 @@ import { errorFields, compactEvent } from "./license-reply";
 import { cancelled } from "./rules";
 import { outputKind } from "./sound";
 import { netNote } from "./net-feed";
-import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S, MID_STALL_MS, endStallArms, endStallStep } from "./pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, isRestricted, LICENSE_BACK_S, MID_STALL_MS, endStallArms, endStallStep } from "./pause-rules";
 import { roomDriftTick } from "./room";
 import * as stats from "./stats";
 import * as perf from "./perf";
@@ -2232,6 +2232,7 @@ async function doLoadFromModel(m: any, autoplay = true, opts: LoadOpts = {}): Pr
     // rejection here used to suppress model-follow for the rest of the session.
     diag.log("player:loadError", { e: String(e) });
     perf.abandon("loadError");
+    if (isRestricted(String(e))) restrictedNotice("load");
     console.warn("[player] load failed:", e);
     throw e;
   } finally {
@@ -2341,6 +2342,11 @@ export function playTracks(tracks: Track[], startIndex: number, context = "libra
     const msg = String(e instanceof Error ? e.message : e);
     if (msg === SIGNED_OUT || msg === NO_MUSICKIT) throw e; // requireSignIn's toast already says why
     diag.warn("player:playFailed", { msg, context });
+    // The Apple ID does not allow this song: the load already said why, and no heal helps.
+    if (isRestricted(msg)) {
+      restrictedNotice("play");
+      throw e;
+    }
     const gone = msg.startsWith("nothing to play");
     if (!gone) {
       // Maybe Apple rejected a token: find the cause, heal, retry once (bounded in
@@ -2652,6 +2658,7 @@ export async function playTracksKeepQueue(tracks: Track[], context = "library"):
   if (!playable.length) return;
   queue.insertManyAt(0, playable);
   await jumpToUpcoming(0).catch((e) => {
+    if (isRestricted(String(e))) throw e; // the load's restricted notice already said why
     toast({ kind: "warn", text: tracks[0]?.title ? `Couldn't play “${tracks[0].title}”.` : "Couldn't play that." });
     throw e;
   });
@@ -3579,8 +3586,38 @@ async function healDeadNext(m: any, why: string, bank: boolean, failed?: TrackHa
   // re-windowed song then played with NO now-playing index: both grows returned silently, the
   // queue stayed at one song, and at its end MusicKit started index 0 again — the song played
   // twice. A full stop() resets the controller, as the station break-out learned (QUEUE.md).
-  await recoverLoad(m, "deadNext");
+  await loadPastRestricted(m, "deadNext");
   return true;
+}
+
+// ── Restricted songs (2026-11-16, QUEUE.md § Restricted songs) ────────────────────
+// A live ticket (v1.4.2): explicit songs on an Apple ID that does not allow them. Every load
+// failed with CONTENT_RESTRICTED, the toast said only "Couldn't play", each click ran a
+// health check, and an auto-advance into two restricted songs in a row stopped the music.
+/** One notice per this gap, and the notice stays up as long: a run of restricted songs, or a
+ *  click and its load, say it once, and a repeat is only held back while the first is on screen. */
+const RESTRICTED_NOTICE_GAP_MS = 8000;
+let restrictedNoticeAt = -Infinity;
+function restrictedNotice(via: string): void {
+  const now = performance.now();
+  diag.log("player:restricted", { via, id: playId(queue.getCurrent() ?? {}) ?? null });
+  if (now - restrictedNoticeAt < RESTRICTED_NOTICE_GAP_MS) return;
+  restrictedNoticeAt = now;
+  toast({ kind: "warn", text: "Your Apple ID doesn't allow explicit songs. Turn on explicit content in your Apple account settings, then try again.", timeout: RESTRICTED_NOTICE_GAP_MS });
+}
+/** The most restricted songs one heal skips past before it stops. */
+const RESTRICTED_SKIP_MAX = 10;
+/** A recovery load that moves on past restricted songs (never banked), up to RESTRICTED_SKIP_MAX. */
+async function loadPastRestricted(m: any, why: string): Promise<void> {
+  for (let n = 0; ; n++) {
+    try {
+      await recoverLoad(m, why);
+      return;
+    } catch (e) {
+      if (!isRestricted(String(e)) || n >= RESTRICTED_SKIP_MAX || !jumpToNextFed("restricted")) throw e;
+      diag.log("player:restrictedSkip", { why, n: n + 1, to: playId(queue.getCurrent() ?? {}) ?? null });
+    }
+  }
 }
 
 // ── The recovery load must end in sound (2026-09-28) ─────────────────────────────
@@ -3757,7 +3794,7 @@ function healEndedWithoutItem(m: any): void {
         const id = playId(cur);
         diag.log("player:retryCurrent", { id, np, mkLen: items.length });
         perf.event("retryCurrent", { id, np, mkLen: items.length });
-        await recoverLoad(m, "retryCurrent"); // the same `ended` state as healDeadNext
+        await loadPastRestricted(m, "retryCurrent"); // the same `ended` state as healDeadNext
         return true;
       })()
     : mkRemaining > 0
@@ -3801,6 +3838,16 @@ function onPlaybackError(e: any): void {
   if (loadingContext || mode !== "queue" || !music) return;
   diag.warn("player:playbackError", { msg, ...errorFields(e) });
   perf.event("playbackError", { msg, keys: e && typeof e === "object" ? Object.keys(e).slice(0, 8) : typeof e });
+  if (isRestricted(msg)) {
+    // The song MusicKit advanced into is not allowed on this Apple ID: say why once, and move
+    // on to the next song it allows. Never banked: the song is live, only not for this account.
+    restrictedNotice("playbackError");
+    const c = queue.getCurrent();
+    const np: string | undefined = music.nowPlayingItem?.id;
+    const curFailed = !!c && !!np && isEntry(c, np) && heardEntry !== c;
+    healDeadNext(music, msg, false, curFailed && c ? c : undefined).catch((err) => console.warn("[player] restricted skip:", err));
+    return;
+  }
   if (!isUnavailable(msg)) {
     if (freshSignIn) {
       freshSignIn = false;

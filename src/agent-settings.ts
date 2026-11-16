@@ -325,6 +325,7 @@ const SPECS: Spec[] = [
   storeChoice("Playback", "addToQueueAt", "Right Click > Add to Queue behavior", [{ value: "end", label: "End of queue" }, { value: "afterAdded", label: "After added songs" }]),
   storeToggle("Playback", "addToQueueToast", "Show where added songs land"),
   storeToggle("Playback", "playerWheelVolume", "Scroll over the Player for volume"),
+  storeToggle("Playback", "spacePlayPause", "Play/Pause on Space"),
   storeChoice("Playback", "pinNewDouble", "Pinned Item double-click behavior", TILE_VERBS),
   storeChoice("Playback", "collectionClick", "Click a collection", TILE_VERBS),
   storeChoice("Playback", "collectionDouble", "Double-click a collection", TILE_VERBS),
