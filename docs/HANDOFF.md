@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [src/toast.ts, src/player.ts, scripts/shots.mjs, scripts/sign.mjs, src/perf.ts, src/room.ts, src/dropdown.ts]
-updated: 2026-11-06
+updated: 2026-11-16
 ---
 # DeetsMusic — Handoff
 
@@ -114,6 +114,18 @@ extension's icons are LANCZOS resizes of the same file.
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
 
+- **1.5.0, next (his call 2026-11-16: a minor line, so its rows get their own update-card
+  page and the card opens after the update).** On `main`: restricted songs, Play/Pause on Space,
+  Apple Music in the Compass, the Claude Desktop extension fix. The notes are written with his
+  intro (RELEASE-NOTES.md). Left, in order: (1) `npm run check` and `npx vite build` on his PC
+  (the cloud session ran tsc, the tests and docs:check only: no cargo, no `../DeetsSolutions`);
+  (2) the desk tests: QUEUE.md § Restricted songs, COMPASS.md §5 (Space) and §2e (Apple Music,
+  step 6 is the cost check); (3) the DeetsSupport deploy for `9ebbc33` (`spacePlayPause` on the
+  usage list; low risk, the app works without it); (4) `npm run version` to 1.5.0, the date in
+  the notes' heading, `npm run release`. The forum: reply to `no37Szdt3ow1vnuE` (Ctrl+Space) when
+  1.5.0 is out; `hGjdjlE2I7PE1C5-` (explicit songs) and `Ifdw99vR5TYBOeLY` (Space) have his
+  replies. `862C39EuDByKyvaY` (lyrics) waits on a status reply: no lyric text in Apple's API, the
+  Donate panel's first goal pays for a source.
 - **Where Add to Queue puts songs (2026-11-09).** Shipped in 1.4.2; passed by script on the
   dev app ([QUEUE.md](features/QUEUE.md) § Where Add to Queue puts songs). The 1.4.2 note has its
   line.
@@ -128,7 +140,11 @@ item closes, delete it here and write the day in WORKLOG.md.
   hours.
 - **Freezes on 1.4.1 (2026-11-09): not traced.** 11 of 43 reports in W45, with counts only. From
   1.4.2 each freeze reports where it was and how long (LOGGING.md). `live_errors` lists
-  `freeze.Stuck@…` about a week after the update reaches users: read it, then trace. The reporter's post is `tWWvv_5rQO-fuzPX`. The 1.4.2 note has its line.
+  `freeze.Stuck@…` about a week after the update reaches users: read it, then trace. **W46 read 2026-11-16 (41 reports, all 1.4.2), every kind NEW:
+  `freeze.Stuck@none` 8 installs, `Lasted5to15s@none` 6, `Stuck@wake` 2, `Lasted5to15s@wake` 1,
+  `Lasted15to60s@none` 1, `LastedOver60s@none` 1. Most give the place as `none`, so first read
+  what `none` means in the freeze report (LOGGING.md) before tracing. Also new in W46: 5 installs
+  with `rejection.TypeError@main.js:2:4826 ← musickit.js:28:6351`; `npm run errors:where` maps it.** The reporter's post is `tWWvv_5rQO-fuzPX`. The 1.4.2 note has its line.
 - **Four small fixes for 1.4.2 (2026-11-07, his go).** Shipped in 1.4.2; `npm run check`
   passes; A6 and Rewind's memory passed on the dev app. (1) A Diary Done copies with the window behind: the page's clipboard first, then
   Rust's Win32 clipboard (`src/clipboard.ts`, `clipboard.rs`; DESK-TESTS.md A6). (2) The Donate
@@ -207,70 +223,10 @@ item closes, delete it here and write the day in WORKLOG.md.
   rise, the card swap (his hand test of the swap passed). Neither has a release note: they are
   polish inside 1.3.1's other changes unless he wants one.
 
-### Built, not released: Let go after a pause (2026-11-03)
+### Open from 1.4 (the rest shipped in 1.4.0 and passed; pruned 2026-11-16)
 
-A paused app renewed its license every 13 min and stopped a user's iPhone. MusicKit now lets go
-after Settings › Playback › *Let go of Apple after a pause* (10 min), or before the next renewal
-([QUEUE.md § Let go after a pause](features/QUEUE.md)). Claude ran desk-test steps 1, 3 and 4 on
-the dev app; step 2 passed when he allowed 5 min (released at once, 370 s into the pause). A
-resume after a release took 0.95 s from the press to sound at the spot. Desk test passed 2026-11-04
-(his word). Its release note and New mark are in, so the row is in column 2 of the update card's
-1.4 page (`__updates.asVersion("1.4.1")` shows it on the dev app). The weekly report sends the key
-(his call, 2026-11-05).
-
-### Built, not released: click and double-click on a tile (2026-11-04)
-
-User feedback: a setting so a click on a Home song or album tile opens the album, and a
-double-click plays it. His calls 2026-11-04: a 250 ms wait with a setting, On Double Click on
-every pin and defaulting to Play, one build for any collection of songs, and existing pins listed
-in the update card's right column. Built, schema v23; his desk test: tentatively good, 2026-11-04.
-**Built after that:** the same click and double-click on every collection, Open at once, a per-type
-rule and a guide page (`docs/guide/clicks-by-type.md`, outline). Desk test passed 2026-11-04 (his
-word): [HOME.md](features/HOME.md) §11.3b, §11.5.
-
-### Built, not released: a playlist remembers its sort (2026-11-04)
-
-User feedback (the board, "Remember playlist sorting order"). Per playlist, in a new table (schema
-v24), and every Play follows it. His hand test passed 2026-11-04: [PLAYLISTS.md](features/PLAYLISTS.md) §13.
-
-### Built, not released: the now mark (2026-11-04)
-
-User feedback (the board, "Show current song on album") and his design: a chevron in the row's left
-padding that slides to the next song in the list the song plays from, and a line in any other list.
-His hand test passed 2026-11-04. Closed by his word, 2026-11-05: the motion checks not run stay
-unrun, and the mark stays out of screen readers ([NOW-MARK.md](features/NOW-MARK.md) §6, §7).
-
-### Built, not released: Match loudness alone (2026-11-04)
-
-A section under the Equalizer, on its own off-by-default switch (`soundMatch`). The usage list
-dropped `soundLoudness`. DeetsSupport's `src/usage-keys.js` matches the app's list and is pushed
-(`86227fa`); it reaches the worker with the deploy below. The app works without it.
-
-**The cap: on in every build since 2026-11-05 (1.4 waits for it, his call).** A song with no
-measurement is held by a slow cap, and a fixed gain takes over once it has a row. It also fixes album
-gain for albums played from Search. **His ear test passed 2026-11-05** ([SOUND.md](features/SOUND.md)
-§ 11a-2); no cap row, and the recipe Quieter after sunset in its place. The panel line and the
-recipe are closed by his word, 2026-11-05, and the heaviness check is dropped. The DeetsSupport deploy is done (`f2b7028b`, his word, 2026-11-06). 1.4.1 is live, so Demo login's hand test is open.
-
-### Built, not released: Unshuffled from the top (2026-11-04)
-
-The rule event *You start an album from the top* and the recipe on it. His hand test passed by the
-dev log, 2026-11-04 (DESK-TESTS.md §5, A18): [RULEZ.md](features/RULEZ.md) §10.2, steps 7 and 8.
-
-### Built, in the next release: the Donate button (2026-11-04)
-
-A dollar sign in the Max title bar and a Donate panel. The dev flag came off on 2026-11-05 (his
-call). Desk test passed 2026-11-05, every step (his word, [donate.md](features/donate.md) §5).
-The PayPal link is in the panel and works, card with no login too (his test, 2026-11-05). The bars
-look good for now (his word). **The total (built 2026-11-05):** the panel reads it in 1.4
-([ideas/donations.md](ideas/donations.md) §5). The worker route (`POST /admin/donated`) and the admin
-page's Donate tab are pushed (DeetsSupport `fe6ed45`, DeetsSolutions `227a9ac`, 2026-11-05, his ask).
-The worker is deployed (`f2b7028b`, 2026-11-06), so the tab sets the total. The route and the tab passed on a local worker in a
-browser. Not run: the tab on live, and the app reading a real row. An older reply on rapid opens is dropped since
-2026-11-07 (only the newest read sets the total). Left as it is, low risk: an open panel comes back on Midi → Max (the
-updates panel does the same).
-Open: the asterisk's words and the other questions in §3. `panel.donate` is copied to
-DeetsSupport and reaches the worker with the deploy above.
+- **The Donate panel** ([donate.md](features/donate.md) §3): the asterisk's words and the other
+  questions there. Not run: the admin page's Donate tab on live, and the app reading a real row.
 
 ### Built, not part of the app: Fontpack (2026-11-04)
 
@@ -278,17 +234,7 @@ DeetsSupport and reaches the worker with the deploy above.
 call: not a priority now). A real Krita export and a FontForge file are tested when the first font
 starts ([FONTPACK.md](ops/FONTPACK.md) §7). Open then: a title font, or a title and body pair.
 
-### Built, not released: the album light on Press and Cyber (2026-11-05)
-
-Press lights its plate and card edges in the album's neon; Cyber's thin edges take the primary
-color and its bolts the secondary; a new color turns in around each card. Settings › Skin settings:
-*Album light* on each skin, *Spin in new colors*. `albumWave` is a reported key: the DeetsSupport
-copy has it with the other 1.4 keys (deployed 2026-11-06). His first look:
-"looks pretty good". **80 % by default** on both skins (his call, 2026-11-05). Stress test done
-2026-11-05 (WORKLOG). His look passed 2026-11-05 ("album light looks good", fine at scale and
-hanging edges). Ocean and the Glass text after the `fromOKLCH` fix: closed by his word, 2026-11-05. [ALBUM-COLOR.md](features/ALBUM-COLOR.md) § The album light.
-
-### Built, not released: the Claude Desktop extension finds the CLI (2026-11-10)
+### Built, in 1.5.0: the Claude Desktop extension finds the CLI (2026-11-10)
 
 The `.mcpb` shim looked only at the NSIS path, so since 0.28.0 Claude Desktop told every user
 "DeetsMusic is not installed on this PC". Bundle 1.0.1 looks in `current\cli\` first; run over
@@ -297,14 +243,6 @@ Settings. Not built, from the same report: one message per state in `connect()` 
 bridge but no token pairs · a bridge too slow to answer); `/health` without `is_visible()` (it
 waits for the UI thread, so a busy app reads as not running); the MCP's cached client cleared on
 a 401. [MCP-INSTALL.md](integrations/MCP-INSTALL.md) §8d, WORKLOG 2026-11-10.
-
-### For 1.4: a listen count on each song row (2026-11-03, designed 2026-11-05)
-
-His ask: a pill with the song's Last.fm plays at the end of an album or playlist song row, and in
-a Stats column after Year in an album's columns. It reuses the song's cached `track.getInfo`. In
-1.4 (his call, 2026-11-05). Built; his look passed 2026-11-05 ("pills look good"), so the number
-form and the slide time stay as drafted: [LISTENERS.md](features/LISTENERS.md) §10.3. One
-`artist.getTopTracks` call fills an artist's songs (§10.5). An album's columns in a grown Search card: his look passed 2026-11-05 ("look good").
 
 ### Live, waiting on his test or his look
 
@@ -320,10 +258,15 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   features/friends-shelf.md §5.
 - **`DEETS_USAGE_OWNER` on his other PCs, if any.** This PC is done (closed 2026-11-02): the
   user variable is `1`, and the live log reads `usage: health sent (owner)`.
-- **The Microsoft Store test (failed 2026-11-04, at Apple's sign-in window):** *Demo login* is
-  built for 1.4 (WEB-DEMO.md §17), committed (`ba5684c`), hand test open. The worker
-  (`../DeetsSupport/src/signin.js`, `41dc442`, pushed; live is still `3cb23124`) needs his deploy;
-  it also carries the usage allow-list (`705b938`). Then the Notes for certification.
+- **The Microsoft Store test (failed 2026-11-04, at Apple's sign-in window).** *Demo login*
+  (WEB-DEMO.md §17) is in the app since 1.4, and its worker side (`signin.js`, `41dc442`) is
+  LIVE: it went out with the 2026-11-06 deploy (`f2b7028b`, WORKLOG 2026-11-05). Corrected
+  2026-11-16: this line said "live is still `3cb23124`". Left, in order: his hand test of Demo
+  login on a release build; Apple's rule on a badge over artwork (§17.3, not read); the Notes for
+  certification (a draft: "A tester without an Apple Account can use the demo: press Sign in,
+  then Demo login on the page that opens"); resubmit, with 1.5.0 (§17.1 named 1.4). He drives
+  Partner Center from a session on his PC; a cloud session has no browser of his. The forum
+  post is `sqgnRSFjN2X-DJdj`.
 - **The admin page's *Needs a look* thresholds** (`FLAG` in DeetsSolutions `admin.js`) are
   drafts for his edit (support.md, "The Health tab").
 - **The Rewind card:** keep it or let the Rewind button replace it (listening-time.md §9.4, his
@@ -391,17 +334,6 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
 - **The first public installs:** watch the `csp-` areas in the weekly health counts (the CSP
   enforces since 1.0.0; CSP.md §9). Read 2026-11-01: none through week W44 (37 installs on
   1.2.1); the desk test passed on that (CSP.md §10.1). Keep an eye on it after a policy change.
-
-### Built, not released: restricted songs, Play/Pause on Space, Apple in the Compass (2026-11-16)
-
-- **Apple Music as you type in the Compass** (live ticket `no37Szdt3ow1vnuE`, his calls 1A 2A
-  3B 4A): desk test open, COMPASS.md §2e. In the 1.5.0 notes.
-
-- **Restricted songs** (live ticket `hGjdjlE2I7PE1C5-`): a named notice, no heal, auto-advance
-  skips past them. Desk test open: QUEUE.md § Restricted songs. The reply on the ticket is his.
-- **Play/Pause on Space** (live ticket `Ifdw99vR5TYBOeLY`): Settings › Playback, default Off.
-  Desk test open: COMPASS.md §5. The usage worker's key list changed (DeetsSupport): its deploy
-  is his call.
 
 ### Decided, not built (his next sittings)
 

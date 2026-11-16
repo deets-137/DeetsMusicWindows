@@ -2,9 +2,22 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-06
+updated: 2026-11-16
 ---
 # DeetsMusic — Work log
+
+## 2026-11-16 (end) — A warm handoff: HANDOFF pruned and corrected
+
+- **His ask.** Docs ready for a warm handoff; he goes on in a session on his PC (Partner Center
+  needs his browser, which a cloud session has not got).
+- **HANDOFF.** One 1.5.0 line at the top of Open now: what is on `main`, the checks and desk
+  tests left, the deploy, the release steps, the forum replies. Pruned: the 2026-11-03 to 11-05
+  "Built, not released" sections and the 1.4 listen-count section (all passed by his word and in
+  the 1.4.0 notes), kept as one "Open from 1.4" line for the Donate panel's open questions.
+- **Corrected.** The Store line said the Demo login worker was not deployed. It is: `41dc442` is
+  in DeetsSupport `master` under the 2026-11-06 deploy (`f2b7028b`). Claude repeated the stale
+  line to him earlier today; this entry is the record of the fix.
+- **Read.** `live_errors` W46 into the freeze line: six new freeze kinds, most placed `none`.
 
 ## 2026-11-16 (later) — Apple Music in the Compass; 1.5.0 notes
 
