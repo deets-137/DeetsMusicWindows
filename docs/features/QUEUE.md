@@ -1052,6 +1052,34 @@ with "unavailable": the `player:deadNext` line's `id` is the song that did not p
 song after it plays. After the next `player:insertDropped` of an `i.` id: `player:healAsked`
 with `banked: 1` when there is no copy, and no second `insertDropped` of that id this session.
 
+### Restricted songs (2026-11-16)
+
+> **Part:** built · 2026-11-16 · desk test open
+
+A live ticket (`hGjdjlE2I7PE1C5-`, v1.4.2): "won't play E-rated songs, and sometimes skips
+several tracks". The log tail showed every failure as MusicKit's `CONTENT_RESTRICTED: Content
+restricted`: the Apple ID does not allow explicit content (Screen Time, a child account). The app
+cannot change that. What was wrong was ours: the toast said only "Couldn't play", each click ran
+a health and token check that cannot fix it, and the end-of-song heal took the song for a dead
+one, jumped, hit the next restricted song and stopped with no word.
+
+Now (`isRestricted` in `pause-rules.ts`, pure, with a test):
+- **Every failed load** with that error gives one notice (`restrictedNotice`, at most one per
+  8 s): "Your Apple ID doesn't allow explicit songs. Turn on explicit content in your Apple
+  account settings, then try again." `player:restricted` in the diag ring.
+- **A play click** (`playTracks`) skips `recoverFromFailure` and the "Couldn't play" toast. The
+  Keep Queue drop does the same. The clicked song stays as Now: a click never skips on its own.
+- **An auto-advance** (a `mediaPlaybackError`, or the end-of-song heal) moves on past restricted
+  songs to the next one the Apple ID allows (`loadPastRestricted`, at most 10 in a row,
+  `player:restrictedSkip`). A restricted song is never banked as dead: it is live, only not for
+  this account.
+
+*Desk test.* Turn explicit content off for the Apple ID (Screen Time › Content & Privacy ›
+Music, or the family's Ask setting). Click an explicit song: one notice with the new text, no
+"Couldn't play", no `apple` health line in the log. Play a list with two explicit songs in a row
+after a clean one: at the clean song's end, both are skipped (two `player:restrictedSkip`), the
+next clean song plays, and one notice shows. Turn explicit content on again: the same songs play.
+
 ## Shuffle and unshuffle (2026-10-12)
 
 > **Part:** built · 2026-10-12 · desk test open (§Desk test below)

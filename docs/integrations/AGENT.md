@@ -389,6 +389,9 @@ JSON `Row`: `{key, label, section, value, valueLabel, accepts, only?, limit?: "o
 - **Playback › Scroll over the Player for volume** (2026-10-27, WHEEL-VOLUME.md):
   `playerWheelVolume` (On | Off, default On). On: the mouse wheel on Now Playing steps the
   volume 5 % per notch; a trackpad rises at most 40 % a second. Off: the wheel passes through.
+- **Playback › Play/Pause on Space** (2026-11-16, COMPASS.md §5): `spacePlayPause` (On | Off,
+  default Off). On: Space always plays or pauses outside a text field, also when a button or row
+  has the focus. Off: Space presses the focused control. A rule key.
 - **Playback › Play a web when a list ends** (2026-09-29, QUEUE.md §The end of a list,
   PLAYLIST-WEB.md §12): `listEndWeb` (On | Off, default On). On: a list that ends with Repeat off
   plays a temporary web (1 day) made from it. Off: the list waits at its first song, paused.

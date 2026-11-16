@@ -116,6 +116,17 @@ export function isLicenseError(msg: string): boolean {
   return MEDIA_DRM.test(msg);
 }
 
+// ── A restricted song (2026-11-16, QUEUE.md § Restricted songs) ──────────────────
+// The Apple ID does not allow the song: explicit content is off in its settings (Screen Time,
+// a child account). MusicKit says CONTENT_RESTRICTED; String(e) gives "CONTENT_RESTRICTED:
+// Content restricted" and e.message "Content restricted". No heal or token check fixes it.
+const RESTRICTED = /\bCONTENT_RESTRICTED\b|^Content restricted\b/i;
+
+/** MusicKit refused the song because the Apple ID's content settings do not allow it. */
+export function isRestricted(msg: string): boolean {
+  return RESTRICTED.test(msg);
+}
+
 /**
  * What a MusicKit error does to a queue song. `keyRetry`: a MEDIA_KEY just after our load (a
  * race in MusicKit's key setup), loaded again from the top. `heal`: any other license failure,

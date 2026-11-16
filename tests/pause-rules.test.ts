@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, LICENSE_BACK_S, endStallArms, endStallStep } from "../src/pause-rules";
+import { nearSongEnd, isSongEnd, stallCanHappen, silentStartStep, midStallArms, midStallStep, resumeSpot, licenseStep, isLicenseError, isRestricted, LICENSE_BACK_S, endStallArms, endStallStep } from "../src/pause-rules";
 
 // The 2026-09-24 read: 86 of 93 `outside` pauses were song changes (DEBUGGING.md).
 test("a pause at the last seconds is the song ending (2026-09-25)", () => {
@@ -109,4 +109,13 @@ test("a license failure in the middle of a song is healed once (2026-10-18)", ()
   assert.equal(licenseStep({ ...key, keyRetried: true }), "heal");
   assert.equal(licenseStep({ ...key, justLoaded: false }), "heal");
   assert.equal(licenseStep({ ...key, keyRetried: true, healed: true }), "none");
+});
+
+test("isRestricted: CONTENT_RESTRICTED in both of its forms (2026-11-16)", () => {
+  assert.equal(isRestricted("CONTENT_RESTRICTED: Content restricted"), true);
+  assert.equal(isRestricted("Content restricted"), true);
+  assert.equal(isRestricted("Error: CONTENT_RESTRICTED"), true);
+  assert.equal(isRestricted("MEDIA_LICENSE"), false);
+  assert.equal(isRestricted("This song is currently unavailable."), false);
+  assert.equal(isRestricted("output-restricted"), false);
 });

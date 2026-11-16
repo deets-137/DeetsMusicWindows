@@ -392,6 +392,14 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   enforces since 1.0.0; CSP.md §9). Read 2026-11-01: none through week W44 (37 installs on
   1.2.1); the desk test passed on that (CSP.md §10.1). Keep an eye on it after a policy change.
 
+### Built, not released: restricted songs and Play/Pause on Space (2026-11-16)
+
+- **Restricted songs** (live ticket `hGjdjlE2I7PE1C5-`): a named notice, no heal, auto-advance
+  skips past them. Desk test open: QUEUE.md § Restricted songs. The reply on the ticket is his.
+- **Play/Pause on Space** (live ticket `Ifdw99vR5TYBOeLY`): Settings › Playback, default Off.
+  Desk test open: COMPASS.md §5. The usage worker's key list changed (DeetsSupport): its deploy
+  is his call.
+
 ### Decided, not built (his next sittings)
 
 - **The Discord card's bar** (2026-11-09, his call; live ticket `aTUQ4mJV38oHs3-V`): built and

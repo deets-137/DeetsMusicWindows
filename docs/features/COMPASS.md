@@ -290,6 +290,22 @@ the text caret; Tab belongs to the filter row (2a).
 
 ## 5. The rest of the keyboard pass (fork 5B, then the lists — built 2026-09-17)
 
+> **Part:** built · 2026-11-16 · desk test open — *Play/Pause on Space*
+
+**Space and the focus (2026-11-16, live ticket `Ifdw99vR5TYBOeLY`).** Space plays or pauses
+only when nothing that takes Space has the focus (`main.ts`). A button keeps the focus after a
+mouse click, so Space then pressed that button again: the user read it as "Space repeats the
+last thing I pressed". **Settings › Playback › Play/Pause on Space** (`spacePlayPause`, default
+Off, his call: a user who presses buttons with Space keeps that) moves Space to a capture-phase
+listener: Space always plays or pauses, except in a text field (`input`, `textarea`, `select`,
+`[contenteditable]`) and in the Compass. A held Space does not toggle again (`e.repeat`). A rule
+key, so a rule can set it.
+
+*Desk test.* Off: click Next with the mouse, press Space: Next runs again (today's behavior).
+On: click Next, press Space: the song pauses; Space again plays. On, with focus on a Library
+row: Space plays or pauses and does not start the row. On, in the Search field: Space types a
+space. On, Compass open: Space types a space. Hold Space: one toggle only.
+
 **Inside every list** (`src/list-keys.ts`, adopted by the collection-card engine — Library,
 Playlists, Radio, the artist and genre views — and by hand in the Queue, History, Home, the
 Search card, and since 2026-09-27 Rewind, Diary and Rulez; before that day the three had no
