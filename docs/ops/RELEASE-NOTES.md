@@ -63,6 +63,10 @@ Desktop said DeetsMusic was not installed. It now finds the app. If you added th
 before, press Install on Claude Desktop's line in Settings › Connections › Set up the DeetsMusic
 MCP.
 
+### Intro
+
+A couple quick updates!!
+
 ### Start open
 
 Play/Pause on Space
