@@ -58,6 +58,11 @@ still takes Space. The row is off until you turn it on.
 DeetsMusic now says so and tells you where to change it, instead of "Couldn't play". Playback
 moves on past those songs and no longer stops on them.
 
+**Apple Music results in Ctrl+Space.** Type 3 letters or more in the Compass and Apple Music's
+results show beside your library: the artist, albums, songs, a playlist and a station. When your
+library has no match they show first; otherwise press Tab. Enter opens the result, and Ctrl+Enter
+plays it.
+
 **Claude Desktop finds DeetsMusic again.** Since 0.28.0, the DeetsMusic extension in Claude
 Desktop said DeetsMusic was not installed. It now finds the app. If you added the extension
 before, press Install on Claude Desktop's line in Settings › Connections › Set up the DeetsMusic
@@ -69,6 +74,7 @@ A couple quick updates!!
 
 ### Start open
 
+Apple Music results in Ctrl+Space
 Play/Pause on Space
 A clear notice for blocked explicit songs
 

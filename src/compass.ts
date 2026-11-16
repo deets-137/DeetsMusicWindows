@@ -16,7 +16,9 @@ import { openOnboarding } from "./onboarding";
 import { registry, type CardId } from "./cards";
 import { requestCard, requestSetting, requestLibraryDrill, requestSearchTerm, requestDiaryAlbum, requestDiaryEntry, cardHost } from "./layout-bus";
 import { diaryCachedList, diaryGet, copyDiaryExport, fmtScore } from "./diary";
-import { catalogRelated, collectionTracks } from "./search";
+import { catalogRelated, collectionTracks, searchCatalog, materializeTrack, type SearchResults } from "./search";
+import { albumSearch, requestAlbumPane, requestArtistPane, requestPlaylistPane } from "./go-to";
+import { addTransientTracks } from "./track-store";
 import { orderedScopes } from "./row-order";
 import { growCard, growDirs, type Slot, type GrowDir } from "./card-grow";
 import { fullPlayerAvailable, isFullPlayer, toggleFullPlayer } from "./full-player";
@@ -68,7 +70,7 @@ import * as diag from "./diag";
 import { toast } from "./toast";
 import { parseSum } from "./compass-math";
 import { plainError } from "./plain-error";
-import { searchField } from "./search-field";
+import { searchField, SEARCH_DELAY_MS } from "./search-field";
 import { filterRows } from "./filters";
 import { requestLibraryFilter } from "./layout-bus";
 
@@ -1109,8 +1111,100 @@ function stationRows(): Row[] {
   return out;
 }
 
-interface Chip { group: Group; n: number; best: number }
-interface Result { rows: Row[]; chips: Chip[]; kind: Group | null }
+// ── Apple Music as you type (COMPASS.md §2e, his calls 2026-11-16) ─────────────────
+// A term of CATALOG_MIN letters or more, after the Search card's own pause, asks Apple once
+// through searchCatalog: the Search card's call and its session cache, so the same term in the
+// Search card costs nothing after. Never for a command or the calculator. The answer is one more
+// chip, "Apple Music", shown first only when the library has no match (his 1A). A newer term
+// drops an older answer (`catalogSeq`). A failure (signed out, offline, Apple's back-off) shows
+// no chip; the "Search Apple Music for …" row stays as the way through.
+const CATALOG_MIN = 3;
+let catalogTerm: string | null = null;
+let catalogRes: SearchResults | null = null;
+let catalogBusy = false;
+let catalogTimer = 0;
+let catalogSeq = 0;
+
+function askCatalog(term: string | null): void {
+  if (term === catalogTerm) return; // in flight or answered already
+  window.clearTimeout(catalogTimer);
+  const seq = ++catalogSeq;
+  catalogTerm = term;
+  catalogRes = null;
+  catalogBusy = !!term;
+  if (!term) return;
+  catalogTimer = window.setTimeout(() => {
+    const t0 = performance.now();
+    searchCatalog(term)
+      .then((res) => {
+        if (seq !== catalogSeq) return;
+        catalogRes = res;
+        diag.log("compass:apple", { n: res.songs.length + res.albums.length + res.artists.length, ms: Math.round(performance.now() - t0) });
+      })
+      .catch((e) => {
+        if (seq !== catalogSeq) return;
+        diag.log("compass:appleFail", { e: String(e) });
+      })
+      .finally(() => {
+        if (seq !== catalogSeq) return;
+        catalogBusy = false;
+        if (handle?.isOpen) render();
+      });
+  }, SEARCH_DELAY_MS);
+}
+
+/** Catalog songs join the store before they play, as a Search play does. */
+function playCatalog(ts: Track[]): void {
+  if (!ts.length) return;
+  addTransientTracks(ts);
+  ts.forEach(materializeTrack);
+  play(ts);
+}
+
+/** Apple's answer as rows: the top artist, three albums, six songs, the top playlist and
+ *  station. Enter opens it in the Search card, Ctrl+Enter plays it (the library rows' keys). */
+function catalogRows(res: SearchResults, term: string): Row[] {
+  const out: Row[] = [];
+  const ar = res.artists[0];
+  if (ar?.catalogId) {
+    const id = ar.catalogId;
+    out.push({ group: "Apple Music", title: ar.name, sub: "Artist · Apple Music", run: () => requestArtistPane({ id, name: ar.name }) });
+  }
+  for (const al of res.albums.slice(0, 3)) {
+    const id = al.catalogId;
+    if (!id) continue;
+    out.push({
+      group: "Apple Music", title: al.title, sub: `${al.artistName} · Album · Apple Music`,
+      run: () => requestAlbumPane({ id, name: al.title, artwork: al.artwork, artistName: al.artistName, releaseDate: al.releaseDate }),
+      alt: { label: "Play", run: () => void collectionTracks("albums", id).then((ts) => { albumFromTop(); playCatalog(ts); }).catch((e) => console.error("[compass] album", e)) },
+      tracks: () => collectionTracks("albums", id),
+    });
+  }
+  for (const t of res.songs.slice(0, 6)) {
+    out.push({
+      group: "Apple Music", title: t.title, sub: `${songSub(t)} · Apple Music`,
+      run: albumSearch(t.catalogId, t.albumName) ?? (() => requestSearchTerm(term)),
+      alt: { label: "Play", run: () => playCatalog([t]) },
+      tracks: () => Promise.resolve([t]),
+    });
+  }
+  const pl = res.playlists[0];
+  if (pl?.catalogId) {
+    const id = pl.catalogId;
+    out.push({
+      group: "Apple Music", title: pl.name, sub: `${pl.curatorName || "Apple Music"} · Playlist · Apple Music`,
+      run: () => requestPlaylistPane({ id, name: pl.name, artwork: pl.artwork, curatorName: pl.curatorName }),
+      alt: { label: "Play", run: () => void collectionTracks("playlists", id).then(playCatalog).catch((e) => console.error("[compass] playlist", e)) },
+      tracks: () => collectionTracks("playlists", id),
+    });
+  }
+  const st = res.stations[0];
+  if (st) out.push({ group: "Apple Music", title: st.name, sub: "Station · Apple Music", run: () => void playStation(st).catch((e) => console.error("[compass] station", e)) });
+  return out.slice(0, perKind());
+}
+
+interface Chip { group: Group; n: number; best: number; busy?: boolean }
+interface Result { rows: Row[]; chips: Chip[]; kind: Group | null; apple: string | null }
 
 function hitsOf(pool: Row[], words: string[], term: string): { r: Row; s: number }[] {
   const hits: { r: Row; s: number }[] = [];
@@ -1140,11 +1234,14 @@ function hitsOf(pool: Row[], words: string[], term: string): { r: Row; s: number
  *  to Artists, Albums, Playlists, Songs, Stations - twelve rows; then the Apple Music row. */
 function query(termRaw: string, kind: Group | null): Result {
   const term = fold(termRaw.trim());
-  if (!term) return { rows: [...places(false), ...actions(false)], chips: [], kind: null };
+  if (!term) return { rows: [...places(false), ...actions(false)], chips: [], kind: null, apple: null };
   const words = term.split(/\s+/);
   const lib = libraryRows();
   preloadStations();
   const rows: Row[] = [...mathRow(termRaw), ...webRow(termRaw), ...volumeRow(termRaw), ...growRow(termRaw), ...queueRow(termRaw), ...shuffleRow(termRaw), ...favoriteRow(termRaw), ...suggestRow(termRaw), ...addRow(termRaw), ...laterRow(termRaw)];
+  // A command or the calculator answered: no Apple call for it (§2e).
+  const trimmed = termRaw.trim();
+  const apple = !rows.length && trimmed.length >= CATALOG_MIN ? trimmed : null;
   // Each group is a block with its best score; the blocks come in that order, ties in the
   // default order — so an exact playlist name ("Replay") sits above the Settings rows that
   // only contain the word. The library block (its chips ride with it) is one block.
@@ -1175,12 +1272,18 @@ function query(termRaw: string, kind: Group | null): Result {
   const predicted = chips.length
     ? chips.reduce((a, b) => (b.best > a.best || (b.best === a.best && PREFER.indexOf(b.group) < PREFER.indexOf(a.group)) ? b : a)).group
     : null;
-  const active = kind && chips.some((c) => c.group === kind) ? kind : predicted;
-  if (active) blocks.push({ best: chips.find((c) => c.group === active)!.best, rows: hits.get(active)!.slice(0, perKind()).map((h) => h.r) });
+  // Apple Music: one more chip, after the library's. Shown first only when the library has no
+  // match (his 1A, 2026-11-16); otherwise Tab reaches it. "…" while the call is out.
+  const cat = apple && catalogTerm === apple ? (catalogRes ? catalogRows(catalogRes, apple) : []) : [];
+  if (apple && catalogTerm === apple && (catalogBusy || cat.length)) chips.push({ group: "Apple Music", n: cat.length, best: 0, busy: catalogBusy });
+  const pick = kind && chips.some((c) => c.group === kind) ? kind : predicted ?? (chips.length ? chips[0].group : null);
+  const active = pick === "Apple Music" && !cat.length ? null : pick;
+  if (active === "Apple Music") blocks.push({ best: 0, rows: cat });
+  else if (active) blocks.push({ best: chips.find((c) => c.group === active)!.best, rows: hits.get(active)!.slice(0, perKind()).map((h) => h.r) });
   blocks.sort((a, b) => b.best - a.best); // Array.sort is stable: ties keep the default order
   for (const b of blocks) rows.push(...b.rows);
-  rows.push({ group: "Apple Music", title: `Search Apple Music for “${termRaw.trim()}”`, run: () => requestSearchTerm(termRaw.trim()) });
-  return { rows, chips, kind: active };
+  rows.push({ group: "Apple Music", title: `Search Apple Music for “${trimmed}”`, run: () => requestSearchTerm(trimmed) });
+  return { rows, chips, kind: pick, apple };
 }
 
 // ── the bar ───────────────────────────────────────────────────
@@ -1323,7 +1426,7 @@ const sideHTML = (r: Row, i: number): string => {
 const chipsHTML = (): string =>
   chips.length
     ? `<div class="compass__chips"><div class="set__split" role="radiogroup" aria-label="Show">${chips
-        .map((c) => `<button class="set__half" type="button" data-kind="${c.group}" aria-pressed="${c.group === shownKind}" tabindex="-1" title="Tab moves between these">${c.group} <span class="compass__n">${c.n}</span></button>`)
+        .map((c) => `<button class="set__half" type="button" data-kind="${c.group}" aria-pressed="${c.group === shownKind}" tabindex="-1" title="Tab moves between these">${c.group} <span class="compass__n">${c.busy ? "…" : c.n}</span></button>`)
         .join("")}</div></div>`
     : "";
 
@@ -1338,6 +1441,7 @@ function render(): void {
   rows = q.rows;
   chips = q.chips;
   shownKind = q.kind;
+  askCatalog(q.apple);
   active = Math.min(active, Math.max(0, rows.length - 1));
   let html = "";
   let last: Group | null = null;
@@ -1345,7 +1449,7 @@ function render(): void {
   rows.forEach((r, i) => {
     // The filter row sits right above the library rows, not above Settings (only the
     // library kinds are what it filters).
-    if (!chipsDrawn && KINDS.includes(r.group)) {
+    if (!chipsDrawn && (KINDS.includes(r.group) || (r.group === "Apple Music" && shownKind === "Apple Music"))) {
       html += chipsHTML();
       chipsDrawn = true;
     }
@@ -1499,6 +1603,7 @@ export function initCompass(): void {
   // body; a focus the user moved elsewhere (a click on a card) is left alone.
   new MutationObserver(() => {
     if (!panel!.hidden) return;
+    askCatalog(null); // a closed bar makes no Apple call: the pause's timer is dropped
     turnNeedle(went ? 180 : -180);   // on through the circle, or back the way it came
     went = false;
     const to = returnTo;

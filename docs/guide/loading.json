@@ -92,6 +92,15 @@
       "steps": [{ "type": "honey", "strip": true, "frames": 240, "region": "[data-slot]:has(input.search__input)" }]
     },
     {
+      "id": "load-compass-apple",
+      "about": "The Compass asks Apple as you type (COMPASS.md §2e): Ctrl+Space, then a word. The Apple Music chip shows … while the call is out, then its count and rows.",
+      "covers": "features/COMPASS.md",
+      "kind": "clip", "source": "demo", "size": "midi", "seconds": 5,
+      "strip": { "seconds": 3, "fps": 15, "cols": 12, "width": 160 },
+      "prepare": [{ "key": "Ctrl+Space" }, { "wait": 600 }],
+      "steps": [{ "type": "honey", "strip": true, "frames": 240, "region": "#compass" }]
+    },
+    {
       "id": "load-next",
       "about": "Now Playing, the next song: Next. The cover and the Listeners badge.",
       "covers": "features/LISTENERS.md",

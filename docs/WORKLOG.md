@@ -6,6 +6,20 @@ updated: 2026-11-06
 ---
 # DeetsMusic — Work log
 
+## 2026-11-16 (later) — Apple Music in the Compass; 1.5.0 notes
+
+- **His calls.** Version 1.5.0, so the new rows get their own update-card page (it is a page per
+  minor line). The notes, his intro "A couple quick updates!!", two notes start open. The
+  Compass ticket (`no37Szdt3ow1vnuE`) the costly way: 1A, 2A, 3B (no setting), 4A.
+- **Built.** COMPASS.md §2e: `searchCatalog` after the 300 ms pause, an "Apple Music" chip,
+  12 rows that open in the Search card or play. A loading clip `load-compass-apple`.
+- **Decided inside his calls (for his look).** "…" in the chip while the call is out (no
+  spinner: a chip has none); no call for a command row or the calculator; the row mix (1 artist,
+  3 albums, 6 songs, 1 playlist, 1 station); Enter on a song opens its album (the library
+  rows' rule); a closed bar drops the pause; a failure shows no chip and no toast; the note and
+  "Apple Music results in Ctrl+Space" first in Start open.
+- **Checked.** tsc, `npm test` (556), docs:check. Not run: vite build, the desk test (dev app).
+
 ## 2026-11-16 — Two live tickets: restricted songs, Play/Pause on Space
 
 - **Read.** Five posts wait on him (`live_reports`). The live MCP returns no `meta`, so a post's

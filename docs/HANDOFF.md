@@ -392,7 +392,10 @@ ranges; the Partner Center check (the 10-minute fetch is the Store's); the site'
   enforces since 1.0.0; CSP.md §9). Read 2026-11-01: none through week W44 (37 installs on
   1.2.1); the desk test passed on that (CSP.md §10.1). Keep an eye on it after a policy change.
 
-### Built, not released: restricted songs and Play/Pause on Space (2026-11-16)
+### Built, not released: restricted songs, Play/Pause on Space, Apple in the Compass (2026-11-16)
+
+- **Apple Music as you type in the Compass** (live ticket `no37Szdt3ow1vnuE`, his calls 1A 2A
+  3B 4A): desk test open, COMPASS.md §2e. In the 1.5.0 notes.
 
 - **Restricted songs** (live ticket `hGjdjlE2I7PE1C5-`): a named notice, no heal, auto-advance
   skips past them. Desk test open: QUEUE.md § Restricted songs. The reply on the ticket is his.
