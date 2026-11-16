@@ -48,6 +48,26 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.5.0 — 2026-11-16
+
+**Play/Pause on Space.** A new row in Settings › Playback makes Space always play or pause, even
+after you click a button. Before, Space pressed the last button you clicked again. A text field
+still takes Space. The row is off until you turn it on.
+
+**A clear notice for blocked explicit songs.** When your Apple ID does not allow explicit songs,
+DeetsMusic now says so and tells you where to change it, instead of "Couldn't play". Playback
+moves on past those songs and no longer stops on them.
+
+**Claude Desktop finds DeetsMusic again.** Since 0.28.0, the DeetsMusic extension in Claude
+Desktop said DeetsMusic was not installed. It now finds the app. If you added the extension
+before, press Install on Claude Desktop's line in Settings › Connections › Set up the DeetsMusic
+MCP.
+
+### Start open
+
+Play/Pause on Space
+A clear notice for blocked explicit songs
+
 ## 1.4.2 — 2026-11-09
 
 **Choose where Add to Queue puts songs.** A new row in Settings › Playback puts them at the end of
