@@ -78,6 +78,8 @@ Apple Music results in Ctrl+Space
 Play/Pause on Space
 A clear notice for blocked explicit songs
 
+### Show after update
+
 ## 1.4.2 — 2026-11-09
 
 **Choose where Add to Queue puts songs.** A new row in Settings › Playback puts them at the end of
