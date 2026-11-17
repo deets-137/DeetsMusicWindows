@@ -1054,7 +1054,7 @@ with `banked: 1` when there is no copy, and no second `insertDropped` of that id
 
 ### Restricted songs (2026-11-16)
 
-> **Part:** built · 2026-11-16 · desk test open
+> **Part:** built · 2026-11-16 · desk test passed 2026-11-16 on a faked refusal (Claude); a real restricted Apple ID is his hand test
 
 A live ticket (`hGjdjlE2I7PE1C5-`, v1.4.2): "won't play E-rated songs, and sometimes skips
 several tracks". The log tail showed every failure as MusicKit's `CONTENT_RESTRICTED: Content
@@ -1077,8 +1077,25 @@ Now (`isRestricted` in `pause-rules.ts`, pure, with a test):
 *Desk test.* Turn explicit content off for the Apple ID (Screen Time › Content & Privacy ›
 Music, or the family's Ask setting). Click an explicit song: one notice with the new text, no
 "Couldn't play", no `apple` health line in the log. Play a list with two explicit songs in a row
-after a clean one: at the clean song's end, both are skipped (two `player:restrictedSkip`), the
-next clean song plays, and one notice shows. Turn explicit content on again: the same songs play.
+after a clean one: at the clean song's end, both are skipped (a `player:deadNext` with
+`bank: false` for the first, a `player:restrictedSkip` for the second), the next clean song
+plays, and one notice shows. Turn explicit content on again: the same songs play.
+
+*As run 2026-11-16 (Claude, the dev app).* His Apple ID allows explicit songs, so
+[checks/restricted-fake.js](../ops/checks/restricted-fake.js) made MusicKit refuse three songs of
+*Rye Lane (Original Score)* with `CONTENT_RESTRICTED`, on a load and on its own advance. Passed:
+- **A click** (`deetsmusic play` on "Mouths", the agent's path into `playTracks`): one notice
+  with the new text, no "Couldn't play", no Apple health or token line in the log, "Mouths"
+  stays as Now and nothing skips. The second `player:restricted` (via `play`) was held back by
+  the 8 s gap.
+- **An auto-advance** (song 1 sought to 97 %): MusicKit's error on "Mouths" (2) gave
+  `player:deadNext` with `bank: false`, the heal's load of song 3 was refused and skipped
+  (`player:restrictedSkip n 1`), and "Traffic Lights" (4) played. One notice.
+- **Allowed again** (the hook off): "Mouths" and song 3 each played from a click; neither was
+  banked as dead.
+Not covered: a real Apple ID with explicit content off (his hand test), and MusicKit's own
+error shape on such an account (the fake throws `Error("CONTENT_RESTRICTED: …")` with
+`errorCode`; the live report's log showed that message, not the object's other fields).
 
 ## Shuffle and unshuffle (2026-10-12)
 

@@ -1,0 +1,76 @@
+{
+  "about": "Play/Pause on Space (COMPASS.md §5) on the running dev app, with real key and mouse input (CDP). Off: a mouse click on Next keeps the focus, and Space presses Next again. On: Space pauses and plays after a click on Next, on a focused Library row, never in the Search field or the Compass, and a held Space (repeat) toggles nothing.",
+  "desk_test": "features/COMPASS.md §5 (Play/Pause on Space)",
+  "made": "2026-11-16",
+  "pass": "Both shots ok: every probe's `expect` holds.",
+  "run": "deetsmusic --port <dev port> play album:1682073461 (a list must be playing), then node scripts/shots.mjs --list docs/ops/checks/space-play-pause.json; pause the dev app after. Dev app on screen, the Library in slot right, Search in slot d.",
+  "shots": [
+    {
+      "id": "space-off",
+      "kind": "shot",
+      "source": "dev",
+      "covers": "features/COMPASS.md",
+      "about": "Off (the default): click Next with the mouse, then press Space. Next runs again.",
+      "settings": { "spacePlayPause": false },
+      "steps": [
+        { "eval": "document.activeElement?.blur?.(); [...document.querySelectorAll('[data-slot=\"np\"] .np__btn')].find((b) => /^Next/.test(b.getAttribute('aria-label') || b.dataset.hint || b.title || '')).dataset.shotNext = '1'" },
+        { "probe": "JSON.stringify((() => { const m = MusicKit.getInstance(); return { playing: m.isPlaying, title: document.querySelector('[data-slot=\"np\"] .np__title')?.textContent }; })())", "name": "start", "expect": { "playing": true } },
+        { "click": "[data-shot-next]" },
+        { "wait": 3000 },
+        { "eval": "window.__sA = document.querySelector('[data-slot=\"np\"] .np__title')?.textContent; true" },
+        { "probe": "JSON.stringify({ focus: document.activeElement?.dataset?.shotNext ?? null, title: window.__sA })", "name": "after the click", "expect": { "focus": "1" } },
+        { "key": "Space" },
+        { "wait": 3000 },
+        { "probe": "JSON.stringify((() => { const m = MusicKit.getInstance(); const t = document.querySelector('[data-slot=\"np\"] .np__title')?.textContent; return { playing: m.isPlaying, title: t, nextAgain: t !== window.__sA }; })())", "name": "Space presses Next again", "expect": { "nextAgain": true, "playing": true } }
+      ]
+    },
+    {
+      "id": "space-on",
+      "kind": "shot",
+      "source": "dev",
+      "covers": "features/COMPASS.md",
+      "about": "On: Space plays or pauses after a click on Next and on a focused Library row; the Search field and the Compass keep Space; a held Space toggles nothing.",
+      "settings": { "spacePlayPause": true },
+      "steps": [
+        { "eval": "document.activeElement?.blur?.(); [...document.querySelectorAll('[data-slot=\"np\"] .np__btn')].find((b) => /^Next/.test(b.getAttribute('aria-label') || b.dataset.hint || b.title || '')).dataset.shotNext = '1'" },
+        { "click": "[data-shot-next]" },
+        { "wait": 3000 },
+        { "eval": "window.__sA = document.querySelector('[data-slot=\"np\"] .np__title')?.textContent; true" },
+        { "probe": "JSON.stringify({ focus: document.activeElement?.dataset?.shotNext ?? null, playing: MusicKit.getInstance().isPlaying })", "name": "after the click", "expect": { "focus": "1", "playing": true } },
+        { "key": "Space" },
+        { "wait": 1500 },
+        { "probe": "JSON.stringify((() => { const m = MusicKit.getInstance(); return { playing: m.isPlaying, same: document.querySelector('[data-slot=\"np\"] .np__title')?.textContent === window.__sA }; })())", "name": "Space pauses, not Next", "expect": { "playing": false, "same": true } },
+        { "key": "Space" },
+        { "wait": 2500 },
+        { "probe": "JSON.stringify((() => { const m = MusicKit.getInstance(); return { playing: m.isPlaying, same: document.querySelector('[data-slot=\"np\"] .np__title')?.textContent === window.__sA }; })())", "name": "Space plays again", "expect": { "playing": true, "same": true } },
+
+        { "eval": "(() => { const r = document.querySelector('[data-slot=\"right\"] .coll-viewport .lib-row'); r.tabIndex = -1; r.focus(); window.__sRow = r.dataset.cid; return document.activeElement === r; })()" },
+        { "key": "Space" },
+        { "wait": 1500 },
+        { "probe": "JSON.stringify((() => { const m = MusicKit.getInstance(); return { rowFocused: document.activeElement?.classList?.contains('lib-row') ?? false, playing: m.isPlaying, same: document.querySelector('[data-slot=\"np\"] .np__title')?.textContent === window.__sA }; })())", "name": "Library row: Space pauses, the row does not start", "expect": { "rowFocused": true, "playing": false, "same": true } },
+        { "key": "Space" },
+        { "wait": 2500 },
+        { "probe": "JSON.stringify((() => { const m = MusicKit.getInstance(); return { playing: m.isPlaying, same: document.querySelector('[data-slot=\"np\"] .np__title')?.textContent === window.__sA }; })())", "name": "Library row: Space plays again", "expect": { "playing": true, "same": true } },
+
+        { "eval": "(() => { const i = document.querySelector('[data-slot=\"d\"] input.search__input'); window.__sOld = i.value; i.value = ''; i.focus(); return document.activeElement === i; })()" },
+        { "key": "Space" },
+        { "wait": 800 },
+        { "probe": "JSON.stringify((() => { const i = document.querySelector('[data-slot=\"d\"] input.search__input'); return { value: i.value, playing: MusicKit.getInstance().isPlaying }; })())", "name": "Search field: Space types a space", "expect": { "value": " ", "playing": true } },
+        { "eval": "(() => { const i = document.querySelector('[data-slot=\"d\"] input.search__input'); i.value = window.__sOld ?? ''; i.dispatchEvent(new Event('input', { bubbles: true })); i.blur(); return true; })()" },
+
+        { "key": "Ctrl+Space" },
+        { "wait": "input.compass__input" },
+        { "wait": 600 },
+        { "key": "Space" },
+        { "wait": 800 },
+        { "probe": "JSON.stringify((() => { const i = document.querySelector('input.compass__input'); return { focus: document.activeElement === i, value: i?.value, playing: MusicKit.getInstance().isPlaying }; })())", "name": "Compass: Space types a space", "expect": { "focus": true, "value": "/^ $/", "playing": true } },
+        { "key": "Escape" },
+        { "wait": 800 },
+
+        { "eval": "(() => { document.activeElement?.blur?.(); window.__sP = MusicKit.getInstance().isPlaying; for (let k = 0; k < 6; k++) document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', repeat: true, bubbles: true, cancelable: true })); return true; })()" },
+        { "wait": 1500 },
+        { "probe": "JSON.stringify({ playing: MusicKit.getInstance().isPlaying, before: window.__sP })", "name": "held Space: repeats toggle nothing", "expect": { "playing": true, "before": true } }
+      ]
+    }
+  ]
+}

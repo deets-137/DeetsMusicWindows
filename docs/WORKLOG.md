@@ -6,6 +6,23 @@ updated: 2026-11-16
 ---
 # DeetsMusic — Work log
 
+## 2026-11-16 (night) — 1.5.0: the checks and the three desk tests on his PC
+
+- **His ask.** Steps 1 and 2 of the 1.5.0 line in HANDOFF.
+- **Checks.** `npm run check` passes (556 tests, docs:check, cargo check, 136 Rust tests) and
+  `npx vite build` passes. On the way: the usage-keys test failed until his DeetsSupport checkout
+  was fast-forwarded to `9ebbc33` (nothing deployed); C: had 0 bytes free, so the 24 h prune
+  (2.4 GB) and, his yes, `src-tauri/target-second` (7.8 GB) were deleted.
+- **Desk tests, scripted on the dev app** (`docs/ops/checks/`: `space-play-pause.json`,
+  `compass-apple.json`, `restricted-fake.js`). Space passed. Restricted songs passed on a faked
+  `CONTENT_RESTRICTED` (his Apple ID allows explicit songs). The Compass passed but for one
+  fault: the Apple Music chip never reads "…" while the call is out (`render` builds the chips
+  before `askCatalog` sets `catalogBusy`). **Fixed (his yes):** `query` counts a term not asked
+  yet as out. tsc, 556 tests and vite build pass; the Compass list reran clean on a fresh page.
+- **Doc fixes.** COMPASS.md §2e step 4 said `=2+2` (not a sum to the bar; now `2+2`); QUEUE.md's
+  test expected two `restrictedSkip` lines (the first skip is a `deadNext` with `bank: false`).
+- **Played on the dev app:** *Rye Lane (Original Score)* and "The Chain"; left paused.
+
 ## 2026-11-16 (end) — A warm handoff: HANDOFF pruned and corrected
 
 - **His ask.** Docs ready for a warm handoff; he goes on in a session on his PC (Partner Center
@@ -55,6 +72,16 @@ updated: 2026-11-16
   cloud container, the same on a clean tree). Not run: `vite build` (needs ../DeetsSolutions),
   cargo, the dev-app desk tests (Windows only). `npm run usage:keys` changed DeetsSupport
   `src/usage-keys.js`: its deploy is his call.
+
+
+## 2026-11-11 — Web vibe, on paper
+
+- **His ask.** Use Last.fm tags in the playlist web to align the vibe.
+- **His calls.** Tags also bring in songs with no credit link (changes PLAYLIST-WEB.md §3 when
+  built). The target is the seed's own tags (song, then album, then artist); a chip overrides it.
+- **His concern.** Song tags are weird. Claude proposed the two-key check: a tag song needs 2
+  shared tags, each backed up by its album or artist, or by a high weight.
+- **Written, not built.** ideas/WebVibe.md. Open: the tag songs' share, and the numbers (probe first).
 
 ## 2026-11-11 — The look on screen and today's sun on GET /settings
 

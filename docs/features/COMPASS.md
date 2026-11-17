@@ -103,7 +103,7 @@ the ones the Radio card already read show (`radioGenreStationsPeek`).
 
 ### 2e. Apple Music as you type (2026-11-16, his calls)
 
-> **Part:** built · 2026-11-16 · desk test open
+> **Part:** built · 2026-11-16 · desk test passed 2026-11-16 (Claude, scripted on the dev app; the "…" fixed the same day); signed out is his hand test
 
 A live ticket (`no37Szdt3ow1vnuE`): "99% of the time I'm wanting to find something I don't
 have saved". His calls: **1A** the Apple Music chip is shown first only when the library has no
@@ -128,11 +128,33 @@ match; **2A** a term of 3 letters or more; **3B** no setting; **4A** the Search 
 
 *Desk test.* (1) Type a name your library lacks: the chip reads … then a count, and the rows
 show with no Tab. (2) Type one of your own artists: the library kind shows; Tab reaches Apple
-Music. (3) Type 2 letters: no chip, and no `compass:apple` line. (4) `=2+2` and `vol 50`: no
+Music. (3) Type 2 letters: no chip, and no `compass:apple` line. (4) `2+2` and `vol 50`: no
 chip. (5) Type fast: one `compass:apple` line for the last term. (6) Open the Search card with the
 same term: no second `search` call in `[apple] calls`. (7) Enter on an album opens its pane;
 Ctrl+Enter on a song plays it. (8) Signed out: no chip, the last row still works. (9) Close the
 bar during the pause: no call.
+
+*As run 2026-11-16 (Claude, the dev app; [checks/compass-apple.json](../ops/checks/compass-apple.json),
+`catalog_search` calls counted per step).*
+- **Step 1: the count passed, the "…" failed, then fixed.** "Fleetwood Mac" (not in his
+  library): one call, then "Apple Music 11" shown first with 11 rows, no Tab. But 150 ms after
+  the term, while the call was out, there was no chip at all. Cause: `render()` builds the chips
+  (`query`) before it calls `askCatalog`, which sets `catalogTerm` and `catalogBusy`, and nothing
+  draws again until the answer. **Fixed (his yes):** `query` counts a term not asked yet as out
+  (`busy = catalogTerm !== apple || catalogBusy`). The rerun, on a fresh page, passed every step:
+  "Apple Music …" at 150 ms, then "Apple Music 11".
+- **Steps 2–7 and 9 passed.** "kwes": the Artists kind shown, the Apple Music chip beside it, and
+  Tab reached it. "ab": no chip, no call, no line. `2+2` and `vol 50`: no chip, no call (the
+  step said `=2+2`: that is not a sum to the bar, so it is plain text and asks Apple, as §2e
+  says; the step now reads `2+2`). "Aphex Twin" typed at one key per 60 ms: one call, one
+  `compass:apple` line. The same term in the Search card: no second call, 25 rows. Enter on
+  "Greatest Hits" opened the album pane in the Search card; Ctrl+Enter on "The Chain" played it.
+  A term closed with Escape inside the 300 ms pause: no call.
+- **Step 8 as a forced failure.** `catalog_search` failed by the runner (not a real sign-out):
+  no chip, one `compass:appleFail` line, and "Search Apple Music for …" still the last row. The
+  real signed-out case is his hand test.
+- A rerun in the same app session reads each term from the session cache (no call), so the
+  steps that expect one call need a fresh dev app or new terms.
 
 ### 2c. How a card opens: the shape (2026-09-18, the owner's ask)
 
@@ -323,7 +345,7 @@ the text caret; Tab belongs to the filter row (2a).
 
 ## 5. The rest of the keyboard pass (fork 5B, then the lists — built 2026-09-17)
 
-> **Part:** built · 2026-11-16 · desk test open — *Play/Pause on Space*
+> **Part:** built · 2026-11-16 · desk test passed 2026-11-16 (Claude, scripted on the dev app) — *Play/Pause on Space*
 
 **Space and the focus (2026-11-16, live ticket `Ifdw99vR5TYBOeLY`).** Space plays or pauses
 only when nothing that takes Space has the focus (`main.ts`). A button keeps the focus after a
@@ -338,6 +360,14 @@ key, so a rule can set it.
 On: click Next, press Space: the song pauses; Space again plays. On, with focus on a Library
 row: Space plays or pauses and does not start the row. On, in the Search field: Space types a
 space. On, Compass open: Space types a space. Hold Space: one toggle only.
+
+*As run 2026-11-16 (Claude, the dev app, real keys and clicks over CDP;
+[checks/space-play-pause.json](../ops/checks/space-play-pause.json)).* Every step passed, 12
+probes. Off: a mouse click on Next kept the focus, and Space moved on to the next song again.
+On: Space paused and played with the focus on Next, and the song stayed; with the focus on a
+Library row, Space paused and played and the row did not start; the Search field and the
+Compass each took a space and the music went on. The held Space was six synthetic `repeat`
+keydowns: nothing toggled. The setting was put back to Off.
 
 **Inside every list** (`src/list-keys.ts`, adopted by the collection-card engine — Library,
 Playlists, Radio, the artist and genre views — and by hand in the Queue, History, Home, the

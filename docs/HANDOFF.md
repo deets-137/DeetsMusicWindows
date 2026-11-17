@@ -117,10 +117,12 @@ item closes, delete it here and write the day in WORKLOG.md.
 - **1.5.0, next (his call 2026-11-16: a minor line, so its rows get their own update-card
   page and the card opens after the update).** On `main`: restricted songs, Play/Pause on Space,
   Apple Music in the Compass, the Claude Desktop extension fix. The notes are written with his
-  intro (RELEASE-NOTES.md). Left, in order: (1) `npm run check` and `npx vite build` on his PC
-  (the cloud session ran tsc, the tests and docs:check only: no cargo, no `../DeetsSolutions`);
-  (2) the desk tests: QUEUE.md § Restricted songs, COMPASS.md §5 (Space) and §2e (Apple Music,
-  step 6 is the cost check); (3) the DeetsSupport deploy for `9ebbc33` (`spacePlayPause` on the
+  intro (RELEASE-NOTES.md). Done 2026-11-16 on his PC: `npm run check` and `npx vite build`
+  pass; the desk tests ran on the dev app (Claude, scripted): Space (COMPASS.md §5) passed;
+  restricted songs (QUEUE.md) passed on a faked refusal, a real restricted Apple ID is his hand
+  test; Apple Music in the Compass (§2e) passed after one fix (the chip never read "…" while
+  the call was out; fixed in `compass.ts` `query`, not committed); signed out is his hand test. C: had 0 bytes free: `target-second` was
+  deleted, and a release build needs more room. Left, in order: (3) the DeetsSupport deploy for `9ebbc33` (`spacePlayPause` on the
   usage list; low risk, the app works without it); (4) `npm run version` to 1.5.0, the date in
   the notes' heading, `npm run release`. The forum: reply to `no37Szdt3ow1vnuE` (Ctrl+Space) when
   1.5.0 is out; `hGjdjlE2I7PE1C5-` (explicit songs) and `Ifdw99vR5TYBOeLY` (Space) have his
@@ -468,6 +470,8 @@ Each of these shipped; what is left is listed.
 - **Last.fm top tracks and similar artists:** ideas/LastfmArtist.md holds the calls.
 - **Search by Last.fm tag** (2026-11-09): his calls and the probe are in ideas/LastfmTags.md. Next
   is the drill-down UI, with him (§5).
+- **Web vibe** (2026-11-11): Last.fm tags in the playlist web, his calls in ideas/WebVibe.md §2.
+  He digs in later. Next is the probe on 3 seeds he picks (§7 item 2) and the tag songs' share (§7 item 1).
 - **The Rulez design pass on custom rules** (RULEZ.md §15, with §13), or **Layout**
   (LAYOUT.md), his pick. The graphics fallback rule's place in the engine's order
   (GRAPHICS-FALLBACK.md §9 item 3).

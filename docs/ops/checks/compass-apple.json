@@ -1,0 +1,95 @@
+{
+  "about": "Apple Music in the Compass (COMPASS.md §2e) on the running dev app. The desk test's 9 steps; step 8 (signed out) is a forced failure of `catalog_search` (the same no-chip path), the real sign-out stays a hand test. `catalog_search` calls are counted by the runner (window.__shotsInvoke.calls), as deltas from a mark before each step.",
+  "desk_test": "features/COMPASS.md §2e",
+  "made": "2026-11-16",
+  "pass": "The shot is ok: every probe's `expect` holds. Terms: 'Fleetwood Mac' and 'Portishead' and 'Boards of Canada' and 'Massive Attack' are not in his library; 'kwes' is. A term already asked this app session is cached, so a rerun needs a dev app restart (or new terms) for the steps that expect one call.",
+  "run": "node scripts/shots.mjs --list docs/ops/checks/compass-apple.json (dev app on screen, signed in, Search in slot d). It plays one catalog song (step 7): pause the dev app after.",
+  "shots": [
+    {
+      "id": "compass-apple",
+      "kind": "shot",
+      "source": "dev",
+      "covers": "features/COMPASS.md",
+      "about": "§2e steps 1–9 in one run.",
+      "steps": [
+        { "eval": "(() => { window.__cs = () => window.__shotsInvoke?.calls?.catalog_search ?? 0; window.__cl = (tag) => (window.__diag?.events?.() ?? []).filter((e) => e.tag === tag).length; window.__mark = () => { window.__c0 = window.__cs(); window.__l0 = window.__cl('compass:apple'); window.__f0 = window.__cl('compass:appleFail'); return true; }; window.__setQ = (v) => { const i = document.querySelector('input.compass__input'); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); return true; }; window.__cstate = () => { const chips = [...document.querySelectorAll('.compass__chips [data-kind]')].map((b) => ({ k: b.dataset.kind, n: b.querySelector('.compass__n')?.textContent, on: b.getAttribute('aria-pressed') === 'true' })); const am = chips.find((c) => c.k === 'Apple Music'); const rows = [...document.querySelectorAll('.compass__row')]; return { apple: am ? am.n : null, shown: chips.find((c) => c.on)?.k ?? null, chips: chips.map((c) => c.k), appleRows: rows.filter((r) => /· Apple Music$/.test(r.querySelector('.compass__sub')?.textContent ?? '')).length, last: rows.at(-1)?.querySelector('.compass__title')?.textContent ?? null, d: window.__cs() - window.__c0, lines: window.__cl('compass:apple') - window.__l0, fails: window.__cl('compass:appleFail') - window.__f0 }; }; document.activeElement?.blur?.(); return true; })()" },
+        { "invoke": { "catalog_collection_tracks": { "delay": 1 } } },
+        { "key": "Ctrl+Space" },
+        { "wait": "input.compass__input" },
+        { "wait": 500 },
+
+        { "probe": "window.__mark() &&window.__setQ('Fleetwood Mac')" },
+        { "wait": 150 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "1a. a name the library lacks: the chip reads … while the call is out", "expect": { "apple": "…", "d": 0 } },
+        { "wait": 3000 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "1b. then a count, shown with no Tab, one call", "expect": { "apple": "/^\\d+$/", "shown": "Apple Music", "d": 1, "lines": 1 } },
+
+        { "probe": "window.__mark() &&window.__setQ('kwes')" },
+        { "wait": 3000 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "2a. one of his artists: the library kind shows, the Apple Music chip is there", "expect": { "shown": { "$not": "Apple Music" }, "apple": "/^\\d+$/", "d": 1 } },
+        { "eval": "(() => { const i = document.querySelector('input.compass__input'); for (let k = 0; k < 8; k++) { if (document.querySelector('.compass__chips [data-kind=\"Apple Music\"]')?.getAttribute('aria-pressed') === 'true') return k; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true, cancelable: true })); } return -1; })()" },
+        { "wait": 300 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "2b. Tab reaches Apple Music", "expect": { "shown": "Apple Music" } },
+
+        { "probe": "window.__mark() &&window.__setQ('ab')" },
+        { "wait": 1200 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "3. two letters: no chip, no call", "expect": { "apple": null, "d": 0, "lines": 0 } },
+
+        { "probe": "window.__mark() &&window.__setQ('2+2')" },
+        { "wait": 1200 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "4a. the calculator: no chip, no call", "expect": { "apple": null, "d": 0 } },
+        { "probe": "window.__mark() &&window.__setQ('vol 50')" },
+        { "wait": 1200 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "4b. a command: no chip, no call", "expect": { "apple": null, "d": 0 } },
+
+        { "probe": "window.__mark() && window.__setQ('') && (document.querySelector('input.compass__input').focus(), document.activeElement === document.querySelector('input.compass__input'))" },
+        { "type": "Aphex Twin", "delay": 60 },
+        { "wait": 3000 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "5. typed fast: one call, one compass:apple line, for the last term", "expect": { "d": 1, "lines": 1, "apple": "/^\\d+$/" } },
+
+        { "key": "Escape" },
+        { "wait": 600 },
+        { "probe": "(() => { window.__mark(); const i = document.querySelector('[data-slot=\"d\"] input.search__input'); window.__sOld = i.value; i.value = 'Aphex Twin'; i.dispatchEvent(new Event('input', { bubbles: true })); return true; })()" },
+        { "wait": 2500 },
+        { "probe": "JSON.stringify({ d: window.__cs() - window.__c0, rows: document.querySelectorAll('[data-slot=\"d\"] [data-cid]').length })", "name": "6. the Search card with the same term: no second call, results shown", "expect": { "d": 0 } },
+        { "eval": "(() => { const i = document.querySelector('[data-slot=\"d\"] input.search__input'); i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); i.blur(); return true; })()" },
+        { "wait": 600 },
+
+        { "key": "Ctrl+Space" },
+        { "wait": "input.compass__input" },
+        { "wait": 400 },
+        { "probe": "window.__mark() &&window.__setQ('Fleetwood Mac')" },
+        { "wait": 1200 },
+        { "eval": "(() => { const i = document.querySelector('input.compass__input'); const rows = [...document.querySelectorAll('.compass__row')]; const at = rows.findIndex((r) => / · Album · Apple Music$/.test(r.querySelector('.compass__sub')?.textContent ?? '')); window.__album = rows[at]?.querySelector('.compass__title')?.textContent; const cur = rows.findIndex((r) => r.classList.contains('is-active')); for (let k = cur; k < at; k++) i.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true })); return { at, cur, album: window.__album, active: document.querySelector('.compass__row.is-active .compass__title')?.textContent }; })()" },
+        { "probe": "JSON.stringify({ d: window.__cs() - window.__c0, album: window.__album, active: document.querySelector('.compass__row.is-active .compass__title')?.textContent })", "name": "7a. the term again is cached; the album row is active", "expect": { "d": 0 } },
+        { "key": "Enter" },
+        { "wait": 3000 },
+        { "probe": "JSON.stringify({ compass: !!document.querySelector('input.compass__input:focus'), card: document.querySelector('[data-slot=\"d\"] .panel__title')?.textContent, pane: (document.querySelector('[data-slot=\"d\"]')?.textContent ?? '').includes(window.__album) })", "name": "7b. Enter on the album opens its pane in the Search card", "expect": { "pane": true } },
+
+        { "key": "Ctrl+Space" },
+        { "wait": "input.compass__input" },
+        { "wait": 400 },
+        { "probe": "window.__mark() &&window.__setQ('Fleetwood Mac')" },
+        { "wait": 1200 },
+        { "eval": "(() => { const i = document.querySelector('input.compass__input'); const rows = [...document.querySelectorAll('.compass__row')]; const at = rows.findIndex((r) => { const s = r.querySelector('.compass__sub')?.textContent ?? ''; return /· Apple Music$/.test(s) && !/ · (Artist|Album|Playlist|Station) · /.test(' · ' + s) && !/^(Artist|Station) · /.test(s); }); window.__song = rows[at]?.querySelector('.compass__title')?.textContent; const cur = rows.findIndex((r) => r.classList.contains('is-active')); for (let k = cur; k < at; k++) i.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true })); return { at, song: window.__song }; })()" },
+        { "key": "Ctrl+Enter" },
+        { "wait": 6000 },
+        { "probe": "JSON.stringify({ song: window.__song, np: document.querySelector('[data-slot=\"np\"] .np__title')?.textContent, playing: MusicKit.getInstance().isPlaying })", "name": "7c. Ctrl+Enter on a song plays it", "expect": { "playing": true } },
+
+        { "invoke": { "catalog_search": { "fail": true } } },
+        { "key": "Ctrl+Space" },
+        { "wait": "input.compass__input" },
+        { "wait": 400 },
+        { "probe": "window.__mark() &&window.__setQ('Boards of Canada')" },
+        { "wait": 2500 },
+        { "probe": "JSON.stringify(window.__cstate())", "name": "8. a failed call (signed out's path): no chip, the last row still there", "expect": { "apple": null, "fails": 1, "last": "/^Search Apple Music for/" } },
+        { "invoke": "reset" },
+
+        { "probe": "window.__mark() &&window.__setQ('Massive Attack')" },
+        { "key": "Escape" },
+        { "wait": 1500 },
+        { "probe": "JSON.stringify({ open: !!document.querySelector('input.compass__input:focus'), d: window.__cs() - window.__c0, lines: window.__cl('compass:apple') - window.__l0 })", "name": "9. closed during the pause: no call", "expect": { "d": 0, "lines": 0 } }
+      ]
+    }
+  ]
+}

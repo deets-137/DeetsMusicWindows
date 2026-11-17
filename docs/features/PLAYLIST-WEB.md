@@ -3,7 +3,7 @@ status: shipped
 shipped_in: 0.8.0
 desk_test: passed 2026-09-16
 sources: [src/web.ts, src-tauri/src/web.rs, src/playlists-card.ts, src/playlist-expiry.ts, src/player.ts]
-updated: 2026-10-21
+updated: 2026-11-12
 ---
 # DeetsMusic — the playlist web
 
@@ -265,6 +265,8 @@ Enter in the artist field.
   before Apple, at zero calls. It adds links Apple's first 10 items per view can miss, but it
   pulls the web toward what you already own, and it needs an id for each name (the names →
   ids step above covers only your library artists).
+- **Web vibe** (an idea, 2026-11-11): Last.fm tags rank the web and bring in songs with no credit
+  link. When built, it changes the "What an edge is" row in §3. ideas/WebVibe.md.
 
 ## 8. Desk test
 

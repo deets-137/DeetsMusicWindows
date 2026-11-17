@@ -1274,8 +1274,12 @@ function query(termRaw: string, kind: Group | null): Result {
     : null;
   // Apple Music: one more chip, after the library's. Shown first only when the library has no
   // match (his 1A, 2026-11-16); otherwise Tab reaches it. "…" while the call is out.
+  // A term not asked yet is out too: render() asks it right after this (askCatalog), and nothing
+  // draws again until the answer, so reading only `catalogBusy` here never showed the "…"
+  // (the desk test, 2026-11-16).
   const cat = apple && catalogTerm === apple ? (catalogRes ? catalogRows(catalogRes, apple) : []) : [];
-  if (apple && catalogTerm === apple && (catalogBusy || cat.length)) chips.push({ group: "Apple Music", n: cat.length, best: 0, busy: catalogBusy });
+  const busy = !!apple && (catalogTerm !== apple || catalogBusy);
+  if (apple && (busy || cat.length)) chips.push({ group: "Apple Music", n: cat.length, best: 0, busy });
   const pick = kind && chips.some((c) => c.group === kind) ? kind : predicted ?? (chips.length ? chips[0].group : null);
   const active = pick === "Apple Music" && !cat.length ? null : pick;
   if (active === "Apple Music") blocks.push({ best: 0, rows: cat });

@@ -241,6 +241,8 @@ picture, never write it for him.
 - `LastfmArtist.md` — Last.fm top tracks and similar artists on the artist view.
 - `LastfmTags.md` — click a Last.fm tag to open its albums and songs (`lastfm.rs`, `info-box.ts`);
   a second tag adds or narrows. **§2 is what he decided; the drill-down UI is his.**
+- `WebVibe.md` — Last.fm tags in the playlist web (`web.rs`, `web.ts`, `lastfm.rs`): a vibe score,
+  tag songs through a two-key check. **§2 is what he decided and is fixed.**
 - `DeetsWeather.md` · `WeatherSkin.md` — stations and a skin driven by the weather (WeatherKit).
 - `LinuxPort.md` — DeetsMusic on Linux and macOS: the blocks and the paths.
 - `MatterLights.md` — an on/off panel for Matter lights.
