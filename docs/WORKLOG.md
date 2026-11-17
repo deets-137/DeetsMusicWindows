@@ -6,6 +6,20 @@ updated: 2026-11-16
 ---
 # DeetsMusic — Work log
 
+## 2026-11-16 (late) — 1.5.0 published
+
+- **His ask.** Mark 1.5.0 so the update card opens after the update; look at the card on the dev
+  app; then build and publish, and push everything once the Cities session had committed.
+- **Notes.** `### Show after update` added to the 1.5.0 entry (`3105d1b`). The Play/Pause on Space
+  `NEW_MARKS` line already opened the card for a 1.4 → 1.5 update; the mark keeps it so if that
+  line changes. `__updateCard.preview("1.5.0")` on the dev app showed the 1.5 page, his intro, the
+  three Start open leads, and Playback › Play/Pause on Space under New settings.
+- **Release.** `npm version 1.5.0` (`f79cef2`), `npm run release` (release-check ok), hand test
+  skipped (his call), `npm run release:publish`. Every *Check a publish* route answered as it
+  should (RELEASE.md §0a). The demo step waited on DeetsSolutions: master had 2 Cities commits that
+  were not pushed yet; the Cities session pushed them itself (`d9476e4`), then the demo went out
+  (`ddb0198`).
+
 ## 2026-11-16 (night) — 1.5.0: the checks and the three desk tests on his PC
 
 - **His ask.** Steps 1 and 2 of the 1.5.0 line in HANDOFF.

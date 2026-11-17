@@ -110,23 +110,18 @@ extension's icons are LANCZOS resizes of the same file.
 
 ## Open now
 
-**Live: 1.4.2** (2026-11-09, built from `7e3cf8d` on `main`; RELEASE.md has the log). Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
+**Live: 1.5.0** (2026-11-16, built from `f79cef2` on `main`; RELEASE.md has the log). Pruned 2026-10-30: everything that shipped up to 1.2.1 and every
 closed test went out (the WORKLOG has each day). Each item names where the detail is. When an
 item closes, delete it here and write the day in WORKLOG.md.
 
-- **1.5.0, next (his call 2026-11-16: a minor line, so its rows get their own update-card
-  page and the card opens after the update).** On `main`: restricted songs, Play/Pause on Space,
-  Apple Music in the Compass, the Claude Desktop extension fix. The notes are written with his
-  intro (RELEASE-NOTES.md). Done 2026-11-16 on his PC: `npm run check` and `npx vite build`
-  pass; the desk tests ran on the dev app (Claude, scripted): Space (COMPASS.md §5) passed;
-  restricted songs (QUEUE.md) passed on a faked refusal, a real restricted Apple ID is his hand
-  test; Apple Music in the Compass (§2e) passed after one fix (the chip never read "…" while
-  the call was out; fixed in `compass.ts` `query`, not committed); signed out is his hand test. C: had 0 bytes free: `target-second` was
-  deleted, and a release build needs more room. Left, in order: (3) the DeetsSupport deploy for `9ebbc33` (`spacePlayPause` on the
-  usage list; low risk, the app works without it); (4) `npm run version` to 1.5.0, the date in
-  the notes' heading, `npm run release`. The forum: reply to `no37Szdt3ow1vnuE` (Ctrl+Space) when
-  1.5.0 is out; `hGjdjlE2I7PE1C5-` (explicit songs) and `Ifdw99vR5TYBOeLY` (Space) have his
-  replies. `862C39EuDByKyvaY` (lyrics) waits on a status reply: no lyric text in Apple's API, the
+- **1.5.0 is live (2026-11-16): what is left.** Restricted songs, Play/Pause on Space, Apple
+  Music in the Compass, the Claude Desktop extension fix; the update card opens after the update
+  (`### Show after update`). The hand install test was skipped, his call. Open: (1) the
+  DeetsSupport deploy for `9ebbc33` (`spacePlayPause` on the usage list; until it is deployed the
+  worker drops that key from reports; his call); (2) his hand tests: restricted songs on a real
+  restricted Apple ID (QUEUE.md), Apple Music in the Compass while signed out (COMPASS.md §2e).
+  The forum: reply to `no37Szdt3ow1vnuE` (Ctrl+Space) now that 1.5.0 is out;
+  `hGjdjlE2I7PE1C5-` (explicit songs) and `Ifdw99vR5TYBOeLY` (Space) have his replies. `862C39EuDByKyvaY` (lyrics) waits on a status reply: no lyric text in Apple's API, the
   Donate panel's first goal pays for a source.
 - **Where Add to Queue puts songs (2026-11-09).** Shipped in 1.4.2; passed by script on the
   dev app ([QUEUE.md](features/QUEUE.md) § Where Add to Queue puts songs). The 1.4.2 note has its
