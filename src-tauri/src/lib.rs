@@ -200,6 +200,7 @@ pub fn run() {
             if let Some(tok) = apple::load_persisted_user_token() {
                 *app.state::<apple::AppleState>().user_token.lock_or_recover() = Some(tok);
             }
+            apple::load_restrict_flag(); // Apple's explicit-content flag from that sign-in
 
             // The deep-link scheme (DATA-ARCHITECTURE §2a). A debug build owns
             // `deetsmusic-dev://` and points it at this exe on every launch — one HKCU
@@ -428,6 +429,7 @@ pub fn run() {
             apple_calls::apple_force_429,
             apple_calls::apple_force_offline,
             apple::apple_user_token,
+            apple::apple_restrict_state,
             apple::apple_disconnect,
             apple::apple_dump_library,
             apple::catalog_search,

@@ -169,10 +169,12 @@ pub fn handle_link(app: &tauri::AppHandle, raw: &str) {
     let mut token = None;
     let mut error = None;
     let mut demo = false;
+    let mut itre = None;
     for (k, v) in url.query_pairs() {
         match &*k {
             "n" => nonce = Some(v.into_owned()),
             "mut" => token = Some(v.into_owned()),
+            "itre" => itre = parse_itre(Some(&v)),
             "error" => error = Some(v.chars().take(120).collect::<String>()),
             "demo" => demo = v == "1",
             _ => {}
@@ -232,7 +234,7 @@ pub fn handle_link(app: &tauri::AppHandle, raw: &str) {
     let store = state.user_token.clone();
     let auth = state.auth.clone();
     std::thread::spawn(move || {
-        accept_token(&tok, &store, &auth);
+        accept_token(&tok, itre, &store, &auth);
     });
 }
 
@@ -730,6 +732,70 @@ fn persist_user_token(tok: &str) -> std::io::Result<()> {
     crate::safe_file::write_atomic(&user_token_path(), tok.as_bytes())
 }
 
+// ── Apple's restriction flag (QUEUE.md § The real restriction flag, 2026-11-22) ──────
+// Apple's sign-in window gives MusicKit the account's explicit-content flag (`itre`) with the
+// token. Our pages send it back, and it is kept here beside the token. Without it MusicKit
+// guesses from the storefront and blocks explicit songs in 14 countries. `None` = not known
+// (a sign-in from before 1.5.1, or an old hosted page).
+
+static RESTRICT_FLAG: Mutex<Option<bool>> = Mutex::new(None);
+
+fn restrict_flag_path() -> PathBuf {
+    user_token_path().with_file_name("restrict-flag.txt")
+}
+
+/// The `itre` value a sign-in page sent: "1" restricted, "0" not; anything else is unknown.
+fn parse_itre(v: Option<&str>) -> Option<bool> {
+    match v.map(str::trim) {
+        Some("1") => Some(true),
+        Some("0") => Some(false),
+        _ => None,
+    }
+}
+
+/// A new sign-in's flag. An unknown flag clears the old one: it belonged to the last sign-in.
+fn save_restrict_flag(flag: Option<bool>) {
+    *RESTRICT_FLAG.lock_or_recover() = flag;
+    let path = restrict_flag_path();
+    let res = match flag {
+        Some(f) => crate::safe_file::write_atomic(&path, if f { b"1" } else { b"0" }),
+        None => match std::fs::remove_file(&path) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+            _ => Ok(()),
+        },
+    };
+    if let Err(e) = res {
+        crate::log::warn(&format!("sign-in: restriction flag not saved: {e}"));
+    }
+    crate::log::info(&format!(
+        "apple:restrictFlag saved={} value={}",
+        flag.is_some(),
+        flag.map_or("unknown", |f| if f { "1" } else { "0" })
+    ));
+}
+
+/// Read the saved flag (called on startup, beside the token).
+pub fn load_restrict_flag() {
+    let flag = std::fs::read_to_string(restrict_flag_path()).ok().and_then(|s| parse_itre(Some(&s)));
+    *RESTRICT_FLAG.lock_or_recover() = flag;
+}
+
+/// What the page needs to set MusicKit's flag and to know an affected user: the saved flag
+/// (`None` = unknown) and the cached storefront (no Apple call). Async: the storefront read
+/// takes the database lock (release check 9).
+#[derive(serde::Serialize)]
+pub struct RestrictState {
+    flag: Option<bool>,
+    storefront: Option<String>,
+}
+
+#[tauri::command]
+pub async fn apple_restrict_state(app: tauri::AppHandle) -> Result<RestrictState, String> {
+    let flag = *RESTRICT_FLAG.lock_or_recover();
+    let storefront = crate::db_thread::run(&app, move |db| Ok::<_, String>(crate::enrich::cached_storefront(&db.lock()))).await?;
+    Ok(RestrictState { flag, storefront })
+}
+
 /// Read a previously captured MUT from disk (called on startup).
 ///
 /// Falls back to the pre-app-data location in the repo, so an existing dev
@@ -834,7 +900,9 @@ document.getElementById("go").onclick=async()=>{
     status.textContent="Authorized — returning to DeetsMusic…";
     // An old tab (a sign-in that already ended) holds a stale nonce: the app answers 400
     // or nothing at all. Never say "Done" unless the app actually took the token.
-    const r=await fetch("/callback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state:NONCE,mut})});
+    // Apple's own restriction flag from this sign-in (QUEUE.md § The real restriction flag).
+    const itre=music.restrictedEnabled===true?"1":music.restrictedEnabled===false?"0":"";
+    const r=await fetch("/callback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state:NONCE,mut,itre})});
     if(!r.ok) throw new Error("stale sign-in page");
     settled=true;
     status.textContent="Done! You can close this tab and return to DeetsMusic.";
@@ -903,10 +971,11 @@ fn serve(
                         .and_then(|v| {
                             let state = v.get("state").and_then(|x| x.as_str())?;
                             let mut_tok = v.get("mut").and_then(|x| x.as_str())?;
-                            (state == nonce && !mut_tok.is_empty()).then(|| mut_tok.to_string())
+                            let itre = parse_itre(v.get("itre").and_then(|x| x.as_str()));
+                            (state == nonce && !mut_tok.is_empty()).then(|| (mut_tok.to_string(), itre))
                         });
-                    if let Some(tok) = token {
-                        if accept_token(&tok, &store, &auth) {
+                    if let Some((tok, itre)) = token {
+                        if accept_token(&tok, itre, &store, &auth) {
                             let _ = req.respond(tiny_http::Response::from_string(DONE_RESPONSE));
                         } else {
                             let _ = req.respond(tiny_http::Response::from_string("rejected").with_status_code(400));
@@ -949,7 +1018,7 @@ fn serve(
 
 /// The delivered token, from either page (loopback callback or deep link). Checks it
 /// with Apple, then stores, persists and announces it. False when Apple refuses it.
-fn accept_token(tok: &str, store: &Arc<Mutex<Option<String>>>, auth: &Arc<Mutex<AuthStatus>>) -> bool {
+fn accept_token(tok: &str, itre: Option<bool>, store: &Arc<Mutex<Option<String>>>, auth: &Arc<Mutex<AuthStatus>>) -> bool {
     crate::log::register_secret(tok);
     // Never save a token Apple already refuses (a stale page, a token logged out at
     // Apple). 403 on /v1/me = the sign-in token itself; a 401 or no answer is about
@@ -960,6 +1029,8 @@ fn accept_token(tok: &str, store: &Arc<Mutex<Option<String>>>, auth: &Arc<Mutex<
         return false;
     }
     *store.lock_or_recover() = Some(tok.to_string());
+    // Before the announce below: the page reads the flag when it hears `user-token-changed`.
+    save_restrict_flag(itre);
     *auth.lock_or_recover() = AuthStatus::Captured;
     // A new sign-in: forget the cached health answer (it may still say "expired") and
     // hand the token to MusicKit in the running page — MusicKit otherwise only reads it
@@ -1258,6 +1329,8 @@ pub async fn apple_disconnect(app: tauri::AppHandle) {
     let _ = tauri::async_runtime::spawn_blocking(move || {
         *app.state::<AppleState>().user_token.lock_or_recover() = None;
         let _ = std::fs::remove_file(user_token_path());
+        *RESTRICT_FLAG.lock_or_recover() = None;
+        let _ = std::fs::remove_file(restrict_flag_path());
         // Also clear the pre-app-data copy, or the next launch's fallback in
         // load_persisted_user_token() would quietly sign you back in.
         if let Some(dir) = repo_secrets_dir() {

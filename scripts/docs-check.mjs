@@ -34,7 +34,7 @@ import { COPIES, render as renderCopy } from "./docs-copies.mjs";
 import { blocks as skinBlocks } from "./skin-resolve.mjs";
 import { readVersions } from "./version.mjs";
 // Node strips the types; the file has no imports of its own (check 31).
-import { LEAD_RULE_AFTER, leadFaults, openFaults, releaseEntries, versionAfter } from "../src/release-leads.ts";
+import { LEAD_RULE_AFTER, audienceFaults, leadFaults, openFaults, releaseEntries, versionAfter } from "../src/release-leads.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const GRACE_END = "2026-09-28"; // F5: the release check fails on facts from this date
@@ -507,6 +507,8 @@ export function check() {
       for (const f of leadFaults(e.body)) fail(31, NOTES, 0, `${e.version}: ${f} (UpdatesButton.md §6.3)`);
       // The update card's `### Start open` list names leads; a renamed lead would quietly close.
       for (const f of openFaults(e)) fail(31, NOTES, 0, `${e.version}: ${f} (UPDATE-CARD.md §3.14)`);
+      // A release for one group names a group the code knows (§3.23).
+      for (const f of audienceFaults(e)) fail(31, NOTES, 0, `${e.version}: ${f} (UPDATE-CARD.md §3.23)`);
     }
   }
 

@@ -2,7 +2,7 @@
 status: foundation
 desk_test: passed 2026-10-30
 sources: [src/player.ts, src/idle-skip.ts, src/idle-release.ts, src/queue.ts, src/context-menu.ts, src/qcard.ts, src/perf.ts, src/queue-persist.ts, src/queue-sync.ts, src/track-store.ts, src-tauri/src/heal.rs, src/web.ts, src/pause-rules.ts, src/license-watch.ts, src/license-reply.ts, docs/ops/checks/license-fail.mjs]
-updated: 2026-11-03
+updated: 2026-11-22
 ---
 # DeetsMusic — Queue model & playback windowing
 
@@ -1096,6 +1096,81 @@ plays, and one notice shows. Turn explicit content on again: the same songs play
 Not covered: a real Apple ID with explicit content off (his hand test), and MusicKit's own
 error shape on such an account (the fake throws `Error("CONTENT_RESTRICTED: …")` with
 `errorCode`; the live report's log showed that message, not the object's other fields).
+
+### The real restriction flag (2026-11-22)
+
+> **Part:** built · 2026-11-22 (his "yes, build it") · desk test open · the DeetsSupport deploy is his go, before 1.5.1
+
+A second live ticket (`oFvg2W4a_Vtttdgn`, 2026-11-22, web): "unable to play songs marked as
+explicit despite no restrictions". The account has no restrictions, and Apple Music plays the
+same songs. **The cause above was wrong for most users: MusicKit guesses, and Apple is not asked.**
+
+**What MusicKit does** (read in the live `musickit.js` v3, 2026-11-22):
+- The flag is `restrictedEnabled`, kept in storage as `itre`. Only Apple's sign-in window
+  (`authorize()`) gives the real value, as `{restricted, userToken, cid}`. `/v1/me/account`
+  gives only the storefront and the subscription state.
+- Our two sign-in pages call `authorize()` and send back only the token. The app puts the bare
+  token in (`injectUserToken`, player.ts). So `itre` is never saved.
+- With a token and no `itre`, MusicKit takes the storefront: **br, ch, gt, hu, id, in, it, kr,
+  la, lt, my, ru, sg, tr** read as restricted; any other storefront as unknown (not restricted).
+- `setQueue` then sets `queue.isRestricted`, which removes every explicit song and publishes
+  `CONTENT_RESTRICTED: Content restricted` itself. This is the message both tickets showed.
+- So a user in those 14 storefronts cannot play explicit songs in DeetsMusic. A really restricted
+  account in another storefront is not blocked by MusicKit (Apple's server code 3082 may still
+  block it; not known).
+
+**His calls (2026-11-22).**
+1. **The real flag at sign-in (Route A).** No override to `false`: a parent's limit must hold.
+2. **Affected users sign in again**, asked by the update card for 1.5.1
+   ([UPDATE-CARD.md](UPDATE-CARD.md) §3.23). An affected user: the storefront is one of the 14,
+   and no flag is saved.
+3. **Audience gate in the notes** (UPDATE-CARD.md §3.23): the card opens for 1.5.1 only for
+   affected users, and a later release can name another group.
+4. **The user's *After an update, show* stays in force.** For an affected user who chose
+   *Updates panel* or *Nothing*, or who closes the card without signing in, the restricted
+   notice gets a **Sign in** button.
+
+**The build, per repo.**
+- **DeetsSupport** (`src/signin.js`): after `authorize()`, add `&itre=1` or `&itre=0` from
+  `music.restrictedEnabled` to the `auth` link. An old app ignores the key (`handle_link`'s
+  `_ => {}`). Deploy it **before** the 1.5.1 release: the app uses the hosted page when the
+  worker answers. The deploy is his go; this worker holds no sockets.
+- **The app, Rust** (`apple.rs`): `handle_link` reads `itre`; the loopback page posts it to
+  `/callback` too. It is saved beside the token with `safe_file::write_atomic`, and a new
+  sign-in with no `itre` (an old hosted page) clears the old value. A command returns it with
+  the token.
+- **The app, front end** (`player.ts`): `injectUserToken` sets `music.restrictedEnabled` to the
+  saved value when one exists (MusicKit's setter is `overrideRestrictEnabled`, so the storefront
+  guess no longer runs). No saved value: nothing is set, MusicKit's guess stays.
+- **The notice** (`restrictedNotice`): an affected user gets "Apple Music needs you to sign in
+  again before explicit songs can play." with a **Sign in** button (`connect()`, apple.ts). With
+  a saved flag of 1, the text above stays. A new row in TOASTS.md §5.
+- **Log:** `apple:restrictFlag {saved, value}` at sign-in; `player:restrictFlag {applied,
+  value, storefront}` at the token's injection.
+
+**As built (2026-11-22).**
+- `restrict-rules.ts` (pure, `tests/restrict-rules.test.ts`): `GUESSED_RESTRICTED` (MusicKit's
+  14) and `needsSignIn({flag, storefront})`: no saved flag and one of the 14.
+- Rust (`apple.rs`): `parse_itre`, `save_restrict_flag` (in `accept_token`, before
+  `user-token-changed`), `restrict-flag.txt` beside `user-token.txt`, `load_restrict_flag` at
+  setup (lib.rs), cleared by `apple_disconnect`. `apple_restrict_state` (async) returns
+  `{flag, storefront}`; the storefront is `cached_storefront`, through `db_thread::run`.
+- `player.ts` `applyRestrictFlag` runs in `injectUserToken`: `music.restrictedEnabled = flag ??
+  undefined` (`undefined` gives MusicKit's guess back). With no cached storefront it takes
+  MusicKit's `storefrontCountryCode`.
+- The notice: `needsSignIn(restrict)` picks the sign-in text and its button (TOASTS.md §5).
+- `web/handlers.ts` and `demo/handlers.ts` answer `apple_restrict_state`.
+
+*Desk test.* Dev app, signed in, no `restrict-flag.txt` in the dev data folder:
+1. In SQLite, set `meta.storefront` to `in`, then restart: the log has `player:restrictFlag`
+   with `applied: false, storefront: "in"`. Play an explicit song: the sign-in notice with
+   **Sign in**.
+2. Press **Sign in** (with the hosted page deployed, or the local page): the log has
+   `apple:restrictFlag saved=true value=0`; `restrict-flag.txt` reads `0`; the explicit song
+   plays.
+3. Put `meta.storefront` back to `us`.
+4. His Apple ID with explicit content off (Screen Time › Content & Privacy › Music), signed in
+   again: the flag is `1`, and an explicit song gives the first notice text.
 
 ## Shuffle and unshuffle (2026-10-12)
 

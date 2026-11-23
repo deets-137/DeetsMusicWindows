@@ -2,7 +2,7 @@
 status: built
 desk_test: passed 2026-10-30
 sources: [src/update-card.ts, src/update-card-rules.ts, src/paged-card.ts, src/onboarding.ts, src/styles/onboarding.css, src/settings-card.ts, src/settings-store.ts, src/release-leads.ts, vite-release-notes.ts, src/updates-btn.ts, src/update-rules.ts, src/compass.ts]
-updated: 2026-11-05
+updated: 2026-11-22
 ---
 # The update card — new settings after an update
 
@@ -467,6 +467,70 @@ Max, Midi and Mini.
 
 **Desk test** (dev app): `__updates.asVersion("1.4.1")`, then *See the new settings*: each lead has
 the underline, and it clears the paragraph under it, on a lead that wraps too.
+
+### 3.23 A release for one group of users (built 2026-11-22)
+> **Part:** built · 2026-11-22 (his "yes, build it") · desk test open · "As built" below is the code
+
+His ask: show the card for 1.5.1 only to the users the explicit-song fix needs, with a Sign in
+button in the right column and one new intro line. The cause and the sign-in flag are
+[QUEUE.md](QUEUE.md) § The real restriction flag.
+
+- **The audience, in the notes (his call, "room for similar future updates for specific user
+  groups"):** a name on its own line under `### Show after update`. With no name, the release
+  opens for every user, as in §3.17. With a name, it opens only for users in that group.
+  `releaseEntries` reads it (`audience`); `virtual:release-notes` carries `{ version, audience }`
+  in place of the bare version string. The first name is `explicit-sign-in`.
+- **A group is a check in code:** one map in a small file (`update-audience.ts`), name → an async
+  test. `explicit-sign-in`: the storefront (Rust's `cached_storefront`, no Apple call) is one of
+  the 14, and no restriction flag is saved. **docs:check fails a name the map does not know**, so
+  a typo cannot quietly open the card for no one.
+- **The rule:** `opensWhatsNew` takes the marked versions with their audiences; `openByItself`
+  tests each named group before the open. The group test is the only async part; the rule stays
+  pure (a test, dated 2026-11-22). A user in no group, on a release with no settings, sees
+  nothing: the notes stay in the Updates panel and *What's New*.
+- ***After an update, show* stays in force** (his call): *Updates panel* opens the panel;
+  *Nothing* opens nothing. Those users get the Sign in button on the restricted notice instead.
+- **The intro:** his line goes in the 1.5.1 entry's `### Intro`. A 1.5.0 user sees the 1.5 page
+  with 1.5.0's intro, then this line (§3.13, oldest first). The draft: "1.5.1 - Fixing the
+  Explicit song issue for users in: Brazil, Guatemala, Hungary, India, Indonesia, Italy, Laos,
+  Lithuania, Malaysia, Russia, Singapore, South Korea, Switzerland and Türkiye!"
+- **The Sign in block** (the precedent: *Double-click on your pins*, §3.21): in the right column
+  after the new settings, only for a user in the group. A `set__head` *Explicit songs*, then one
+  `set__row`: "Sign in to Apple Music again so explicit songs can play." and a `set__half`
+  button **Sign in** (`connect()`, apple.ts, the Account row's sign-in). While it waits, the
+  button reads *Waiting for Apple…*; after, the row reads "Explicit songs play now." (flag 0) or
+  the restricted notice's text (flag 1). A failed sign-in shows the Account row's own words.
+  `updatecard:signIn {result}` in the diag ring.
+- **Claude's choices for his review:** the block's title and row words, the waiting text, the
+  result lines, and that the block stays on the page after the sign-in (the result in place).
+
+**As built (2026-11-22).**
+- `release-leads.ts`: `AUDIENCES` (the known names), `audienceFaults` (docs:check 31), and
+  `audience` on an entry: the first line under `### Show after update`.
+- `virtual:release-notes` keeps `shown` (every marked version) and adds `audiences` (version →
+  name). It does not replace `shown` with objects, as the design said.
+- `update-audience.ts`: `TESTS` is a `Record<Audience, …>`, so tsc fails a known name with no
+  test. `markedForUser` filters `shown`; `opensWhatsNew` is unchanged. `openByItself`
+  (updates-btn.ts) is async now and logs `updates:audience` when a group held a release back.
+- The block is `explicitSignIn` (update-card.ts), on the 1.5 line (`EXPLICIT_LINE`, as
+  `PINS_LINE`), on both of the column's exits. It arrives through `enterRows`. **Sign in** calls
+  `requestSignIn` (the Account row's flow), not `connect()` itself, so the Account row's toasts
+  say what went wrong. Success is `user-token-changed`; a failure or a cancel (the status goes
+  `pending` → `failed` / `idle`) gives the button back; so does a 5 min wait. With no flag from
+  the page (an old hosted page), the ask stays.
+- RELEASE-NOTES.md 1.5.1: the entry, his intro line, `### Start open`, and
+  `### Show after update` with `explicit-sign-in`.
+
+**Desk test** (dev app, Max):
+1. Set `meta.storefront` to `in` with no `restrict-flag.txt`, then restart. In DevTools,
+   `__updateCard.preview("1.5.1")`. The 1.5 page shows 1.5.0's intro, then the 1.5.1 line; the
+   *Explicit songs* block sits under the new settings.
+2. **Sign in**: the button reads *Waiting for Apple…*; close the browser tab before signing in;
+   the button comes back. Sign in: the row reads "Explicit songs play now." and the button goes.
+3. Storefront `us`, or a saved flag: no block.
+4. The launch: set `localStorage["deets.updates.lastRun"] = "1.5.0"` on a build whose version is
+   1.5.1. With storefront `in` and no flag, the card opens. With storefront `us`, nothing opens,
+   and the log has `updates:audience` with `forUser: []`.
 
 ## 4. Not in scope
 - A toast for a small update (his call 3).

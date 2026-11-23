@@ -46,8 +46,11 @@ export function releaseNotesPlugin(): Plugin {
       const entry = entries.find((e) => e.version === version);
       // `shown`: the releases he marked `### Show after update` (UPDATE-CARD.md §3.17), so the
       // launch can tell, without the entries, whether an update brought one. A few short strings.
-      const shown = entries.filter((e) => e.shown && !versionAfter(ENTRIES_FROM, e.version)).map((e) => e.version);
-      return `export default ${JSON.stringify({ version, leads: entry ? releaseLeads(entry.body) : [], shown })};`;
+      const marked = entries.filter((e) => e.shown && !versionAfter(ENTRIES_FROM, e.version));
+      const shown = marked.map((e) => e.version);
+      // `audiences`: a marked release that names a group opens only for that group (§3.23).
+      const audiences = Object.fromEntries(marked.filter((e) => e.audience).map((e) => [e.version, e.audience]));
+      return `export default ${JSON.stringify({ version, leads: entry ? releaseLeads(entry.body) : [], shown, audiences })};`;
     },
   };
 }

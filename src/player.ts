@@ -12,7 +12,8 @@ import { setting, setSetting, effective, onSettingsChange, type SettingSource } 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
-import { isConnected } from "./apple";
+import { isConnected, requestSignIn } from "./apple";
+import { needsSignIn, type RestrictState } from "./restrict-rules";
 import * as health from "./apple-health";
 import { libraryTracks, type Track } from "./library";
 import * as queue from "./queue";
@@ -334,6 +335,29 @@ function observeEme(): void {
   };
 }
 
+// ── Apple's restriction flag (2026-11-22, QUEUE.md § The real restriction flag) ─────────
+// MusicKit gets the explicit-content flag only from authorize(), which the app never calls.
+// The sign-in pages send it back, Rust keeps it, and it is set here with each token. With no
+// saved flag MusicKit's own storefront guess stays (restrict-rules.ts): a parent's limit holds.
+let restrict: RestrictState = { flag: null, storefront: null };
+async function applyRestrictFlag(): Promise<void> {
+  try {
+    restrict = await invoke<RestrictState>("apple_restrict_state");
+  } catch (e) {
+    diag.warn("player:restrictFlagRead", { err: String(e) });
+    return;
+  }
+  if (!restrict.storefront && typeof music?.storefrontCountryCode === "string") restrict.storefront = music.storefrontCountryCode;
+  try {
+    // MusicKit's setter locks the value (`overrideRestrictEnabled`). `undefined` gives the
+    // guess back, for a new sign-in that brought no flag after one that did.
+    music.restrictedEnabled = restrict.flag ?? undefined;
+  } catch (e) {
+    console.warn("[player] restrictedEnabled not settable:", e);
+  }
+  diag.log("player:restrictFlag", { applied: restrict.flag !== null, value: restrict.flag, storefront: restrict.storefront });
+}
+
 /**
  * Give MusicKit our captured MUT without `authorize()`.
  *
@@ -356,6 +380,7 @@ async function injectUserToken(): Promise<void> {
   } catch (e) {
     console.warn("[player] musicUserToken not directly settable:", e);
   }
+  await applyRestrictFlag();
   if (!music.isAuthorized) {
     console.warn(
       "[player] still not authorized after token inject — MusicKit localStorage keys:",
@@ -3603,6 +3628,17 @@ function restrictedNotice(via: string): void {
   diag.log("player:restricted", { via, id: playId(queue.getCurrent() ?? {}) ?? null });
   if (now - restrictedNoticeAt < RESTRICTED_NOTICE_GAP_MS) return;
   restrictedNoticeAt = now;
+  // 2026-11-22: with no saved flag in one of the 14 storefronts, MusicKit guessed: Apple did not
+  // refuse the song. A new sign-in gives the real flag (QUEUE.md § The real restriction flag).
+  if (needsSignIn(restrict)) {
+    toast({
+      kind: "warn",
+      text: "Apple Music needs you to sign in again before explicit songs can play.",
+      timeout: RESTRICTED_NOTICE_GAP_MS,
+      actions: [{ label: "Sign in", run: requestSignIn }],
+    });
+    return;
+  }
   toast({ kind: "warn", text: "Your Apple ID doesn't allow explicit songs. Turn on explicit content in your Apple account settings, then try again.", timeout: RESTRICTED_NOTICE_GAP_MS });
 }
 /** The most restricted songs one heal skips past before it stops. */

@@ -1,7 +1,18 @@
 // The release notes' bold leads (docs/ideas/UpdatesButton.md §6.3), 2026-10-16.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { releaseEntries, releaseLeads, leadFaults, versionAfter, leadKey, openFaults } from "../src/release-leads";
+import { releaseEntries, releaseLeads, leadFaults, versionAfter, leadKey, openFaults, audienceFaults } from "../src/release-leads";
+
+test("2026-11-22 a group under ### Show after update is the release's audience; an unknown one is a fault", () => {
+  const md = ["## 1.5.1 — 2026-11-22", "", "**Fix.** Text.", "", "### Show after update", "", "explicit-sign-in", "", "## 1.5.0 — 2026-11-16", "", "**Big.** Text.", "", "### Show after update", "", "## 1.4.9 — 2026-11-01", "", "**Odd.** Text.", "", "### Show after update", "", "explicit-signin", ""].join("\n");
+  const [g, all, typo] = releaseEntries(md);
+  assert.equal(g.shown, true);
+  assert.equal(g.audience, "explicit-sign-in");
+  assert.deepEqual(audienceFaults(g), []);
+  assert.equal(all.shown, true);
+  assert.equal(all.audience, undefined); // no name: every user
+  assert.equal(audienceFaults(typo).length, 1);
+});
 
 const MD = [
   "# Release notes",

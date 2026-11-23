@@ -22,6 +22,7 @@ import { releaseLeads } from "./release-leads";
 import { mountSettingsParts, quickFoldOpen, toggleQuickFold, newMarkVersions } from "./settings-card";
 import { setting, ownSetting, isFreshInstall, DEFAULT_CHANGES, type Settings } from "./settings-store";
 import { opensWhatsNew, offeredDefaultVersions, compareVersions, assumedLastRun } from "./update-rules";
+import { markedForUser } from "./update-audience";
 import { openUpdateCard, notePreviousRun, devAsVersion, setDevAsVersion, leadsOf } from "./update-card";
 import { openQuickPanel, keepRightInWindow } from "./quick-panel";
 import { currentSurface } from "./surface";
@@ -80,7 +81,7 @@ const writeLastRun = (v: string) => {
  * grand opening is pending. The first launch of the build that brings this has no last-run
  * mark yet: it takes the version the panel was last opened in (F4), else nothing.
  */
-function openByItself(): void {
+async function openByItself(): Promise<void> {
   const now = built.version;
   const fresh = isFreshInstall();
   // No mark on an install that is not fresh: one from before the marks (§3.15, assumedLastRun).
@@ -95,8 +96,12 @@ function openByItself(): void {
   if (last && compareVersions(last, now) < 0) notePreviousRun(last);
   // A changed default counts only while the user's own value is still the old one (his call 12).
   const versions = [...newMarkVersions(), ...offeredDefaultVersions(DEFAULT_CHANGES, (k) => ownSetting(k as keyof Settings))];
-  // A patch he marked `### Show after update` opens it too (§3.17; `built.shown`).
-  if (!opensWhatsNew(last, now, versions, built.shown)) return;
+  // A patch he marked `### Show after update` opens it too (§3.17; `built.shown`). A marked
+  // release that names a group counts only for a user in that group (§3.23). The marks above
+  // are already written, so the await cannot open twice.
+  const forUser = await markedForUser(built.shown, built.audiences ?? {});
+  if (forUser.length !== built.shown.length) diag.log("updates:audience", { shown: built.shown, forUser });
+  if (!opensWhatsNew(last, now, versions, forUser)) return;
   // What opens (§3.15, his call 2026-11-02): the update card by default, the panel, or nothing.
   const show = setting("afterUpdateShow");
   diag.log("updates:openByItself", { from: last, to: now, show });
@@ -438,5 +443,5 @@ export function initUpdatesButton(): void {
     },
   });
   window.addEventListener("resize", () => { if (!panel.hidden) keepRightInWindow(root, panel); });
-  openByItself();
+  void openByItself().catch((e) => console.error("[updates] open by itself:", e));
 }

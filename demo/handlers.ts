@@ -346,6 +346,7 @@ const H: Record<string, Handler> = {
   apple_disconnect: () => null,
   apple_developer_token: () => "demo",
   apple_user_token: () => "demo",
+  apple_restrict_state: () => ({ flag: false, storefront: "us" }),
   apple_check: () => ({ app: "ok", signin: "ok", healed: false }),
   apple_remote_config: () => ({}),
   apple_dump_library: () => "",

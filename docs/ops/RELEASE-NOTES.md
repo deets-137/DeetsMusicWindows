@@ -48,6 +48,27 @@ worked. Copy 0.6.0's Installing lines until a browser download of a new version 
 first `###` reaches the update offer and the website, so the Installing lines are for a
 download page. Older entries stay as written: they were true for their version.
 
+## 1.5.1 — 2026-11-22
+
+**Explicit songs play again.** In some countries, DeetsMusic blocked explicit songs even when
+your Apple ID allows them, and said your Apple ID did not allow them. DeetsMusic now uses the
+setting from your Apple account. If explicit songs are still blocked for you, sign in to Apple
+Music again once: the update page and the notice have a Sign in button.
+
+### Intro
+
+1.5.1 - Fixing the Explicit song issue for users in: Brazil, Guatemala, Hungary, India,
+Indonesia, Italy, Laos, Lithuania, Malaysia, Russia, Singapore, South Korea, Switzerland and
+Türkiye!
+
+### Start open
+
+Explicit songs play again
+
+### Show after update
+
+explicit-sign-in
+
 ## 1.5.0 — 2026-11-16
 
 **Play/Pause on Space.** A new row in Settings › Playback makes Space always play or pause, even

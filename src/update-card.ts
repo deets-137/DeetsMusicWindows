@@ -26,6 +26,11 @@ import * as queue from "./queue";
 import { resolveEntry, artURL, coverArtPx } from "./queue-rows";
 import { ICON_PLAY, ICON_PAUSE, GLYPH_NOTE } from "./now-playing-card";
 import { pinnedItems, pinDouble, setPinDouble, type PinAct } from "./pins";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { requestSignIn } from "./apple";
+import { restrictState } from "./update-audience";
+import { needsSignIn } from "./restrict-rules";
 
 declare global {
   interface Window {
@@ -166,7 +171,7 @@ function settingsColumn(col: HTMLElement, line: Line): () => void {
     p.className = "onboarding__body";
     p.textContent = "No new settings in this version.";
     col.append(p);
-    return () => {};
+    return line.line === EXPLICIT_LINE ? explicitSignIn(col) : () => {};
   }
   const fold = `uc${line.line}`;
   if (marks.length) {
@@ -212,7 +217,92 @@ function settingsColumn(col: HTMLElement, line: Line): () => void {
     }
   }
   if (line.line === PINS_LINE) pinsList(col);
+  if (line.line === EXPLICIT_LINE) stops.push(explicitSignIn(col));
   return () => stops.forEach((f) => f());
+}
+
+// ── Explicit songs: sign in again (§3.23, his call 2026-11-22) ───────────────────
+/** The line whose page asks an affected user to sign in again (QUEUE.md § The real restriction
+ *  flag): no saved flag, in one of the 14 storefronts MusicKit guesses as restricted. */
+const EXPLICIT_LINE = "1.5";
+const SIGNIN_ASK = "Sign in to Apple Music again so explicit songs can play.";
+
+/** Only for an affected user; the precedent is *Double-click on your pins*. The Sign in button
+ *  is the Account row's own sign-in (`requestSignIn`), so its toasts say what went wrong. */
+function explicitSignIn(col: HTMLElement): () => void {
+  let live = true;
+  const stops: (() => void)[] = [];
+  void restrictState()
+    .then((s) => {
+      if (!live || !needsSignIn(s)) return;
+      const head = document.createElement("div");
+      head.className = "set__head uc__release";
+      head.textContent = "Explicit songs";
+      const row = document.createElement("div");
+      row.className = "set__row uc__signin";
+      row.innerHTML =
+        `<span class="set__label">${SIGNIN_ASK}</span>` +
+        `<div class="set__split"><button class="set__half" type="button" title="Opens Apple's sign-in in your browser">Sign in</button></div>`;
+      const label = row.querySelector<HTMLElement>(".set__label")!;
+      const btn = row.querySelector<HTMLButtonElement>("button")!;
+      const split = row.querySelector<HTMLElement>(".set__split")!;
+      let waiting = false;
+      const reset = () => {
+        waiting = false;
+        btn.disabled = false;
+        btn.textContent = "Sign in";
+      };
+      const settle = async () => {
+        if (!waiting) return;
+        waiting = false;
+        const after = await restrictState().catch(() => null);
+        const flag = after?.flag ?? null;
+        diag.log("updatecard:signIn", { result: flag === null ? "noFlag" : flag ? "restricted" : "allowed" });
+        if (!live) return;
+        if (flag === null) return reset(); // the page sent no flag: the ask stays
+        label.textContent = flag
+          ? "Your Apple ID doesn't allow explicit songs. Turn on explicit content in your Apple account settings."
+          : "Explicit songs play now.";
+        split.remove();
+      };
+      void listen("user-token-changed", () => void settle()).then((un) => (live ? stops.push(un) : un()));
+      btn.addEventListener("click", () => {
+        if (waiting) return;
+        waiting = true;
+        btn.disabled = true;
+        btn.textContent = "Waiting for Apple…";
+        requestSignIn();
+        // A failed or cancelled sign-in gives the button back; a success arrives as the event.
+        let seenPending = false;
+        const started = Date.now();
+        const poll = window.setInterval(() => {
+          if (!waiting || !live || Date.now() - started > 5 * 60 * 1000) {
+            window.clearInterval(poll);
+            if (waiting && live) {
+              diag.log("updatecard:signIn", { result: "timeout" });
+              reset();
+            }
+            return;
+          }
+          void invoke<{ state: string }>("apple_auth_status").then((st) => {
+            if (st.state === "pending") seenPending = true;
+            else if (seenPending && (st.state === "failed" || st.state === "idle") && waiting) {
+              window.clearInterval(poll);
+              diag.log("updatecard:signIn", { result: st.state });
+              reset();
+            }
+          });
+        }, 1200);
+        stops.push(() => window.clearInterval(poll));
+      });
+      col.append(head, row);
+      enterRows([head, row]);
+    })
+    .catch((e) => console.warn("[update card] explicit sign-in:", e));
+  return () => {
+    live = false;
+    stops.forEach((f) => f());
+  };
 }
 
 // ── Your pins (HOME.md §11.3a, his call 2026-11-04) ──────────────────────────────

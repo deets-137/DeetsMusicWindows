@@ -122,6 +122,7 @@ const H: Record<string, Handler> = {
   // Apple: the token from the page, the sign-in from MusicKit itself (web/app.ts)
   apple_developer_token: () => devToken(),
   apple_user_token: () => null, // MusicKit JS keeps its own; player.ts never injects one on the web
+  apple_restrict_state: () => ({ flag: null, storefront: null }), // authorize() gave MusicKit the real flag
   apple_connection_status: () => !!music()?.isAuthorized,
   apple_check: () => ({ app: "ok", signin: music()?.isAuthorized ? "ok" : "none", healed: false }),
   apple_auth_status: () => ({ state: "idle" }),

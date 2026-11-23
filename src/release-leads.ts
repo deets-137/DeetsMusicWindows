@@ -41,6 +41,21 @@ export interface ReleaseEntry {
    *  card (or the panel) opens after an update that brings it, a patch too. The section may be
    *  empty; its heading is the mark. */
   shown?: boolean;
+  /** A group named on the first line under `### Show after update` (UPDATE-CARD.md §3.23): the
+   *  release opens only for users in that group. None: it opens for every user. */
+  audience?: string;
+}
+
+/** The groups a release may name (§3.23, his call 2026-11-22, "room for similar future updates
+ *  for specific user groups"). Each has its test in `update-audience.ts`; docs:check fails any
+ *  other name, so a typo cannot quietly open the card for no one. */
+export const AUDIENCES = ["explicit-sign-in"] as const;
+export type Audience = (typeof AUDIENCES)[number];
+
+/** A `### Show after update` group that `AUDIENCES` does not know, for docs:check. */
+export function audienceFaults(e: ReleaseEntry): string[] {
+  if (!e.audience || (AUDIENCES as readonly string[]).includes(e.audience)) return [];
+  return [`### Show after update names the group "${e.audience}", which update-audience.ts does not know`];
 }
 
 /** A lead as the card and the lists compare it: no closing period, no case. */
@@ -72,7 +87,12 @@ export function releaseEntries(md: string): ReleaseEntry[] {
     if (intro) entry.intro = intro;
     const open = section("Start open");
     if (open !== undefined) entry.open = open.split("\n").map((l) => l.trim()).filter(Boolean);
-    if (section("Show after update") !== undefined) entry.shown = true;
+    const show = section("Show after update");
+    if (show !== undefined) {
+      entry.shown = true;
+      const group = show.split("\n").map((l) => l.trim()).find(Boolean);
+      if (group) entry.audience = group;
+    }
     out.push(entry);
   });
   return out;
