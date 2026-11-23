@@ -532,6 +532,19 @@ button in the right column and one new intro line. The cause and the sign-in fla
    1.5.1. With storefront `in` and no flag, the card opens. With storefront `us`, nothing opens,
    and the log has `updates:audience` with `forUser: []`.
 
+*As run 2026-11-22 (Claude, the dev app; setup in QUEUE.md § The real restriction flag).* Passed:
+- `in`, no flag, `__updateCard.preview("1.5.1")`: the 1.5 page; *Intro to 1.5* holds two
+  paragraphs, "A couple quick updates!!" then the 1.5.1 line; *Explicit songs* sits under
+  *Play/Pause on Space* with the row text and **Sign in** (its hint in `data-hint`).
+- **Sign in**: *Waiting for Apple…*, disabled; the hosted page opened; the deep link with `itre=0`
+  gave "Explicit songs play now.", no button, `updatecard:signIn {result: "allowed"}`.
+- **Sign in**, then `apple_cancel_auth`: the button came back, `{result: "failed"}`.
+- A saved flag, and storefront `us`: no block.
+- The gate in the page (`markedForUser` over `virtual:release-notes`): `audiences` is
+  `{"1.5.1": "explicit-sign-in"}`; with a saved flag or `us`, `forUser` is `["1.5.0"]`.
+Not covered: the launch's own open (`openByItself`) needs a build whose version is 1.5.1 (step 4);
+the gate's positive case ran only through the block, which uses the same `needsSignIn`.
+
 ## 4. Not in scope
 - A toast for a small update (his call 3).
 - Changing a value without the user's press.

@@ -1172,6 +1172,26 @@ same songs. **The cause above was wrong for most users: MusicKit guesses, and Ap
 4. His Apple ID with explicit content off (Screen Time › Content & Privacy › Music), signed in
    again: the flag is `1`, and an explicit song gives the first notice text.
 
+*As run 2026-11-22 (Claude, the dev app, the CLI on port 47826 and webview-eval).* HUMBLE. by
+Kendrick Lamar: `song:1440881684` (explicit) and `song:1440882165` (clean). `meta.storefront` was
+set with a WMI-started Python (the app runs outside the Claude package) and put back to `us`.
+Apple's sign-in window was not used: the app's local page was started (`apple_begin_auth`,
+`local: true`), its nonce read, and `/callback` posted with the dev token and an `itre` value;
+one hosted sign-in was finished by the `deetsmusic-dev://auth?…&itre=0` deep link. Passed:
+- `us`, no flag: `player:restrictFlag {applied: false, storefront: "us"}`; the explicit song plays.
+- `in`, no flag, `music.restrictedEnabled = true` (MusicKit's own `setQueue` path, the one its
+  guess takes; its store object is not reachable from the page, so its storefront could not be
+  changed): `Content restricted`, the sign-in notice with **Sign in**, nothing skipped.
+- `/callback` with `itre=0`: `apple:restrictFlag saved=true value=0`, `restrict-flag.txt` = `0`,
+  MusicKit's flag `false` after `user-token-changed`, the explicit song plays with `in`.
+- `itre=1`: MusicKit's flag `true`; the explicit song is refused with the first notice text and
+  no button. (A play of the song already current only restarts it: MusicKit sets no new queue.)
+- A restart: `apple_restrict_state` reads `flag: true` (`load_restrict_flag`).
+- A sign-in with no `itre`: `saved=false value=unknown`; the file is deleted; the flag is `null`.
+- The deep link: `itre=0` saved from the link (`handle_link`).
+Not covered: MusicKit's storefront guess itself (read in musickit.js v3, not driven), and a real
+restricted Apple ID (step 4, his hand).
+
 ## Shuffle and unshuffle (2026-10-12)
 
 > **Part:** built · 2026-10-12 · desk test open (§Desk test below)
